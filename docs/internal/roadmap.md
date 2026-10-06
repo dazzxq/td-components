@@ -57,6 +57,8 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.51.1: vá nháy control native trước khi JS nạp (SSR pre-upgrade, CSS-only, [ADR 0025](decisions/0025-pre-upgrade-parity.md)) — plan [v0.51.1-ssr-fouc](plans/v0.51.1-ssr-fouc.md)
 - `done` v0.52.0: `<td-toggle>` `tone` / `locked` (2FA) + `<td-choice-group variant="segmented">` — plan [v0.52.0-toggle-tone-segmented](plans/v0.52.0-toggle-tone-segmented.md)
 - `done` v0.53.0: `TdMenu` item `type: 'custom'` (menu panel, [ADR 0026](decisions/0026-menu-panel-custom-rows.md)) — plan [v0.53.0-menu-custom-item](plans/v0.53.0-menu-custom-item.md)
+- `done` v0.53.1: segmented trong container hẹp (bố cục cả thanh, `stretch`, cuộn trong thanh) — plan [v0.53.1-segmented-layout](plans/v0.53.1-segmented-layout.md)
+- `todo`: RTL — phím ← ở hai đầu `td-choice-group` quay vòng ngược chiều radio native (có từ v0.49, phát hiện ở v0.53.1)
 - `todo` kiểm tay VoiceOver / NVDA: toggle `locked` (0.52) + menu panel (0.53) — owner: phát hành trước, kiểm sau
 - Ngày từ v0.33 trở đi: **rebaseline từ ngày v0.31 xong thực tế** (không nén test / acceptance để giữ lịch cũ ~11/11 –
   25/11)

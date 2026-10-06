@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.53)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.53.1)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.53.1](#0531) | Đổi giao diện nhỏ (`td-choice-group variant="segmented" size="sm"`) | Không bắt buộc. `sm` gọn hơn (đệm ngang 6 px, icon 16 px, khoảng icon 4 px, chữ nhỏ hơn); muốn giữ cũ: đặt lại `--td-choice-seg-px` / `--td-choice-seg-icon` / `--td-choice-seg-icon-gap` / `--td-choice-seg-font` trên `.td-choice--sm`. Thanh segmented giờ cuộn ngang bên trong khi quá hẹp (trước: tràn ra ngoài). |
 | [0.52.0](#0520) | Thêm tính năng (`td-toggle` `tone` / `locked`, `td-choice-group variant="segmented"`) + palette `td-theme` algorithm 4 | Không bắt buộc. File `td-theme` sinh ra: header `palette algorithm 4`, chỉ `--td-btn-disabled-fg` đổi (tối hơn chút để đạt 2.2:1 trên nền hover) — file cũ vẫn đúng, sinh lại khi tiện (site có gate so từng byte: nâng kit và sinh lại trong cùng một thay đổi). PHP `td_toggle`: có khoá `tone` / `status_text` / `locked` / `locked_reason` → luôn in chế độ element. |
 | [0.49.0](#0490) | Thêm tính năng (`<td-choice-group>`, `td-number-input stepper`) + đổi hành vi rất nhỏ | Không bắt buộc. `safeColor()` (và `color` của checkbox / toggle / button…) từ chối chuỗi màu **> 64 ký tự** (trước nhận `rgb(…)` dài bất kỳ). `TdFormElement` có hook `_ariaTarget()` / `_ssrVerifiedParts()` (mặc định giữ hành vi cũ). Import map: thêm `choice-group`. |
 | [0.46.0](#0460) | Thêm tính năng (`<td-diff>`, PHP `td_diff` / `td_diff_snapshots`) | Không bắt buộc. Import map: thêm `diff`. File `td-theme` sinh ra: header `palette algorithm 3` (thêm hai dòng `--td-diff-*-bg`, mọi giá trị khác như cũ) — file cũ vẫn đúng, sinh lại khi tiện. |
@@ -75,6 +76,14 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.53.1
+
+**Mức: đổi giao diện nhỏ (segmented `sm`).**
+
+- `td-choice-group variant="segmented" size="sm"`: đệm ngang 10 → 6 px, icon 20 → 16 px, khoảng icon 6 → 4 px, chữ `text-xs`.
+  Giữ cũ: đặt lại các token `--td-choice-seg-px` / `--td-choice-seg-icon` / `--td-choice-seg-icon-gap` / `--td-choice-seg-font`.
+- Bố cục cả thanh (`data-layout`) thay cho việc từng ô tự xuống dòng; thanh quá hẹp cuộn ngang bên trong.
 
 ## 0.52.0
 
