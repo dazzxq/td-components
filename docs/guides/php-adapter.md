@@ -64,7 +64,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_checkbox` | `label.td-checkbox` + `input.td-checkbox__input` **native** | Không | Không |
 | `td_toggle` | `label.td-switch` + `input[role=switch]` **native** | Không | Không |
 | `td_toggle`, `td_checkbox` — **chế độ element** (0.26.0, tự bật) | host `<td-toggle data-td-ssr="toggle@1">` / `<td-checkbox data-td-ssr="checkbox@1">` chứa sẵn đúng markup component | Không | **Có** — nạp module `toggle` / `checkbox`: nhận tại chỗ, giữ trạng thái tích |
-| `td_dropdown` | host `<td-dropdown>` bọc `<select>` **native** | Không (chạy như select) | **Có** — khi nạp module dropdown |
+| `td_dropdown` | host `<td-dropdown>` bọc `<select>` **native** (0.51.1: trước nâng cấp `td.css` cho select đúng hộp + chevron của trigger) | Không (chạy như select) | **Có** — khi nạp module dropdown, **không xô lệch** (0.51.1) |
 | `td_dropdown` — **chế độ element** (0.26.0, tự bật) | như trên + dấu `data-td-ssr="dropdown@1"` + `select.td-dropdown__native` đã tạo dáng **đúng hộp trigger** | Không | **Có** — nâng cấp select → trigger **không xô lệch**; select đang focus thì đợi blur |
 | `td_empty` (0.26.0) | **luôn** host `<td-empty-state data-td-ssr="empty-state@1">` chứa sẵn đúng cây component (icon, tiêu đề, lời nhắn, nút hành động) | Không (link hành động bấm được) | **Có** — nạp module `empty-state`: nhận **tại chỗ**, không nháy |
 | `td_otp_input` (0.27.0) | `div.td-otp` + `input.td-otp__input` **native** (`maxlength="6"`, `pattern="[0-9]{6}"`, `autocomplete="one-time-code"`) | Không | Không |
@@ -79,14 +79,14 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_filter_chips` (0.39.0) | **luôn** host `<td-filter-chips data-td-ssr="filter-chips@1">` chứa sẵn đúng cây component (nhóm, mỗi chip một `li` với nhãn / giá trị / ×, "Xoá tất cả", live region) | Không (× có `href` là **link** chạy ngay; × không link thì vô hình, giữ chỗ) | **Có** — nạp module `filter-chips`: nhận **tại chỗ** |
 | `td_steps` (0.45.0) | **luôn** host `<td-steps data-td-ssr="steps@1">` chứa sẵn đúng cây component (mỗi bước một `li` với marker / nhãn / chữ trạng thái / mô tả, dòng tóm tắt) | Không (bước có `href` là **link**; bước bấm được không link in như bước thường) | **Có** — nạp module `steps`: nhận **tại chỗ** |
 | `td_timeline` (0.45.0) | **luôn** host `<td-timeline data-td-ssr="timeline@1" time-zone="…">` chứa sẵn nhóm ngày, mục, `<details>` chi tiết, "Xem thêm" (link) | Không (chi tiết mở bằng `<details>`, "Xem thêm" là link `more_href`) | **Có** — nạp module `timeline`: nhận **tại chỗ** (tính lại chữ nhãn ngày) |
-| `td_datetime_range` (0.40.0) | **luôn** host `<td-datetime-range data-td-ssr="datetime-range@1">` + hai `<input type="date\|datetime-local">` **native** (`{name}[start]` / `{name}[end]`, `min` / `max`, `required` theo mốc) + trigger ẩn | Không (hai ô ngày native chạy ngay) | **Có** — nạp module `datetime-range`: nhận **tại chỗ**, giữ giá trị đã sửa, gỡ ô native |
+| `td_datetime_range` (0.40.0) | **luôn** host `<td-datetime-range data-td-ssr="datetime-range@1">` + hai `<input type="date\|datetime-local">` **native** (`{name}[start]` / `{name}[end]`, `min` / `max`, `required` theo mốc) + trigger ẩn | Không (hai ô ngày native chạy ngay) | **Có** — nạp module `datetime-range`: nhận **tại chỗ**, giữ giá trị đã sửa, gỡ ô native (0.51.1: khi JS bật, hai ô nằm trong một hộp giống trigger — không xô lệch) |
 | `td_diff` / `td_diff_snapshots` (0.46.0) | **luôn** host `<td-diff data-td-ssr="diff@1">` chứa sẵn bảng so sánh đầy đủ (hàng không đổi / JSON / giá trị dài là `<details>` native) | Không (đọc được ngay, `<details>` mở được không cần JS) | **Có** — nạp module `diff`: nhận **tại chỗ** (không đọc dữ liệu ngược từ DOM) |
 | `td_check_matrix` (0.47.0) | **luôn** host `<td-check-matrix data-td-ssr="check-matrix@1" data="{JSON}">` + **form không JS đầy đủ**: một hidden `name[col]=""` mỗi cột (đầu), một checkbox `name[col][]=row` mỗi ô áp dụng được (ô khoá-tick: checkbox `disabled` + hidden ngay sau), `name[_v]=1` (cuối); ô hàng loạt / nút nhóm / chọn cột `disabled` | Không (form gửi đúng FormData của component, từng byte) | **Có** — nạp module `check-matrix`: so **từng node** với `data`, nhận **tại chỗ** (giữ ô đã tick trước khi JS tải), gỡ marker / hidden / sentinel |
 | `td_color_picker` (0.48.0) | `div.td-color` + ô màu xám + `input.td-color__input` **chữ** (`pattern="#[0-9a-fA-F]{6}"` — **không** `type=color`) | Không (chỉ nhận `#RRGGBB`) | Không |
 | `td_color_picker` — **chế độ element** (0.48.0, tự bật) | host `<td-color-picker data-td-ssr="color-picker@1">` + cùng ô | Không (ô chữ native chạy ngay) | **Có** — nạp module `color-picker`: nhận **tại chỗ**, bọc ô màu vào nút mở popup |
 | `td_choice_group` (0.49.0) | **luôn** host `<td-choice-group data-td-ssr="choice-group@1">` + radio **native** mang `name` thật (`required` trên mọi radio, `checked` trên lựa chọn đang chọn), ô màu = `fill` của SVG, ảnh = `<img>` | Không (radio native: form gửi `name=value`, mũi tên chạy) | **Có** — nạp module `choice-group`: nhận **tại chỗ** (cùng radio, giữ lựa chọn + focus), radio sang nhóm riêng không form owner |
 | `td_number_input` — **`stepper`** (0.49.0, chỉ element) | như element + hai nút − / + trong hộp (ẩn, giữ chỗ tới khi module tải) | Không (ô native chạy) | **Có** — nhận tại chỗ cả hai nút |
-| `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
+| `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** (0.51.1: host đã cao bằng nút khi JS bật — bề rộng đổi theo thiết kế) |
 | `td_rating` (0.50.0) | **luôn** host `<td-rating data-td-ssr="rating@1">` chứa sẵn đủ cây (sao tô theo `data-fill`, chữ "4,3 trên 5 sao", số lượt) | Không (chỉ đọc, đủ hình không JS) | **Có** — nạp module `rating`: nhận tại chỗ khi khớp, ngược lại render lại (không state) |
 | `td_carousel` (0.50.0) | **luôn** host `<td-carousel data-td-ssr="carousel@1">` + khung (viewport > track > slide **HTML tin cậy của site**) + thanh điều khiển JS-only giữ chỗ + live region | Không (dải cuộn snap native) | **Có** — nạp module `carousel`: nhận khung tại chỗ, **không chạm slide**, thêm nút / chấm |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
@@ -630,9 +630,12 @@ native** cộng hai thứ:
 
 - `td.css` tạo dáng `select.td-dropdown__native` **đúng hộp của trigger**: cao `--td-field-h-md`, padding, viền
   `--td-field-border`, bo `--td-field-radius-md`, font / màu theo token field, rộng 100 %; host mang kiểu chữ của
-  `.td-dropdown` (nhãn cùng cao). **Giữ mũi tên native** của trình duyệt (không `appearance: none`, không ảnh `data:` —
-  CSP `img-src 'self'`): mũi tên có thể khác hình chevron của trigger (khác **pixel**), nhưng **hộp** trùng — nạp
-  module thì select → trigger không dịch một pixel nào (test đo bounding box ở Chromium / Firefox / WebKit).
+  `.td-dropdown` (nhãn cùng cao). Từ **0.51.1** ([ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)) select
+  còn có **chevron của trigger** vẽ bằng CSS gradient (`appearance: none` — gradient không phải ảnh, CSP `img-src` không
+  đổi; trước đó giữ mũi tên native và WebKit vẽ nút hệ thống bo 5 px), và **chế độ mặc định (native) cũng vậy**: select
+  trần trong `<td-dropdown>` chưa define được tạo dáng y hệt — nâng cấp không xô lệch ở cả hai chế độ (gate
+  `test/engines/ssr-fouc.spec.mjs`, Chromium / Firefox / WebKit). Forced colors: mũi tên hệ thống. Cảm ứng: chữ select
+  16 px. Element mode vẫn có thêm: hoãn nâng cấp khi select đang focus.
 - **Không JS**: y như native (chọn, submit, `required` chặn submit, nhãn ngoài `<label for="{id}-select">`).
 - **Nạp module dropdown**: đường nâng cấp 0.17 như cũ (đọc option, lựa chọn sống, `name` / `required` / `disabled`, nhãn
   ngoài chuyển sang host, gỡ select), rồi gỡ dấu `data-td-ssr`. **Select đang focus** (người dùng đang chọn đúng lúc

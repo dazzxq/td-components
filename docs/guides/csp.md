@@ -94,7 +94,7 @@ Những thứ **không** cần và **không nên** thêm vì kit:
 - `'unsafe-inline'` trong `style-src` — kit không có style inline nào.
 - `'unsafe-eval'` — kit không dùng `eval`/`new Function`.
 - Host CDN cho script/style — kit ship source, bạn tự host.
-- `data:` / `blob:` trong `img-src` — td.css không có `url()`, icon là SVG dựng bằng DOM. (Site có thể cần vì lý do
+- `data:` / `blob:` trong `img-src` — td.css không có `url()`, icon là SVG dựng bằng DOM. Chevron của select trước nâng cấp (0.51.1) là `linear-gradient` — không phải tài nguyên ảnh, `img-src` không chi phối. (Site có thể cần vì lý do
   khác, ví dụ icon CSS riêng dùng `mask-image: url("data:…")` — `img-src` **có** chi phối `mask-image`.)
 
 Vì sao giữ `'self'` cạnh nonce trong `script-src`: một số chỗ in `<link rel="modulepreload">` **không có nonce** (ví dụ

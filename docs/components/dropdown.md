@@ -213,6 +213,15 @@ Khi gắn vào trang **lần đầu**, nếu host có con trực tiếp `<select
   `console.warn`. Dùng [`<td-chip-input>`](chip-input.md) nếu cần chọn nhiều có giao diện td.
 - Chỉ đọc **một lần**: đổi select sau đó (hoặc gắn lại host) không có tác dụng; dùng `options` / `updateData()`.
 
+**Trước khi JS tải (0.51.1, [ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)).** Khi host **chưa được
+define**, `td.css` cho select con trực tiếp (cả select trần lẫn `select.td-dropdown__native` của chế độ element) đúng
+**hộp và dáng của trigger đóng**: cao `--td-field-h-md`, padding, viền, bo góc, font, màu chữ placeholder khi đang chọn
+option `value=""`, **chevron vẽ bằng CSS gradient** (`appearance: none`; không ảnh, CSP không đổi), kiểu chữ nhãn của
+`.td-dropdown`. Nạp module thì select → trigger **không dịch pixel nào** (đo ở Chromium / Firefox / WebKit, 390 và 1280
+px). Không JS: vẫn là select native (chọn, submit, `required`), chỉ đẹp hơn. Cảm ứng: chữ select 16 px (iOS không
+phóng to khi chạm), sau nâng cấp trigger 14 px — hộp vẫn khớp. Forced colors: mũi tên hệ thống. Host **đã define** không
+bao giờ tạo kiểu cho một `<select>` con (chỉ trạng thái trước nâng cấp).
+
 Nạp component bằng `<script type="module">` (mặc định chạy sau khi HTML parse xong). Nếu module được định nghĩa
 **trước** khi parser đọc tới `<select>` bên trong (ví dụ `async` chạy sớm trên trang dài), component sẽ render trước khi
 select tồn tại và không nâng cấp được.

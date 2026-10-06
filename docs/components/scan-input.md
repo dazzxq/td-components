@@ -216,6 +216,9 @@ trạng thái; nút "Bỏ" có tên "Bỏ {mã}".
 - **Đơn, mặc định**: ô nhập native (`div.td-scan` > nhãn + `input.td-scan__input[name]`). Không JS: Enter submit form
   (chấp nhận khi không có JS). `element => true`: host `<td-scan-input data-td-ssr="scan-input@1">` + cùng ô — module
   nhận **tại chỗ** (giữ chữ đang gõ + focus).
+  Trước khi JS tải (0.51.1, [ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)): trong container < 480 px
+  module thêm dòng trạng thái "Bấm vào đây để quét" dưới ô — khi trình duyệt chạy JS, `td.css` giữ sẵn chỗ dòng đó (cao 2rem,
+  44 px trên cảm ứng) nên nâng cấp không xô lệch; tắt JS thì không có dòng trống.
 - **Nhiều (`multiple`)**: luôn là element. Không JS: `textarea` "Nhập tay, mỗi dòng một mã" + danh sách + một
   `input type="hidden"` mỗi mã. Khi module tải: mã in sẵn = **trạng thái hợp lệ đã có** (không gọi lại `validate`, cũng là
   mặc định của `form.reset()`); các dòng đã gõ vào textarea được đưa qua `validate` theo thứ tự (`source: 'manual'`) —

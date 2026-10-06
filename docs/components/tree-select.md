@@ -107,6 +107,12 @@ sang host; select bị gỡ. Select **đang focus** lúc module nạp → chờ 
 **Thứ tự ưu tiên giá trị ban đầu:** property `value` gán sớm > attribute `value` > lựa chọn đang sống của select.
 Reset → mặc định native của select (option `selected` gốc + input khoá).
 
+**Trước khi JS tải (0.51.1, [ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)):** host chưa define → select
+**đơn** có đúng hộp của control (cao cố định — WebKit bỏ qua `min-height` của select native), chevron CSS, kiểu chữ nhãn
+(cả chế độ native). Select **nhiều** ở chế độ native: khi trình duyệt chạy JS (`@media (scripting: enabled)`) cao một
+control, cuộn được; tắt JS thì giữ list `size` dòng như cũ. Khác **pixel** còn lại (không khác hộp): chữ option có thụt
+NBSP theo cấp và nút × chỉ có sau nâng cấp.
+
 ### 6. Thao tác bằng code
 
 ```js

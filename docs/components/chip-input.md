@@ -307,6 +307,15 @@ mục **đang hiện** (sau lọc) không bị `disabled`. Chọn → thêm mọ
 element in `<td-chip-input data-td-ssr="chip-input@1" selection-only>` + select đó → component nâng cấp như trên. Xem
 [Adapter PHP › td_multiselect](../guides/php-adapter.md#td_multiselect-0280).
 
+### 12. Trước khi JS tải — `td_multiselect` element mode (0.51.1)
+
+Khi trình duyệt chạy JS (`@media (scripting: enabled)`), select `select.td-chip-input__native` của host chưa define cao
+**đúng một hộp chip** (`--td-field-h-md`, cuộn được) → nâng cấp không xô lệch **khi chip đã chọn vừa một dòng**.
+**Ngoại lệ có chủ đích** ([ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)): nhiều chip / chip dài xuống
+dòng sau nâng cấp → trang dịch xuống **đúng bằng số dòng chip thêm**, không có cú nhảy nào khác (nhãn, mép trên hộp, bề
+rộng giữ nguyên). CSS không biết trước số dòng nếu không in sẵn chip (đổi contract `chip-input@1`). Tắt JS: list giữ
+nguyên số dòng như cũ. Chế độ native (`div.td-multiselect`) không nâng cấp nên không liên quan.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |

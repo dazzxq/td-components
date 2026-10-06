@@ -428,6 +428,11 @@ nhận tại chỗ (giữ ô người dùng tick trước khi JS tải, FormData
 **không lấy giá trị nào từ markup**, render an toàn từ `data` + một cảnh báo, focus về ô tương ứng. Lỗi dữ liệu ở PHP → in
 trạng thái fail closed (không input nào) + một `E_USER_WARNING` chỉ nêu loại lỗi.
 
+**Trước khi JS tải (0.51.1, [ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)):** chế độ hẹp (`layout="column"`,
+hoặc `auto` trong container < 720 px) thêm thanh "Đang sửa cột" phía trên lưới khi module tải. Khi trình duyệt chạy JS,
+`td.css` giữ sẵn chiều cao thanh đó → lưới không bị đẩy xuống; bề rộng lưới vẫn đổi (đủ cột → một cột) — theo thiết kế.
+Tắt JS: lưới đủ cột, không có dải trống.
+
 ## Bảo mật
 
 - Nhãn / mô tả / ghi chú luôn là **chữ** (escape theo ngữ cảnh ở JS và PHP); không có lối HTML. Mẫu nhãn thay bằng hàm

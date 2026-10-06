@@ -84,11 +84,20 @@ connectedCallback (gắn lại sau disconnect)
   chỉ `true` cho phần tử **đã hydrate** (và markup còn khớp, kiểm chặt: không còn `name` / ràng buộc của bản không-JS)
   → phần tử tạo bằng JS / viết tay vẫn render lại khi gắn lại như trước 0.26.
 
+**Bổ sung 0.51.1 — parity trước nâng cấp ([ADR 0025](decisions/0025-pre-upgrade-parity.md), plan v0.51.1-ssr-fouc):**
+mọi helper SSR có bước nâng cấp phải có **cùng hộp** trước / sau (≤ 1 px; gate `test/engines/ssr-fouc.spec.mjs` đo trong
+cùng lượt chạy, 3 engine × 390 / 1280 + dark / forced colors / cảm ứng / RTL / `legacy+td` / không JS; fixture
+`test/ssr/fouc.fixtures.json`). Chỉ CSS: luật vô hại cho không-JS khoá `td-x:not(:defined)` (select đơn của dropdown /
+tree-select: hộp + chevron gradient + kiểu chữ host, cả chế độ native); luật hại không-JS (list multiple một dòng, giữ chỗ
+dòng / thanh JS thêm ở scan-input / check-matrix, hộp một dòng của datetime-range, chiều cao nút copy) bọc thêm `@media
+(scripting: enabled)`. Không bao giờ khớp host đã define (trừ vỏ `dropdown@1` cho đường hoãn focus). Ngoại lệ: chip
+xuống dòng, datetime-local hẹp, bề rộng copy. Component mới có bước nâng cấp → thêm ca vào fixture.
+
 **Bổ sung 0.26.0 phần 2 (plan v0.26.0-ssr-dropdown-empty):**
 
 - **Vỏ dropdown (`dropdown@1`)** — `TdDropdown` **không** hydratable: markup SSR là đúng markup native (`<select>`
   nâng cấp 0.17) + dấu trên host + `select.td-dropdown__native`. Không-xô-lệch là việc của **CSS**: `td.css` tạo dáng
-  select đúng hộp trigger (giữ mũi tên native, không ảnh `data:`), host mang kiểu chữ `.td-dropdown` khi còn dấu. Hoãn
+  select đúng hộp trigger (0.51.1: + chevron gradient, `appearance: none`; không ảnh `data:`), host mang kiểu chữ `.td-dropdown` khi còn dấu. Hoãn
   **riêng** của dropdown (không phải cơ chế base đã bỏ ở ADR 0012 mục 5 — control trước nâng cấp của nó chính là select
   native, thay nó khi đang chọn sẽ cướp focus): `connectedCallback()` kiểm **trước mọi thay đổi DOM** — dấu khớp + select
   con trực tiếp đang là `activeElement` → không `_upgradeSelect()`, không `super.connectedCallback()`, gắn **một**
