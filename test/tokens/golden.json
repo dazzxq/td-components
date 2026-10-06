@@ -2006,9 +2006,9 @@
       "why": "v0.52.0 td-choice-group segmented selected ring (= --td-color-text-muted: solver-guaranteed ≥ 4.7 on the hover trough over the page and on the pill)"
     },
     "--td-choice-seg-fg": {
-      "light": "rgb(107, 107, 115)",
-      "dark": "rgb(172, 172, 180)",
-      "why": "v0.52.0 td-choice-group segmented idle label (= --td-color-text-muted, ≥ 4.7 on the trough)"
+      "light": "rgb(69, 69, 75)",
+      "dark": "rgb(212, 212, 216)",
+      "why": "v0.52.0 td-choice-group segmented idle label / icon (= --td-color-text-label: ≥ 4.7 on the hover trough over the page, kit light page included — review r2)"
     },
     "--td-choice-seg-fg-selected": {
       "light": "rgb(28, 28, 30)",

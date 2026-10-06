@@ -248,7 +248,7 @@ async function tokenPairs(page, palette, tag) {
     let bg = t[p.layers[p.layers.length - 1]];
     for (let i = p.layers.length - 2; i >= 0; i--) bg = over(t[p.layers[i]], bg);
     const r = contrast(t[p.fg], bg);
-    if (GATED.has(palette)) {
+    if (GATED.has(palette) || (palette === 'light' && p.gateLight)) { // v0.52.0 r2: gateLight pairs on the kit light page
       checks++;
       if (!(r >= p.min)) fail(tag, `rendered pair ${p.id} ${r.toFixed(2)} < ${p.min} (${t[p.fg]} on ${bg})`);
     } else if (!(r >= p.min)) builtinNotes.add(`${palette}: ${p.id} ${r.toFixed(2)} < ${p.min}`);

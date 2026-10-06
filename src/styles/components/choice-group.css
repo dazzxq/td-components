@@ -35,7 +35,9 @@
 		--td-choice-seg-bg: var(--td-color-hover);
 		--td-choice-seg-pill: var(--td-control-bg);
 		--td-choice-seg-ring: var(--td-color-text-muted);
-		--td-choice-seg-fg: var(--td-color-text-muted);
+		/* review r2: the resting label is the LABEL ink — muted was 4.57:1 on the hover trough over the kit light page; the
+		   label ink is solved ≥ 4.7 on the same trough (mutedBgs) and stays one step above muted (hierarchy) */
+		--td-choice-seg-fg: var(--td-color-text-label);
 		--td-choice-seg-fg-selected: var(--td-color-text);
 	}
 }

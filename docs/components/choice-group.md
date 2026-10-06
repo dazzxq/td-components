@@ -312,7 +312,7 @@ document.getElementById('theme-switch').addEventListener('change', (e) => {
 | `--td-choice-seg-bg` | `var(--td-color-hover)` | 0.52.0 segmented: rãnh |
 | `--td-choice-seg-pill` | `var(--td-control-bg)` | 0.52.0: viên thuốc ô đang chọn |
 | `--td-choice-seg-ring` | `var(--td-color-text-muted)` | 0.52.0: vòng 1px quanh viên (≥ 3:1 với rãnh và viên — mực muted được bộ sinh palette giữ ≥ 4.7 trên rãnh hover và mọi bề mặt) |
-| `--td-choice-seg-fg` / `-fg-selected` | `var(--td-color-text-muted)` / `var(--td-color-text)` | 0.52.0: chữ / icon ô nghỉ (≥ 4.7 trên rãnh) / ô chọn + hover |
+| `--td-choice-seg-fg` / `-fg-selected` | `var(--td-color-text-label)` / `var(--td-color-text)` | 0.52.0: chữ / icon ô nghỉ (≥ 4.7 trên rãnh, cả trên nền trang sáng của kit) / ô chọn + hover |
 | `--td-choice-seg-h` | `2.5rem` (sm `2rem`, lg `3rem`) | 0.52.0: chiều cao ô (cảm ứng ≥ 44px) |
 | `--td-choice-seg-pad` / `--td-choice-seg-radius` | `3px` / `var(--td-radius-full)` | 0.52.0: đệm rãnh / bo |
 
