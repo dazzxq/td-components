@@ -376,6 +376,25 @@
 		visibility: hidden;
 	}
 
+	/*
+	 * v0.51.1 pre-upgrade parity (ADR 0025): the narrow mode (layout column, or auto under a 720px container) adds the
+	 * "Đang sửa cột" bar above the grid once defined (select = cell size, + the wrapper gap) — JS expected → reserve it so
+	 * the upgrade does not push the grid down. No JS: the full grid, no empty strip.
+	 */
+	@media (scripting: enabled) {
+		td-check-matrix:not(:defined) > .td-check-matrix[data-state="ready"][data-layout="column"] {
+			padding-block-start: calc(var(--td-check-matrix-cell-size) + var(--td-space-xs));
+		}
+	}
+
+	@container td-check-matrix (width < 720px) {
+		@media (scripting: enabled) {
+			td-check-matrix:not(:defined) > .td-check-matrix[data-state="ready"][data-layout="auto"] {
+				padding-block-start: calc(var(--td-check-matrix-cell-size) + var(--td-space-xs));
+			}
+		}
+	}
+
 	/* ---- narrow mode bar (hidden in the full grid) ---- */
 	.td-check-matrix__bar {
 		display: none;

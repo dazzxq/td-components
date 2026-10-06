@@ -397,6 +397,20 @@
 		background-color: var(--td-field-bg-disabled);
 	}
 
+	/*
+	 * v0.51.1 pre-upgrade parity (ADR 0025): JS expected → the element-mode list is ONE chip box high (scrollable, still
+	 * usable), so the upgrade moves nothing while the chips fit one line. Accepted exception (plan v0.51.1, release lead):
+	 * when the upgraded chips wrap, the shift is exactly the extra chip rows — CSS cannot know the row count without
+	 * printing the chips (a chip-input@1 contract change). No JS (scripting: none): the list keeps its rows.
+	 */
+	@media (scripting: enabled) {
+		td-chip-input[data-td-ssr]:not(:defined) > .td-chip-input__native {
+			height: var(--td-field-h-md);
+			padding-block: 4px;
+			overflow-y: auto;
+		}
+	}
+
 	.td-chip-input__option--create {
 		font-weight: var(--td-fw-medium);
 	}
@@ -462,6 +476,17 @@
 		.td-multiselect__native,
 		td-chip-input > .td-chip-input__native {
 			min-height: var(--td-touch-min);
+		}
+
+		/* v0.51.1 (ADR 0019, Q1): the pre-upgrade select ≥ 16px (iOS does not zoom on focus) */
+		td-chip-input:not(:defined) > .td-chip-input__native {
+			font-size: max(1rem, 1em);
+		}
+	}
+
+	@media (pointer: coarse) and (scripting: enabled) {
+		td-chip-input[data-td-ssr]:not(:defined) > .td-chip-input__native {
+			height: var(--td-touch-min);
 		}
 	}
 
