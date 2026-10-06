@@ -1900,6 +1900,89 @@
         ".td-menu__separator"
       ],
       "settle": 400
+    },
+    {
+      "state": "panel-custom",
+      "setup": "await import('/src/form/td-choice-group.js'); const b=document.createElement('button'); b.type='button'; b.id='probe'; b.textContent='Tài khoản'; b.style.setProperty('margin','40px'); window.__mount.appendChild(b); TdMenu.open(b,[{label:'Hồ sơ',icon:'link'},{label:'Cài đặt'},{separator:true},{type:'custom',id:'theme',label:'Giao diện',render:()=>{const g=document.createElement('td-choice-group'); g.setAttribute('variant','segmented'); g.setAttribute('size','sm'); g.setAttribute('value','light'); g.options=[{value:'auto',label:'Tự động',icon:'monitor'},{value:'light',label:'Sáng',icon:'sun'},{value:'dark',label:'Tối',icon:'moon'}]; return g;}},{type:'custom',id:'who',render:()=>{const d=document.createElement('div'); d.textContent='Lan · lan@example.com'; return d;}},{separator:true},{label:'Đăng xuất',danger:true}],{align:'start'});",
+      "selectors": [
+        ".td-menu--panel",
+        ".td-menu__section",
+        ".td-menu__custom",
+        ".td-menu__custom-label",
+        ".td-menu__custom .td-choice__options",
+        ".td-menu__custom .td-choice__input:checked + .td-choice__face"
+      ],
+      "portal": [
+        ".td-menu--panel",
+        ".td-menu__section",
+        ".td-menu__custom",
+        ".td-menu__custom-label",
+        ".td-menu__custom .td-choice__options",
+        ".td-menu__custom .td-choice__input:checked + .td-choice__face"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.53.0 (plan v0.53.0-menu-custom-item QĐ 1 / QĐ 11): the menu panel — role=dialog + role=menu sections + custom rows (a td-choice-group segmented, a static row). Text-bearing boxes size with the platform font metrics (height / width / margin-left excluded, as the v0.52 segmented state); position props excluded as the open menu."
+    },
+    {
+      "state": "panel-static",
+      "setup": "await import('/src/form/td-choice-group.js'); const b=document.createElement('button'); b.type='button'; b.id='probe'; b.textContent='Tài khoản'; b.style.setProperty('margin','40px'); window.__mount.appendChild(b); TdMenu.open(b,[{label:'Hồ sơ',icon:'link'},{label:'Cài đặt'},{separator:true},{type:'custom',id:'theme',label:'Giao diện',render:()=>{const g=document.createElement('td-choice-group'); g.setAttribute('variant','segmented'); g.setAttribute('size','sm'); g.setAttribute('value','light'); g.options=[{value:'auto',label:'Tự động',icon:'monitor'},{value:'light',label:'Sáng',icon:'sun'},{value:'dark',label:'Tối',icon:'moon'}]; return g;}},{type:'custom',id:'who',render:()=>{const d=document.createElement('div'); d.textContent='Lan · lan@example.com'; return d;}},{separator:true},{label:'Đăng xuất',danger:true}],{align:'start'});",
+      "selectors": [
+        ".td-menu__custom[data-item=\"who\"]"
+      ],
+      "portal": [
+        ".td-menu__custom[data-item=\"who\"]"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.53.0 (plan v0.53.0-menu-custom-item QĐ 1 / QĐ 11): the menu panel — role=dialog + role=menu sections + custom rows (a td-choice-group segmented, a static row). Text-bearing boxes size with the platform font metrics (height / width / margin-left excluded, as the v0.52 segmented state); position props excluded as the open menu."
+    },
+    {
+      "state": "panel-dark",
+      "setup": "document.documentElement.setAttribute('data-td-theme','dark'); await import('/src/form/td-choice-group.js'); const b=document.createElement('button'); b.type='button'; b.id='probe'; b.textContent='Tài khoản'; b.style.setProperty('margin','40px'); window.__mount.appendChild(b); TdMenu.open(b,[{label:'Hồ sơ',icon:'link'},{label:'Cài đặt'},{separator:true},{type:'custom',id:'theme',label:'Giao diện',render:()=>{const g=document.createElement('td-choice-group'); g.setAttribute('variant','segmented'); g.setAttribute('size','sm'); g.setAttribute('value','light'); g.options=[{value:'auto',label:'Tự động',icon:'monitor'},{value:'light',label:'Sáng',icon:'sun'},{value:'dark',label:'Tối',icon:'moon'}]; return g;}},{type:'custom',id:'who',render:()=>{const d=document.createElement('div'); d.textContent='Lan · lan@example.com'; return d;}},{separator:true},{label:'Đăng xuất',danger:true}],{align:'start'});",
+      "selectors": [
+        ".td-menu--panel",
+        ".td-menu__section",
+        ".td-menu__custom",
+        ".td-menu__custom-label",
+        ".td-menu__custom .td-choice__options",
+        ".td-menu__custom .td-choice__input:checked + .td-choice__face"
+      ],
+      "portal": [
+        ".td-menu--panel",
+        ".td-menu__section",
+        ".td-menu__custom",
+        ".td-menu__custom-label",
+        ".td-menu__custom .td-choice__options",
+        ".td-menu__custom .td-choice__input:checked + .td-choice__face"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.53.0 (plan v0.53.0-menu-custom-item QĐ 1 / QĐ 11): the menu panel — role=dialog + role=menu sections + custom rows (a td-choice-group segmented, a static row). Text-bearing boxes size with the platform font metrics (height / width / margin-left excluded, as the v0.52 segmented state); position props excluded as the open menu."
     }
   ],
   "td-chip-input": [
