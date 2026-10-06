@@ -677,7 +677,7 @@ describe('v0.12 TdMenu — golden contract', () => {
     const html = await (await fetch('/test/contracts/menu.html')).text();
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const ts = [...doc.querySelectorAll('template')];
-    expect(ts.length).to.equal(3);
+    expect(ts.length).to.equal(4); // v0.53.0: + the menu panel (type: 'custom')
     for (const t of ts) {
       host.innerHTML = t.getAttribute('data-markup');
       const el = host.firstElementChild;
