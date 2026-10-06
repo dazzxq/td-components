@@ -108,6 +108,9 @@ if ($request->has('gallery')) {                          // không có key = dis
     if ($raw !== null && $raw !== '' && !is_array($raw)) { // chỉ hai hình hợp lệ: rỗng (gỡ hết) hoặc mảng
         throw ValidationException::withMessages(['gallery' => 'Gallery không hợp lệ.']);
     }
+    if (is_array($raw) && count($raw) > 10) {            // max CỦA SERVER — kiểm TRƯỚC mọi vòng lặp / chuẩn hoá
+        throw ValidationException::withMessages(['gallery' => 'Tối đa 10 ảnh.']);
+    }
     $rows = is_array($raw) ? array_values($raw) : [];    // null / '' → [] = gỡ hết
     foreach ($rows as $i => $r) {                        // chuẩn hoá TRƯỚC validate (luật đếm của kit)
         if (!is_array($r)) {                             // usage: mỗi hàng là mảng
@@ -121,9 +124,6 @@ if ($request->has('gallery')) {                          // không có key = dis
     }
     if (is_array($raw)) {
         $request->merge(['gallery' => $rows]);
-    }
-    if (count($rows) > 10) {                             // max CỦA SERVER — không tin max của client
-        throw ValidationException::withMessages(['gallery' => 'Tối đa 10 ảnh.']);
     }
     $request->validate([                                 // lỗi → 422 (không bao giờ cắt)
         'gallery'           => ['nullable', 'array', 'max:10'],
@@ -169,11 +169,11 @@ if (array_key_exists('gallery', $_POST)) {               // không có key → g
     if ($raw === '') {
         $rows = [];                                      // '' (chuỗi) = gỡ hết
     } elseif (is_array($raw)) {
+        if (count($raw) > 10) { $fail('Tối đa 10 ảnh.'); } // max CỦA SERVER — kiểm TRƯỚC khi chép / lặp
         $rows = array_values($raw);
     } else {
         $fail('Gallery không hợp lệ.');                  // hình khác: không bao giờ coi là "gỡ hết"
     }
-    if (count($rows) > 10) { $fail('Tối đa 10 ảnh.'); }  // max CỦA SERVER
     $ids = [];
     foreach ($rows as $i => $r) {
         if (!is_array($r)) { $fail('Gallery không hợp lệ.'); }               // reference: is_string($r) thay cho dòng này
