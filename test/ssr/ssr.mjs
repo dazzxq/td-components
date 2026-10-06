@@ -195,3 +195,12 @@ export const CAROUSEL_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'carousel.html');
 export function renderCarouselFixture() {
   return renderPhp('carousel-fixture.php');
 }
+
+// v0.51.1: pre-upgrade parity (FOUC) — every upgraded helper case, measured by test/engines/ssr-fouc.spec.mjs.
+export const FOUC_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'fouc.fixtures.json'), 'utf8'));
+export const FOUC_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'fouc.html');
+
+/** Render test/ssr/fouc-fixture.php (the HTML loaded by the FOUC parity spec). */
+export function renderFoucFixture() {
+  return renderPhp('fouc-fixture.php');
+}
