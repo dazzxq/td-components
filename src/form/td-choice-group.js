@@ -349,7 +349,10 @@ export class TdChoiceGroup extends TdFormElement {
       g.removeAttribute('data-overflow');
       return;
     }
-    const avail = this.getBoundingClientRect().width;
+    // the room = the host CONTENT box (fractional: the border-box rect minus borders and padding)
+    const hcs = getComputedStyle(this);
+    const avail = this.getBoundingClientRect().width - (parseFloat(hcs.borderLeftWidth) || 0) - (parseFloat(hcs.borderRightWidth) || 0)
+      - (parseFloat(hcs.paddingLeft) || 0) - (parseFloat(hcs.paddingRight) || 0);
     if (!(avail > 0) || !this._options.length) return;
     const fontSize = getComputedStyle(g).fontSize;
     if (!this._segMeasure || this._segMeasure.fontSize !== fontSize) this._segMeasure = this._measureSegments(fontSize);

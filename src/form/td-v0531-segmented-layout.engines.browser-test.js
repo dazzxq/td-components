@@ -175,6 +175,62 @@ describe('segmented layout — never mixed (widths × options × labels × stret
   });
 });
 
+describe('segmented layout — measured from the stacked level (Codex r1 #1) and the content-box room (Codex r1 #2)', () => {
+  /** the fit / equal thresholds from measurements taken in the INLINE level (fresh mount, wide) */
+  async function thresholds(opts) {
+    const { el, box } = await mount(600, opts);
+    const m = el._segMeasure;
+    const frame = (m.inline.length - 1) * m.gap + 2 * m.pad;
+    const out = { inline: [...m.inline], fit: m.inline.reduce((a, b) => a + b, 0) + frame, equal: m.inline.length * Math.max(...m.inline) + frame };
+    box.remove();
+    return out;
+  }
+
+  it('re-measured while stacked (relayout / fonts loadingdone / widening): the inline widths are the inline ones; switch exactly at the threshold, both ways, with hysteresis', async () => {
+    const t = await thresholds({ stretch: true });
+    for (const trigger of ['relayout', 'loadingdone', 'resize']) {
+      const { el, box } = await mount(Math.floor(t.fit) - 20, { stretch: true });
+      const L = () => rail(el).getAttribute('data-layout');
+      expect(L(), trigger).to.equal('stacked');
+      if (trigger === 'relayout') el.relayout();
+      if (trigger === 'loadingdone') { document.fonts.dispatchEvent(new Event('loadingdone')); await frames(1); }
+      // measured in the stacked level: still the inline widths
+      expect(el._segMeasure.inline.every((w, i) => Math.abs(w - t.inline[i]) <= 0.5), `${trigger}: ${el._segMeasure.inline} vs ${t.inline}`).to.equal(true);
+      // widening below the threshold + hysteresis keeps stacked; at it → fit (never equal before its own threshold)
+      box.style.width = `${Math.ceil(t.fit) + 3}px`;
+      await frames(3);
+      expect(L(), `${trigger} +3`).to.equal('stacked');
+      await change(el, 'data-layout', () => { box.style.width = `${Math.ceil(t.fit) + 4}px`; });
+      expect(L(), `${trigger} +4`).to.equal('fit');
+      // narrowing: stays fit down to the threshold, stacked one px below it
+      box.style.width = `${Math.ceil(t.fit)}px`;
+      await frames(3);
+      expect(L(), `${trigger} at fit`).to.equal('fit');
+      await change(el, 'data-layout', () => { box.style.width = `${Math.floor(t.fit) - 1}px`; });
+      expect(L(), `${trigger} −1`).to.equal('stacked');
+      box.remove();
+    }
+  });
+
+  it('the room is the host CONTENT box (padding + border excluded)', async () => {
+    const t = await thresholds({ stretch: true });
+    // a host whose border-box is wide enough for fit but whose content box is not
+    const { el, box } = await mount(Math.ceil(t.fit) + 30, { stretch: true, attrs: 'class="td-test-padded-host"' });
+    const style = document.createElement('style');
+    style.textContent = '.td-test-padded-host { box-sizing: border-box; padding: 0 12px; border: 4px solid; }';
+    document.head.appendChild(style);
+    cleanup.push(() => style.remove());
+    el.relayout();
+    const cs = getComputedStyle(el);
+    const content = el.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+      - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth);
+    expect(Math.abs(el._segMeasure.avail - content) <= 0.5, `${el._segMeasure.avail} vs ${content}`).to.equal(true);
+    expect(rail(el).getAttribute('data-layout')).to.equal(content >= t.fit ? 'fit' : 'stacked');
+    expect(content < t.fit).to.equal(true); // the case is meaningful
+    box.remove();
+  });
+});
+
 describe('segmented layout — overflow: the rail scrolls itself, never the page (mouse)', () => {
   it('one long unbreakable word: data-overflow exactly when minRail > room (same function), labels whole', async () => {
     for (const w of [216, 180]) {

@@ -456,9 +456,17 @@
 		grid-auto-columns: max-content;
 	}
 
+	/* the inline read restores the INLINE geometry explicitly — the rail may be measured while data-layout="stacked"
+	   (same specificity as the stacked rule, later in the file: this one wins) */
 	.td-choice--segmented .td-choice__options[data-measuring="inline"] .td-choice__face {
+		--_td-seg-icon: var(--td-choice-seg-icon);
+
 		flex: none;
+		flex-direction: row;
+		gap: var(--td-choice-seg-icon-gap);
 		width: max-content;
+		padding-block: 0.25rem;
+		line-height: var(--td-leading-tight);
 		white-space: nowrap;
 	}
 
