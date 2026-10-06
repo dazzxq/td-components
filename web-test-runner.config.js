@@ -36,7 +36,9 @@ const POINTER_FILES = ['src/display/td-v031-sortable.engines.browser-test.js', '
   // v0.37.0: real (Shift+) clicks on td-table row selection
   'src/display/td-v037-table-selection.engines.browser-test.js',
   // v0.43.0: real mouse drags on the td-media-gallery handles
-  'src/form/td-v043-media-gallery-sort.engines.browser-test.js'];
+  'src/form/td-v043-media-gallery-sort.engines.browser-test.js',
+  // real :hover — headless Firefox only updates :hover for the focused page, so it cannot share a browser with other files
+  'src/styles/td-v036-solid-colours.engines.browser-test.js'];
 
 /** All src stories (for src/stories-dom.browser-test.js). */
 function storyFiles(dir = 'src', out = []) {
