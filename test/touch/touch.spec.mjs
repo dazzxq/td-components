@@ -596,6 +596,37 @@ async function chromiumSemantics(browser) {
       expect(!st.focused, 'a tap on + focused the field (virtual keyboard)');
     });
 
+    // v0.52.0 segmented (size sm, icon-only) + locked switch
+    await it(tag, 'segmented sm icon-only: every segment ≥ 44 × 44, a tap selects at once (one input + change), nothing stuck', async () => {
+      await load(page);
+      const sizes = await page.evaluate(() => [...document.querySelectorAll('#rsp-seg-sm .td-choice__face')]
+        .map((f) => { const r = f.getBoundingClientRect(); return [Math.round(r.width * 10) / 10, Math.round(r.height * 10) / 10]; }));
+      expect(sizes.length === 3 && sizes.every(([w, h]) => w >= 44 && h >= 44), `segments ${JSON.stringify(sizes)}`);
+      await page.evaluate(() => { window.__sg = []; const el = document.querySelector('#rsp-seg-sm'); for (const t of ['input', 'change']) el.addEventListener(t, (e) => window.__sg.push(`${t}:${e.detail.value}`)); });
+      const sel = '#rsp-seg-sm .td-choice__option[data-td-value="light"]';
+      const pt = await centre(page, sel);
+      await page.touchscreen.tap(pt.x, pt.y);
+      await page.waitForFunction(() => document.querySelector('#rsp-seg-sm').value === 'light', null, { timeout: 3000 }).catch(() => {});
+      const st = await page.evaluate(() => ({ value: document.querySelector('#rsp-seg-sm').value, log: window.__sg.join(',') }));
+      expect(st.value === 'light' && st.log === 'input:light,change:light', `tap: ${JSON.stringify(st)}`);
+      await quiet(page, sel);
+      expect((await bgOf(page, `${sel} .td-choice__face`)).split(' | ')[1] === 'none', 'a pressed layer stuck after the tap');
+    });
+    await it(tag, 'locked switch: a tap does not flip it, no change, no pressed layer while the finger is down', async () => {
+      await load(page);
+      await page.evaluate(() => { window.__lk = 0; document.querySelector('#rsp-tfa-locked').addEventListener('change', () => { window.__lk += 1; }); });
+      const sel = '#rsp-tfa-locked .td-switch__track';
+      const pt = await centre(page, sel);
+      await touchDown(cdp, pt);
+      await frames(page, 2);
+      const img = await page.evaluate((s) => getComputedStyle(document.querySelector(s)).backgroundImage, sel);
+      await touchUp(cdp);
+      await frames(page, 4);
+      const st = await page.evaluate(() => ({ on: document.querySelector('#rsp-tfa-locked').checked, changes: window.__lk }));
+      expect(img === 'none', `pressed layer on a locked switch: ${img}`);
+      expect(st.on === true && st.changes === 0, `locked tap: ${JSON.stringify(st)}`);
+    });
+
     await it(tag, 'copy: two quick taps while the copy is pending = one state change', async () => {
       await load(page);
       await page.evaluate(() => {

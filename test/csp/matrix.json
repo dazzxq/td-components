@@ -235,6 +235,111 @@
       ],
       "settle": 300,
       "selectorNote": "PHP td_toggle(…, ['element' => true]) markup (toggle@1) hydrated in place (v0.26.0)"
+    },
+    {
+      "state": "tone-success",
+      "markup": "<td-toggle label=\"2FA\" tone=\"success\" checked></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__thumb",
+        ".td-switch__icon--off",
+        ".td-switch__icon--on",
+        ".td-switch__label",
+        ".td-switch__status"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left",
+        "line-height"
+      ],
+      "selectorNote": "v0.52.0: the visually hidden description span inherits the host page line-height (profile-dependent, never painted); text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "tone-warning",
+      "markup": "<td-toggle label=\"2FA\" tone=\"warning\" status-text=\"Chờ quét mã QR\" checked></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__thumb",
+        ".td-switch__icon--off",
+        ".td-switch__icon--on",
+        ".td-switch__label",
+        ".td-switch__status"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left",
+        "line-height"
+      ],
+      "selectorNote": "v0.52.0: the visually hidden description span inherits the host page line-height (profile-dependent, never painted); text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "tone-warning-color",
+      "markup": "<td-toggle label=\"2FA\" tone=\"warning\" color=\"#6366f1\" checked></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__thumb",
+        ".td-switch__icon--off",
+        ".td-switch__icon--on",
+        ".td-switch__label"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.52.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "locked-on",
+      "markup": "<td-toggle label=\"2FA\" checked locked locked-reason=\"Chính sách\"></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__thumb",
+        ".td-switch__icon--off",
+        ".td-switch__icon--on",
+        ".td-switch__label",
+        ".td-switch__icon--lock",
+        ".td-switch__lock-reason"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left",
+        "line-height"
+      ],
+      "selectorNote": "v0.52.0: the visually hidden description span inherits the host page line-height (profile-dependent, never painted); text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "locked-off",
+      "markup": "<td-toggle label=\"2FA\" locked></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__thumb",
+        ".td-switch__icon--off",
+        ".td-switch__icon--on",
+        ".td-switch__label",
+        ".td-switch__icon--lock",
+        ".td-switch__lock-reason"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left",
+        "line-height"
+      ],
+      "selectorNote": "v0.52.0: the visually hidden description span inherits the host page line-height (profile-dependent, never painted); text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
     }
   ],
   "td-checkbox": [
@@ -5001,6 +5106,80 @@
         "margin-left"
       ],
       "selectorNote": "v0.49.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets (wrap, 44px targets) are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "segmented",
+      "setup": "const c=document.createElement('td-choice-group'); c.id='probe'; c.setAttribute('name','theme'); c.setAttribute('aria-label','Giao diện'); c.setAttribute('variant','segmented'); c.setAttribute('value','auto'); window.__mount.appendChild(c); c.options=[{value:'auto',label:'Tự động',icon:'monitor'},{value:'light',label:'Sáng',icon:'sun'},{value:'dark',label:'Tối',icon:'moon'}]; ",
+      "selectors": [
+        ".td-choice",
+        ".td-choice__options",
+        ".td-choice__option",
+        ".td-choice__face",
+        ".td-choice__icon",
+        ".td-choice__text",
+        ".td-choice__input:checked + .td-choice__face"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.52.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "segmented-icon-only",
+      "setup": "const c=document.createElement('td-choice-group'); c.id='probe'; c.setAttribute('name','theme'); c.setAttribute('aria-label','Giao diện'); c.setAttribute('variant','segmented'); c.setAttribute('icon-only',''); c.setAttribute('value','auto'); window.__mount.appendChild(c); c.options=[{value:'auto',label:'Tự động',icon:'monitor'},{value:'light',label:'Sáng',icon:'sun'},{value:'dark',label:'Tối',icon:'moon'}]; ",
+      "selectors": [
+        ".td-choice",
+        ".td-choice__options",
+        ".td-choice__option",
+        ".td-choice__face",
+        ".td-choice__icon",
+        ".td-choice__text",
+        ".td-choice__input:checked + .td-choice__face"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.52.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "segmented-sm",
+      "setup": "const c=document.createElement('td-choice-group'); c.id='probe'; c.setAttribute('name','theme'); c.setAttribute('aria-label','Giao diện'); c.setAttribute('variant','segmented'); c.setAttribute('size','sm'); c.setAttribute('value','auto'); window.__mount.appendChild(c); c.options=[{value:'auto',label:'Tự động',icon:'monitor'},{value:'light',label:'Sáng',icon:'sun'},{value:'dark',label:'Tối',icon:'moon'}]; ",
+      "selectors": [
+        ".td-choice",
+        ".td-choice__options",
+        ".td-choice__option",
+        ".td-choice__face",
+        ".td-choice__icon",
+        ".td-choice__text",
+        ".td-choice__input:checked + .td-choice__face"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.52.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "segmented-disabled",
+      "setup": "const c=document.createElement('td-choice-group'); c.id='probe'; c.setAttribute('name','theme'); c.setAttribute('aria-label','Giao diện'); c.setAttribute('variant','segmented'); c.setAttribute('value','auto'); window.__mount.appendChild(c); c.options=[{value:'auto',label:'Tự động',icon:'monitor'},{value:'light',label:'Sáng',icon:'sun'},{value:'dark',label:'Tối',icon:'moon',disabled:true}]; ",
+      "selectors": [
+        ".td-choice__option[data-disabled] .td-choice__face"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.52.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
     }
   ],
   "td-rating": [

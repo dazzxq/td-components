@@ -1954,6 +1954,66 @@
       "light": "rgb(28, 28, 30)",
       "dark": "rgb(245, 245, 247)",
       "why": "v0.50.0 td-rating shown value (= --td-color-text)"
+    },
+    "--td-switch-thumb-on": {
+      "light": "rgb(255, 255, 255)",
+      "dark": "rgb(255, 255, 255)",
+      "why": "v0.52.0 td-toggle knob while ON (= --td-switch-thumb; a tone sets it to --td-switch-thumb-tone)"
+    },
+    "--td-switch-on-success": {
+      "light": "rgb(21, 128, 61)",
+      "dark": "rgb(34, 197, 94)",
+      "why": "v0.52.0 td-toggle tone=\"success\" ON track (= --td-color-success, ≥ 4.7 on every surface by the palette solver)"
+    },
+    "--td-switch-on-warning": {
+      "light": "rgb(180, 83, 9)",
+      "dark": "rgb(245, 158, 11)",
+      "why": "v0.52.0 td-toggle tone=\"warning\" ON track (= --td-color-warning, ≥ 4.7 on every surface)"
+    },
+    "--td-switch-thumb-tone": {
+      "light": "rgb(255, 255, 255)",
+      "dark": "rgb(17, 17, 19)",
+      "why": "v0.52.0 td-toggle knob on a tone track (= --td-color-on-status, ≥ 4.7 on every status colour; dark: the dark ink)"
+    },
+    "--td-choice-seg-pad": {
+      "light": "3px",
+      "dark": "3px",
+      "why": "v0.52.0 td-choice-group segmented trough padding"
+    },
+    "--td-choice-seg-radius": {
+      "light": "9999px",
+      "dark": "9999px",
+      "why": "v0.52.0 td-choice-group segmented pill radius (= --td-radius-full)"
+    },
+    "--td-choice-seg-h": {
+      "light": "2.5rem",
+      "dark": "2.5rem",
+      "why": "v0.52.0 td-choice-group segmented segment height (md; sm 2rem / lg 3rem on the variant; 44px coarse)"
+    },
+    "--td-choice-seg-bg": {
+      "light": "rgba(0, 0, 0, 0.05)",
+      "dark": "rgba(255, 255, 255, 0.06)",
+      "why": "v0.52.0 td-choice-group segmented trough (= --td-color-hover, like the td-tabs trough: muted text ≥ 4.7 on it)"
+    },
+    "--td-choice-seg-pill": {
+      "light": "rgb(255, 255, 255)",
+      "dark": "rgb(28, 28, 30)",
+      "why": "v0.52.0 td-choice-group segmented selected pill (= --td-control-bg)"
+    },
+    "--td-choice-seg-ring": {
+      "light": "rgb(138, 138, 147)",
+      "dark": "rgb(138, 138, 147)",
+      "why": "v0.52.0 td-choice-group segmented selected ring (= --td-control-border-strong, ≥ 3:1 vs trough and pill)"
+    },
+    "--td-choice-seg-fg": {
+      "light": "rgb(107, 107, 115)",
+      "dark": "rgb(172, 172, 180)",
+      "why": "v0.52.0 td-choice-group segmented idle label (= --td-color-text-muted, ≥ 4.7 on the trough)"
+    },
+    "--td-choice-seg-fg-selected": {
+      "light": "rgb(28, 28, 30)",
+      "dark": "rgb(245, 245, 247)",
+      "why": "v0.52.0 td-choice-group segmented selected / hover label (= --td-color-text)"
     }
   },
   "lightDeltas": {

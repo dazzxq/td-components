@@ -30,6 +30,7 @@ import '/src/display/td-timeline.js';
 import '/src/form/td-choice-group.js';
 import '/src/display/td-rating.js'; // v0.50.0
 import '/src/display/td-carousel.js'; // v0.50.0
+import '/src/form/td-toggle.js'; // v0.52.0
 import { TdModal } from '/src/feedback/td-modal.js';
 import { TdMediaPicker } from '/src/feedback/td-media-picker.js';
 import { createMockAdapter } from '/test/fixtures/media-adapter.js';
@@ -221,6 +222,12 @@ for (const state of ['light-image', 'dark-image']) CASES.push({ kind: 'cropper',
 // v0.44.0: TdModal.confirm({ typeToConfirm }) — the label, the phrase (<strong>), the typed text and the mismatch error
 // vs the dialog surface, ≥ 4.7 (computed colours composited, light + dark).
 for (const state of ['label', 'mismatch']) CASES.push({ kind: 'type-confirm', v: 'modal', state, pageOnly: true });
+// v0.52.0 (plan v0.52.0-toggle-tone-segmented M6): td-toggle tone track ≥ 3 vs the page, --td-color-bg and the surface; the
+// tone knob ≥ 3 on the track; the ✓ / clock / lock icon ≥ 3 on the knob (ON and OFF); td-choice-group segmented: idle label
+// ≥ 4.7 on the trough (also pressed), selected label ≥ 4.7 on the pill, the selected ring ≥ 3 vs the trough AND the pill,
+// a disabled segment ≥ 2.2 — computed colours (`pairs`), light + dark.
+for (const state of ['tone-success', 'tone-warning', 'locked-on', 'locked-off', 'locked-tone']) CASES.push({ kind: 'v052', v: 'toggle', state, pageOnly: true });
+for (const state of ['rest', 'pressed', 'disabled']) CASES.push({ kind: 'v052', v: 'segmented', state, pageOnly: true });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -1893,6 +1900,78 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
         { what: 'border vs --td-color-bg', fg: ccs.borderTopColor, bg: themeBg },
       ],
     };
+  } else if (c.kind === 'v052') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const token = (name) => { // computed colour of a theme token (CSSOM probe)
+      const p = document.createElement('span');
+      p.style.color = `var(${name})`;
+      stage.appendChild(p);
+      const v = getComputedStyle(p).color;
+      p.remove();
+      return v;
+    };
+    const layer = (n, base) => {
+      const cs = getComputedStyle(n);
+      const fill = overRgb(cs.backgroundColor, base);
+      const img = cs.backgroundImage.includes('rgb') ? cs.backgroundImage.match(/rgba?\([^)]*\)/)[0] : null;
+      return img ? overRgb(img, fill) : fill;
+    };
+    let target;
+    const pairs = [];
+    if (c.v === 'toggle') {
+      const host = document.createElement('td-toggle');
+      host.setAttribute('label', '2FA');
+      if (c.state !== 'locked-off') host.setAttribute('checked', '');
+      if (c.state.startsWith('tone')) host.setAttribute('tone', c.state.slice(5));
+      if (c.state === 'locked-tone') host.setAttribute('tone', 'warning');
+      if (c.state.startsWith('locked')) host.setAttribute('locked', '');
+      stage.appendChild(host);
+      await new Promise((r) => setTimeout(r, 50));
+      for (const a of host.getAnimations({ subtree: true })) if (a instanceof CSSTransition) a.finish();
+      target = host.querySelector('.td-switch__track');
+      const track = getComputedStyle(target).backgroundColor;
+      const thumb = getComputedStyle(host.querySelector('.td-switch__thumb')).backgroundColor;
+      const iconSel = c.state.startsWith('locked') ? '.td-switch__icon--lock' : '.td-switch__icon--on';
+      const icon = getComputedStyle(host.querySelector(iconSel)).color;
+      if (c.state !== 'locked-off') {
+        for (const [what, bg] of [['page', page], ['--td-color-bg', token('--td-color-bg')], ['surface', token('--td-color-surface')]]) {
+          pairs.push({ what: `${c.state} track vs ${what}`, fg: track, bg, min: 3 });
+        }
+        pairs.push({ what: `${c.state} knob vs track`, fg: thumb, bg: track, min: 3 });
+      }
+      pairs.push({ what: `${c.state} ${iconSel.slice(18)} icon vs knob`, fg: icon, bg: thumb, min: 3 });
+    } else {
+      const host = document.createElement('td-choice-group');
+      host.setAttribute('aria-label', 'Giao diện');
+      host.setAttribute('variant', 'segmented');
+      stage.appendChild(host);
+      host.options = [{ value: 'auto', label: 'Tự động', icon: 'monitor' }, { value: 'light', label: 'Sáng', icon: 'sun' },
+        { value: 'dark', label: 'Tối', icon: 'moon', disabled: c.state === 'disabled' }];
+      host.value = 'auto';
+      await new Promise((r) => setTimeout(r, 300));
+      for (const a of host.getAnimations({ subtree: true })) if (a instanceof CSSTransition) a.finish();
+      const face = (v) => host.querySelector(`.td-choice__option[data-td-value="${v}"] .td-choice__face`);
+      const trough = layer(host.querySelector('.td-choice__options'), page);
+      target = face('light');
+      if (c.state === 'rest') {
+        const sel = face('auto');
+        const pill = layer(sel, trough);
+        const ring = getComputedStyle(sel).boxShadow.match(/rgba?\([^)]*\)/)[0];
+        pairs.push({ what: 'idle label vs trough', fg: getComputedStyle(target).color, bg: trough, min: 4.7 });
+        pairs.push({ what: 'idle icon vs trough', fg: getComputedStyle(target.querySelector('.td-choice__icon')).color, bg: trough, min: 3 });
+        pairs.push({ what: 'selected label vs pill', fg: getComputedStyle(sel).color, bg: pill, min: 4.7 });
+        pairs.push({ what: 'selected ring vs trough', fg: ring, bg: trough, min: 3 });
+        pairs.push({ what: 'selected ring vs pill', fg: ring, bg: pill, min: 3 });
+      } else if (c.state === 'pressed') {
+        target.closest('.td-choice__option').setAttribute('data-td-pressed', '');
+        pairs.push({ what: 'pressed idle label vs pressed trough', fg: getComputedStyle(target.querySelector('.td-choice__text')).color, bg: layer(target, trough), min: 4.7 });
+      } else {
+        target = face('dark');
+        pairs.push({ what: 'disabled label vs trough', fg: getComputedStyle(target).color, bg: trough, min: 2.2 });
+      }
+    }
+    const b = target.getBoundingClientRect();
+    return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `v052:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'type-confirm') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     TdModal.closeAll();

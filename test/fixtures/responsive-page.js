@@ -286,6 +286,15 @@ export function mountResponsiveFixture(root) {
   <section class="rsp-section" data-section="carousel"><h2>Băng chuyền sản phẩm</h2>
     <td-carousel id="rsp-carousel" label="Sản phẩm nổi bật" per-view="2">${rspCards(16)}</td-carousel>
     <div class="rsp-narrow"><td-carousel id="rsp-carousel-narrow" label="Phụ kiện">${rspCards(4)}</td-carousel></div>
+  </section>
+  <section class="rsp-section" data-section="v052"><h2>Công tắc trạng thái + segmented (v0.52)</h2>
+    <td-choice-group id="rsp-seg" name="theme" aria-label="Giao diện" variant="segmented" value="auto"></td-choice-group>
+    <td-choice-group id="rsp-seg-sm" name="theme-sm" aria-label="Giao diện" variant="segmented" size="sm" icon-only value="dark"></td-choice-group>
+    <td-choice-group id="rsp-seg-long" name="view" label="Chế độ xem" variant="segmented" value="v1"></td-choice-group>
+    <td-toggle id="rsp-tfa-warn" label="Bắt buộc 2FA" tone="warning" status-text="Chờ người dùng quét mã QR khi đăng nhập" checked></td-toggle>
+    <td-toggle id="rsp-tfa-ok" label="Bắt buộc 2FA" tone="success" checked></td-toggle>
+    <td-toggle id="rsp-tfa-locked" label="Bắt buộc 2FA theo chính sách công ty cho mọi tài khoản quản trị" checked locked locked-reason="Chính sách công ty"></td-toggle>
+    <div class="rsp-narrow"><td-choice-group id="rsp-seg-narrow" name="theme-n" aria-label="Giao diện" variant="segmented" value="light"></td-choice-group></div>
   </section>`;
 
   const options = [
@@ -326,6 +335,11 @@ export function mountResponsiveFixture(root) {
   root.querySelector('#rsp-choice-swatch').options = [{ value: 'den', label: 'Titan đen', swatch: '#3b3b3d' },
     { value: 'trang', label: 'Titan trắng', swatch: '#f4f4f2' }, { value: 'sa', label: 'Titan sa mạc', image: '/test/fixtures/1.svg', unavailable: true },
     { value: 'xanh', label: 'Titan xanh', swatch: '#1e3a5f' }, { value: 'x', label: 'Hồng', swatch: '#f9a8d4', disabled: true }];
+  // v0.52.0: theme switcher (icons + labels), icon-only sm, 5 long labels (wrap inside equal segments)
+  const theme = [{ value: 'auto', label: 'Tự động', icon: 'monitor' }, { value: 'light', label: 'Sáng', icon: 'sun' }, { value: 'dark', label: 'Tối', icon: 'moon' }];
+  for (const id of ['#rsp-seg', '#rsp-seg-sm', '#rsp-seg-narrow']) root.querySelector(id).options = theme;
+  root.querySelector('#rsp-seg-long').options = ['Danh sách chi tiết', 'Lưới ảnh lớn', 'Bảng so sánh nhiều cột', 'Bản đồ cửa hàng', 'Lịch']
+    .map((label, i) => ({ value: `v${i + 1}`, label, icon: ['menu', 'image', 'columns', 'search', 'calendar'][i] }));
   // v0.38.0: 30 scanned IMEI rows (+ one invalid) in the multiple scan input; 3 in the narrow column
   const imeis = Array.from({ length: 30 }, (_, i) => `35693803564${String(3800 + i).padStart(4, '0')}`);
   root.querySelector('#rsp-scan-multi').values = imeis;
