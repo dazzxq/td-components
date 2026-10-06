@@ -24,3 +24,5 @@
 /* v0.47.0: td-check-matrix is an inline-size container — it must get its width from the column, never from its content */
 .sb-stack > td-check-matrix, .sb-stack > form > td-check-matrix, form.sb-stack > td-check-matrix { align-self: stretch; }
 form.sb-stack.sb-narrow { align-items: stretch; }
+.sb-stack > td-color-picker, .sb-stack td-color-picker { width: min(100%, 20rem); }
+.sb-dark-region { padding: 16px; color: var(--td-color-text); background: var(--td-color-bg); border-radius: 12px; }

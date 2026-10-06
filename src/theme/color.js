@@ -140,6 +140,45 @@ export function oklchToSrgb({ l, c, h }) {
   return oklabToSrgb({ l, a: c * Math.cos(rad), b: c * Math.sin(rad) });
 }
 
+// ---- sRGB ↔ HSV (v0.48.0: the 2-D area of td-color-picker — x = saturation, y = value) ----------------------------
+
+/**
+ * sRGB 0..1 → HSV (`h` degrees 0..360, `s` / `v` 0..1). Greys (`s = 0`) and black (`v = 0`) have `h = 0`: a caller that
+ * must keep a hue across them (the picker) keeps its own.
+ * @param {{ r: number, g: number, b: number }} c
+ * @returns {{ h: number, s: number, v: number }}
+ */
+export function srgbToHsv({ r, g, b }) {
+  const max = Math.max(r, g, b);
+  const d = max - Math.min(r, g, b);
+  let h = 0;
+  if (d > 0) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h, s: max === 0 ? 0 : d / max, v: max };
+}
+
+/**
+ * HSV → sRGB 0..1 (`h` wraps, `s` / `v` clamped to 0..1). Not rounded: toHex() is the one rounding point.
+ * @param {{ h: number, s: number, v: number }} hsv
+ * @returns {{ r: number, g: number, b: number }}
+ */
+export function hsvToSrgb({ h, s, v }) {
+  const hh = (((Number(h) || 0) % 360) + 360) % 360;
+  const ss = clamp01(Number(s) || 0);
+  const vv = clamp01(Number(v) || 0);
+  const c = vv * ss;
+  const x = c * (1 - Math.abs(((hh / 60) % 2) - 1));
+  const m = vv - c;
+  const i = Math.floor(hh / 60);
+  const [r, g, b] = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][i];
+  return { r: r + m, g: g + m, b: b + m };
+}
+
 const GAMUT_EPS = 1e-6;
 /** @param {{ r: number, g: number, b: number }} c */
 export const inGamut = (c) => [c.r, c.g, c.b].every((v) => v >= -GAMUT_EPS && v <= 1 + GAMUT_EPS);

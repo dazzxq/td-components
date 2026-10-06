@@ -42,7 +42,7 @@ làm bẩn global namespace.
 | Wrapper React/Vue | Không có consumer dùng |
 | Publish npm registry | `npm install github:dazzxq/td-components` là đủ |
 | Atomic Design đầy đủ | Nhóm phẳng form/feedback/display là đủ |
-| Component CMS-riêng: post-card, media-picker, notification, action-buttons, richtext, draft-preview, banner, color-picker | Gắn chặt với dcms |
+| Component CMS-riêng: post-card, media-picker, notification, action-buttons, richtext, draft-preview, banner | Gắn chặt với dcms (`color-picker` ra khỏi danh sách ở v0.48.0 — [ADR 0007 bổ sung](decisions/0007-td-canonical-over-dcms.md#bổ-sung-v0480)) |
 | `td-breadcrumb` | Không có nhu cầu |
 | i18n built-in | Mặc định tiếng Việt; site ghi đè qua `static labels` / `messages` (không có hệ i18n riêng) |
 | Thư viện validation đầy đủ | Không có: luật = constraint gốc của trình duyệt; `TdFormValidation` (0.12) chỉ là helper nhẹ gắn lỗi/focus |

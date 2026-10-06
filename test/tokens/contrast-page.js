@@ -21,6 +21,7 @@ import '/src/form/td-media-gallery.js';
 import '/src/form/td-cropper.js';
 import '/src/form/td-scan-input.js';
 import '/src/form/td-check-matrix.js'; // v0.47.0
+import '/src/form/td-color-picker.js'; // v0.48.0
 import '/src/display/td-filter-chips.js';
 import '/src/display/td-diff.js';
 import '/src/form/td-datetime-range.js';
@@ -166,6 +167,12 @@ CASES.push({ kind: 'v0362', v: 'dropzone', state: 'dropzone-pressed', pageOnly: 
 // "Bấm vào đây để quét" (idle) ≥ 4.7 on the page, also on its pressed fill; a list row's error message, the "Đã quét: n"
 // count and a valid row's state ≥ 4.7 on the list surface; the field edge ≥ 3:1 — computed colours, light + dark.
 for (const state of ['ready', 'idle', 'pressed', 'ready-pressed', 'row-error', 'row-valid', 'count']) CASES.push({ kind: 'scan', v: 'scan-input', state, pageOnly: true });
+// v0.48.0 td-color-picker (content layer + its popup → page only): the code text and the placeholder ≥ 4.7 on the field,
+// the clear icon ≥ 3.2 at rest and on its pressed fill, the swatch edge (--td-color-swatch-border) ≥ 3:1 against the field
+// (white swatch in light, black in dark: the edge is what separates them); in the popup the ratio text and the "Xoá màu"
+// label ≥ 4.7 and the eyedropper icon ≥ 3.2 on the popup surface; the area thumb's double ring (white + black) keeps
+// ≥ 3:1 with one of its two rings on #fff / #000 / #808080 / #ff0000 — computed colours, light + dark.
+for (const state of ['field', 'placeholder', 'clear-pressed', 'popup']) CASES.push({ kind: 'color', v: 'color-picker', state, pageOnly: true });
 // v0.40.0 td-datetime-range (dialog surface → page only): a preset chip text ≥ 4.7 on its fill, the pressed preset
 // (aria-pressed) text ≥ 4.7 on the primary fill, also on its touch-pressed fill; the switch tab label / value ≥ 4.7 on the
 // switch track (off) and on the white "on" tab; the pair error line ≥ 4.7 on the dialog surface — computed colours.
@@ -984,6 +991,57 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     }
     const b = target.getBoundingClientRect();
     return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `matrix:${c.v}:${c.state}`, pairs };
+  } else if (c.kind === 'color') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const over = overRgb;
+    const hadEye = 'EyeDropper' in window;
+    if (!hadEye) window.EyeDropper = class { open() { return Promise.reject(new DOMException('x', 'AbortError')); } };
+    const host = document.createElement('td-color-picker');
+    host.setAttribute('label', 'Màu');
+    host.setAttribute('contrast', '');
+    if (c.state !== 'placeholder') host.setAttribute('value', theme === 'dark' ? '#000000' : '#ffffff');
+    stage.appendChild(host);
+    await new Promise((r) => setTimeout(r, 200));
+    const box = host.querySelector('.td-color__box');
+    const field = over(getComputedStyle(box).backgroundColor, page);
+    const input = host.querySelector('.td-color__input');
+    let target; let pairs;
+    if (c.state === 'field') {
+      target = input;
+      const sw = host.querySelector('.td-color__swatch');
+      pairs = [{ what: 'code text vs field', fg: getComputedStyle(input).color, bg: field, min: 4.7 },
+        { what: 'swatch edge vs field', fg: getComputedStyle(sw).borderTopColor, bg: field, min: 3 },
+        { what: 'clear icon vs field', fg: getComputedStyle(host.querySelector('.td-color__clear')).color, bg: field, min: 3.2 }];
+    } else if (c.state === 'placeholder') {
+      target = input;
+      pairs = [{ what: 'placeholder vs field', fg: getComputedStyle(input, '::placeholder').color, bg: field, min: 4.7 }];
+    } else if (c.state === 'clear-pressed') {
+      target = host.querySelector('.td-color__clear');
+      target.setAttribute('data-td-pressed', '');
+      const fill = over(getComputedStyle(target).backgroundColor, field);
+      pairs = [{ what: 'clear icon vs pressed fill', fg: getComputedStyle(target).color, bg: fill, min: 3.2 }];
+      target.removeAttribute('data-td-pressed');
+    } else {
+      host.open();
+      await new Promise((r) => setTimeout(r, 350));
+      const panel = document.querySelector('body > .td-color-panel');
+      const surface = over(getComputedStyle(panel).backgroundColor, page);
+      target = panel.querySelector('.td-color-panel__ratio');
+      pairs = [{ what: 'ratio text vs popup', fg: getComputedStyle(target).color, bg: surface, min: 4.7 },
+        { what: '"Xoá màu" vs popup', fg: getComputedStyle(panel.querySelector('.td-color-panel__clear')).color, bg: surface, min: 4.7 },
+        { what: 'eyedropper icon vs popup', fg: getComputedStyle(panel.querySelector('.td-color-panel__eyedropper')).color, bg: surface, min: 3.2 }];
+      const rings = (getComputedStyle(panel.querySelector('.td-color-panel__thumb')).boxShadow.match(/rgba?\([^)]*\)/g) || []);
+      for (const bg of ['rgb(255, 255, 255)', 'rgb(0, 0, 0)', 'rgb(128, 128, 128)', 'rgb(255, 0, 0)']) {
+        const lum = (rgb) => { const v = rgb.match(/[\d.]+/g).slice(0, 3).map((x) => { const c = Number(x) / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+        const ratio = (a, b) => { const x = lum(a); const y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+        const best = rings.slice().sort((a, b) => ratio(b, bg) - ratio(a, bg))[0] || 'rgba(0, 0, 0, 0)';
+        pairs.push({ what: `thumb ring on ${bg}`, fg: best, bg, min: 3 });
+      }
+      host.close();
+    }
+    if (!hadEye) delete window.EyeDropper;
+    const b = target.getBoundingClientRect();
+    return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `color:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'scan') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     const over = overRgb;

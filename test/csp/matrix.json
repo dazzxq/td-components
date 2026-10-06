@@ -51,7 +51,8 @@
       "td-steps": "/src/display/td-steps.js",
       "td-timeline": "/src/display/td-timeline.js",
       "td-diff": "/src/display/td-diff.js",
-      "td-check-matrix": "/src/form/td-check-matrix.js"
+      "td-check-matrix": "/src/form/td-check-matrix.js",
+      "td-color-picker": "/src/form/td-color-picker.js"
     },
     "tokenNative": [
       "td-button",
@@ -103,7 +104,8 @@
       "td-theme-scope",
       "td-media-gallery",
       "td-diff",
-      "td-check-matrix"
+      "td-check-matrix",
+      "td-color-picker"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -4700,6 +4702,101 @@
         "margin-left"
       ],
       "excludeNote": "font-metric dependent (label wrap / row heights) — excluded up front"
+    }
+  ],
+  "td-color-picker": [
+    {
+      "state": "empty",
+      "markup": "<td-color-picker name=\"c\" label=\"Màu thương hiệu\"></td-color-picker>",
+      "selectors": [
+        ".td-color",
+        ".td-color__label",
+        ".td-color__box",
+        ".td-color__trigger",
+        ".td-color__swatch",
+        ".td-color__input"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.48.0: empty — checkerboard swatch (static conic-gradient), field look, no clear button",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front"
+    },
+    {
+      "state": "value",
+      "markup": "<td-color-picker name=\"c\" label=\"Màu\" value=\"#1d4ed8\"></td-color-picker>",
+      "selectors": [
+        ".td-color__swatch",
+        ".td-color__input",
+        ".td-color__clear"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.48.0: a value — swatch colour from the CSSOM custom property --_td-cp-color, clear button",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front"
+    },
+    {
+      "state": "invalid",
+      "markup": "<td-color-picker name=\"c\" label=\"Màu\" value=\"xanh\" error-text=\"Mã màu không hợp lệ.\"></td-color-picker>",
+      "selectors": [
+        ".td-color__box",
+        ".td-color__swatch",
+        ".td-field-error"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.48.0: unparsable text (badInput: checkerboard + error edge) + the error contract",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front"
+    },
+    {
+      "state": "open",
+      "setup": "const t=document.createElement('td-color-picker'); t.setAttribute('label','Màu'); t.setAttribute('value','#b3261e'); t.setAttribute('contrast',''); t.setAttribute('presets','#b3261e #1d4ed8 #ffffff #000000'); window.__mount.appendChild(t); t.open();",
+      "selectors": [
+        ".td-color-panel",
+        ".td-color-panel__area",
+        ".td-color-panel__thumb",
+        ".td-color-panel__hue",
+        ".td-color-panel__sample",
+        ".td-color-panel__ratio",
+        ".td-color-panel__presets",
+        ".td-color-panel__preset[aria-pressed=\"true\"]",
+        ".td-color-panel__preset[aria-pressed=\"true\"] > .td-check",
+        ".td-color-panel__clear"
+      ],
+      "portal": [
+        ".td-color-panel",
+        ".td-color-panel__area",
+        ".td-color-panel__thumb",
+        ".td-color-panel__hue",
+        ".td-color-panel__sample",
+        ".td-color-panel__ratio",
+        ".td-color-panel__presets",
+        ".td-color-panel__preset[aria-pressed=\"true\"]",
+        ".td-color-panel__preset[aria-pressed=\"true\"] > .td-check",
+        ".td-color-panel__clear"
+      ],
+      "settle": 350,
+      "selectorNote": "v0.48.0: popup — static area gradients over --_td-cp-hue, thumb at --_td-cp-x / -y, native hue range, contrast samples, selected preset tick (pickPole colour via --_td-cp-mark), 'Xoá màu'",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "top",
+        "left",
+        "transform"
+      ],
+      "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front; the popup position (top / left) follows the trigger, the thumb translate is resolved from its size"
     }
   ]
 }

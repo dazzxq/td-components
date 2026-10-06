@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.47.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.47.0', __DIR__ . '/public/assets/vendor/td-components/0.47.0');
+ *   require_once '/path/to/vendor/td-components/0.48.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.48.0', __DIR__ . '/public/assets/vendor/td-components/0.48.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -223,6 +223,16 @@ namespace TdComponents {
             'broken' => 'Không đọc được dữ liệu ma trận',
             'changed' => 'Đã đổi {n} ô',
         ];
+        /** v0.48.0: td_color_picker (native by default; element mode <td-color-picker data-td-ssr="color-picker@1">). */
+        public const SSR_COLOR = 'color-picker@1';
+        /** v0.48.0: texts of td_color_picker = TdColorPicker.labels (input / placeholder) + the no-JS hint. */
+        public const COLOR_LABELS = ['input' => 'Mã màu', 'placeholder' => '#000000', 'hint' => 'Dạng #RRGGBB, ví dụ #1d4ed8'];
+        /** v0.48.0: the no-JS pattern — ONLY #RRGGBB without JS (the server normalises with td_color_value()). */
+        public const COLOR_PATTERN = '#[0-9a-fA-F]{6}';
+        /** v0.48.0 SEC-01 (= src/utils/color-picker-model.js): longest value / preset looked at, presets inspected, preset string bytes. */
+        public const COLOR_MAX_INPUT = 64;
+        public const COLOR_PRESET_CANDIDATES = 192;
+        public const COLOR_PRESET_STRING = 192 * 64;
         /** v0.36.0: tones / sizes of td_action_button (= TdActionButton). */
         public const ACTION_TONES = ['standard', 'warning', 'danger'];
         public const ACTION_SIZES = ['sm', 'md', 'lg'];
@@ -339,7 +349,7 @@ namespace TdComponents {
         public const DIFF_JSON = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_LINE_TERMINATORS | JSON_THROW_ON_ERROR;
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.47.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.48.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -6613,5 +6623,175 @@ namespace {
         $out .= '</table></div><p class="td-check-matrix__note" aria-hidden="true"></p><p class="td-sr-only" role="status"></p></div>'
             . '<input type="hidden" name="' . Td::e($name . '[_v]') . '" value="1"' . $dis . '>';
         return $host . $out . '</td-check-matrix>';
+    }
+
+    /**
+     * v0.48.0 (plan v0.48.0-color-picker QĐ 1, 19b): THE server normalisation of a colour setting — call it on every POSTed
+     * value BEFORE validating / storing. `#rgb` / `#rrggbb` (the `#` optional, case-insensitive, surrounding white space
+     * ignored) → `#rrggbb` lowercase; `''` / null / white space → `''` (no colour); anything else (another type, longer
+     * than 64, rgb(), names, alpha) → null — answer 422. Contract: the stored value is the RESULT of this function, which
+     * matches `^#[0-9a-f]{6}$` or is empty.
+     *
+     *   $v = td_color_value($request->input('brand_color'));
+     *   if ($v === null) abort(422);
+     */
+    function td_color_value(mixed $v): ?string
+    {
+        if ($v === null) {
+            return '';
+        }
+        if (!is_string($v) || strlen($v) > 64) {
+            return null;
+        }
+        $s = trim($v, " \t\n\r\f\v");
+        if ($s === '') {
+            return '';
+        }
+        if (preg_match('/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/D', $s, $m) !== 1) {
+            return null;
+        }
+        $h = strtolower($m[1]);
+        if (strlen($h) === 3) {
+            $h = $h[0] . $h[0] . $h[1] . $h[1] . $h[2] . $h[2];
+        }
+        return '#' . $h;
+    }
+
+    /**
+     * v0.48.0 (plan v0.48.0-color-picker QĐ 19): a colour field. NATIVE by default (works without JS): `div.td-color` >
+     * [label] + `div.td-color__box` > grey swatch + `input.td-color__input[type=text]` with name / value / `pattern`
+     * `#[0-9a-fA-F]{6}` (only #RRGGBB without JS — never type=color, which cannot be empty). ELEMENT mode (`element => true`
+     * or Td::configure ssr_elements) wraps the same field in `<td-color-picker data-td-ssr="color-picker@1">`, adopted IN
+     * PLACE by `@dazzxq/td-components/color-picker`. `value` / `presets` go through td_color_value(): an unparsable value
+     * is kept as is (escaped; the element reports badInput) + one E_USER_WARNING, a bad preset is dropped + one warning.
+     * Options: label, aria_label, value, presets (list or a string of codes), required, disabled, readonly, custom
+     * (false = presets only), contrast, eyedropper (false = no button), placeholder, error, attrs (the input: allowlisted;
+     * owned names + data-td-* reserved), class (wrapper / host), id (the INPUT id; element mode: host = {id}-host),
+     * element. ALWAYS normalise the POSTed value with td_color_value().
+     */
+    function td_color_picker(string $name, array $o = []): string
+    {
+        $element = td__element($o);
+        $callerId = td__str($o['id'] ?? null);
+        $hostId = $element ? ($callerId !== null ? $callerId . '-host' : td__host_uid($name)) : null;
+        $cid = $callerId ?? ($element ? $hostId . '-input' : td__host_uid($name) . '-input');
+        $label = isset($o['label']) && is_scalar($o['label']) && !is_bool($o['label']) && (string) $o['label'] !== '' ? (string) $o['label'] : null;
+        $aria = isset($o['aria_label']) && is_scalar($o['aria_label']) && !is_bool($o['aria_label']) && (string) $o['aria_label'] !== '' ? (string) $o['aria_label'] : null;
+        $placeholder = td__str($o['placeholder'] ?? null);
+        $error = td__str($o['error'] ?? null);
+        $required = !empty($o['required']);
+        $disabled = !empty($o['disabled']);
+        $readonly = !empty($o['readonly']);
+        $nameAttr = $name !== '' ? $name : null;
+        $value = '';
+        if (array_key_exists('value', $o) && $o['value'] !== null && $o['value'] !== '') {
+            $norm = td_color_value($o['value']);
+            if ($norm !== null) {
+                $value = $norm;
+            } elseif (is_string($o['value']) && strlen($o['value']) <= Td::COLOR_MAX_INPUT) {
+                // a short unparsable value is kept (escaped): the element reports badInput, no server data is lost
+                trigger_error('td_color_picker: value is not a #rgb / #rrggbb colour; printed as is (the element reports it)', E_USER_WARNING);
+                $value = $o['value'];
+            } else {
+                // SEC-01: never reflect an oversized / non-string value — omitted (the field shows empty)
+                trigger_error('td_color_picker: value is not a #rgb / #rrggbb colour and too long to print; omitted', E_USER_WARNING);
+            }
+        }
+        $presets = null;
+        if (array_key_exists('presets', $o) && $o['presets'] !== null) {
+            // SEC-01 bounded work (= src/utils/color-picker-model.js parsePresets): a string over COLOR_PRESET_STRING
+            // bytes is rejected before the split; at most COLOR_PRESET_CANDIDATES entries are ever inspected
+            $presets = [];
+            $bad = 0;
+            $capped = false;
+            $list = [];
+            if (is_string($o['presets'])) {
+                if (strlen($o['presets']) > Td::COLOR_PRESET_STRING) {
+                    $capped = true;
+                } else {
+                    $list = preg_split('/[\s,]+/', $o['presets'], Td::COLOR_PRESET_CANDIDATES + 2, PREG_SPLIT_NO_EMPTY) ?: [];
+                }
+            } elseif (is_array($o['presets'])) {
+                $list = $o['presets'];
+            } else {
+                $bad = 1;
+            }
+            $seen = 0;
+            foreach ($list as $p) {
+                if ($seen >= Td::COLOR_PRESET_CANDIDATES) {
+                    $capped = true;
+                    break;
+                }
+                $seen++;
+                $h = is_string($p) ? td_color_value($p) : null;
+                if ($h === null || $h === '') {
+                    $bad++;
+                } elseif (!in_array($h, $presets, true) && count($presets) < 48) {
+                    $presets[] = $h;
+                }
+            }
+            if ($bad > 0 || $capped) {
+                trigger_error('td_color_picker: some presets were dropped (not a #rgb / #rrggbb colour, or over the input limit)', E_USER_WARNING);
+            }
+        }
+        $flag = static fn (string $k): bool => array_key_exists($k, $o) && $o[$k] !== null && !$o[$k];
+        $errId = ($element ? $hostId : $cid) . '-error';
+        $taken = [];
+        $input = '<input' . Td::ownAttrs([
+            'type' => 'text',
+            'class' => 'td-color__input',
+            'id' => $cid,
+            'inputmode' => 'text',
+            'autocomplete' => 'off',
+            'autocapitalize' => 'none',
+            'autocorrect' => 'off',
+            'spellcheck' => 'false',
+            'maxlength' => '64',
+            'placeholder' => $placeholder ?? Td::COLOR_LABELS['placeholder'],
+            'name' => $nameAttr,
+            'value' => $value !== '' ? $value : null,
+            'pattern' => Td::COLOR_PATTERN,
+            'title' => Td::COLOR_LABELS['hint'],
+            'required' => $required,
+            'disabled' => $disabled,
+            'readonly' => $readonly,
+            'autofocus' => !empty($o['autofocus']),
+            'aria-label' => $label === null ? ($aria ?? Td::COLOR_LABELS['input']) : null,
+            'aria-invalid' => $error !== null ? 'true' : null,
+            'aria-errormessage' => $error !== null ? $errId : null,
+            'aria-describedby' => $error !== null ? $errId : null,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['type', 'class', 'id', 'inputmode', 'autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck',
+            'maxlength', 'minlength', 'placeholder', 'name', 'value', 'pattern', 'title', 'required', 'disabled', 'readonly',
+            'autofocus', 'aria-label', 'aria-labelledby', 'aria-invalid', 'aria-errormessage', 'aria-describedby'], $extra, $taken);
+        $input .= Td::attrs($extra, $taken) . '>';
+        $labelHtml = $label !== null ? '<label class="td-color__label" for="' . Td::e($cid) . '">' . Td::e($label) . '</label>' : '';
+        $note = $error !== null
+            ? '<span class="td-field-error" id="' . Td::e($errId) . '" data-for="' . Td::e($element ? $hostId : $cid) . '">' . Td::e($error) . '</span>'
+            : '';
+        $box = '<div class="td-color__box"><span class="td-color__swatch" aria-hidden="true"></span>' . $input . '</div>';
+        if (!$element) {
+            return '<div class="td-color' . Td::e(Td::classTokens($o['class'] ?? null)) . '">' . $labelHtml . $box . $note . '</div>';
+        }
+        $hostTaken = [];
+        return '<td-color-picker' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_COLOR,
+            'id' => $hostId,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'name' => $nameAttr,
+            'value' => $value !== '' ? $value : null,
+            'label' => $label,
+            'placeholder' => $placeholder,
+            'presets' => $presets !== null ? implode(' ', $presets) : null,
+            'custom' => $flag('custom') ? 'false' : null,
+            'contrast' => !empty($o['contrast']),
+            'eyedropper' => $flag('eyedropper') ? 'false' : null,
+            'required' => $required,
+            'disabled' => $disabled,
+            'readonly' => $readonly,
+            'error-text' => $error,
+            'aria-label' => $aria,
+        ], $hostTaken) . '><div class="td-color">' . $labelHtml . $box . '</div>' . $note . '</td-color-picker>';
     }
 }

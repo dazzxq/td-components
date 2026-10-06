@@ -108,6 +108,17 @@ const FIXTURES = {
       el.querySelector('tr[data-r="1"] .td-check-matrix__cell input').click();
     },
   },
+  // v0.48.0: td-color-picker — typing a colour fires the host `input` { value } (native input / change of the inner text
+  // field stop at the host); value= / setValue() fire nothing (test below); a preset pick is covered below too.
+  'td-color-picker': {
+    html: '<td-color-picker name="x" label="X" value="#1d4ed8"></td-color-picker>',
+    act: async (el) => {
+      const input = el.querySelector('input.td-color__input');
+      input.focus();
+      input.select();
+      await sendKeys({ type: '#ff0000' });
+    },
+  },
   'td-table': {
     html: '<td-table name="x" selectable row-key="id"></td-table>',
     setup: (el) => { el.columns = [{ key: 'n', label: 'N' }]; el.data = [{ id: 1, n: 'A' }, { id: 2, n: 'B' }]; },
@@ -172,6 +183,37 @@ describe('trackFormDirty contract — every form-associated td element (v0.44.0 
       } finally { tracker.destroy(); }
     });
   }
+
+  it('td-color-picker: a preset picked in the popup → dirty; value= / setValue() from code → NOT dirty', async () => {
+    const mount = () => {
+      const form = document.createElement('form');
+      form.className = 'v044-contract';
+      form.innerHTML = FIXTURES['td-color-picker'].html;
+      document.body.appendChild(form);
+      return { form, el: /** @type {any} */ (form.firstElementChild) };
+    };
+    const a = mount();
+    await frames(3);
+    let tracker = trackFormDirty(a.form);
+    try {
+      a.el.querySelector('.td-color__trigger').click();
+      document.querySelector('body > .td-color-panel .td-color-panel__preset[data-value="#ef4444"]').click();
+      expect(a.el.value).to.equal('#ef4444');
+      await until(() => tracker.isDirty(), 4000).catch(() => {});
+      expect(tracker.isDirty()).to.equal(true);
+    } finally { tracker.destroy(); }
+    const b = mount();
+    await frames(3);
+    tracker = trackFormDirty(b.form);
+    try {
+      const before = JSON.stringify([...new FormData(b.form)]);
+      b.el.value = '#00ff00';
+      b.el.setValue('#123456');
+      await frames(3);
+      expect(JSON.stringify([...new FormData(b.form)])).to.not.equal(before, 'the code did change FormData');
+      expect(tracker.isDirty()).to.equal(false);
+    } finally { tracker.destroy(); }
+  });
 
   it('td-check-matrix: value= / setValue() from code is NOT a user change → isDirty() === false', async () => {
     const form = document.createElement('form');

@@ -272,6 +272,23 @@ test('v0.40.0: ./datetime-range export, sideEffects, barrel TdDatetimeRange, dat
   }
 });
 
+test('v0.48.0: ./color-picker export, sideEffects, barrel TdColorPicker, color-picker CSS before utilities; the model stays internal', async () => {
+  assert.equal(pkg.exports['./color-picker'], './src/form/td-color-picker.js');
+  assert.ok(pkg.sideEffects.includes('./src/form/td-color-picker.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdColorPicker \} from '\.\/src\/form\/td-color-picker\.js';/);
+  assert.ok(!/color-picker-model/.test(src), 'color-picker-model stays internal');
+  assert.ok(!Object.values(pkg.exports).some((t) => /color-picker-model/.test(t)), 'no color-picker-model export');
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/color-picker.css');
+  assert.ok(i > files.indexOf('components/check.css') && i < files.indexOf('utilities.css'), 'color-picker.css after check.css, before utilities.css');
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['.td-color__box', '.td-color__swatch[data-state="filled"]', '.td-color-panel__area', '.td-color-panel__thumb',
+    '.td-color-panel__preset[aria-pressed="true"] > .td-check', '--td-color-picker-width', '--td-color-swatch-border']) {
+    assert.ok(css.includes(sel), sel);
+  }
+});
+
 test('v0.42.0: ./theme subpath (pure: not in sideEffects); the palette golden is not shipped from src', () => {
   assert.equal(pkg.exports['./theme'], './src/theme/index.js');
   assert.ok(!pkg.sideEffects.some((f) => f.startsWith('./src/theme/')), 'theme modules have no side effect');

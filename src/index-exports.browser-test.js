@@ -99,6 +99,10 @@ describe('index.js exports', () => {
     expect(typeof kit.TdCheckMatrix).to.equal('function');
     expect(customElements.get('td-check-matrix')).to.equal(kit.TdCheckMatrix);
   });
+  it('registers <td-color-picker> from the root entry (v0.48.0)', () => {
+    expect(typeof kit.TdColorPicker).to.equal('function');
+    expect(customElements.get('td-color-picker')).to.equal(kit.TdColorPicker);
+  });
 });
 
 describe('index.js exports (v0.44.0)', () => {

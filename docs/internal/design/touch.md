@@ -47,11 +47,11 @@ Khai báo ở `tokens.css` / `theme-dark.css` (chung, nút), `action-button.css`
 
 Nút `--custom` / alias `-tint`: nền tối 16 % (`color-mix`), trình duyệt không có `color-mix()` giữ nền hover / nghỉ.
 
-## Ngoại lệ `active-exempt` đã duyệt (14)
+## Ngoại lệ `active-exempt` đã duyệt (16)
 
 `.td-field__control`, `.td-chip-input__box`, `.td-tree-select__control`, `.td-number__box` (ô nhập: focus ring là phản hồi)
 · `td-dropdown > .td-dropdown__native`, `.td-multiselect__native`, `td-chip-input > .td-chip-input__native`,
-`.td-tree-select__native` (select native, UA tự vẽ) · `.td-slider__input` (range native, thumb theo ngón) ·
+`.td-tree-select__native` (select native, UA tự vẽ) · `.td-slider__input` (range native, thumb theo ngón) · 0.48.0: `.td-color__box` (ô nhập màu: focus ring là phản hồi), `.td-color-panel__hue` (range native sắc độ) ·
 `.td-table .td-table__row` (hàng không kích hoạt được) · `.td-lightbox__grab` (tay nắm sheet, sheet theo ngón) ·
 `.td-media-grid__item` + luật trả lại `[data-selected] … --mark` (opener / tick mang hình nhấn) · tay nắm
 `.td-tree__toggle` của mục disabled (hàng mang hình nhấn). `hover-exempt`: **0**.
@@ -72,6 +72,8 @@ trạng thái ở mọi compound và coi luật có tổ tiên là phủ control
 | `.td-lightbox__stage`, `.td-lightbox__nav > .td-lightbox__btn` | `none` | pinch / pan / vuốt bằng Pointer Events |
 | `.td-lightbox[data-nav="rail"] .td-lightbox__rail > .td-lightbox__btn` | `manipulation` | nút thanh đáy (v0.36.0) |
 | `.td-lightbox__filmstrip` | `pan-x` | dải thumb cuộn ngang native |
+| `.td-color-panel__area` (0.48.0) | `none` | kéo 2 chiều trực tiếp (bão hoà × độ sáng; WCAG 2.5.7: bàn phím, ô chữ, preset là lối thay thế). Chỉ vùng 10rem × 17.5rem; phần còn lại của popup cuộn bình thường |
+| `.td-color-panel__hue` (0.48.0) | `none` | range native như `.td-slider__input` |
 
 ## Ngưỡng và cử chỉ
 

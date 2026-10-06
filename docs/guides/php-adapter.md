@@ -44,6 +44,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_filter_chips (0.39.0)](#td_filter_chips-0390)
 - [td_datetime_range (0.40.0)](#td_datetime_range-0400)
 - [td_check_matrix (0.47.0)](#td_check_matrix-0470)
+- [td_color_picker và td_color_value (0.48.0)](#td_color_picker-và-td_color_value-0480)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -79,6 +80,8 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_datetime_range` (0.40.0) | **luôn** host `<td-datetime-range data-td-ssr="datetime-range@1">` + hai `<input type="date\|datetime-local">` **native** (`{name}[start]` / `{name}[end]`, `min` / `max`, `required` theo mốc) + trigger ẩn | Không (hai ô ngày native chạy ngay) | **Có** — nạp module `datetime-range`: nhận **tại chỗ**, giữ giá trị đã sửa, gỡ ô native |
 | `td_diff` / `td_diff_snapshots` (0.46.0) | **luôn** host `<td-diff data-td-ssr="diff@1">` chứa sẵn bảng so sánh đầy đủ (hàng không đổi / JSON / giá trị dài là `<details>` native) | Không (đọc được ngay, `<details>` mở được không cần JS) | **Có** — nạp module `diff`: nhận **tại chỗ** (không đọc dữ liệu ngược từ DOM) |
 | `td_check_matrix` (0.47.0) | **luôn** host `<td-check-matrix data-td-ssr="check-matrix@1" data="{JSON}">` + **form không JS đầy đủ**: một hidden `name[col]=""` mỗi cột (đầu), một checkbox `name[col][]=row` mỗi ô áp dụng được (ô khoá-tick: checkbox `disabled` + hidden ngay sau), `name[_v]=1` (cuối); ô hàng loạt / nút nhóm / chọn cột `disabled` | Không (form gửi đúng FormData của component, từng byte) | **Có** — nạp module `check-matrix`: so **từng node** với `data`, nhận **tại chỗ** (giữ ô đã tick trước khi JS tải), gỡ marker / hidden / sentinel |
+| `td_color_picker` (0.48.0) | `div.td-color` + ô màu xám + `input.td-color__input` **chữ** (`pattern="#[0-9a-fA-F]{6}"` — **không** `type=color`) | Không (chỉ nhận `#RRGGBB`) | Không |
+| `td_color_picker` — **chế độ element** (0.48.0, tự bật) | host `<td-color-picker data-td-ssr="color-picker@1">` + cùng ô | Không (ô chữ native chạy ngay) | **Có** — nạp module `color-picker`: nhận **tại chỗ**, bọc ô màu vào nút mở popup |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
@@ -109,7 +112,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.47.0/
+public/assets/vendor/td-components/0.48.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -117,7 +120,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.47.0';
+const TD_VERSION = '0.48.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -243,6 +246,8 @@ td_scan_input(string $name, array $o = []): string   // 0.38.0 (multiple: luôn 
 td_filter_chips(array $items, array $o = []): string        // 0.39.0 (luôn element)
 td_datetime_range(string $name, ?string $start = null, ?string $end = null, array $o = []): string   // 0.40.0 (luôn element)
 td_check_matrix(string $name, array $columns, array $rows, array $value = [], array $o = []): string   // 0.47.0 (luôn element + form không JS)
+td_color_picker(string $name, array $o = []): string   // 0.48.0
+td_color_value(mixed $v): ?string                      // 0.48.0: chuẩn hoá màu POST → '#rrggbb' | '' | null
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -1700,6 +1705,41 @@ nguyên ≥ 0. Cờ `locked` / `na` / `collapsed` phải là **bool** thật.
   `[]` → in trạng thái lỗi **không một input nào** + một `E_USER_WARNING` chỉ nêu loại lỗi (không in giá trị). Server không
   thấy key → giữ nguyên quyền, không bao giờ "xoá hết".
 - Attribute `data` (JSON chuẩn hoá) là nguồn của cổng hydrate và của reset; ~30–40 KB cho 200 × 12.
+
+## td_color_picker và td_color_value (0.48.0)
+
+`td_color_picker($name, $opts)` in ô của [Color picker](../components/color-picker.md) (hợp đồng `color-picker@1`).
+
+- **Native (mặc định):** `div.td-color` > [`label`] + `div.td-color__box` > `span.td-color__swatch` (ô xám) +
+  `input.td-color__input[type=text]` với `name` / `value` / `pattern="#[0-9a-fA-F]{6}"` / `title` gợi ý. Không có JS vẫn
+  submit được, nhưng **chỉ** nhận `#RRGGBB` (hoa hoặc thường).
+- **Element** (`'element' => true` hoặc `ssr_elements`): host `<td-color-picker data-td-ssr="color-picker@1" name value
+  label placeholder presets custom contrast eyedropper required disabled readonly error-text aria-label>` + cùng cây. Có
+  JS: nhận **tại chỗ** qua cổng chung của form; ô chữ mất `name` / `value` / `required` / `pattern` / `title` (host gửi,
+  parse rộng hơn).
+- Option: `label`, `aria_label`, `value`, `presets` (mảng hoặc chuỗi mã), `required`, `disabled`, `readonly`, `custom`
+  (`false`), `contrast`, `eyedropper` (`false`), `placeholder` (mặc định `#000000`), `error`, `attrs` (lên ô chữ;
+  giữ chỗ: `type` `class` `id` `inputmode` `autocomplete` `autocapitalize` `autocorrect` `spellcheck` `maxlength`
+  `minlength` `placeholder` `name` `value` `pattern` `title` `required` `disabled` `readonly` `autofocus` `aria-label`
+  `aria-labelledby` `aria-invalid` `aria-errormessage` `aria-describedby` + `data-td-*`), `class`, `id` (id **ô chữ**;
+  element: host `{id}-host`), `element`.
+- `value` / `presets` qua `td_color_value()`: `#rgb` / `#rrggbb` (có hoặc không `#`) → `#rrggbb` chữ thường; giá trị
+  không hợp lệ ≤ 64 ký tự được **giữ** (escape) + một `E_USER_WARNING`, dài hơn → **không in** + warning; preset lỗi bị
+  bỏ + một warning; tối đa 48 preset, chỉ 192 mục đầu được xem, chuỗi `presets` > 12 288 byte bị bỏ cả chuỗi.
+
+**`td_color_value(mixed $v): ?string` — gọi khi nhận POST, trước khi kiểm / lưu** (bản không-JS gửi đúng chữ người dùng
+gõ, client bất kỳ POST được chuỗi tuỳ ý):
+
+```php
+$v = td_color_value($_POST['brand_color'] ?? null);
+if ($v === null) { http_response_code(422); exit; }   // lưu $v: khớp ^#[0-9a-f]{6}$ hoặc ''
+```
+
+| Vào | Ra |
+|---|---|
+| `'#AABBCC'`, `'aabbcc'`, `' #AbC '`, `'abc'` | `'#aabbcc'` |
+| `''`, `null`, chỉ khoảng trắng | `''` |
+| `'#abcd'`, `'#aabbccdd'`, `'rgb(0,0,0)'`, `'red'`, `'#ggg'`, mảng, số, chuỗi > 64 ký tự | `null` |
 
 ## An toàn: escape và whitelist
 

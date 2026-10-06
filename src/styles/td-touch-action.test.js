@@ -18,6 +18,10 @@ const TABLE = {
   '.td-lightbox__nav > .td-lightbox__btn': 'none',
   '.td-lightbox[data-nav="rail"] .td-lightbox__rail > .td-lightbox__btn': 'manipulation',
   '.td-lightbox__filmstrip': 'pan-x',
+  // v0.48.0 colour picker: the 2-D area is a direct drag (keyboard, text input and presets are the alternatives) and the
+  // hue is a native range like td-slider — a vertical swipe starting on either does not scroll the page
+  '.td-color-panel__area': 'none',
+  '.td-color-panel__hue': 'none',
 };
 
 test('touch-action declarations = the reviewed table (no new none, nothing on html / body)', async () => {
