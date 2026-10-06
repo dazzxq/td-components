@@ -5726,12 +5726,17 @@
 	}
 
 	/*
-	 * v0.26.0 SSR shell (ADR 0012, contract dropdown@1 — PHP td_dropdown element mode): before the upgrade the host holds
-	 * [label] + select.td-dropdown__native. The host takes the .td-dropdown typography (the label then has the same box
-	 * as inside .td-dropdown) and the select takes the trigger BOX (size, padding, border, radius, font, colours) while
-	 * keeping its NATIVE arrow (no appearance: none, no data: image — CSP img-src). The arrow may differ in pixels from the
-	 * trigger chevron, never the box: the upgrade select → trigger moves nothing. The marker is removed on upgrade.
+	 * v0.26.0 SSR shell (ADR 0012, contract dropdown@1 — PHP td_dropdown element mode) + v0.51.1 pre-upgrade parity (ADR
+	 * 0025): before the upgrade the host holds [label] + a <select> — select.td-dropdown__native in element mode, a bare
+	 * select in the default (native) mode. The host takes the .td-dropdown typography (the label then has the same box as
+	 * inside .td-dropdown) and the select takes the trigger BOX (size, padding, border, radius, font, colours) and, since
+	 * v0.51.1, the trigger look: `appearance: none` + the chevron drawn with two linear-gradients (no image, no data: URI —
+	 * CSP img-src untouched; WebKit only honours the box / radius of a select without its native appearance). The bare
+	 * select is styled ONLY while the host is undefined (a defined host never restyles a select); the element-mode shell
+	 * keeps its rule unconditionally for the dropdown@1 deferral (a select focused when the module arrives stays until
+	 * blur, with the same look). Forced colours: the native arrow is back (appearance auto, no gradient).
 	 */
+	td-dropdown:not(:defined),
 	td-dropdown[data-td-ssr="dropdown@1"] {
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
@@ -5739,37 +5744,64 @@
 		color: var(--td-field-fg);
 	}
 
-	/* active-exempt: native select — the UA draws it */
-	td-dropdown > .td-dropdown__native {
+	/* active-exempt: native select (both selectors of the shell) — the UA draws it */
+	td-dropdown:not(:defined) > select, td-dropdown > .td-dropdown__native {
+		--_td-chev-c: var(--td-field-placeholder);
+		--_td-chev-x: calc(14px + var(--td-icon-m) / 2); /* chevron centre from the inline end = the trigger arrow's */
 		box-sizing: border-box;
 		display: block;
 		width: 100%;
 		min-width: 0;
 		height: var(--td-field-h-md);
 		padding: 8px 14px;
+		padding-inline-end: calc(14px + var(--td-icon-m) + var(--td-space-xs));
 		margin: 0;
 		font: inherit;
 		color: var(--td-field-fg);
+		text-overflow: ellipsis;
+		white-space: nowrap;
 		cursor: pointer;
 		background-color: var(--td-field-bg);
+		background-image:
+			linear-gradient(45deg, transparent calc(50% - 0.85px), var(--_td-chev-c) calc(50% - 0.85px), var(--_td-chev-c) calc(50% + 0.85px), transparent calc(50% + 0.85px)),
+			linear-gradient(-45deg, transparent calc(50% - 0.85px), var(--_td-chev-c) calc(50% - 0.85px), var(--_td-chev-c) calc(50% + 0.85px), transparent calc(50% + 0.85px));
+		background-repeat: no-repeat;
+		background-position: right var(--_td-chev-x) center, right calc(var(--_td-chev-x) - 6px) center;
+		background-size: 6px 6px;
 		border: 1px solid var(--td-field-border);
 		border-radius: var(--td-field-radius-md);
 		outline: 2px solid transparent; /* visible in forced colours */
 		outline-offset: 2px;
 		box-shadow: none;
+		appearance: none;
+	}
+
+	/* RTL: the chevron on the inline end (own rule — a browser without :dir() drops only this one) */
+	td-dropdown:not(:defined) > select:dir(rtl),
+	td-dropdown > .td-dropdown__native:dir(rtl) {
+		background-position: left calc(var(--_td-chev-x) - 6px) center, left var(--_td-chev-x) center;
+	}
+
+	/* the empty (placeholder) option selected → the trigger's placeholder colour (own rule: no :has() → plain text) */
+	td-dropdown:not(:defined) > select:has(> option[value=""]:checked),
+	td-dropdown > .td-dropdown__native:has(> option[value=""]:checked) {
+		color: var(--td-field-placeholder);
 	}
 
 	@media (hover: hover) and (pointer: fine) {
+		td-dropdown:not(:defined) > select:hover:not(:disabled, :focus-visible),
 		td-dropdown > .td-dropdown__native:hover:not(:disabled, :focus-visible) {
 			border-color: var(--td-field-border-hover);
 		}
 	}
 
+	td-dropdown:not(:defined) > select:focus-visible,
 	td-dropdown > .td-dropdown__native:focus-visible {
 		border-color: var(--td-field-focus);
 		box-shadow: var(--td-field-focus-ring);
 	}
 
+	td-dropdown:not(:defined) > select:disabled,
 	td-dropdown > .td-dropdown__native:disabled {
 		color: var(--td-field-fg-disabled);
 		cursor: not-allowed;
@@ -6064,9 +6096,16 @@
 
 	@media (pointer: coarse) {
 		.td-dropdown__trigger,
+		td-dropdown:not(:defined) > select,
 		td-dropdown > .td-dropdown__native {
 			height: auto;
 			min-height: var(--td-touch-min);
+		}
+
+		/* v0.51.1 (ADR 0019, Q1): a select ≥ 16px — iOS does not zoom on focus (the box still matches the trigger) */
+		td-dropdown:not(:defined) > select,
+		td-dropdown > .td-dropdown__native {
+			font-size: max(1rem, 1em);
 		}
 
 		.td-dropdown__search {
@@ -6094,12 +6133,21 @@
 	@media (forced-colors: active) {
 		.td-dropdown__trigger,
 		.td-dropdown__search,
+		td-dropdown:not(:defined) > select,
 		td-dropdown > .td-dropdown__native {
 			border-color: CanvasText;
 		}
 
+		/* the system arrow (in system colours) instead of the gradient chevron */
+		td-dropdown:not(:defined) > select,
+		td-dropdown > .td-dropdown__native {
+			background-image: none;
+			appearance: auto;
+		}
+
 		.td-dropdown__trigger:focus-visible,
 		.td-dropdown__search:focus-visible,
+		td-dropdown:not(:defined) > select:focus-visible,
 		td-dropdown > .td-dropdown__native:focus-visible {
 			outline-color: Highlight;
 		}
@@ -8524,6 +8572,20 @@
 		background-color: var(--td-field-bg-disabled);
 	}
 
+	/*
+	 * v0.51.1 pre-upgrade parity (ADR 0025): JS expected → the element-mode list is ONE chip box high (scrollable, still
+	 * usable), so the upgrade moves nothing while the chips fit one line. Accepted exception (plan v0.51.1, release lead):
+	 * when the upgraded chips wrap, the shift is exactly the extra chip rows — CSS cannot know the row count without
+	 * printing the chips (a chip-input@1 contract change). No JS (scripting: none): the list keeps its rows.
+	 */
+	@media (scripting: enabled) {
+		td-chip-input[data-td-ssr]:not(:defined) > .td-chip-input__native {
+			height: var(--td-field-h-md);
+			padding-block: 4px;
+			overflow-y: auto;
+		}
+	}
+
 	.td-chip-input__option--create {
 		font-weight: var(--td-fw-medium);
 	}
@@ -8589,6 +8651,17 @@
 		.td-multiselect__native,
 		td-chip-input > .td-chip-input__native {
 			min-height: var(--td-touch-min);
+		}
+
+		/* v0.51.1 (ADR 0019, Q1): the pre-upgrade select ≥ 16px (iOS does not zoom on focus) */
+		td-chip-input:not(:defined) > .td-chip-input__native {
+			font-size: max(1rem, 1em);
+		}
+	}
+
+	@media (pointer: coarse) and (scripting: enabled) {
+		td-chip-input[data-td-ssr]:not(:defined) > .td-chip-input__native {
+			height: var(--td-touch-min);
 		}
 	}
 
@@ -11079,6 +11152,28 @@
 		display: none;
 	}
 
+	/*
+	 * v0.51.1 (ADR 0025, plan Q3): JS expected → the undefined host already has the button's HEIGHT (no vertical jump when
+	 * the source text becomes the icon button). The width changes by design: the value must stay visible until (and
+	 * unless) the button exists. No JS: the plain source text.
+	 */
+	@media (scripting: enabled) {
+		td-copy:not(:defined) {
+			min-height: var(--td-copy-size-md);
+		}
+
+		td-copy[size="sm"]:not(:defined) {
+			min-height: var(--td-copy-size-sm);
+		}
+	}
+
+	@media (scripting: enabled) and (pointer: coarse) {
+		td-copy:not(:defined),
+		td-copy[size="sm"]:not(:defined) {
+			min-height: var(--td-touch-min);
+		}
+	}
+
 	.td-copy {
 		box-sizing: border-box;
 		display: inline-flex;
@@ -11520,6 +11615,10 @@
  * [aria-invalid] on the combobox / trigger, [data-placeholder] on the value, [hidden] / data-placement on the menu.
  * SSR shell (contract tree-select@1, PHP td_tree_select element mode): the native select gets the exact control box
  * (single AND multiple) → the upgrade moves nothing. Native mode (no marker): the select is a plain field.
+ * v0.51.1 pre-upgrade parity (ADR 0025): while the host is undefined the single select gets the control's exact box and
+ * look (height — WebKit ignores min-height on a native select —, appearance none + the gradient chevron, host typography)
+ * in both modes; with scripting enabled the native-mode multiple list is one control high too (no JS: the list keeps its
+ * `size` rows). Forced colours: the system arrow.
  */
 @layer td.component {
 	td-tree-select {
@@ -11533,7 +11632,9 @@
 		min-height: 2.5rem;
 	}
 
-	/* SSR shell: the host has the wrapper typography (the label then has the same box as after the upgrade) */
+	/* SSR shell / before the upgrade: the host has the wrapper typography (the label then has the same box as after the
+	   upgrade) */
+	td-tree-select:not(:defined),
 	td-tree-select[data-td-ssr="tree-select@1"],
 	.td-tree-select {
 		box-sizing: border-box;
@@ -11585,6 +11686,39 @@
 	td-tree-select[data-td-ssr] > .td-tree-select__native[multiple] {
 		padding-block: 4px;
 		overflow-y: auto;
+	}
+
+	/* v0.51.1: a single select before the upgrade (both modes) = the control box + its chevron (gradient, no image) */
+	td-tree-select:not(:defined) > .td-tree-select__native:not([multiple]),
+	td-tree-select[data-td-ssr] > .td-tree-select__native:not([multiple]) {
+		--_td-chev-c: var(--td-field-placeholder);
+		--_td-chev-x: calc(12px + var(--td-icon-m) / 2); /* chevron centre from the inline end = the control arrow's */
+		height: var(--td-field-h-md);
+		padding-inline-end: calc(12px + var(--td-icon-m) + var(--td-space-xs));
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		background-image:
+			linear-gradient(45deg, transparent calc(50% - 0.85px), var(--_td-chev-c) calc(50% - 0.85px), var(--_td-chev-c) calc(50% + 0.85px), transparent calc(50% + 0.85px)),
+			linear-gradient(-45deg, transparent calc(50% - 0.85px), var(--_td-chev-c) calc(50% - 0.85px), var(--_td-chev-c) calc(50% + 0.85px), transparent calc(50% + 0.85px));
+		background-repeat: no-repeat;
+		background-position: right var(--_td-chev-x) center, right calc(var(--_td-chev-x) - 6px) center;
+		background-size: 6px 6px;
+		appearance: none;
+	}
+
+	/* RTL: the chevron on the inline end (own rule — a browser without :dir() drops only this one) */
+	td-tree-select:not(:defined) > .td-tree-select__native:not([multiple]):dir(rtl),
+	td-tree-select[data-td-ssr] > .td-tree-select__native:not([multiple]):dir(rtl) {
+		background-position: left calc(var(--_td-chev-x) - 6px) center, left var(--_td-chev-x) center;
+	}
+
+	/* v0.51.1: native-mode multiple list before the upgrade, JS expected → one control high, scrollable (ADR 0025) */
+	@media (scripting: enabled) {
+		td-tree-select:not(:defined) > .td-tree-select__native[multiple] {
+			height: var(--td-field-h-md);
+			padding-block: 4px;
+			overflow-y: auto;
+		}
 	}
 
 	@media (hover: hover) and (pointer: fine) {
@@ -11895,10 +12029,39 @@
 
 	@media (pointer: coarse) {
 		.td-tree-select__control,
+		td-tree-select:not(:defined) > .td-tree-select__native:not([multiple]),
 		td-tree-select[data-td-ssr] > .td-tree-select__native {
 			height: auto;
 			min-height: var(--td-touch-min);
 		}
+
+		/* v0.51.1 (ADR 0019, Q1): select ≥ 16px before the upgrade (iOS does not zoom); a multiple list stays one
+		   44px control high (the upgraded control's height) */
+		td-tree-select:not(:defined) > .td-tree-select__native,
+		td-tree-select[data-td-ssr] > .td-tree-select__native {
+			font-size: max(1rem, 1em);
+		}
+
+		td-tree-select[data-td-ssr] > .td-tree-select__native[multiple] {
+			height: var(--td-touch-min);
+		}
+	}
+
+	@media (pointer: coarse) and (scripting: enabled) {
+		td-tree-select:not(:defined) > .td-tree-select__native[multiple] {
+			height: var(--td-touch-min);
+		}
+	}
+
+	/* the upgraded control grows to 44px content + border when the 44px clear button shows (allow-clear + a value) —
+	   own rule: no :has() → only that 2px is missed */
+	@media (pointer: coarse) {
+		td-tree-select[allow-clear]:not(:defined) > .td-tree-select__native:not([multiple], :disabled):has(> option:checked:not([value=""])) {
+			min-height: calc(var(--td-touch-min) + 2px);
+		}
+	}
+
+	@media (pointer: coarse) {
 
 		.td-tree-select__search,
 		.td-tree-select__input {
@@ -11940,6 +12103,12 @@
 		.td-tree-select__search,
 		.td-tree-select__native {
 			border-color: CanvasText;
+		}
+
+		td-tree-select:not(:defined) > .td-tree-select__native:not([multiple]),
+		td-tree-select[data-td-ssr] > .td-tree-select__native:not([multiple]) {
+			background-image: none;
+			appearance: auto;
 		}
 
 		.td-tree-select__control:has(:focus-visible),
@@ -15654,6 +15823,32 @@
 		display: none;
 	}
 
+	/*
+	 * v0.51.1 pre-upgrade parity (ADR 0025): under a 480px container the status row the module adds (`.td-scan__status`,
+	 * min-height 2rem; 44px on touch) wraps below the input — JS expected → reserve that row (a flex item of the same
+	 * height, the box gap included) so the upgrade moves nothing. No JS: no empty row.
+	 */
+	@container td-scan-input (width < 480px) {
+		@media (scripting: enabled) {
+			td-scan-input[data-td-ssr]:not(:defined) .td-scan:not([data-mode="multiple"]) > .td-scan__box::after {
+				flex: 0 0 100%;
+				min-height: 2rem;
+				content: "";
+			}
+		}
+
+		@media (scripting: enabled) and (pointer: coarse) {
+			td-scan-input[data-td-ssr]:not(:defined) .td-scan:not([data-mode="multiple"]) > .td-scan__box::after {
+				min-height: var(--td-touch-min);
+			}
+		}
+	}
+
+	/* td: generated container fallback (ADR 0014) */
+	@supports not (container-type: inline-size) {
+		@media (max-width: 479.98px) {@media (scripting:enabled){td-scan-input[data-td-ssr]:not(:defined) .td-scan:not([data-mode="multiple"])>.td-scan__box::after{flex:0 0 100%;min-height:2rem;content:""}}@media (scripting:enabled) and (pointer:coarse){td-scan-input[data-td-ssr]:not(:defined) .td-scan:not([data-mode="multiple"])>.td-scan__box::after{min-height:var(--td-touch-min)}}}
+	}
+
 	@container td-scan-input (width < 480px) {
 		.td-scan__input {
 			flex-basis: 100%;
@@ -16151,6 +16346,98 @@
 		border-radius: var(--td-field-radius-md);
 	}
 
+	/*
+	 * v0.51.1 pre-upgrade parity (ADR 0025, plan v0.51.1 D4): JS expected → the two native inputs sit in ONE field box
+	 * styled like the closed trigger (border, radius, height, padding, focus ring), "Từ" a name for assistive tech only,
+	 * "Đến" shown as a "–" separator (generated, empty alt text) — the box matches the upgraded trigger's box. Accepted
+	 * difference: the date text inside is the browser's own format (and its calendar icon). No JS (scripting: none): the
+	 * two-row block above, labels visible. Disabled: PHP prints `disabled` on the host and both inputs.
+	 */
+	@media (scripting: enabled) {
+		td-datetime-range:not(:defined) .td-dtr__natives {
+			display: flex;
+			gap: var(--td-space-xs);
+			align-items: center;
+			width: 100%;
+			min-width: 0;
+			height: var(--td-field-h-md);
+			padding: 0 14px;
+			overflow: hidden;
+			font-variant-numeric: tabular-nums;
+			color: var(--td-field-fg);
+			background: var(--td-field-bg);
+			border: 1px solid var(--td-field-border);
+			border-radius: var(--td-field-radius-md);
+			outline: 2px solid transparent; /* visible in forced colours */
+			outline-offset: 2px;
+			box-shadow: none;
+		}
+
+		td-datetime-range:not(:defined) .td-dtr__native-label {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		/* the "Đến" label: its text stays the accessible name (font-size 0), the box shows a "–" */
+		td-datetime-range:not(:defined) .td-dtr__native + .td-dtr__native-label {
+			position: static;
+			flex: none;
+			width: auto;
+			height: auto;
+			margin: 0;
+			overflow: visible;
+			clip: auto;
+			font-size: 0;
+		}
+
+		td-datetime-range:not(:defined) .td-dtr__native + .td-dtr__native-label::before {
+			font-size: var(--td-text-sm);
+			font-weight: var(--td-fw-normal);
+			color: var(--td-field-fg);
+			content: "–";
+			content: "–" / "";
+		}
+
+		td-datetime-range:not(:defined) .td-dtr__native {
+			flex: 1 1 0;
+			align-self: stretch;
+			width: auto;
+			min-width: 0;
+			height: auto;
+			min-height: 0;
+			padding: 0;
+			font: inherit;
+			color: inherit;
+			background: transparent;
+			border: 0;
+			border-radius: 0;
+			outline: none; /* the box carries the focus ring (one indicator) */
+			box-shadow: none;
+		}
+
+		td-datetime-range:not(:defined) .td-dtr__natives:focus-within {
+			border-color: var(--td-field-focus);
+			box-shadow: var(--td-field-focus-ring);
+		}
+
+		td-datetime-range[disabled]:not(:defined) .td-dtr__natives {
+			color: var(--td-field-fg-disabled);
+			cursor: not-allowed;
+			background: var(--td-field-bg-disabled);
+		}
+
+		td-datetime-range[disabled]:not(:defined) .td-dtr__native + .td-dtr__native-label::before {
+			color: var(--td-field-fg-disabled);
+		}
+	}
+
 	/* ---- Dialog body ---- */
 	.td-dtr-panel {
 		box-sizing: border-box;
@@ -16410,6 +16697,17 @@
 		}
 	}
 
+	@media (pointer: coarse) and (scripting: enabled) {
+		td-datetime-range:not(:defined) .td-dtr__natives {
+			height: auto;
+			min-height: var(--td-touch-min);
+		}
+
+		td-datetime-range:not(:defined) .td-dtr__native {
+			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
+		}
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.td-dtr__trigger,
 		.td-dtr-panel__preset {
@@ -16448,6 +16746,28 @@
 
 		.td-dtr-panel__preset[aria-disabled="true"] {
 			color: GrayText;
+		}
+	}
+
+	@media (forced-colors: active) and (scripting: enabled) {
+		td-datetime-range:not(:defined) .td-dtr__natives {
+			color: CanvasText;
+			background: Canvas;
+			border-color: CanvasText;
+		}
+
+		td-datetime-range:not(:defined) .td-dtr__natives:focus-within {
+			outline: 2px solid Highlight;
+		}
+
+		td-datetime-range:not(:defined) .td-dtr__native + .td-dtr__native-label::before {
+			color: CanvasText;
+		}
+
+		td-datetime-range[disabled]:not(:defined) .td-dtr__natives,
+		td-datetime-range[disabled]:not(:defined) .td-dtr__native + .td-dtr__native-label::before {
+			color: GrayText;
+			border-color: GrayText;
 		}
 	}
 
@@ -17990,6 +18310,30 @@
 	/* ---- bulk / bar / group controls without JS: present, inert, out of sight (QĐ 28) ---- */
 	td-check-matrix:not(:defined) .td-check-matrix__bulk > .td-check-matrix__input ~ .td-check {
 		visibility: hidden;
+	}
+
+	/*
+	 * v0.51.1 pre-upgrade parity (ADR 0025): the narrow mode (layout column, or auto under a 720px container) adds the
+	 * "Đang sửa cột" bar above the grid once defined (select = cell size, + the wrapper gap) — JS expected → reserve it so
+	 * the upgrade does not push the grid down. No JS: the full grid, no empty strip.
+	 */
+	@media (scripting: enabled) {
+		td-check-matrix:not(:defined) > .td-check-matrix[data-state="ready"][data-layout="column"] {
+			padding-block-start: calc(var(--td-check-matrix-cell-size) + var(--td-space-xs));
+		}
+	}
+
+	@container td-check-matrix (width < 720px) {
+		@media (scripting: enabled) {
+			td-check-matrix:not(:defined) > .td-check-matrix[data-state="ready"][data-layout="auto"] {
+				padding-block-start: calc(var(--td-check-matrix-cell-size) + var(--td-space-xs));
+			}
+		}
+	}
+
+	/* td: generated container fallback (ADR 0014) */
+	@supports not (container-type: inline-size) {
+		@media (max-width: 719.98px) {@media (scripting:enabled){td-check-matrix:not(:defined)>.td-check-matrix[data-state="ready"][data-layout="auto"]{padding-block-start:calc(var(--td-check-matrix-cell-size) + var(--td-space-xs))}}}
 	}
 
 	/* ---- narrow mode bar (hidden in the full grid) ---- */
