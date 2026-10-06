@@ -469,6 +469,27 @@ Server **vẫn phải** kiểm giá trị lựa chọn thuộc tập hợp lệ 
   `labels` bị bỏ qua), `src/display/td-v050-rating.engines.browser-test.js` / `td-v050-carousel.engines.browser-test.js`
   (markup bị sửa không chạy được `onclick` / link `javascript:`).
 
+## 6l. `td-toggle` tone / locked, `td-choice-group` segmented (v0.52.0)
+
+- **`locked` là UI, không phải kiểm soát truy cập.** Sau nâng cấp, mọi kích hoạt của người dùng (chuột, chạm, Space,
+  `<label>` bao / `<label for>` ngoài) bị huỷ trong `_onInputClick` (cùng đường với `controlled` / pending), không `change`,
+  `commit()` bị bỏ qua. **Trước nâng cấp và khi tắt JS** control là checkbox native: không có `readonly` cho checkbox, CSP
+  cấm `onclick`, `disabled` làm mất focus + mất khỏi form → Space và `<label for>` ngoài **vẫn lật được** (CSS
+  `pointer-events: none` trong `@media (scripting: enabled)` chỉ chặn chuột / chạm trên công tắc). Hành vi này có test
+  (`src/form/td-toggle.ssr.engines.browser-test.js`). **Server phải bỏ qua / từ chối thay đổi của field đang khoá.**
+- **Chữ chỉ là text**: `status-text`, `locked-reason`, `TdToggle.messages.*` → `textContent` (JS) / `Td::e` (PHP), cắt ở
+  200 code point cả hai phía; `tone` theo allowlist (`success` / `warning`, PHP: giá trị khác → một cảnh báo cố định, không
+  in giá trị). Chữ của span mô tả khi nhận markup SSR là **trạng thái** (ghi lại từ attribute / `messages`), không bao giờ là
+  HTML: khung SSR chỉ nhận span text-only (`children.length === 0`).
+- **Icon (`icon` của choice-group, slot `lock` / `clock` của toggle)**: tên qua regex `/^[a-z][a-z0-9-]{0,63}$/` + registry
+  (JS `hasIcon`, PHP `Td::icon`) trước khi vào attribute `data-td-icon`; SVG luôn dựng từ registry (`fillIconSlots` /
+  `Td::icon`). Khi nhận markup segmented, ô icon chỉ được chứa `<svg>` (namespace SVG) hoặc rỗng — có thứ khác → không nhận;
+  SVG được vẽ lại từ registry.
+- **`attrs` / `input_attrs` của PHP**: tên kit sở hữu (`tone`, `status-text`, `locked`, `locked-reason`, `aria-readonly`) bị
+  chặn (`td__reserve`); `aria-describedby` của site được giữ và nối trước id của kit.
+- Test: `test/php/td-v052-php.test.js` (escape `<script>` / `<img onerror>`, tên giữ chỗ, cắt 200), `src/form/td-v052-toggle-*.engines.browser-test.js`,
+  `src/form/td-v052-choice-segmented.engines.browser-test.js` (icon `"><img…>` bị bỏ), `test/engines/toggle-locked-a11y.spec.mjs`.
+
 ## 7. Trách nhiệm của site
 
 Những thứ kit **cố ý không làm** và site phải làm, nếu không thì có lỗ hổng dù kit đúng. Trang người dùng tương ứng:

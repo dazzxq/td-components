@@ -6,7 +6,8 @@ Thanh chuyển thẻ dạng segmented control, đúng mẫu WAI-ARIA APG "Tabs":
 `aria-selected`, roving tabindex, mặc định **kích hoạt thủ công** (mũi tên chỉ di chuyển focus, Enter/Space mới chọn).
 Tuỳ chọn quản lý luôn panel nội dung (`role="tabpanel"`, `hidden`…). Dùng để chuyển giữa các vùng nội dung ngang hàng
 trên cùng một trang; **không** dùng làm menu điều hướng giữa các trang (dùng `<nav>` + link) và không dùng cho lựa
-chọn giá trị trong form (dùng [dropdown](dropdown.md) hoặc radio).
+chọn giá trị trong form (dùng [dropdown](dropdown.md) hoặc radio; thanh viên thuốc chọn **một giá trị** như Tự động / Sáng /
+Tối → [choice group `variant="segmented"`](choice-group.md#7-thanh-chọn-segmented-0520), 0.52.0).
 
 | | |
 |---|---|

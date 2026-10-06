@@ -30,7 +30,7 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 | [Action button](action-button.md) | `<td-action-button>` | `/action-button` | không | (0.36.0) Nút thao tác vuông chỉ icon như dcms2 `ActionButtons`: 23 preset (sửa / xem / xoá / gửi…), tooltip = nhãn, 3 tone × 3 cỡ, `registerPreset()`, PHP `td_action_button` |
 | [Input field](input-field.md) | `<td-input-field>` | `/input-field` | có | Ô nhập text/số/email/mật khẩu/textarea, label, ghi chú, lỗi, đếm ký tự, tự giãn |
 | [Checkbox](checkbox.md) | `<td-checkbox>` | `/checkbox` | có | Ô chọn (tròn), trạng thái lỗi |
-| [Toggle](toggle.md) | `<td-toggle>` | `/toggle` | có | Công tắc bật/tắt, `commit()` lạc quan có trạng thái chờ |
+| [Toggle](toggle.md) | `<td-toggle>` | `/toggle` | có | Công tắc bật/tắt, `commit()` lạc quan có trạng thái chờ; `tone` (success / warning, không chỉ bằng màu) + `locked` (khoá, vẫn gửi form) từ 0.52.0 |
 | [Slider](slider.md) | `<td-slider>` | `/slider` | có | Thanh kéo chọn giá trị số |
 | [Dropdown](dropdown.md) | `<td-dropdown>` | `/dropdown` | có | Chọn **một** giá trị, tìm kiếm (combobox); nâng cấp tại chỗ `<select>` con (progressive enhancement, `<select multiple>` giữ native) |
 | [Datetime picker](datetime-picker.md) | `<td-datetime-picker>` | `/datetime-picker` | có | Chọn ngày/giờ với bánh xe, `min`/`max` |
@@ -40,7 +40,7 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 | [Tree](tree.md) | `<td-tree>` | `/tree` | có | Cây phân cấp (WAI-ARIA tree): không chọn / chọn một / chọn nhiều (độc lập hoặc `cascade` ba trạng thái), nút khoá vẫn gửi, nhánh tải chậm, lọc |
 | [Tree select](tree-select.md) | `<td-tree-select>` | `/tree-select` | có | Chọn một / nhiều nút của cây trong ô gọn (combobox + popup cây): danh mục cha, chuyên mục; nâng cấp `<select>` con; PHP `td_tree_select` |
 | [Number input](number-input.md) | `<td-number-input>` | `/number-input` | có | Ô nhập số / tiền: hiện `12.990.000`, gửi số sạch (BigInt, 30 chữ số), hậu tố `₫` / `%`, `min` / `max` / `step`, dán số có dấu chấm phẩy, `clamp` tuỳ chọn, `stepper` (nút − / +, 0.49.0); PHP `td_number_input` |
-| [Choice group](choice-group.md) | `<td-choice-group>` | `/choice-group` | có (một mục; chưa chọn → không có mục) | Chọn một trong N dạng nút (chữ + giá / chấm màu / ảnh nhỏ) hoặc ô màu (màu / ảnh); `disabled` (không có) ≠ `unavailable` (hết hàng, vẫn chọn được); radio native — chạy không JS; PHP `td_choice_group` (0.49.0) |
+| [Choice group](choice-group.md) | `<td-choice-group>` | `/choice-group` | có (một mục; chưa chọn → không có mục) | Chọn một trong N dạng nút (chữ + giá / chấm màu / ảnh nhỏ) hoặc ô màu (màu / ảnh); `disabled` (không có) ≠ `unavailable` (hết hàng, vẫn chọn được); radio native — chạy không JS; PHP `td_choice_group` (0.49.0); `variant="segmented"` (thanh viên thuốc icon + nhãn, vd. chuyển theme) từ 0.52.0 |
 | [Repeater](repeater.md) | `<td-repeater>` | `/repeater` | không (field trong dòng tự gửi) | Danh sách dòng động (thêm / xoá / sắp xếp bằng nút ↑ ↓ ×, `sortable`: kéo thả + bàn phím) từ `<template>` của app: "Hộp gồm", FAQ, quyền lợi; `min-rows` / `max-rows`; app tự đặt `name` qua `rows-change` |
 | [Password meter](password-meter.md) | `<td-password-meter>` | `/password-meter` | không | Đo độ mạnh mật khẩu tại chỗ: thanh 4 mức, nhãn đọc được, checklist điều kiện, hook `score` |
 | [OTP input](otp-input.md) | `<td-otp-input>` | `/otp-input` | có | Nhập mã một lần 6 chữ số (2FA, xác thực lại): một input thật, dán / tự điền từ SMS; PHP `td_otp_input` |

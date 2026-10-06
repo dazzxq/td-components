@@ -83,6 +83,10 @@ Nhóm icon cho màn quản trị (CMS) — `trash`, `pencil`, `copy`, `log-out`,
 `video`, `file`, `filter` có từ 0.32.0 (khung rỗng của [media field](media-field.md), nút "Bộ lọc" của
 [media picker](media-picker.md)); `filter` vẽ theo Lucide `sliders-horizontal`.
 
+`lock`, `clock`, `sun`, `moon`, `monitor` có từ 0.52.0: ổ khoá / đồng hồ trên núm [toggle](toggle.md) (`locked`,
+`tone="warning"`) và công tắc theme Tự động (`monitor`) / Sáng (`sun`) / Tối (`moon`) của
+[choice group `segmented`](choice-group.md#7-thanh-chọn-segmented-0520).
+
 Danh sách luôn đúng nhất là lấy từ code, vì site có thể đã đăng ký thêm:
 
 ```js

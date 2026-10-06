@@ -107,3 +107,35 @@ export const VariantRecipe = {
     sync();
   },
 };
+
+const THEME = [{ value: 'auto', label: 'Tự động', icon: 'monitor' }, { value: 'light', label: 'Sáng', icon: 'sun' },
+  { value: 'dark', label: 'Tối', icon: 'moon' }];
+
+/** v0.52.0 `variant="segmented"`: icon + label pills, equal segments, sizes, icon-only (labels stay the names). */
+export const Segmented = {
+  render: () => `<div class="sb-stack">
+    <td-choice-group id="cg-seg-md" aria-label="Giao diện" variant="segmented" value="auto"></td-choice-group>
+    <td-choice-group id="cg-seg-sm" aria-label="Giao diện" variant="segmented" size="sm" icon-only value="dark"></td-choice-group>
+    <td-choice-group id="cg-seg-lg" label="Chế độ xem" variant="segmented" size="lg" value="list"></td-choice-group>
+  </div>`,
+  play: ({ canvasElement }) => {
+    canvasElement.querySelector('#cg-seg-md').options = THEME;
+    canvasElement.querySelector('#cg-seg-sm').options = THEME;
+    canvasElement.querySelector('#cg-seg-lg').options = [{ value: 'list', label: 'Danh sách', icon: 'menu' },
+      { value: 'grid', label: 'Lưới ảnh', icon: 'image' }, { value: 'cols', label: 'So sánh', icon: 'columns', disabled: true }];
+  },
+};
+
+/** v0.52.0 recipe: a theme switcher driving `data-td-theme` on <html> (+ the cookie the server reads). */
+export const ThemeSwitcher = {
+  render: () => `<td-choice-group id="cg-theme" aria-label="Giao diện" variant="segmented" size="sm" value="auto"></td-choice-group>`,
+  play: ({ canvasElement }) => {
+    const el = canvasElement.querySelector('#cg-theme');
+    el.options = THEME;
+    el.value = document.documentElement.getAttribute('data-td-theme') || 'auto';
+    el.addEventListener('change', (e) => {
+      document.documentElement.setAttribute('data-td-theme', e.detail.value);
+      document.cookie = `td_theme=${e.detail.value}; path=/; max-age=31536000; SameSite=Lax`;
+    });
+  },
+};
