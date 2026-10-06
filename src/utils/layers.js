@@ -368,40 +368,55 @@ function flatWalk(parent, out) {
 }
 
 /**
+ * v0.53.0 (Codex r2 sec #3): the named radios of one scope (a document / shadow root) indexed ONCE — form owner → name
+ * → radios in tree order. `index` (a Map scope → that index) may be shared by several tabSequence() calls of one
+ * navigation so each scope is read a single time.
+ */
+function radioGroupsOf(scope, index) {
+  let g = index.get(scope);
+  if (g) return g;
+  g = new Map();
+  index.set(scope, g);
+  if (typeof scope.querySelectorAll !== 'function') return g;
+  for (const r of scope.querySelectorAll('input[type="radio"][name]')) {
+    if (!r.name) continue;
+    const f = r.form || null;
+    let byName = g.get(f);
+    if (!byName) g.set(f, (byName = new Map()));
+    let list = byName.get(r.name);
+    if (!list) byName.set(r.name, (list = []));
+    list.push(r);
+  }
+  return g;
+}
+
+/**
  * v0.53.0 (plan v0.53.0-menu-custom-item QĐ 3, Codex plan-review r1 #2): the sequential focus stops of `root` in
  * FLAT-TREE order, the way native Tab visits them — open shadow roots are entered (slotted light children at their
  * slot, unassigned ones skipped), a `delegatesFocus` host is not a stop of its own (its inner focusables are), a host
- * whose shadow root is closed is one stop when it is itself focusable (tabIndex ≥ 0), and every named radio group
- * (same root node + form + name) collapses to ONE stop: its checked radio, else its first enabled radio — in both
- * directions (M1: native Shift+Tab lands on the FIRST radio of an unchecked group in Chromium, Firefox and WebKit). Filtered like focusablesIn (tabIndex ≥ 0, not disabled, rendered, visible, no
- * composed [hidden] / [inert] ancestor).
+ * whose shadow root is closed is one stop when it is itself focusable (tabIndex ≥ 0). A named radio group spans its
+ * WHOLE native scope (root node + form owner + name — Codex impl r1 #2): its single stop is its checked member
+ * (anywhere), else its first eligible member — in both directions (M1: native Shift+Tab lands on the FIRST radio of an
+ * unchecked group in Chromium, Firefox and WebKit); a radio of `root` is a stop only when it is that member. Filtered
+ * like focusablesIn (tabIndex ≥ 0, not disabled, rendered, visible, no composed [hidden] / [inert] ancestor).
  * @param {Element} root
+ * @param {{ index?: Map<Node, Map<HTMLFormElement|null, Map<string, HTMLInputElement[]>>> }} [opts] a radio index to
+ *   share across the calls of one navigation (each scope is queried once)
  * @returns {HTMLElement[]}
  */
-export function tabSequence(root) {
+export function tabSequence(root, { index = new Map() } = {}) {
   if (!root) return [];
   const usable = (el) => el instanceof HTMLElement && el.matches(FOCUSABLE) && el.tabIndex >= 0
     && !(el.shadowRoot && el.shadowRoot.delegatesFocus) && !el.matches(':disabled')
     && !composedClosest(el, '[hidden], [inert]') && el.getClientRects().length > 0
     && getComputedStyle(el).visibility !== 'hidden';
-  // Codex impl r1 #2: a named radio group spans its WHOLE native scope (root node + form owner + name), not only the
-  // radios inside `root`: the group's single stop is its checked member (anywhere), else its first eligible member —
-  // a radio of `root` is a stop only when it is that member.
-  const reps = new Map();
+  const reps = new Map(); // group list → its stop (this call)
   const representative = (el) => {
-    const scope = el.getRootNode();
-    const key = `${el.name}\u0000`;
-    let byScope = reps.get(scope);
-    if (!byScope) reps.set(scope, (byScope = new Map()));
-    let byForm = byScope.get(el.form || null);
-    if (!byForm) byScope.set(el.form || null, (byForm = new Map()));
-    if (byForm.has(key)) return byForm.get(key);
-    const sel = `input[type="radio"][name="${typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(el.name) : el.name.replace(/["\\]/g, '\\$&')}"]`;
-    const group = [...(scope.querySelectorAll ? scope.querySelectorAll(sel) : [])]
-      .filter((r) => r.name === el.name && (r.form || null) === (el.form || null));
-    const checked = group.find((r) => r.checked);
-    const rep = checked ? (usable(checked) ? checked : null) : (group.find(usable) || null);
-    byForm.set(key, rep);
+    const list = radioGroupsOf(el.getRootNode(), index).get(el.form || null)?.get(el.name) || [el];
+    if (reps.has(list)) return reps.get(list);
+    const checked = list.find((r) => r.checked);
+    const rep = checked ? (usable(checked) ? checked : null) : (list.find(usable) || null);
+    reps.set(list, rep);
     return rep;
   };
   return flatWalk(root, []).filter((el) => usable(el)

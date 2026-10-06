@@ -181,3 +181,51 @@ describe('v0.53 tabSequence — radio groups use their FULL native scope (Codex 
     expect(tabSequence(box.querySelector('#row')).map(name)).to.deep.equal(['e1', 'e2']);
   });
 });
+
+describe('v0.53 tabSequence — radio index cost (Codex r2 sec #3)', () => {
+  const PERF_SLACK = 5; // ×5 under load
+  /** count querySelectorAll calls (Document / ShadowRoot / Element) made while `fn` runs */
+  function countQsa(fn) {
+    const protos = [Document.prototype, ShadowRoot.prototype, Element.prototype, DocumentFragment.prototype];
+    const orig = protos.map((p) => Object.getOwnPropertyDescriptor(p, 'querySelectorAll'));
+    let n = 0;
+    protos.forEach((p, i) => {
+      if (!orig[i]) return;
+      const f = orig[i].value;
+      Object.defineProperty(p, 'querySelectorAll', { ...orig[i], value(...a) { n += 1; return f.apply(this, a); } });
+    });
+    try { fn(); } finally { protos.forEach((p, i) => { if (orig[i]) Object.defineProperty(p, 'querySelectorAll', orig[i]); }); }
+    return n;
+  }
+
+  it('one index per scope: 60 named groups in the light DOM + 2 shadow scopes → ≤ 3 lookups', () => {
+    let html = '';
+    for (let i = 0; i < 60; i++) html += `<input type="radio" name="n${i}" id="x${i}">`;
+    const box = mount(`${html}<td-test-shadow-radios></td-test-shadow-radios><td-test-shadow-radios></td-test-shadow-radios>`);
+    let got;
+    const calls = countQsa(() => { got = tabSequence(box); });
+    expect(got.length).to.equal(62);
+    expect(calls).to.be.at.most(3);
+  });
+
+  it('a shared index is reused across several rows of one navigation', () => {
+    const box = mount('<div id="a"><input type="radio" name="p" id="p1"></div><div id="b"><input type="radio" name="q" id="q1"></div>');
+    const index = new Map();
+    const calls = countQsa(() => {
+      tabSequence(box.querySelector('#a'), { index });
+      tabSequence(box.querySelector('#b'), { index });
+    });
+    expect(calls).to.equal(1);
+  });
+
+  it('a form of 2 000 uniquely named radios stays fast', () => {
+    let html = '<form id="big">';
+    for (let i = 0; i < 2000; i++) html += `<input type="radio" name="r${i}" aria-label="r${i}">`;
+    const box = mount(`${html}</form>`);
+    const t0 = performance.now();
+    const got = tabSequence(box);
+    const ms = performance.now() - t0;
+    expect(got.length).to.equal(2000);
+    expect(ms < 150 * PERF_SLACK, `${ms.toFixed(1)} ms`).to.equal(true);
+  });
+});

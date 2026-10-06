@@ -516,12 +516,15 @@ function closeSession(s, reason) {
  * detached menu, their entries forget their node / controller, and the session fields are cleared.
  */
 function releaseSession(s) {
+  // Codex r2 #1: the KIT-OWNED wrapper recorded in s.rows is removed — never a parent derived from the caller's node
+  // (an abort handler may have moved it into a page container); the node is detached only if still inside that row
+  for (const r of s.rows || []) {
+    if (r.rec || !r.row) continue;
+    const node = r.entry && r.entry.node;
+    if (node && node.parentNode === r.row) node.remove();
+    r.row.remove();
+  }
   for (const e of s.customs || []) {
-    if (e.node) {
-      const row = e.node.parentNode;
-      if (row) row.remove(); // the .td-menu__custom row leaves the detached menu
-      e.node.remove(); // the caller's node leaves the row: nothing of the closed menu points at it
-    }
     e.node = null;
     e.ac = null;
   }
@@ -618,7 +621,7 @@ function rowIndexOf(s, node) {
 }
 
 /** v0.53.0 QĐ 3: the focus stops of a custom row (computed now: the content may change while open). */
-const rowStops = (r) => tabSequence(r.row);
+const rowStops = (r, index) => tabSequence(r.row, { index }); // index: shared radio index of one navigation (r2 #3)
 
 /** Focus `node` (also inside an open shadow root); true when it took focus. */
 function focusDeep(node) {
@@ -636,10 +639,11 @@ function focusDeep(node) {
  */
 function focusRow(s, i, dir, last) {
   const n = s.rows.length;
+  const index = new Map();
   for (let k = 0; k < n; k++) {
     const r = s.rows[(((i + k * dir) % n) + n) % n];
     if (r.rec) return focusEl(r.rec.node) || true;
-    const stops = rowStops(r);
+    const stops = rowStops(r, index);
     if (stops.length) return focusDeep(last ? stops[stops.length - 1] : stops[0]) || true;
   }
   return false;
@@ -723,11 +727,9 @@ function onPanelKeyCapture(s, e) {
  * Tab continues).
  */
 function onPanelTab(s, e) {
-  const stops = [];
-  for (const r of s.rows) {
-    if (r.rec) stops.push(r.rec.node);
-    else stops.push(...rowStops(r));
-  }
+  const index = new Map();
+  const stopsOf = new Map(s.rows.map((r) => [r, r.rec ? [r.rec.node] : rowStops(r, index)]));
+  const stops = s.rows.flatMap((r) => stopsOf.get(r));
   const back = e.shiftKey;
   const a = deepActiveElement();
   let i = stops.indexOf(/** @type {HTMLElement} */ (a));
@@ -743,8 +745,8 @@ function onPanelTab(s, e) {
     const r = rowIndexOf(s, a);
     if (r < 0) next = back ? stops.length - 1 : 0;
     else {
-      const before = s.rows.slice(0, r).reduce((k, row) => k + (row.rec ? 1 : rowStops(row).length), 0);
-      const own = s.rows[r].rec ? 1 : rowStops(s.rows[r]).length;
+      const before = s.rows.slice(0, r).reduce((k, row) => k + stopsOf.get(row).length, 0);
+      const own = stopsOf.get(s.rows[r]).length;
       next = back ? before - 1 : before + own;
     }
   }
@@ -1044,24 +1046,22 @@ export class TdMenu {
       // QĐ 5: enabled items and custom rows with a focus stop first; else disabled items; else the panel itself
       const last = o.focus === 'last';
       const order = last ? [...rows].reverse() : rows;
-      const ok = order.find((r) => (r.rec ? !r.rec.entry.disabled : rowStops(r).length > 0))
+      const index = new Map();
+      const ok = order.find((r) => (r.rec ? !r.rec.entry.disabled : rowStops(r, index).length > 0))
         || order.find((r) => r.rec);
       if (!ok) focusEl(menu);
       else if (ok.rec) focusEl(ok.rec.node);
       else {
-        const st = rowStops(ok);
+        const st = rowStops(ok, index);
         focusDeep(last ? st[st.length - 1] : st[0]);
       }
     }
 
-    const handle = {
+    return {
       element: menu,
       close: () => closeSession(s, 'api'),
       get isOpen() { return !s.closed; },
     };
-    // test hook, not API (td-v053-menu-custom.browser-test.js: the session is released on close)
-    Object.defineProperty(handle, Symbol.for('td.menu.session'), { value: s });
-    return handle;
   }
 
   /** Close the open menu (no-op when none). */

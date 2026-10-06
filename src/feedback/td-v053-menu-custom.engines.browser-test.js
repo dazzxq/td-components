@@ -457,4 +457,3 @@ describe('v0.53 TdMenu panel — popup of a component inside an open shadow root
     expect(await until(() => !list()), 'the panel takes the shadow-anchored popup along').to.equal(true);
   });
 });
-

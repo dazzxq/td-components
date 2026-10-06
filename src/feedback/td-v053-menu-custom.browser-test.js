@@ -41,8 +41,6 @@ function spyError() {
   return { calls, restore: () => { console.error = orig; } };
 }
 
-const SESSION = Symbol.for('td.menu.session'); // test hook (not API): the handle's session
-
 const box = (text = 'Nội dung') => {
   const d = document.createElement('div');
   d.className = 'site-box';
@@ -423,15 +421,21 @@ describe('v0.53 TdMenu custom — lifecycle (QĐ 10)', () => {
   });
 });
 
-describe('v0.53 TdMenu custom — a closed handle releases the custom DOM (Codex impl r1 #1)', () => {
+describe('v0.53 TdMenu custom — a closed handle releases the custom DOM (Codex impl r1 #1, r2 #1 / #2)', () => {
   for (const how of ['handle.close()', 'ctx.close()', 'Escape', 'another menu']) {
-    it(`${how}: caller node detached from the closed panel, DOM-bearing session fields cleared`, () => {
+    it(`${how}: kit row removed, caller node detached, signal aborted, listeners silent, handle methods no-ops`, () => {
       const b = btn();
       let node;
       let ctx;
-      const h = TdMenu.open(b, [{ label: 'A' }, { type: 'custom', render: (c) => { ctx = c; node = box(); return node; } }]);
-      const s = h[SESSION];
-      expect(!!s && s.rows.length === 2).to.equal(true);
+      let fired = 0;
+      const bus = new EventTarget();
+      const h = TdMenu.open(b, [{ label: 'A' }, { type: 'custom', render: (c) => {
+        ctx = c;
+        node = box();
+        bus.addEventListener('ping', () => { fired += 1; }, { signal: c.signal });
+        return node;
+      } }]);
+      expect(h.element.querySelectorAll('.td-menu__custom').length).to.equal(1);
       if (how === 'handle.close()') h.close();
       else if (how === 'ctx.close()') ctx.close();
       else if (how === 'Escape') document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
@@ -440,22 +444,44 @@ describe('v0.53 TdMenu custom — a closed handle releases the custom DOM (Codex
       expect(node.parentNode === null).to.equal(true);
       expect(h.element.contains(node)).to.equal(false);
       expect(h.element.querySelector('.td-menu__custom') === null).to.equal(true);
-      for (const k of ['menu', 'rows', 'items', 'customs', 'ctx', 'layer', 'ro', 'unwatch', 'unbridge', 'onPointerDown',
-        'onScroll', 'onResize', 'onClose', 'anchor']) {
-        expect(s[k] == null, k).to.equal(true); // booleans only: chai hangs inspecting DOM
-      }
       expect(ctx.signal.aborted).to.equal(true);
-      h.close(); // still a no-op
+      bus.dispatchEvent(new Event('ping'));
+      expect(fired).to.equal(0);
+      const wasOpen = TdMenu.isOpen();
+      h.close();
       ctx.close();
+      expect(TdMenu.isOpen()).to.equal(wasOpen);
     });
   }
 
-  it('a plain menu (no custom row) clears its session too', () => {
+  it('r2 #1: an abort handler that reparents the caller node keeps it — only the kit row is removed', () => {
     const b = btn();
-    const h = TdMenu.open(b, [{ label: 'A' }]);
-    const s = h[SESSION];
+    const keep = document.createElement('section');
+    keep.id = 'page-keep';
+    host.appendChild(keep);
+    let node;
+    const h = TdMenu.open(b, [{ label: 'A' }, { type: 'custom', render: ({ signal }) => {
+      node = box('Nháp');
+      signal.addEventListener('abort', () => keep.appendChild(node));
+      return node;
+    } }]);
+    const row = h.element.querySelector('.td-menu__custom');
     h.close();
-    expect(s.items == null && s.menu == null).to.equal(true);
+    expect(keep.isConnected).to.equal(true);
+    expect(node.parentNode === keep).to.equal(true);
+    expect(row.parentNode === null).to.equal(true);
+    expect(row.contains(node)).to.equal(false);
+  });
+
+  it('r2 #2: a handle exposes no internal session (no symbol / extra property)', () => {
+    const b = btn();
+    for (const items of [[{ label: 'A' }], [{ type: 'custom', render: () => box() }]]) {
+      const h = TdMenu.open(b, items);
+      expect(Object.getOwnPropertySymbols(h).length).to.equal(0);
+      expect(Reflect.ownKeys(h).map(String).sort()).to.deep.equal(['close', 'element', 'isOpen']);
+      expect(h[Symbol.for('td.menu.session')] === undefined).to.equal(true);
+      h.close();
+    }
   });
 
   it('WeakRef: the custom node of a closed, retained handle is collectable (when the engine exposes gc)', async function weak() {
@@ -467,6 +493,37 @@ describe('v0.53 TdMenu custom — a closed handle releases the custom DOM (Codex
     for (let i = 0; i < 5 && ref.deref(); i++) { globalThis.gc(); await new Promise((r) => setTimeout(r, 0)); }
     expect(ref.deref() === undefined).to.equal(true);
     expect(h.isOpen).to.equal(false);
+  });
+});
+
+describe('v0.53 TdMenu panel — one radio index per navigation (Codex r2 sec #3)', () => {
+  it('a Tab across two custom rows of named radios reads each scope once', () => {
+    const b = btn();
+    const radios = (prefix) => {
+      const d = document.createElement('div');
+      for (let i = 0; i < 20; i++) {
+        const r = document.createElement('input');
+        r.type = 'radio';
+        r.name = `${prefix}${i}`;
+        r.setAttribute('aria-label', r.name);
+        d.appendChild(r);
+      }
+      return d;
+    };
+    TdMenu.open(b, [{ label: 'A' }, { type: 'custom', render: () => radios('x') }, { type: 'custom', render: () => radios('y') }]);
+    let n = 0;
+    const orig = Document.prototype.querySelectorAll;
+    Document.prototype.querySelectorAll = function qsa(sel) {
+      if (String(sel).includes('type="radio"')) n += 1;
+      return orig.call(this, sel);
+    };
+    try {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+    } finally {
+      Document.prototype.querySelectorAll = orig;
+    }
+    expect(document.activeElement.name).to.equal('x0');
+    expect(n).to.equal(1);
   });
 });
 
