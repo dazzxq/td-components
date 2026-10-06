@@ -15,8 +15,23 @@ const seq = (root) => tabSequence(root).map(name);
 // the native walk must be an in-order SUBSEQUENCE of tabSequence (the menu moves Tab itself, so every stop is reached
 // in every engine); Chromium / Firefox must match exactly.
 const WEBKIT = /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|Firefox/.test(navigator.userAgent);
+/** ids of every radio under `root`, including open shadow roots. */
+function radioIds(root = document.body, out = new Set()) {
+  for (const el of root.querySelectorAll('*')) {
+    if (el.localName === 'input' && el.type === 'radio' && el.id) out.add(el.id);
+    if (el.shadowRoot) radioIds(el.shadowRoot, out);
+  }
+  return out;
+}
+
 function matchesNative(nat, ours) {
   if (!WEBKIT) return expect(nat).to.deep.equal(ours);
+  // WebKit: native Tab skips buttons / radios by default (macOS) and enters an unchecked radio group at a platform-dependent
+  // member (Linux CI enters at the last one) — compare the order of the non-radio stops only; the kit's own radio choice is
+  // asserted exactly by the radio-group tests below
+  const radios = radioIds();
+  nat = nat.filter((k) => !radios.has(k));
+  ours = ours.filter((k) => !radios.has(k));
   let i = 0;
   for (const k of ours) if (nat[i] === k) i += 1;
   expect(i, `${JSON.stringify(nat)} ⊄ ${JSON.stringify(ours)}`).to.equal(nat.length);

@@ -397,7 +397,10 @@ describe('td-media-gallery limits — counter, error, validity (QĐ 8-12)', () =
     ctl.dispatchEvent(new Event('input', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 200));
     expect(status(el)).to.equal('', 'same sentence → not repeated');
-    await typeIn(ctl, 'ef');
+    // set the whole over-limit text with ONE input event: typing 'e' then 'f' lets the announce timer fire in between on a
+    // loaded runner ("còn 0 ký tự" — a correct announcement of the intermediate value, but not the one under test)
+    ctl.value = `${ctl.value}ef`;
+    ctl.dispatchEvent(new Event('input', { bubbles: true }));
     await until(() => status(el) !== '');
     expect(status(el)).to.equal('Chú thích ảnh 1: vượt 1 ký tự.');
     q(el, '.td-media-gallery__status').textContent = '';
