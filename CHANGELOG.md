@@ -2,6 +2,30 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.53.0
+
+**`TdMenu`: item `type: 'custom'` — đặt bất kỳ Element nào vào menu** (dsuite: thanh chọn theme trong menu tài khoản; owner:
+kit phải linh động, không fix cứng một loại item riêng). Plan `docs/internal/plans/v0.53.0-menu-custom-item.md`, Codex
+plan-review APPROVE 2 vòng, impl-review 4 vòng + security-review 4 vòng APPROVE; [ADR 0026](docs/internal/decisions/0026-menu-panel-custom-rows.md).
+Không phá vỡ: menu không có item custom giống từng byte với 0.52.
+
+### Added
+
+- `{ type: 'custom', render(ctx) → Element | null, label?, id?, order?, when? }`: `render` chạy mỗi lần mở, trả **Element mới
+  chưa gắn vào trang** (chuỗi / fragment / node đã gắn / render ném lỗi → bỏ dòng + cảnh báo chữ cố định); `ctx.signal` huỷ khi
+  đóng (đăng ký listener với `{ signal }`), `ctx.close()`. Bấm bên trong không đóng menu; ↑/↓ coi dòng là một điểm dừng (vào
+  radio đang chọn), ←/→/Space/Enter/gõ chữ thuộc về widget; Esc luôn đóng; Tab đi qua item rồi control của dòng; hỗ trợ
+  open shadow root.
+- Menu có item custom được dựng thành **menu panel** (`role="dialog"` không modal, item thường nằm trong khối `role="menu"`) —
+  cách duy nhất hợp lệ ARIA để chứa widget tuỳ ý; `aria-haspopup` đổi sang `"dialog"` khi panel thật sự có dòng custom.
+- Docs: công thức thanh chọn theme Tự động / Sáng / Tối (`td-choice-group variant="segmented"`) trong menu tài khoản.
+
+### Security
+
+- Chỉ nhận Element (không HTML string); kit không clone / sửa attribute / `innerHTML` nội dung của caller; dọn dẹp khi đóng chỉ
+  gỡ phần tử của kit. Còn nợ: kiểm tay VoiceOver / NVDA (theo quyết định owner ở 0.52). Giới hạn có ghi docs: segment
+  disabled trong panel sáng trên nền tối dưới 2.2:1 (WCAG miễn control bị vô hiệu).
+
 ## 0.52.0
 
 **`<td-toggle>` tone + locked, `<td-choice-group variant="segmented">`** (dsuite màn Users / 2FA + bộ chọn theme; plan
