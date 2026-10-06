@@ -119,7 +119,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.51.1/
+public/assets/vendor/td-components/0.52.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -127,7 +127,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.51.1';
+const TD_VERSION = '0.52.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -631,7 +631,7 @@ native** cộng hai thứ:
 
 - `td.css` tạo dáng `select.td-dropdown__native` **đúng hộp của trigger**: cao `--td-field-h-md`, padding, viền
   `--td-field-border`, bo `--td-field-radius-md`, font / màu theo token field, rộng 100 %; host mang kiểu chữ của
-  `.td-dropdown` (nhãn cùng cao). Từ **0.51.1** ([ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)) select
+  `.td-dropdown` (nhãn cùng cao). Từ **0.52.0** ([ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)) select
   còn có **chevron của trigger** vẽ bằng CSS gradient (`appearance: none` — gradient không phải ảnh, CSP `img-src` không
   đổi; trước đó giữ mũi tên native và WebKit vẽ nút hệ thống bo 5 px), và **chế độ mặc định (native) cũng vậy**: select
   trần trong `<td-dropdown>` chưa define được tạo dáng y hệt — nâng cấp không xô lệch ở cả hai chế độ (gate
@@ -1167,7 +1167,7 @@ Không có helper cho `<td-tree>` dạng cây luôn hiện (cây quyền là tra
 | `id` | id của **input** (`<label for>` của site). Element: host = `{id}-host`; native: ghi chú / lỗi / đơn vị = `{id}-note`… |
 | `class` | native → wrapper `div.td-field`; element → host |
 | `attrs` | attribute thêm trên **input** (allowlist). Giữ chỗ (bị bỏ, không phân biệt hoa thường): `type` `class` `id` `inputmode` `autocomplete` `spellcheck` `name` `value` `min` `max` `step` `placeholder` `required` `aria-required` `disabled` `readonly` `aria-label` `aria-labelledby` `aria-describedby` `aria-invalid` `aria-errormessage` `pattern` `maxlength` `minlength` `list` + mọi `data-td-*` |
-| `stepper` | 0.51.1, **chỉ chế độ element**: host `stepper` + `td-number--stepper` + hai `button.td-number__step` (`type=button`, `tabindex=-1`, `aria-controls`, icon `minus` / `plus`) ở hai đầu hộp — `td.css` ẩn chúng (vẫn giữ chỗ) tới khi module định nghĩa element; tên nút ("Giảm / Tăng {label}") do component đặt. Chế độ native bỏ qua (`type=number` có nút xoay của trình duyệt) |
+| `stepper` | 0.52.0, **chỉ chế độ element**: host `stepper` + `td-number--stepper` + hai `button.td-number__step` (`type=button`, `tabindex=-1`, `aria-controls`, icon `minus` / `plus`) ở hai đầu hộp — `td.css` ẩn chúng (vẫn giữ chỗ) tới khi module định nghĩa element; tên nút ("Giảm / Tăng {label}") do component đặt. Chế độ native bỏ qua (`type=number` có nút xoay của trình duyệt) |
 
 ```html
 <!-- td_number_input('price', '12990000', ['label' => 'Giá bán', 'suffix' => '₫', 'required' => true, 'element' => true]) -->

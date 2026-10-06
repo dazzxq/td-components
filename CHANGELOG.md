@@ -2,6 +2,33 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.52.0
+
+**`<td-toggle>` tone + locked, `<td-choice-group variant="segmented">`** (dsuite màn Users / 2FA + bộ chọn theme; plan
+`docs/internal/plans/v0.52.0-toggle-tone-segmented.md`, Codex plan-review APPROVE 2 vòng, impl-review 3 vòng + security-review
+2 vòng APPROVE). Không phá vỡ; palette `td-theme` algorithm 4 — `docs/upgrading/breaking-changes.md#0520`.
+
+### Added
+
+- `<td-toggle>`: `tone="success|warning"` (màu rãnh khi bật từ token trạng thái của theme, ✓ / đồng hồ trên núm, chữ trạng
+  thái ẩn qua `aria-describedby`; `color` vẫn thắng về màu), `status-text`, `locked` + `locked-reason` (giữ trạng thái, vẫn
+  focus được và gửi form, `aria-readonly`, mô tả "Không thể thay đổi: lý do", `commit()` thành no-op), đổi lúc chạy giữ focus.
+  `TdToggle.messages` (`statusSuccess`, `statusWarning`, `locked`). Docs có công thức 2FA (controlled + xác nhận + `commit()`).
+- PHP `td_toggle()`: `'tone'`, `'status_text'`, `'locked'`, `'locked_reason'` (có khoá nào → chế độ element); SSR vẫn
+  `toggle@1` (không dùng option mới thì giống từng byte).
+- `<td-choice-group variant="segmented">`: thanh pill gọn (icon + nhãn hoặc `icon-only`), ngữ nghĩa radio, `size`, ô ≥ 44 px;
+  PHP `'variant' => 'segmented'`, `'size'`, `'icon_only'`, option `'icon'`. Docs có công thức chọn theme Tự động / Sáng / Tối.
+- Icon `lock`, `clock`, `sun`, `moon`, `monitor`.
+
+### Changed
+
+- Palette `td-theme`: `ALGORITHM_VERSION` 4 — `--td-btn-disabled-fg` được giải thêm trên nền hover (≥ 2.2:1).
+
+### Security
+
+- `status-text` / `locked-reason` cắt 200 code point mà không đọc hết chuỗi; chỉ là chữ (`textContent` / escape PHP). Khoá là
+  UX, server phải tự chặn. Còn nợ: kiểm tay VoiceOver / NVDA (owner duyệt phát hành với bằng chứng tự động).
+
 ## 0.51.1
 
 **Vá: form in từ PHP không còn "nháy" control gốc của trình duyệt trước khi JS nạp** (dsuite: dropdown trạng thái hiện
