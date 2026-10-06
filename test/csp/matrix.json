@@ -1928,7 +1928,8 @@
         "bottom",
         "height",
         "width",
-        "margin-left"
+        "margin-left",
+        "grid-template-columns"
       ],
       "selectorNote": "v0.53.0 (plan v0.53.0-menu-custom-item QĐ 1 / QĐ 11): the menu panel — role=dialog + role=menu sections + custom rows (a td-choice-group segmented, a static row). Text-bearing boxes size with the platform font metrics (height / width / margin-left excluded, as the v0.52 segmented state); position props excluded as the open menu."
     },
@@ -1980,7 +1981,8 @@
         "bottom",
         "height",
         "width",
-        "margin-left"
+        "margin-left",
+        "grid-template-columns"
       ],
       "selectorNote": "v0.53.0 (plan v0.53.0-menu-custom-item QĐ 1 / QĐ 11): the menu panel — role=dialog + role=menu sections + custom rows (a td-choice-group segmented, a static row). Text-bearing boxes size with the platform font metrics (height / width / margin-left excluded, as the v0.52 segmented state); position props excluded as the open menu."
     }
