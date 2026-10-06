@@ -1,6 +1,11 @@
 import { TdCheckableElement } from '../base/td-checkable-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 
+/** v0.52.0: code-point cap of status-text / locked-reason (= php Td::TOGGLE_TEXT_MAX; longer is cut). */
+const TEXT_MAX = 200;
+/** @param {string} v */
+const cut = (v) => (v.length <= TEXT_MAX ? v : [...v].slice(0, TEXT_MAX).join(''));
+
 /** v0.52.0: attributes patched in place (no re-render). */
 const EXTRAS = new Set(['tone', 'status-text', 'locked', 'locked-reason']);
 
@@ -104,7 +109,7 @@ export class TdToggle extends TdCheckableElement {
   /** @private v0.52.0: status description text */
   _statusText() {
     const own = this.getAttribute('status-text');
-    if (own) return own;
+    if (own) return cut(own);
     const t = this._tone();
     return t ? this._msg(t === 'warning' ? 'statusWarning' : 'statusSuccess') : '';
   }
@@ -113,7 +118,7 @@ export class TdToggle extends TdCheckableElement {
   _lockText() {
     const reason = this.getAttribute('locked-reason');
     const prefix = this._msg('locked');
-    return reason ? `${prefix}: ${reason}` : prefix;
+    return reason ? `${prefix}: ${cut(reason)}` : prefix;
   }
 
   render() {

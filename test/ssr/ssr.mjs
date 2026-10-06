@@ -204,3 +204,12 @@ export const FOUC_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'fouc.html');
 export function renderFoucFixture() {
   return renderPhp('fouc-fixture.php');
 }
+
+// v0.52.0: td_toggle tone / status_text / locked / locked_reason (contract toggle@1, additive parts).
+export const TOGGLE_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'toggle.fixtures.json'), 'utf8'));
+export const TOGGLE_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'toggle.html');
+
+/** Render test/ssr/toggle-fixture.php (the HTML loaded by the toggle SSR browser test). */
+export function renderToggleFixture() {
+  return renderPhp('toggle-fixture.php');
+}
