@@ -370,12 +370,24 @@ async function runConfig(browser, c) {
       const cols = new Set(tiles.filter((t) => Math.abs(t.top - tiles[0].top) < 1).map((t) => Math.round(t.left))).size;
       const out = tiles.filter((t) => t.left < ul.left - 0.5 || t.right > ul.right + 0.5).length;
       const btns = [...g.querySelectorAll('.td-media-gallery__btn:not([hidden]), .td-media-gallery__handle')].map((b) => { const r = b.getBoundingClientRect(); return [r.width, r.height]; });
-      return { id, cols, out, btns };
+      // v0.51.0 (plan v0.51.0-gallery-caption M6): the alt / caption controls + counters stay inside their tile; their
+      // text size (≥ 16 px on a coarse pointer: no iOS zoom)
+      const texts = [...g.querySelectorAll('.td-media-gallery__alt, .td-media-gallery__caption, .td-media-gallery__counter:not([hidden])')].map((n) => {
+        const r = n.getBoundingClientRect();
+        const t = n.closest('.td-media-gallery__item').getBoundingClientRect();
+        return { cls: n.className, out: r.left < t.left - 0.5 || r.right > t.right + 0.5, fs: parseFloat(getComputedStyle(n).fontSize), ctl: n.localName !== 'span' };
+      });
+      return { id, cols, out, btns, texts, captions: g.querySelectorAll('.td-media-gallery__caption').length };
     }));
     const galErr = [];
     for (const x of gal) {
       if (x.out) galErr.push(`#${x.id}: ${x.out} tile(s) outside the list`);
       if (c.touch && c.engine !== 'firefox') for (const [w, h] of x.btns) if (w < 43.5 || h < 43.5) galErr.push(`#${x.id}: a tile button ${w}×${h} < 44 (coarse)`);
+      if (!x.captions) galErr.push(`#${x.id}: no caption control (v0.51.0)`);
+      for (const t of x.texts) {
+        if (t.out) galErr.push(`#${x.id}: ${t.cls} outside its tile`);
+        if (c.touch && c.engine !== 'firefox' && t.ctl && t.fs < 16) galErr.push(`#${x.id}: ${t.cls} font-size ${t.fs} < 16 (coarse)`);
+      }
     }
     if (c.w < 480 && gal[0].cols !== 2) galErr.push(`#rsp-gallery: ${gal[0].cols} columns at ${c.w}px (want 2)`);
     if (c.w >= 768 && gal[0].cols < 4) galErr.push(`#rsp-gallery: ${gal[0].cols} columns at ${c.w}px (want ≥ 4)`);

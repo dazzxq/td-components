@@ -1089,6 +1089,30 @@ async function webkitSmoke(browser) {
       expect(await reachable('.td-modal__footer .td-btn:last-child'), 'confirm button not reachable');
     });
 
+    // v0.51.0 (plan v0.51.0-gallery-caption QĐ 21, M6): the caption textarea / alt input on a phone — a tap focuses, ≥ 44 px
+    // tall, ≥ 16 px text (no iOS zoom); the counter / error ≥ 14 px; a typed caption reaches FormData
+    await it(tag, 'gallery caption: tap focuses, ≥ 44 px, ≥ 16 px; counter ≥ 14 px; typing reaches the value', async () => {
+      await load(page);
+      const ta = '#rsp-gallery .td-media-gallery__item:nth-child(2) .td-media-gallery__caption';
+      await page.locator(ta).scrollIntoViewIfNeeded();
+      await tap(ta);
+      await page.keyboard.type('Chú thích');
+      const m = await page.evaluate((s) => {
+        const t = document.querySelector(s);
+        const a = document.querySelector('#rsp-gallery .td-media-gallery__alt');
+        const c = document.querySelector('#rsp-gallery .td-media-gallery__counter:not([hidden])');
+        return { focused: document.activeElement === t, tag: t.localName, h: t.getBoundingClientRect().height, fs: parseFloat(getComputedStyle(t).fontSize),
+          altFs: parseFloat(getComputedStyle(a).fontSize), counterFs: c ? parseFloat(getComputedStyle(c).fontSize) : 0,
+          cap: document.querySelector('#rsp-gallery').selection[1].usage.caption, vw: innerWidth, sw: document.documentElement.scrollWidth };
+      }, ta);
+      expect(m.focused && m.tag === 'textarea', `tap did not focus the caption (${m.tag})`);
+      expect(m.h >= 44, `caption height ${m.h}`);
+      expect(m.fs >= 16 && m.altFs >= 16, `font-size caption ${m.fs} / alt ${m.altFs}`);
+      expect(m.counterFs >= 14, `counter font-size ${m.counterFs}`);
+      expect(m.cap === 'Chú thích', `caption state ${JSON.stringify(m.cap)}`);
+      expect(m.sw <= m.vw, `horizontal overflow ${m.sw} > ${m.vw}`);
+    });
+
     await it(tag, 'carousel: next / prev by tap (v0.50.0)', async () => {
       await load(page);
       await tap('#rsp-carousel [data-td-carousel="next"]');
