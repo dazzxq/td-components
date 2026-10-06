@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.51.1/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.51.1', __DIR__ . '/public/assets/vendor/td-components/0.51.1');
+ *   require_once '/path/to/vendor/td-components/0.52.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.52.0', __DIR__ . '/public/assets/vendor/td-components/0.52.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -391,16 +391,23 @@ namespace TdComponents {
         /** v0.49.0: default texts of td_choice_group = TdChoiceGroup.messages (state: the component re-applies its own). */
         public const CHOICE_LABELS = ['unavailable' => 'Hết hàng'];
         /**
+         * v0.52.0: default texts of td_toggle element mode = TdToggle.messages (state: the component re-applies its own) —
+         * status while ON per tone, and the localised prefix of the lock description ("{locked}: {locked_reason}").
+         */
+        public const TOGGLE_LABELS = ['statusSuccess' => 'Đã xác nhận', 'statusWarning' => 'Đang chờ', 'locked' => 'Không thể thay đổi'];
+        /** v0.52.0: code-point cap of td_toggle `status_text` / `locked_reason` (= TOGGLE_TEXT_MAX in td-toggle.js; longer is cut). */
+        public const TOGGLE_TEXT_MAX = 200;
+        /**
          * v0.49.0 review S1: bounded work of td_choice_group = src/utils/choice-options.js CHOICE_LIMITS (entries read, options
          * accepted, code points per field: text cut, value / swatch / image refused when longer).
          */
         public const CHOICE_LIMITS = ['candidates' => 400, 'options' => 100, 'value' => 200, 'label' => 200, 'hint' => 200,
-            'note' => 100, 'swatch' => 128, 'image' => 8192,
+            'note' => 100, 'swatch' => 128, 'image' => 8192, 'icon' => 64, // v0.52.0: icon (registry name, segmented)
             // review r4 — group level: over → td_choice_group prints nothing (the JS SSR preflight accepts exactly up to these)
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.51.1') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.52.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -1786,10 +1793,18 @@ namespace {
      * class (label), attrs (label), input_attrs (input).
      * v0.26.0 `element` (bool, default Td::configure ssr_elements): `<td-toggle data-td-ssr="toggle@1">` host + the
      * markup <td-toggle> renders (the input keeps name / value / checked / required / id); class + attrs → host.
+     * v0.52.0: `tone` ('success' | 'warning'), `status_text`, `locked` (bool), `locked_reason` — the presence of any of
+     * these keys (array_key_exists, whatever the value) FORCES element mode (a bare native switch cannot carry them). `locked` is a UI state only: the native checkbox can
+     * still be flipped before the module upgrades / without JS — the server must ignore changes of a locked field.
      */
     function td_toggle(string $name, bool $checked = false, string $label = '', array $o = []): string
     {
-        if (td__element($o)) {
+        // RL6 (Codex r1 #2): the PRESENCE of any of the four keys forces element mode, whatever its value
+        $extras = false;
+        foreach (['tone', 'status_text', 'locked', 'locked_reason'] as $k) {
+            $extras = $extras || array_key_exists($k, $o);
+        }
+        if ($extras || td__element($o)) {
             return td__check_element(true, $name, $checked, $label, $o);
         }
         $size = in_array($o['size'] ?? null, Td::SIZES, true) ? $o['size'] : 'md';
@@ -4773,6 +4788,33 @@ namespace {
         $required = !empty($o['required']);
         $disabled = !empty($o['disabled']);
         $inputExtra = is_array($o['input_attrs'] ?? null) ? $o['input_attrs'] : [];
+        // v0.52.0 (td-toggle only): tone / status / lock — the same parts <td-toggle> renders
+        $tone = null;
+        $statusText = null;
+        $locked = false;
+        $lockReason = null;
+        if ($toggle) {
+            $t = $o['tone'] ?? null;
+            if ($t === 'success' || $t === 'warning') {
+                $tone = $t;
+            } elseif ($t !== null && $t !== '') {
+                trigger_error('td_toggle: unknown tone ignored (expected success | warning)', E_USER_WARNING);
+            }
+            $cut = static fn (mixed $v): ?string => is_string($v) && $v !== '' ? td__choice_text($v, Td::TOGGLE_TEXT_MAX) : null;
+            $statusText = $cut($o['status_text'] ?? null);
+            $locked = !empty($o['locked']);
+            $lockReason = $cut($o['locked_reason'] ?? null);
+        }
+        $hasStatus = $tone !== null || $statusText !== null;
+        $hid = $hostId;
+        $own = trim(($hasStatus && $checked ? "$hid-status " : '') . ($locked ? "$hid-lock" : ''));
+        $siteDesc = null;
+        foreach ($inputExtra as $k => $v) {
+            if (strtolower((string) $k) === 'aria-describedby' && is_scalar($v)) {
+                $siteDesc = trim((string) $v);
+            }
+        }
+        $desc = trim(($siteDesc ?? '') . ' ' . $own);
         $taken = [];
         $input = '<input' . Td::ownAttrs([
             'type' => 'checkbox',
@@ -4786,20 +4828,33 @@ namespace {
             'disabled' => $disabled,
             // a visible label names the input (the component removes aria-label then); else the host aria-label
             'aria-label' => $label === '' ? $aria : null,
+            'aria-readonly' => $locked ? 'true' : null,
+            'aria-describedby' => $own !== '' && $desc !== '' ? $desc : null,
         ], $taken);
         $taken = td__reserve(['type', 'role', 'class', 'id', 'name', 'value', 'checked', 'required', 'disabled', 'aria-label',
-            'aria-labelledby', 'aria-invalid', 'aria-errormessage', 'aria-busy'], $inputExtra, $taken);
+            'aria-labelledby', 'aria-invalid', 'aria-errormessage', 'aria-busy', 'aria-readonly'], $inputExtra, $taken);
         $input .= Td::attrs($inputExtra, $taken) . '>';
+        $onIcon = $tone === 'warning' ? 'clock' : 'check';
         $parts = $toggle
             ? '<span class="td-switch__track" aria-hidden="true"><span class="td-switch__thumb">'
                 . '<span class="td-switch__icon td-switch__icon--off" data-td-icon="close">' . Td::icon('close') . '</span>'
-                . '<span class="td-switch__icon td-switch__icon--on" data-td-icon="check">' . Td::icon('check') . '</span>'
+                . '<span class="td-switch__icon td-switch__icon--on" data-td-icon="' . $onIcon . '">' . Td::icon($onIcon) . '</span>'
+                . ($locked ? '<span class="td-switch__icon td-switch__icon--lock" data-td-icon="lock">' . Td::icon('lock') . '</span>' : '')
                 . '</span></span>'
             : '<span class="td-checkbox__mark" aria-hidden="true">'
                 . '<span class="td-checkbox__icon" data-td-icon="check" data-td-icon-class="td-checkbox__svg">'
                 . Td::icon('check', 'm', '', 'td-checkbox__svg') . '</span></span>';
         $inner = '<label class="' . $block . ' ' . $block . '--' . $size . '">' . $input . $parts
             . ($label !== '' ? '<span class="' . $block . '__label">' . Td::e($label) . '</span>' : '') . '</label>';
+        if ($hasStatus) { // the description spans sit OUTSIDE the label (never part of the name); their text is state
+            $L = Td::TOGGLE_LABELS;
+            $inner .= '<span class="td-switch__status td-sr-only" id="' . Td::e("$hid-status") . '">'
+                . Td::e($statusText ?? ($tone === 'warning' ? $L['statusWarning'] : $L['statusSuccess'])) . '</span>';
+        }
+        if ($locked) {
+            $inner .= '<span class="td-switch__lock-reason td-sr-only" id="' . Td::e("$hid-lock") . '">'
+                . Td::e(Td::TOGGLE_LABELS['locked'] . ($lockReason !== null ? ': ' . $lockReason : '')) . '</span>';
+        }
         $host = [
             'data-td-ssr' => $toggle ? Td::SSR_TOGGLE : Td::SSR_CHECKBOX,
             'id' => $hostId,
@@ -4812,12 +4867,16 @@ namespace {
             'label' => $label !== '' ? $label : null,
             'size' => $size,
             'aria-label' => $aria,
+            'tone' => $tone,
+            'status-text' => $statusText,
+            'locked' => $locked,
+            'locked-reason' => $lockReason,
         ];
         $hostExtra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $hostTaken = [];
         $html = '<' . ($toggle ? 'td-toggle' : 'td-checkbox') . Td::ownAttrs($host, $hostTaken);
         $hostTaken = td__reserve(['id', 'class', 'name', 'value', 'checked', 'required', 'disabled', 'label', 'size', 'aria-label',
-            'color', 'controlled', 'error-text'], $hostExtra, $hostTaken);
+            'color', 'controlled', 'error-text', 'tone', 'status-text', 'locked', 'locked-reason'], $hostExtra, $hostTaken);
         return $html . Td::attrs($hostExtra, $hostTaken) . '>' . $inner . '</' . ($toggle ? 'td-toggle' : 'td-checkbox') . '>';
     }
 
@@ -7283,8 +7342,11 @@ namespace {
      * string or empty after the ECMAScript trim (Td::JS_WS), duplicate canonical value) is dropped; a wrong / refused / cut field is ignored (the option stays). At most
      * ONE E_USER_WARNING per call with the counts only ("{n} option(s) dropped, {m} field(s) ignored or shortened" + a note
      * when $value is not one of the options) — never a value. $value: the selected option (absent → nothing checked).
-     * Options: label, variant ('button' | 'swatch'), required, disabled, helper_text, error_text, id (the HOST id), aria_label,
-     * class.
+     * Options: label, variant ('button' | 'swatch' | 'segmented'), required, disabled, helper_text, error_text, id (the HOST
+     * id), aria_label, class. v0.52.0 segmented: `size` ('sm' | 'md' | 'lg', default md), `icon_only` (bool: labels become
+     * visually hidden names; an option without a valid icon keeps its label), option key `icon` (icon registry name —
+     * /^[a-z][a-z0-9-]{0,63}$/ and known to Td::icon(); otherwise ignored + counted); segmented shows no swatch / image and
+     * the hint only as a description (never <td-tabs>: a tablist is navigation, this is a form value).
      */
     function td_choice_group(string $name, array $options, string|int|null $value = null, array $o = []): string
     {
@@ -7382,11 +7444,17 @@ namespace {
                 'image' => $gated($opt['image'] ?? null, $L['image'], static fn (string $u): ?string => td__media_url($u)),
                 'disabled' => ($opt['disabled'] ?? false) === true, 'unavailable' => ($opt['unavailable'] ?? false) === true,
                 'note' => $text('unavailable_label', $L['note']),
+                // v0.52.0: = choice-options.js (name pattern + the registry)
+                'icon' => $gated($opt['icon'] ?? null, $L['icon'],
+                    static fn (string $i): string => preg_match('/^[a-z][a-z0-9-]{0,63}$/D', $i) && Td::icon($i) !== '' ? $i : ''),
             ];
         }
         $dropped += count($options) - $n;
-        $variant = ($o['variant'] ?? null) === 'swatch' ? 'swatch' : 'button';
+        $variant = in_array($o['variant'] ?? null, ['swatch', 'segmented'], true) ? $o['variant'] : 'button';
         $swatchMode = $variant === 'swatch';
+        $segmented = $variant === 'segmented';
+        $segSize = $segmented && in_array($o['size'] ?? null, ['sm', 'md', 'lg'], true) ? $o['size'] : 'md';
+        $iconOnly = $segmented && !empty($o['icon_only']);
         $sel = $value === null ? '' : (string) $value;
         $current = null;
         foreach ($list as $it) {
@@ -7419,7 +7487,8 @@ namespace {
         $noteOf = static fn (array $it): string => $it['note'] !== '' ? $it['note'] : $L['unavailable'];
         // a nameless group still needs ONE name for the native keyboard group — private + no form owner (never submitted)
         $radioName = $name !== '' ? $name : $host . '-group';
-        $html = '<div class="td-field td-choice td-choice--' . $variant . '">';
+        $html = '<div class="td-field td-choice td-choice--' . $variant
+            . ($segmented ? ' td-choice--' . $segSize . ($iconOnly ? ' td-choice--icon-only' : '') : '') . '">';
         if ($label !== null) {
             $html .= '<div class="td-field__label td-choice__label" id="' . $h . '-label">' . Td::e($label)
                 . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '')
@@ -7446,7 +7515,17 @@ namespace {
             $d = trim(($it['hint'] !== '' ? "$oid-h " : '') . ($it['unavailable'] ? "$oid-n" : ''));
             $sr = $swatchMode ? ' td-sr-only' : '';
             $visual = '';
-            if ($it['image'] !== '') {
+            if ($segmented) {
+                // v0.52.0: [icon slot] + label (data-label = the bold-width placeholder) + hint / note as descriptions only
+                $hide = $iconOnly && $it['icon'] !== '';
+                $face = ($it['icon'] !== '' ? '<span class="td-choice__icon" data-td-icon="' . Td::e($it['icon']) . '" aria-hidden="true">'
+                        . Td::icon($it['icon']) . '</span>' : '')
+                    . '<span class="td-choice__text' . ($hide ? ' td-sr-only' : '') . '" id="' . $e . '-l"'
+                    . ($hide ? '' : ' data-label="' . Td::e($it['label']) . '"') . '>' . Td::e($it['label']) . '</span>'
+                    . ($it['hint'] !== '' ? '<span class="td-choice__hint td-sr-only" id="' . $e . '-h">' . Td::e($it['hint']) . '</span>' : '')
+                    . ($it['unavailable'] ? '<span class="td-choice__note td-sr-only" id="' . $e . '-n"' . ($it['note'] !== '' ? ' data-td-custom' : '')
+                        . '>' . Td::e($noteOf($it)) . '</span>' : '');
+            } elseif ($it['image'] !== '') {
                 $visual = '<img class="td-choice__image" src="' . Td::e($it['image']) . '" alt="" width="32" height="32" loading="lazy" decoding="async">';
             } elseif ($it['swatch'] !== '' || $swatchMode) {
                 $visual = '<svg class="td-choice__swatch' . ($it['swatch'] !== '' ? '' : ' td-choice__swatch--none') . '" viewBox="0 0 32 32" aria-hidden="true">'
@@ -7472,7 +7551,7 @@ namespace {
                     'required' => $required,
                     'disabled' => $disabled || $it['disabled'],
                 ], $rt) . '>'
-                . '<span class="td-choice__face">' . $visual . ($swatchMode ? $texts : '<span class="td-choice__body">' . $texts . '</span>') . '</span>'
+                . '<span class="td-choice__face">' . ($segmented ? $face : $visual . ($swatchMode ? $texts : '<span class="td-choice__body">' . $texts . '</span>')) . '</span>'
                 . '</label>';
         }
         $html .= '</div>';
@@ -7487,7 +7566,9 @@ namespace {
             'name' => $name !== '' ? $name : null,
             'value' => $sel !== '' ? $sel : null,
             'label' => $label,
-            'variant' => $swatchMode ? 'swatch' : null,
+            'variant' => $variant !== 'button' ? $variant : null,
+            'size' => $segmented && $segSize !== 'md' ? $segSize : null,
+            'icon-only' => $iconOnly,
             'required' => $required,
             'disabled' => $disabled,
             'helper-text' => $hint,

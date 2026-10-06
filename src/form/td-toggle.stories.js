@@ -91,3 +91,62 @@ export const CommitOptimistic = {
     return wrap;
   },
 };
+
+/** v0.52.0 `tone`: the ON colour from the theme contract + clock / ✓ icon + a status description (not colour only). */
+export const Tones = {
+  render: () => `<div class="sb-stack">
+    <td-toggle label="Bắt buộc 2FA (chờ quét QR)" tone="warning" status-text="Chờ người dùng quét mã QR khi đăng nhập" checked></td-toggle>
+    <td-toggle label="Bắt buộc 2FA (đã thiết lập)" tone="success" status-text="2FA đã thiết lập — người dùng nhập mã khi đăng nhập" checked></td-toggle>
+    <td-toggle label="Bắt buộc 2FA (tắt — rãnh xám, không mô tả)" tone="warning"></td-toggle>
+  </div>`,
+};
+
+/** v0.52.0 `locked`: focusable, still submitted, never toggles; lock in the knob + "Không thể thay đổi: {lý do}". */
+export const Locked = {
+  render: () => `<div class="sb-stack">
+    <td-toggle name="tfa" label="Bắt buộc 2FA" checked locked locked-reason="Chính sách công ty bắt buộc 2FA cho quản trị viên"></td-toggle>
+    <td-toggle name="beta" label="Tính năng thử nghiệm" locked locked-reason="Gói hiện tại không hỗ trợ"></td-toggle>
+    <td-toggle label="Khoá + đang chờ" tone="warning" checked locked></td-toggle>
+  </div>`,
+};
+
+/** v0.52.0 recipe: the 2FA column (controlled + confirm on OFF + commit; failure snaps back). Fake API: every 3rd save fails. */
+export const TwoFactorRecipe = {
+  render: () => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sb-stack';
+    const WAIT = 'Đã bật 2FA — chờ người dùng quét mã QR khi đăng nhập';
+    const DONE = '2FA đã thiết lập — người dùng nhập mã khi đăng nhập';
+    const t = document.createElement('td-toggle');
+    t.setAttribute('label', 'Bắt buộc 2FA cho nguyenvana');
+    t.setAttribute('controlled', '');
+    const out = document.createElement('p');
+    out.className = 'sb-note';
+    const verify = document.createElement('button');
+    verify.type = 'button';
+    verify.className = 'td-btn td-btn--secondary td-btn--sm';
+    verify.textContent = 'Giả lập: người dùng đã quét QR';
+    let saves = 0;
+    const save = () => new Promise((r) => setTimeout(() => { saves += 1; r(saves % 3 !== 0); }, 800));
+    t.addEventListener('change', async (e) => {
+      if (e.detail.checked) {
+        t.tone = 'warning';
+        t.statusText = WAIT;
+        t.setAttribute('data-tooltip', WAIT);
+        t.commit(save);
+        return;
+      }
+      if (!window.confirm('Tắt xác thực 2FA cho nguyenvana?')) return;
+      t.commit(save);
+    });
+    t.addEventListener('commit-error', () => { out.textContent = 'Không lưu được — công tắc đã quay lại.'; });
+    verify.addEventListener('click', () => {
+      if (!t.checked) return;
+      t.tone = 'success';
+      t.statusText = DONE;
+      t.setAttribute('data-tooltip', DONE);
+    });
+    wrap.append(t, verify, out);
+    return wrap;
+  },
+};

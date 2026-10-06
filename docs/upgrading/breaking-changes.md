@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.51.1)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.52)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.52.0](#0520) | Thêm tính năng (`td-toggle` `tone` / `locked`, `td-choice-group variant="segmented"`) + palette `td-theme` algorithm 4 | Không bắt buộc. File `td-theme` sinh ra: header `palette algorithm 4`, chỉ `--td-btn-disabled-fg` đổi (tối hơn chút để đạt 2.2:1 trên nền hover) — file cũ vẫn đúng, sinh lại khi tiện (site có gate so từng byte: nâng kit và sinh lại trong cùng một thay đổi). PHP `td_toggle`: có khoá `tone` / `status_text` / `locked` / `locked_reason` → luôn in chế độ element. |
 | [0.49.0](#0490) | Thêm tính năng (`<td-choice-group>`, `td-number-input stepper`) + đổi hành vi rất nhỏ | Không bắt buộc. `safeColor()` (và `color` của checkbox / toggle / button…) từ chối chuỗi màu **> 64 ký tự** (trước nhận `rgb(…)` dài bất kỳ). `TdFormElement` có hook `_ariaTarget()` / `_ssrVerifiedParts()` (mặc định giữ hành vi cũ). Import map: thêm `choice-group`. |
 | [0.46.0](#0460) | Thêm tính năng (`<td-diff>`, PHP `td_diff` / `td_diff_snapshots`) | Không bắt buộc. Import map: thêm `diff`. File `td-theme` sinh ra: header `palette algorithm 3` (thêm hai dòng `--td-diff-*-bg`, mọi giá trị khác như cũ) — file cũ vẫn đúng, sinh lại khi tiện. |
 | [0.42.1](#0421) | Đổi giao diện **chỉ ở dark**, hai trạng thái nhấn | Không bắt buộc. Light giống từng pixel. Dark: link trong khung tóm tắt lỗi form khi nhấn làm tối nền (trước phủ trắng, chữ 3.30:1 → 6.34:1); nút × của chip-input hover / nhấn nhạt hơn một chút (16 % → 13 %, chữ khi nhấn 4.22 → 4.88). Site ghi đè giá trị dark cũ: xem dưới. |
@@ -74,6 +75,19 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.52.0
+
+**Mức: thêm tính năng; palette `td-theme` lên algorithm 4.**
+
+- `<td-toggle>`: `tone="success|warning"` (màu rãnh khi bật + icon trên núm + chữ trạng thái cho trình đọc màn hình),
+  `status-text`, `locked` / `locked-reason` (giữ nguyên trạng thái, vẫn gửi form, không phát `change`, mô tả "Không thể
+  thay đổi: …"). Khoá chỉ là giao diện: trước khi JS nạp / không JS, Space hoặc `<label for>` ngoài vẫn đổi được checkbox
+  native — **server phải bỏ qua / từ chối thay đổi field bị khoá**.
+- `<td-choice-group variant="segmented">` (+ `size`, `icon-only`, option `icon`); icon mới `lock`, `clock`, `sun`, `moon`,
+  `monitor`.
+- Bộ sinh palette (`bin/td-theme.mjs`): `ALGORITHM_VERSION` 3 → 4. Chỉ `--td-btn-disabled-fg` đổi (nay cũng đạt ≥ 2.2:1 trên
+  nền hover). File đã commit vẫn dùng được; sinh lại thì header và đúng dòng đó khác.
 
 ## 0.49.0
 

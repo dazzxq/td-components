@@ -46,6 +46,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_check_matrix (0.47.0)](#td_check_matrix-0470)
 - [td_color_picker và td_color_value (0.48.0)](#td_color_picker-và-td_color_value-0480)
 - [td_choice_group (0.49.0)](#td_choice_group-0490)
+- [td_toggle: tone / locked (0.52.0)](#td_toggle-tone--locked-0520)
 - [td_rating, td_carousel (0.50.0)](#td_rating-td_carousel-0500)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
@@ -118,7 +119,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.51.1/
+public/assets/vendor/td-components/0.52.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -126,7 +127,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.51.1';
+const TD_VERSION = '0.52.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -630,7 +631,7 @@ native** cộng hai thứ:
 
 - `td.css` tạo dáng `select.td-dropdown__native` **đúng hộp của trigger**: cao `--td-field-h-md`, padding, viền
   `--td-field-border`, bo `--td-field-radius-md`, font / màu theo token field, rộng 100 %; host mang kiểu chữ của
-  `.td-dropdown` (nhãn cùng cao). Từ **0.51.1** ([ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)) select
+  `.td-dropdown` (nhãn cùng cao). Từ **0.52.0** ([ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)) select
   còn có **chevron của trigger** vẽ bằng CSS gradient (`appearance: none` — gradient không phải ảnh, CSP `img-src` không
   đổi; trước đó giữ mũi tên native và WebKit vẽ nút hệ thống bo 5 px), và **chế độ mặc định (native) cũng vậy**: select
   trần trong `<td-dropdown>` chưa define được tạo dáng y hệt — nâng cấp không xô lệch ở cả hai chế độ (gate
@@ -719,7 +720,9 @@ khi chưa có JS.
 | `input_attrs` | — | lên input (allowlist). Giữ chỗ: `type` `role` `class` `id` `name` `value` `checked` `required` `disabled` `aria-label` `aria-labelledby` `aria-invalid` `aria-errormessage` `aria-busy` + `data-td-*` (không nâng lên host — dùng option `aria_label`) | pass-through giữ nguyên (cả `aria-describedby` của site) |
 
 Thứ tự ưu tiên trạng thái khi hydrate: `el.checked` / `el.value` gán từ script **trước** define > trạng thái sống của
-input (người dùng đã tích / bỏ tích, script đổi `input.value`) > attribute do PHP in. `form.reset()` về **mặc định
+input (người dùng đã tích / bỏ tích, script đổi `input.value`) > attribute do PHP in. (0.52.0: `attrs` giữ chỗ thêm `tone`
+`status-text` `locked` `locked-reason`; `input_attrs` thêm `aria-readonly` — xem
+[td_toggle: tone / locked](#td_toggle-tone--locked-0520).) `form.reset()` về **mặc định
 native** (`checked` / `value` PHP in ra). `indeterminate` của input được giữ. Markup không khớp → render an toàn
 **ngay**, giữ `checked` / `value` / `indeterminate` / `id` và focus (nếu input đang focus); không phát `change`.
 
@@ -1164,7 +1167,7 @@ Không có helper cho `<td-tree>` dạng cây luôn hiện (cây quyền là tra
 | `id` | id của **input** (`<label for>` của site). Element: host = `{id}-host`; native: ghi chú / lỗi / đơn vị = `{id}-note`… |
 | `class` | native → wrapper `div.td-field`; element → host |
 | `attrs` | attribute thêm trên **input** (allowlist). Giữ chỗ (bị bỏ, không phân biệt hoa thường): `type` `class` `id` `inputmode` `autocomplete` `spellcheck` `name` `value` `min` `max` `step` `placeholder` `required` `aria-required` `disabled` `readonly` `aria-label` `aria-labelledby` `aria-describedby` `aria-invalid` `aria-errormessage` `pattern` `maxlength` `minlength` `list` + mọi `data-td-*` |
-| `stepper` | 0.51.1, **chỉ chế độ element**: host `stepper` + `td-number--stepper` + hai `button.td-number__step` (`type=button`, `tabindex=-1`, `aria-controls`, icon `minus` / `plus`) ở hai đầu hộp — `td.css` ẩn chúng (vẫn giữ chỗ) tới khi module định nghĩa element; tên nút ("Giảm / Tăng {label}") do component đặt. Chế độ native bỏ qua (`type=number` có nút xoay của trình duyệt) |
+| `stepper` | 0.52.0, **chỉ chế độ element**: host `stepper` + `td-number--stepper` + hai `button.td-number__step` (`type=button`, `tabindex=-1`, `aria-controls`, icon `minus` / `plus`) ở hai đầu hộp — `td.css` ẩn chúng (vẫn giữ chỗ) tới khi module định nghĩa element; tên nút ("Giảm / Tăng {label}") do component đặt. Chế độ native bỏ qua (`type=number` có nút xoay của trình duyệt) |
 
 ```html
 <!-- td_number_input('price', '12990000', ['label' => 'Giá bán', 'suffix' => '₫', 'required' => true, 'element' => true]) -->
@@ -1795,7 +1798,10 @@ host `disabled`).
 | `image` | qua `td__media_url()`: `https:` hoặc không scheme (tương đối, `/…`, `//…`). **`http:` bị từ chối** trừ khi site gọi `Td::allowHttpLinks(true)` (site chạy HTTP); trang thực tế HTTPS mà vẫn bật cờ → JS khi nhận markup từ chối ảnh đó → vẽ lại không ảnh. `data:` / `javascript:` / `blob:` / > 8 KiB → từ chối |
 | `$value` | lựa chọn được chọn (`string` / `int`); không có trong `$options` → không chọn gì (ghi vào cảnh báo gộp) |
 | `label`, `aria_label` | nhãn nhóm (tên của `role="radiogroup"`); `aria_label` khi không có `label` |
-| `variant` | `'button'` (mặc định) \| `'swatch'` |
+| `variant` | `'button'` (mặc định) \| `'swatch'` \| `'segmented'` (0.52.0: thanh viên thuốc, icon + nhãn — [Choice group › mục 7](../components/choice-group.md#7-thanh-chọn-segmented-0520)) |
+| `size` | 0.52.0, chỉ `segmented`: `'sm'` \| `'md'` (mặc định) \| `'lg'`; khác → `md` |
+| `icon_only` | 0.52.0, chỉ `segmented`: `true` → nhãn của lựa chọn **có icon** thành `td-sr-only` (vẫn là tên truy cập) |
+| option `icon` | 0.52.0: tên icon (`/^[a-z][a-z0-9-]{0,63}$/`, `Td::icon()` biết — core hoặc icon site đã đăng ký **ở cả PHP lẫn JS**); sai / không có → bỏ khoá (tính vào cảnh báo gộp), lựa chọn giữ. Chỉ in ở `segmented`; `segmented` không in `swatch` / `image`, `hint` chỉ là mô tả `td-sr-only` |
 | `required`, `disabled` | trên host + mọi radio |
 | `helper_text`, `error_text` | ghi chú / lỗi dưới nhóm (`aria-describedby` / `aria-invalid` trên radiogroup) |
 | `id` | id của **host** (radio: `{id}-o0`, `{id}-o1`…; mặc định `td-{name}-{n}`, phần `{name}` bị cắt để cả id ≤ 100 ký tự — giữ tiền tố `td-` và hậu tố số duy nhất) |
@@ -1810,6 +1816,38 @@ Cảnh báo: **tối đa một** `E_USER_WARNING` mỗi lần gọi, chỉ có s
 field(s) ignored or shortened (…)` (+ "the selected value is not one of the options" khi `$value` không khớp) — không bao
 giờ in giá trị. Server **vẫn phải** kiểm giá trị gửi lên thuộc tập lựa chọn
 hợp lệ (và tồn kho) của sản phẩm.
+
+## td_toggle: tone / locked (0.52.0)
+
+```php
+<?= td_toggle('require_2fa', $user['otp_enabled'], '', [
+    'id' => "tfa-{$user['id']}",
+    'aria_label' => 'Bắt buộc 2FA cho ' . $user['username'],   // escape sẵn bởi helper
+    'size' => 'sm',
+    'tone' => $user['otp_verified'] ? 'success' : 'warning',
+    'status_text' => $user['otp_verified'] ? '2FA đã thiết lập — người dùng nhập mã khi đăng nhập'
+        : 'Chờ người dùng quét mã QR khi đăng nhập',
+]) ?>
+<?= td_toggle('require_2fa', true, 'Bắt buộc 2FA', ['locked' => true, 'locked_reason' => 'Chính sách công ty']) ?>
+```
+
+Chỉ cần **có khoá** `tone` / `status_text` / `locked` / `locked_reason` trong `$opts` (`array_key_exists` — giá trị gì
+cũng vậy, kể cả `null` / `false` / `''`) là **ép chế độ element** (kể cả `'element' => false`): công tắc native trần không có host để mang chúng. `td_checkbox` bỏ qua cả bốn.
+
+| Option | Host | Input / phần in thêm |
+|---|---|---|
+| `tone` | `tone` (`'success'` \| `'warning'`; khác → bỏ + **một** `E_USER_WARNING` cố định `td_toggle: unknown tone ignored (expected success \| warning)`) | ô icon bật = `clock` khi `warning`; `span.td-switch__status.td-sr-only#{host}-status` (chữ mặc định `Td::TOGGLE_LABELS` = `TdToggle.messages`) |
+| `status_text` | `status-text` (cắt ở 200 code point — `Td::TOGGLE_TEXT_MAX`) | chữ của span status; `aria-describedby` của input trỏ tới nó **khi đang bật** |
+| `locked` | `locked` | input `aria-readonly="true"`; ô icon `lock` trong núm; `span.td-switch__lock-reason.td-sr-only#{host}-lock` = "Không thể thay đổi[: lý do]"; luôn trong `aria-describedby` |
+| `locked_reason` | `locked-reason` (cắt 200) | phần sau `": "` của mô tả khoá |
+
+- `aria-describedby` của site trong `input_attrs` được **giữ** và nối trước id của kit (`"page-note {host}-status {host}-lock"`).
+- Màu tone + ổ khoá đúng **trước khi JS tải** (CSS theo attribute host) — không nháy; `toggle@1` giữ số (phần thêm).
+- **`locked` là UI, không phải kiểm soát truy cập**: trước khi module tải / khi tắt JS, checkbox native vẫn lật được bằng
+  Space hoặc `<label for>` ngoài (CSS chỉ chặn chuột / chạm trên công tắc). **Server phải bỏ qua / từ chối** thay đổi của
+  field đang khoá.
+- `controlled` không phải option PHP: bật bằng JS (`el.controlled = true`) trước khi nghe `change` (công thức 2FA:
+  [Toggle](../components/toggle.md#công-thức-cột-2fa-trong-danh-sách-người-dùng-0520)).
 
 ## td_rating, td_carousel (0.50.0)
 

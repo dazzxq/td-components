@@ -318,6 +318,14 @@
 		--td-switch-off: var(--td-color-fill);
 		--td-switch-edge: var(--td-control-border-soft);
 		--td-switch-thumb: #fff;
+		/* v0.52.0 (plan v0.52.0-toggle-tone-segmented QĐ 2): the knob while ON (= the knob; a tone sets it) and the tone
+		   tracks — theme-contract only: the palette solver keeps every status colour ≥ 4.7 on every surface and
+		   --td-color-on-status ≥ 4.7 on every status colour, so track / page and knob / track stay ≥ 3:1 in light, dark,
+		   theme scopes and generated palettes (no scheme token: in dark the toned knob is the dark on-status ink) */
+		--td-switch-thumb-on: var(--td-switch-thumb);
+		--td-switch-on-success: var(--td-color-success);
+		--td-switch-on-warning: var(--td-color-warning);
+		--td-switch-thumb-tone: var(--td-color-on-status);
 
 		/* ===== Form errors (error contract) ===== */
 		--td-field-error: var(--td-color-error);

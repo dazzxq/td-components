@@ -7,10 +7,14 @@ const BASES = ['--td-color-bg', '--td-color-surface', '--td-color-surface-raised
 const PAGE = ['--td-color-bg', '--td-color-surface'];
 const POPUP = (s) => ['--td-glass-bg-strong', s];
 
-/** @returns {Array<{ id: string, fg: string, layers: string[], min: number }>} */
+/**
+ * `gateLight` (v0.52.0 review r2): the pair is ALSO gated on the built-in light preset / kit light page (the other built-in
+ * light pairs are only reported — owner keeps the built-in light values); new components must pass there.
+ * @returns {Array<{ id: string, fg: string, layers: string[], min: number, gateLight?: boolean }>}
+ */
 export function renderedPairs() {
   const P = [];
-  const add = (id, fg, layers, min = 4.7) => P.push({ id, fg, layers, min });
+  const add = (id, fg, layers, min = 4.7, o = {}) => P.push({ id, fg, layers, min, ...o });
   // ISSUE-3 form summary (form-validation.css: colour --td-form-summary-fg = --td-color-error; link pressed =
   // --td-form-summary-pressed-bg, v0.42.1 — = --td-color-pressed except the kit dark, where a white wash cannot keep 4.7)
   add('summary text', '--td-color-error', ['--td-form-summary-bg']);
@@ -113,6 +117,22 @@ export function renderedPairs() {
     add(`carousel current dot on ${s}`, '--td-color-text', [s]);
   }
   for (const f of ['--td-color-fill', '--td-btn-secondary-hover', '--td-btn-secondary-pressed']) add(`carousel chevron on ${f}`, '--td-color-text', [f], 3.2);
+  // v0.52.0 td-choice-group segmented (choice-group.css: trough --td-choice-seg-bg = --td-color-hover over the page; idle
+  // label / icon --td-choice-seg-fg = --td-color-text-label; selected pill --td-choice-seg-pill = --td-control-bg (opaque) with the label
+  // --td-color-text and a 1px ring --td-choice-seg-ring = --td-color-text-muted; disabled segment
+  // --td-btn-disabled-fg on the trough; pressed = --td-color-pressed over the trough, label = text) and td-toggle tone
+  // (switch.css: track = status colour on the page, knob = --td-color-on-status on the track)
+  for (const s of PAGE) {
+    add(`segmented idle label on ${s}`, '--td-color-text-label', ['--td-color-hover', s], 4.7, { gateLight: true });
+    add(`segmented hover label on ${s}`, '--td-color-text', ['--td-color-hover', s]);
+    add(`segmented pressed label on ${s}`, '--td-color-text', ['--td-color-pressed', '--td-color-hover', s]);
+    add(`segmented ring vs trough on ${s}`, '--td-color-text-muted', ['--td-color-hover', s], 3);
+    add(`segmented disabled label on ${s}`, '--td-btn-disabled-fg', ['--td-color-hover', s], 2.2);
+    for (const c of ['success', 'warning']) add(`toggle ${c} track on ${s}`, `--td-color-${c}`, [s], 3);
+  }
+  add('segmented selected label on the pill', '--td-color-text', ['--td-control-bg']);
+  add('segmented ring vs the pill', '--td-color-text-muted', ['--td-control-bg'], 3);
+  for (const c of ['success', 'warning']) add(`toggle ${c} knob on the track`, '--td-color-on-status', [`--td-color-${c}`], 3);
   return P;
 }
 

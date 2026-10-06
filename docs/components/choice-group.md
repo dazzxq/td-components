@@ -11,14 +11,15 @@ Kit chỉ lo phần chọn. Việc **ghép tổ hợp → biến thể / giá / 
 [mục 5](#5-công-thức-biến-thể-dung-lượng--màu)).
 
 Khi nào dùng cái nào: chọn **nhiều** → checkbox / [chip input](chip-input.md) `selection-only`; danh sách dài (> 8–10 mục)
-hoặc cần tìm → [dropdown](dropdown.md); chọn một, ít lựa chọn, cần thấy hết → `<td-choice-group>`.
+hoặc cần tìm → [dropdown](dropdown.md); chọn một, ít lựa chọn, cần thấy hết → `<td-choice-group>`. Thanh chọn gọn kiểu viên
+thuốc (Tự động / Sáng / Tối, chế độ xem) → `variant="segmented"` ([mục 7](#7-thanh-chọn-segmented-0520)).
 
 | | |
 |---|---|
 | Import | `import '@dazzxq/td-components/choice-group'` (class: `import { TdChoiceGroup } from '@dazzxq/td-components'`) |
 | Loại | Custom element |
 | Form-associated | có (một mục `name=value`; chưa chọn → không có mục, như radio native) |
-| Từ phiên bản | 0.49.0 (token-native: cần `td.css`) |
+| Từ phiên bản | 0.49.0 (token-native: cần `td.css`); `variant="segmented"` + khoá `icon` từ 0.52.0 |
 
 ## Ví dụ nhanh
 
@@ -61,6 +62,7 @@ Gán bằng **property** `options` (mảng object). Mỗi lựa chọn:
 | `disabled` | `boolean` | — | **Không chọn được** (tổ hợp không tồn tại) |
 | `unavailable` | `boolean` | — | **Chọn được**, gạch chữ + ghi chú (hết hàng) |
 | `unavailableLabel` | `string` | — | Ghi chú thay "Hết hàng" (vd. "Sắp về", "Không có") |
+| `icon` | tên icon | — | 0.52.0, chỉ hiện ở `segmented`: tên trong [registry icon](icons.md) (`/^[a-z][a-z0-9-]{0,63}$/`, đã đăng ký). Sai / không có → bỏ icon (giữ lựa chọn) + cảnh báo |
 
 **Giới hạn** (giống hệt PHP `Td::CHOICE_LIMITS`): đọc tối đa **400** phần tử của mảng, nhận tối đa **100** lựa chọn (phần sau bị
 bỏ); `label` / `hint` dài quá 200 ký tự, `unavailableLabel` quá 100 bị **cắt**; `value` quá 200, `swatch` quá 128, `image`
@@ -188,6 +190,74 @@ nhận **tại chỗ** (cùng node radio: lựa chọn + focus giữ nguyên). O
 Giới hạn không JS: dòng "lựa chọn hiện tại" của swatch là chữ tĩnh lúc in (đổi lựa chọn không cập nhật dòng đó; tên vẫn đọc
 được qua trình đọc màn hình).
 
+### 7. Thanh chọn segmented (0.52.0)
+
+```html
+<td-choice-group id="theme" name="theme" aria-label="Giao diện" variant="segmented" size="sm" value="auto"></td-choice-group>
+<script type="module">
+  import '@dazzxq/td-components/choice-group';
+  document.getElementById('theme').options = [
+    { value: 'auto', label: 'Tự động', icon: 'monitor' },
+    { value: 'light', label: 'Sáng', icon: 'sun' },
+    { value: 'dark', label: 'Tối', icon: 'moon' },
+  ];
+</script>
+```
+
+- Một **rãnh** nền nhạt, các ô **bằng nhau** (= ô rộng nhất), ô đang chọn là **viên thuốc** sáng + vòng 1px (≥ 3:1 với
+  rãnh và viên) + chữ đậm — đổi hình + độ đậm, không chỉ màu. Chữ đậm đã được giữ chỗ nên đổi lựa chọn không xô ô.
+  Không có thanh trượt animation.
+- Mỗi ô: icon (khoá `icon`) + nhãn. `icon-only`: nhãn **ẩn trực quan** (vẫn là tên truy cập của radio) — lựa chọn nào
+  không có icon hợp lệ thì vẫn hiện nhãn (không bao giờ ra ô trống) + cảnh báo. Nhóm vẫn cần tên (`label` / `aria-label`).
+- `size`: `sm` (32px) / `md` (40px, mặc định) / `lg` (48px); **trên cảm ứng mọi cỡ ≥ 44 × 44**. `size` chỉ áp cho
+  `segmented`.
+- `hint` không hiện trong ô (vẫn là mô tả cho trình đọc màn hình); `swatch` / `image` bị bỏ qua (cảnh báo). `disabled` /
+  `unavailable` / `required` / form / reset / SSR như mọi variant. `icon-only` + `unavailable`: vạch chéo qua icon.
+- Nhãn dài **xuống dòng** trong ô (không cắt `…`); ô hẹp thì icon lên trên nhãn. Muốn rãnh rộng hết cột:
+  `.td-choice--segmented .td-choice__options { display: grid; }` (CSS của site).
+- **Vì sao không phải [`td-tabs`](tabs.md):** tabs là `role="tablist"` — **điều hướng** giữa các vùng nội dung trên trang
+  (trình đọc màn hình đọc "thẻ 1 trên 3" và chờ một `tabpanel`, mũi tên mặc định chỉ dời focus), không gửi form. Theme / chế
+  độ là **một giá trị** (lưu, gửi, khôi phục) → `role="radiogroup"`: mũi tên chọn luôn, có `name` / `required` / reset /
+  SSR.
+
+#### Công thức: chuyển theme (Tự động / Sáng / Tối)
+
+Kit không có component theme riêng ([Theming › Light / dark / auto](../customization/theming.md#light--dark--auto)) — ghép
+`segmented` với `data-td-theme` + cookie:
+
+```php
+<?php
+$theme = $_COOKIE['td_theme'] ?? 'auto';
+if (!in_array($theme, ['light', 'dark', 'auto'], true)) $theme = 'auto'; // whitelist, không in chuỗi thô
+?>
+<html lang="vi" data-td-theme="<?= $theme ?>">
+<head>
+  <meta name="color-scheme" content="<?= ['light' => 'light', 'dark' => 'dark', 'auto' => 'light dark'][$theme] ?>">
+  <script src="/assets/theme-boot.js"></script>  <!-- đồng bộ, KHÔNG module: đặt attribute trước lần vẽ đầu -->
+  <link rel="stylesheet" href="/assets/td.css">
+</head>
+…
+<?= td_choice_group('', [
+  ['value' => 'auto', 'label' => 'Tự động', 'icon' => 'monitor'],
+  ['value' => 'light', 'label' => 'Sáng', 'icon' => 'sun'],
+  ['value' => 'dark', 'label' => 'Tối', 'icon' => 'moon'],
+], $theme, ['id' => 'theme-switch', 'aria_label' => 'Giao diện', 'variant' => 'segmented', 'size' => 'sm', 'icon_only' => true]) ?>
+```
+
+```js
+// module của trang — chỉ chạy khi người dùng đổi (lần vẽ đầu đã đúng nhờ attribute PHP + theme-boot.js)
+import '@dazzxq/td-components/choice-group';
+document.getElementById('theme-switch').addEventListener('change', (e) => {
+  const v = e.detail.value; // 'auto' | 'light' | 'dark'
+  document.documentElement.setAttribute('data-td-theme', v);
+  document.cookie = `td_theme=${v}; path=/; max-age=31536000; SameSite=Lax`;
+});
+```
+
+- `name` rỗng: nhóm không gửi form (chỉ là điều khiển của trang). Bàn phím: Tab vào, ← → đổi theme ngay.
+- `theme-boot.js` (mục [Không chớp trắng](../customization/theming.md#không-chớp-trắng-no-fouc)) vẫn cần cho trang
+  không render PHP / cache HTML; nút chuyển chỉ đổi attribute + cookie.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -195,7 +265,9 @@ Giới hạn không JS: dòng "lựa chọn hiện tại" của swatch là chữ
 | `name` | string | — | Tên field khi submit. |
 | `value` | string | `''` | Giá trị **mặc định** (`form.reset()` về đây). Đổi sau khi render → đặt luôn giá trị sống (không event). |
 | `label` | string | — | Nhãn nhóm hiển thị (tên của `role="radiogroup"`). |
-| `variant` | `button` \| `swatch` | `button` | Dáng; giá trị lạ → `button`. |
+| `variant` | `button` \| `swatch` \| `segmented` | `button` | Dáng; giá trị lạ → `button`. `segmented` từ 0.52.0 ([mục 7](#7-thanh-chọn-segmented-0520)). |
+| `size` | `sm` \| `md` \| `lg` | `md` | 0.52.0, chỉ `segmented`: chiều cao ô (32 / 40 / 48px; cảm ứng ≥ 44). |
+| `icon-only` | boolean | — | 0.52.0, chỉ `segmented`: nhãn ẩn trực quan (vẫn là tên truy cập). |
 | `required` / `disabled` | boolean | — | [Mục 3](#3-required); `disabled` khoá cả nhóm (cả `<fieldset disabled>` tổ tiên). |
 | `helper-text` / `error-text` | string | — | Ghi chú / lỗi dưới nhóm (error contract). |
 | `aria-label` | string | — | Tên khi không có `label`. |
@@ -237,6 +309,12 @@ Giới hạn không JS: dòng "lựa chọn hiện tại" của swatch là chữ
 | `--td-choice-hint-fg` | `var(--td-color-text-muted)` | Dòng phụ / ghi chú / chữ gạch (≥ 4.7:1) |
 | `--td-choice-swatch-size` | `2rem` | Cỡ ô màu |
 | `--td-choice-swatch-edge` | `var(--td-color-border-strong)` | Vành trong của ô màu |
+| `--td-choice-seg-bg` | `var(--td-color-hover)` | 0.52.0 segmented: rãnh |
+| `--td-choice-seg-pill` | `var(--td-control-bg)` | 0.52.0: viên thuốc ô đang chọn |
+| `--td-choice-seg-ring` | `var(--td-color-text-muted)` | 0.52.0: vòng 1px quanh viên (≥ 3:1 với rãnh và viên — mực muted được bộ sinh palette giữ ≥ 4.7 trên rãnh hover và mọi bề mặt) |
+| `--td-choice-seg-fg` / `-fg-selected` | `var(--td-color-text-label)` / `var(--td-color-text)` | 0.52.0: chữ / icon ô nghỉ (≥ 4.7 trên rãnh, cả trên nền trang sáng của kit) / ô chọn + hover |
+| `--td-choice-seg-h` | `2.5rem` (sm `2rem`, lg `3rem`) | 0.52.0: chiều cao ô (cảm ứng ≥ 44px) |
+| `--td-choice-seg-pad` / `--td-choice-seg-radius` | `3px` / `var(--td-radius-full)` | 0.52.0: đệm rãnh / bo |
 
 Mọi màu đọc token của hợp đồng theme → dark / `auto` / theme theo vùng / palette sinh tự đúng. Đã chọn = **vòng mực** (đổi
 hình dạng, không chỉ màu); focus = viền focus của kit **ngoài** mặt nút, tách khỏi vòng chọn. Nhãn dài xuống dòng trong nút
@@ -263,6 +341,11 @@ hình dạng, không chỉ màu); focus = viền focus của kit **ngoài** mặ
   </div>
 </td-choice-group>
 ```
+
+Dạng `segmented` (0.52.0): `.td-choice--segmented.td-choice--{sm|md|lg}` (+ `.td-choice--icon-only`); mặt ô =
+`span.td-choice__icon[data-td-icon][aria-hidden]` (khi có icon) + `span.td-choice__text[data-label]` (`data-label` = nhãn, giữ
+chỗ chữ đậm; `td-sr-only` khi `icon-only`) + dòng phụ / ghi chú `td-sr-only`. SSR: ô icon so theo thuộc tính, SVG bên trong
+(chỉ nhận `<svg>`) được vẽ lại từ registry khi nhận.
 
 Dạng `button`: `.td-choice--button`, chữ / dòng phụ / ghi chú hiện trong `span.td-choice__body`. Trạng thái đọc từ radio
 native: `:checked`, `:disabled`, `:focus-visible` (+ `[data-unavailable]` / `[data-disabled]` trên lựa chọn,
@@ -302,10 +385,12 @@ tất cả). Không khớp → vẽ lại an toàn ngay, giữ lựa chọn + fo
 - Màu → sink `fill` của SVG chỉ qua `safeColor` (JS) / `Td::safeColor` (PHP, cùng bảng ca); URL → `<img src>` chỉ qua
   `safeMediaUrl` / `td__media_url` (luật scheme mục 4). Dữ liệu đọc lại từ markup khi nhận tại chỗ đi qua **cùng** cổng.
 - Server **vẫn phải** kiểm giá trị gửi lên thuộc tập lựa chọn hợp lệ của sản phẩm (và tồn kho / giới hạn giỏ).
+- `icon` (0.52.0): chỉ tên theo regex + có trong registry (JS `hasIcon`, PHP `Td::icon`); SVG luôn dựng từ registry, không
+  bao giờ từ markup / dữ liệu của site.
 
 ## Cảm ứng
 
-- Mỗi lựa chọn ≥ 44 × 44 trên cảm ứng (swatch: vùng chạm 44 quanh ô 32, không chồng nhau); chuột ≥ 24.
+- Mỗi lựa chọn ≥ 44 × 44 trên cảm ứng (swatch: vùng chạm 44 quanh ô 32, không chồng nhau; segmented: mọi `size`); chuột ≥ 24.
 - Hình nhấn chỉ đổi màu (`--td-color-pressed`); hover chỉ với chuột. Cuộn trang bắt đầu trên nhóm vẫn cuộn.
 
 Chuẩn chung: [Cảm ứng](../guides/touch.md).
@@ -317,7 +402,7 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - **Ảnh swatch không hiện** → CSP `img-src` của site chặn CDN, hoặc URL `http:` trên trang HTTPS (bị từ chối có chủ đích).
 - **Form gửi được dù `required`** → mọi lựa chọn đang `disabled` ([mục 3](#3-required)).
 - Không có: chọn nhiều, bỏ chọn khi đã chọn, tự ẩn lựa chọn, ma trận nhiều chiều trong một element, swatch hai màu / gradient,
-  tooltip tên màu, dải cuộn ngang, `size`, RTL.
+  tooltip tên màu, dải cuộn ngang, `size` cho `button` / `swatch`, thanh trượt animation cho `segmented`, RTL.
 
 ## Xem thêm
 

@@ -3,9 +3,14 @@ import { ssrMarker } from '../base/td-base-element.js';
 import { safeColor } from '../utils/css-safe.js';
 import { safeMediaUrl } from '../utils/media-url.js';
 import { normalizeOptions, sameValueList, CHOICE_LIMITS } from '../utils/choice-options.js';
+import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 
-const VARIANTS = ['button', 'swatch'];
-const GATES = { safeColor, safeMediaUrl: (u) => safeMediaUrl(u) };
+const VARIANTS = ['button', 'swatch', 'segmented'];
+/** v0.52.0: segment sizes (segmented only) */
+const SIZES = ['sm', 'md', 'lg'];
+const GATES = { safeColor, safeMediaUrl: (u) => safeMediaUrl(u), hasIcon };
+/** v0.52.0: the icon slots of the segmented faces */
+const ICON_SLOTS = '.td-choice__face > .td-choice__icon[data-td-icon]';
 /** Every form-associated element (the adopted markup may hold the radios and nothing else). */
 const FORM_ASSOCIATED = 'input, textarea, select, button, fieldset, output, object';
 /** Attributes a server-rendered radio may carry (php td_choice_group + what the component sets). */
@@ -24,7 +29,7 @@ const SSR_BUDGET = (() => {
   // review r4: a NULL-prototype table — an attribute named constructor / __proto__ / toString never reads Object.prototype
   const attrCap = Object.freeze(Object.assign(Object.create(null), {
     value: 2 * L.value, 'data-td-value': 2 * L.value, fill: 2 * L.swatch, src: 2 * L.image, name: 2 * L.name, class: 2 * L.class,
-    label: 2 * L.groupLabel, 'aria-label': 2 * L.groupLabel, 'helper-text': 2 * L.helper, 'error-text': 2 * L.error,
+    label: 2 * L.groupLabel, 'aria-label': 2 * L.groupLabel, 'data-label': 2 * L.label, 'data-td-icon': 2 * L.icon, 'helper-text': 2 * L.helper, 'error-text': 2 * L.error,
     id: ref, for: ref, 'data-for': ref, 'aria-labelledby': ref, 'aria-describedby': ref, 'aria-errormessage': ref,
   }));
   return Object.freeze({ nodes: 24 * L.options + 64, depth: 8, attrs: 16, siblings: 2 * L.options + 2, text: 2 * Math.max(L.helper, L.error) + 64,
@@ -86,7 +91,9 @@ let _groupCounter = 0;
  * @attr {string} name
  * @attr {string} value - default value (reset target); later changes set the live value too (no event)
  * @attr {string} label - visible group label
- * @attr {string} variant - button (default) | swatch
+ * @attr {string} variant - button (default) | swatch | segmented (v0.52.0: compact pill segments, icon + label)
+ * @attr {string} size - sm | md (default) | lg — segmented only (v0.52.0)
+ * @attr {boolean} icon-only - segmented only (v0.52.0): labels become visually hidden names
  * @attr {boolean} required / disabled
  * @attr {string} helper-text / error-text / aria-label
  * @fires input - detail: { value, option } (user)
@@ -103,13 +110,15 @@ export class TdChoiceGroup extends TdFormElement {
   };
 
   static get observedAttributes() {
-    return [...super.observedAttributes, 'value', 'label', 'variant', 'helper-text', 'error-text', 'aria-label'];
+    return [...super.observedAttributes, 'value', 'label', 'variant', 'size', 'icon-only', 'helper-text', 'error-text', 'aria-label'];
   }
 
   static get errorContract() { return true; }
 
+  static get booleanAttributes() { return [...super.booleanAttributes, 'icon-only']; }
+
   /** @private attributes that change the DOM structure → re-render (value / focus kept) */
-  static _structural = new Set(['label', 'variant']);
+  static _structural = new Set(['label', 'variant', 'size', 'icon-only']);
 
   constructor() {
     super();
@@ -144,11 +153,20 @@ export class TdChoiceGroup extends TdFormElement {
 
   // --- resolved state ---
 
-  /** @private @returns {'button'|'swatch'} */
+  /** @private @returns {'button'|'swatch'|'segmented'} */
   _variant() {
     const v = this.getAttribute('variant');
-    return VARIANTS.includes(v) ? /** @type {'button'|'swatch'} */ (v) : 'button';
+    return VARIANTS.includes(v) ? /** @type {'button'|'swatch'|'segmented'} */ (v) : 'button';
   }
+
+  /** @private v0.52.0 segment size (segmented only) */
+  _size() {
+    const v = this.getAttribute('size');
+    return SIZES.includes(v) ? v : 'md';
+  }
+
+  /** @private v0.52.0: the label of option `o` is visually hidden (icon-only segment with an icon) */
+  _iconOnly(o) { return this._variant() === 'segmented' && this.hasAttribute('icon-only') && !!o.icon; }
 
   /** @private options that can be selected (not `disabled`; `unavailable` counts) */
   _hasEnabled() { return this._options.some((o) => !o.disabled); }
@@ -171,7 +189,9 @@ export class TdChoiceGroup extends TdFormElement {
     const id = esc(this.id);
     const label = this.getAttribute('label') || '';
     const variant = this._variant();
-    return `<div class="td-field td-choice td-choice--${variant}">`
+    const seg = variant === 'segmented'
+      ? ` td-choice--${this._size()}${this.hasAttribute('icon-only') ? ' td-choice--icon-only' : ''}` : '';
+    return `<div class="td-field td-choice td-choice--${variant}${seg}">`
       + (label ? `<div class="td-field__label td-choice__label" id="${id}-label">${esc(label)}`
         + (variant === 'swatch' ? '<span class="td-choice__current" aria-hidden="true"></span>' : '') + '</div>' : '')
       + `<div class="td-choice__options" role="radiogroup"${label ? ` aria-labelledby="${id}-label"` : ''}>`
@@ -203,6 +223,15 @@ export class TdChoiceGroup extends TdFormElement {
     const esc = (v) => this.escapeHtml(v);
     const oid = `${esc(this.id)}-o${o.index}`;
     const swatchMode = this._variant() === 'swatch';
+    if (this._variant() === 'segmented') {
+      // v0.52.0: [icon slot] + label (bold-width placeholder via data-label) + hint / note as descriptions only
+      const label = esc(o.label);
+      return (o.icon ? `<span class="td-choice__icon" data-td-icon="${esc(o.icon)}" aria-hidden="true"></span>` : '')
+        + (this._iconOnly(o) ? `<span class="td-choice__text td-sr-only" id="${oid}-l">${label}</span>`
+          : `<span class="td-choice__text" id="${oid}-l" data-label="${label}">${label}</span>`)
+        + (o.hint ? `<span class="td-choice__hint td-sr-only" id="${oid}-h">${esc(o.hint)}</span>` : '')
+        + (o.unavailable ? `<span class="td-choice__note td-sr-only" id="${oid}-n"${o.unavailableLabel ? ' data-td-custom' : ''}>${esc(this._noteText(o))}</span>` : '');
+    }
     const sr = swatchMode ? ' td-sr-only' : '';
     let visual = '';
     if (o.image) {
@@ -229,6 +258,8 @@ export class TdChoiceGroup extends TdFormElement {
       if (r && r.checked && r.classList.contains('td-choice__input')) this._onUserPick(r);
     });
     this.listen(g, 'keydown', (e) => this._onKeydown(/** @type {KeyboardEvent} */ (e)));
+    fillIconSlots(this, ICON_SLOTS);
+    this._variantWarnings();
     this._applyFills();
     this._applyNotes();
     this._applyChecked();
@@ -588,6 +619,8 @@ export class TdChoiceGroup extends TdFormElement {
       const face = opt.querySelector(':scope > .td-choice__face');
       if (face) face.innerHTML = this._faceHTML(o);
     });
+    fillIconSlots(this, ICON_SLOTS);
+    this._variantWarnings();
     this._applyFills();
     this._applyChecked();
     this._applyDisabled();
@@ -758,7 +791,7 @@ export class TdChoiceGroup extends TdFormElement {
       const face = r.nextElementSibling;
       if (r.localName !== 'input' || r.getAttribute('type') !== 'radio' || face.localName !== 'span'
         || !face.classList.contains('td-choice__face') || face.childElementCount > 4) return null;
-      const o = { value: attr(r, 'value', L.value) ?? '', label: '', hint: '', swatch: '', image: '', unavailableLabel: '',
+      const o = { value: attr(r, 'value', L.value) ?? '', label: '', hint: '', swatch: '', image: '', icon: '', unavailableLabel: '',
         disabled: l.hasAttribute('data-disabled'), unavailable: l.hasAttribute('data-unavailable') };
       if (o.value === OVER) return OVER;
       // face: [svg.td-choice__swatch > circle | img.td-choice__image] + texts (button: inside span.td-choice__body)
@@ -772,7 +805,15 @@ export class TdChoiceGroup extends TdFormElement {
         if (!v.classList.contains('td-choice__image')) return null;
         o.image = attr(v, 'src', L.image) ?? '';
         texts = texts.slice(1);
+      } else if (v && v.localName === 'span' && v.classList.contains('td-choice__icon')) {
+        // v0.52.0 segmented: the icon slot — its content is re-created from the registry on bind (only an <svg> or
+        // nothing is accepted inside)
+        if (!v.hasAttribute('data-td-icon') || ![...v.childNodes].every((c) => (c.nodeType === 3 && !c.data.trim())
+          || (c.nodeType === 1 && c.localName === 'svg' && c.namespaceURI === 'http://www.w3.org/2000/svg'))) return null;
+        o.icon = attr(v, 'data-td-icon', L.icon) ?? '';
+        texts = texts.slice(1);
       }
+      if (o.icon === OVER) return OVER;
       if (o.swatch === OVER || o.image === OVER) return OVER;
       if (texts.length === 1 && texts[0].classList.contains('td-choice__body')) {
         if (texts[0].childElementCount > 3) return null;
@@ -826,7 +867,7 @@ export class TdChoiceGroup extends TdFormElement {
   _ssrLabelOk(l, w) {
     if (l.localName !== 'div' || !ssrSameAttrs(l, w)) return false;
     const nodes = ssrContentNodes(l);
-    const cur = this._variant() === 'swatch' ? nodes.pop() : null;
+    const cur = this._variant() === 'swatch' ? nodes.pop() : null; // (segmented: no current line)
     if (cur && !(cur.nodeType === 1 && cur.localName === 'span' && ssrClassKey(cur) === 'td-choice__current'
       && cur.attributes.length === 2 && cur.getAttribute('aria-hidden') === 'true' && cur.children.length === 0)) return false;
     const star = nodes.length && nodes[nodes.length - 1].nodeType === 1 ? nodes.pop() : null;
@@ -875,6 +916,8 @@ export class TdChoiceGroup extends TdFormElement {
     if (live.nodeType !== want.nodeType) return false;
     if (live.nodeType === 3) return live.data === want.data;
     if (live.localName !== want.localName || live.namespaceURI !== want.namespaceURI) return false;
+    // v0.52.0: an icon slot is compared by its attributes (its <svg> was checked by the parse and is re-created on bind)
+    if (want.nodeType === 1 && want.hasAttribute('data-td-icon')) return ssrSameAttrs(live, want);
     if (want.localName === 'circle') {
       const fill = live.getAttribute('fill');
       if ((o.swatch ? fill !== o.swatch : fill !== null) || live.attributes.length !== want.attributes.length + (o.swatch ? 1 : 0)) return false;
@@ -903,6 +946,21 @@ export class TdChoiceGroup extends TdFormElement {
     return have.length === 1 && have[0].nodeType === 1 && have[0].localName === 'div' && ssrClassKey(have[0]) === 'td-field__note'
       && have[0].id === `${this.id}-note` && have[0].children.length === 0
       && [...have[0].attributes].every((a) => ['class', 'id', 'hidden'].includes(a.name));
+  }
+
+  /**
+   * @private v0.52.0: option fields the current variant does not show — one warning per kind, counts only (never a value):
+   * segmented ignores swatch / image and needs an icon per option when icon-only; icon shows only in segmented.
+   */
+  _variantWarnings() {
+    const seg = this._variant() === 'segmented';
+    const n = (f) => this._options.filter(f).length;
+    const visual = seg ? n((o) => o.swatch || o.image) : 0;
+    if (visual) this._warnOnce('seg-visual', `td-choice-group: ${visual} option(s) with swatch / image — not shown by the segmented variant.`);
+    const icons = seg ? 0 : n((o) => o.icon);
+    if (icons) this._warnOnce(`icon-${this._variant()}`, `td-choice-group: ${icons} option icon(s) ignored — icons show only in variant="segmented".`);
+    const bare = seg && this.hasAttribute('icon-only') ? n((o) => !o.icon) : 0;
+    if (bare) this._warnOnce('seg-bare', `td-choice-group: icon-only — ${bare} option(s) without a valid icon keep their visible label.`);
   }
 
   /** @private */

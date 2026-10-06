@@ -583,6 +583,28 @@ async function runConfig(browser, c) {
       return errs;
     });
     check(tag, 'choice group + stepper (v0.49.0)', v049Err);
+    // v0.52.0: segmented — equal segments (±1 px) inside the host / column, labels wrap (never cut); a toned / locked switch
+    // keeps its switch box inside the host
+    const v052Err = await page.evaluate(() => {
+      const errs = [];
+      for (const el of document.querySelectorAll('td-choice-group[variant="segmented"]')) {
+        const host = el.getBoundingClientRect();
+        const opts = [...el.querySelectorAll('.td-choice__option')].map((o) => o.getBoundingClientRect());
+        const ws = opts.map((r) => r.width);
+        if (Math.max(...ws) - Math.min(...ws) > 1) errs.push(`#${el.id}: unequal segments ${ws.map((w) => w.toFixed(1)).join('/')}`);
+        if (opts.some((r) => r.right > host.right + 0.5)) errs.push(`#${el.id}: a segment outside the host`);
+        for (const t of el.querySelectorAll('.td-choice__text:not(.td-sr-only)')) {
+          if (t.scrollWidth > t.clientWidth + 1) errs.push(`#${el.id}: a cut label`);
+        }
+      }
+      for (const el of document.querySelectorAll('td-toggle[tone], td-toggle[locked]')) {
+        const host = el.getBoundingClientRect();
+        const tr = el.querySelector('.td-switch__track').getBoundingClientRect();
+        if (tr.right > host.right + 0.5 || tr.left < host.left - 0.5) errs.push(`#${el.id}: switch outside the host`);
+      }
+      return errs;
+    });
+    check(tag, 'segmented + toned / locked switch (v0.52.0)', v052Err);
     if (errors.length) check(tag, 'page errors', errors);
 
     if (!c.fallback) await runOverlays(page, c, tag, shot);

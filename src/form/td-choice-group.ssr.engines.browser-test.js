@@ -280,3 +280,20 @@ describe('td-choice-group SSR — review round 2: hydration honours CHOICE_LIMIT
     expect(warns.every((w) => w.length < 300)).to.equal(true);
   });
 });
+
+describe('td-choice-group SSR — v0.52.0 segmented', () => {
+  it('icon slots adopted + re-created from the registry; sizes / icon-only classes; labels as names', () => {
+    const seg = hostOf('c-seg');
+    expect(seg.querySelector('.td-choice').className).to.equal('td-field td-choice td-choice--segmented td-choice--sm');
+    expect([...seg.querySelectorAll('.td-choice__icon')].map((s) => s.querySelector('svg')?.getAttribute('data-icon')))
+      .to.deep.equal(['monitor', 'sun', 'moon']);
+    expect(seg.querySelector('svg.td-choice__swatch')).to.equal(null);
+    expect(seg.querySelector('#c-seg-h-o1-h').classList.contains('td-sr-only')).to.equal(true);
+    const io = hostOf('c-seg-icon');
+    expect(io.querySelector('.td-choice').classList.contains('td-choice--icon-only')).to.equal(true);
+    expect(io.querySelector('.td-choice').classList.contains('td-choice--lg')).to.equal(true);
+    const texts = [...io.querySelectorAll('.td-choice__text')];
+    expect(texts.map((t) => t.classList.contains('td-sr-only'))).to.deep.equal([true, true, false, false]);
+    expect(texts.map((t) => t.textContent)).to.deep.equal(['Tự động', 'Sáng', 'Không icon', 'Khác']);
+  });
+});

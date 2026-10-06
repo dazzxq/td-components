@@ -287,9 +287,9 @@ test('round 2: rendered pairs of the built-in presets — dark gated (v0.42.1), 
     for (const p of PAIRS) {
       const [fg, bg] = resolvePair(tokens, p);
       const ratio = contrast(fg, bg);
-      if (!(ratio >= p.min)) (preset === 'dark' ? darkMisses : lines).push(`${preset}: ${p.id} ${ratio.toFixed(2)} < ${p.min}`);
+      if (!(ratio >= p.min)) (preset === 'dark' || p.gateLight ? darkMisses : lines).push(`${preset}: ${p.id} ${ratio.toFixed(2)} < ${p.min}`);
     }
   }
   if (lines.length) console.log(`built-in light pairs below the rendered-pair gate (reported):\n  ${lines.join('\n  ')}`);
-  assert.deepEqual(darkMisses, [], 'built-in dark (= --preset dark = kit dark) passes every rendered pair');
+  assert.deepEqual(darkMisses, [], 'built-in dark (= --preset dark = kit dark) passes every rendered pair; built-in light every `gateLight` pair');
 });
