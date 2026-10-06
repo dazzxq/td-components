@@ -4,6 +4,7 @@ import { safeColor } from '../utils/css-safe.js';
 import { safeMediaUrl } from '../utils/media-url.js';
 import { normalizeOptions, sameValueList, CHOICE_LIMITS } from '../utils/choice-options.js';
 import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
+import { decideLayout, minWidth } from '../utils/segmented-layout.js';
 
 const VARIANTS = ['button', 'swatch', 'segmented'];
 /** v0.52.0: segment sizes (segmented only) */
@@ -94,6 +95,7 @@ let _groupCounter = 0;
  * @attr {string} variant - button (default) | swatch | segmented (v0.52.0: compact pill segments, icon + label)
  * @attr {string} size - sm | md (default) | lg — segmented only (v0.52.0)
  * @attr {boolean} icon-only - segmented only (v0.52.0): labels become visually hidden names
+ * @attr {boolean} stretch - segmented only (v0.53.1): the rail fills its container
  * @attr {boolean} required / disabled
  * @attr {string} helper-text / error-text / aria-label
  * @fires input - detail: { value, option } (user)
@@ -110,12 +112,13 @@ export class TdChoiceGroup extends TdFormElement {
   };
 
   static get observedAttributes() {
-    return [...super.observedAttributes, 'value', 'label', 'variant', 'size', 'icon-only', 'helper-text', 'error-text', 'aria-label'];
+    return [...super.observedAttributes, 'value', 'label', 'variant', 'size', 'icon-only', 'stretch', 'helper-text', 'error-text',
+      'aria-label'];
   }
 
   static get errorContract() { return true; }
 
-  static get booleanAttributes() { return [...super.booleanAttributes, 'icon-only']; }
+  static get booleanAttributes() { return [...super.booleanAttributes, 'icon-only', 'stretch']; }
 
   /** @private attributes that change the DOM structure → re-render (value / focus kept) */
   static _structural = new Set(['label', 'variant', 'size', 'icon-only']);
@@ -258,6 +261,25 @@ export class TdChoiceGroup extends TdFormElement {
       if (r && r.checked && r.classList.contains('td-choice__input')) this._onUserPick(r);
     });
     this.listen(g, 'keydown', (e) => this._onKeydown(/** @type {KeyboardEvent} */ (e)));
+    // v0.53.1 (plan QĐ 5b fallback — measured: the native focus scroll of the covering radio leaves the segment's outline
+    // (and in Chromium / Firefox / WebKit part of the face) outside an overflowing rail): bring the focused segment +
+    // outline into the rail, scrolling ONLY the rail
+    this.listen(g, 'pointerdown', (e) => {
+      const o = /** @type {HTMLElement} */ (e.target).closest?.('.td-choice__option');
+      this._pointerRadio = o ? o.querySelector(':scope > .td-choice__input') : null;
+    });
+    this.listen(g, 'focusin', (e) => {
+      const r = /** @type {HTMLElement} */ (e.target);
+      if (r === g) { // the overflowing rail (tabindex -1) took a click focus (WebKit does not focus a clicked radio)
+        const t = this._pointerRadio && !this._pointerRadio.disabled ? this._pointerRadio : this._tabStop();
+        this._pointerRadio = null;
+        t?.focus({ preventScroll: true });
+        return;
+      }
+      if (!g.hasAttribute('data-overflow') || !r.classList?.contains('td-choice__input')) return;
+      const face = r.parentElement?.querySelector(':scope > .td-choice__face');
+      if (face) this._revealFace(face);
+    });
     fillIconSlots(this, ICON_SLOTS);
     this._variantWarnings();
     this._applyFills();
@@ -270,6 +292,140 @@ export class TdChoiceGroup extends TdFormElement {
     this._applyCurrent();
     this._syncForm();
     this._applyErrorState();
+    // v0.53.1: the segmented layout level (new DOM → measure again)
+    this._segMeasure = null;
+    if (this._variant() === 'segmented') this._bindLayout();
+    this._layoutSegments();
+  }
+
+  // --- v0.53.1 segmented layout (plan docs/internal/plans/v0.53.1-segmented-layout.md QĐ 1–2, 5b) ---
+
+  /**
+   * Re-measure the segmented rail now and decide its layout level again — for what the component does not observe (a
+   * geometry token / font edited by the site's CSS while the host width stays the same). Observed on its own: the host
+   * width (ResizeObserver), `document.fonts` loadingdone, the pointer type, `size` / `stretch` / `icon-only` / `variant` /
+   * `label` / `options`, the computed font-size of the rail.
+   */
+  relayout() {
+    this._segMeasure = null;
+    this._layoutSegments();
+  }
+
+  /** @private the observers of the layout decision — once per connection (released on disconnect) */
+  _bindLayout() {
+    if (this._layoutBound) return;
+    this._layoutBound = true;
+    const again = () => { this._segMeasure = null; this._layoutSegments(); };
+    if (typeof ResizeObserver !== 'undefined') {
+      // the decision runs in the next frame, outside the observer's delivery: a level change may change the host height
+      // (a wrapped stacked label) — doing it inside the callback would loop ("ResizeObserver loop completed…")
+      let pending = 0;
+      const ro = new ResizeObserver(() => {
+        if (pending) return;
+        pending = requestAnimationFrame(() => { pending = 0; if (this.isConnected) this._layoutSegments(); });
+      });
+      this._cleanups.push(() => { if (pending) cancelAnimationFrame(pending); pending = 0; });
+      ro.observe(this);
+      this._cleanups.push(() => ro.disconnect());
+    }
+    if (typeof document !== 'undefined' && document.fonts) this.listen(document.fonts, 'loadingdone', again);
+    if (typeof matchMedia === 'function') {
+      this._coarseMql = matchMedia('(pointer: coarse)');
+      if (typeof this._coarseMql.addEventListener === 'function') this.listen(this._coarseMql, 'change', again);
+    }
+    this._cleanups.push(() => { this._layoutBound = false; this._coarseMql = null; });
+  }
+
+  /**
+   * @private ONE layout for the whole rail: `data-layout` (equal | fit | stacked) + `data-overflow` on the radiogroup, from
+   * the cached measurements (src/utils/segmented-layout.js). Measures again when there is no cache or the rail's
+   * computed font-size changed. Not laid out yet (0 wide: hidden ancestor) → nothing; the ResizeObserver calls again.
+   */
+  _layoutSegments() {
+    const g = this._groupEl();
+    if (!g) return;
+    if (this._variant() !== 'segmented') {
+      g.removeAttribute('data-layout');
+      g.removeAttribute('data-overflow');
+      return;
+    }
+    const avail = this.getBoundingClientRect().width;
+    if (!(avail > 0) || !this._options.length) return;
+    const fontSize = getComputedStyle(g).fontSize;
+    if (!this._segMeasure || this._segMeasure.fontSize !== fontSize) this._segMeasure = this._measureSegments(fontSize);
+    const m = this._segMeasure;
+    m.avail = avail;
+    const prev = g.hasAttribute('data-layout') ? { layout: g.getAttribute('data-layout'), overflow: g.hasAttribute('data-overflow') } : null;
+    const d = decideLayout({ avail, inline: m.inline, min: m.min, gap: m.gap, pad: m.pad, prev });
+    if (g.getAttribute('data-layout') !== d.layout) g.setAttribute('data-layout', d.layout);
+    if (g.hasAttribute('data-overflow') !== d.overflow) {
+      g.toggleAttribute('data-overflow', d.overflow);
+      // an overflowing rail scrolls: Firefox puts a scrollable element in the Tab order — the radios stay the group's ONE
+      // Tab stop (ADR 0023): tabindex -1 while it overflows (a click on it is sent on to a radio, see focusin)
+      if (d.overflow) g.setAttribute('tabindex', '-1');
+      else g.removeAttribute('tabindex');
+    }
+    if (d.overflow) this._revealChecked();
+  }
+
+  /**
+   * @private The two measuring states, each read as one batch (2 forced layouts per decision, whatever the number of
+   * segments): `inline` → the one-line width of every segment; `min` → label min-content, icon, padding and the touch
+   * minimum of every segment (stacked geometry).
+   */
+  _measureSegments(fontSize) {
+    const g = this._groupEl();
+    const faces = [...g.querySelectorAll(':scope > .td-choice__option > .td-choice__face')];
+    g.setAttribute('data-measuring', 'inline');
+    const inline = faces.map((f) => f.getBoundingClientRect().width);
+    g.setAttribute('data-measuring', 'min');
+    const min = faces.map((f) => {
+      const cs = getComputedStyle(f);
+      const icon = f.querySelector(':scope > .td-choice__icon');
+      const text = f.querySelector(':scope > .td-choice__text:not(.td-sr-only)');
+      return minWidth({
+        touchMin: parseFloat(cs.minWidth) || 0,
+        px: ((parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)) / 2,
+        icon: icon ? icon.getBoundingClientRect().width : 0,
+        label: text ? text.getBoundingClientRect().width : 0,
+      });
+    });
+    const gcs = getComputedStyle(g);
+    const gap = parseFloat(gcs.columnGap) || 0;
+    const pad = ((parseFloat(gcs.paddingLeft) || 0) + (parseFloat(gcs.paddingRight) || 0)) / 2;
+    g.removeAttribute('data-measuring');
+    return { inline, min, gap, pad, fontSize };
+  }
+
+  /** @private overflowing rail: the checked segment (and its focus outline) fully inside the rail's visible area */
+  _revealChecked() {
+    const g = this._groupEl();
+    if (!g || !g.hasAttribute('data-overflow')) return;
+    const r = this._radios().find((x) => x.checked);
+    const face = r && r.parentElement.querySelector(':scope > .td-choice__face');
+    if (face) this._revealFace(face);
+  }
+
+  /**
+   * @private Scroll ONLY the rail (never the page, RTL-safe: physical boxes + scrollBy) so `face` and its focus outline
+   * are inside the rail's visible box; a face wider than that box shows its leading edge (reading direction).
+   */
+  _revealFace(face) {
+    const g = this._groupEl();
+    const r = g.getBoundingClientRect();
+    const f = face.getBoundingClientRect();
+    // the visible area of a scroll container = its padding box (the outline sits in the rail padding, QĐ 5)
+    const m = (parseFloat(getComputedStyle(face).outlineOffset) || 0) + 2;
+    const visL = r.left + g.clientLeft;
+    const visR = visL + g.clientWidth;
+    const rtl = getComputedStyle(g).direction === 'rtl';
+    const left = f.left - m;
+    const right = f.right + m;
+    let delta = 0;
+    if (right - left > visR - visL) delta = rtl ? right - visR : left - visL;
+    else if (left < visL) delta = left - visL;
+    else if (right > visR) delta = right - visR;
+    if (delta) g.scrollBy(delta, 0);
   }
 
   // --- in-place attribute handling ---
@@ -284,6 +440,9 @@ export class TdChoiceGroup extends TdFormElement {
       return;
     }
     switch (name) {
+      case 'stretch': // v0.53.1: CSS + a new decision (not structural)
+        this._layoutSegments();
+        return;
       case 'error-text':
         super.attributeChangedCallback(name, oldVal, newVal);
         return;
@@ -529,6 +688,7 @@ export class TdChoiceGroup extends TdFormElement {
     this._applyChecked();
     this._applyCurrent();
     this._syncForm();
+    this._revealChecked();
   }
 
   _restoreState(state) {
@@ -564,6 +724,7 @@ export class TdChoiceGroup extends TdFormElement {
     this._applyChecked();
     this._applyCurrent();
     this._syncForm();
+    this._revealChecked();
   }
 
   /** @type {Array<object>} normalised frozen copies; setting it validates (warnings) and patches / re-renders */
@@ -628,6 +789,7 @@ export class TdChoiceGroup extends TdFormElement {
     this._applyCurrent();
     this._syncForm();
     if (focused && focused.disabled) this._tabStop()?.focus({ preventScroll: true });
+    this.relayout(); // v0.53.1: labels / icons may have changed
   }
 
   // --- SSR hydrate (contract choice-group@1, ADR 0012 + 0022) ---
