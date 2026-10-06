@@ -34,12 +34,14 @@ describe('v0.36.0 solid semantic buttons (QĐ 19, 24)', () => {
       expect(cs.backgroundColor).to.equal(rgb(bg));
       expect(cs.color).to.equal(rgb(fg));
       expect(cs.borderTopColor).to.equal(rgb(hover));
-      const r = b.getBoundingClientRect();
-      // two moves (edge → centre): a move onto the exact point the pointer already rests on fires no mouseover in Firefox
-      await sendMouse({ type: 'move', position: [Math.round(r.x + 2), Math.round(r.y + 2)] });
-      await sendMouse({ type: 'move', position: [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)] });
-      // a loaded Firefox runner can apply :hover a few frames after the move (CI flake): wait for the real signal, bounded
-      for (let i = 0; i < 60 && !b.matches(':hover'); i++) await raf();
+      // headless Firefox under load sometimes drops the synthetic hover for a move (CI flake on alternating cases): re-measure
+      // and move again (edge → centre, 1 px jitter) up to 3 times, each time waiting a bounded number of frames for :hover
+      for (let attempt = 0; attempt < 3 && !b.matches(':hover'); attempt++) {
+        const r = b.getBoundingClientRect();
+        await sendMouse({ type: 'move', position: [Math.round(r.x + 2 + attempt), Math.round(r.y + 2)] });
+        await sendMouse({ type: 'move', position: [Math.round(r.x + r.width / 2 + attempt), Math.round(r.y + r.height / 2)] });
+        for (let i = 0; i < 30 && !b.matches(':hover'); i++) await raf();
+      }
       await raf();
       cs = getComputedStyle(b);
       expect(b.matches(':hover')).to.equal(true);
