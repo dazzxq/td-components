@@ -1801,6 +1801,7 @@ host `disabled`).
 | `variant` | `'button'` (mặc định) \| `'swatch'` \| `'segmented'` (0.52.0: thanh viên thuốc, icon + nhãn — [Choice group › mục 7](../components/choice-group.md#7-thanh-chọn-segmented-0520)) |
 | `size` | 0.53.0, chỉ `segmented`: `'sm'` \| `'md'` (mặc định) \| `'lg'`; khác → `md` |
 | `icon_only` | 0.53.0, chỉ `segmented`: `true` → nhãn của lựa chọn **có icon** thành `td-sr-only` (vẫn là tên truy cập) |
+| `stretch` | 0.53.1, chỉ `segmented`: `true` → attribute `stretch` trên host (thanh lấp cột; markup bên trong không đổi, không `stretch` → giống từng byte 0.53.0). Bố cục ở chỗ hẹp: [Choice group › Bố cục ở chỗ hẹp](../components/choice-group.md#bố-cục-ở-chỗ-hẹp-0531) |
 | option `icon` | 0.53.0: tên icon (`/^[a-z][a-z0-9-]{0,63}$/`, `Td::icon()` biết — core hoặc icon site đã đăng ký **ở cả PHP lẫn JS**); sai / không có → bỏ khoá (tính vào cảnh báo gộp), lựa chọn giữ. Chỉ in ở `segmented`; `segmented` không in `swatch` / `image`, `hint` chỉ là mô tả `td-sr-only` |
 | `required`, `disabled` | trên host + mọi radio |
 | `helper_text`, `error_text` | ghi chú / lỗi dưới nhóm (`aria-describedby` / `aria-invalid` trên radiogroup) |

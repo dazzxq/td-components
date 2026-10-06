@@ -30,3 +30,6 @@ form.sb-stack.sb-narrow { align-items: stretch; }
 .sb-card { display: flex; flex-direction: column; gap: 6px; padding: 16px; min-height: 120px; box-sizing: border-box; border: 1px solid var(--td-color-border); border-radius: 12px; background: var(--td-color-surface); color: var(--td-color-text); text-decoration: none; font: 14px/1.4 var(--td-font-sans); }
 .sb-carousel-responsive { --td-carousel-peek: 12%; --td-carousel-per-view-sm: 2; --td-carousel-per-view-lg: 4; }
 .sb-carousel-fixed { --td-carousel-slide-size: 220px; }
+/* v0.53.1: segmented in a sidebar-wide column (dsuite: 232 px sidebar → 216 px content) and a 140 px one */
+.sb-side216 { width: 216px; }
+.sb-side140 { width: 140px; }

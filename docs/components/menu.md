@@ -316,6 +316,7 @@ TdMenu.bind(profileCard, () => [
       const g = document.createElement('td-choice-group');
       g.setAttribute('variant', 'segmented');
       g.setAttribute('size', 'sm');
+      g.setAttribute('stretch', '');              // 0.53.1: thanh lấp hàng (bố cục một-cho-cả-thanh ở chỗ hẹp)
       g.setAttribute('value', currentTheme());
       g.options = THEMES;                         // không đặt aria-label: hàng đã mang tên "Giao diện"
       g.addEventListener('change', (e) => {

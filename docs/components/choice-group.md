@@ -213,12 +213,49 @@ Giới hạn không JS: dòng "lựa chọn hiện tại" của swatch là chữ
   `segmented`.
 - `hint` không hiện trong ô (vẫn là mô tả cho trình đọc màn hình); `swatch` / `image` bị bỏ qua (cảnh báo). `disabled` /
   `unavailable` / `required` / form / reset / SSR như mọi variant. `icon-only` + `unavailable`: vạch chéo qua icon.
-- Nhãn dài **xuống dòng** trong ô (không cắt `…`); ô hẹp thì icon lên trên nhãn. Muốn rãnh rộng hết cột:
-  `.td-choice--segmented .td-choice__options { display: grid; }` (CSS của site).
+- Muốn rãnh **lấp hết cột** (sidebar, menu): attribute `stretch` (0.53.1; PHP `'stretch' => true`) — xem
+  [Bố cục ở chỗ hẹp](#bố-cục-ở-chỗ-hẹp-0531).
 - **Vì sao không phải [`td-tabs`](tabs.md):** tabs là `role="tablist"` — **điều hướng** giữa các vùng nội dung trên trang
   (trình đọc màn hình đọc "thẻ 1 trên 3" và chờ một `tabpanel`, mũi tên mặc định chỉ dời focus), không gửi form. Theme / chế
   độ là **một giá trị** (lưu, gửi, khôi phục) → `role="radiogroup"`: mũi tên chọn luôn, có `name` / `required` / reset /
   SSR.
+
+#### Bố cục ở chỗ hẹp (0.53.1)
+
+Một thanh segmented luôn có **đúng một** bố cục cho **mọi** ô — không bao giờ có ô xếp icon trên nhãn cạnh ô nằm ngang.
+Component đo nội dung (một `ResizeObserver` trên host) và chọn bậc **đầu tiên vừa chỗ**:
+
+| Bậc (`data-layout` trên `.td-choice__options`) | Khi nào | Hình |
+|---|---|---|
+| `equal` | `n × (ô rộng nhất) + khung ≤ chỗ` | Ô **bằng nhau**, icon + nhãn nằm ngang. Không `stretch`: rãnh rộng theo nội dung; `stretch`: lấp cột |
+| `fit` | `Σ(bề rộng ô) + khung ≤ chỗ` | Icon + nhãn ngang; ô không bao giờ hẹp hơn nội dung một dòng của nó, các ô còn lại **chia đều** phần dư; rãnh lấp cột |
+| `stacked` | còn lại | **Mọi** ô xếp icon trên nhãn, ô bằng nhau, rãnh lấp cột; nhãn dài xuống dòng trong ô (không cắt) |
+| `stacked` + `data-overflow` | `minRail > chỗ` | Như `stacked`, ô ở bề rộng tối thiểu; **rãnh tự cuộn ngang** — trang không bao giờ tràn ngang |
+
+```
+khung   = (n − 1) × --td-choice-seg-gap + 2 × --td-choice-seg-pad
+minRail = Σ minᵢ + khung,   minᵢ = max(44 px khi cảm ứng / 0 khi chuột, 2 × padding ngang + max(icon, từ dài nhất của nhãn))
+```
+
+- Ví dụ sidebar 216 px (`size="sm"`, `stretch`, Tự động / Sáng / Tối): bậc `fit` — ba ô ngang, lấp sidebar.
+- **Cảm ứng ở chỗ rất hẹp:** ô giữ ≥ 44 × 44 px; 3 ô cần `3 × 44 + 2 × 2 + 2 × 3 = 142 px` — ở 140 px rãnh **cuộn ngang
+  trong chính nó** (vuốt ngang trên thanh), không bao giờ làm trang tràn. Ô đang focus / đang chọn luôn được kéo vào vùng
+  thấy (chỉ cuộn rãnh, không cuộn trang; đúng cả RTL).
+- **Trước khi JS tải / tắt JS:** thanh dùng bậc `equal` (như 0.52), icon luôn cạnh nhãn (không bao giờ trộn); chỗ hẹp thì rãnh
+  tự cuộn. Khi module tải, bậc đúng được chọn — **hộp của thanh không đổi** (mọi bậc cao bằng nhau: ở `stacked` icon tự thu
+  nhỏ cho vừa chiều cao ô). Ngoại lệ duy nhất: `stacked` với nhãn phải xuống dòng → cao thêm đúng số dòng.
+- Đo lại tự động khi: bề rộng host đổi, font web tải xong (`document.fonts`), đổi `size` / `stretch` / `icon-only` /
+  `variant` / `label` / `options`, chuột ↔ cảm ứng, cỡ chữ của thanh đổi. Đổi theme (`data-td-theme`) chỉ đổi màu nên không cần
+  đo. **Site tự sửa token hình học / font bằng CSS lúc chạy mà bề rộng host không đổi → gọi `el.relayout()`.**
+- Token kích thước ô (0.53.1): `--td-choice-seg-gap`, `--td-choice-seg-px`, `--td-choice-seg-font`, `--td-choice-seg-icon`,
+  `--td-choice-seg-icon-gap` ([bảng token](#tuỳ-biến-giao-diện)). `sm` gọn hơn 0.52 (padding 6 px, icon 16 px, khe 4 px).
+- **Caption:** dùng `label="Giao diện"` (nhãn field nhìn thấy, cũng là tên của nhóm) thay `aria-label` khi muốn có chữ phía
+  trên thanh — ví dụ sidebar. Trong menu tài khoản dùng `label` của **mục menu** (đừng đặt cả hai).
+
+```php
+<?= td_choice_group('', $THEMES, $theme, ['id' => 'theme-switch', 'label' => 'Giao diện',
+    'variant' => 'segmented', 'size' => 'sm', 'stretch' => true]) ?>
+```
 
 #### Công thức: chuyển theme (Tự động / Sáng / Tối)
 
@@ -270,6 +307,7 @@ document.getElementById('theme-switch').addEventListener('change', (e) => {
 | `variant` | `button` \| `swatch` \| `segmented` | `button` | Dáng; giá trị lạ → `button`. `segmented` từ 0.52.0 ([mục 7](#7-thanh-chọn-segmented-0520)). |
 | `size` | `sm` \| `md` \| `lg` | `md` | 0.52.0, chỉ `segmented`: chiều cao ô (32 / 40 / 48px; cảm ứng ≥ 44). |
 | `icon-only` | boolean | — | 0.52.0, chỉ `segmented`: nhãn ẩn trực quan (vẫn là tên truy cập). |
+| `stretch` | boolean | — | 0.53.1, chỉ `segmented`: thanh lấp cột chứa nó ([Bố cục ở chỗ hẹp](#bố-cục-ở-chỗ-hẹp-0531)). |
 | `required` / `disabled` | boolean | — | [Mục 3](#3-required); `disabled` khoá cả nhóm (cả `<fieldset disabled>` tổ tiên). |
 | `helper-text` / `error-text` | string | — | Ghi chú / lỗi dưới nhóm (error contract). |
 | `aria-label` | string | — | Tên khi không có `label`. |
@@ -285,6 +323,8 @@ document.getElementById('theme-switch').addEventListener('change', (e) => {
 | `setHelper(msg)` / `setError(msg)` / `clearError()` / `errorMessage` | | Error contract. |
 | `form`, `validity`, `validationMessage`, `willValidate`, `checkValidity()`, `reportValidity()` | | Như control native; bong bóng neo vào radio đang chọn / radio đầu tiên chọn được. |
 | `focus()` | | Focus điểm dừng Tab của nhóm. |
+| `relayout()` | `void` | 0.53.1, `segmented`: đo lại và chọn lại bậc bố cục ngay — cho thay đổi kit không tự thấy (site sửa token hình học / font bằng CSS mà bề rộng host giữ nguyên). |
+| `stretch` | `boolean` | 0.53.1: phản chiếu attribute `stretch`. |
 | `TdChoiceGroup.messages` | static | `valueMissing` "Vui lòng chọn một mục", `unavailable` "Hết hàng". |
 
 ## Event
@@ -316,7 +356,12 @@ document.getElementById('theme-switch').addEventListener('change', (e) => {
 | `--td-choice-seg-ring` | `var(--td-color-text-muted)` | 0.52.0: vòng 1px quanh viên (≥ 3:1 với rãnh và viên — mực muted được bộ sinh palette giữ ≥ 4.7 trên rãnh hover và mọi bề mặt) |
 | `--td-choice-seg-fg` / `-fg-selected` | `var(--td-color-text-label)` / `var(--td-color-text)` | 0.52.0: chữ / icon ô nghỉ (≥ 4.7 trên rãnh, cả trên nền trang sáng của kit) / ô chọn + hover |
 | `--td-choice-seg-h` | `2.5rem` (sm `2rem`, lg `3rem`) | 0.52.0: chiều cao ô (cảm ứng ≥ 44px) |
-| `--td-choice-seg-pad` / `--td-choice-seg-radius` | `3px` / `var(--td-radius-full)` | 0.52.0: đệm rãnh / bo |
+| `--td-choice-seg-pad` / `--td-choice-seg-radius` | `3px` / `var(--td-radius-full)` | 0.52.0: đệm rãnh / bo. Viền focus của ô nằm trong đệm (`outline-offset = đệm − 2px`) để rãnh cuộn không cắt nó |
+| `--td-choice-seg-gap` | `2px` | 0.53.1: khe giữa các ô |
+| `--td-choice-seg-px` | `0.875rem` (sm `0.375rem`, lg `1.125rem`; `icon-only` `0.625rem`) | 0.53.1: padding ngang ô |
+| `--td-choice-seg-font` | `var(--td-text-sm)` (sm `text-xs`, lg `text-base`) | 0.53.1: cỡ chữ nhãn |
+| `--td-choice-seg-icon` | `1.25rem` (sm `1rem`) | 0.53.1: cỡ icon (ở `stacked` tự thu nhỏ cho vừa chiều cao ô) |
+| `--td-choice-seg-icon-gap` | `0.375rem` (sm `0.25rem`) | 0.53.1: khe icon ↔ nhãn |
 
 Mọi màu đọc token của hợp đồng theme → dark / `auto` / theme theo vùng / palette sinh tự đúng. Đã chọn = **vòng mực** (đổi
 hình dạng, không chỉ màu); focus = viền focus của kit **ngoài** mặt nút, tách khỏi vòng chọn. Nhãn dài xuống dòng trong nút
@@ -404,7 +449,9 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - **Ảnh swatch không hiện** → CSP `img-src` của site chặn CDN, hoặc URL `http:` trên trang HTTPS (bị từ chối có chủ đích).
 - **Form gửi được dù `required`** → mọi lựa chọn đang `disabled` ([mục 3](#3-required)).
 - Không có: chọn nhiều, bỏ chọn khi đã chọn, tự ẩn lựa chọn, ma trận nhiều chiều trong một element, swatch hai màu / gradient,
-  tooltip tên màu, dải cuộn ngang, `size` cho `button` / `swatch`, thanh trượt animation cho `segmented`, RTL.
+  tooltip tên màu, dải cuộn ngang cho `button` / `swatch` (segmented: chỉ khi tràn), `size` cho `button` / `swatch`, thanh
+  trượt animation cho `segmented`, tự ẩn nhãn khi chật (`segmented` dùng `stacked` / cuộn).
+- **Segmented sửa token bằng CSS lúc chạy mà thanh không đổi bố cục** → gọi `el.relayout()` (0.53.1).
 
 ## Xem thêm
 
