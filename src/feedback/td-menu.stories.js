@@ -2,6 +2,9 @@ import { TdMenu } from './td-menu.js';
 import { TdModal } from './td-modal.js';
 import { TdLightbox } from './td-lightbox.js';
 import { escapeHtml } from '../utils/escape.js';
+import '../form/td-choice-group.js';
+import '../form/td-input-field.js';
+import '../form/td-button.js';
 import '../styles/story-layout.css';
 
 export default {
@@ -169,5 +172,74 @@ export const LightboxToolbar = {
         }],
       });
     });
+  },
+};
+
+const THEMES = [{ value: 'auto', label: 'Tự động', icon: 'monitor' }, { value: 'light', label: 'Sáng', icon: 'sun' },
+  { value: 'dark', label: 'Tối', icon: 'moon' }];
+
+/**
+ * v0.53.0 (ADR 0026): an account menu with custom rows — a static header, the theme switcher (td-choice-group
+ * segmented: ← → switch at once, the menu stays open), sign out. The theme applies to this story's preview only.
+ */
+export const AccountMenu = {
+  name: 'Menu tài khoản (mục tuỳ biến)',
+  render: () => `<div class="sb-stack"><button type="button" class="td-btn td-btn--secondary" id="mn-acc">
+    <span class="td-btn__label">Nguyễn Văn An</span></button>
+    <p class="sb-note" id="mn-acc-out">↓ tới "Giao diện", ← → đổi theme ngay; Tab đi qua mọi điểm dừng; Esc đóng.</p></div>`,
+  play: ({ canvasElement }) => {
+    const root = canvasElement.closest('[data-td-theme]') || document.documentElement;
+    const current = () => (THEMES.some((t) => t.value === root.getAttribute('data-td-theme')) ? root.getAttribute('data-td-theme') : 'auto');
+    TdMenu.bind(out(canvasElement, 'mn-acc'), () => [
+      { type: 'custom', id: 'who', render: () => {
+        const d = document.createElement('div');
+        d.className = 'sb-note';
+        d.textContent = 'an.nguyen@example.com';
+        return d;
+      } },
+      { separator: true },
+      { label: 'Hồ sơ', onSelect: () => say(canvasElement, 'mn-acc-out', 'Mở hồ sơ.') },
+      { separator: true },
+      { type: 'custom', id: 'theme', label: 'Giao diện', render: ({ signal }) => {
+        const g = document.createElement('td-choice-group');
+        g.setAttribute('variant', 'segmented');
+        g.setAttribute('size', 'sm');
+        g.setAttribute('value', current());
+        g.options = THEMES;
+        g.addEventListener('change', (e) => {
+          root.setAttribute('data-td-theme', e.detail.value);
+          say(canvasElement, 'mn-acc-out', `Giao diện: ${e.detail.option.label}.`);
+        }, { signal });
+        return g;
+      } },
+      { separator: true },
+      { label: 'Đăng xuất', icon: 'log-out', danger: true, onSelect: () => say(canvasElement, 'mn-acc-out', 'Đã đăng xuất (giả lập).') },
+    ], { label: 'Tài khoản', align: 'start' });
+  },
+};
+
+/** v0.53.0: a small form in a custom row, cloned from a <template> (no HTML strings); Lưu closes via ctx.close(). */
+export const QuickForm = {
+  name: 'Form nhỏ trong menu',
+  render: () => `<div class="sb-stack"><button type="button" class="td-btn td-btn--secondary" id="mn-form">
+    <span class="td-btn__label">Ghi chú nhanh</span></button>
+    <template id="mn-form-tpl"><form class="sb-stack"><td-input-field label="Ghi chú" name="note"></td-input-field>
+      <td-button type="submit" variant="primary" size="sm">Lưu</td-button></form></template>
+    <p class="sb-note" id="mn-form-out"></p></div>`,
+  play: ({ canvasElement }) => {
+    const tpl = out(canvasElement, 'mn-form-tpl');
+    TdMenu.bind(out(canvasElement, 'mn-form'), () => [
+      { type: 'custom', label: 'Ghi chú cho đơn DH10240', render: ({ close, signal }) => {
+        const form = document.importNode(tpl.content, true).firstElementChild;
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          say(canvasElement, 'mn-form-out', `Đã lưu: ${new FormData(form).get('note') || '(trống)'}`);
+          close();
+        }, { signal });
+        return form;
+      } },
+      { separator: true },
+      { label: 'Xem lịch sử ghi chú' },
+    ], { align: 'start' });
   },
 };

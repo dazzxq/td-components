@@ -29,6 +29,9 @@ Không bao giờ đưa input của người dùng cuối qua các đường này
 
 - `TdMenu` item `iconNode`: `SVGElement` tin cậy (được clone); `href`: https, http chỉ khi trang là http (không hạ cấp từ HTTPS), link tương đối xét theo protocol sau resolve. `TdFormValidation`: rule tự viết mà throw → field không hợp lệ (fail closed). Nhãn/hint của menu, chip, gợi ý và thông báo của
   `TdFormValidation` luôn là text; `renderOption`/`renderChip` chỉ nhận Node hoặc text (0.12.0 — không có hatch HTML mới).
+- `TdMenu` item `type: 'custom'` (0.53.0, ADR 0026): `render(ctx)` → **Element** (DOM tin cậy của dev, đặt nguyên trạng,
+  không clone / sanitize). **Chuỗi bị từ chối** (cảnh báo cố định, không bao giờ thành DOM) — không có hatch HTML; dữ liệu
+  người dùng vào nội dung qua `textContent` / attribute như mọi Node hook. Xem §6m.
 
 - `TdHovercard` (0.14.0): chuỗi trả về từ `content()` và mọi fragment tải từ URL được render bằng `innerHTML` — CHỈ markup của
   dev hoặc fragment cùng origin do server đã escape, không bao giờ input thô của người dùng. Ưu tiên Node hoặc `<template>`
@@ -489,6 +492,22 @@ Server **vẫn phải** kiểm giá trị lựa chọn thuộc tập hợp lệ 
   chặn (`td__reserve`); `aria-describedby` của site được giữ và nối trước id của kit.
 - Test: `test/php/td-v052-php.test.js` (escape `<script>` / `<img onerror>`, tên giữ chỗ, cắt 200), `src/form/td-v052-toggle-*.engines.browser-test.js`,
   `src/form/td-v052-choice-segmented.engines.browser-test.js` (icon `"><img…>` bị bỏ), `test/engines/toggle-locked-a11y.spec.mjs`.
+
+## 6m. `TdMenu` mục tuỳ biến (v0.53.0)
+
+- **Không đường chuỗi → DOM.** `render(ctx)` phải trả `Element` (`instanceof Element`); chuỗi (kể cả HTML / `TrustedHTML`
+  ép thành chuỗi), số, `DocumentFragment`, Text node, Promise → hàng bị bỏ + `console.warn` **cố định** (không ghép dữ
+  liệu của caller). `label` của item custom → `textContent`; `id` → `setAttribute('data-item')`.
+- **Element của caller không bị đổi**: kit chỉ append (không clone, không thêm attribute / class / style, không
+  `fillIconSlots` trong nội dung). Element **đang gắn** trong trang bị từ chối (append sẽ giật nó khỏi trang).
+- **Không rò listener / tham chiếu**: mỗi hàng một `AbortController`; `signal` abort khi menu đóng (mọi lý do) hoặc khi hàng
+  bị bỏ (kể cả `render` ném sau khi đã gắn listener); session không giữ element sau khi đóng. `ctx.close()` cũ không đóng
+  menu mới hơn.
+- **CSP**: kit chỉ thêm class + text; nội dung của caller phải sạch CSP (không `style="…"`, không `<style>`).
+- Nội dung trong menu **không phải kiểm soát quyền** — thao tác vẫn phải được server kiểm.
+- Test: `src/feedback/td-v053-menu-custom.browser-test.js` (chuỗi `<img onerror>` không thành DOM, mọi đường từ chối,
+  abort theo từng lý do đóng, 50 lần mở / đóng), `src/feedback/td-v053-menu-custom.engines.browser-test.js`, CSP state
+  `td-menu.panel-*`.
 
 ## 7. Trách nhiệm của site
 

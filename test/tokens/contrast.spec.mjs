@@ -30,6 +30,8 @@
  *   badges ≥ 4.7 (pairs, page only).
  * v0.41.0: the page-only screenshot cases (ghost buttons, alerts, badges) also over the theme's real --td-color-bg and
  *   --td-color-surface (theming plan M5; thresholds unchanged).
+ * v0.53.0: a real TdMenu panel (translucent glass) over every backdrop — the custom row caption ≥ 4.7 and a td-choice-group
+ *   segmented inside it (idle / selected label ≥ 4.7, icons ≥ 3.2, disabled ≥ 2.2, selected ring ≥ 3 vs trough + pill).
  * v0.36.2: pressed states (ADR 0019) — td-button variants + ghost, td-action-button tones, a popup option row carrying
  *   data-td-pressed: label / icon ≥ 4.7 on the pressed fill (pairs, page only).
  * No dependencies: PNGs are decoded with node:zlib.
@@ -99,6 +101,15 @@ async function launchOptions(name, launcher) {
 }
 
 const failures = [];
+/**
+ * v0.53.0 (release lead, plan v0.53.0-menu-custom-item R2 = option b): a DISABLED segment of a td-choice-group inside a
+ * TdMenu panel, light theme, over a DARK backdrop (black / checker / photo) measures ~2.0–2.15:1 — the 94 % light glass
+ * lets the dark page through under the hover trough. WCAG 1.4.3 / 1.4.11 exempt inactive controls and 2.2 is a kit-internal
+ * floor, so this pair is RECORDED (reported), not asserted; over white it stays asserted, and every other v053 pair
+ * (caption, idle / selected label + icon, selected ring) stays asserted on every backdrop. No palette / colour override.
+ */
+const recorded = [];
+const recordOnly = (name, backdrop) => name.startsWith('v053:seg-disabled') && backdrop !== 'white';
 let checks = 0;
 const worst = new Map(); // name → lowest label ratio seen (report)
 const focusWorst = new Map(); // v0.21.0: focus border ratios (report)
@@ -171,7 +182,8 @@ async function runEngine(name, launcher) {
           // legible (≥ DISABLED_MIN), not reach the AA text threshold
           const min = info.name.includes(':disabled') ? DISABLED_MIN : LABEL_MIN;
           if (min === LABEL_MIN) worst.set(`${theme} ${info.name}`, Math.min(worst.get(`${theme} ${info.name}`) ?? Infinity, lbl));
-          if (lbl < min) failures.push(`${tag}: label ${lbl.toFixed(2)}:1 < ${min}`);
+          if (recordOnly(info.name, backdrop)) recorded.push(`${tag}: label ${lbl.toFixed(2)}:1 (floor ${min}, recorded)`);
+          else if (lbl < min) failures.push(`${tag}: label ${lbl.toFixed(2)}:1 < ${min}`);
         }
         if (info.ink.heading) { // v0.18.0 F5: the alert heading is text too
           checks++;
@@ -184,7 +196,8 @@ async function runEngine(name, launcher) {
           checks++;
           const r = minFor(info.ink[key]);
           const imin = info.name.includes(':disabled') ? DISABLED_MIN : ICON_MIN; // disabled icons greyed out like labels
-          if (r < imin) failures.push(`${tag}: ${key} ${r.toFixed(2)}:1 < ${imin}`);
+          if (recordOnly(info.name, backdrop)) recorded.push(`${tag}: ${key} ${r.toFixed(2)}:1 (floor ${imin}, recorded)`);
+          else if (r < imin) failures.push(`${tag}: ${key} ${r.toFixed(2)}:1 < ${imin}`);
         }
       }
     }
@@ -209,6 +222,15 @@ console.log(`  lowest pressed-state ratios (v0.36.2): ${[...focusWorst.entries()
   const v046 = [...focusWorst.entries()].filter(([k]) => k.includes('v046:'));
   if (!v046.length) { console.log('  v046: no td-diff pair measured'); process.exitCode = 1; }
   console.log(`  lowest td-diff ratios (v0.46.0): ${v046.sort((a, b) => a[1] - b[1]).slice(0, 6).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
+}
+// v0.53.0: the TdMenu panel custom row (caption, segmented on the glass) — fail when nothing was measured
+{
+  if (!recorded.length) { console.log('  v053: the disabled-segment pair was not measured'); process.exitCode = 1; }
+  const low = recorded.filter((r) => / ([0-9.]+):1/.test(r) && Number(r.match(/ ([0-9.]+):1/)[1]) < DISABLED_MIN);
+  console.log(`  v053 RECORDED (not asserted — R2): disabled segment in a light panel over a dark backdrop, ${recorded.length} pair(s), ${low.length} below ${DISABLED_MIN}: ${low.slice(0, 6).join(' · ')}`);
+  const v053 = [...worst.entries(), ...focusWorst.entries()].filter(([k]) => k.includes('v053:'));
+  if (!v053.length) { console.log('  v053: no menu panel case measured'); process.exitCode = 1; }
+  console.log(`  lowest menu panel ratios (v0.53.0): ${v053.sort((a, b) => a[1] - b[1]).slice(0, 6).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 }
 console.log(`  lowest otp / copy / skeleton ratios (v0.27.0): ${[...focusWorst.entries()].filter(([k]) => /(otp|copy|skeleton):/.test(k)).sort((a, b) => a[1] - b[1]).slice(0, 5).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  lowest chip-input multi-select label ratios (v0.28.0): ${[...worst.entries()].filter(([k]) => k.includes('chip-multi:')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);

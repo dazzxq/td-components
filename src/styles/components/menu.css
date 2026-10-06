@@ -221,6 +221,35 @@
 		background: var(--td-menu-separator);
 	}
 
+	/* ---- v0.53.0 menu panel (plan v0.53.0-menu-custom-item QĐ 1 / QĐ 11, ADR 0026): role="dialog" hosting role="menu"
+	   sections + custom rows. The row inherits the surface; the caller's content brings its own controls (no hover, no
+	   pressed fill, no min-height on the row). No new token. ---- */
+	.td-menu--panel:focus {
+		outline: 2px solid transparent;
+	}
+
+	.td-menu__section {
+		display: flex; /* never display: contents — older engines drop the role of such an element */
+		flex: none;
+		flex-direction: column;
+	}
+
+	.td-menu__custom {
+		flex: none;
+		min-width: 0;
+		padding: var(--td-menu-item-py) var(--td-menu-item-px);
+	}
+
+	/* label ink, not the hint's muted one: muted on the 94 % light glass over a dark page region = 4.63:1 (< 4.7,
+	   test:contrast v053:caption); --td-color-text-label is kept ≥ 4.7 on every surface by the palette solver */
+	.td-menu__custom-label {
+		margin-block-end: var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-medium);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text-label);
+	}
+
 	/* ---- Menu button ("···") — content layer ---- */
 	.td-menu-btn {
 		box-sizing: border-box;
@@ -323,6 +352,10 @@
 
 		.td-menu__separator {
 			background: CanvasText;
+		}
+
+		.td-menu__custom-label {
+			color: CanvasText;
 		}
 
 		.td-menu-btn:focus-visible {

@@ -243,7 +243,9 @@ function callCovered(r) {
   try { r.onCovered(); } catch (err) { console.error(err); }
 }
 
-const anchoredIn = (root, r) => !r.blocking && !!r.anchor && !!root && root.contains(r.anchor);
+// v0.53.0 (Codex impl r1 #4): composed containment — a popup anchored inside a shadow root of the root's content (a
+// td-dropdown in a site component inside a TdMenu custom row) belongs to the root too
+const anchoredIn = (root, r) => !r.blocking && !!r.anchor && !!root && composedContains(root, r.anchor);
 
 /**
  * Floating registrations whose anchor lies inside `container` (a hovercard's child menu, the popups of a dialog).
@@ -263,7 +265,7 @@ export function childFloatingIn(container) {
  */
 export function floatingContains(root, node) {
   if (typeof Node === 'undefined' || !(node instanceof Node)) return false;
-  return active.some((r) => anchoredIn(root, r) && !!r.element && r.element.contains(node));
+  return active.some((r) => anchoredIn(root, r) && !!r.element && composedContains(r.element, node));
 }
 
 /**
@@ -304,6 +306,121 @@ export function focusablesIn(root) {
     (el) => el.tabIndex >= 0 && !el.matches(':disabled') && !el.closest('[hidden], [inert]')
       && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden',
   );
+}
+
+/**
+ * v0.53.0 (plan v0.53.0-menu-custom-item QĐ 3): the focused element, looking through open shadow roots.
+ * @param {Document} [doc]
+ * @returns {Element|null}
+ */
+export function deepActiveElement(doc = document) {
+  let a = doc.activeElement;
+  while (a && a.shadowRoot && a.shadowRoot.activeElement) a = a.shadowRoot.activeElement;
+  return a;
+}
+
+/**
+ * v0.53.0: `root` contains `node` in the COMPOSED tree (a node inside an open or closed shadow root of a descendant
+ * counts: the walk climbs host by host).
+ * @param {Node|null} root
+ * @param {Node|null} node
+ * @returns {boolean}
+ */
+export function composedContains(root, node) {
+  if (typeof Node === 'undefined' || !(root instanceof Node) || !(node instanceof Node)) return false;
+  for (let n = node; n;) {
+    if (n === root || root.contains(n)) return true;
+    const r = n.getRootNode();
+    n = typeof ShadowRoot !== 'undefined' && r instanceof ShadowRoot ? r.host : null;
+  }
+  return false;
+}
+
+/** v0.53.0: `el` or a composed-tree ancestor matches `sel` (stops at `stop`, which is not tested). */
+export function composedClosest(el, sel, stop = null) {
+  const SR = typeof ShadowRoot !== 'undefined' ? ShadowRoot : null;
+  let n = el;
+  while (n && n !== stop) {
+    if (n instanceof Element && n.matches(sel)) return n;
+    // Codex impl r1 #3: flat-tree parent — a slotted node's parent is its slot, then the shadow root's host
+    const p = (n instanceof Element || (typeof Text !== 'undefined' && n instanceof Text)) && n.assignedSlot
+      ? n.assignedSlot : n.parentNode;
+    n = SR && p instanceof SR ? p.host : p;
+  }
+  return null;
+}
+
+/** Flat-tree element walk (open shadow roots entered, slots replaced by their assigned elements). */
+function flatWalk(parent, out) {
+  const kids = parent.shadowRoot ? parent.shadowRoot.children : parent.children;
+  for (const el of kids) {
+    if (el.localName === 'slot' && typeof el.assignedElements === 'function') {
+      const assigned = el.assignedElements({ flatten: true });
+      if (assigned.length) {
+        for (const a of assigned) { out.push(a); flatWalk(a, out); }
+        continue;
+      }
+    }
+    out.push(el);
+    flatWalk(el, out);
+  }
+  return out;
+}
+
+/**
+ * v0.53.0 (Codex r2 sec #3): the named radios of one scope (a document / shadow root) indexed ONCE — form owner → name
+ * → radios in tree order. `index` (a Map scope → that index) may be shared by several tabSequence() calls of one
+ * navigation so each scope is read a single time.
+ */
+function radioGroupsOf(scope, index) {
+  let g = index.get(scope);
+  if (g) return g;
+  g = new Map();
+  index.set(scope, g);
+  if (typeof scope.querySelectorAll !== 'function') return g;
+  for (const r of scope.querySelectorAll('input[type="radio"][name]')) {
+    if (!r.name) continue;
+    const f = r.form || null;
+    let byName = g.get(f);
+    if (!byName) g.set(f, (byName = new Map()));
+    let list = byName.get(r.name);
+    if (!list) byName.set(r.name, (list = []));
+    list.push(r);
+  }
+  return g;
+}
+
+/**
+ * v0.53.0 (plan v0.53.0-menu-custom-item QĐ 3, Codex plan-review r1 #2): the sequential focus stops of `root` in
+ * FLAT-TREE order, the way native Tab visits them — open shadow roots are entered (slotted light children at their
+ * slot, unassigned ones skipped), a `delegatesFocus` host is not a stop of its own (its inner focusables are), a host
+ * whose shadow root is closed is one stop when it is itself focusable (tabIndex ≥ 0). A named radio group spans its
+ * WHOLE native scope (root node + form owner + name — Codex impl r1 #2): its single stop is its checked member
+ * (anywhere), else its first eligible member — in both directions (M1: native Shift+Tab lands on the FIRST radio of an
+ * unchecked group in Chromium, Firefox and WebKit); a radio of `root` is a stop only when it is that member. Filtered
+ * like focusablesIn (tabIndex ≥ 0, not disabled, rendered, visible, no composed [hidden] / [inert] ancestor).
+ * @param {Element} root
+ * @param {{ index?: Map<Node, Map<HTMLFormElement|null, Map<string, HTMLInputElement[]>>> }} [opts] a radio index to
+ *   share across the calls of one navigation (each scope is queried once)
+ * @returns {HTMLElement[]}
+ */
+export function tabSequence(root, { index = new Map() } = {}) {
+  if (!root) return [];
+  const usable = (el) => el instanceof HTMLElement && el.matches(FOCUSABLE) && el.tabIndex >= 0
+    && !(el.shadowRoot && el.shadowRoot.delegatesFocus) && !el.matches(':disabled')
+    && !composedClosest(el, '[hidden], [inert]') && el.getClientRects().length > 0
+    && getComputedStyle(el).visibility !== 'hidden';
+  const reps = new Map(); // group list → its stop (this call)
+  const representative = (el) => {
+    const list = radioGroupsOf(el.getRootNode(), index).get(el.form || null)?.get(el.name) || [el];
+    if (reps.has(list)) return reps.get(list);
+    const checked = list.find((r) => r.checked);
+    const rep = checked ? (usable(checked) ? checked : null) : (list.find(usable) || null);
+    reps.set(list, rep);
+    return rep;
+  };
+  return flatWalk(root, []).filter((el) => usable(el)
+    && (el.localName !== 'input' || el.type !== 'radio' || !el.name || representative(el) === el));
 }
 
 /**

@@ -627,6 +627,36 @@ async function chromiumSemantics(browser) {
       expect(st.on === true && st.changes === 0, `locked tap: ${JSON.stringify(st)}`);
     });
 
+    // v0.53.0 (plan v0.53.0-menu-custom-item M4): the account menu PANEL — segmented row in a TdMenu custom item
+    await it(tag, 'menu panel: segmented segments ≥ 44 × 44, a tap selects, the panel stays open, no pressed fill on the row, a tap outside closes', async () => {
+      await load(page);
+      await page.evaluate(() => document.querySelector('#rsp-menu-panel').scrollIntoView({ block: 'start' }));
+      const trig = await centre(page, '#rsp-menu-panel button');
+      await page.touchscreen.tap(trig.x, trig.y);
+      await page.waitForFunction(() => !!document.querySelector('body > .td-menu--panel td-choice-group .td-choice__face'), null, { timeout: 3000 });
+      const sizes = await page.evaluate(() => [...document.querySelectorAll('body > .td-menu--panel .td-choice__face')]
+        .map((f) => { const r = f.getBoundingClientRect(); return [Math.round(r.width * 10) / 10, Math.round(r.height * 10) / 10]; }));
+      expect(sizes.length === 3 && sizes.every(([w, h]) => w >= 44 && h >= 44), `segments ${JSON.stringify(sizes)}`);
+      await page.evaluate(() => { window.__mp = []; document.querySelector('body > .td-menu--panel td-choice-group').addEventListener('change', (e) => window.__mp.push(e.detail.value)); });
+      const sel = 'body > .td-menu--panel .td-choice__option[data-td-value="dark"]';
+      const pt = await centre(page, sel);
+      await touchDown(cdp, pt);
+      await frames(page, 2);
+      const rowBg = await page.evaluate(() => getComputedStyle(document.querySelector('body > .td-menu--panel .td-menu__custom[data-item="theme"]')).backgroundColor);
+      await touchUp(cdp);
+      await page.waitForFunction(() => window.__mp.length === 1, null, { timeout: 3000 }).catch(() => {});
+      const st = await page.evaluate(() => ({ log: window.__mp.join(','), open: !!document.querySelector('body > .td-menu--panel') }));
+      expect(st.log === 'dark' && st.open, `tap: ${JSON.stringify(st)}`);
+      expect(rowBg === 'rgba(0, 0, 0, 0)', `custom row got a pressed / hover fill: ${rowBg}`);
+      await quiet(page, sel);
+      expect((await bgOf(page, `${sel} .td-choice__face`)).split(' | ')[1] === 'none', 'a pressed layer stuck after the tap');
+      const box = await page.evaluate(() => { const r = document.querySelector('body > .td-menu--panel').getBoundingClientRect(); return { top: r.top, bottom: r.bottom }; });
+      const outsideY = box.top > 80 ? Math.round(box.top / 2) : Math.round((box.bottom + page.viewportSize().height) / 2);
+      await page.touchscreen.tap(8, outsideY);
+      await frames(page, 2);
+      expect(!(await page.evaluate(() => !!document.querySelector('body > .td-menu--panel'))), 'a tap outside did not close the panel');
+    });
+
     await it(tag, 'copy: two quick taps while the copy is pending = one state change', async () => {
       await load(page);
       await page.evaluate(() => {

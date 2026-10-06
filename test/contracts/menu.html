@@ -36,3 +36,23 @@
     <button type="button" class="td-menu__item" role="menuitem" tabindex="-1" aria-disabled="true"><span class="td-menu__label">Liên kết xấu</span></button>
   </div>
 </template>
+<!-- v0.53.0 (ADR 0026): a menu with a `type: 'custom'` row is a menu PANEL — role="dialog", item runs in unnamed
+     role="menu" sections, separators next to a custom row at panel level, the row = role="group" named by its caption,
+     the caller's Element appended as is. -->
+<template data-component="td-menu" data-portal
+          data-markup='<button type="button" class="td-menu-btn" id="mp" aria-haspopup="menu" aria-expanded="false" aria-label="Tài khoản"></button>'
+          data-setup='TdMenu.open(el, [
+            { label: "Hồ sơ", id: "profile" },
+            { separator: true },
+            { type: "custom", id: "theme", label: "Giao diện", render: () => { const d = document.createElement("div"); d.className = "site-box"; d.textContent = "Nội dung của site"; return d; } },
+            { separator: true },
+            { label: "Đăng xuất", danger: true }
+          ]);'>
+  <div class="td-menu td-menu--panel td-glass-surface td-glass-surface--strong" id="{m}" role="dialog" tabindex="-1" aria-labelledby="mp" data-state="open" data-placement="bottom" data-align="end">
+    <div class="td-menu__section" role="menu"><button type="button" class="td-menu__item" role="menuitem" tabindex="-1" data-item="profile"><span class="td-menu__label">Hồ sơ</span></button></div>
+    <div class="td-menu__separator" role="separator"></div>
+    <div class="td-menu__custom" role="group" aria-labelledby="{m}-c2-label" data-item="theme"><div class="td-menu__custom-label" id="{m}-c2-label">Giao diện</div><div class="site-box">Nội dung của site</div></div>
+    <div class="td-menu__separator" role="separator"></div>
+    <div class="td-menu__section" role="menu"><button type="button" class="td-menu__item td-menu__item--danger" role="menuitem" tabindex="-1"><span class="td-menu__label">Đăng xuất</span></button></div>
+  </div>
+</template>
