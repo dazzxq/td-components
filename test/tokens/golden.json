@@ -2014,6 +2014,31 @@
       "light": "rgb(28, 28, 30)",
       "dark": "rgb(245, 245, 247)",
       "why": "v0.52.0 td-choice-group segmented selected / hover label (= --td-color-text)"
+    },
+    "--td-choice-seg-gap": {
+      "light": "2px",
+      "dark": "2px",
+      "why": "v0.53.1 td-choice-group segmented: gap between segments (was a literal 2px)"
+    },
+    "--td-choice-seg-px": {
+      "light": "0.875rem",
+      "dark": "0.875rem",
+      "why": "v0.53.1 segmented inline padding (md = v0.52; sm 0.375rem, lg 1.125rem on the variant)"
+    },
+    "--td-choice-seg-font": {
+      "light": "0.875rem",
+      "dark": "0.875rem",
+      "why": "v0.53.1 segmented label size (md = --td-text-sm; sm text-xs, lg text-base on the variant)"
+    },
+    "--td-choice-seg-icon": {
+      "light": "1.25rem",
+      "dark": "1.25rem",
+      "why": "v0.53.1 segmented icon size (md = v0.52; sm 1rem on the variant)"
+    },
+    "--td-choice-seg-icon-gap": {
+      "light": "0.375rem",
+      "dark": "0.375rem",
+      "why": "v0.53.1 segmented gap icon ↔ label (md = v0.52; sm 0.25rem on the variant)"
     }
   },
   "lightDeltas": {
