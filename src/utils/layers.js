@@ -243,7 +243,9 @@ function callCovered(r) {
   try { r.onCovered(); } catch (err) { console.error(err); }
 }
 
-const anchoredIn = (root, r) => !r.blocking && !!r.anchor && !!root && root.contains(r.anchor);
+// v0.53.0 (Codex impl r1 #4): composed containment — a popup anchored inside a shadow root of the root's content (a
+// td-dropdown in a site component inside a TdMenu custom row) belongs to the root too
+const anchoredIn = (root, r) => !r.blocking && !!r.anchor && !!root && composedContains(root, r.anchor);
 
 /**
  * Floating registrations whose anchor lies inside `container` (a hovercard's child menu, the popups of a dialog).
@@ -263,7 +265,7 @@ export function childFloatingIn(container) {
  */
 export function floatingContains(root, node) {
   if (typeof Node === 'undefined' || !(node instanceof Node)) return false;
-  return active.some((r) => anchoredIn(root, r) && !!r.element && r.element.contains(node));
+  return active.some((r) => anchoredIn(root, r) && !!r.element && composedContains(r.element, node));
 }
 
 /**
@@ -340,7 +342,9 @@ export function composedClosest(el, sel, stop = null) {
   let n = el;
   while (n && n !== stop) {
     if (n instanceof Element && n.matches(sel)) return n;
-    const p = n.parentNode;
+    // Codex impl r1 #3: flat-tree parent — a slotted node's parent is its slot, then the shadow root's host
+    const p = (n instanceof Element || (typeof Text !== 'undefined' && n instanceof Text)) && n.assignedSlot
+      ? n.assignedSlot : n.parentNode;
     n = SR && p instanceof SR ? p.host : p;
   }
   return null;
@@ -378,32 +382,30 @@ export function tabSequence(root) {
   if (!root) return [];
   const usable = (el) => el instanceof HTMLElement && el.matches(FOCUSABLE) && el.tabIndex >= 0
     && !(el.shadowRoot && el.shadowRoot.delegatesFocus) && !el.matches(':disabled')
-    && !composedClosest(el, '[hidden], [inert]', root) && el.getClientRects().length > 0
+    && !composedClosest(el, '[hidden], [inert]') && el.getClientRects().length > 0
     && getComputedStyle(el).visibility !== 'hidden';
-  const list = flatWalk(root, []).filter(usable);
-  const groups = new Map();
-  const keyOf = (el) => {
-    if (el.localName !== 'input' || el.type !== 'radio' || !el.name) return null;
-    let k = groups.get(el.getRootNode());
-    if (!k) groups.set(el.getRootNode(), (k = new Map()));
-    const f = el.form || null;
-    let byForm = k.get(f);
-    if (!byForm) k.set(f, (byForm = new Map()));
-    let g = byForm.get(el.name);
-    if (!g) byForm.set(el.name, (g = []));
-    return g;
+  // Codex impl r1 #2: a named radio group spans its WHOLE native scope (root node + form owner + name), not only the
+  // radios inside `root`: the group's single stop is its checked member (anywhere), else its first eligible member —
+  // a radio of `root` is a stop only when it is that member.
+  const reps = new Map();
+  const representative = (el) => {
+    const scope = el.getRootNode();
+    const key = `${el.name}\u0000`;
+    let byScope = reps.get(scope);
+    if (!byScope) reps.set(scope, (byScope = new Map()));
+    let byForm = byScope.get(el.form || null);
+    if (!byForm) byScope.set(el.form || null, (byForm = new Map()));
+    if (byForm.has(key)) return byForm.get(key);
+    const sel = `input[type="radio"][name="${typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(el.name) : el.name.replace(/["\\]/g, '\\$&')}"]`;
+    const group = [...(scope.querySelectorAll ? scope.querySelectorAll(sel) : [])]
+      .filter((r) => r.name === el.name && (r.form || null) === (el.form || null));
+    const checked = group.find((r) => r.checked);
+    const rep = checked ? (usable(checked) ? checked : null) : (group.find(usable) || null);
+    byForm.set(key, rep);
+    return rep;
   };
-  const owner = new Map();
-  for (const el of list) {
-    const g = keyOf(el);
-    if (g) { g.push(el); owner.set(el, g); }
-  }
-  return list.filter((el) => {
-    const g = owner.get(el);
-    if (!g) return true;
-    const checked = g.find((r) => r.checked);
-    return el === (checked || g[0]);
-  });
+  return flatWalk(root, []).filter((el) => usable(el)
+    && (el.localName !== 'input' || el.type !== 'radio' || !el.name || representative(el) === el));
 }
 
 /**

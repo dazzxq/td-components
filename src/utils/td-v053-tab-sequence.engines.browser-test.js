@@ -142,4 +142,42 @@ describe('v0.53 tabSequence — shadow DOM (codex r1 #2)', () => {
     matchesNative(await nativeWalk(), seq(box));
     matchesNative(await nativeWalk(true), seq(box));
   });
+
+  it('Codex impl r1 #3: composedClosest follows assignedSlot (slotted child inside a marker / an inert slot)', () => {
+    const box = mount('<td-test-shadow-keys id="k"><button type="button" id="slotted">S</button></td-test-shadow-keys>'
+      + '<td-test-shadow-inert id="in"><button type="button" id="dead">D</button></td-test-shadow-inert>');
+    const slotted = box.querySelector('#slotted');
+    const marker = box.querySelector('#k').shadowRoot.querySelector('[data-td-menu-keys]');
+    expect(composedClosest(slotted, '[data-td-menu-keys="content"]') === marker).to.equal(true);
+    expect(composedClosest(slotted, '[data-td-menu-keys="content"]', box) === marker).to.equal(true);
+    expect(composedClosest(box.querySelector('#dead'), '[inert]') !== null).to.equal(true);
+    expect(seq(box)).to.deep.equal(['slotted', 'i1']);
+  });
+});
+
+describe('v0.53 tabSequence — radio groups use their FULL native scope (Codex impl r1 #2)', () => {
+  it('a group split across two rows: only the row holding the representative radio has the stop', () => {
+    const box = mount(`<div id="r1"><input type="radio" name="g" id="a1"><input type="radio" name="g" id="a2"></div>
+      <div id="r2"><input type="radio" name="g" id="b1"><input type="radio" name="g" id="b2"></div>`);
+    const r1 = box.querySelector('#r1');
+    const r2 = box.querySelector('#r2');
+    expect(tabSequence(r1).map(name)).to.deep.equal(['a1']);
+    expect(tabSequence(r2).map(name)).to.deep.equal([]);
+    box.querySelector('#b2').checked = true;
+    expect(tabSequence(r1).map(name)).to.deep.equal([]);
+    expect(tabSequence(r2).map(name)).to.deep.equal(['b2']);
+  });
+
+  it('the checked member lives outside the queried row → the row has no stop for that group', () => {
+    const box = mount(`<input type="radio" name="h" id="out" checked><div id="row"><input type="radio" name="h" id="in1">
+      <input type="radio" name="h" id="in2"><button type="button" id="btn">B</button></div>`);
+    expect(tabSequence(box.querySelector('#row')).map(name)).to.deep.equal(['btn']);
+    expect(seq(box)).to.deep.equal(['out', 'btn']);
+  });
+
+  it('the first ELIGIBLE member decides (a disabled / hidden first member is skipped); other forms are other groups', () => {
+    const box = mount(`<form id="f1"></form><input type="radio" name="g" id="d0" disabled><input type="radio" name="g" id="h0" hidden>
+      <div id="row"><input type="radio" name="g" id="e1"><input type="radio" name="g" id="e2" form="f1"></div>`);
+    expect(tabSequence(box.querySelector('#row')).map(name)).to.deep.equal(['e1', 'e2']);
+  });
 });

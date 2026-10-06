@@ -420,3 +420,41 @@ describe('v0.53 TdMenu panel — content resizing (QĐ 11)', () => {
     });
   }
 });
+
+describe('v0.53 TdMenu panel — popup of a component inside an open shadow root (Codex impl r1 #4)', () => {
+  it('a td-dropdown in a site shadow root: picking in its list keeps the panel open; the panel takes it along', async () => {
+    if (!customElements.get('td-test-shadow-dd')) {
+      customElements.define('td-test-shadow-dd', class extends HTMLElement {
+        constructor() {
+          super();
+          const root = this.attachShadow({ mode: 'open' });
+          const l = document.createElement('link');
+          l.rel = 'stylesheet';
+          l.href = '/td.css';
+          const dd = document.createElement('td-dropdown');
+          dd.setAttribute('aria-label', 'Ngôn ngữ');
+          dd.options = [{ value: 'vi', label: 'Tiếng Việt' }, { value: 'en', label: 'English' }];
+          root.append(l, dd);
+        }
+      });
+    }
+    const t = mountTrigger();
+    const site = document.createElement('td-test-shadow-dd');
+    const rs = [];
+    TdMenu.open(t, [{ label: 'Hồ sơ' }, { type: 'custom', render: () => site }], { onClose: (r) => rs.push(r) });
+    const dd = site.shadowRoot.querySelector('td-dropdown');
+    expect(await until(() => !!dd.querySelector('.td-dropdown__trigger') && dd.querySelector('.td-dropdown__trigger').getClientRects().length > 0)).to.equal(true);
+    const list = () => document.querySelector('.td-dropdown__menu[data-state="open"]');
+    await click(dd.querySelector('.td-dropdown__trigger'));
+    expect(await until(() => !!list())).to.equal(true);
+    await click([...list().querySelectorAll('.td-dropdown__option')][1]);
+    expect(dd.value).to.equal('en');
+    expect(TdMenu.isOpen(), 'a press in the shadow-anchored popup is inside the panel').to.equal(true);
+    expect(rs).to.deep.equal([]);
+    await click(dd.querySelector('.td-dropdown__trigger'));
+    expect(await until(() => !!list())).to.equal(true);
+    TdMenu.close();
+    expect(await until(() => !list()), 'the panel takes the shadow-anchored popup along').to.equal(true);
+  });
+});
+
