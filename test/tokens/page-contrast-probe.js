@@ -127,6 +127,21 @@ export function measure(o) {
         }
       }
     }
+    // v0.52.0 segmented: the selected pill's 1px ring (the first box-shadow colour) ≥ 3:1 against BOTH the trough
+    // (--td-color-hover over the page) and the pill; idle / disabled labels are measured as texts above
+    if (el.matches('.td-choice--segmented .td-choice__input:checked + .td-choice__face') && visible(el) && !isDisabled(el)) {
+      const ringStr = (getComputedStyle(el).boxShadow.match(/rgba?\([^)]*\)/) || [])[0];
+      const ring = ringStr && parseColor(ringStr);
+      const trough = effectiveBg(el, false);
+      const pill = effectiveBg(el);
+      if (ring && trough && pill) {
+        measured++;
+        const vsTrough = contrast(ring, trough); const vsPill = contrast(ring, pill);
+        if (vsTrough < 3 || vsPill < 3) {
+          controls.push({ el: describe(el), border: hex(composite(ring, trough)), outer: hex(trough), fill: hex(pill), vsOuter: +vsTrough.toFixed(2), vsFill: +vsPill.toFixed(2), min: 3 });
+        }
+      } else skipped++;
+    }
     // islands: an opaque NEUTRAL fill lighter than what is behind it that is not one of the theme's own surfaces
     const bgc = parseColor(getComputedStyle(el).backgroundColor);
     if (bgc && bgc.a === 1 && visible(el)) {

@@ -81,6 +81,21 @@
       <td-toggle color="green" label="Green" checked></td-toggle>
       <td-toggle color="red" label="Red" checked></td-toggle>
     </div>
+    <div class="demo-row">
+      <span class="demo-label">Tone (0.52):</span>
+      <td-toggle tone="warning" label="Chờ quét QR" checked></td-toggle>
+      <td-toggle tone="success" label="Đã thiết lập" checked></td-toggle>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Locked (0.52):</span>
+      <td-toggle label="Bắt buộc 2FA" checked locked locked-reason="Chính sách công ty"></td-toggle>
+      <td-toggle label="Khoá (tắt)" locked></td-toggle>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Segmented (0.52):</span>
+      <td-choice-group id="demo-seg" aria-label="Giao diện" variant="segmented" value="light"></td-choice-group>
+      <td-choice-group id="demo-seg-sm" aria-label="Giao diện" variant="segmented" size="sm" icon-only value="dark"></td-choice-group>
+    </div>
   </div>
 
   <!-- ═══════════════════ BUTTON ═══════════════════ -->
@@ -913,6 +928,11 @@
     }
     // Import tất cả components
     import './src/form/td-toggle.js';
+    import './src/form/td-choice-group.js'; // v0.52.0 segmented
+    for (const id of ['demo-seg', 'demo-seg-sm']) {
+      document.getElementById(id).options = [{ value: 'auto', label: 'Tự động', icon: 'monitor' }, { value: 'light', label: 'Sáng', icon: 'sun' },
+        { value: 'dark', label: 'Tối', icon: 'moon' }, { value: 'x', label: 'Khác', icon: 'more', disabled: true }];
+    }
     import './src/form/td-button.js';
     import './src/form/td-action-button.js';
     import './src/form/td-checkbox.js';

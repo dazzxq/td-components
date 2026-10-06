@@ -38,7 +38,7 @@ import { THEME_NAME_RE, RESERVED_THEME_NAMES } from './selectors.js';
 import { PRESETS, SCHEME_SHADOWS, FOCUS_RING } from './presets.js';
 
 /** Bump when the same seeds produce different output (the CSS header carries it → stale-file detection). */
-export const ALGORITHM_VERSION = 3;
+export const ALGORITHM_VERSION = 4;
 export { THEME_TOKENS_VERSION };
 
 /** WCAG 2.x gate (QĐ9): text 4.7 (a margin over 4.5), icons 3.2, non-text 3.0, disabled 2.2; 7 = preferred body text. */
@@ -532,7 +532,10 @@ export function generatePalette(seeds, options = {}) {
   for (const t of ['--td-btn-primary-bg', '--td-btn-primary-hover', '--td-btn-primary-pressed']) {
     constraints.push({ token: '--td-btn-primary-fg', against: [t], min: GATE.text, kind: 'text', bgs: [named(t)] });
   }
-  ink('--td-btn-disabled-fg', tinted(surface, srgbToOklch(V.get('--td-btn-disabled-bg')).l), [named('--td-btn-disabled-bg')],
+  // v0.52.0 (ALGORITHM_VERSION 4): + the hover trough over the page — a disabled td-choice-group segment paints
+  // --td-btn-disabled-fg on --td-color-hover over the page / surface (choice-group.css), ≥ the disabled gate there too
+  const troughs = ['--td-color-bg', '--td-color-surface'].map((s) => comp('--td-color-hover', s));
+  ink('--td-btn-disabled-fg', tinted(surface, srgbToOklch(V.get('--td-btn-disabled-bg')).l), [named('--td-btn-disabled-bg'), ...troughs],
     [DESIGN.disabledInk, GATE.disabled], GATE.disabled, 'disabled');
 
   // ---- elevation / tooltip ----

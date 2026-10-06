@@ -29,10 +29,12 @@
 		--td-choice-hint-fg: var(--td-color-text-muted);
 		--td-choice-swatch-edge: var(--td-color-border-strong);
 		/* v0.52.0 segmented: trough = the hover wash (like the td-tabs trough: the palette solver keeps muted text ≥ 4.7 on
-		   it; the fill would leave muted at 4.64), selected pill = control surface + a 1px ring ≥ 3:1 against BOTH */
+		   it; the fill would leave muted at 4.64), selected pill = control surface + a 1px ring ≥ 3:1 against BOTH — the ring
+		   is the MUTED ink (Codex r1: --td-control-border-strong was 2.95 on the kit light trough over --td-color-bg and has no
+		   solver guarantee there; muted is solved ≥ 4.7 on the hover trough over the page and on every surface) */
 		--td-choice-seg-bg: var(--td-color-hover);
 		--td-choice-seg-pill: var(--td-control-bg);
-		--td-choice-seg-ring: var(--td-control-border-strong);
+		--td-choice-seg-ring: var(--td-color-text-muted);
 		--td-choice-seg-fg: var(--td-color-text-muted);
 		--td-choice-seg-fg-selected: var(--td-color-text);
 	}
