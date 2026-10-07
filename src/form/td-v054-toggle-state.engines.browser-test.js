@@ -196,14 +196,25 @@ describe('v0.54.0 checkable layout: hint / error under the label, baseline kept 
       }
     }
 
-    it(`${k.tag}: the baseline (inline in text) stays on the control row with a hint`, async () => {
-      const d = mount(`<p>Trước <${k.tag} label="Một"></${k.tag}> giữa <${k.tag} label="Hai" helper-text="Gợi ý"></${k.tag}> sau</p>`);
-      await settle();
-      const [a, b] = d.querySelectorAll(k.tag);
-      const ya = a.querySelector(k.ctl).getBoundingClientRect().top;
-      const yb = b.querySelector(k.ctl).getBoundingClientRect().top;
-      expect(Math.abs(ya - yb)).to.be.below(1);
-    });
+    // after v0.53.2 (toggle host inline-flex + vertical-align: middle): with a hint / error the CONTROL ROW keeps the
+    // position it has without one: level with a twin without a hint (< 1 px) and, like v0.53.2's inline-line case, within
+    // 2.5 px of the text span centre (`middle` = baseline + ½ex, not the span box centre), every size, label or not, hint
+    // or error (plan "Lệch" #11)
+    for (const size of ['sm', 'md', 'lg']) {
+      for (const extra of ['helper-text="Gợi ý dưới nhãn"', 'error-text="Lỗi"', 'helper-text="Gợi ý" label="Nhãn"']) {
+        it(`${k.tag} ${size} ${extra}: inline in text, the control row stays level with the text (and with a twin without a hint)`, async () => {
+          const d = mount(`<p style="font: 14px/1.5 system-ui, sans-serif">Trước <${k.tag} size="${size}" aria-label="A"></${k.tag}> <span class="t">giữa</span> <${k.tag} size="${size}" aria-label="B" ${extra}></${k.tag}> sau</p>`);
+          await settle();
+          const [a, b] = d.querySelectorAll(k.tag);
+          const mid = (r) => (r.top + r.bottom) / 2;
+          const ca = mid(a.querySelector(k.ctl).getBoundingClientRect());
+          const cb = mid(b.querySelector(k.ctl).getBoundingClientRect());
+          const ct = mid(d.querySelector('.t').getBoundingClientRect());
+          expect(Math.abs(ca - cb), `twin rows ${ca} vs ${cb}`).to.be.below(1);
+          if (k.tag === 'td-toggle') expect(Math.abs(cb - ct), `track centre ${cb} vs text ${ct}`).to.be.at.most(2.5);
+        });
+      }
+    }
 
     it(`${k.tag}: a site-hidden <td-hint> child changes nothing in the host box (Codex r2 #11)`, async () => {
       const d = mount(`<${k.tag} label="Một"></${k.tag}><${k.tag} label="Một"><td-hint hidden>Ẩn</td-hint></${k.tag}>`);

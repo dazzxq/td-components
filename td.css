@@ -2507,12 +2507,25 @@
 		visibility: hidden;
 	}
 
-	/* QĐ 8: a shown hint / error → the host becomes a column (baseline = its first row = the switch row); a site-hidden
-	   <td-hint> changes nothing (Codex r2 #11) */
+	/* QĐ 8: a shown hint / error → the host becomes a column; a site-hidden <td-hint> changes nothing (Codex r2 #11).
+	   v0.53.2 centres the host on an inline text line with `vertical-align: middle` — on a two-row column that would centre
+	   the whole column and lift the switch row. Instead the SWITCH ROW keeps v0.53.2's position: the column's baseline is the
+	   track's bottom edge (the first flex item of the switch row has no text baseline → synthesised from its bottom), raised
+	   to baseline + ½ex − ½ track height = the track centre on the parent's `middle` line. A switch without a hint / error is
+	   untouched (v0.53.2 rules). */
 	td-toggle:has(> :is(.td-field__note:not([hidden]), td-hint:not([hidden]):not([data-td-suppressed]), .td-field-error)) {
 		display: inline-flex;
 		flex-direction: column;
 		align-items: flex-start;
+		vertical-align: calc(0.5ex - var(--td-switch-h) / 2);
+	}
+
+	td-toggle[size="sm"]:has(> :is(.td-field__note:not([hidden]), td-hint:not([hidden]):not([data-td-suppressed]), .td-field-error)) {
+		--td-switch-h: 1.25rem; /* = .td-switch--sm (the host needs the track height of its size) */
+	}
+
+	td-toggle[size="lg"]:has(> :is(.td-field__note:not([hidden]), td-hint:not([hidden]):not([data-td-suppressed]), .td-field-error)) {
+		--td-switch-h: 1.75rem; /* = .td-switch--lg */
 	}
 
 	/* under the label text when there is one (the track width + the gap); the sm / lg widths live on the inner
