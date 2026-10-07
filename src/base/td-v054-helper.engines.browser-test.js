@@ -279,17 +279,20 @@ describe('v0.54.0 td-check-matrix: the hint id follows the active cell (QĐ 3b)'
     first.setAttribute('aria-describedby', `${first.getAttribute('aria-describedby')} page-x`);
     el.setHelper('Tick để cấp quyền'); // re-sync (page id now part of the first cell)
     first.focus();
+    let moves = 0;
     for (const key of ['ArrowRight', 'ArrowDown', 'End', 'Home']) {
       const before = el._ariaTarget();
       await sendKeys({ press: key });
       await tick();
       const after = el._ariaTarget();
       if (after === before) continue;
+      moves += 1;
       const b = (before.getAttribute('aria-describedby') || '').split(/\s+/);
       const a = (after.getAttribute('aria-describedby') || '').split(/\s+/);
       expect(b.includes(id), `${key}: old cell lost the hint id`).to.equal(false);
       expect(a.includes(id), `${key}: new cell has it`).to.equal(true);
     }
+    expect(moves, 'the keys moved the active cell').to.be.at.least(3);
     expect((first.getAttribute('aria-describedby') || '').split(/\s+/)).to.include('page-x');
     expect(el.querySelectorAll(`[aria-describedby~="${id}"]`).length).to.equal(1);
   });

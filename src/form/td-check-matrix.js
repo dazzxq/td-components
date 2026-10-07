@@ -355,6 +355,7 @@ export class TdCheckMatrix extends TdFormElement {
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (oldVal === newVal) return;
     if (name === 'disabled') this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
     if (!this._initialized) return;
@@ -905,6 +906,8 @@ export class TdCheckMatrix extends TdFormElement {
     next.setAttribute('tabindex', '0');
     this._activeKey = this._keyOf(cell);
     this._crosshair(cell);
+    // v0.54.0 (QĐ 3b): the aria target IS the roving cell — the component's description ids move with it
+    if (prev !== next) this._syncDescribedBy();
     if (focus && this.ownerDocument.activeElement !== next) {
       next.focus({ preventScroll: true });
       this._reveal(cell);

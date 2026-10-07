@@ -285,3 +285,51 @@
 		}
 	}
 }
+
+/* v0.54.0 (plan docs/internal/plans/v0.54.0-hint.md QĐ 8–10) — APPEND-ONLY block (v0.53.2 owns the host / .td-switch rules
+   above; nothing here changes a toggle without a hint, an error or on/off text). */
+@layer td.tokens {
+	:root, [data-td-theme] {
+		--td-switch-state-fg: var(--td-color-text-muted); /* on / off text: muted, ≥ 4.7 on every surface (contrast gate) */
+	}
+}
+
+@layer td.component {
+	/* QĐ 10: the visible state text, inside the label after the label text; both texts share one grid cell (width = the
+	   longer one, no jump when it flips) and CSS shows the one of the current :checked state — no JS, pre-upgrade too */
+	.td-switch__state {
+		display: inline-grid;
+		color: var(--td-switch-state-fg);
+	}
+
+	.td-switch__state > * {
+		grid-area: 1 / 1;
+	}
+
+	.td-switch__input:checked ~ .td-switch__state > .td-switch__state-off,
+	.td-switch__input:not(:checked) ~ .td-switch__state > .td-switch__state-on {
+		visibility: hidden;
+	}
+
+	/* QĐ 8: a shown hint / error → the host becomes a column (baseline = its first row = the switch row); a site-hidden
+	   <td-hint> changes nothing (Codex r2 #11) */
+	td-toggle:has(> :is(.td-field__note:not([hidden]), td-hint:not([hidden]):not([data-td-suppressed]), .td-field-error)) {
+		display: inline-flex;
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	/* under the label text when there is one (the track width + the gap); the sm / lg widths live on the inner
+	   .td-switch--sm|lg, so they are set again on the notes themselves (values = the size blocks above) */
+	td-toggle:has(> .td-switch .td-switch__label) > :is(.td-field__note, td-hint, .td-field-error) {
+		margin-inline-start: calc(var(--td-switch-w) + var(--td-space-xs));
+	}
+
+	td-toggle[size="sm"] > :is(.td-field__note, td-hint, .td-field-error) {
+		--td-switch-w: 2.25rem;
+	}
+
+	td-toggle[size="lg"] > :is(.td-field__note, td-hint, .td-field-error) {
+		--td-switch-w: 3.5rem;
+	}
+}

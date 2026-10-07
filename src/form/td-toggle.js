@@ -153,6 +153,7 @@ export class TdToggle extends TdCheckableElement {
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     const live = oldVal !== newVal && this._initialized && !!this.querySelector(':scope > .td-switch');
     // v0.52.0: in place — never a re-render (the 2FA flow sets the tone while the input has focus)
     if (live && EXTRAS.has(name)) {
@@ -227,6 +228,7 @@ export class TdToggle extends TdCheckableElement {
     const ids = [];
     if (this._hasStatus() && this.hasAttribute('checked') && this.querySelector(':scope > .td-switch__status')) ids.push(`${this.id}-status`);
     if (this.hasAttribute('locked') && this.querySelector(':scope > .td-switch__lock-reason')) ids.push(`${this.id}-lock`);
+    ids.push(...this._helperDescribedByIds()); // v0.54.0
     return ids;
   }
 

@@ -1034,6 +1034,7 @@ export class TdScanInput extends TdFormElement {
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (oldVal === newVal || !this._initialized) {
       super.attributeChangedCallback(name, oldVal, newVal);
       return;

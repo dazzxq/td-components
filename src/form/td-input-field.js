@@ -49,7 +49,9 @@ const SSR_ONLY = ['name', 'autofocus'];
  *
  * - `controlId` = `field-id` (verbatim) or `{host-id}-control`; the internal label always targets it.
  * - Accessible name: internal `label` → host `aria-label` → external `<label for="host-id">` (aria-labelledby).
- * - Error AND helper show together (D17); `aria-describedby` = consumer ids + note + counter + error (D3).
+ * - v0.54.0 (plan v0.54.0-hint QĐ 3): while an error shows the helper note is hidden and leaves the description (D17
+ *   dropped); `aria-describedby` = consumer ids + note + counter + error (D3). The helper contract (helper-text,
+ *   setHelper, a rich <td-hint> child in the footer) lives in TdFormElement.
  * - value/placeholder/helper/error/disabled/readonly/required update IN PLACE (focus + caret kept).
  * - Exactly one `input` and one `change` per user action (native ones stopped at the host); `change` only when
  *   the value changed since focus (D8).
@@ -80,7 +82,7 @@ const SSR_ONLY = ['name', 'autofocus'];
  * @attr {string} step - Step (number/month/datetime-local/time — native units: months, seconds; `step="1"` allows
  *   seconds, `step="0.001"` fractions)
  * @attr {string} label - Label text
- * @attr {string} helper-text - Helper text below the input (kept while an error shows)
+ * @attr {string} helper-text - Helper text below the input (hidden while an error shows — v0.54.0)
  * @attr {string} error-text - Error text below the input (see setError())
  * @attr {string} field-id - id of the inner control (default `{host-id}-control`)
  * @attr {string} name - Form field name (submitted via the host)
@@ -108,7 +110,7 @@ export class TdInputField extends TdFormElement {
       ...super.observedAttributes,
       'type', 'size', 'value', 'placeholder', 'readonly',
       'max-length', 'limit-type', 'min', 'max', 'step',
-      'label', 'helper-text', 'error-text',
+      'label', 'error-text',
       'field-id', 'rows', 'validate-on', 'aria-label', 'autoresize', 'minlength', 'pattern',
       ...TdInputField._nativeAttrs,
     ];
@@ -199,8 +201,6 @@ export class TdInputField extends TdFormElement {
 
   constructor() {
     super();
-    /** @private Runtime helper (setHelper); null = use the `helper-text` attribute. */
-    this._runtimeHelper = null;
     /** @private Value when the control gained focus (D8: change only if it differs on blur). */
     this._valueAtFocus = null;
     /** @private The value was last changed by the user (native "dirty by user edit" — gates `tooShort`). */
@@ -325,7 +325,6 @@ export class TdInputField extends TdFormElement {
     this._applyRequired();
     this._applyRange();
     this._applyName();
-    this._applyHelper();
     this._updateCounter();
     this._syncForm(); // an untouched required field already blocks submit
     this._applyErrorState(); // also syncs aria-describedby + footer
@@ -411,6 +410,7 @@ export class TdInputField extends TdFormElement {
   // --- In-place attribute handling ---
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (oldVal === newVal || !this._initialized || !this._getFieldElement()) {
       super.attributeChangedCallback(name, oldVal, newVal);
       return;
@@ -428,10 +428,6 @@ export class TdInputField extends TdFormElement {
         return;
       case 'placeholder':
         this._applyPlaceholder();
-        return;
-      case 'helper-text':
-        this._runtimeHelper = null; // the latest attribute value is the current intent
-        this._applyHelper();
         return;
       case 'disabled':
         this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
@@ -554,28 +550,21 @@ export class TdInputField extends TdFormElement {
     this._applyAccessibleName(this._getFieldElement(), !!this.getAttribute('label'));
   }
 
-  /** @private @returns {string} helper: runtime setHelper() wins over the `helper-text` attribute */
-  _effectiveHelper() {
-    if (this._runtimeHelper != null) return this._runtimeHelper;
-    return this.getAttribute('helper-text') || '';
+  /** @protected v0.54.0: the helper note (text or a rich <td-hint>) lives in the footer, before the counter */
+  _helperSlot() {
+    const footer = this.querySelector(':scope > .td-field > .td-field__footer');
+    if (!footer) return super._helperSlot();
+    return { parent: footer, before: footer.querySelector(':scope > .td-field__counter') };
   }
 
-  /** @private Sync the helper note (kept visible while an error shows — D17). */
-  _applyHelper() {
-    const note = this.querySelector('.td-field__note');
-    if (!note) return;
-    const text = this._effectiveHelper();
-    note.textContent = text;
-    note.hidden = !text;
-    this._syncDescribedBy();
-    this._syncFooter();
-  }
+  /** @protected */
+  _helperChanged() { this._syncFooter(); }
 
   /** @private The footer is hidden while it has nothing to show (no error, helper or counter). */
   _syncFooter() {
     const footer = this.querySelector('.td-field__footer');
     if (!footer) return;
-    footer.hidden = ![...footer.children].some((c) => !c.hidden);
+    footer.hidden = ![...footer.children].some((c) => !c.hidden && !c.hasAttribute('data-td-suppressed'));
   }
 
   // --- Error contract hooks (TdFormElement) ---
@@ -589,8 +578,7 @@ export class TdInputField extends TdFormElement {
 
   /** @protected Helper + counter ids for the control's aria-describedby (the base adds the error id). */
   _describedByIds() {
-    const ids = [];
-    if (this._effectiveHelper() && this.querySelector('.td-field__note')) ids.push(`${this.id}-note`);
+    const ids = this._helperDescribedByIds();
     if (this.querySelector('.td-field__counter')) ids.push(`${this.id}-counter`);
     return ids;
   }
@@ -1148,15 +1136,6 @@ export class TdInputField extends TdFormElement {
   /** @private legacy name kept for internal callers */
   _setValue(val) {
     this.setValue(val);
-  }
-
-  /**
-   * Set the helper text ('' clears it). A later `helper-text` attribute value replaces it.
-   * @param {string} msg
-   */
-  setHelper(msg) {
-    this._runtimeHelper = msg ? String(msg) : '';
-    this._applyHelper();
   }
 
   /** @param {boolean} bool */

@@ -240,6 +240,7 @@ export class TdDropzone extends TdFormElement {
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (name === 'name') {
       if (oldVal !== newVal && this._initialized) this._syncForm(); // no re-render: rebuild FormData only
       return;
@@ -325,7 +326,7 @@ export class TdDropzone extends TdFormElement {
 
   _describedByIds() {
     const hint = this.querySelector('.td-dropzone__hint');
-    return hint && !hint.hidden ? [hint.id] : [];
+    return [...(hint && !hint.hidden ? [hint.id] : []), ...this._helperDescribedByIds()];
   }
 
   /** Form reset: clear the list, abort uploads, forget rejections. */

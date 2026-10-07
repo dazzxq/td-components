@@ -97,7 +97,7 @@ export class TdNumberInput extends TdFormElement {
   };
 
   static get observedAttributes() {
-    return [...super.observedAttributes, 'value', 'label', 'placeholder', 'helper-text', 'error-text', 'size', 'readonly',
+    return [...super.observedAttributes, 'value', 'label', 'placeholder', 'error-text', 'size', 'readonly',
       'min', 'max', 'step', 'decimals', 'group-separator', 'decimal-separator', 'prefix', 'suffix', 'unit-label', 'clamp',
       'inputmode', 'enterkeyhint', 'validate-on', 'aria-label', 'stepper'];
   }
@@ -118,7 +118,6 @@ export class TdNumberInput extends TdFormElement {
     this._bad = false;
     this._valueAtFocus = null;
     this._warned = new Set();
-    this._runtimeHelper = null;
   }
 
   connectedCallback() {
@@ -295,7 +294,6 @@ export class TdNumberInput extends TdFormElement {
     this._applyInputMode();
     this._applyRequired();
     this._applyName();
-    this._applyHelper();
     this._applyStepNames();
     this._syncForm();
     this._applyErrorState();
@@ -304,6 +302,7 @@ export class TdNumberInput extends TdFormElement {
   // --- in-place attribute handling ---
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (oldVal === newVal || !this._initialized || !this._focusTarget()) {
       super.attributeChangedCallback(name, oldVal, newVal);
       return;
@@ -328,10 +327,6 @@ export class TdNumberInput extends TdFormElement {
         return;
       case 'placeholder':
         this._applyPlaceholder();
-        return;
-      case 'helper-text':
-        this._runtimeHelper = null;
-        this._applyHelper();
         return;
       case 'disabled':
         this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
@@ -497,27 +492,19 @@ export class TdNumberInput extends TdFormElement {
     this._applyAccessibleName(this._focusTarget(), !!this.getAttribute('label'));
   }
 
-  /** @private @returns {string} */
-  _effectiveHelper() {
-    if (this._runtimeHelper != null) return this._runtimeHelper;
-    return this.getAttribute('helper-text') || '';
+  /** @protected v0.54.0: the helper note (text or a rich <td-hint>) lives in the footer */
+  _helperSlot() {
+    const footer = this.querySelector(':scope > .td-field > .td-field__footer');
+    return footer ? { parent: footer, before: null } : super._helperSlot();
   }
 
-  /** @private */
-  _applyHelper() {
-    const note = this.querySelector('.td-field__note');
-    if (!note) return;
-    const text = this._effectiveHelper();
-    note.textContent = text;
-    note.hidden = !text;
-    this._syncDescribedBy();
-    this._syncFooter();
-  }
+  /** @protected */
+  _helperChanged() { this._syncFooter(); }
 
   /** @private */
   _syncFooter() {
     const footer = this.querySelector('.td-field__footer');
-    if (footer) footer.hidden = ![...footer.children].some((c) => !c.hidden);
+    if (footer) footer.hidden = ![...footer.children].some((c) => !c.hidden && !c.hasAttribute('data-td-suppressed'));
   }
 
   /** @protected the error note goes first in the footer */
@@ -531,7 +518,7 @@ export class TdNumberInput extends TdFormElement {
   _describedByIds() {
     const ids = [];
     if (this._unitText() && this.querySelector('.td-number__box > span[hidden]')) ids.push(`${this.id}-unit`);
-    if (this._effectiveHelper() && this.querySelector('.td-field__note')) ids.push(`${this.id}-note`);
+    ids.push(...this._helperDescribedByIds());
     return ids;
   }
 
@@ -847,12 +834,6 @@ export class TdNumberInput extends TdFormElement {
     const c = this._focusTarget();
     if (c && c.ownerDocument.activeElement === c) this._valueAtFocus = next; // programmatic ≠ user change
     this._syncForm();
-  }
-
-  /** @param {string} msg helper text ('' clears; a later `helper-text` attribute replaces it) */
-  setHelper(msg) {
-    this._runtimeHelper = msg ? String(msg) : '';
-    this._applyHelper();
   }
 
   /** @private */

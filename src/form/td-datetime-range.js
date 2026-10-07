@@ -389,6 +389,7 @@ export class TdDatetimeRange extends TdFormElement {
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (oldVal === newVal) return;
     if (name === 'disabled') this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
     if (!this._initialized) return;

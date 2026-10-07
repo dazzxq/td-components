@@ -48,6 +48,7 @@ export class TdCheckbox extends TdCheckableElement {
   set indeterminate(v) { this.toggleAttribute('indeterminate', !!v); }
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (name === 'indeterminate') {
       if (oldVal !== newVal && this._initialized) this._applyIndeterminate(); // in place: focus stays
       return;

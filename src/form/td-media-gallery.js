@@ -158,7 +158,7 @@ export class TdMediaGallery extends TdFormElement {
 
   static get observedAttributes() {
     return [...super.observedAttributes, 'label', 'items', 'usage', 'croppable', 'crop-ratio', 'focal-point', 'cover',
-      'aspect-ratio', 'preview-fit', 'accept-kind', 'min', 'max', 'prompt', 'helper-text', 'error-text', 'caption',
+      'aspect-ratio', 'preview-fit', 'accept-kind', 'min', 'max', 'prompt', 'error-text', 'caption',
       'alt-maxlength', 'caption-maxlength'];
   }
 
@@ -907,11 +907,12 @@ export class TdMediaGallery extends TdFormElement {
     const label = this.getAttribute('label') || '';
     const help = this.getAttribute('helper-text') || '';
     const err = this.errorMessage;
-    const described = [help ? `${id}-help` : '', err ? `${id}-error` : ''].filter(Boolean).join(' ');
+    // v0.54.0 (QĐ 3): while an error shows the helper is hidden and out of the description
+    const described = [help && !err ? `${id}-help` : '', err ? `${id}-error` : ''].filter(Boolean).join(' ');
     this._usageOn(); // warns once when croppable / crop-ratio / focal-point lack usage
     const head = `<div class="td-media-gallery__head"><span class="td-media-gallery__label" id="${e(id)}-label">${e(label)}`
       + (this.hasAttribute('required') ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') + '</span>';
-    const notes = (help ? `<span class="td-media-gallery__help" id="${e(id)}-help">${e(help)}</span>` : '')
+    const notes = (help ? `<span class="td-media-gallery__help" id="${e(id)}-help"${err ? ' hidden' : ''}>${e(help)}</span>` : '')
       + (err ? `<span class="td-field-error" id="${e(id)}-error" data-for="${e(id)}">${e(err)}</span>` : '');
     if (this._isBroken()) {
       return `${head}</div><span class="td-media-gallery__broken">${e(this._label('broken'))}</span>${notes}`;
@@ -1048,9 +1049,14 @@ export class TdMediaGallery extends TdFormElement {
     this._scheduleLimitSay(li, field);
   }
 
+  /** @protected v0.54.0: the helper note keeps its `span.td-media-gallery__help#{id}-help` (contract @1) */
+  _helperNoteSpec() {
+    return { tag: 'span', className: 'td-media-gallery__help', idSuffix: 'help' };
+  }
+
   /** @protected helper note in the Add button's description */
   _describedByIds() {
-    return this.getAttribute('helper-text') ? [`${this.id}-help`] : [];
+    return this._helperDescribedByIds();
   }
 
   /** @protected the error contract lives on the Add button (render() writes it, PHP too) */
@@ -1322,6 +1328,7 @@ export class TdMediaGallery extends TdFormElement {
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (oldVal === newVal || !this._initialized) {
       super.attributeChangedCallback(name, oldVal, newVal);
       return;

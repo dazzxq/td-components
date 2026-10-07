@@ -248,6 +248,17 @@
 		color: var(--td-field-note);
 	}
 
+	/* v0.54.0 (plan v0.54.0-hint QĐ 2): the helper note of EVERY form control — outside the input-field footer it is a block
+	   line under the control (same token, size and rhythm as the footer note / the error note) */
+	:not(.td-field__footer) > .td-field__note:not([hidden]) {
+		display: block;
+		margin-top: var(--td-space-2xs);
+		font-family: var(--td-font-sans); /* outside the control's root block: never inherit the host font */
+		font-size: var(--td-text-xs);
+		line-height: var(--td-leading-normal);
+		overflow-wrap: anywhere;
+	}
+
 	.td-field__counter {
 		grid-row: 1;
 		grid-column: 2;
@@ -269,6 +280,13 @@
 		/* v0.36.0 (plan QĐ 67): the note / counter / error under a field ≥ 14px on touch screens */
 		.td-field__footer,
 		.td-field-error {
+			font-size: var(--td-text-sm);
+		}
+
+		/* v0.54.0: the helper note outside a footer + the media help spans (td-hint: hint.css) */
+		:not(.td-field__footer) > .td-field__note,
+		.td-media-field__help,
+		.td-media-gallery__help {
 			font-size: var(--td-text-sm);
 		}
 	}
