@@ -197,7 +197,7 @@ describe('v0.25.0 SSR hydrate — td-button / link (button@1)', () => {
       expect(NET['net-md'].display).to.equal('inline-block');
       expect(NET['net-field'].display).to.equal('block');
       expect(NET['net-dd'].display).to.equal('block');
-      expect(NET['net-toggle'].display).to.equal('inline-block');
+      expect(NET['net-toggle'].display).to.equal('inline-flex'); // v0.53.2: the host box = the switch box
       expect(NET['net-check'].display).to.equal('inline-block');
       expect(NET['net-ssr'].h, 'data-td-ssr host: no placeholder').to.equal(0);
     });

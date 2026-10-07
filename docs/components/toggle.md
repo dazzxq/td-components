@@ -11,7 +11,7 @@ lực khi bấm "Lưu" hay "Gửi" (ví dụ đồng ý điều khoản trong fo
 | Import | `import '@dazzxq/td-components/toggle';` (class: `import { TdToggle } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.1.0 (mặc định uncontrolled từ 0.2.0, input native `role="switch"` từ 0.7.0, `commit()` từ 0.13.0, hydrate SSR tại chỗ từ 0.26.0, `tone` / `locked` từ 0.52.0) |
+| Từ phiên bản | 0.1.0 (mặc định uncontrolled từ 0.2.0, input native `role="switch"` từ 0.7.0, `commit()` từ 0.13.0, hydrate SSR tại chỗ từ 0.26.0, `tone` / `locked` từ 0.52.0, host `inline-flex` căn giữa cạnh chữ từ 0.53.2) |
 
 Cần `td.css` trên trang (xem [Cài đặt](../getting-started/installation.md)).
 
@@ -136,6 +136,27 @@ thì chạy đúng với cả hai chế độ.)
 - `<fieldset disabled>` bao ngoài làm công tắc disabled (không gửi), không đổi attribute `disabled`.
 - Trình duyệt khôi phục form (quay lại trang không qua bfcache): trạng thái bật/tắt được đặt lại đúng, attribute
   `value` giữ nguyên (0.16.0).
+
+### Căn dọc cạnh chữ (0.53.2)
+
+Host `<td-toggle>` là `inline-flex` + `vertical-align: middle`: **hộp host đúng bằng hộp công tắc** (trước 0.53.2 host là
+`inline-block` nên có thêm khoảng chữ thòng bên dưới — md cao 29 px cho công tắc 24 px — và công tắc bị đẩy lên 2.5 px trong
+hàng flex, ~6.5 px trên một dòng chữ thường). Không cần CSS riêng:
+
+```html
+<!-- trong ô bảng / hàng flex: công tắc và chữ cùng tâm -->
+<div class="status">  <!-- display: inline-flex; align-items: center; gap: 8px -->
+  <td-toggle controlled aria-label="Trạng thái gói A" checked></td-toggle><span>Đang dùng</span>
+</div>
+
+<!-- trên một dòng chữ: công tắc nằm giữa dòng -->
+<p>Trạng thái: <td-toggle controlled aria-label="Trạng thái gói B" checked></td-toggle> Đang dùng</p>
+```
+
+- Áp cho mọi cỡ (`sm` / `md` / `lg`), có hay không có `label`, bảng hay dạng card của `td-table`, và cho công tắc PHP
+  `td_toggle()` ở chế độ native (`label.td-switch` cũng `vertical-align: middle`).
+- Site từng bù lệch bằng CSS riêng (`margin-top: -4px`, `position: relative; top: …` trên `td-toggle`) → **gỡ bỏ**.
+- Trên cảm ứng hộp vẫn ≥ 44 px (vùng chạm), căn giữa như trên.
 
 ### Màu, kích thước, lỗi
 

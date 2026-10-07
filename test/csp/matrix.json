@@ -253,9 +253,11 @@
         "height",
         "width",
         "margin-left",
-        "line-height"
+        "line-height",
+        "top",
+        "bottom"
       ],
-      "selectorNote": "v0.52.0: the visually hidden description span inherits the host page line-height (profile-dependent, never painted); text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+      "selectorNote": "v0.53.2: the visually hidden description span is an absolutely positioned child of the inline-flex host — its static top / bottom follow the profile line-height (never painted); v0.52.0: the visually hidden description span inherits the host page line-height (profile-dependent, never painted); text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
     },
     {
       "state": "tone-warning",
@@ -274,9 +276,11 @@
         "height",
         "width",
         "margin-left",
-        "line-height"
+        "line-height",
+        "top",
+        "bottom"
       ],
-      "selectorNote": "v0.52.0: the visually hidden description span inherits the host page line-height (profile-dependent, never painted); text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+      "selectorNote": "v0.53.2: the visually hidden description span is an absolutely positioned child of the inline-flex host — its static top / bottom follow the profile line-height (never painted); v0.52.0: the visually hidden description span inherits the host page line-height (profile-dependent, never painted); text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
     },
     {
       "state": "tone-warning-color",
@@ -315,9 +319,11 @@
         "height",
         "width",
         "margin-left",
-        "line-height"
+        "line-height",
+        "top",
+        "bottom"
       ],
-      "selectorNote": "v0.52.0: the visually hidden description span inherits the host page line-height (profile-dependent, never painted); text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+      "selectorNote": "v0.53.2: the visually hidden description span is an absolutely positioned child of the inline-flex host — its static top / bottom follow the profile line-height (never painted); v0.52.0: the visually hidden description span inherits the host page line-height (profile-dependent, never painted); text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
     },
     {
       "state": "locked-off",
@@ -337,9 +343,11 @@
         "height",
         "width",
         "margin-left",
-        "line-height"
+        "line-height",
+        "top",
+        "bottom"
       ],
-      "selectorNote": "v0.52.0: the visually hidden description span inherits the host page line-height (profile-dependent, never painted); text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+      "selectorNote": "v0.53.2: the visually hidden description span is an absolutely positioned child of the inline-flex host — its static top / bottom follow the profile line-height (never painted); v0.52.0: the visually hidden description span inherits the host page line-height (profile-dependent, never painted); text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
     }
   ],
   "td-checkbox": [
