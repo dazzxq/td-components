@@ -2,6 +2,19 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.53.2
+
+**Vá giao diện: công tắc `td-toggle` căn giữa chữ đứng cạnh; panel thông tin lightbox trên điện thoại che thanh ‹ đếm ›**
+(dsuite + owner). Codex impl-review APPROVE. Chỉ CSS; site nên gỡ các mẹo `margin-top` / `top` tự thêm cho `td-toggle`.
+
+### Fixed
+
+- `td-toggle` không label đứng cạnh chữ (hàng flex, dòng chữ thường, ô `td-table` dạng bảng / thẻ) không còn nhô lên 2–9 px:
+  host `display: inline-flex; vertical-align: middle` → hộp host = đúng hộp công tắc (md 24 px, trước 29 px); switch in từ
+  PHP (chế độ native) cũng `vertical-align: middle`. Có label cũng thẳng hàng hơn. Checkbox / button không bị ảnh hưởng.
+- `td-lightbox` trên điện thoại: bottom sheet thông tin mở lên giờ nằm **trên** thanh ‹ đếm › (trước: thanh nổi đè lên
+  panel); đóng lại thì thanh vẫn bấm được.
+
 ## 0.53.1
 
 **Vá: `td-choice-group variant="segmented"` trong container hẹp** (dsuite: sidebar 216 px — các ô xuống dòng không đều, thanh
