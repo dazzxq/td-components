@@ -222,3 +222,12 @@ export const HINT_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'hint.html');
 export function renderHintFixture() {
   return renderPhp('hint-fixture.php');
 }
+
+// v0.55.0: prefix / suffix / icons / unit_label on td_field + icons / locale on td_number_input (contracts *@1, additive).
+export const AFFIX_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'affix.fixtures.json'), 'utf8'));
+export const AFFIX_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'affix.html');
+
+/** Render test/ssr/affix-fixture.php (the HTML loaded by the v0.55.0 affix SSR browser test). */
+export function renderAffixFixture() {
+  return renderPhp('affix-fixture.php');
+}
