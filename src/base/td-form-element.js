@@ -393,7 +393,12 @@ export class TdFormElement extends TdBaseElement {
   /** @private QĐ 4: take the first rich <td-hint> child (no `for`) out of the host, keep the node */
   _takeHintChild() {
     if (this._hintChild) return;
-    const all = [...this.children].filter((c) => c.localName === 'td-hint');
+    // v0.55.0 Codex impl r2: on a server-rendered host (data-td-ssr) a <td-hint slot="prefix|suffix"> is a slotted affix
+    // child, never a hint — it stays in place for the hydration gate (rejected → safe render drops it, like every slot child
+    // of an SSR host)
+    const ssr = this.hasAttribute('data-td-ssr');
+    const all = [...this.children].filter((c) => c.localName === 'td-hint'
+      && !(ssr && ['prefix', 'suffix'].includes(c.getAttribute('slot'))));
     const kids = all.filter((c) => !c.hasAttribute('for'));
     // Codex impl r1 #6: every OTHER direct <td-hint> (a second one, a standalone `for` one) is the page's: set aside with
     // the owned one before each render (innerHTML would destroy it) and put back, the same node, at the end of the host

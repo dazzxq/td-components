@@ -432,3 +432,36 @@ for (const k of KINDS) {
     });
   });
 }
+
+// Codex impl r2: a <td-hint slot="prefix|suffix"> on an SSR host is a slot child, not a hint — it never bypasses the gate
+for (const k of KINDS) {
+  describe(`v0.55.0 Codex impl r2 — ${k.tag}: a slotted <td-hint> on an SSR host goes through the gate`, () => {
+    let n = 0;
+    const sid = () => `hint-${k.block}-${++n}`;
+    const CHILDREN = [
+      ['a nested hidden input', '<td-hint slot="prefix">Gợi ý <input type="hidden" name="role" value="admin"></td-hint>'],
+      ['a nested submit button with formaction', '<td-hint slot="suffix"><button type="submit" name="go" value="1" formaction="/evil">x</button></td-hint>'],
+    ];
+    for (const [what, child] of CHILDREN) {
+      it(`slotted <td-hint> with ${what} → not adopted, dropped; FormData = the field only`, async () => {
+        captureWarn();
+        const form = mount(`<form>${ssrMarkup(k.tag, sid(), 'f', '5', child)}</form>`).querySelector('form');
+        const el = form.querySelector(k.tag);
+        await wait();
+        expect(el._hydrated === true, 'never adopted').to.equal(false);
+        expect(entries(form)).to.deep.equal([['f', '5']]);
+        expect(form.querySelectorAll('td-hint, [formaction], input[type="hidden"]').length, 'dropped').to.equal(0);
+      });
+    }
+
+    it('non-SSR host: a normal <td-hint> child is still the control\'s hint (v0.54)', async () => {
+      const form = mount(`<form><${k.tag} name="v" value="1" suffix="đ"><td-hint>Xem <a href="#p">bảng phí</a></td-hint></${k.tag}></form>`).querySelector('form');
+      const el = form.querySelector(k.tag);
+      await wait();
+      const hint = el.querySelector('td-hint');
+      expect(!!hint && !!hint.closest('.td-field__footer'), 'mounted in the footer').to.equal(true);
+      expect(tokens(ctl(k, el)).includes(hint.id), 'in the description').to.equal(true);
+      expect(entries(form)).to.deep.equal([['v', '1']]);
+    });
+  });
+}

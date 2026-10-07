@@ -547,6 +547,8 @@ Server **vẫn phải** kiểm giá trị lựa chọn thuộc tập hợp lệ 
   `<input type=hidden>` / `<button formaction>` tiêm vào không bao giờ vào form; FormData chỉ có field). Khi gắn lại, chỉ vỏ
   slot **đúng node kit tạo, còn nguyên** (một attribute `class` đúng, chỉ chứa node slot ban đầu) được gỡ trước khi so;
   vỏ bị sửa / vỏ lạ vẫn hiện trước cổng (→ render lại) và lần mount sau dựng vỏ mới chỉ với node slot ban đầu.
+  Codex impl r2: `<td-hint slot="prefix|suffix">` con của host SSR cũng là con slot (không phải gợi ý) — không bị lấy ra
+  trước cổng, cùng bị từ chối và bỏ.
 - **`locale`** chỉ chọn trong tập dấu cố định (`.` `,` khoảng trắng, rỗng): bảng tĩnh; ngoài bảng thì ký tự Intl trả về phải
   thuộc đúng tập đó (NBSP / NNBSP chuẩn hoá) — không bao giờ chèn ký tự tuỳ ý vào hiển thị hay vào `parseLoose`. Giá trị gửi
   đi vẫn chỉ là chuỗi chuẩn. Cảnh báo PHP chỉ ghi tên option + kiểu + độ dài (không giá trị).
