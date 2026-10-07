@@ -12,7 +12,100 @@ const REF_ATTRS = ['for', 'aria-labelledby', 'aria-describedby', 'aria-controls'
 const FOCUSABLE = 'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), '
   + 'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
 
+/** v0.56.0 (plan v0.56.0-repeater-icons-date R1): the field key of a row (never derived from `name`). */
+const FIELD = 'data-td-field';
+/** Longest key / tag text a warning repeats (app data — console only, never markup). */
+const WARN_TEXT_MAX = 64;
+
 let _uid = 0;
+
+/**
+ * v0.56.0 (R1): the fields of `row` grouped by key, in DOM order — a field belongs to its NEAREST row (nested repeaters
+ * never mix). Only form fields: input, select, textarea, custom elements (anything else carrying the key is ignored).
+ * @param {Element} row
+ * @returns {Map<string, Element[]>}
+ */
+function fieldGroups(row) {
+  const groups = new Map();
+  for (const el of row.querySelectorAll(`[${FIELD}]`)) {
+    if (el.closest(`[${ROW}]`) !== row) continue;
+    const key = el.getAttribute(FIELD);
+    if (!key) continue;
+    const n = el.localName;
+    if (n !== 'input' && n !== 'select' && n !== 'textarea' && !n.includes('-')) continue;
+    const list = groups.get(key);
+    if (list) list.push(el);
+    else groups.set(key, [el]);
+  }
+  return groups;
+}
+
+/**
+ * v0.56.0 (R2): how a group of fields is read / written — by ELEMENT KIND, never by tag name list.
+ * @param {Element[]} els
+ * @returns {{ kind: 'text'|'multi'|'check'|'checks'|'radio'|'bool'|'nested'|'custom'|'file', els: Element[] }}
+ */
+function kindOf(els) {
+  const first = /** @type {any} */ (els[0]);
+  if (first.localName === 'input') {
+    const t = first.type;
+    if (t === 'file') return { kind: 'file', els };
+    if (t === 'radio') return { kind: 'radio', els: els.filter((e) => /** @type {any} */ (e).type === 'radio') };
+    if (t === 'checkbox') {
+      const boxes = els.filter((e) => /** @type {any} */ (e).type === 'checkbox');
+      return { kind: boxes.length > 1 ? 'checks' : 'check', els: boxes };
+    }
+    return { kind: 'text', els };
+  }
+  if (first.localName === 'select') return { kind: first.multiple ? 'multi' : 'text', els };
+  if (first.localName === 'textarea') return { kind: 'text', els };
+  if (typeof first.checked === 'boolean') return { kind: 'bool', els };
+  return { kind: first.localName === 'td-repeater' ? 'nested' : 'custom', els };
+}
+
+/** @param {{ kind: string, els: any[] }} f */
+function readField({ kind, els }) {
+  const el = els[0];
+  switch (kind) {
+    case 'multi': return [...el.selectedOptions].map((o) => o.value);
+    case 'check':
+    case 'bool': return !!el.checked;
+    case 'checks': return els.filter((e) => e.checked).map((e) => e.value);
+    case 'radio': return els.find((e) => e.checked)?.value ?? null;
+    case 'nested':
+    case 'custom': return el.value;
+    default: return el.value;
+  }
+}
+
+/** @param {{ kind: string, els: any[] }} f @param {boolean} present @param {unknown} v */
+function writeField({ kind, els }, present, v) {
+  const el = els[0];
+  const list = present && Array.isArray(v) ? v.map(String) : [];
+  switch (kind) {
+    case 'multi':
+      for (const o of el.options) o.selected = list.includes(o.value);
+      return;
+    case 'check':
+    case 'bool':
+      el.checked = present && !!v;
+      return;
+    case 'checks':
+      for (const e of els) e.checked = list.includes(e.value);
+      return;
+    case 'radio':
+      for (const e of els) e.checked = present && v != null && e.value === String(v);
+      return;
+    case 'nested':
+      el.value = present ? v : [];
+      return;
+    case 'custom':
+      el.value = present ? v : '';
+      return;
+    default:
+      el.value = present ? String(v ?? '') : '';
+  }
+}
 
 /**
  * <td-repeater> — dynamic list of rows (add / remove / reorder) built from the app's own markup (v0.30.0, plan
@@ -50,6 +143,14 @@ let _uid = 0;
  *   and Escape goes through `_move()` → one `rows-change` `reason: 'move'` `source: 'user'` each (no `order-change`).
  *   Without `sortable` nothing of it exists (an app handle button gets `hidden`).
  *
+ * - v0.56.0 data (plan v0.56.0-repeater-icons-date R1–R4, ADR 0029): fields marked `data-td-field="key"` are read / written
+ *   by `value` (an array of row objects, one per row, DOM order) — by element kind (text / select / multiple / one
+ *   checkbox → boolean / checkbox group → values / radio group → value | null / td-* `checked` → boolean / other td-*
+ *   `value`, a nested td-repeater its own array); `input[type=file]` is skipped. Still NEVER `name` / `form`: the app's
+ *   naming recipe on `rows-change` stays the one source of FormData names. Setting `value` reuses rows BY POSITION
+ *   (clamped to min-rows / max-rows, else `MAX_VALUE_ROWS`) and fires ONE `rows-change` `reason: 'set'` `source: 'api'`.
+ *   Per instance hooks `readRow(row, defaultRead)` / `writeRow(row, data, defaultWrite)` replace the defaults.
+ *
  * @element td-repeater
  * @attr {string} label - visible group label (text)
  * @attr {number} min-rows - integer 0–200 (default 0; above `MAX_MIN_ROWS` = 200 → ignored + one warning): never fewer
@@ -57,7 +158,7 @@ let _uid = 0;
  * @attr {number} max-rows - integer ≥ 0 (default none): no add past it (rows already there are kept)
  * @attr {string} add-label - text of the add button (default `TdRepeater.labels.add`)
  * @attr {boolean} sortable - v0.31.0: drag handle + keyboard lift (texts: `TdSortable.labels`, shared)
- * @fires rows-change - detail: { reason: 'init'|'add'|'remove'|'move'|'sync', source: 'user'|'api', rows, row?, index?, from?, to? }
+ * @fires rows-change - detail: { reason: 'init'|'add'|'remove'|'move'|'sync'|'set', source: 'user'|'api', rows, row?, index?, from?, to? }
  * @fires before-remove - cancelable, user × only; detail: { row, index }
  */
 export class TdRepeater extends TdBaseElement {
@@ -82,6 +183,12 @@ export class TdRepeater extends TdBaseElement {
    * auto-fill from the template never clones more than this many rows. `max-rows` may be larger.
    */
   static MAX_MIN_ROWS = OrderedCollectionModel.MAX_MIN;
+
+  /**
+   * v0.56.0 (R3, Q5): without `max-rows`, `value = data` never builds more rows than this (one warning, the rest dropped)
+   * — data from a server / API can never drive an unbounded clone loop.
+   */
+  static MAX_VALUE_ROWS = 1000;
 
   static get observedAttributes() {
     return ['label', 'min-rows', 'max-rows', 'add-label', 'sortable'];
@@ -112,6 +219,26 @@ export class TdRepeater extends TdBaseElement {
     this._help = null;
     /** @type {WeakSet<Element>} handles whose aria-label the kit owns */
     this._ownName = new WeakSet();
+    /** @private v0.56.0 hooks (null = the default reader / writer) */
+    this._readRow = null;
+    this._writeRow = null;
+  }
+
+  /**
+   * P1 (plan v0.56.0): `value` / `readRow` / `writeRow` assigned BEFORE the upgrade (a <template> clone, createElement
+   * before define) are own data properties shadowing the accessors — hand them to the setters before the first render
+   * (hooks first, so the early value is written with them). Superseded by the base replay of v0.54.1.
+   */
+  connectedCallback() {
+    if (!this._initialized) {
+      for (const p of ['readRow', 'writeRow', 'value']) {
+        if (!Object.prototype.hasOwnProperty.call(this, p)) continue;
+        const v = this[p];
+        delete this[p];
+        this[p] = v;
+      }
+    }
+    super.connectedCallback();
   }
 
   // --- public API ---
@@ -157,6 +284,49 @@ export class TdRepeater extends TdBaseElement {
     this._flush();
     return this._move(from, to, 'api');
   }
+
+  /**
+   * v0.56.0 (R2, R4): the rows' data — one object per row (DOM order) of its `data-td-field` fields. Read straight from
+   * the DOM (also upgraded-but-detached); a new array every time. Before the upgrade the element is a plain HTMLElement
+   * (no rows value) — `await customElements.whenDefined('td-repeater')` first.
+   * @returns {Array<Record<string, unknown>>}
+   */
+  get value() {
+    this._flush();
+    return this._domRows().map((row) => this._readOne(row));
+  }
+
+  /**
+   * v0.56.0 (R3): rebuild the rows from data — rows reused by position (same nodes, focus kept), new ones from the
+   * template, extra ones removed from the end; count clamped to min-rows / max-rows (else MAX_VALUE_ROWS); every key of a
+   * row written (absent → the empty value of its kind). One `rows-change` `{ reason: 'set', source: 'api' }` (none
+   * before the first connect: the upgrade's `init` reports the rows). Not an array → one warning, nothing changes.
+   * Runs while `disabled` / `readonly` too (like `.value` of a disabled input).
+   * @param {Array<Record<string, unknown>>} data
+   */
+  set value(data) {
+    if (!Array.isArray(data)) {
+      console.warn('td-repeater: value must be an array of row objects — ignored.');
+      return;
+    }
+    this._setValue(data);
+  }
+
+  /**
+   * v0.56.0 hook: `(row, defaultRead) => object` reading one row (default null = the kit reader). A throwing hook (or one
+   * returning a non-object) → console.error + the default.
+   * @returns {((row: HTMLElement, defaultRead: (row: HTMLElement) => Record<string, unknown>) => Record<string, unknown>)|null}
+   */
+  get readRow() { return this._readRow; }
+  set readRow(fn) { this._readRow = typeof fn === 'function' ? fn : null; }
+
+  /**
+   * v0.56.0 hook: `(row, data, defaultWrite) => void` writing one row (default null = the kit writer). A throwing hook →
+   * console.error + the default.
+   * @returns {((row: HTMLElement, data: Record<string, unknown>, defaultWrite: (row: HTMLElement, data: object) => void) => void)|null}
+   */
+  get writeRow() { return this._writeRow; }
+  set writeRow(fn) { this._writeRow = typeof fn === 'function' ? fn : null; }
 
   // --- lifecycle (in place: never renders over the children) ---
 
@@ -214,6 +384,111 @@ export class TdRepeater extends TdBaseElement {
     }
     if (first) this._changed({ reason: 'init', source: 'api' });
     else if (!same || filled) this._changed({ reason: 'sync', source: 'api' });
+  }
+
+  // --- data (v0.56.0) ---
+
+  /** @private */
+  _setValue(data) {
+    const started = this._started;
+    if (started) this._flush();
+    else {
+      // upgraded, not connected yet (or the early replay): write the DOM rows directly — the first render upgrades them
+      this._applyLimits();
+      this._readTemplate();
+    }
+    const { min, max } = this._model;
+    const cap = Number.isFinite(max) ? max : TdRepeater.MAX_VALUE_ROWS;
+    let list = data;
+    if (list.length > cap) {
+      this._warnOnce('valueover', `td-repeater: value has ${list.length} rows, more than ${Number.isFinite(max)
+        ? `max-rows=${max}` : `TdRepeater.MAX_VALUE_ROWS (${cap})`} — the rest is dropped.`);
+      list = list.slice(0, cap);
+    }
+    const n = Math.max(list.length, min);
+    const rows = started ? this._model.keys() : this._domRows();
+    while (rows.length < n) {
+      if (!this._templateOk) break; // warned by _readTemplate
+      const row = this._cloneRow();
+      this._insertRowNode(row, rows.length);
+      if (started) this._model.insert(row, rows.length);
+      rows.push(row);
+    }
+    while (rows.length > n) {
+      const row = rows.pop();
+      if (started) this._model.remove(row);
+      row.remove();
+    }
+    rows.forEach((row, i) => {
+      const d = list[i];
+      const obj = d && typeof d === 'object' && !Array.isArray(d) ? d : {};
+      if (d != null && obj !== d) this._warnOnce('valuerow', 'td-repeater: a value row must be an object — written as empty.');
+      this._writeOne(row, obj);
+    });
+    if (started) this._changed({ reason: 'set', source: 'api' });
+  }
+
+  /** @private one row through the hook (or the default reader) */
+  _readOne(row) {
+    const read = (r) => this._readFields(r);
+    const fn = this._readRow;
+    if (fn) {
+      try {
+        const out = fn.call(this, row, read);
+        if (out && typeof out === 'object') return out;
+        console.error('td-repeater: readRow must return an object — the default reader is used.');
+      } catch (err) {
+        console.error('td-repeater: readRow threw — the default reader is used.', err);
+      }
+    }
+    return read(row);
+  }
+
+  /** @private one row through the hook (or the default writer) */
+  _writeOne(row, data) {
+    const write = (r, d) => this._writeFields(r, d && typeof d === 'object' ? d : {});
+    const fn = this._writeRow;
+    if (fn) {
+      try {
+        fn.call(this, row, data, write);
+        return;
+      } catch (err) {
+        console.error('td-repeater: writeRow threw — the default writer is used.', err);
+      }
+    }
+    write(row, data);
+  }
+
+  /** @private the default reader (R2): own properties (Object.fromEntries — a `__proto__` key stays a plain key) */
+  _readFields(row) {
+    const out = [];
+    for (const [key, els] of fieldGroups(row)) {
+      const f = kindOf(els);
+      if (f.kind === 'file') { this._warnFile(); continue; }
+      out.push([key, readField(f)]);
+    }
+    return Object.fromEntries(out);
+  }
+
+  /** @private the default writer (R2 / R3): every key of the row written; data keys without a field → one warning */
+  _writeFields(row, data) {
+    const groups = fieldGroups(row);
+    for (const [key, els] of groups) {
+      const f = kindOf(els);
+      if (f.kind === 'file') { this._warnFile(); continue; }
+      const present = Object.prototype.hasOwnProperty.call(data, key);
+      writeField(f, present, present ? data[key] : undefined);
+    }
+    const unknown = Object.keys(data).filter((k) => !groups.has(k));
+    if (unknown.length) {
+      this._warnOnce('valuekey', `td-repeater: value key "${String(unknown[0]).slice(0, WARN_TEXT_MAX)}"${unknown.length > 1
+        ? ` (+${unknown.length - 1})` : ''} has no [data-td-field] in the row — ignored.`);
+    }
+  }
+
+  /** @private */
+  _warnFile() {
+    this._warnOnce('file', 'td-repeater: input[type=file] cannot be read or written by value — skipped.');
   }
 
   // --- structure ---

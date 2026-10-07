@@ -9,7 +9,7 @@ có; element chỉ **nâng cấp tại chỗ** (thêm nút ↑ / ↓ / ×, nút 
 Field trong dòng là field thật (input native hoặc td-*), **tự gửi form** như mọi field khác — repeater không
 form-associated.
 
-**Ranh giới quan trọng:** kit **không bao giờ đặt `name`** cho field trong dòng. Mỗi app một sơ đồ tên (`items[0][name]`
+**Ranh giới quan trọng:** kit **không bao giờ đọc / ghi `name`** cho field trong dòng. Mỗi app một sơ đồ tên (`items[0][name]`
 kiểu Laravel, mảng song song `items[name][]`, JSON…), nên việc đánh lại index là của app — kit chỉ phát `rows-change`
 sau mọi thay đổi để app làm việc đó (công thức 6 dòng ở [mục 2](#2-đặt-tên-field--công-thức-của-app)).
 
@@ -76,7 +76,8 @@ sau mọi thay đổi để app làm việc đó (công thức 6 dòng ở [mụ
 
 ### 2. Đặt tên field — công thức của app
 
-Kit **không đọc / ghi** `name`, `form`, `value` của bất kỳ thứ gì trong dòng. Kit giữ `data-td-index` (0, 1, 2…) trên mỗi
+Kit **không đọc / ghi** `name`, `form` của bất kỳ thứ gì trong dòng (giá trị: chỉ field có `data-td-field`, qua `value` —
+[mục 7](#7-dữ-liệu-value-0560)). Kit giữ `data-td-index` (0, 1, 2…) trên mỗi
 dòng và phát `rows-change` **đồng bộ** sau mọi thay đổi cấu trúc — của người dùng **và** của code (`addRow()`,
 `removeRow()`, `moveRow()`, app tự chèn / gỡ dòng), vì tên phụ thuộc vị trí.
 
@@ -169,6 +170,72 @@ End di chuyển, Space / Enter thả, Escape về chỗ cũ, chạm tay nắm d�
   `sortable` (hoặc tắt lúc chạy) → kit đặt `hidden` lên nút đó.
 - Nút ↑ / ↓ vẫn ở đó: đường chắc chắn nhất cho trình đọc màn hình ở browse mode.
 
+### 7. Dữ liệu: `value` (0.56.0)
+
+Đánh dấu field bằng **`data-td-field="khoá"`** (ở template **và** dòng server in) → `rep.value` trả mảng dữ liệu, mỗi dòng
+một object, đúng thứ tự đang hiển thị; gán `rep.value = [...]` dựng lại dòng. Kit **không** suy khoá từ `name` / `data-name`
+(mỗi app một sơ đồ tên) và **vẫn không đụng `name`** — công thức đặt tên ở mục 2 vẫn là nguồn duy nhất của FormData.
+[ADR 0029](../internal/decisions/0029-repeater-field-values-and-lock.md).
+
+```html
+<td-repeater label="Hộp gồm" min-rows="1">
+  <template>
+    <div data-td-row>
+      <input data-td-field="name" data-name="box[{i}][name]" aria-label="Phụ kiện">
+      <input type="number" data-td-field="qty" data-name="box[{i}][qty]" aria-label="Số lượng" value="1">
+      <td-toggle data-td-field="gift" data-name="box[{i}][gift]" label="Quà tặng"></td-toggle>
+    </div>
+  </template>
+</td-repeater>
+```
+
+```js
+await customElements.whenDefined('td-repeater');   // trước khi nâng cấp, `value` không phải dữ liệu dòng
+rep.value;  // → [{ name: 'Sạc', qty: '1', gift: false }, …]
+rep.value = [{ name: 'Sạc 20W', qty: '1' }, { name: 'Cáp', qty: '2', gift: true }];
+```
+
+Đọc / ghi theo **loại phần tử** (không theo danh sách tag):
+
+| Field (cùng khoá trong một dòng) | Đọc | Ghi | Khoá vắng khi gán |
+|---|---|---|---|
+| `input` chữ / số / ngày…, `textarea`, `input[type=hidden]` | `.value` (chuỗi) | `String(v ?? '')` | `''` |
+| `select` | `.value` | `.value` | `''` |
+| `select multiple` | mảng value đang chọn | chọn đúng tập | `[]` |
+| **một** `input[type=checkbox]` | `boolean` | `checked = !!v` | `false` |
+| **nhiều** checkbox cùng khoá | mảng value của ô bật | bật ô có value trong mảng | `[]` |
+| nhóm `input[type=radio]` cùng khoá | value ô bật, hoặc `null` | bật ô có value bằng | `null` |
+| `input[type=file]` | **bỏ qua** (không ghi được) + một cảnh báo | — | — |
+| custom element có `checked` boolean (td-checkbox, td-toggle) | `boolean` | `checked = !!v` | `false` |
+| custom element khác (td-*, `<td-repeater>` lồng) | `el.value` nguyên dạng | `el.value = v` | `''` (repeater lồng: `[]`) |
+
+- Field thuộc dòng **gần nhất** của nó → repeater lồng nhau không lẫn: repeater con mang `data-td-field` là **một** field có
+  giá trị là mảng của chính nó. Field không có `data-td-field` bị bỏ qua (vẫn tự gửi form như cũ).
+- **Gán:** số dòng = độ dài mảng, kẹp theo `min-rows` (thiếu → dòng template trống) / `max-rows` (thừa → bỏ + một cảnh
+  báo); không có `max-rows` → trần **`TdRepeater.MAX_VALUE_ROWS` = 1000**. Dòng **tái dùng theo vị trí** (cùng node, focus /
+  td-* bên trong giữ nguyên), thêm từ template, gỡ dòng thừa từ cuối (không phát `before-remove`). Mọi khoá của dòng được
+  ghi: có trong dữ liệu → giá trị, vắng → giá trị "rỗng" của loại. Khoá trong dữ liệu không có field → bỏ qua + một cảnh báo.
+  Không phải mảng → một cảnh báo, không đổi gì, không ném lỗi.
+- Gán xong phát **đúng một** `rows-change` `{ reason: 'set', source: 'api' }` — **luôn** phát, kể cả khi số dòng không
+  đổi, để app tính tổng / đặt tên ở cùng một chỗ. Giá trị ghi từ code **không** phát `input` / `change` của field và
+  **không** làm form bẩn ([form dirty](../guides/forms.md)).
+- `rep.value = rep.value` không đổi DOM / FormData. Getter đọc thẳng DOM (cả khi đã nâng cấp nhưng chưa gắn vào trang),
+  mỗi lần trả **mảng mới**.
+- Gán **trước khi nâng cấp** (bản sao `<template>`, `createElement` trước `define`): giá trị được áp lúc gắn vào trang, chỉ
+  một `rows-change` `init` (không có `set`).
+- Object được dựng bằng `Object.fromEntries` → khoá `__proto__` là khoá thường, không đổi prototype. Khoá so sánh bằng
+  `getAttribute` (không bao giờ dựng selector từ khoá).
+
+**Hook** (property của từng repeater, mặc định `null` = bảng trên) cho field lạ (editor, widget bên thứ ba):
+
+```js
+rep.readRow = (row, read) => ({ ...read(row), body: row.querySelector('.editor').innerHTML });
+rep.writeRow = (row, data, write) => { write(row, data); myEditor(row).setContent(data.body ?? ''); };
+```
+
+Tham số cuối là bộ đọc / ghi mặc định (gọi để giữ phần còn lại của dòng). Hook ném lỗi (hoặc `readRow` không trả object)
+→ `console.error` + dùng mặc định.
+
 ## Responsive (0.34.0)
 
 Host `<td-repeater>` là **container** (`container: td-repeater / inline-size`). Khi repeater **hẹp hơn 480px** (điện thoại,
@@ -200,10 +267,13 @@ cột → tự xuống hàng mới); luật site đặt chỗ cụm công cụ t
 | `addRow({ at } = {})` | `→ HTMLElement \| null` | Thêm dòng từ template (cuối, hoặc tại index `at`). `null` khi đầy / template sai / chưa nâng cấp. |
 | `removeRow(rowOrIndex)` | `→ boolean` | Xoá dòng (phần tử hoặc index). Tôn trọng `min-rows`; **không** phát `before-remove`. |
 | `moveRow(from, to)` | `→ boolean` | Chuyển dòng ở `from` tới đúng index `to` (các dòng ở giữa dời chỗ, dòng được chuyển không bị tách khỏi DOM). |
+| `value` | `Array<object>` (get / set) | 0.56.0: dữ liệu các field `data-td-field` của từng dòng ([mục 7](#7-dữ-liệu-value-0560)). Gán → một `rows-change` `set`. |
+| `readRow` / `writeRow` | `function \| null` | 0.56.0: hook đọc / ghi một dòng — `(row, read)` / `(row, data, write)`. |
+| `TdRepeater.MAX_VALUE_ROWS` | `1000` (static) | 0.56.0: trần số dòng khi gán `value` mà không có `max-rows`. |
 | `TdRepeater.labels` | static | Văn bản (xem dưới). |
 | `TdRepeater.MAX_MIN_ROWS` | `200` (static) | Trần của `min-rows` (chống vòng clone vô hạn khi `min-rows` đến từ dữ liệu). |
 
-Ba API đều phát `rows-change` với `source: 'api'`.
+Ba API (và `value =`) đều phát `rows-change` với `source: 'api'`.
 
 ```js
 import { TdRepeater } from '@dazzxq/td-components/repeater';
@@ -222,7 +292,7 @@ Mặc định: `add` "Thêm dòng", `row` "Dòng {n}", `remove` "Xoá dòng {n}"
 
 | Event | detail | Khi nào | Hủy được? |
 |---|---|---|---|
-| `rows-change` | `{ reason, source, rows, row?, index?, from?, to? }` | **Đồng bộ** sau mọi thay đổi cấu trúc, khi DOM + `data-td-index` + nhãn đã cập nhật, **trước** focus / thông báo. `reason`: `'init'` (lần nâng cấp đầu), `'add'`, `'remove'`, `'move'`, `'sync'` (thay đổi từ bên ngoài, tăng `min-rows`). `source`: `'user'` / `'api'`. `rows` = mảng dòng mới. | không |
+| `rows-change` | `{ reason, source, rows, row?, index?, from?, to? }` | **Đồng bộ** sau mọi thay đổi cấu trúc, khi DOM + `data-td-index` + nhãn đã cập nhật, **trước** focus / thông báo. `reason`: `'init'` (lần nâng cấp đầu), `'add'`, `'remove'`, `'move'`, `'sync'` (thay đổi từ bên ngoài, tăng `min-rows`), `'set'` (0.56.0: gán `value`). `source`: `'user'` / `'api'`. `rows` = mảng dòng mới. | không |
 | `before-remove` | `{ row, index }` | Người dùng bấm × (không phát khi gọi `removeRow()`). `preventDefault()` giữ dòng lại. | có |
 
 Không có `change` trên host (tránh lẫn với `change` nổi bọt từ field trong dòng). Event của field trong dòng (`input`,
@@ -294,6 +364,8 @@ Không có animation.
 - Template là markup tin cậy của dev; dòng mới được tạo bằng `importNode` (không `innerHTML` dữ liệu). Id của dòng clone
   sinh từ bộ đếm, không từ dữ liệu.
 - `min-rows` có trần 200: một giá trị cực lớn (vd. lấy từ cấu hình / dữ liệu) không thể khiến trang treo vì clone dòng.
+- `value =` ghi bằng property (`.value`, `.checked`, `.selected`) — không bao giờ `innerHTML`; khoá so bằng
+  `getAttribute`, không dựng selector; trần 1000 dòng khi không có `max-rows`. Cảnh báo chỉ lặp tối đa 64 ký tự của khoá.
 - Kit không đặt `name` → không có đường nào để dữ liệu người dùng chọn tên field gửi đi. Server vẫn phải kiểm số dòng
   (`min-rows` / `max-rows` chỉ là UX) và từng giá trị.
 
@@ -310,15 +382,16 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - **Dòng bị nhân đôi sau khi app dựng lại** → app chèn dòng mới mà không gỡ dòng cũ; kit giữ đúng những gì có trong DOM.
 - **Template có hai phần tử gốc** (vd. hai `<input>` không bọc) → bọc trong một `<div data-td-row>`.
 - **Nút nằm sai chỗ** → đặt `[data-td-row-actions]` trong mẫu dòng.
-- Repeater lồng repeater: không chặn nhưng chưa được kiểm thử.
+- Repeater lồng repeater: `value` của repeater ngoài đọc repeater con (có `data-td-field`) như một field mảng (0.56.0, có
+  test); sắp xếp / thêm / xoá của mỗi tầng độc lập.
 - Không có tổng / tính toán giữa các dòng, nhân bản dòng, hoàn tác xoá — việc của app.
-- Không có helper PHP: nội dung dòng là markup của app. Mẫu Blade:
+- Không có helper PHP: nội dung dòng là markup của app. Mẫu Blade (`data-td-field` để đọc / ghi bằng `value`):
 
 ```blade
 <td-repeater label="Hộp gồm" min-rows="1" max-rows="20">
-  <template><div data-td-row><input data-name="box[{i}][name]" aria-label="Phụ kiện"></div></template>
+  <template><div data-td-row><input data-td-field="name" data-name="box[{i}][name]" aria-label="Phụ kiện"></div></template>
   @foreach (old('box', $product->box) as $i => $item)
-    <div data-td-row><input name="box[{{ $i }}][name]" data-name="box[{i}][name]" aria-label="Phụ kiện" value="{{ $item['name'] }}"></div>
+    <div data-td-row><input data-td-field="name" name="box[{{ $i }}][name]" data-name="box[{i}][name]" aria-label="Phụ kiện" value="{{ $item['name'] }}"></div>
   @endforeach
 </td-repeater>
 ```
