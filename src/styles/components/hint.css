@@ -1,0 +1,54 @@
+/*
+ * td-hint (src/form/td-hint.js, v0.54.0 — plan docs/internal/plans/v0.54.0-hint.md QĐ 2, 5, 6). A helper line with rich
+ * content (the page's own <a> / <code> nodes). Styled by TAG: the same box before the module loads, without JS, and after
+ * (no flash). `hidden` (the page's) always wins the block display (Codex plan-review r1 #6); `data-td-suppressed` is the
+ * kit's own flag (the described control shows an error). Not interactive itself: a link inside is the page's.
+ */
+@layer td.component {
+	td-hint {
+		margin-top: var(--td-space-2xs);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-xs);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-note);
+		overflow-wrap: anywhere;
+	}
+
+	td-hint:not([hidden]) {
+		display: block;
+	}
+
+	td-hint[hidden],
+	td-hint[data-td-suppressed] {
+		display: none;
+	}
+
+	/* inside the input-field / number-input / choice-group footer: the note's grid cell */
+	.td-field__footer > td-hint {
+		grid-column: 1;
+		min-width: 0;
+		margin: 0;
+		font-size: inherit;
+	}
+
+	td-hint a {
+		color: inherit;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+
+	td-hint code {
+		font-family: var(--td-font-mono);
+		font-size: 0.95em;
+	}
+
+	@media (pointer: coarse) {
+		td-hint {
+			font-size: var(--td-text-sm);
+		}
+
+		.td-field__footer > td-hint {
+			font-size: inherit;
+		}
+	}
+}
