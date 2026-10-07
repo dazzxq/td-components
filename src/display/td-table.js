@@ -418,7 +418,7 @@ export class TdTable extends TdBaseElement {
   get formatPageInfo() { return this._formatPageInfo; }
   set formatPageInfo(fn) {
     this._formatPageInfo = typeof fn === 'function' ? fn : null;
-    if (this._root) this._update();
+    if (this._root) this._syncPagInfo(); // the text only — the body is not re-rendered
   }
 
   /** v0.39.0: keys of the hidden columns, in column order (silent setter; `null` = the `hidden` flags of `columns`). */
@@ -1019,14 +1019,22 @@ export class TdTable extends TdBaseElement {
         // formatInfo again refreshes the text: the rows on the page may change without a page change). A flat table
         // without a hook leaves td-pagination's own text alone.
         set('item-label', this._treeOn() ? String(TdTable.labels.treeItemLabel ?? '') : String(TdTable.labels.itemLabel ?? ''));
-        if (this._treeOn() || this._formatPageInfo) p.formatInfo = this._pagInfo;
-        else if (p.formatInfo) p.formatInfo = null;
       }
+      this._syncPagInfo();
     }
     this._pagTop.parentElement.hidden = !showPag;
     this._footer.hidden = !showPag;
     this._header.hidden = !showPag && !this._getTitle() && !this._colMenuOn();
     return showPag;
+  }
+
+  /** @private v0.57.2: (re)give both paginations the table's text function — assigning it refreshes their text. */
+  _syncPagInfo() {
+    const on = this._treeOn() || !!this._formatPageInfo;
+    for (const p of [this._pagTop, this._pagBottom]) {
+      if (on) p.formatInfo = this._pagInfo;
+      else if (p.formatInfo) p.formatInfo = null;
+    }
   }
 
   /**
