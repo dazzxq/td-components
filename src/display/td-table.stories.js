@@ -1,5 +1,6 @@
 import { escapeHtml } from '../utils/escape.js';
 import './td-table.js';
+import '../form/td-toggle.js';
 import '../styles/story-layout.css';
 
 // Attribute helper: story control values are escaped before they enter the HTML string.
@@ -338,4 +339,138 @@ export const SelectionCards = {
       <p class="sb-note">Card: ô chọn đứng đầu dòng [chọn][lead][tiêu đề]; "Chọn tất cả trên trang" là chip đầu của thanh sắp xếp; card đã chọn viền accent. <output></output></p>
     </div>`,
   play: async ({ canvasElement }) => fillPosts(canvasElement, 'multiple', '360px'),
+};
+
+// --- v0.57.0 tree table (plan v0.57.0-tree-table) ---
+
+const CATEGORIES = () => [
+  { id: 1, name: 'Thời trang', slug: 'thoi-trang', products: 128, active: true, children: [
+    { id: 2, name: 'Áo', slug: 'ao', products: 64, active: true, children: [
+      { id: 3, name: 'Áo thun', slug: 'ao-thun', products: 40, active: true },
+      { id: 4, name: 'Áo khoác', slug: 'ao-khoac', products: 24, active: false },
+    ] },
+    { id: 5, name: 'Quần', slug: 'quan', products: 64, active: true, children: [{ id: 6, name: 'Jeans', slug: 'jeans', products: 30, active: true }] },
+  ] },
+  { id: 7, name: 'Điện tử', slug: 'dien-tu', products: 52, active: true, children: [
+    { id: 8, name: 'Điện thoại', slug: 'dien-thoai', products: 31, active: true },
+    { id: 9, name: 'Laptop', slug: 'laptop', products: 21, active: false },
+  ] },
+  { id: 10, name: 'Phụ kiện', slug: 'phu-kien', products: 0, active: false },
+];
+
+const treeLog = (canvasElement, el) => {
+  const out = canvasElement.querySelector('.sb-note output');
+  for (const name of ['expanded-change', 'row-action', 'select-change', 'load-error']) {
+    el.addEventListener(name, (e) => {
+      const d = e.detail;
+      out.textContent = `${name}: ${name === 'select-change' ? `[${d.keys.join(', ')}]` : `key ${d.key ?? d.row?.id}${'expanded' in d ? ` → ${d.expanded}` : ''}${d.id ? ` (${d.id})` : ''}`}`;
+    });
+  }
+};
+
+export const Tree = {
+  name: 'Bảng cây (dữ liệu lồng)',
+  render: () => `<div>
+      <td-table title="Danh mục" tree row-key="id" selectable></td-table>
+      <p class="sb-note">tree + row-key: mảng con ở <code>children</code>. Tab vào bảng (một điểm Tab), ↓ ↑ Home End, → mở / tới con đầu, ← đóng / về cha, * mở anh em, Space chọn; Tab từ một dòng đi qua control của dòng đó. Sort trong từng nhóm anh em, phân trang theo gốc. <output></output></p>
+    </div>`,
+  play: async ({ canvasElement }) => {
+    const el = canvasElement.querySelector('td-table');
+    treeLog(canvasElement, el);
+    el.columns = [
+      { key: 'name', label: 'Tên', sortable: true },
+      { key: 'slug', label: 'Đường dẫn' },
+      { key: 'products', label: 'Sản phẩm', align: 'right', sortable: true },
+    ];
+    el.data = CATEGORIES();
+    el.expandedKeys = [1];
+  },
+};
+
+export const TreeFlat = {
+  name: 'Bảng cây (dữ liệu phẳng parent-key)',
+  render: () => `<div>
+      <td-table title="Phòng ban" tree row-key="id" parent-key="parentId" tree-column="name"></td-table>
+      <p class="sb-note">parent-key="parentId": data là danh sách phẳng, cha = dòng có khoá đó (null / '' = gốc; mồ côi / vòng lặp → gốc + cảnh báo). tree-column chọn cột thụt lề. <output></output></p>
+    </div>`,
+  play: async ({ canvasElement }) => {
+    const el = canvasElement.querySelector('td-table');
+    treeLog(canvasElement, el);
+    el.columns = [{ key: 'code', label: 'Mã' }, { key: 'name', label: 'Phòng ban', card: 'primary' }, { key: 'head', label: 'Trưởng phòng' }];
+    el.data = [
+      { id: 'BGD', code: 'BGD', name: 'Ban giám đốc', head: 'An', parentId: null },
+      { id: 'KD', code: 'KD', name: 'Kinh doanh', head: 'Bình', parentId: 'BGD' },
+      { id: 'KT', code: 'KT', name: 'Kỹ thuật', head: 'Chi', parentId: 'BGD' },
+      { id: 'KD1', code: 'KD1', name: 'Kinh doanh miền Bắc', head: 'Dũng', parentId: 'KD' },
+      { id: 'KD2', code: 'KD2', name: 'Kinh doanh miền Nam', head: 'Em', parentId: 'KD' },
+      { id: 'FE', code: 'FE', name: 'Frontend', head: 'Giang', parentId: 'KT' },
+    ];
+    el.expandAll();
+  },
+};
+
+export const TreeLazy = {
+  name: 'Bảng cây (tải con chậm)',
+  render: () => `<div>
+      <td-table title="Thư mục" tree row-key="id"></td-table>
+      <p class="sb-note">hasChildren: true + loadChildren(row, { signal }): "Đang tải…" chỉ hiện sau 400 ms; "Lỗi mạng" luôn lỗi → dòng "Không tải được" + Thử lại (↓ tới dòng lỗi, Tab tới nút); "Rỗng" trả [] → thành lá. <output></output></p>
+    </div>`,
+  play: async ({ canvasElement }) => {
+    const el = canvasElement.querySelector('td-table');
+    treeLog(canvasElement, el);
+    let n = 100;
+    el.loadChildren = (row, { signal }) => new Promise((resolve, reject) => {
+      const t = setTimeout(() => {
+        if (row.fail) reject(new Error('mạng'));
+        else if (row.empty) resolve([]);
+        else resolve([1, 2, 3].map((i) => ({ id: ++n, name: `${row.name} / mục ${i}`, size: `${i * 12} KB`, hasChildren: i === 1 })));
+      }, row.fast ? 150 : 1200);
+      signal.addEventListener('abort', () => { clearTimeout(t); reject(signal.reason); });
+    });
+    el.columns = [{ key: 'name', label: 'Tên' }, { key: 'size', label: 'Dung lượng', align: 'right' }];
+    el.data = [
+      { id: 1, name: 'Tài liệu (chậm)', size: '—', hasChildren: true },
+      { id: 2, name: 'Ảnh (nhanh)', size: '—', hasChildren: true, fast: true },
+      { id: 3, name: 'Lỗi mạng', size: '—', hasChildren: true, fail: true },
+      { id: 4, name: 'Rỗng', size: '—', hasChildren: true, empty: true },
+    ];
+  },
+};
+
+export const TreeCategories = {
+  name: 'Bảng cây — Danh mục (dsuite: thao tác + toggle trạng thái)',
+  render: () => `<div>
+      <div class="sb-table-frame"><td-table title="Danh mục sản phẩm" tree row-key="id" selectable max-depth="3"></td-table></div>
+      <p class="sb-note">Ca dsuite: cột "Thao tác" + toggle trạng thái mỗi dòng ở mọi cấp, chọn nhiều, sort. "Lên đầu" = moveRow(id, null, 0); "Chuyển vào Điện tử" = moveRow(id, 7, MAX) — bị từ chối (false) khi vượt max-depth="3" hoặc canDrop (không chuyển vào "Phụ kiện" đã ẩn). Bấm toggle không mở / đóng dòng. Thu hẹp khung để thấy card (thụt tối đa 3 cấp). <output></output></p>
+    </div>`,
+  play: async ({ canvasElement }) => {
+    const el = canvasElement.querySelector('td-table');
+    treeLog(canvasElement, el);
+    const out = canvasElement.querySelector('.sb-note output');
+    el.canDrop = ({ parentRow }) => !parentRow || parentRow.active;
+    el.columns = [
+      { key: 'name', label: 'Tên', sortable: true },
+      { key: 'products', label: 'Sản phẩm', align: 'right', sortable: true, card: 'meta' },
+      { key: 'active', label: 'Hiển thị', render: (row) => {
+        const t = document.createElement('td-toggle');
+        t.setAttribute('label', `Hiển thị ${row.name}`);
+        t.setAttribute('size', 'sm');
+        if (row.active) t.setAttribute('checked', '');
+        return t;
+      } },
+      { key: 'act', label: 'Thao tác', actions: [
+        { id: 'edit', label: 'Sửa', icon: 'pencil' },
+        { id: 'top', label: 'Lên đầu' },
+        { id: 'into', label: 'Chuyển vào Điện tử' },
+        { id: 'del', label: 'Xoá', icon: 'trash', variant: 'danger', disabled: (r) => r.products > 0 },
+      ] },
+    ];
+    el.addEventListener('row-action', (e) => {
+      const { id, row } = e.detail;
+      if (id === 'top') out.textContent = `moveRow(${row.id}, null, 0) → ${el.moveRow(row.id, null, 0)}`;
+      if (id === 'into') out.textContent = `moveRow(${row.id}, 7, MAX) → ${el.moveRow(row.id, 7, Number.MAX_SAFE_INTEGER)}`;
+    });
+    el.data = CATEGORIES();
+    el.expandedKeys = [1, 2];
+  },
 };

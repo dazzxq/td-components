@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.56.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.57.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.57.0](#0570) | Thêm tính năng (bảng cây `td-table tree`) + đổi hành vi nhỏ (menu "Thao tác" của card) | Không bắt buộc. Bảng cây là opt-in (`tree` + `row-key`); bảng không `tree` giống từng byte. Menu "Thao tác" (dạng card, > 2 action) giờ đọc dòng **lúc mở** và kiểm lại **lúc chọn**: dòng đã rời bảng trong lúc menu mở (đổi trang, `data` mới) → không phát `row-action` (trước: phát cho dòng **đang** ở chỉ số cũ — có thể là dòng khác). `getState()` thêm `expandedKeys`. |
 | [0.56.0](#0560) | Thêm tính năng (`td-repeater` `value` / `disabled` / `readonly`, 6 icon + 3 preset nút thao tác, PHP `td_datetime_picker` / `td_date`, `Td::registerActionPresets`) + đổi hành vi nhỏ | Kiểm tra `registerIcons()` của site: tên **`archive`, `restore`, `category`, `brand`, `product`, `ban`** giờ là icon core → đăng ký trùng tên **ném lỗi** (đổi tên icon site, vd. `site-archive`). Alias mới `archive-restore`, `folder-tree`, `tag`, `trademark`, `package` (icon site cùng tên vẫn thắng). App xử lý `rows-change` bằng `switch (reason)` không có nhánh mặc định: thêm `'set'`. |
 | [0.55.0](#0550) | Đổi hành vi rất nhỏ (`td-number-input`, phím `.` / `,`) + thêm tính năng (tiền tố / hậu tố cho `td-input-field`, icon / slot affix, `locale`, `--td-field-note-size`) | Không bắt buộc. Ô số có `decimals > 0`: gõ `.` **hoặc** `,` khi chưa có dấu thập phân giờ ra dấu thập phân của ô (trước: dấu nhóm bị chặn). Luật CSS hộp số chuyển sang `field.css` (cùng giá trị). |
 | [0.54.0](#0540) | Đổi hành vi + đổi giao diện nhỏ (hint / lỗi) + thêm tính năng (`helper-text` mọi control, `<td-hint>`, toggle `on-text` / `off-text`) | Không bắt buộc, nhưng xem lại: đang hiện lỗi thì hint **ẩn** (trước 5 control hiện cả hai) — câu lỗi nên tự đủ nghĩa; lỗi checkbox / toggle thụt dưới nhãn; PHP giờ giữ `attrs['aria-describedby']` của site ở chế độ element. Import map: thêm `hint`. Thay các dòng hint tự viết bằng `helper-text` / `<td-hint for>`. |
@@ -79,6 +80,19 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.57.0
+
+**Mức: thêm tính năng; đổi hành vi nhỏ.**
+
+- **Bảng cây** (`<td-table tree row-key="id">`, mục 13 của [table.md](../components/table.md#13-bảng-cây--dòng-lồng-nhau-tree--từ-0570)):
+  opt-in. Không `tree` → DOM / role / phím / event như 0.54 (snapshot trong test).
+- **Menu "Thao tác" của card** (cột > 2 action, dạng card): dòng được đọc lúc menu **mở** (trước: chỉ số đóng băng lúc vẽ)
+  và kiểm lại lúc **chọn** mục. Dòng đã rời bảng trong lúc menu mở (trang đổi, `data` mới, nhánh đóng) → **không** phát
+  `row-action` (trước: phát cho dòng đang nằm ở chỉ số cũ — có thể là dòng khác, lỗi "xoá nhầm dòng"). Không phải sửa code.
+- `getState()` thêm khoá `expandedKeys` (mảng rỗng ở bảng phẳng). Test so `getState()` bằng `deep.equal` cả object phải
+  thêm khoá này.
+- Bảng cây ở client mode: `getState().totalItems` và `total-items` của phân trang là **số gốc** (phân trang theo gốc).
 
 ## 0.56.0
 

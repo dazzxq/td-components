@@ -252,6 +252,8 @@ export function mountResponsiveFixture(root) {
     <td-table id="rsp-table-density" title="Bài viết" selectable row-key="id"></td-table>
     <td-table id="rsp-table" title="Đơn hàng"></td-table>
     <td-table id="rsp-table-scroll" title="Đơn hàng (luôn dạng bảng)" layout="table"></td-table>
+    <td-table id="rsp-table-tree" title="Danh mục (cây)" tree row-key="id" selectable></td-table>
+    <td-table id="rsp-table-tree-scroll" title="Danh mục (cây, luôn dạng bảng)" tree row-key="id" layout="table"></td-table>
   </section>
   <section class="rsp-section" data-section="content"><h2>Nội dung</h2>
     <td-alert variant="danger" heading="Lỗi máy chủ" dismissible>Không lưu được bài viết vì máy chủ thanh toán không phản hồi, vui lòng thử lại sau.</td-alert>
@@ -368,6 +370,16 @@ export function mountResponsiveFixture(root) {
   posts.columns = densityColumns();
   posts.data = POSTS.map((o) => ({ ...o }));
   posts.selectedKeys = [2]; // v0.37.0: one selected card (accent border) in every screenshot
+  // v0.57.0: tree table — 6 levels (cards stop indenting at 3), actions on every row, everything open
+  let deep = { id: 'L6', name: 'Cấp 6: phụ kiện sạc nhanh chính hãng', code: 'C6', items: 3 };
+  for (let i = 5; i >= 1; i--) deep = { id: `L${i}`, name: `Cấp ${i}: danh mục`, code: `C${i}`, items: i * 10, children: [deep] };
+  for (const id of ['rsp-table-tree', 'rsp-table-tree-scroll']) {
+    const t = root.querySelector(`#${id}`);
+    t.columns = [{ key: 'name', label: 'Tên' }, { key: 'code', label: 'Mã', card: 'meta' }, { key: 'items', label: 'Sản phẩm', align: 'right' },
+      { key: 'act', label: 'Thao tác', actions: [{ id: 'e', label: 'Sửa', icon: 'pencil' }, { id: 'x', label: 'Xoá', icon: 'trash', variant: 'danger' }] }];
+    t.data = [deep, { id: 'P', name: 'Phụ kiện', code: 'P', items: 0 }];
+    t.expandAll();
+  }
   // v0.49.0: capacity buttons (hint = price), 8 long-label options, colour swatches
   const caps = [{ value: '128', label: '128GB', hint: '21.990.000₫' }, { value: '256', label: '256GB', hint: '24.990.000₫' },
     { value: '512', label: '512GB', hint: '29.990.000₫', unavailable: true }, { value: '1tb', label: '1TB', disabled: true }];

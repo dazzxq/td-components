@@ -302,6 +302,7 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 
 ## Xem thêm
 
+- [Bảng cây — `<td-table tree>`](table.md#13-bảng-cây--dòng-lồng-nhau-tree--từ-0570) (0.57.0): danh sách có cấp bậc mà mỗi dòng cần cột, thao tác, toggle, chọn dòng, sort, phân trang — dùng bảng cây; chọn **giá trị** trong cây thì dùng control này.
 - [Tree select](tree-select.md) — chọn nút của cây trong một ô gọn (combobox), có helper PHP `td_tree_select`
 - [Chip input](chip-input.md) — chọn nhiều có chip gỡ được
 - [Hướng dẫn Form](../guides/forms.md)

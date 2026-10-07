@@ -78,6 +78,7 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-table__select',
   '.td-table__select-all',
   '.td-table__sort',
+  '.td-table__tree-toggle',
   '.td-tabs__tab',
   '.td-toast',
   '.td-toast__close',

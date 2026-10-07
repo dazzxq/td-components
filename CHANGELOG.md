@@ -2,6 +2,39 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.57.0
+
+**Bảng cây: `<td-table tree>` — dòng lồng nhau có cột thao tác / toggle, mở–đóng, tải con lười, `moveRow`** (owner duyệt danh
+sách Catalog của dsuite: danh mục cần cột "Thao tác" + toggle trạng thái mà `td-tree` không có). Plan
+`docs/internal/plans/v0.57.0-tree-table.md`, Codex plan-review APPROVE 3 vòng, impl-review APPROVE 3 vòng + security-review
+APPROVE 3 vòng; [ADR 0030](docs/internal/decisions/0030-tree-table-treegrid.md). Kéo thả để đổi cha: v0.58.0 (tên đã giữ chỗ).
+Có đổi hành vi nhỏ — `docs/upgrading/breaking-changes.md#0570`.
+
+### Added
+
+- `td-table` `tree` (opt-in, cần `row-key`): dữ liệu lồng `children` (`children-key`) hoặc phẳng `parent-key`; cột cây
+  (`tree-column`) thụt theo cấp; mọi tính năng của bảng cho từng dòng (cột thao tác, toggle, `render(row, i, ctx)` với
+  `ctx = { level, parentKey, hasChildren, expanded }`, chọn dòng kể cả dòng con, sắp xếp trong từng nhóm anh em).
+- Mở / đóng: `expandedKeys`, `expand` / `collapse` / `toggleExpanded` / `expandAll` / `collapseAll`, event `expanded-change`;
+  trạng thái mở giữ qua sắp xếp / đổi trang / `data` mới; `getState().expandedKeys`.
+- Tải con lười `loadChildren` + `rowHasChildren`: dòng "Đang tải…" sau 400 ms, dòng lỗi + "Thử lại" (bàn phím tới được),
+  thông báo qua live region, yêu cầu mới thắng yêu cầu cũ; event `load-error`.
+- `moveRow(key, parentKey, index)` + `canDrop` + `max-depth`: đổi cha / thứ tự, `index` là vị trí cuối trong nhóm anh em
+  đích; từ chối vòng lặp / quá sâu / `canDrop` false; dữ liệu của app không bị sửa (`getTree()` trả thứ tự hiện tại).
+- ARIA `treegrid` (`aria-level` / `aria-expanded` / `aria-setsize` / `aria-posinset`), một điểm Tab cho các dòng, ← → mở /
+  đóng; dạng card trên màn hẹp có đường dẫn cấp. Mở nhánh chỉ vẽ dòng mới (1000+ dòng).
+
+### Changed
+
+- Menu "Thao tác" của card (cả bảng phẳng) đọc dòng lúc mở và kiểm lại lúc chọn — dòng đã rời bảng không còn nhận
+  `row-action` (trước có thể trúng dòng khác ở chỉ số cũ).
+- `getState()` có thêm `expandedKeys`.
+
+### Security
+
+- Dữ liệu cây không tin cậy: không đệ quy theo độ sâu (chuỗi 50 000 dòng vẫn dựng, giữ 16 cấp), phát hiện vòng lặp O(n),
+  dựng cây nguyên khối (lỗi giữa chừng giữ nguyên cây cũ).
+
 ## 0.56.0
 
 **`td-repeater` `value` / `disabled` / `readonly`, icon + preset nút thao tác cho catalog, PHP `td_date()`** (owner duyệt danh
