@@ -2019,14 +2019,16 @@ export class TdTable extends TdBaseElement {
   /** @private The model, rebuilt from `data` when something structural changed. */
   _treeModel() {
     if (this._treeDirty) {
-      this._treeDirty = false;
-      this._clearLoadTimers();
+      // Codex r2 #2: a build that throws (a row getter / proxy) propagates and keeps the old tree, its timers and the
+      // dirty flag — only a successful build is committed
       this._tree.setData(this._data, {
         childrenKey: (this.getAttribute('children-key') || '').trim() || 'children',
         parentKey: this._parentKeyAttr() || null,
         hasChildren: this._rowHasChildren || ((row) => !!row && typeof row === 'object' && row.hasChildren === true),
         readField: readKeyField,
       });
+      this._treeDirty = false;
+      this._clearLoadTimers();
     }
     return this._tree;
   }
@@ -2445,7 +2447,16 @@ export class TdTable extends TdBaseElement {
       t.announced = true;
       this._announce(fill(TdTable.labels.treeLoadingRow, { label: label() }));
     }, TREE_LOADING_MS);
-    p.then((res) => {
+    // Codex r2 #3: an unexpected rejection still ends the request (timer, aria-busy, error row, announcement)
+    p.catch((error) => {
+      if (node.loading) {
+        node.loading = false;
+        node.ctrl = null;
+        node.promise = null;
+      }
+      node.loadError = true;
+      return { ok: false, error: error == null ? new Error('loadChildren failed') : error };
+    }).then((res) => {
       if (res.stale || this._loadTimers.get(node) !== t) return;
       clearTimeout(t.timer);
       this._loadTimers.delete(node);

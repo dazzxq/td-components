@@ -472,3 +472,44 @@ describe('table-tree-model — deep / hostile input (Codex impl r1 #1, sec r1 #1
     assert.equal(m.node('q'), undefined, 'no key of the failed build leaked into the owners');
   });
 });
+
+describe('table-tree-model — atomic setData + lazy materialisation errors (Codex r2 #2, #3)', () => {
+  const badRow = () => new Proxy({ id: 'p', parentId: null }, {
+    get(t, k) { if (k === 'children') throw new Error('getter'); return t[k]; },
+  });
+
+  it('a failed schema-changing build (nested → parent-key, a row getter throws) keeps the old tree, config and in-flight load', async () => {
+    const { m } = mk([{ id: 'l', hasChildren: true }, { id: 'z' }]);
+    const d = deferred();
+    let signal;
+    const p = m.load(m.node('l'), (row, o) => { signal = o.signal; return d.promise; });
+    const gen = m.gen;
+    assert.throws(() => m.setData([badRow()], { parentKey: 'parentId' }), /getter/);
+    assert.equal(m.gen, gen, 'generation not bumped');
+    assert.equal(signal.aborted, false, 'the request in flight survives');
+    assert.deepEqual(m.roots.map((n) => n.id), ['l', 'z']);
+    d.resolve([{ id: 'c', children: [{ id: 'gc' }] }]);
+    assert.deepEqual(await p, { ok: true, n: 1 });
+    assert.ok(m.node('gc'), 'nested semantics still used: the grandchild is kept');
+    assert.equal(m.node('gc').depth, 2);
+  });
+
+  for (const [what, make] of [
+    ['a row whose children getter throws', () => [new Proxy({ id: 'x' }, { get(t, k) { if (k === 'children') throw new Error('getter'); return t[k]; } })]],
+    ['a throwing array proxy', () => new Proxy([{ id: 'x' }], { get(t, k) { if (k === 'length' || k === '0') throw new Error('array'); return t[k]; } })],
+  ]) {
+    it(`loadChildren result with ${what} → an error (loadError, not loading, nothing half-built), retry works`, async () => {
+      const { m } = mk([{ id: 'l', hasChildren: true }]);
+      const r = await m.load(m.node('l'), () => make());
+      assert.equal(r.ok, false);
+      assert.ok(r.error instanceof Error);
+      const n = m.node('l');
+      assert.deepEqual([n.loadError, n.loading, n.children], [true, false, null]);
+      assert.equal(m.node('x'), undefined);
+      const r2 = await m.load(n, () => [{ id: 'ok' }]);
+      assert.equal(r2.ok, true);
+      assert.equal(n.loadError, false);
+      assert.ok(m.node('ok'));
+    });
+  }
+});

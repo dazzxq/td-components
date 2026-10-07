@@ -60,9 +60,13 @@ export class TableTreeModel {
     this._flat = null;
     this._ownerIdx = null;
     this._loading = new Set();
-    this._childrenKey = 'children';
-    this._parentKey = null;
-    this._hasChildren = (row) => !!row && typeof row === 'object' && row.hasChildren === true;
+    /** committed build config (changed only by a SUCCESSFUL setData — Codex r2 #2) */
+    this._cfg = {
+      childrenKey: 'children',
+      parentKey: null,
+      hasChildren: (row) => !!row && typeof row === 'object' && row.hasChildren === true,
+      readField: (row, f) => (row && typeof row === 'object' ? row[f] : undefined),
+    };
   }
 
   _warnOnce(kind, msg) {
@@ -80,17 +84,21 @@ export class TableTreeModel {
    *   readField?: (row: unknown, field: string) => unknown }} [opts]
    */
   setData(data, opts = {}) {
-    this.abortAll();
-    if (opts.childrenKey) this._childrenKey = String(opts.childrenKey);
-    this._parentKey = opts.parentKey ? String(opts.parentKey) : null;
-    if (typeof opts.hasChildren === 'function') this._hasChildren = opts.hasChildren;
-    this._readField = typeof opts.readField === 'function' ? opts.readField
-      : (row, f) => (row && typeof row === 'object' ? row[f] : undefined);
+    const old = this._cfg;
+    const cfg = {
+      childrenKey: opts.childrenKey ? String(opts.childrenKey) : old.childrenKey,
+      parentKey: opts.parentKey ? String(opts.parentKey) : null,
+      hasChildren: typeof opts.hasChildren === 'function' ? opts.hasChildren : old.hasChildren,
+      readField: typeof opts.readField === 'function' ? opts.readField : old.readField,
+    };
     const rows = Array.isArray(data) ? data : [];
-    // Codex impl r1 #1: built into LOCAL structures and committed at the end — a throw never leaves a half-rebuilt
-    // model. Every walk is iterative (no recursion on data depth: a 50 000-row chain is fine).
-    const ctx = { owners: new Map(), base: null, count: 0 };
-    const roots = this._parentKey ? this._buildFlat(rows, ctx) : this._buildNested(rows, null, ctx);
+    // Codex r1 #1 / r2 #2: config, roots and owners are built LOCALLY; only after the build succeeded are the old
+    // requests aborted, the generation bumped and everything committed — a throwing build (a row getter / proxy) leaves
+    // the previous tree, its config and its loads in flight untouched. Every walk is iterative (no recursion on depth).
+    const ctx = { owners: new Map(), base: null, count: 0, cfg };
+    const roots = cfg.parentKey ? this._buildFlat(rows, ctx) : this._buildNested(rows, null, ctx);
+    this.abortAll();
+    this._cfg = cfg;
     this._owners = ctx.owners;
     this.roots = roots;
     this._dirty();
@@ -122,8 +130,8 @@ export class TableTreeModel {
   }
 
   /** @private may this row (no children in the data) load children lazily? */
-  _isLazy(row) {
-    try { return !!this._hasChildren(row); } catch { return false; }
+  _isLazy(row, ctx) {
+    try { return !!ctx.cfg.hasChildren(row); } catch { return false; }
   }
 
   _tooDeep(depth) {
@@ -139,7 +147,7 @@ export class TableTreeModel {
   _buildNested(rows, parent, ctx) {
     const out = [];
     if (this._tooDeep(parent ? parent.depth + 1 : 0)) return out;
-    const ck = this._childrenKey;
+    const ck = ctx.cfg.childrenKey;
     const stack = [{ rows, i: 0, parent, out }];
     while (stack.length) {
       const f = stack[stack.length - 1];
@@ -155,7 +163,7 @@ export class TableTreeModel {
       if (Array.isArray(kids)) {
         node.children = [];
         if (kids.length && !this._tooDeep(node.depth + 1)) stack.push({ rows: kids, i: 0, parent: node, out: node.children });
-      } else if (this._isLazy(row)) {
+      } else if (this._isLazy(row, ctx)) {
         node.children = null;
         node.lazy = true;
       }
@@ -169,8 +177,8 @@ export class TableTreeModel {
    * path / done) finds every cycle, a memoised pass computes the depths; rows deeper than the cap are dropped.
    */
   _buildFlat(rows, ctx) {
-    const pk = this._parentKey;
-    const ck = this._childrenKey;
+    const pk = ctx.cfg.parentKey;
+    const ck = ctx.cfg.childrenKey;
     const n = rows.length;
     const nodes = new Array(n);
     for (let i = 0; i < n; i++) {
@@ -187,7 +195,7 @@ export class TableTreeModel {
     let orphan = false;
     for (let i = 0; i < n; i++) {
       let pid = null;
-      try { pid = keyId(this._readField(rows[i], pk)); } catch { pid = null; }
+      try { pid = keyId(ctx.cfg.readField(rows[i], pk)); } catch { pid = null; }
       if (pid === null) continue;
       const owner = ctx.owners.get(pid);
       if (!owner) orphan = true;
@@ -260,7 +268,7 @@ export class TableTreeModel {
     for (let i = 0; i < n; i++) {
       const node = nodes[i];
       if (depth[i] >= TREE_MAX_DEPTH || node.id === null || node.dup) continue;
-      if (!hadKids[i] && this._isLazy(node.row)) {
+      if (!hadKids[i] && this._isLazy(node.row, ctx)) {
         node.children = null;
         node.lazy = true;
       }
@@ -451,8 +459,16 @@ export class TableTreeModel {
       node.loadError = true;
       return { ok: false, error: err || new TypeError('loadChildren must resolve to an array') };
     }
-    const ctx = { owners: new Map(), base: this._owners, count: 0 };
-    const kids = this._parentKey ? this._buildLevel(res, node, ctx) : this._buildNested(res, node, ctx);
+    // Codex r2 #3: materialising the result may throw (a row getter, an array proxy) → an ERROR (retry), never a
+    // rejected promise with the node half-loaded; built locally, committed after success
+    let kids;
+    const ctx = { owners: new Map(), base: this._owners, count: 0, cfg: this._cfg };
+    try {
+      kids = this._cfg.parentKey ? this._buildLevel(res, node, ctx) : this._buildNested(res, node, ctx);
+    } catch (e) {
+      node.loadError = true;
+      return { ok: false, error: e == null ? new Error('loadChildren result could not be read') : e };
+    }
     for (const [id, owner] of ctx.owners) this._owners.set(id, owner); // committed after a complete build
     node.children = kids;
     node.lazy = false;
@@ -467,7 +483,7 @@ export class TableTreeModel {
     for (const row of rows) {
       const node = this._node(row, parent, ctx);
       out.push(node);
-      if (node.id !== null && !node.dup && this._isLazy(row)) {
+      if (node.id !== null && !node.dup && this._isLazy(row, ctx)) {
         node.children = null;
         node.lazy = true;
       }

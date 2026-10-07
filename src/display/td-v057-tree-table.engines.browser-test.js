@@ -659,6 +659,26 @@ describe('v0.57.0 td-table tree — lazy children (QĐ 13)', () => {
     }
   });
 
+  it('a loadChildren result that cannot be read (a throwing row getter) → error row + load-error + announcement, no stale aria-busy; Retry works (Codex r2 #3)', async () => {
+    let calls = 0;
+    const bad = () => [new Proxy({ id: 'x', name: 'X' }, { get(t, k) { if (k === 'children') throw new Error('getter'); return t[k]; } })];
+    const el = await mk('tree row-key="id"', { data: LAZY(), setup: (t) => { t.loadChildren = () => { calls += 1; return calls === 1 ? bad() : [{ id: 'ok', name: 'Được' }]; }; } });
+    const errs = record(el, 'load-error');
+    const log = liveLog(el);
+    toggleOf(row(el, 'Lười')).click();
+    await until(() => el.querySelector('.td-table__tree-retry'));
+    expect(errs).to.have.length(1);
+    expect(errs[0].error.message).to.equal('getter');
+    expect(row(el, 'Lười').hasAttribute('aria-busy')).to.equal(false);
+    await until(() => log.length > 0);
+    expect(log[0]).to.equal('Không tải được các dòng con của Lười');
+    el.querySelector('.td-table__tree-retry').click();
+    await until(() => names(el).includes('Được'));
+    expect(names(el)).to.deep.equal(['Lười', 'Được', 'Cuối']);
+    expect(el.querySelector('.td-table__row--tree-status')).to.equal(null);
+    expect(row(el, 'Lười').hasAttribute('aria-busy')).to.equal(false);
+  });
+
   it('new data while loading: the request is aborted, the late result dropped, the open branch reloads; its timer never announces', async () => {
     const first = deferred();
     const second = deferred();
