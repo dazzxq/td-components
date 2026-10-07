@@ -140,6 +140,12 @@ export function renderedPairs() {
     add(`helper note on ${b}`, '--td-color-text-muted', [b], 4.7, { gateLight: true });
     add(`toggle state text on ${b}`, '--td-color-text-muted', [b], 4.7, { gateLight: true });
   }
+  // v0.55.0 prefix / suffix text + icon of td-input-field / td-number-input (field.css: --td-field-affix-fg, the number
+  // alias --td-number-affix-fg) on every fill the field box takes: rest, focus, read-only, disabled (decorative, but the
+  // unit is information: text threshold everywhere)
+  for (const f of ['--td-field-bg', '--td-field-bg-focus', '--td-field-bg-readonly', '--td-field-bg-disabled']) {
+    add(`field affix on ${f}`, '--td-field-affix-fg', [f], 4.7, { gateLight: true });
+  }
   return P;
 }
 
