@@ -38,6 +38,8 @@ const CASES = [
       onSelectChange: fn(), selectedKeys: ['2'], layout: 'cards', cardBelow: 'lg', cellPaddingClass: 'px-2', zebra: false,
       // v0.57.0 tree table
       expandedKeys: ['1'], loadChildren: fn(), rowHasChildren: fn(), canDrop: fn(),
+      // v0.57.2 pagination info hook
+      formatPageInfo: () => 'Thông tin trang',
     }),
     check(el) {
       const text = el.textContent;
@@ -45,7 +47,14 @@ const CASES = [
       expect(text.includes('x1') && text.includes('x2'), 'rows rendered').to.equal(true);
       expect(el.getAttribute('layout')).to.equal('cards');
       expect(el.getAttribute('zebra')).to.equal('false');
+      expect(el.querySelector('.td-table__footer .td-pagination__info').textContent).to.equal('Thông tin trang');
     },
+  },
+  {
+    // v0.57.2
+    tag: 'td-pagination', attrs: { 'total-items': '23' },
+    props: () => ({ formatInfo: () => 'Trang có 23 mục' }),
+    check(el) { expect(el.querySelector('.td-pagination__info').textContent).to.equal('Trang có 23 mục'); },
   },
   {
     tag: 'td-tabs',

@@ -6,6 +6,7 @@ import { cardRoles } from '../utils/table-card-role.js';
 import { KeySelection, keyId } from '../utils/key-selection.js';
 import { checkMarkHTML } from '../utils/check-mark.js';
 import { TableTreeModel, compareRows } from '../utils/table-tree-model.js';
+import { hookText } from '../utils/page-info.js';
 import './td-pagination.js';
 import './td-empty-state.js';
 
@@ -125,6 +126,8 @@ function safeMaxHeight(value) {
  * @attr {boolean} server-mode - Rows are one server page: no client sort/slice; `data` keeps the current page
  * @attr {number} total-items - Server mode total (REQUIRED in server mode — without it the rows render, both
  *   paginations stay hidden and one console warning is printed)
+ * @attr {number} total-rows - v0.57.2, server mode, optional: the number of ALL data rows (a tree: roots + all their
+ *   descendants) → `formatPageInfo` ctx `totalRows` (else null). Client mode ignores it (the model size is used).
  * @attr {string} max-height - Any CSS `max-height` (e.g. `320px`, `50vh`): the table scrolls inside and the header is
  *   sticky (validated with `CSS.supports`; url()/var() rejected)
  * @attr {string} layout - `auto` (default: cards when the host is narrower than `card-below`) | `table` (always a
@@ -166,6 +169,13 @@ function safeMaxHeight(value) {
  * @property {Function} onPageChange - `(page)` — SERVER MODE ONLY (fetch that page, then set `data`); in client mode
  *   the table pages itself (listen to `page-change` if needed). A throwing `onSort`/`onPageChange` is logged
  *   (`console.error`) and the table state stays consistent.
+ * @property {Function|null} formatPageInfo - v0.57.2 per-table pagination info text: `(ctx) => string`, ctx = `{ from,
+ *   to, total, item, rows, totalRows, tree, page, perPage, text }` — `rows` = data rows shown on this page (a tree: roots
+ *   + visible descendants, never status rows), `totalRows` = all data rows when known (client: model size; server:
+ *   `total-rows` or null), `text` = the default text. Used as TEXT (never HTML) by both paginations (the bottom one is
+ *   the live region); a non-string / a throw → the default text + one console warning. Refreshed when the rows on the
+ *   page change (expand / collapse / lazy load / moveRow / data). A TREE table's default text is
+ *   `labels.treePageInfo` (`{info}` = td-pagination's text with `labels.treeItemLabel` as the item noun, `{rows}`).
  * @fires sort-change - `{ key, direction }` (direction `'asc'|'desc'|null`), bubbling, before `onSort`
  * @fires page-change - from the inner td-pagination elements, `{ page }` (bubbles through the host)
  * @fires row-action - `{ id, row, rowIndex }` (rowIndex = index in the current page, like `render`), bubbling, then
@@ -246,6 +256,10 @@ export class TdTable extends TdBaseElement {
     treeLoaded: 'Đã tải {n} dòng con của {label}',
     treeLoadErrorRow: 'Không tải được các dòng con của {label}',
     treeRetrying: 'Đang tải lại…',
+    // v0.57.2 pagination info of a tree table: `{info}` = td-pagination's info text (its `{item}` = treeItemLabel),
+    // `{rows}` = data rows shown on the page
+    treeItemLabel: 'nhóm',
+    treePageInfo: '{info} · {rows} dòng',
   };
 
   /** v0.37.0 (ADR 0018): form-associated for the optional `name` (the selected keys). NOT a TdFormElement. */
@@ -255,7 +269,7 @@ export class TdTable extends TdBaseElement {
     return ['per-page', 'active-color', 'zebra', 'loading', 'loading-rows', 'title', 'heading-level', 'aria-label',
       'empty-title', 'empty-text', 'server-mode', 'total-items', 'max-height',
       'selectable', 'row-key', 'max-selected', 'name', 'disabled', 'controlled', 'column-menu', 'min-visible',
-      'tree', 'children-key', 'parent-key', 'tree-column', 'max-depth'];
+      'tree', 'children-key', 'parent-key', 'tree-column', 'max-depth', 'total-rows'];
   }
 
   // `zebra` is tri-state (default ON), so it is NOT a boolean attribute — see the `zebra` accessor.
@@ -270,6 +284,11 @@ export class TdTable extends TdBaseElement {
     this._onSort = null;
     this._onPageChange = null;
     this._onRowAction = null;
+    // v0.57.2 pagination info: the hook, the data rows on the page (kept while loading), the function td-table gives
+    // both paginations (`formatInfo`) when it is a tree or has a hook
+    this._formatPageInfo = null;
+    this._infoRows = 0;
+    this._pagInfo = (c) => this._pageInfoText(c);
     /** Rows of the rendered page (row-action → `row`). */
     this._pageRows = [];
     /** Sorted column by INDEX (fixes numeric/duplicate keys). */
@@ -394,6 +413,13 @@ export class TdTable extends TdBaseElement {
   set onPageChange(fn) { this._onPageChange = typeof fn === 'function' ? fn : null; }
 
   get onRowAction() { return this._onRowAction; }
+
+  /** v0.57.2: `(ctx) => string` — the pagination info text of this table (see the class doc); non-function = null. */
+  get formatPageInfo() { return this._formatPageInfo; }
+  set formatPageInfo(fn) {
+    this._formatPageInfo = typeof fn === 'function' ? fn : null;
+    if (this._root) this._update();
+  }
 
   /** v0.39.0: keys of the hidden columns, in column order (silent setter; `null` = the `hidden` flags of `columns`). */
   get hiddenColumns() {
@@ -933,6 +959,7 @@ export class TdTable extends TdBaseElement {
     this._treeRendered = !!entries && !loading && !empty;
     if (!this._treeRendered) this._activeTr = null;
     this._pageRows = loading || empty ? [] : rows;
+    if (!loading) this._infoRows = rows.length;
     this._paintSelection();
 
     const showPag = this._syncPag(total, loading, server);
@@ -988,12 +1015,44 @@ export class TdTable extends TdBaseElement {
         set('current-page', String(this._currentPage));
         if (color) set('active-color', color);
         else p.removeAttribute('active-color');
+        // v0.57.2: a tree names its roots; td-table writes the text when it is a tree or has a hook (assigning
+        // formatInfo again refreshes the text: the rows on the page may change without a page change). A flat table
+        // without a hook leaves td-pagination's own text alone.
+        set('item-label', this._treeOn() ? String(TdTable.labels.treeItemLabel ?? '') : String(TdTable.labels.itemLabel ?? ''));
+        if (this._treeOn() || this._formatPageInfo) p.formatInfo = this._pagInfo;
+        else if (p.formatInfo) p.formatInfo = null;
       }
     }
     this._pagTop.parentElement.hidden = !showPag;
     this._footer.hidden = !showPag;
     this._header.hidden = !showPag && !this._getTitle() && !this._colMenuOn();
     return showPag;
+  }
+
+  /**
+   * @private v0.57.2: the info text both paginations show (td-pagination `formatInfo`): a tree → `treePageInfo`; then
+   * the table's `formatPageInfo` (text; a non-string / throw → the default + one warning).
+   * @param {{ from: number, to: number, total: number, item: string, page: number, perPage: number, text: string }} c
+   */
+  _pageInfoText(c) {
+    const tree = this._treeOn();
+    const rows = this._infoRows;
+    const text = tree ? fill(TdTable.labels.treePageInfo, { info: c.text, rows }) : c.text;
+    if (!this._formatPageInfo) return text;
+    const ctx = { from: c.from, to: c.to, total: c.total, item: c.item, rows, totalRows: this._getTotalRows(), tree,
+      page: c.page, perPage: c.perPage, text };
+    return hookText(this._formatPageInfo, ctx, (m) => this._warnOnce(m), 'td-table: formatPageInfo') ?? text;
+  }
+
+  /** @private All data rows: server → `total-rows` (integer ≥ 0) or null; client → the tree model size / `data`. */
+  _getTotalRows() {
+    if (this._isServerMode()) {
+      const v = (this.getAttribute('total-rows') || '').trim();
+      if (!/^\d+$/.test(v)) return null;
+      const n = Number(v);
+      return Number.isSafeInteger(n) ? n : null;
+    }
+    return this._treeOn() ? this._treeModel().size : this._data.length;
   }
 
   /** @private title → aria-labelledby, else host aria-label, else the fallback label (D18, review ISSUE-4). */
@@ -2363,7 +2422,9 @@ export class TdTable extends TdBaseElement {
     }
     this._treeArrays(want.filter((tr) => !this._trInfo.get(tr).status));
     this._paintSelection();
-    if (this._isServerMode()) this._syncPag(total, false, true);
+    // v0.57.2: the info text counts the rows on the page → both modes (client: same root total, new row count)
+    this._infoRows = rows.length;
+    this._syncPag(total, false, this._isServerMode());
     // roving: new rows join (inactive); the active row may have left
     let act = this._activeTr && this._activeTr.parentElement === tbody ? this._activeTr : null;
     for (const f of fresh) this._roveRow(want[f.at], false);
