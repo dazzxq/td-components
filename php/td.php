@@ -1390,6 +1390,9 @@ namespace {
      * `div.td-field__box` with decorative `span.td-field__affix--{prefix|suffix}` (aria-hidden) + a hidden
      * `span#{id}-unit` first in aria-describedby (the same tree <td-input-field> renders). Other types: dropped + one
      * E_USER_WARNING (option names only). Page Elements in the affix are JS / hand-written markup only ([slot]).
+     * v0.58.0: label_mode ('top' default | 'floating'; needs a label) — the floating label: root `td-field--floating`
+     * [+ `td-field--always-float` (date family / affix)] [+ `td-field--ph-label`], the control (or box) BEFORE the label, the
+     * control placeholder = the real one, else the label text (hidden by td.css); element mode: host `label-mode="floating"`.
      * v0.26.0 `element` (bool, default Td::configure ssr_elements = false): print the `<td-input-field
      * data-td-ssr="input-field@1">` host + the exact markup <td-input-field> renders, with the native control keeping
      * name / value / constraints / autocomplete (works without JS; hydrated in place — no flash). `id` is then the
@@ -1422,6 +1425,8 @@ namespace {
         }
         $hints = Td::inputHints($hintSrc);
         $aff = td__field_affix($o, $type); // v0.55.0
+        $phOpt = isset($o['placeholder']) && (string) $o['placeholder'] !== '' ? (string) $o['placeholder'] : null;
+        $float = td__field_float($o, $type, $aff, isset($o['label']) ? (string) $o['label'] : null, $phOpt); // v0.58.0
         // v0.54.0 (QĐ 3): while an error shows the note is hidden and out of the description
         $desc = trim(($aff !== null && $aff['unit'] !== null ? "$id-unit " : '') . ($hint !== '' && $error === '' ? "$id-note " : '')
             . ($error !== '' ? "$id-error" : ''));
@@ -1429,7 +1434,7 @@ namespace {
             'class' => 'td-field__control',
             'id' => "$id-control",
             'name' => $name !== '' ? $name : null,
-            'placeholder' => isset($o['placeholder']) && (string) $o['placeholder'] !== '' ? (string) $o['placeholder'] : null,
+            'placeholder' => $float !== null ? $float['placeholder'] : $phOpt,
             'required' => $required,
             'aria-required' => $required ? 'true' : null,
             'disabled' => !empty($o['disabled']),
@@ -1465,8 +1470,9 @@ namespace {
         // The note is always present (hidden when empty) — same footer tree as <td-input-field>.
         $footer .= '<div class="td-field__note" id="' . Td::e($id) . '-note"' . ($hint === '' || $error !== '' ? ' hidden' : '') . '>' . Td::e($hint) . '</div>';
         return '<div class="td-field td-field--' . $size . ($type === 'textarea' ? ' td-field--textarea' : '') . ($aff !== null ? ' td-field--affix' : '')
-            . Td::e(Td::classTokens($o['class'] ?? null)) . '" id="' . Td::e($id) . '">'
-            . $label . $control . '<div class="td-field__footer"' . ($hint === '' && $error === '' ? ' hidden' : '') . '>' . $footer . '</div></div>';
+            . ($float['class'] ?? '') . Td::e(Td::classTokens($o['class'] ?? null)) . '" id="' . Td::e($id) . '">'
+            . ($float !== null ? $control . $label : $label . $control) // v0.58.0: floating → the control (box) before the label
+            . '<div class="td-field__footer"' . ($hint === '' && $error === '' ? ' hidden' : '') . '>' . $footer . '</div></div>';
     }
 
     /**
@@ -2556,6 +2562,25 @@ namespace {
      * warning naming the options). `unit` = unit_label ?? suffix ?? prefix (the text read through `{id}-unit`).
      * @return array{prefix:array{0:?string,1:?string},suffix:array{0:?string,1:?string},unit:?string,attrs:array<string,?string>}|null
      */
+    /**
+     * @internal v0.58.0 (plan v0.58.0-floating-label QĐ 2, 5, 13 + M0 F1): `label_mode => 'floating'` with a non-empty label
+     * (anything else: null = the top label, byte-identical). Root classes ` td-field--floating` [+ ` td-field--always-float`
+     * for the date family / an affix] [+ ` td-field--ph-label` without a real placeholder] and the control placeholder (the
+     * real one, else the label text — hidden by td.css, it equals the accessible name). Same rule as <td-input-field>.
+     * @return array{class: string, placeholder: string}|null
+     */
+    function td__field_float(array $o, string $type, ?array $aff, ?string $label, ?string $placeholder): ?array
+    {
+        if (($o['label_mode'] ?? null) !== 'floating' || $label === null || $label === '') {
+            return null;
+        }
+        $always = in_array($type, ['date', 'month', 'datetime-local', 'time'], true) || $aff !== null;
+        return [
+            'class' => ' td-field--floating' . ($always ? ' td-field--always-float' : '') . ($placeholder === null ? ' td-field--ph-label' : ''),
+            'placeholder' => $placeholder ?? $label,
+        ];
+    }
+
     function td__field_affix(array $o, string $type): ?array
     {
         $prefix = td__str($o['prefix'] ?? null);
@@ -5147,6 +5172,7 @@ namespace {
         }
         $rows = $textarea ? (Td::intOpt($o['rows'] ?? null, 1) ?? '3') : null;
         $aff = td__field_affix($o, $type); // v0.55.0
+        $float = td__field_float($o, $type, $aff, $label, $placeholder); // v0.58.0
         // component-owned description ids, in the component's order: [unit], helper note, counter, error
         $desc = trim(($aff !== null && $aff['unit'] !== null ? "$hostId-unit " : '') . ($hint !== null && $error === null ? "$hostId-note " : '')
             . ($max !== null ? "$hostId-counter " : '') . ($error !== null ? "$hostId-error" : ''));
@@ -5155,7 +5181,7 @@ namespace {
             'class' => 'td-field__control',
             'id' => $cid,
             'name' => $name !== '' ? $name : null,
-            'placeholder' => $placeholder,
+            'placeholder' => $float !== null ? $float['placeholder'] : $placeholder,
             'required' => $required,
             'aria-required' => $required ? 'true' : null,
             'disabled' => !empty($o['disabled']),
@@ -5193,7 +5219,8 @@ namespace {
             $footer .= '<div class="td-field__counter" id="' . $hid . '-counter"' . ($count >= (int) $max ? ' data-state="limit"' : '')
                 . '>' . $count . '/' . $max . ' ký tự</div>';
         }
-        $inner = '<div class="td-field td-field--' . $size . ($textarea ? ' td-field--textarea' : '') . ($aff !== null ? ' td-field--affix' : '') . '">' . $labelHtml . $control
+        $inner = '<div class="td-field td-field--' . $size . ($textarea ? ' td-field--textarea' : '') . ($aff !== null ? ' td-field--affix' : '')
+            . ($float['class'] ?? '') . '">' . ($float !== null ? $control . $labelHtml : $labelHtml . $control) // v0.58.0
             . '<div class="td-field__footer"' . ($hint === null && $error === null && $max === null ? ' hidden' : '') . '>' . $footer . '</div></div>';
         $host = [
             'data-td-ssr' => Td::SSR_FIELD,
@@ -5204,6 +5231,7 @@ namespace {
             'name' => $name !== '' ? $name : null,
             'value' => $value !== '' ? $value : null,
             'label' => $label,
+            'label-mode' => $float !== null ? 'floating' : null, // v0.58.0
             'placeholder' => $placeholder,
             'helper-text' => $hint,
             'error-text' => $error,
