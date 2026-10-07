@@ -306,23 +306,6 @@ export class TdRepeater extends TdBaseElement {
     this._pendingDefs = new Set();
   }
 
-  /**
-   * P1 (plan v0.56.0): `value` / `readRow` / `writeRow` assigned BEFORE the upgrade (a <template> clone, createElement
-   * before define) are own data properties shadowing the accessors — hand them to the setters before the first render
-   * (hooks first, so the early value is written with them). Superseded by the base replay of v0.54.1.
-   */
-  connectedCallback() {
-    if (!this._initialized) {
-      for (const p of ['readRow', 'writeRow', 'value']) {
-        if (!Object.prototype.hasOwnProperty.call(this, p)) continue;
-        const v = this[p];
-        delete this[p];
-        this[p] = v;
-      }
-    }
-    super.connectedCallback();
-  }
-
   // --- public API ---
 
   /** @returns {HTMLElement[]} the rows in DOM order */

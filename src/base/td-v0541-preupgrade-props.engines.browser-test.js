@@ -165,6 +165,16 @@ const CASES = [
     props: () => ({ columns: [{ key: 'r', label: 'Đọc' }], rows: [{ key: 'u', label: 'User' }], cells: {}, value: { r: ['u'] } }),
     check(el) { expect(el.textContent.includes('Đọc') && el.textContent.includes('User')).to.equal(true); },
   },
+  // v0.56.0: td-repeater `value` (data-td-field rows) — read back directly; then the hooks (value read through them → skipped)
+  {
+    tag: 'td-repeater', inner: '<template><div data-td-row><input data-td-field="a" aria-label="A"></div></template>',
+    props: () => ({ value: [{ a: 'x' }, { a: 'y' }] }),
+    check(el) { expect(el.querySelectorAll(':scope > [data-td-row]').length).to.equal(2); },
+  },
+  {
+    tag: 'td-repeater', inner: '<template><div data-td-row><input data-td-field="a" aria-label="A"></div></template>',
+    props: () => ({ readRow: fn(), writeRow: fn(), value: [{ a: 'x' }] }), skip: ['value'],
+  },
 ];
 
 /** Does `got` carry `want`? Functions / nodes by identity, dates by time, arrays element-wise, objects key subset. */
