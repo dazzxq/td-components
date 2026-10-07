@@ -48,13 +48,24 @@ function unwatch(hint, root) {
  * @type {Map<string, Set<WeakRef<TdHint>>>}
  */
 const WAITS = new Map();
+/** Codex impl r3 #9: td-* names that are not valid custom-element names (`<td-!>` parses, whenDefined rejects) — never
+ * waited for again; their hints link through the plain aria-describedby path. */
+const NO_WAIT = new Set();
+/** HTML "valid custom element name" (PCENChar ranges); engines differ on invalid names (Chromium: a never-settling
+ * whenDefined, Firefox: a rejection), so the name is checked before any wait. */
+const PCEN = '[-._0-9a-z\\u00B7\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u037D\\u037F-\\u1FFF\\u200C\\u200D\\u203F\\u2040\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD]';
+const CE_NAME = new RegExp(`^[a-z]${PCEN}*-${PCEN}*$`, 'u');
+const RESERVED = new Set(['annotation-xml', 'color-profile', 'font-face', 'font-face-src', 'font-face-uri', 'font-face-format',
+  'font-face-name', 'missing-glyph']);
+const validCEName = (name) => CE_NAME.test(name) && !RESERVED.has(name);
 
 function subscribe(hint, tag) {
   let set = WAITS.get(tag);
   if (!set) {
     set = new Set();
     WAITS.set(tag, set);
-    customElements.whenDefined(tag).then(() => {
+    const settleWait = (valid) => {
+      if (!valid) NO_WAIT.add(tag);
       const subs = WAITS.get(tag);
       WAITS.delete(tag);
       for (const ref of subs || []) {
@@ -63,7 +74,10 @@ function subscribe(hint, tag) {
         h._wait = null;
         if (h.isConnected) h._revalidate();
       }
-    });
+    };
+    let p;
+    try { p = customElements.whenDefined(tag); } catch { p = Promise.reject(new Error('invalid')); }
+    p.then(() => settleWait(true), () => settleWait(false));
   }
   hint._waitRef ??= new WeakRef(hint);
   set.add(hint._waitRef);
@@ -215,7 +229,14 @@ export class TdHint extends TdBaseElement {
     if (want === this) want = null;
     const token = this.id;
     const tag = want ? want.localName : '';
-    const pending = !!want && tag.startsWith('td-') && tag.includes('-') && !customElements.get(tag);
+    let defined = true;
+    if (want && tag.startsWith('td-') && !NO_WAIT.has(tag)) {
+      if (!validCEName(tag)) NO_WAIT.add(tag); // `<td-!>` parses but can never be defined: link natively
+      else {
+        try { defined = !!customElements.get(tag); } catch { NO_WAIT.add(tag); }
+      }
+    }
+    const pending = !!want && tag.startsWith('td-') && !NO_WAIT.has(tag) && !defined;
     // Codex impl r1 #5: a wait for another tag (or none needed any more) is dropped before anything else
     if (this._wait && (!pending || this._wait !== tag)) this._cancelWait();
     if (this._link && this._link.target === want && this._link.token === token) return;

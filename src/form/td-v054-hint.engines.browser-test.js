@@ -430,4 +430,25 @@ describe('v0.54.0 <td-hint> — one whenDefined per tag (broker, Codex impl r2)'
     expect(calls.get('my-widget')).to.equal(undefined);
     expect(desc(d.querySelector('#w1'))).to.deep.equal(['w1-hint']);
   });
+
+  it('Codex impl r3 #9: an INVALID td-* name (whenDefined rejects) falls back to the native link, no unhandled rejection', async () => {
+    const unhandled = [];
+    const onRej = (e) => { unhandled.push(e); e.preventDefault(); };
+    window.addEventListener('unhandledrejection', onRej);
+    try {
+      const d = box('<td-! id="bad"></td-!><td-hint for="bad" id="bad-hint">Gợi ý</td-hint>');
+      const target = d.querySelector('#bad');
+      expect(target.localName).to.equal('td-!');
+      for (let i = 0; i < 20 && !desc(target).includes('bad-hint'); i++) await settle();
+      expect(desc(target)).to.deep.equal(['bad-hint']);
+      await settle();
+      expect(unhandled.length, 'unhandled rejection').to.equal(0);
+      // a second hint for the same invalid tag links at once (the tag is remembered as not waitable)
+      const d2 = box('<td-! id="bad2"></td-!><td-hint for="bad2" id="bad2-hint">Gợi ý</td-hint>');
+      await settle();
+      expect(desc(d2.querySelector('#bad2'))).to.deep.equal(['bad2-hint']);
+    } finally {
+      window.removeEventListener('unhandledrejection', onRej);
+    }
+  });
 });
