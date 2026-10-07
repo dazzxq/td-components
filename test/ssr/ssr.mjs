@@ -196,6 +196,15 @@ export function renderCarouselFixture() {
   return renderPhp('carousel-fixture.php');
 }
 
+// v0.56.0: td_datetime_picker / td_date (contract datetime-picker@1, plan v0.56.0 D1–D7).
+export const DATETIME_PICKER_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'datetime-picker.fixtures.json'), 'utf8'));
+export const DATETIME_PICKER_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'datetime-picker.html');
+
+/** Render test/ssr/datetime-picker-fixture.php (the HTML loaded by the datetime-picker SSR browser test). */
+export function renderDatetimePickerFixture() {
+  return renderPhp('datetime-picker-fixture.php');
+}
+
 // v0.51.1: pre-upgrade parity (FOUC) — every upgraded helper case, measured by test/engines/ssr-fouc.spec.mjs.
 export const FOUC_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'fouc.fixtures.json'), 'utf8'));
 export const FOUC_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'fouc.html');
