@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.54)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.55)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.55.0](#0550) | Đổi hành vi rất nhỏ (`td-number-input`, phím `.` / `,`) + thêm tính năng (tiền tố / hậu tố cho `td-input-field`, icon / slot affix, `locale`, `--td-field-note-size`) | Không bắt buộc. Ô số có `decimals > 0`: gõ `.` **hoặc** `,` khi chưa có dấu thập phân giờ ra dấu thập phân của ô (trước: dấu nhóm bị chặn). Luật CSS hộp số chuyển sang `field.css` (cùng giá trị). |
 | [0.54.0](#0540) | Đổi hành vi + đổi giao diện nhỏ (hint / lỗi) + thêm tính năng (`helper-text` mọi control, `<td-hint>`, toggle `on-text` / `off-text`) | Không bắt buộc, nhưng xem lại: đang hiện lỗi thì hint **ẩn** (trước 5 control hiện cả hai) — câu lỗi nên tự đủ nghĩa; lỗi checkbox / toggle thụt dưới nhãn; PHP giờ giữ `attrs['aria-describedby']` của site ở chế độ element. Import map: thêm `hint`. Thay các dòng hint tự viết bằng `helper-text` / `<td-hint for>`. |
 | [0.53.1](#0531) | Đổi giao diện nhỏ (`td-choice-group variant="segmented" size="sm"`) | Không bắt buộc. `sm` gọn hơn (đệm ngang 6 px, icon 16 px, khoảng icon 4 px, chữ nhỏ hơn); muốn giữ cũ: đặt lại `--td-choice-seg-px` / `--td-choice-seg-icon` / `--td-choice-seg-icon-gap` / `--td-choice-seg-font` trên `.td-choice--sm`. Thanh segmented giờ cuộn ngang bên trong khi quá hẹp (trước: tràn ra ngoài). |
 | [0.52.0](#0520) | Thêm tính năng (`td-toggle` `tone` / `locked`, `td-choice-group variant="segmented"`) + palette `td-theme` algorithm 4 | Không bắt buộc. File `td-theme` sinh ra: header `palette algorithm 4`, chỉ `--td-btn-disabled-fg` đổi (tối hơn chút để đạt 2.2:1 trên nền hover) — file cũ vẫn đúng, sinh lại khi tiện (site có gate so từng byte: nâng kit và sinh lại trong cùng một thay đổi). PHP `td_toggle`: có khoá `tone` / `status_text` / `locked` / `locked_reason` → luôn in chế độ element. |
@@ -77,6 +78,27 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.55.0
+
+**Mức: đổi hành vi rất nhỏ; thêm tính năng.**
+
+- **Đổi hành vi — phím thập phân của `td-number-input`:** khi `decimals > 0` và ô **chưa** có dấu thập phân (ngoài vùng chọn),
+  gõ `.` hoặc `,` — kể cả khi đó là **dấu nhóm** của ô (`.` ở ô tiếng Việt) — chèn **dấu thập phân của ô**. Trước 0.55 phím
+  dấu nhóm bị chặn. Lý do: bàn phím `decimal` của iOS / Android hiện dấu theo **máy** (máy tiếng Anh chỉ có `.`), và dấu nhóm
+  do kit tự thêm nên người dùng không bao giờ cần gõ nó. `decimals = 0` hoặc đã có dấu thập phân: như cũ (bị chặn). Dán / tự
+  điền không đổi. Test site gõ `.` mong bị chặn trong ô có số lẻ → cập nhật.
+- **Thêm:** `td-input-field` `prefix` / `suffix` / `prefix-icon` / `suffix-icon` / `unit-label` + con `[slot="prefix"|"suffix"]`
+  (type `text` · `search` · `email` · `url` · `tel` · `password` · `number`); `td-number-input` `prefix-icon` / `suffix-icon`,
+  slot, `locale`; PHP `td_field` (`prefix`, `suffix`, `prefix_icon`, `suffix_icon`, `unit_label`), `td_number_input`
+  (`prefix_icon`, `suffix_icon`, `locale`). Không dùng option mới → markup PHP và `render()` giống từng byte 0.54 (hợp đồng
+  SSR vẫn `@1`).
+- **CSS:** luật hộp của `td-number-input` chuyển từ `number-input.css` sang `field.css` dưới `:is(.td-number__box,
+  .td-field__box)` với cùng độ ưu tiên — giá trị tính không đổi (baseline CSP giống từng byte). `--td-number-affix-fg` /
+  `--td-number-affix-gap` mặc định thành `var(--td-field-affix-fg)` / `var(--td-field-affix-gap)` (cùng giá trị); site đặt
+  token cũ vẫn thắng.
+- **Token mới** `--td-field-note-size` (cỡ chữ mọi gợi ý; mặc định như cũ — `--td-text-xs`, cảm ứng `--td-text-sm`): site
+  muốn gợi ý to hơn đặt token này thay vì đổi `--td-text-xs` của cả kit.
 
 ## 0.54.0
 

@@ -598,6 +598,8 @@ Khi module nạp, `td-input-field` **nhận** markup đó (`canHydrate()`):
   `type="text"`, không có ràng buộc; dùng `validity` của host.
 - **Nghe `change` để bắt từng lần gõ**: `change` chỉ phát khi rời ô; dùng `input`.
 - **Hai field dùng cùng `field-id`**: id trùng làm nhãn trỏ sai; để mặc định nếu không có lý do đặc biệt.
+- **`el.prefix = 'https://'` không có tác dụng** (0.55.0): `prefix` là property native của DOM (namespace) — dùng
+  `setAttribute('prefix', …)`. `suffix` / `prefixIcon` / `suffixIcon` / `unitLabel` là property bình thường.
 - **Nút trong `slot` submit form** (0.55.0): `<button>` mặc định là `type="submit"` — đặt `type="button"`.
 - **Thêm con `[slot]` sau khi field đã hiện** không có tác dụng (0.55.0) — chỉ đọc ở lần render đầu.
 - **`prefix="https://"` nhưng giá trị gửi đi thiếu `https://`**: affix không bao giờ nằm trong giá trị; ghép ở server nếu cần.

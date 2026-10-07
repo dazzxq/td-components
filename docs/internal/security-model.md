@@ -530,6 +530,26 @@ Server **vẫn phải** kiểm giá trị lựa chọn thuộc tập hợp lệ 
   `src/form/td-v054-hint.engines.browser-test.js`, `test/php/td-v054-php.test.js` (escape, `Td::html`, tên giữ), CSP state
   `td-hint.for-native`, `td-input-field.v054-rich-hint`.
 
+## 6o. Tiền tố / hậu tố, `locale` của number (v0.55.0)
+
+- **Affix chữ** (`prefix` / `suffix` / `unit-label`, PHP `prefix` / `suffix` / `unit_label`) luôn là **chữ**: `escapeHtml()`
+  trong `render()`, `Td::e()` trong PHP; không có đường chuỗi → HTML.
+- **Icon** (`prefix-icon` / `suffix-icon`, PHP `prefix_icon` / `suffix_icon`) là **tên** tra registry: JS escape vào
+  `data-td-icon`, `fillIconSlots()` dựng SVG bằng DOM API từ định nghĩa đã kiểm (tên lạ → ô rỗng); PHP `Td::icon()` (tên lạ →
+  `''`). Ô icon trong markup SSR chỉ được so theo attribute — SVG bên trong được vẽ lại từ registry khi bind (không tin SVG
+  của server), và vẫn đi qua allowlist thẻ / attribute SVG của `_ssrUnsafe()`.
+- **Con `[slot="prefix"|"suffix"]`** là node của chính trang (DOM tin cậy của dev, như `<td-hint>` con / hàng custom ADR
+  0026): kit chỉ **chuyển chỗ** (không clone, không đọc / ghi `innerHTML`, không sanitize), không đổi attribute của nó. Không
+  có API nhận chuỗi HTML cho affix (PHP cũng không — Q4). Slot không bao giờ có trong markup SSR được nhận: con được lấy ra
+  trước `canHydrate()`, vỏ slot bị gỡ trước khi `canRebind()` so markup.
+- **`locale`** chỉ chọn trong tập dấu cố định (`.` `,` khoảng trắng, rỗng): bảng tĩnh; ngoài bảng thì ký tự Intl trả về phải
+  thuộc đúng tập đó (NBSP / NNBSP chuẩn hoá) — không bao giờ chèn ký tự tuỳ ý vào hiển thị hay vào `parseLoose`. Giá trị gửi
+  đi vẫn chỉ là chuỗi chuẩn. Cảnh báo PHP chỉ ghi tên option + kiểu + độ dài (không giá trị).
+- **Phím thập phân ảo:** `.` / `,` chỉ được đổi thành dấu thập phân của ô khi `decimals > 0` và ô chưa có dấu đó — qua cùng
+  `_structureOk()` + `edit()` như mọi phím (không có đường chèn ký tự mới).
+- Test: `src/form/td-v055-affix.engines.browser-test.js`, `src/form/td-v055-number.engines.browser-test.js`,
+  `test/php/td-v055-php.test.js` (escape chữ / tên icon / `unit_label`, byte cũ), `test/ssr/number-locale.cases.json`.
+
 ## 7. Trách nhiệm của site
 
 Những thứ kit **cố ý không làm** và site phải làm, nếu không thì có lỗ hổng dù kit đúng. Trang người dùng tương ứng:

@@ -361,6 +361,19 @@ Không có class legacy để đổi, nhưng phần tử bên trong đổi — C
   hovercard dwp; không có bảng đổi class vì kit chưa từng ship bản cũ.
 - **Icon** (0.6.0): `svg.td-icon.td-icon--{s|m|l}` từ registry.
 
+## Class mới không thay class cũ (0.55.0)
+
+| Class | Ý nghĩa |
+|---|---|
+| `.td-field--affix` > `.td-field__box` | `td-input-field` có tiền tố / hậu tố: hộp mang dáng ô (cùng luật với `.td-number__box`), control trong suốt bên trong |
+| `.td-field__affix`, `--prefix`, `--suffix`, `--slot` | Phần tiền tố / hậu tố (chữ / icon trang trí, hoặc vỏ chứa phần tử `[slot]` của trang) |
+| `.td-field__affix-icon` > `svg.td-field__affix-svg` | Ô icon trong affix |
+| `.td-number__affix-icon` > `svg.td-number__affix-svg` | Ô icon trong affix của `td-number-input` |
+| `.td-number__affix--slot` | Vỏ chứa phần tử `[slot]` của trang trong `td-number-input` |
+
+Luật CSS của `.td-number__box` chuyển từ `number-input.css` sang `field.css` (`:is(.td-number__box, .td-field__box)`, cùng
+độ ưu tiên, cùng giá trị tính) — CSS của site nhắm `.td-number__box` không đổi tác dụng.
+
 ## Không đổi class nhưng đổi giao diện
 
 Các bản sau giữ nguyên class, chỉ đổi cách class đó được vẽ. Không cần sửa selector, nhưng CSS tự viết của site có
