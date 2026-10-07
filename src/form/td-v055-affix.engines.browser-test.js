@@ -276,7 +276,7 @@ describe('v0.55.0 (release lead A) — --td-field-note-size drives every helper 
     expect(px(wrap.querySelector('td-hint'))).to.equal(want);
   });
 
-  it('a site value (0.875rem) reaches every note but NOT the counter / error; 360 px: the counter keeps its column, nothing overflows', async () => {
+  it('a site value (0.875rem) reaches every note and the error (v0.57.1) but NOT the counter; 360 px: the counter keeps its column, nothing overflows', async () => {
     const wrap = mount('<div class="np"><td-input-field label="Mô tả" max-length="120" value="abc" '
       + 'helper-text="Một gợi ý khá dài để xuống dòng trong cột ghi chú khi chữ gợi ý to 14 px trên màn hình hẹp 360"></td-input-field>'
       + '<td-number-input label="Giá" helper-text="Đã gồm VAT" error-text="Sai"></td-number-input></div>');
@@ -297,7 +297,8 @@ describe('v0.55.0 (release lead A) — --td-field-note-size drives every helper 
     expect(n.height > c.height, 'the note wraps in its own column').to.equal(true);
     expect(footer.scrollWidth <= footer.clientWidth + 1, 'no horizontal overflow').to.equal(true);
     const err = np.querySelector('td-number-input .td-field-error');
-    expect(getComputedStyle(err).fontSize, 'the error keeps its size').to.not.equal('14px');
+    // v0.57.1: the error follows the note size (--td-field-error-size unset → --td-field-note-size)
+    expect(getComputedStyle(err).fontSize, 'the error follows the note size').to.equal('14px');
   });
 });
 

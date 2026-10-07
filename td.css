@@ -827,6 +827,10 @@
 		/* v0.55.0 (release lead, dsuite): the font size of EVERY helper note (input / number footer note, the block note of
 		   the other controls, the media help spans, <td-hint>) — a site sets it without touching --td-text-xs */
 		--td-field-note-size: var(--td-text-xs);
+		/* v0.57.1 (dsuite): --td-field-error-size — the font size of EVERY error-contract note (.td-field-error). Not
+		   declared here on purpose: unset it falls back to --td-field-note-size AT THE NOTE (see .td-field-error), so a
+		   site that enlarges the hints — on :root or on a subtree — gets errors as big; a site sets it to size errors
+		   on their own. */
 	}
 
 	@media (pointer: coarse) {
@@ -892,7 +896,8 @@
 		display: block;
 		margin-top: var(--td-space-2xs);
 		font-family: var(--td-font-sans); /* the note sits outside the control's root block: never inherit the host font */
-		font-size: var(--td-text-xs);
+		/* v0.57.1: = the helper-note size unless --td-field-error-size is set (xs; sm under pointer: coarse — the token) */
+		font-size: var(--td-field-error-size, var(--td-field-note-size));
 		line-height: var(--td-leading-normal);
 		color: var(--td-field-error);
 	}
@@ -1112,9 +1117,9 @@
 			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
 		}
 
-		/* v0.36.0 (plan QĐ 67): the note / counter / error under a field ≥ 14px on touch screens */
-		.td-field__footer,
-		.td-field-error {
+		/* v0.36.0 (plan QĐ 67): the note / counter / error under a field ≥ 14px on touch screens — v0.57.1: the error
+		   through --td-field-error-size → --td-field-note-size (sm on touch screens, set on :root above) */
+		.td-field__footer {
 			font-size: var(--td-text-sm);
 		}
 
