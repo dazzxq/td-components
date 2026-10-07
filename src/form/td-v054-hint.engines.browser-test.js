@@ -326,7 +326,7 @@ describe('v0.54.0 <td-hint> — Codex impl r1 #4 / #5 (lifecycle, one whenDefine
     const d = box('<td-v054-late2 id="lt2"></td-v054-late2><td-hint for="lt2" id="lt2-hint">Gợi ý</td-hint>');
     await settle();
     const hint = d.querySelector('td-hint');
-    expect(hint._wait?.tag).to.equal('td-v054-late2');
+    expect(hint._wait).to.equal('td-v054-late2');
     hint.remove();
     expect(hint._wait).to.equal(null);
     const { TdInputField } = await import('./td-input-field.js');
@@ -343,7 +343,7 @@ describe('v0.54.0 <td-hint> — Codex impl r1 #4 / #5 (lifecycle, one whenDefine
     const d = box('<td-v054-late3 id="lt3"></td-v054-late3><input id="lt3b"><td-hint for="lt3" id="lt3-hint">Gợi ý</td-hint>');
     await settle();
     const hint = d.querySelector('td-hint');
-    expect(hint._wait?.tag).to.equal('td-v054-late3');
+    expect(hint._wait).to.equal('td-v054-late3');
     hint.htmlFor = 'lt3b';
     await settle();
     expect(hint._wait).to.equal(null);
@@ -353,5 +353,81 @@ describe('v0.54.0 <td-hint> — Codex impl r1 #4 / #5 (lifecycle, one whenDefine
     await settle();
     expect(desc(d.querySelector('#lt3')._ariaTarget())).to.not.include('lt3-hint');
     expect(hint.control === d.querySelector('#lt3b')).to.equal(true);
+  });
+});
+
+// Codex impl r2 (security): ONE customElements.whenDefined(tag) per tag for the module lifetime — a per-tag broker; hints
+// subscribe / unsubscribe; re-arming never attaches another reaction to the pending promise.
+describe('v0.54.0 <td-hint> — one whenDefined per tag (broker, Codex impl r2)', () => {
+  const flush = async () => { for (let i = 0; i < 4; i++) await null; };
+  function spy() {
+    const real = customElements.whenDefined.bind(customElements);
+    const calls = new Map();
+    customElements.whenDefined = (t) => { calls.set(t, (calls.get(t) || 0) + 1); return real(t); };
+    cleanup.push(() => { customElements.whenDefined = real; });
+    return calls;
+  }
+
+  it('2 000× target removed / restored → exactly one whenDefined for the tag', async () => {
+    const calls = spy();
+    const d = box('<td-v054-b1 id="b1"></td-v054-b1><td-hint for="b1" id="b1-hint">Gợi ý</td-hint>');
+    await settle();
+    const target = d.querySelector('#b1');
+    for (let i = 0; i < 2000; i++) {
+      target.remove();
+      await flush();
+      d.prepend(target);
+      await flush();
+    }
+    await settle();
+    expect(calls.get('td-v054-b1')).to.equal(1);
+  });
+
+  it('2 000× hint disconnected / reconnected → exactly one whenDefined for the tag', async () => {
+    const calls = spy();
+    const d = box('<td-v054-b2 id="b2"></td-v054-b2><td-hint for="b2" id="b2-hint">Gợi ý</td-hint>');
+    await settle();
+    const hint = d.querySelector('td-hint');
+    for (let i = 0; i < 2000; i++) {
+      hint.remove();
+      d.appendChild(hint);
+    }
+    await settle();
+    expect(calls.get('td-v054-b2')).to.equal(1);
+  });
+
+  it('2 000× structural renders of a kit control holding an extra child <td-hint for> → exactly one whenDefined', async () => {
+    const calls = spy();
+    const d = box('<td-v054-b3 id="b3"></td-v054-b3><td-input-field id="host-b3" label="A"><td-hint>Của control</td-hint><td-hint for="b3" id="b3-hint">Ngoài</td-hint></td-input-field>');
+    await settle();
+    const el = d.querySelector('td-input-field');
+    for (let i = 0; i < 2000; i++) el.setAttribute('type', i % 2 ? 'text' : 'email');
+    await settle();
+    expect(calls.get('td-v054-b3')).to.equal(1);
+    expect(document.getElementById('b3-hint')?.parentElement === el, 'the extra hint is still the page\'s child').to.equal(true);
+  });
+
+  it('the late definition revalidates only live connected subscribers', async () => {
+    const calls = spy();
+    const d = box('<td-v054-b4 id="b4"></td-v054-b4><td-hint for="b4" id="b4-on">Một</td-hint><td-hint for="b4" id="b4-off">Hai</td-hint>');
+    await settle();
+    const off = d.querySelector('#b4-off');
+    off.remove();
+    const { TdInputField } = await import('./td-input-field.js');
+    customElements.define('td-v054-b4', class extends TdInputField {});
+    await settle();
+    const t = desc(d.querySelector('#b4')._ariaTarget());
+    expect(t).to.include('b4-on');
+    expect(t).to.not.include('b4-off');
+    expect(off.control).to.equal(null);
+    expect(calls.get('td-v054-b4')).to.equal(1);
+  });
+
+  it('only kit tags (td-*) wait: a site custom element target links natively at once', async () => {
+    const calls = spy();
+    const d = box('<my-widget id="w1"></my-widget><td-hint for="w1" id="w1-hint">Gợi ý</td-hint>');
+    await settle();
+    expect(calls.get('my-widget')).to.equal(undefined);
+    expect(desc(d.querySelector('#w1'))).to.deep.equal(['w1-hint']);
   });
 });

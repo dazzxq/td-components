@@ -518,6 +518,11 @@ Server **vẫn phải** kiểm giá trị lựa chọn thuộc tập hợp lệ 
   không sanitize, không đọc HTML) — nội dung của site phải sạch CSP.
 - **Liên kết `for`**: chỉ đọc / ghi `aria-describedby` (token id), gỡ **đúng token đã ghi** (không xoá id của trang); tìm
   đích bằng `getElementById` trong cùng tree scope (không vượt shadow root). Không đọc / ghi attribute nào khác của đích.
+- **Chờ control kit chưa define (Codex impl r2):** một broker cấp module — đúng **một** `customElements.whenDefined(tag)` cho
+  mỗi tag trong suốt vòng đời module; hint đăng ký / huỷ (WeakRef ổn định mỗi hint, không trùng, không giữ hint đã bỏ);
+  gỡ / gắn lại đích, ngắt / nối hint, render lại control cha bao nhiêu lần cũng không thêm reaction nào. Chỉ tag `td-*` chờ
+  (chỉ control kit có hợp đồng liên kết); phần tử khác (kể cả custom element của site) được nối `aria-describedby` ngay.
+  Khi tag được define, chỉ hint **còn kết nối** được kiểm lại. Test: 2 000× mỗi đường → 1 lần `whenDefined`.
 - **PHP `td_hint($for, $content)`**: chuỗi = chữ; markup **chỉ** qua `Td::html()` (`TdTrustedHtml`, hatch tường minh đã có
   của `td_carousel` — §2); không bao giờ bọc nội dung người dùng nhập. `for` / `id` / `class` / `data-td-*` là tên của kit
   trong `attrs`; `$for` rỗng / có khoảng trắng → không in gì.

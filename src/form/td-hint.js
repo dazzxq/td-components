@@ -38,6 +38,44 @@ function unwatch(hint, root) {
   }
 }
 
+/**
+ * Codex impl r2 (security): the per-tag `whenDefined` broker. A target that is a kit control (`td-*`) not defined yet is
+ * waited for through EXACTLY ONE `customElements.whenDefined(tag)` reaction per tag for the module lifetime: hints
+ * subscribe / unsubscribe (a stable WeakRef per hint — deduped, never retains a dropped hint); the entry lives until the tag
+ * is defined (unsubscribing never deletes it, so re-arming never registers again); on resolve the LIVE CONNECTED
+ * subscribers revalidate and the entry goes. Only `td-*` tags wait: only kit controls have the `_linkHint` contract — any
+ * other element (a site custom element included) is linked through its aria-describedby at once.
+ * @type {Map<string, Set<WeakRef<TdHint>>>}
+ */
+const WAITS = new Map();
+
+function subscribe(hint, tag) {
+  let set = WAITS.get(tag);
+  if (!set) {
+    set = new Set();
+    WAITS.set(tag, set);
+    customElements.whenDefined(tag).then(() => {
+      const subs = WAITS.get(tag);
+      WAITS.delete(tag);
+      for (const ref of subs || []) {
+        const h = ref.deref();
+        if (!h || h._wait !== tag) continue;
+        h._wait = null;
+        if (h.isConnected) h._revalidate();
+      }
+    });
+  }
+  hint._waitRef ??= new WeakRef(hint);
+  set.add(hint._waitRef);
+  hint._wait = tag;
+}
+
+function unsubscribe(hint) {
+  if (!hint._wait) return;
+  WAITS.get(hint._wait)?.delete(hint._waitRef);
+  hint._wait = null;
+}
+
 const tokens = (el) => (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
 
 /**
@@ -75,9 +113,10 @@ export class TdHint extends TdBaseElement {
     /** @private the tree root this hint is registered with */
     this._root = null;
     this._warnedScope = false;
-    /** @private Codex impl r1 #5: the ONE pending `whenDefined` wait ({ tag, gen }) — never two for the same hint */
+    /** @private the tag this hint waits for through the module broker (null = none) — Codex impl r1 #5 / r2 */
     this._wait = null;
-    this._gen = 0;
+    /** @private this hint's stable WeakRef in the broker (one entry per hint, deduped) */
+    this._waitRef = null;
   }
 
   canHydrate() { return true; }
@@ -124,10 +163,9 @@ export class TdHint extends TdBaseElement {
     this._root = null;
   }
 
-  /** @private forget the pending whenDefined wait (its callback becomes a no-op: generation token) */
+  /** @private leave the broker (the tag's single whenDefined reaction stays — it is shared and registered once) */
   _cancelWait() {
-    this._wait = null;
-    this._gen += 1;
+    unsubscribe(this);
   }
 
   /** @private Codex impl r1 #4: a standalone hint always has an id (the token it writes) */
@@ -179,23 +217,14 @@ export class TdHint extends TdBaseElement {
     const tag = want ? want.localName : '';
     const pending = !!want && tag.startsWith('td-') && tag.includes('-') && !customElements.get(tag);
     // Codex impl r1 #5: a wait for another tag (or none needed any more) is dropped before anything else
-    if (this._wait && (!pending || this._wait.tag !== tag)) this._cancelWait();
+    if (this._wait && (!pending || this._wait !== tag)) this._cancelWait();
     if (this._link && this._link.target === want && this._link.token === token) return;
     this._unlink();
     if (!want || !token) return;
     if (pending) {
       // a kit control not upgraded yet: link through its contract once it is defined — ONE wait per hint per tag (a burst
       // of unrelated mutations never stacks registrations); the callback holds the hint weakly and checks its generation
-      if (this._wait) return;
-      const gen = this._gen;
-      this._wait = { tag, gen };
-      const ref = new WeakRef(this);
-      customElements.whenDefined(tag).then(() => {
-        const h = ref.deref();
-        if (!h || !h._wait || h._wait.gen !== gen) return;
-        h._wait = null;
-        if (h.isConnected) h._revalidate();
-      });
+      if (this._wait !== tag) subscribe(this, tag);
       return;
     }
     if (typeof want._linkHint === 'function') {
