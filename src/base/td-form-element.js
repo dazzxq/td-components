@@ -576,6 +576,10 @@ export class TdFormElement extends TdBaseElement {
       const current = (target.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
       foreign = current.filter((idRef) => !prevOwn.has(idRef));
     }
+    // v0.54.0: the helper note / error ids derived from the host id are the component's even when the server printed
+    // them (SSR) — never kept as page ids (the order and the error rule stay the component's)
+    const derived = new Set([`${this.id}-${this._helperNoteSpec().idSuffix}`, `${this.id}-error`]);
+    foreign = foreign.filter((idRef) => !derived.has(idRef));
     this._describedByTarget = target;
     this._foreignDescribedBy = foreign;
     const next = [...new Set([...foreign, ...own])];
@@ -790,6 +794,21 @@ export class TdFormElement extends TdBaseElement {
     if (slot) return slot;
     const all = this.querySelectorAll(SSR_FORM_ASSOCIATED);
     return all.length === 1 && all[0].matches(this._ssrPlausible()) ? all[0] : null;
+  }
+
+  /**
+   * @protected v0.54.0 (QĐ 11): the host's content nodes WITHOUT the helper note php/td.php prints (the base mounts it, so
+   * render() never has it): `div.td-field__note#{id}-note` right before a trailing error note, else last. It must be there
+   * exactly when a helper text is set (else null = not the component's markup → safe render).
+   * @param {Node[]} nodes
+   * @returns {Node[]|null}
+   */
+  _ssrWithoutHelperNote(nodes) {
+    const last = nodes.length - 1;
+    const i = last >= 0 && ssrIsErrorNote(nodes[last]) ? last - 1 : last;
+    const has = i >= 0 && ssrIsHelperNote(nodes[i], this.id);
+    if (has !== !!this.helperMessage || (has && this._hintChild)) return null;
+    return has ? nodes.filter((_, j) => j !== i) : nodes;
   }
 
   /** @protected The unique control at the expected skeleton slot, or null (subclass). @returns {HTMLElement|null} */

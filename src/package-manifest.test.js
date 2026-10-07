@@ -121,6 +121,21 @@ test('v0.27.0: ./otp-input ./drawer ./copy exports, sideEffects, barrel, CSS (ot
   }
 });
 
+test('v0.54.0: ./hint export, sideEffects, barrel TdHint, hint.css in the td.css manifest (after field.css, before switch.css), import map', async () => {
+  assert.equal(pkg.exports['./hint'], './src/form/td-hint.js');
+  assert.ok(pkg.sideEffects.includes('./src/form/td-hint.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdHint \} from '\.\/src\/form\/td-hint\.js';/);
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const at = files.indexOf('components/hint.css');
+  assert.ok(at > files.indexOf('components/field.css'), 'after field.css');
+  assert.ok(at < files.indexOf('components/checkbox.css') && at < files.indexOf('components/switch.css'), 'before checkbox / switch');
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['td-hint:not([hidden])', 'td-hint[data-td-suppressed]', '.td-switch__state', '--td-switch-state-fg']) {
+    assert.ok(css.includes(sel), sel);
+  }
+});
+
 test('v0.27.0: npm pack ships the new modules + CSS (not their tests / stories)', { timeout: 60000 }, () => {
   const r = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { cwd: ROOT, encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);

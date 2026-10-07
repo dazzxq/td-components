@@ -1086,8 +1086,8 @@ export class TdColorPicker extends TdFormElement {
 
   /** @protected `div.td-color` > [label] + `div.td-color__box` > [span.td-color__swatch, input] — then at most the error note */
   _ssrSkeletonOk() {
-    const kids = ssrContentNodes(this);
-    if (!kids.length || kids.length > 2 || kids.some((n) => n.nodeType !== 1) || (kids[1] && !ssrIsErrorNote(kids[1]))) return false;
+    const kids = this._ssrWithoutHelperNote(ssrContentNodes(this)); // v0.54.0: minus the PHP helper note
+    if (!kids || !kids.length || kids.length > 2 || kids.some((n) => n.nodeType !== 1) || (kids[1] && !ssrIsErrorNote(kids[1]))) return false;
     const root = kids[0];
     if (root.localName !== 'div' || ssrClassKey(root) !== 'td-color') return false;
     const parts = ssrContentNodes(root);
@@ -1106,8 +1106,8 @@ export class TdColorPicker extends TdFormElement {
    * pattern only the no-JS one); the error note there exactly when an error shows.
    */
   _markupMatches(first) {
-    const kids = ssrContentNodes(this);
-    if (!kids.length || kids.length > 2 || (kids.length === 2 && !ssrIsErrorNote(kids[1]))) return false;
+    const kids = this._ssrWithoutHelperNote(ssrContentNodes(this)); // v0.54.0: minus the PHP helper note
+    if (!kids || !kids.length || kids.length > 2 || (kids.length === 2 && !ssrIsErrorNote(kids[1]))) return false;
     if ((kids.length === 2) !== !!this.errorMessage) return false;
     const tpl = document.createElement('template');
     tpl.innerHTML = this.render();

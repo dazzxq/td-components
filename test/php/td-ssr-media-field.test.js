@@ -80,11 +80,12 @@ describe('php/td.php — td_media_field (v0.32.0, contract media-field@1)', opts
     assert.equal(hostAttr(html, 'crop'), esc(crop));
     assert.equal(hostAttr(html, 'id'), 'og-field');
     assert.ok(html.includes('<img class="td-media-field__img" src="https://cdn.example/og.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">'), html);
-    assert.ok(html.includes('aria-describedby="og-field-help og-field-error" aria-invalid="true" aria-errormessage="og-field-error">'), html);
+    // v0.54.0 (QĐ 3): the help leaves the description and is hidden while the error shows
+    assert.ok(html.includes('aria-describedby="og-field-error" aria-invalid="true" aria-errormessage="og-field-error">'), html);
     assert.ok(html.includes('<span class="td-sr-only" id="og-field-state">Đã chọn: og.jpg</span>'), html);
     const names = [...html.matchAll(/<input[^>]* name="([^"]*)"(?: value="([^"]*)")?/g)].map((m) => [m[1], m[2] ?? '']);
     assert.deepEqual(names, [['og[id]', 'm2'], ['og[alt]', 'Mô tả'], ['og[crop]', esc(crop)]]);
-    assert.ok(html.endsWith('<span class="td-media-field__help" id="og-field-help">Gợi ý</span><span class="td-field-error" id="og-field-error" data-for="og-field">Sai</span></td-media-field>'), html);
+    assert.ok(html.endsWith('<span class="td-media-field__help" id="og-field-help" hidden>Gợi ý</span><span class="td-field-error" id="og-field-error" data-for="og-field">Sai</span></td-media-field>'), html);
     const empty = one('og2', null, { usage: true }).html;
     assert.ok(empty.includes('name="og2[crop]" value="null"'), empty);
     assert.ok(empty.includes('<input type="hidden" class="td-media-field__value" name="og2[id]" value="">'), empty);

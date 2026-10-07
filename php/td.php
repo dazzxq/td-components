@@ -1319,7 +1319,7 @@ namespace {
         $type = in_array($o['type'] ?? null, $types, true) ? $o['type'] : 'text';
         $size = in_array($o['size'] ?? null, Td::SIZES, true) ? $o['size'] : 'md';
         $id = isset($o['id']) && is_scalar($o['id']) && (string) $o['id'] !== '' ? (string) $o['id'] : Td::uid('f-' . $name);
-        $hint = (string) ($o['hint'] ?? '');
+        $hint = td__helper_opt($o, true) ?? ''; // v0.54.0: helper_text (canonical) > hint (alias)
         $error = (string) ($o['error'] ?? '');
         $required = !empty($o['required']);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
@@ -1336,7 +1336,8 @@ namespace {
             }
         }
         $hints = Td::inputHints($hintSrc);
-        $desc = trim(($hint !== '' ? "$id-note " : '') . ($error !== '' ? "$id-error" : ''));
+        // v0.54.0 (QĐ 3): while an error shows the note is hidden and out of the description
+        $desc = trim(($hint !== '' && $error === '' ? "$id-note " : '') . ($error !== '' ? "$id-error" : ''));
         $ctl = [
             'class' => 'td-field__control',
             'id' => "$id-control",
@@ -1374,7 +1375,7 @@ namespace {
             $footer .= '<span class="td-field-error" id="' . Td::e($id) . '-error" data-for="' . Td::e($id) . '">' . Td::e($error) . '</span>';
         }
         // The note is always present (hidden when empty) — same footer tree as <td-input-field>.
-        $footer .= '<div class="td-field__note" id="' . Td::e($id) . '-note"' . ($hint === '' ? ' hidden' : '') . '>' . Td::e($hint) . '</div>';
+        $footer .= '<div class="td-field__note" id="' . Td::e($id) . '-note"' . ($hint === '' || $error !== '' ? ' hidden' : '') . '>' . Td::e($hint) . '</div>';
         return '<div class="td-field td-field--' . $size . ($type === 'textarea' ? ' td-field--textarea' : '')
             . Td::e(Td::classTokens($o['class'] ?? null)) . '" id="' . Td::e($id) . '">'
             . $label . $control . '<div class="td-field__footer"' . ($hint === '' && $error === '' ? ' hidden' : '') . '>' . $footer . '</div></div>';
@@ -1411,6 +1412,7 @@ namespace {
         $searchable = td__searchable($o['searchable'] ?? null, count($list));
         $label = isset($o['label']) && (string) $o['label'] !== '' ? (string) $o['label'] : null;
         $required = !empty($o['required']);
+        $help = td__helper_opt($o); // v0.54.0: the helper note after the select (the component mounts its own after upgrade)
         $host = [
             'id' => $id,
             'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
@@ -1422,6 +1424,7 @@ namespace {
             // v0.22.0: fixed "add new" action row at the bottom of the menu (fires `create` { query }).
             'create-label' => isset($o['create_label']) && is_scalar($o['create_label']) && (string) $o['create_label'] !== ''
                 ? (string) $o['create_label'] : null,
+            'helper-text' => $help,
         ];
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $aria = isset($o['aria_label']) && (string) $o['aria_label'] !== '' ? (string) $o['aria_label'] : null;
@@ -1442,7 +1445,7 @@ namespace {
             }
             $taken = td__reserve(['id', 'class', 'label', 'placeholder', 'searchable', 'allow-clear', 'create-label', 'name',
                 'value', 'required', 'disabled', 'aria-label', 'aria-labelledby', 'value-key', 'label-key', 'max-height',
-                'error-text'], $extra, $taken);
+                'error-text', 'helper-text'], $extra, $taken);
         }
         $html .= Td::attrs($extra, $taken) . '>';
         // Visible label for the no-JS select; the upgrade re-renders the host (its own label from `label`).
@@ -1457,6 +1460,7 @@ namespace {
             'required' => $required,
             'disabled' => !empty($o['disabled']),
             'aria-label' => $aria,
+            'aria-describedby' => $help !== null ? "$id-note" : null,
         ]) . '>';
         $current = $value === null ? '' : (string) $value;
         if ($placeholder !== null) {
@@ -1467,7 +1471,7 @@ namespace {
                 . ($current !== '' && $opt['value'] === $current ? ' selected' : '')
                 . ($opt['disabled'] ? ' disabled' : '') . '>' . Td::e($opt['label']) . '</option>';
         }
-        return $html . '</select></td-dropdown>';
+        return $html . '</select>' . td__helper_note($help, $id, false) . '</td-dropdown>';
     }
 
     /**
@@ -1497,6 +1501,7 @@ namespace {
         $label = td__str($o['label'] ?? null);
         $required = !empty($o['required']);
         $aria = td__str($o['aria_label'] ?? null);
+        $help = td__helper_opt($o); // v0.54.0
         $taken = [];
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         if ($element) {
@@ -1510,10 +1515,11 @@ namespace {
                 'select-all' => !empty($o['select_all']),
                 'max-items' => Td::intOpt($o['max_items'] ?? null, 1),
                 'close-on-select' => !empty($o['close_on_select']),
+                'helper-text' => $help,
             ], $taken);
             $taken = td__reserve(['id', 'class', 'label', 'placeholder', 'selection-only', 'select-all', 'max-items',
                 'close-on-select', 'name', 'value', 'required', 'disabled', 'aria-label', 'aria-labelledby', 'value-key',
-                'label-key', 'min-chars', 'search-delay', 'allow-create', 'show-on-focus', 'max-length', 'error-text'],
+                'label-key', 'min-chars', 'search-delay', 'allow-create', 'show-on-focus', 'max-length', 'error-text', 'helper-text'],
                 $extra, $taken);
         } else {
             $html = '<div' . Td::ownAttrs(['class' => 'td-multiselect' . Td::classTokens($o['class'] ?? null), 'id' => $id], $taken);
@@ -1532,6 +1538,7 @@ namespace {
             'required' => $required,
             'disabled' => !empty($o['disabled']),
             'aria-label' => $aria,
+            'aria-describedby' => $help !== null ? "$id-note" : null,
         ]) . '>';
         foreach ($options as $k => $v) {
             if (is_array($v) && !isset($v['value']) && isset($v['options']) && is_array($v['options'])) {
@@ -1547,7 +1554,7 @@ namespace {
                 $html .= td__ms_option($k, $v, $sel);
             }
         }
-        return $html . '</select>' . ($element ? '</td-chip-input>' : '</div>');
+        return $html . '</select>' . td__helper_note($help, $id, false) . ($element ? '</td-chip-input>' : '</div>');
     }
 
     /**
@@ -1683,6 +1690,7 @@ namespace {
         $disabled = !empty($o['disabled']);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $aria = td__str($o['aria_label'] ?? null);
+        $help = td__helper_opt($o); // v0.54.0
         foreach ($extra as $k => $v) {
             if (strtolower((string) $k) === 'aria-label') {
                 $aria ??= td__str($v);
@@ -1718,10 +1726,11 @@ namespace {
             'value-label' => $valueLabel,
             'value-labels' => $valueLabels,
             'required' => $required,
+            'helper-text' => $help,
         ], $taken);
         $taken = td__reserve(['id', 'class', 'label', 'placeholder', 'multiple', 'cascade', 'searchable', 'allow-clear',
             'display', 'name', 'value', 'value-label', 'value-labels', 'required', 'disabled', 'aria-label',
-            'aria-labelledby', 'error-text'], $extra, $taken);
+            'aria-labelledby', 'error-text', 'helper-text'], $extra, $taken);
         $html .= Td::attrs($extra, $taken) . '>';
         if ($label !== null) {
             $html .= '<label class="td-field__label" for="' . Td::e($id) . '-select">' . Td::e($label)
@@ -1737,6 +1746,7 @@ namespace {
             'required' => $required && !($multiple && $lockedSel),
             'disabled' => $disabled,
             'aria-label' => $aria,
+            'aria-describedby' => $help !== null ? "$id-note" : null,
         ]) . '>';
         if (!$multiple && $placeholder !== null && !$singleLocked) {
             $html .= '<option value="">' . Td::e($placeholder) . '</option>';
@@ -1772,7 +1782,7 @@ namespace {
                 ]) . '>';
             }
         }
-        return $html . '</td-tree-select>';
+        return $html . td__helper_note($help, $id, false) . '</td-tree-select>';
     }
 
     /** @internal td_tree_select value rule (= the JS tree model): non-empty string, int or finite float → string; else null. */
@@ -1801,7 +1811,7 @@ namespace {
     {
         // RL6 (Codex r1 #2): the PRESENCE of any of the four keys forces element mode, whatever its value
         $extras = false;
-        foreach (['tone', 'status_text', 'locked', 'locked_reason'] as $k) {
+        foreach (['tone', 'status_text', 'locked', 'locked_reason', 'on_text', 'off_text', 'helper_text'] as $k) {
             $extras = $extras || array_key_exists($k, $o);
         }
         if ($extras || td__element($o)) {
@@ -1827,7 +1837,8 @@ namespace {
      */
     function td_checkbox(string $name, bool $checked = false, string $label = '', array $o = []): string
     {
-        if (td__element($o)) {
+        // v0.54.0: helper_text needs the host (a bare native checkbox has no place for its description) → element mode
+        if (array_key_exists('helper_text', $o) || td__element($o)) {
             return td__check_element(false, $name, $checked, $label, $o);
         }
         $size = in_array($o['size'] ?? null, Td::SIZES, true) ? $o['size'] : 'md';
@@ -1838,6 +1849,34 @@ namespace {
             . '<span class="td-checkbox__mark" aria-hidden="true"><span class="td-checkbox__icon">'
             . Td::icon('check', 'm', '', 'td-checkbox__svg') . '</span></span>'
             . ($label !== '' ? '<span class="td-checkbox__label">' . Td::e($label) . '</span>' : '') . '</label>';
+    }
+
+    /**
+     * v0.54.0 (plan docs/internal/plans/v0.54.0-hint.md QĐ 12): `<td-hint for="{for}" id="{id}">…</td-hint>` — a helper line
+     * for a control that is NOT a kit form control (a site's own input, select, group). $content: a string is TEXT
+     * (escaped); markup only through the explicit trusted wrapper `Td::html($markup)` (TdTrustedHtml — the site's own
+     * template, never user input; security-model §2). The id defaults to `{for}-hint`; PHP cannot edit the control's
+     * markup, so the site writes `aria-describedby="{for}-hint"` on it (no-JS); <td-hint> links itself after the upgrade
+     * without duplicating it. Options: id, class, attrs (allowlisted; `for` / `id` / `class` / data-td-* reserved).
+     * An empty / non-scalar $for → '' + a fixed warning.
+     */
+    function td_hint(string $for, string|TdComponents\TdTrustedHtml $content, array $o = []): string
+    {
+        if ($for === '' || preg_match('/\s/', $for) === 1) {
+            trigger_error('td_hint: $for must be the id of the described control (non-empty, no whitespace); nothing printed', E_USER_WARNING);
+            return '';
+        }
+        $id = td__str($o['id'] ?? null) ?? $for . '-hint';
+        $taken = [];
+        $html = '<td-hint' . Td::ownAttrs([
+            'for' => $for,
+            'id' => $id,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['for', 'id', 'class'], $extra, $taken);
+        $body = $content instanceof TdComponents\TdTrustedHtml ? $content->html() : Td::e($content);
+        return $html . Td::attrs($extra, $taken) . '>' . $body . '</td-hint>';
     }
 
     /**
@@ -1996,6 +2035,8 @@ namespace {
         $disabled = !empty($o['disabled']);
         $readonly = !empty($o['readonly']);
         $errId = ($element ? $hostId : $cid) . '-error';
+        $help = td__helper_opt($o); // v0.54.0: the helper note (hidden + out of the description while an error shows)
+        $ownDesc = trim(($help !== null && $error === null ? ($element ? $hostId : $cid) . '-note ' : '') . ($error !== null ? $errId : ''));
         $taken = [];
         $input = '<input' . Td::ownAttrs([
             'type' => 'text',
@@ -2017,7 +2058,7 @@ namespace {
             'aria-label' => $label === null ? ($aria ?? 'Mã xác thực') : null,
             'aria-invalid' => $error !== null ? 'true' : null,
             'aria-errormessage' => $error !== null ? $errId : null,
-            'aria-describedby' => $error !== null ? $errId : null,
+            'aria-describedby' => $ownDesc !== '' ? $ownDesc : null,
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['type', 'class', 'id', 'inputmode', 'autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck',
@@ -2025,9 +2066,9 @@ namespace {
             'aria-labelledby', 'aria-invalid', 'aria-errormessage', 'aria-describedby'], $extra, $taken);
         $input .= Td::attrs($extra, $taken) . '>';
         $labelHtml = $label !== null ? '<label class="td-otp__label" for="' . Td::e($cid) . '">' . Td::e($label) . '</label>' : '';
-        $note = $error !== null
+        $note = td__helper_note($help, $element ? $hostId : $cid, $error !== null) . ($error !== null
             ? '<span class="td-field-error" id="' . Td::e($errId) . '" data-for="' . Td::e($element ? $hostId : $cid) . '">' . Td::e($error) . '</span>'
-            : '';
+            : '');
         $dataLength = $len !== 6 ? ' data-length="' . $len . '"' : '';
         if (!$element) {
             return '<div class="td-otp' . Td::e(Td::classTokens($o['class'] ?? null)) . '"' . $dataLength . '>' . $labelHtml
@@ -2048,6 +2089,7 @@ namespace {
             'required' => $required,
             'disabled' => $disabled,
             'readonly' => $readonly,
+            'helper-text' => $help,
             'error-text' => $error,
             'aria-label' => $aria,
         ], $hostTaken) . '><div class="td-otp"' . $dataLength . '>' . $labelHtml . '<div class="td-otp__box">' . $input . $cells . '</div></div>'
@@ -2219,7 +2261,7 @@ namespace {
         $cid = $callerId ?? $base . '-control';
         $str = static fn (string $k): ?string => isset($o[$k]) && is_scalar($o[$k]) && !is_bool($o[$k]) && (string) $o[$k] !== '' ? (string) $o[$k] : null;
         $label = $str('label');
-        $hint = $str('hint');
+        $hint = $str('helper_text') ?? $str('hint'); // v0.54.0: helper_text (canonical) > hint (alias)
         $error = $str('error');
         $placeholder = $str('placeholder');
         $prefix = $str('prefix');
@@ -2230,7 +2272,7 @@ namespace {
         $required = !empty($o['required']);
         $disabled = !empty($o['disabled']);
         $readonly = !empty($o['readonly']);
-        $desc = trim(($unit !== null ? "$base-unit " : '') . ($hint !== null ? "$base-note " : '') . ($error !== null ? "$base-error" : ''));
+        $desc = trim(($unit !== null ? "$base-unit " : '') . ($hint !== null && $error === null ? "$base-note " : '') . ($error !== null ? "$base-error" : ''));
         $taken = [];
         $control = '<input' . Td::ownAttrs([
             'type' => 'number',
@@ -2277,7 +2319,7 @@ namespace {
             . ($stepper ? $stepBtn('up', 'plus') : '')
             . '</div>';
         $footer = $error !== null ? '<span class="td-field-error" id="' . $b . '-error" data-for="' . $b . '">' . Td::e($error) . '</span>' : '';
-        $footer .= '<div class="td-field__note" id="' . $b . '-note"' . ($hint === null ? ' hidden' : '') . '>' . Td::e($hint ?? '') . '</div>';
+        $footer .= '<div class="td-field__note" id="' . $b . '-note"' . ($hint === null || $error !== null ? ' hidden' : '') . '>' . Td::e($hint ?? '') . '</div>';
         $inner = '<div class="td-field td-field--' . $size . ' td-number' . ($stepper ? ' td-number--stepper' : '') . ($element ? '' : Td::e(Td::classTokens($o['class'] ?? null))) . '">'
             . $labelHtml . $box
             . '<div class="td-field__footer"' . ($hint === null && $error === null ? ' hidden' : '') . '>' . $footer . '</div>'
@@ -2472,7 +2514,7 @@ namespace {
         }
         $shown = $pAlt !== '' ? $pAlt : ($src !== null ? $id : '');
         $state = !$filled ? $L['empty'] : ($shown !== '' ? str_replace('{name}', $shown, $L['selected']) : $L['noPreview']);
-        $described = implode(' ', array_filter([$help !== null ? $hostId . '-help' : '', $error !== null ? $hostId . '-error' : '']));
+        $described = implode(' ', array_filter([$help !== null && $error === null ? $hostId . '-help' : '', $error !== null ? $hostId . '-error' : '']));
 
         $taken = [];
         $html = '<td-media-field' . Td::ownAttrs([
@@ -2531,7 +2573,7 @@ namespace {
                 : '')
             . $cropInput
             . $focalInput
-            . ($help !== null ? '<span class="td-media-field__help" id="' . $hid . '-help">' . Td::e($help) . '</span>' : '')
+            . ($help !== null ? '<span class="td-media-field__help" id="' . $hid . '-help"' . ($error !== null ? ' hidden' : '') . '>' . Td::e($help) . '</span>' : '')
             . ($error !== null ? '<span class="td-field-error" id="' . $hid . '-error" data-for="' . $hid . '">' . Td::e($error) . '</span>' : '')
             . '</td-media-field>';
     }
@@ -2963,8 +3005,8 @@ namespace {
         $html .= Td::attrs($extra, $taken) . '>'
             . '<div class="td-media-gallery__head"><span class="td-media-gallery__label" id="' . $hid . '-label">' . Td::e($label)
             . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</span>';
-        $described = implode(' ', array_filter([$help !== null ? $hostId . '-help' : '', $error !== null ? $hostId . '-error' : '']));
-        $notes = ($help !== null ? '<span class="td-media-gallery__help" id="' . $hid . '-help">' . Td::e($help) . '</span>' : '')
+        $described = implode(' ', array_filter([$help !== null && $error === null ? $hostId . '-help' : '', $error !== null ? $hostId . '-error' : '']));
+        $notes = ($help !== null ? '<span class="td-media-gallery__help" id="' . $hid . '-help"' . ($error !== null ? ' hidden' : '') . '>' . Td::e($help) . '</span>' : '')
             . ($error !== null ? '<span class="td-field-error" id="' . $hid . '-error" data-for="' . $hid . '">' . Td::e($error) . '</span>' : '');
         if ($broken) {
             return $html . '</div><span class="td-media-gallery__broken">' . Td::e($L['broken']) . '</span>' . $notes . '</td-media-gallery>';
@@ -3283,6 +3325,9 @@ namespace {
         $value = !$multiple && isset($o['value']) && is_scalar($o['value']) ? td__scan_value((string) $o['value']) : '';
         $values = $multiple ? td__scan_values($o['values'] ?? []) : [];
         $errId = ($element ? $hostId : $cid) . '-error';
+        $help = td__helper_opt($o); // v0.54.0
+        $ownDesc = trim(($help !== null && $error === null ? ($element ? $hostId : $cid) . '-note ' : '')
+            . ($error !== null && !$multiple ? $errId : ''));
         $taken = [];
         $input = '<input' . Td::ownAttrs([
             'type' => 'text',
@@ -3303,7 +3348,7 @@ namespace {
             'aria-label' => $label === null ? ($aria ?? Td::SCAN_LABELS['input']) : null,
             'aria-invalid' => $error !== null && !$multiple ? 'true' : null,
             'aria-errormessage' => $error !== null && !$multiple ? $errId : null,
-            'aria-describedby' => $error !== null && !$multiple ? $errId : null,
+            'aria-describedby' => $ownDesc !== '' ? $ownDesc : null,
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['type', 'class', 'id', 'autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck', 'enterkeyhint',
@@ -3311,9 +3356,9 @@ namespace {
             'pattern', 'aria-label', 'aria-labelledby', 'aria-invalid', 'aria-errormessage', 'aria-describedby'], $extra, $taken);
         $input .= Td::attrs($extra, $taken) . '>';
         $labelHtml = $label !== null ? '<label class="td-scan__label" for="' . Td::e($cid) . '">' . Td::e($label) . '</label>' : '';
-        $note = $error !== null
+        $note = td__helper_note($help, $element ? $hostId : $cid, $error !== null) . ($error !== null
             ? '<span class="td-field-error" id="' . Td::e($errId) . '" data-for="' . Td::e($element ? $hostId : $cid) . '">' . Td::e($error) . '</span>'
-            : '';
+            : '');
         $box = '<div class="td-scan__box">' . $input . '</div>';
         if (!$element) {
             return '<div class="td-scan' . Td::e(Td::classTokens($o['class'] ?? null)) . '">' . $labelHtml . $box . $note . '</div>';
@@ -3334,6 +3379,7 @@ namespace {
             'beep' => !empty($o['beep']),
             'required' => $required,
             'disabled' => $disabled,
+            'helper-text' => $help,
             'error-text' => $error,
             'aria-label' => $aria,
         ], $hostTaken) . '>';
@@ -3374,6 +3420,7 @@ namespace {
         $label = isset($o['label']) && is_scalar($o['label']) && !is_bool($o['label']) ? (string) $o['label'] : '';
         $placeholder = td__str($o['placeholder'] ?? null);
         $error = td__str($o['error'] ?? null);
+        $help = td__helper_opt($o); // v0.54.0
         $disabled = !empty($o['disabled']);
         $req = td__dtr_required($o['required'] ?? null);
         $s = $start !== null ? td__dtr_parts($start, $mode, 'start') : null;
@@ -3431,11 +3478,13 @@ namespace {
             'form-value-format' => $fmt,
             'required' => $req['attr'],
             'disabled' => $disabled,
+            'helper-text' => $help,
             'error-text' => $error,
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['id', 'class', 'name', 'mode', 'start', 'end', 'start-name', 'end-name', 'label', 'placeholder', 'min',
-            'max', 'max-days', 'minute-step', 'form-value-format', 'open-at', 'required', 'disabled', 'error-text', 'value'], $extra, $taken);
+            'max', 'max-days', 'minute-step', 'form-value-format', 'open-at', 'required', 'disabled', 'helper-text', 'error-text', 'value'],
+            $extra, $taken);
         $html .= Td::attrs($extra, $taken) . '>';
 
         $natives = '';
@@ -3449,7 +3498,8 @@ namespace {
                 . ($max !== null ? ' max="' . Td::e($native($max)) . '"' : '')
                 . (in_array($k, $req['parts'], true) ? ' required' : '')
                 . ($disabled ? ' disabled' : '')
-                . ($error !== null ? ' aria-invalid="true" aria-describedby="' . $hid . '-error"' : '') . '>';
+                . ($error !== null ? ' aria-invalid="true" aria-describedby="' . $hid . '-error"' : '')
+                . ($help !== null && $error === null ? ' aria-describedby="' . $hid . '-note"' : '') . '>';
         }
         return $html . '<div class="td-dtr" data-state="closed">'
             . ($label !== '' ? '<span class="td-field__label td-dtr__label" id="' . $hid . '-label">' . Td::e($label)
@@ -3459,6 +3509,7 @@ namespace {
             . ($label !== '' ? ' aria-labelledby="' . $hid . '-label"' : '') . ($required ? ' aria-required="true"' : '') . ($disabled ? ' disabled' : '') . '>'
             . '<span class="td-dtr__value"' . ($a === null && $b === null ? ' data-placeholder' : '') . '>' . Td::e($text) . '</span>'
             . '<span class="td-dtr__icon" data-td-icon="calendar" aria-hidden="true"></span></button></div>'
+            . td__helper_note($help, $hid, $error !== null)
             . ($error !== null ? '<span class="td-field-error" id="' . $hid . '-error" data-for="' . $hid . '">' . Td::e($error) . '</span>' : '')
             . '</td-datetime-range>';
     }
@@ -4623,6 +4674,27 @@ namespace {
     }
 
     /**
+     * @internal v0.54.0 (plan v0.54.0-hint QĐ 11): the helper text option of a form helper — `helper_text` (canonical,
+     * every td_* form helper), else `hint` where it was the historical name (td_field / td_number_input). Text only.
+     */
+    function td__helper_opt(array $o, bool $hintAlias = false): ?string
+    {
+        return td__str($o['helper_text'] ?? null) ?? ($hintAlias ? td__str($o['hint'] ?? null) : null);
+    }
+
+    /**
+     * @internal v0.54.0: the helper note a form helper prints (`div.td-field__note#{id}-note`, text, `hidden` while an
+     * error shows — the component's own note; td.php prints it right before the error note). '' without a helper text.
+     */
+    function td__helper_note(?string $help, string $hostId, bool $error): string
+    {
+        if ($help === null) {
+            return '';
+        }
+        return '<div class="td-field__note" id="' . Td::e("$hostId-note") . '"' . ($error ? ' hidden' : '') . '>' . Td::e($help) . '</div>';
+    }
+
+    /**
      * @internal Element mode: mark the names a component owns (any case) + the kit's `data-td-*` namespace as taken, so
      * a caller `attrs` entry can never print them (review v0.25 IMPL-1 / round 2 / round 3 rules).
      * @param array<int,string> $owned lower-case names
@@ -4671,7 +4743,7 @@ namespace {
         $hostId = $callerId !== null ? $callerId . '-host' : td__host_uid($name);
         $cid = $callerId ?? $hostId . '-control';
         $label = isset($o['label']) && is_scalar($o['label']) && (string) $o['label'] !== '' ? (string) $o['label'] : null;
-        $hint = td__str($o['hint'] ?? null);
+        $hint = td__helper_opt($o, true); // v0.54.0: helper_text (canonical) > hint (alias)
         $error = td__str($o['error'] ?? null);
         $required = !empty($o['required']);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
@@ -4702,7 +4774,7 @@ namespace {
         }
         $rows = $textarea ? (Td::intOpt($o['rows'] ?? null, 1) ?? '3') : null;
         // component-owned description ids, in the component's order: helper note, counter, error
-        $desc = trim(($hint !== null ? "$hostId-note " : '') . ($max !== null ? "$hostId-counter " : '') . ($error !== null ? "$hostId-error" : ''));
+        $desc = trim(($hint !== null && $error === null ? "$hostId-note " : '') . ($max !== null ? "$hostId-counter " : '') . ($error !== null ? "$hostId-error" : ''));
         $ctl = [
             'type' => $textarea ? null : $type,
             'class' => 'td-field__control',
@@ -4738,7 +4810,7 @@ namespace {
                 . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</label>'
             : '';
         $footer = $error !== null ? '<span class="td-field-error" id="' . $hid . '-error" data-for="' . $hid . '">' . Td::e($error) . '</span>' : '';
-        $footer .= '<div class="td-field__note" id="' . $hid . '-note"' . ($hint === null ? ' hidden' : '') . '>' . Td::e($hint ?? '') . '</div>';
+        $footer .= '<div class="td-field__note" id="' . $hid . '-note"' . ($hint === null || $error !== null ? ' hidden' : '') . '>' . Td::e($hint ?? '') . '</div>';
         if ($max !== null) {
             $count = td__js_length($value, $textarea);
             // same text as the component's counter (TdInputField.messages.unitChar = 'ký tự'); data-state at the limit
@@ -4793,6 +4865,9 @@ namespace {
         $statusText = null;
         $locked = false;
         $lockReason = null;
+        $onText = null;
+        $offText = null;
+        $help = td__helper_opt($o); // v0.54.0 (QĐ 8, 11): the helper note under the label
         if ($toggle) {
             $t = $o['tone'] ?? null;
             if ($t === 'success' || $t === 'warning') {
@@ -4804,10 +4879,15 @@ namespace {
             $statusText = $cut($o['status_text'] ?? null);
             $locked = !empty($o['locked']);
             $lockReason = $cut($o['locked_reason'] ?? null);
+            // v0.54.0 (QĐ 10): visible state texts (CSS shows the current one; never wired into aria-describedby here —
+            // without JS the description could not follow a flip: Codex plan-review r2 #13)
+            $onText = $cut($o['on_text'] ?? null);
+            $offText = $cut($o['off_text'] ?? null);
         }
-        $hasStatus = $tone !== null || $statusText !== null;
+        // v0.54.0: with on_text the tone's DEFAULT status text is dropped (an explicit status_text stays)
+        $hasStatus = $statusText !== null || ($tone !== null && $onText === null);
         $hid = $hostId;
-        $own = trim(($hasStatus && $checked ? "$hid-status " : '') . ($locked ? "$hid-lock" : ''));
+        $own = trim(($hasStatus && $checked ? "$hid-status " : '') . ($locked ? "$hid-lock " : '') . ($help !== null ? "$hid-note" : ''));
         $siteDesc = null;
         foreach ($inputExtra as $k => $v) {
             if (strtolower((string) $k) === 'aria-describedby' && is_scalar($v)) {
@@ -4844,8 +4924,14 @@ namespace {
             : '<span class="td-checkbox__mark" aria-hidden="true">'
                 . '<span class="td-checkbox__icon" data-td-icon="check" data-td-icon-class="td-checkbox__svg">'
                 . Td::icon('check', 'm', '', 'td-checkbox__svg') . '</span></span>';
+        $state = $onText !== null || $offText !== null
+            ? '<span class="td-switch__state" aria-hidden="true">'
+                . ($onText !== null ? '<span class="td-switch__state-on" id="' . Td::e("$hid-on") . '">' . Td::e($onText) . '</span>' : '')
+                . ($offText !== null ? '<span class="td-switch__state-off" id="' . Td::e("$hid-off") . '">' . Td::e($offText) . '</span>' : '')
+                . '</span>'
+            : '';
         $inner = '<label class="' . $block . ' ' . $block . '--' . $size . '">' . $input . $parts
-            . ($label !== '' ? '<span class="' . $block . '__label">' . Td::e($label) . '</span>' : '') . '</label>';
+            . ($label !== '' ? '<span class="' . $block . '__label">' . Td::e($label) . '</span>' : '') . $state . '</label>';
         if ($hasStatus) { // the description spans sit OUTSIDE the label (never part of the name); their text is state
             $L = Td::TOGGLE_LABELS;
             $inner .= '<span class="td-switch__status td-sr-only" id="' . Td::e("$hid-status") . '">'
@@ -4855,6 +4941,7 @@ namespace {
             $inner .= '<span class="td-switch__lock-reason td-sr-only" id="' . Td::e("$hid-lock") . '">'
                 . Td::e(Td::TOGGLE_LABELS['locked'] . ($lockReason !== null ? ': ' . $lockReason : '')) . '</span>';
         }
+        $inner .= td__helper_note($help, $hid, false);
         $host = [
             'data-td-ssr' => $toggle ? Td::SSR_TOGGLE : Td::SSR_CHECKBOX,
             'id' => $hostId,
@@ -4871,12 +4958,16 @@ namespace {
             'status-text' => $statusText,
             'locked' => $locked,
             'locked-reason' => $lockReason,
+            'on-text' => $onText,
+            'off-text' => $offText,
+            'helper-text' => $help,
         ];
         $hostExtra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $hostTaken = [];
         $html = '<' . ($toggle ? 'td-toggle' : 'td-checkbox') . Td::ownAttrs($host, $hostTaken);
         $hostTaken = td__reserve(['id', 'class', 'name', 'value', 'checked', 'required', 'disabled', 'label', 'size', 'aria-label',
-            'color', 'controlled', 'error-text', 'tone', 'status-text', 'locked', 'locked-reason'], $hostExtra, $hostTaken);
+            'color', 'controlled', 'error-text', 'tone', 'status-text', 'locked', 'locked-reason', 'on-text', 'off-text', 'helper-text'],
+            $hostExtra, $hostTaken);
         return $html . Td::attrs($hostExtra, $hostTaken) . '>' . $inner . '</' . ($toggle ? 'td-toggle' : 'td-checkbox') . '>';
     }
 
@@ -7018,6 +7109,7 @@ namespace {
         $maxH = isset($o['max_height']) && is_string($o['max_height'])
             && preg_match('/^(none|\d{1,4}(\.\d{1,2})?(px|rem|em|vh|svh|dvh|lvh|%))$/D', $o['max_height']) === 1 ? $o['max_height'] : null;
         $disabled = !empty($o['disabled']);
+        $help = td__helper_opt($o); // v0.54.0: the helper note (last child; the component puts its id on the active cell)
         $res = $name === '' || str_ends_with($name, '[]') ? ['ok' => false, 'reason' => 'name', 'model' => null]
             : td__check_matrix_data($columns, $rows, $o['cells'] ?? null, $value);
         // review r1 #2: the `data` attribute obeys the JS limit — 512 KiB of UTF-8 (strlen of the JSON printed; the
@@ -7041,8 +7133,10 @@ namespace {
             'max-height' => $maxH,
             'disabled' => $disabled,
             'data' => $json,
+            'helper-text' => $help,
         ], $taken);
-        $taken = td__reserve(['id', 'class', 'name', 'label', 'layout', 'max-height', 'disabled', 'data', 'value'], $extra, $taken);
+        $taken = td__reserve(['id', 'class', 'name', 'label', 'layout', 'max-height', 'disabled', 'data', 'value', 'helper-text'],
+            $extra, $taken);
         $host .= Td::attrs($extra, $taken) . '>';
         $nameEl = $label !== '' ? '<p class="td-field__label" id="' . $hid . '-label">' . Td::e($label) . '</p>'
             : '<span class="td-sr-only" id="' . $hid . '-label">' . Td::e($aria !== '' ? $aria : $L['grid']) . '</span>';
@@ -7154,7 +7248,7 @@ namespace {
         }
         $out .= '</table></div><p class="td-check-matrix__note" aria-hidden="true"></p><p class="td-sr-only" role="status"></p></div>'
             . '<input type="hidden" name="' . Td::e($name . '[_v]') . '" value="1"' . $dis . '>';
-        return $host . $out . '</td-check-matrix>';
+        return $host . $out . td__helper_note($help, $h, false) . '</td-check-matrix>';
     }
 
     /**
@@ -7268,6 +7362,8 @@ namespace {
         }
         $flag = static fn (string $k): bool => array_key_exists($k, $o) && $o[$k] !== null && !$o[$k];
         $errId = ($element ? $hostId : $cid) . '-error';
+        $help = td__helper_opt($o); // v0.54.0
+        $ownDesc = trim(($help !== null && $error === null ? ($element ? $hostId : $cid) . '-note ' : '') . ($error !== null ? $errId : ''));
         $taken = [];
         $input = '<input' . Td::ownAttrs([
             'type' => 'text',
@@ -7291,7 +7387,7 @@ namespace {
             'aria-label' => $label === null ? ($aria ?? Td::COLOR_LABELS['input']) : null,
             'aria-invalid' => $error !== null ? 'true' : null,
             'aria-errormessage' => $error !== null ? $errId : null,
-            'aria-describedby' => $error !== null ? $errId : null,
+            'aria-describedby' => $ownDesc !== '' ? $ownDesc : null,
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['type', 'class', 'id', 'inputmode', 'autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck',
@@ -7299,9 +7395,9 @@ namespace {
             'autofocus', 'aria-label', 'aria-labelledby', 'aria-invalid', 'aria-errormessage', 'aria-describedby'], $extra, $taken);
         $input .= Td::attrs($extra, $taken) . '>';
         $labelHtml = $label !== null ? '<label class="td-color__label" for="' . Td::e($cid) . '">' . Td::e($label) . '</label>' : '';
-        $note = $error !== null
+        $note = td__helper_note($help, $element ? $hostId : $cid, $error !== null) . ($error !== null
             ? '<span class="td-field-error" id="' . Td::e($errId) . '" data-for="' . Td::e($element ? $hostId : $cid) . '">' . Td::e($error) . '</span>'
-            : '';
+            : '');
         $box = '<div class="td-color__box"><span class="td-color__swatch" aria-hidden="true"></span>' . $input . '</div>';
         if (!$element) {
             return '<div class="td-color' . Td::e(Td::classTokens($o['class'] ?? null)) . '">' . $labelHtml . $box . $note . '</div>';
@@ -7322,6 +7418,7 @@ namespace {
             'required' => $required,
             'disabled' => $disabled,
             'readonly' => $readonly,
+            'helper-text' => $help,
             'error-text' => $error,
             'aria-label' => $aria,
         ], $hostTaken) . '><div class="td-color">' . $labelHtml . $box . '</div>' . $note . '</td-color-picker>';
@@ -7499,7 +7596,7 @@ namespace {
                     . '</span>' : '')
                 . '</div>';
         }
-        $desc = trim(($hint !== null ? "$host-note " : '') . ($error !== null ? "$host-error" : ''));
+        $desc = trim(($hint !== null && $error === null ? "$host-note " : '') . ($error !== null ? "$host-error" : ''));
         $taken = [];
         $html .= '<div' . Td::ownAttrs([
             'class' => 'td-choice__options',
@@ -7558,7 +7655,7 @@ namespace {
         }
         $html .= '</div>';
         $footer = $error !== null ? '<span class="td-field-error" id="' . $h . '-error" data-for="' . $h . '">' . Td::e($error) . '</span>' : '';
-        $footer .= '<div class="td-field__note" id="' . $h . '-note"' . ($hint === null ? ' hidden' : '') . '>' . Td::e($hint ?? '') . '</div>';
+        $footer .= '<div class="td-field__note" id="' . $h . '-note"' . ($hint === null || $error !== null ? ' hidden' : '') . '>' . Td::e($hint ?? '') . '</div>';
         $html .= '<div class="td-field__footer"' . ($hint === null && $error === null ? ' hidden' : '') . '>' . $footer . '</div></div>';
         $ht = [];
         return '<td-choice-group' . Td::ownAttrs([
