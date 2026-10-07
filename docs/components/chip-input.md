@@ -339,6 +339,7 @@ nguyên số dòng như cũ. Chế độ native (`div.td-multiselect`) không n�
 | `selection-only` | boolean | `false` | 0.28.0: chỉ chọn từ `options` / `search()`, mục lật chọn, ô tick trên mỗi mục (0.36.0: ô tick chung) (mục 11). Tự bật khi nâng cấp `<select multiple>`. |
 | `select-all` | boolean | `false` | 0.28.0 (cùng `selection-only`): dòng "Chọn tất cả (N)" đầu danh sách. |
 | `close-on-select` | boolean | `false` | 0.28.0 (cùng `selection-only`): đóng popup (và xoá chữ lọc) sau mỗi lần chọn. |
+| `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
 Tất cả được cập nhật tại chỗ (giữ focus, giữ chữ đang gõ); riêng `label` render lại cấu trúc nhưng vẫn giữ chữ và vị trí
 focus.

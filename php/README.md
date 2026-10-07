@@ -4,7 +4,7 @@ One plain PHP file (PHP ≥ 8.0 — CI job `php80` runs the suite on PHP 8.0; no
 
 ```php
 require_once $kitDir . '/php/td.php';
-TdComponents\Td::configure('/assets/vendor/td-components/0.53.2', $kitDir); // versioned URL + filesystem path
+TdComponents\Td::configure('/assets/vendor/td-components/0.54.0', $kitDir); // versioned URL + filesystem path
 
 echo td_stylesheet_tag($nonce);
 echo td_import_map_tag(['dompurify' => '/assets/vendor/dompurify/purify.es.js'], $nonce); // ONE import map per page
@@ -23,7 +23,7 @@ echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
 - `td_link(…, ['bare' => true])` prints a plain `<a>` (site class only, no button look).
 - v0.30.0 `td_number_input` prints a native `type=number` field (canonical value, implicit min 0) in the
   `.td-number` box; element mode `<td-number-input data-td-ssr="number-input@1">` is adopted in place (grouped display).
-- v0.53.2 `td_choice_group` always prints `<td-choice-group data-td-ssr="choice-group@1">` with NATIVE radios (real name,
+- v0.54.0 `td_choice_group` always prints `<td-choice-group data-td-ssr="choice-group@1">` with NATIVE radios (real name,
   `required` on every radio) — the form works without JS; the module adopts it in place. `Td::safeColor()` gates swatch
   colours (SVG `fill`). `td_number_input(…, ['element' => true, 'stepper' => true])` adds the − / + buttons.
 - Everything is escaped; attribute names, URLs and class tokens are allowlisted.

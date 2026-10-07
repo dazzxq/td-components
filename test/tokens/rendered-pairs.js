@@ -133,6 +133,13 @@ export function renderedPairs() {
   add('segmented selected label on the pill', '--td-color-text', ['--td-control-bg']);
   add('segmented ring vs the pill', '--td-color-text-muted', ['--td-control-bg'], 3);
   for (const c of ['success', 'warning']) add(`toggle ${c} knob on the track`, '--td-color-on-status', [`--td-color-${c}`], 3);
+  // v0.54.0 helper text (field.css / hint.css: the note, the media help spans and <td-hint> — link included, inherited —
+  // all read --td-field-note = --td-color-text-muted) and td-toggle on / off text (switch.css: --td-switch-state-fg =
+  // --td-color-text-muted) on every base the controls sit on; table rows (zebra / selected) are the ISSUE-4 muted pairs
+  for (const b of [...BASES, '--td-color-surface-muted']) {
+    add(`helper note on ${b}`, '--td-color-text-muted', [b], 4.7, { gateLight: true });
+    add(`toggle state text on ${b}`, '--td-color-text-muted', [b], 4.7, { gateLight: true });
+  }
   return P;
 }
 

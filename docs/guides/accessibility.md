@@ -84,6 +84,12 @@ không bao giờ làm gì `inert`.
 Control form: `label` (hiển thị) → `aria-label` trên host → `<label for="id-host">` bên ngoài. Chi tiết:
 [Form › Label](forms.md#label-và-tên-truy-cập).
 
+**Mô tả (0.54.0):** gợi ý `helper-text` / `<td-hint>` là **mô tả** của control (`aria-describedby`, sau id của trang và
+mô tả riêng của component, trước lỗi); lỗi hiện thì gợi ý rời khỏi mô tả (phần tử bị ẩn mà còn được tham chiếu vẫn bị
+đọc — kit gỡ id thay vì chỉ ẩn). Control không phải của kit: `<td-hint for="id">` tự thêm / gỡ đúng id của nó; không JS
+thì tự in `aria-describedby` trong markup. Chữ trạng thái nhìn thấy của `td-toggle` (`on-text` / `off-text`) là mô tả của
+trạng thái **hiện tại**, không bao giờ là tên. Xem [Hint](../components/hint.md).
+
 Tooltip có chính sách tên cố định (chỉ áp cho `<button>`, `<a href>`, `input[type=button|submit|reset|image]` và role
 `button|link|tab|menuitem`):
 

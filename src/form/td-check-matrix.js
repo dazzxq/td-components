@@ -355,6 +355,7 @@ export class TdCheckMatrix extends TdFormElement {
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (oldVal === newVal) return;
     if (name === 'disabled') this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
     if (!this._initialized) return;
@@ -905,6 +906,8 @@ export class TdCheckMatrix extends TdFormElement {
     next.setAttribute('tabindex', '0');
     this._activeKey = this._keyOf(cell);
     this._crosshair(cell);
+    // v0.54.0 (QĐ 3b): the aria target IS the roving cell — the component's description ids move with it
+    if (prev !== next) this._syncDescribedBy();
     if (focus && this.ownerDocument.activeElement !== next) {
       next.focus({ preventScroll: true });
       this._reveal(cell);
@@ -1071,8 +1074,8 @@ export class TdCheckMatrix extends TdFormElement {
       disabled: this.hasAttribute('disabled'), // the server only knows the attribute (a <fieldset disabled> applies after)
     });
     const want = [...tpl.content.childNodes];
-    const have = [...this.childNodes].filter((n) => n.nodeType === 1 || (n.nodeType === 3 && n.data.trim()) || n.nodeType === 8);
-    if (have.some((n) => n.nodeType === 8)) return false;
+    const have = this._ssrWithoutHelperNote([...this.childNodes].filter((n) => n.nodeType === 1 || (n.nodeType === 3 && n.data.trim()) || n.nodeType === 8));
+    if (!have || have.some((n) => n.nodeType === 8)) return false; // v0.54.0: minus the PHP helper note
     if (have.length !== want.length) return false;
     return have.every((n, i) => this._ssrSame(n, want[i]));
   }
@@ -1142,7 +1145,9 @@ export class TdCheckMatrix extends TdFormElement {
     const tpl = document.createElement('template');
     tpl.innerHTML = this.render();
     const want = [...tpl.content.childNodes];
-    const have = [...this.childNodes].filter((n) => n.nodeType !== 3 || n.data.trim());
+    // v0.54.0: the helper note (base-mounted, or the PHP one) / a rich <td-hint> child are not part of render()
+    const have = [...this.childNodes].filter((n) => (n.nodeType !== 3 || n.data.trim()) && n !== this._hintChild
+      && !(n.nodeType === 1 && n.localName === 'div' && n.classList.contains('td-field__note')));
     return have.length === want.length && have.every((n, k) => this._ownedSame(n, want[k], false));
   }
 

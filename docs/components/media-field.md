@@ -382,7 +382,7 @@ query (Chrome / Edge 102–104): dự phòng theo viewport < 360px.
 | `focal-point` | boolean | — | 0.35: điểm trọng tâm + mục `name[focal]` (cần `usage`) |
 | `focal` | JSON v1 `{"v":1,"x","y"}` | — | 0.35: focal mặc định; sai → `null` |
 | `prompt` | string | theo `accept-kind` | Chữ trong khung rỗng |
-| `helper-text` / `error-text` | string | — | Ghi chú / lỗi |
+| `helper-text` / `error-text` | string | — | Ghi chú / lỗi. 0.54.0: có lỗi thì ghi chú ẩn (và rời khỏi mô tả); đổi `helper-text` không render lại; `setHelper()` / `helperMessage`; nội dung giàu: `<td-hint>` con — [Hint](hint.md) |
 | `required` / `disabled` | boolean | — | |
 
 ## Property & method

@@ -181,9 +181,9 @@
       "--_td-toast-seq": ""
     },
     ".td-field__note": {
-      "width": "1272px",
-      "height": "18px",
-      "min-height": "auto",
+      "width": "auto",
+      "height": "auto",
+      "min-height": "0px",
       "max-height": "none",
       "padding-top": "0px",
       "padding-bottom": "0px",
@@ -192,7 +192,7 @@
       "margin-top": "0px",
       "margin-bottom": "0px",
       "margin-left": "0px",
-      "display": "block",
+      "display": "none",
       "position": "static",
       "top": "auto",
       "left": "auto",

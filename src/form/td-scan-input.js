@@ -1034,6 +1034,7 @@ export class TdScanInput extends TdFormElement {
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (oldVal === newVal || !this._initialized) {
       super.attributeChangedCallback(name, oldVal, newVal);
       return;
@@ -1199,8 +1200,8 @@ export class TdScanInput extends TdFormElement {
 
   /** @protected `div.td-scan` > [label] + `div.td-scan__box` > input — then at most the error note */
   _ssrSkeletonOk() {
-    const kids = ssrContentNodes(this);
-    if (!kids.length || kids.length > 2 || kids.some((n) => n.nodeType !== 1) || (kids[1] && !ssrIsErrorNote(kids[1]))) return false;
+    const kids = this._ssrWithoutHelperNote(ssrContentNodes(this)); // v0.54.0: minus the PHP helper note
+    if (!kids || !kids.length || kids.length > 2 || kids.some((n) => n.nodeType !== 1) || (kids[1] && !ssrIsErrorNote(kids[1]))) return false;
     const root = kids[0];
     if (root.localName !== 'div' || ssrClassKey(root) !== 'td-scan') return false;
     const parts = ssrContentNodes(root);
@@ -1217,8 +1218,8 @@ export class TdScanInput extends TdFormElement {
    * inputmode / placeholder as render(); allowlist; `first` = the no-JS name / value / required may still be there).
    */
   _markupMatches(first) {
-    const kids = ssrContentNodes(this);
-    if (!kids.length || kids.length > 2 || (kids.length === 2 && !ssrIsErrorNote(kids[1]))) return false;
+    const kids = this._ssrWithoutHelperNote(ssrContentNodes(this)); // v0.54.0: minus the PHP helper note
+    if (!kids || !kids.length || kids.length > 2 || (kids.length === 2 && !ssrIsErrorNote(kids[1]))) return false;
     if ((kids.length === 2) !== !!this.errorMessage) return false;
     const want = this._template().firstElementChild;
     const root = kids[0];
@@ -1298,8 +1299,8 @@ export class TdScanInput extends TdFormElement {
   _ssrMultiGate() {
     const name = this.getAttribute('name');
     const disabled = this.hasAttribute('disabled');
-    const kids = ssrContentNodes(this);
-    if (!kids.length || kids.some((n) => n.nodeType !== 1)) return null;
+    const kids = this._ssrWithoutHelperNote(ssrContentNodes(this)); // v0.54.0: minus the PHP helper note
+    if (!kids || !kids.length || kids.some((n) => n.nodeType !== 1)) return null;
     const [root, ...rest] = kids;
     const note = rest.length && ssrIsErrorNote(rest[rest.length - 1]) ? rest.pop() : null;
     if (!!note !== !!this.errorMessage) return null;

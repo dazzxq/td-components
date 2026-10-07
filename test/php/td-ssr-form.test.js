@@ -14,7 +14,15 @@ import { FORM_FIXTURES, FORM_FIXTURE_FILE, renderFormFixture, SSR_DIR } from '..
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
 const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
 const BASE = '/vendor/td/0.26.0';
-const NATIVE = JSON.parse(readFileSync(join(SSR_DIR, 'form.native.json'), 'utf8'));
+const NATIVE_V025 = JSON.parse(readFileSync(join(SSR_DIR, 'form.native.json'), 'utf8'));
+/**
+ * v0.54.0 (plan v0.54.0-hint QĐ 3 — a deliberate change, breaking-changes): a hint WITH an error → the note is hidden and
+ * leaves aria-describedby. Every other byte of the v0.25 native baseline is unchanged.
+ */
+const v054 = (html) => (!/class="td-field-error"/.test(html) ? html : html
+  .replace(/ aria-describedby="(\S+)-note (\S+-error)"/, ' aria-describedby="$2"')
+  .replace(/(<div class="td-field__note" id="[^"]+")>(?!<\/div>)/, '$1 hidden>'));
+const NATIVE = Object.fromEntries(Object.entries(NATIVE_V025).map(([k, v]) => [k, v054(v)]));
 const TAG = { td_field: 'td-input-field', td_toggle: 'td-toggle', td_checkbox: 'td-checkbox' };
 
 /** htmlspecialchars(ENT_QUOTES | ENT_SUBSTITUTE) as Td::e() prints it. */
@@ -182,7 +190,8 @@ function checkField(c, r) {
   } else assert.equal(labelHtml, undefined, `${c.id}: no label`);
   assert.equal(!!taAttrs, ta, `${c.id}: control tag`);
   if (ta) assert.equal(taText, `\n${esc(value)}`, `${c.id}: textarea text`);
-  const desc = [hint && `${hid}-note`, max && `${hid}-counter`, error && `${hid}-error`].filter(Boolean).join(' ');
+  // v0.54.0 (QĐ 3): the note leaves the description while an error shows
+  const desc = [hint && !error && `${hid}-note`, max && `${hid}-counter`, error && `${hid}-error`].filter(Boolean).join(' ');
   const ctl = {
     ...(ta ? {} : { type }), class: 'td-field__control', id: esc(cid),
     ...(name !== '' ? { name: esc(name) } : {}),
@@ -203,7 +212,7 @@ function checkField(c, r) {
   const counter = max ? `<div class="td-field__counter" id="${esc(hid)}-counter"${count >= Number(max) ? ' data-state="limit"' : ''}>${count}/${max} ký tự</div>` : '';
   assert.equal(footer, `<div class="td-field__footer"${!hint && !error && !max ? ' hidden' : ''}>`
     + (error ? `<span class="td-field-error" id="${esc(hid)}-error" data-for="${esc(hid)}">${esc(error)}</span>` : '')
-    + `<div class="td-field__note" id="${esc(hid)}-note"${hint ? '' : ' hidden'}>${hint ? esc(hint) : ''}</div>${counter}</div>`,
+    + `<div class="td-field__note" id="${esc(hid)}-note"${hint && !error ? '' : ' hidden'}>${hint ? esc(hint) : ''}</div>${counter}</div>`,
   `${c.id}: footer`);
 }
 

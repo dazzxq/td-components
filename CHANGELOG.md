@@ -2,6 +2,37 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.54.0
+
+**Hint thống nhất cho mọi form control + `<td-hint>` + chữ trạng thái của `td-toggle`** (owner, qua dsuite: "hỗ trợ td hint cho
+tất cả các component có thể cần tới hint … hoặc cho td hint làm một component riêng"). Plan `docs/internal/plans/v0.54.0-hint.md`,
+Codex plan-review APPROVE 3 vòng, impl-review 5 vòng + security-review 3 vòng APPROVE; [ADR 0027](docs/internal/decisions/0027-shared-helper-contract.md).
+Có thay đổi hành vi — `docs/upgrading/breaking-changes.md#0540`.
+
+### Added
+
+- `helper-text` trên **cả 19 form control** (lớp nền `TdFormElement`): attribute `helper-text`, property `helperText`,
+  `setHelper(msg)`, `helperMessage`; nối vào `aria-describedby`. Mới có ở dropdown, chip-input, tree-select, datetime-picker,
+  datetime-range, color-picker, slider, otp-input, scan-input, check-matrix, dropzone, tree, checkbox, toggle.
+- Nội dung phong phú (`<code>`, link): một `<td-hint>` con trực tiếp của control thay cho chữ hint (chỉ Element, không chuỗi HTML).
+- `<td-hint for="id">` độc lập (`./hint`, `TdHint`) cho control ngoài kit: tự nối / gỡ `aria-describedby` theo `for` và `id`,
+  theo dõi đích đổi / xuất hiện muộn, tôn trọng `hidden`. PHP `td_hint($for, $text | Td::html(...), $o)` (id mặc định `{for}-hint`).
+- `td-toggle` `on-text` / `off-text`: chữ trạng thái hiện thật cạnh công tắc, theo bật / tắt, không nhảy chiều rộng, đọc đúng
+  với trình đọc màn hình; có chữ trạng thái thì host thẳng baseline với chữ xung quanh.
+- PHP: `'helper_text'` trên cả 15 helper form (thắng `hint` cũ của `td_field` / `td_number_input` khi có khoá); `'on_text'` /
+  `'off_text'` trên `td_toggle`. Token `--td-field-note`, `--td-switch-state-fg`.
+
+### Changed
+
+- Đang hiện lỗi thì hint **ẩn** và rời `aria-describedby` (trước: input-field / number-input / choice-group / media-field /
+  media-gallery hiện cả hai). Lỗi checkbox / toggle thụt dưới nhãn như hint.
+- Đổi `helper-text` lúc chạy cập nhật tại chỗ (giữ focus), không vẽ lại control.
+
+### Fixed
+
+- PHP giữ `aria-describedby` site truyền qua `attrs` (trước bị bỏ ở chế độ element của td_field / td_number_input /
+  td_otp_input / td_scan_input / td_color_picker); id của site đứng trước id của component.
+
 ## 0.53.2
 
 **Vá giao diện: công tắc `td-toggle` căn giữa chữ đứng cạnh; panel thông tin lightbox trên điện thoại che thanh ‹ đếm ›**

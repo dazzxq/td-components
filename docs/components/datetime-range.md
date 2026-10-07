@@ -131,6 +131,7 @@ el.presets = [TdDatetimeRange.presets[0], TdDatetimeRange.presets[1]];
 | `required` | — | Bảng dưới |
 | `disabled` | tắt | Khoá (cả qua `<fieldset disabled>`) |
 | `error-text` | — | Lỗi của app (hợp đồng lỗi chung; `setError()` / `clearError()`) |
+| `helper-text` | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
 **`required`** — một hàm dùng chung cho kiểm tra, PHP và SSR:
 

@@ -389,6 +389,7 @@ export class TdDatetimeRange extends TdFormElement {
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (oldVal === newVal) return;
     if (name === 'disabled') this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
     if (!this._initialized) return;
@@ -1093,8 +1094,8 @@ export class TdDatetimeRange extends TdFormElement {
    * @returns {{ natives: HTMLElement, inputs: HTMLInputElement[], trigger: HTMLElement, note: HTMLElement|null }|null}
    */
   _ssrGate() {
-    const nodes = ssrContentNodes(this);
-    if (!nodes.length || nodes.some((n) => n.nodeType !== 1) || nodes.length > 2) return null;
+    const nodes = this._ssrWithoutHelperNote(ssrContentNodes(this)); // v0.54.0: minus the PHP helper note
+    if (!nodes || !nodes.length || nodes.some((n) => n.nodeType !== 1) || nodes.length > 2) return null;
     const [box, note = null] = nodes;
     const msg = this.errorMessage;
     if (note) {
@@ -1197,6 +1198,8 @@ export class TdDatetimeRange extends TdFormElement {
         input.setAttribute('aria-invalid', 'true');
         input.setAttribute('aria-describedby', `${id}-error`);
       }
+      // v0.54.0: php td_datetime_range describes the natives with the helper note (no error)
+      else if (this.helperMessage) input.setAttribute('aria-describedby', `${id}-note`);
       div.append(lab, input);
     });
     return div;

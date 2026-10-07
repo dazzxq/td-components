@@ -62,6 +62,14 @@ export const ssrIsErrorNote = (n) => n.nodeType === 1 && n.localName === 'span' 
   && [...n.attributes].every((a) => ['class', 'id', 'data-for'].includes(a.name)) && n.children.length === 0;
 
 /**
+ * v0.54.0 (plan v0.54.0-hint QĐ 11): the helper note php/td.php prints for a control (`div.td-field__note#{host}-note`,
+ * text only, optionally `hidden` while an error shows) — the SSR checks accept it right before the error note.
+ * @param {Node} n @param {string} hostId
+ */
+export const ssrIsHelperNote = (n, hostId) => n.nodeType === 1 && n.localName === 'div' && ssrClassKey(n) === 'td-field__note'
+  && n.id === `${hostId}-note` && [...n.attributes].every((a) => ['class', 'id', 'hidden'].includes(a.name)) && n.children.length === 0;
+
+/**
  * Base class for form-associated td-components. Extends {@link TdBaseElement}
  * with native form participation via **ElementInternals** (no Shadow DOM).
  *
@@ -101,7 +109,8 @@ export class TdFormElement extends TdBaseElement {
 
   /** @returns {string[]} Base observed attributes. Subclasses must spread these in. */
   static get observedAttributes() {
-    return ['name', 'disabled', 'required'];
+    // v0.54.0 (plan v0.54.0-hint QĐ 1): `helper-text` is part of every form control's contract (in place, never a render)
+    return ['name', 'disabled', 'required', 'helper-text'];
   }
 
   /**
@@ -140,9 +149,20 @@ export class TdFormElement extends TdBaseElement {
     this._customMessage = '';
     /** @private Runtime error (setError); null = use the `error-text` attribute. */
     this._runtimeError = null;
+    /** @private v0.54.0: runtime helper (setHelper); null = use the `helper-text` attribute. */
+    this._runtimeHelper = null;
+    /** @private v0.54.0: the page's rich <td-hint> child (QĐ 4), taken out of the host before the first render */
+    this._hintChild = null;
+    /** @private v0.54.0: the text note the BASE created (the controls that render their own note never set it) */
+    this._ownNote = null;
+    /** @private v0.54.0: standalone <td-hint for> linked to this control → the token (its id) it wrote (QĐ 5) */
+    this._linkedHints = new Map();
   }
 
   connectedCallback() {
+    // v0.54.0 (QĐ 4): a rich <td-hint> child (no `for`) is taken out BEFORE the first render / hydrate (render replaces
+    // innerHTML; the SSR checks never see it) and mounted in the hint slot after every bind.
+    if (!this._initialized) this._takeHintChild();
     // Compute effective-disabled BEFORE the first render so guards/styling are correct.
     this._effectiveDisabled = this.hasAttribute('disabled') || this._ancestorDisabled;
     // Assign the host id BEFORE the first render so a subclass that renders an internal
@@ -310,6 +330,219 @@ export class TdFormElement extends TdBaseElement {
     return this.getAttribute('error-text') || '';
   }
 
+  // --- Helper contract (v0.54.0, plan docs/internal/plans/v0.54.0-hint.md QĐ 1–4) ---
+
+  /**
+   * Set the helper text ('' clears it). A later `helper-text` attribute value replaces it.
+   * @param {string} msg
+   */
+  setHelper(msg) {
+    this._runtimeHelper = msg ? String(msg) : '';
+    this._applyHelperState();
+  }
+
+  /** @returns {string} the helper text currently applied ('' = none); a rich <td-hint> child is not text */
+  get helperMessage() {
+    if (this._runtimeHelper != null) return this._runtimeHelper;
+    return this.getAttribute('helper-text') || '';
+  }
+
+  /**
+   * @protected `helper-text` is handled here, in place (no render). Every subclass with its own
+   * attributeChangedCallback calls this first: `if (this._helperAttr(name, oldVal, newVal)) return;`.
+   * @returns {boolean} the attribute was `helper-text` (handled)
+   */
+  _helperAttr(name, oldVal, newVal) {
+    if (name !== 'helper-text') return false;
+    if (oldVal !== newVal) {
+      this._runtimeHelper = null; // the latest attribute value is the current intent
+      this._applyHelperState();
+    }
+    return true;
+  }
+
+  /**
+   * @protected The kit text note: tag, class and id suffix (`{host-id}-{idSuffix}`). Default `div.td-field__note#{id}-note`;
+   * media-field / media-gallery keep their `span.__help#{id}-help` (contract @1).
+   * @returns {{ tag: string, className: string, idSuffix: string }}
+   */
+  _helperNoteSpec() {
+    return { tag: 'div', className: 'td-field__note', idSuffix: 'note' };
+  }
+
+  /**
+   * @protected Where the hint goes — the kit text note AND a rich <td-hint> child (Codex r1 #4): `before` null = append.
+   * Default: the error host, right before the error note → `[control][hint][error]`.
+   * @returns {{ parent: Element, before: Node|null }|null}
+   */
+  _helperSlot() {
+    const parent = this._errorHost();
+    if (!parent) return null;
+    const err = this._errorNote && this._errorNote.parentNode === parent ? this._errorNote : null;
+    return { parent, before: err };
+  }
+
+  /** @protected Hook after the hint state changed (footer visibility…). */
+  _helperChanged() {}
+
+  /** @private the hint is hidden while an error shows (QĐ 3) — only controls with an error contract */
+  _helperSuppressed() {
+    return !!this.constructor.errorContract && !!this.errorMessage;
+  }
+
+  /** @private QĐ 4: take the first rich <td-hint> child (no `for`) out of the host, keep the node */
+  _takeHintChild() {
+    if (this._hintChild) return;
+    const all = [...this.children].filter((c) => c.localName === 'td-hint');
+    const kids = all.filter((c) => !c.hasAttribute('for'));
+    // Codex impl r1 #6: every OTHER direct <td-hint> (a second one, a standalone `for` one) is the page's: set aside with
+    // the owned one before each render (innerHTML would destroy it) and put back, the same node, at the end of the host
+    this._extraHints = all.filter((c) => c !== kids[0]);
+    this._extrasAside = new WeakSet();
+    for (const x of this._extraHints) { x.remove(); this._extrasAside.add(x); }
+    if (kids.length > 1 && !this._warnedHints) {
+      this._warnedHints = true;
+      console.warn(`<${this.localName}>: only the first <td-hint> child is the control's hint; the others are left as they are`);
+    }
+    if (!kids.length) return;
+    const hint = kids[0];
+    hint.remove();
+    hint._tdOwner = this;
+    this._hintChild = hint;
+    this._hintDetached = true;
+    if (this.hasAttribute('helper-text')) console.warn(`<${this.localName}>: a <td-hint> child replaces helper-text`);
+  }
+
+  /** @protected The page removed the <td-hint> child (TdHint calls this): the text note comes back. */
+  _releaseHint(hint) {
+    if (hint !== this._hintChild || this.contains(hint)) return;
+    this._hintChild = null;
+    hint._tdOwner = null;
+    hint.removeAttribute('data-td-suppressed');
+    this._applyHelperState();
+  }
+
+  /** @protected A standalone <td-hint for> linked itself to this control with `token` (its id). */
+  _linkHint(hint, token) {
+    this._linkedHints.set(hint, token);
+    this._applyHelperState();
+  }
+
+  /** @protected The standalone <td-hint for> left this control. */
+  _unlinkHint(hint) {
+    if (!this._linkedHints.delete(hint)) return;
+    hint.removeAttribute('data-td-suppressed');
+    this._applyHelperState();
+  }
+
+  /** @protected ids of the hint parts currently shown (child hint or text note, then linked hints) — for _describedByIds() */
+  _helperDescribedByIds() {
+    const ids = [];
+    if (this._helperSuppressed()) return ids;
+    const el = this._helperEl;
+    if (el && el.id && !el.hidden && this.contains(el)) ids.push(el.id);
+    for (const [hint, token] of this._linkedHints) if (token && !hint.hidden) ids.push(token);
+    return ids;
+  }
+
+  /**
+   * @protected Put the hint DOM in its state (QĐ 1–4): text note (created / updated / hidden), the rich child mounted in the
+   * slot (it owns the id then — the text note gives it up), the error rule, then the description. Idempotent; runs after
+   * every bind (render, hydrate, re-connect), on helper / error changes and when hints link / unlink.
+   */
+  _applyHelperState() {
+    if (!this._initialized) return;
+    const slot = this._helperSlot();
+    if (!slot || !slot.parent) return;
+    const spec = this._helperNoteSpec();
+    const noteId = `${this.id}-${spec.idSuffix}`;
+    const off = this._helperSuppressed();
+    const child = this._hintChild;
+    if (child && !this._hintDetached && !this.contains(child)) { // moved / removed by the page
+      this._releaseHint(child);
+      return;
+    }
+    let note = this._ownNote && this._ownNote.parentNode === slot.parent ? this._ownNote : null;
+    if (!note) note = [...slot.parent.children].find((c) => c.localName === spec.tag && c.classList.contains(spec.className)) || null;
+    const rendered = !!note && note !== this._ownNote; // a note render() prints (input / number / choice / media)
+    if (child) {
+      // Codex r1 #1: exactly one element carries the hint id — the text note gives it up (rendered) or goes (base-made)
+      if (note) {
+        if (rendered) {
+          if (note.id === noteId || note.id === child.id) note.removeAttribute('id');
+          note.textContent = '';
+          note.hidden = true;
+        } else {
+          note.remove();
+          this._ownNote = null;
+        }
+      }
+      if (!child.id) child.id = noteId;
+      const ref = slot.before && slot.before.parentNode === slot.parent ? slot.before : null;
+      const placed = child.parentNode === slot.parent && (ref ? child.nextSibling === ref : slot.parent.lastChild === child);
+      if (!placed) slot.parent.insertBefore(child, ref);
+      this._hintDetached = false;
+      child.toggleAttribute('data-td-suppressed', off);
+      this._helperEl = child;
+    } else {
+      const text = this.helperMessage;
+      if (text && !note) {
+        note = document.createElement(spec.tag);
+        note.className = spec.className;
+        const ref = slot.before && slot.before.parentNode === slot.parent ? slot.before : null;
+        slot.parent.insertBefore(note, ref);
+        this._ownNote = note;
+      }
+      if (note) {
+        if (!text && note === this._ownNote) {
+          note.remove();
+          this._ownNote = null;
+          note = null;
+        } else {
+          note.id = noteId;
+          if (note.textContent !== text) note.textContent = text;
+          note.hidden = !text || off;
+        }
+      }
+      this._helperEl = note && text ? note : null;
+    }
+    for (const hint of this._linkedHints.keys()) hint.toggleAttribute('data-td-suppressed', off);
+    this._syncDescribedBy();
+    this._helperChanged();
+  }
+
+  /**
+   * @private v0.54.0: every bind (render, SSR adopt, re-connect) ends with the hint state — no subclass has to remount it.
+   */
+  _bindStep() {
+    super._bindStep();
+    this._applyHelperState();
+    this._restoreExtraHints();
+  }
+
+  /** @private Codex impl r1 #6: the page's other <td-hint> children the kit set aside come back (same nodes, host end) */
+  _restoreExtraHints() {
+    for (const x of this._extraHints || []) {
+      if (!x.parentNode && this._extrasAside.has(x)) {
+        this._extrasAside.delete(x);
+        this.appendChild(x);
+      }
+    }
+  }
+
+  /** @private v0.54.0: a full render replaces innerHTML — the rich hint child is set aside first (same node kept). */
+  _doRender() {
+    if (this._suppressRender) return;
+    if (this._hintChild && this._hintChild.parentNode) {
+      this._hintDetached = true;
+      this._hintChild.remove();
+    }
+    for (const x of this._extraHints || []) {
+      if (x.parentNode === this) { x.remove(); this._extrasAside.add(x); }
+    }
+    super._doRender();
+  }
+
   /**
    * Where the error note is placed (appended). Default: the host.
    * @returns {HTMLElement}
@@ -335,7 +568,7 @@ export class TdFormElement extends TdBaseElement {
    * @protected
    */
   _describedByIds() {
-    return [];
+    return this._helperDescribedByIds();
   }
 
   /**
@@ -350,13 +583,26 @@ export class TdFormElement extends TdBaseElement {
     if (this.constructor.errorContract && this.errorMessage) own.push(`${this.id}-error`);
     const prevOwn = this._ownDescribedBy || new Set();
     let foreign;
-    if (this._describedByTarget && this._describedByTarget !== target) {
+    const old = this._describedByTarget;
+    if (old && old !== target && this.contains(old)) {
+      // v0.54.0 (QĐ 3b): the aria target MOVED inside the host (td-check-matrix's roving cell) — the component's ids
+      // leave the old element (its other ids stay), the new one keeps its own foreign ids.
+      const rest = (old.getAttribute('aria-describedby') || '').split(/\s+/).filter((x) => x && !prevOwn.has(x));
+      if (rest.length) old.setAttribute('aria-describedby', rest.join(' '));
+      else old.removeAttribute('aria-describedby');
+      const current = (target.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+      foreign = current.filter((idRef) => !prevOwn.has(idRef));
+    } else if (old && old !== target) {
       // The control was replaced by a re-render: keep the page's own ids from the previous control.
       foreign = this._foreignDescribedBy || [];
     } else {
       const current = (target.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
       foreign = current.filter((idRef) => !prevOwn.has(idRef));
     }
+    // v0.54.0: the helper note / error ids derived from the host id are the component's even when the server printed
+    // them (SSR) — never kept as page ids (the order and the error rule stay the component's)
+    const derived = new Set([`${this.id}-${this._helperNoteSpec().idSuffix}`, `${this.id}-error`]);
+    foreign = foreign.filter((idRef) => !derived.has(idRef));
     this._describedByTarget = target;
     this._foreignDescribedBy = foreign;
     const next = [...new Set([...foreign, ...own])];
@@ -418,7 +664,9 @@ export class TdFormElement extends TdBaseElement {
         target.removeAttribute('aria-errormessage');
       }
     }
-    this._syncDescribedBy(); // error id also in aria-describedby (aria-errormessage support is patchy)
+    // error id also in aria-describedby (aria-errormessage support is patchy); v0.54.0: the hint follows the error (QĐ 3)
+    this._syncDescribedBy();
+    this._applyHelperState();
   }
 
   // --- Defaults + reset (ISSUE-4) ---
@@ -497,6 +745,7 @@ export class TdFormElement extends TdBaseElement {
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return;
     if (name === 'error-text' && this.constructor.errorContract) {
       if (oldVal !== newVal) {
         this._runtimeError = null; // the latest attribute value is the current intent
@@ -568,6 +817,21 @@ export class TdFormElement extends TdBaseElement {
     if (slot) return slot;
     const all = this.querySelectorAll(SSR_FORM_ASSOCIATED);
     return all.length === 1 && all[0].matches(this._ssrPlausible()) ? all[0] : null;
+  }
+
+  /**
+   * @protected v0.54.0 (QĐ 11): the host's content nodes WITHOUT the helper note php/td.php prints (the base mounts it, so
+   * render() never has it): `div.td-field__note#{id}-note` right before a trailing error note, else last. It must be there
+   * exactly when a helper text is set (else null = not the component's markup → safe render).
+   * @param {Node[]} nodes
+   * @returns {Node[]|null}
+   */
+  _ssrWithoutHelperNote(nodes) {
+    const last = nodes.length - 1;
+    const i = last >= 0 && ssrIsErrorNote(nodes[last]) ? last - 1 : last;
+    const has = i >= 0 && ssrIsHelperNote(nodes[i], this.id);
+    if (has !== !!this.helperMessage || (has && this._hintChild)) return null;
+    return has ? nodes.filter((_, j) => j !== i) : nodes;
   }
 
   /** @protected The unique control at the expected skeleton slot, or null (subclass). @returns {HTMLElement|null} */

@@ -67,9 +67,9 @@ describe('php/td.php — td_number_input (v0.30.0, contract number-input@1)', op
       + '<label class="td-field__label" id="cost-host-label" for="cost">Giá vốn</label><div class="td-number__box">'
       + '<span class="td-number__affix td-number__affix--prefix" aria-hidden="true">$</span>'
       + '<input type="number" class="td-number__control" id="cost" inputmode="text" autocomplete="off" spellcheck="false" name="p" value="5000"'
-      + ' min="-5" step="0.01" aria-describedby="cost-host-unit cost-host-note cost-host-error" aria-invalid="true" aria-errormessage="cost-host-error">'
+      + ' min="-5" step="0.01" aria-describedby="cost-host-unit cost-host-error" aria-invalid="true" aria-errormessage="cost-host-error">'
       + '<span id="cost-host-unit" hidden>$</span></div><div class="td-field__footer"><span class="td-field-error" id="cost-host-error" data-for="cost-host">E</span>'
-      + '<div class="td-field__note" id="cost-host-note">H</div></div>'
+      + '<div class="td-field__note" id="cost-host-note" hidden>H</div></div>' // v0.54.0 (QĐ 3): hidden while the error shows
       + `${STATUS('cost-host')}</div></td-number-input>`);
   });
 

@@ -228,6 +228,38 @@ Chọn màu `color` tự kiểm tra tương phản: nền bật phải ≥ 3:1 v
   `<label for>` ngoài **vẫn lật được** trong khoảng đó (kit chỉ chặn chuột / chạm trên chính công tắc bằng
   `pointer-events`). **Server phải bỏ qua / từ chối thay đổi của field đang khoá** khi nhận form.
 
+### Chữ trạng thái nhìn thấy: `on-text` / `off-text` (0.54.0)
+
+```html
+<!-- trong ô bảng: không nhãn, chữ trạng thái ngay cạnh công tắc -->
+<td-toggle aria-label="Dùng sản phẩm" on-text="Đang dùng" off-text="Đã lưu trữ" checked></td-toggle>
+<!-- có nhãn: [công tắc] [nhãn] [trạng thái] -->
+<td-toggle label="Thông báo" on-text="Đang bật" off-text="Đang tắt"></td-toggle>
+```
+
+- Chữ nằm **trong** `<label>` (bấm vào chữ cũng bật / tắt), sau nhãn. Hai chữ chồng trong cùng một ô lưới nên bề rộng =
+  chữ dài hơn — cột bảng **không nhảy** khi bật / tắt. CSS chọn chữ theo `:checked` của input: đúng cả **khi không có JS**,
+  trước khi module tải, khi chờ `commit()`, ở chế độ `controlled`.
+- Màu muted (`--td-switch-state-fg`, ≥ 4.7:1). Đổi vị trí (ví dụ chữ trước nhãn): CSS `order` trên `.td-switch__state`.
+- **Trình đọc màn hình:** chữ **không** vào tên (tên không đổi theo trạng thái — mẫu switch của APG); input mang
+  `aria-describedby` tới chữ của **trạng thái hiện tại** (đọc từ input sống: cú bấm trước khi module tải, reset, `commit()`
+  thất bại đều đúng). Ví dụ: "Lưu trữ, công tắc, tắt — Đã lưu trữ".
+- Có `on-text` mà không có `status-text`: chữ mặc định của `tone` ("Đã xác nhận" / "Đang chờ") **không** đọc nữa (tránh
+  đọc hai lần); `status-text` bạn đặt vẫn đọc (thêm chi tiết cho trình đọc màn hình).
+- Chỉ đặt một trong hai → trạng thái kia không có chữ. ≤ 200 ký tự (cắt). Đổi lúc chạy là vá tại chỗ.
+- Không JS (PHP): chữ đổi bằng CSS nhưng **không** nằm trong `aria-describedby` (mô tả tĩnh sẽ sai khi người dùng bật /
+  tắt) — trạng thái bật / tắt vẫn đọc đúng nhờ `role="switch"` native.
+
+### Gợi ý dưới nhãn: `helper-text` (0.54.0)
+
+```html
+<td-toggle label="Nhận email" helper-text="Tối đa một email mỗi tuần"></td-toggle>
+```
+
+Gợi ý (và lỗi) nằm **dưới chữ nhãn**, thẳng mép với nhãn ở mọi `size`; không nhãn (ô bảng) thì dưới công tắc. Hàng
+không có gợi ý / lỗi không đổi gì (căn hàng trong bảng giữ nguyên). Có lỗi thì gợi ý ẩn. Link trong gợi ý: `<td-hint>`
+con — xem [Hint](hint.md).
+
 ### Công thức: cột 2FA trong danh sách người dùng (0.52.0)
 
 Ba trạng thái: **tắt** (không bắt buộc) · **bật + chờ** (admin đã bật, người dùng chưa quét QR) · **bật + xong** (đã
@@ -302,9 +334,11 @@ function markVerified() { t.tone = 'success'; t.statusText = DONE; t.dataset.too
 | `error-text` | string | — | Dòng lỗi (error contract). |
 | `tone` | `success` \| `warning` | — | 0.52.0: màu rãnh khi bật + icon núm (✓ / đồng hồ) + chữ trạng thái mặc định. Khác → bỏ qua. |
 | `status-text` | string | — | 0.52.0: mô tả khi **bật** (thay chữ mặc định của `tone`; dùng được không cần `tone`). ≤ 200 ký tự. |
+| `on-text` / `off-text` | string | — | **0.54.0** Chữ trạng thái **nhìn thấy** cạnh công tắc khi bật / tắt (CSS theo `:checked`, cả không JS); mô tả của input = chữ trạng thái hiện tại; không vào tên. ≤ 200 ký tự. Property `onText` / `offText`. |
 | `locked` | boolean | không | 0.52.0: người dùng không đổi được; vẫn focus, vẫn gửi, không `change`. |
 | `locked-reason` | string | — | 0.52.0: lý do; mô tả = `messages.locked` + `": "` + lý do. ≤ 200 ký tự. |
 | `id` | string | tự sinh `td-td-toggle-{n}` | Tự gán nếu thiếu. |
+| `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. Checkbox / toggle: dưới chữ nhãn (không nhãn: dưới control). |
 
 ## Property & method
 
@@ -346,6 +380,7 @@ Property phản chiếu attribute: `checked`, `controlled` (boolean), `value`, `
 | `--td-switch-off` | `var(--td-color-fill)` (gray-100; tối: #2c2c30) | Màu rãnh khi tắt. |
 | `--td-switch-edge` | `var(--td-control-border-soft)` | Viền rãnh và núm khi tắt (mềm, v0.14.1). |
 | `--td-switch-thumb` | `#fff` | Màu núm. |
+| `--td-switch-state-fg` | `var(--td-color-text-muted)` | 0.54.0: màu chữ `on-text` / `off-text` (≥ 4.7:1 trên mọi bề mặt). |
 | `--td-switch-thumb-on` | `var(--td-switch-thumb)` | 0.52.0: màu núm khi **bật** (`tone` đặt lại thành `--td-switch-thumb-tone`). |
 | `--td-switch-on-success` | `var(--td-color-success)` (tối: #22c55e) | 0.52.0: rãnh bật của `tone="success"`. |
 | `--td-switch-on-warning` | `var(--td-color-warning)` (tối: #f59e0b) | 0.52.0: rãnh bật của `tone="warning"`. |
@@ -414,6 +449,8 @@ Công tắc là control tầng nội dung: rãnh đặc, núm đặc có một b
 | `.td-switch__icon--lock` | 0.52.0: ổ khoá trên núm khi `locked` (thay ✕ / ✓ / đồng hồ). |
 | `.td-switch__status`, `.td-switch__lock-reason` | 0.52.0: chữ mô tả ẩn trực quan, ngoài `<label>`, nối qua `aria-describedby`. |
 | `.td-switch__label` | Nhãn (chỉ khi có `label`). |
+| `.td-switch__state` > `.td-switch__state-on#{id}-on` / `.td-switch__state-off#{id}-off` | 0.54.0: chữ trạng thái nhìn thấy (`on-text` / `off-text`), trong `<label>` sau nhãn, `aria-hidden`; CSS hiện chữ của `:checked`. |
+| `.td-field__note#{id}-note` | 0.54.0: gợi ý (`helper-text`), con của host sau `<label>` và các span mô tả, trước lỗi; host thành cột (`:has()`) khi có gợi ý / lỗi. |
 | `.td-switch[data-dragging]` | Đang nhấn giữ (hook để site tự style; mặc định không đổi giao diện từ 0.20.0). |
 | `.td-switch[data-pending]` + input `[aria-busy="true"]` | Đang chờ `commit()`. |
 | `.td-switch__input:checked` / `:disabled` / `:focus-visible` / `[aria-invalid="true"]` | Trạng thái. |
@@ -460,6 +497,9 @@ chứa đúng block `.td-switch` ở trên (ô icon có `data-td-icon` + SVG s�
 - `tone` (0.52.0): chữ trạng thái là **mô tả** của input khi bật (`aria-describedby`), icon núm đổi hình (✓ / đồng hồ).
 - `locked` (0.52.0): vẫn trong thứ tự Tab; `aria-readonly="true"` + mô tả "Không thể thay đổi[: lý do]" (mô tả mang trạng
   thái — xem mục Khoá). Kiểm ở Chromium (cây trợ năng CDP) và DOM ở Firefox / WebKit.
+- `on-text` / `off-text` (0.54.0): chữ không bao giờ là tên; mô tả = chữ của trạng thái hiện tại, rồi `status-text`, mô
+  tả khoá, gợi ý, lỗi (đúng thứ tự). Kiểm ở Chromium (cây trợ năng CDP), DOM ở Firefox / WebKit, và không JS
+  (`test/engines/hint-a11y.spec.mjs`).
 - Vùng bấm ≥ 24×24 px, 44 px trên màn cảm ứng.
 - Disabled: input disabled native (ra khỏi thứ tự Tab), khối mờ `opacity: 0.5`.
 - `prefers-reduced-motion`: tắt chuyển động và hiệu ứng nhấp nháy khi chờ. `forced-colors`: rãnh/núm dùng màu hệ

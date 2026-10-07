@@ -55,7 +55,8 @@
       "td-color-picker": "/src/form/td-color-picker.js",
       "td-choice-group": "/src/form/td-choice-group.js",
       "td-rating": "/src/display/td-rating.js",
-      "td-carousel": "/src/display/td-carousel.js"
+      "td-carousel": "/src/display/td-carousel.js",
+      "td-hint": "/src/form/td-hint.js"
     },
     "tokenNative": [
       "td-button",
@@ -111,7 +112,8 @@
       "td-color-picker",
       "td-choice-group",
       "td-rating",
-      "td-carousel"
+      "td-carousel",
+      "td-hint"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -348,6 +350,50 @@
         "bottom"
       ],
       "selectorNote": "v0.53.2: the visually hidden description span is an absolutely positioned child of the inline-flex host — its static top / bottom follow the profile line-height (never painted); v0.52.0: the visually hidden description span inherits the host page line-height (profile-dependent, never painted); text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "v054-hint-label",
+      "markup": "<td-toggle label=\"Nhận email\" helper-text=\"Tối đa một email mỗi tuần\"></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__label",
+        ".td-field__note"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "v054-hint-error",
+      "markup": "<td-toggle label=\"Nhận email\" size=\"lg\" helper-text=\"Gợi ý\" error-text=\"Không lưu được\"></td-toggle>",
+      "selectors": [
+        ".td-switch__label",
+        ".td-field-error"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "v054-state-off",
+      "markup": "<td-toggle label=\"Lưu trữ\" on-text=\"Đang dùng\" off-text=\"Đã lưu trữ\"></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__label",
+        ".td-switch__state",
+        ".td-switch__state-on",
+        ".td-switch__state-off"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "v054-state-cell-on",
+      "markup": "<table><tr><td>Hàng</td><td><td-toggle aria-label=\"Dùng\" checked on-text=\"Đang dùng\" off-text=\"Đã lưu trữ\"></td-toggle></td></tr></table>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__state",
+        ".td-switch__state-on",
+        ".td-switch__state-off"
+      ],
+      "settle": 300
     }
   ],
   "td-checkbox": [
@@ -440,6 +486,16 @@
       ],
       "settle": 300,
       "selectorNote": "PHP td_checkbox(…, ['element' => true]) markup (checkbox@1) hydrated in place (v0.26.0)"
+    },
+    {
+      "state": "v054-hint-error",
+      "markup": "<td-checkbox label=\"Đồng ý\" size=\"sm\" helper-text=\"Gợi ý\" error-text=\"Bắt buộc\"></td-checkbox><td-checkbox label=\"Đồng ý\" helper-text=\"Bắt buộc để tiếp tục\"></td-checkbox>",
+      "selectors": [
+        ".td-checkbox__label",
+        ".td-field-error",
+        "td-checkbox + td-checkbox .td-field__note"
+      ],
+      "settle": 300
     }
   ],
   "td-slider": [
@@ -694,6 +750,36 @@
       ],
       "settle": 300,
       "selectorNote": "PHP td_field(…, ['element' => true]) markup (input-field@1) hydrated in place (v0.26.0)"
+    },
+    {
+      "state": "v054-hint",
+      "markup": "<td-input-field label=\"Mã số thuế\" helper-text=\"10 hoặc 13 chữ số\" max-length=\"13\"></td-input-field>",
+      "selectors": [
+        ".td-field__footer",
+        ".td-field__note",
+        ".td-field__counter"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "v054-hint-error",
+      "markup": "<td-input-field label=\"Mã số thuế\" helper-text=\"10 hoặc 13 chữ số\" error-text=\"Mã số thuế phải có 10 hoặc 13 chữ số\"></td-input-field>",
+      "selectors": [
+        ".td-field__footer",
+        ".td-field-error"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "v054-rich-hint",
+      "markup": "<td-input-field label=\"Đường dẫn\"><td-hint>Chỉ chữ thường và <code>-</code>. Xem <a href=\"#h\">hướng dẫn</a>.</td-hint></td-input-field>",
+      "selectors": [
+        ".td-field__footer",
+        "td-hint",
+        "td-hint code",
+        "td-hint a"
+      ],
+      "settle": 300
     }
   ],
   "td-dropdown": [
@@ -800,6 +886,15 @@
         ".td-field__label",
         ".td-field__required"
       ]
+    },
+    {
+      "state": "v054-hint",
+      "setup": "const d=document.createElement('td-dropdown'); d.setAttribute('label','Thành phố'); d.setAttribute('helper-text','Nơi giao hàng'); d.options=[{value:'hn',label:'Hà Nội'}]; window.__mount.appendChild(d);",
+      "selectors": [
+        ".td-dropdown__trigger",
+        ".td-field__note"
+      ],
+      "settle": 300
     }
   ],
   "td-button": [
@@ -5456,6 +5551,18 @@
         "margin-left"
       ],
       "selectorNote": "v0.50.0: no JS (the carousel module is not loaded): PHP markup = a native scroll-snap strip with a thin scrollbar; the JS-only controls are visibility: hidden with their box (rows-narrow / rows-wide reserve the dots row); height / width / margin-left excluded up front (text line boxes, font metrics)."
+    }
+  ],
+  "td-hint": [
+    {
+      "state": "for-native",
+      "markup": "<label for=\"csp-hint-x\">Ghi chú</label><input id=\"csp-hint-x\"><td-hint for=\"csp-hint-x\">Không ghi <b>số điện thoại</b>. Xem <a href=\"#q\">quy định</a>, mã <code>A-1</code>.</td-hint>",
+      "selectors": [
+        "td-hint",
+        "td-hint a",
+        "td-hint code"
+      ],
+      "settle": 300
     }
   ]
 }

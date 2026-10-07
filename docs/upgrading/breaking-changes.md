@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.53.2)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.54)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.54.0](#0540) | Đổi hành vi + đổi giao diện nhỏ (hint / lỗi) + thêm tính năng (`helper-text` mọi control, `<td-hint>`, toggle `on-text` / `off-text`) | Không bắt buộc, nhưng xem lại: đang hiện lỗi thì hint **ẩn** (trước 5 control hiện cả hai) — câu lỗi nên tự đủ nghĩa; lỗi checkbox / toggle thụt dưới nhãn; PHP giờ giữ `attrs['aria-describedby']` của site ở chế độ element. Import map: thêm `hint`. Thay các dòng hint tự viết bằng `helper-text` / `<td-hint for>`. |
 | [0.53.1](#0531) | Đổi giao diện nhỏ (`td-choice-group variant="segmented" size="sm"`) | Không bắt buộc. `sm` gọn hơn (đệm ngang 6 px, icon 16 px, khoảng icon 4 px, chữ nhỏ hơn); muốn giữ cũ: đặt lại `--td-choice-seg-px` / `--td-choice-seg-icon` / `--td-choice-seg-icon-gap` / `--td-choice-seg-font` trên `.td-choice--sm`. Thanh segmented giờ cuộn ngang bên trong khi quá hẹp (trước: tràn ra ngoài). |
 | [0.52.0](#0520) | Thêm tính năng (`td-toggle` `tone` / `locked`, `td-choice-group variant="segmented"`) + palette `td-theme` algorithm 4 | Không bắt buộc. File `td-theme` sinh ra: header `palette algorithm 4`, chỉ `--td-btn-disabled-fg` đổi (tối hơn chút để đạt 2.2:1 trên nền hover) — file cũ vẫn đúng, sinh lại khi tiện (site có gate so từng byte: nâng kit và sinh lại trong cùng một thay đổi). PHP `td_toggle`: có khoá `tone` / `status_text` / `locked` / `locked_reason` → luôn in chế độ element. |
 | [0.49.0](#0490) | Thêm tính năng (`<td-choice-group>`, `td-number-input stepper`) + đổi hành vi rất nhỏ | Không bắt buộc. `safeColor()` (và `color` của checkbox / toggle / button…) từ chối chuỗi màu **> 64 ký tự** (trước nhận `rgb(…)` dài bất kỳ). `TdFormElement` có hook `_ariaTarget()` / `_ssrVerifiedParts()` (mặc định giữ hành vi cũ). Import map: thêm `choice-group`. |
@@ -76,6 +77,21 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.54.0
+
+**Mức: đổi hành vi + đổi giao diện nhỏ; thêm tính năng.**
+
+- **Hint và lỗi:** khi control đang hiện lỗi, hint ẩn và rời `aria-describedby`. Trước đây `td-input-field` (luật D17),
+  `td-number-input`, `td-choice-group`, `td-media-field`, `td-media-gallery` hiện cả hai. PHP in note `hidden` khi có cả hint và lỗi.
+  Viết câu lỗi tự đủ nghĩa (đừng dựa vào hint đứng cạnh).
+- **Checkbox / toggle:** hint và lỗi nằm dưới nhãn, thụt thẳng mép nhãn; khi có hint / lỗi host xếp dạng cột.
+- **`helper-text` đổi lúc chạy** cập nhật tại chỗ (không vẽ lại, giữ focus) — code dựa vào việc vẽ lại sau khi đổi `helper-text`
+  cần đổi sang attribute khác.
+- **PHP:** `td_toggle` / `td_checkbox` có `helper_text` / `on_text` / `off_text` luôn in chế độ element; các helper chế độ element
+  giữ `attrs['aria-describedby']` của site (trước bị bỏ). Không dùng option mới và không truyền `aria-describedby` → output giống
+  từng byte 0.53.x.
+- **Import map:** thêm `"@dazzxq/td-components/hint"`.
 
 ## 0.53.1
 

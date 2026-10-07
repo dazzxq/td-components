@@ -213,3 +213,12 @@ export const TOGGLE_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'toggle.html');
 export function renderToggleFixture() {
   return renderPhp('toggle-fixture.php');
 }
+
+// v0.54.0: helper_text on every td_* form helper + td_toggle on_text / off_text + td_hint (contracts *@1, additive parts).
+export const HINT_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'hint.fixtures.json'), 'utf8'));
+export const HINT_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'hint.html');
+
+/** Render test/ssr/hint-fixture.php (the HTML loaded by the v0.54.0 hint SSR browser test). */
+export function renderHintFixture() {
+  return renderPhp('hint-fixture.php');
+}

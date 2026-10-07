@@ -57,6 +57,7 @@ Mỗi nút: `{ value, label, children?, hasChildren?, disabled?, description?, e
 | `disabled` | **khoá** nút **và cả nhánh** của nó (mục 4) |
 | `description` | dòng phụ nhỏ cạnh nhãn (text), đọc qua `aria-describedby` |
 | `expanded` | mở sẵn (chỉ nút đã có `children`) |
+| `helper-text` | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
 Kit không đổi tên trường (`value-key` / `label-key` không có): dữ liệu khác hình dạng thì app tự map trước khi gán.
 `getNode(value)` trả về **chính object** của app.

@@ -285,3 +285,88 @@
 		}
 	}
 }
+
+/* v0.54.0 (plan docs/internal/plans/v0.54.0-hint.md QĐ 8–10) — APPEND-ONLY block (v0.53.2 owns the host / .td-switch rules
+   above; nothing here changes a toggle without a hint, an error or on/off text). */
+@layer td.tokens {
+	:root, [data-td-theme] {
+		--td-switch-state-fg: var(--td-color-text-muted); /* on / off text: muted, ≥ 4.7 on every surface (contrast gate) */
+	}
+}
+
+@layer td.component {
+	/* QĐ 10: the visible state text, inside the label after the label text; both texts share one grid cell (width = the
+	   longer one, no jump when it flips) and CSS shows the one of the current :checked state — no JS, pre-upgrade too */
+	.td-switch__state {
+		display: inline-grid;
+		color: var(--td-switch-state-fg);
+	}
+
+	.td-switch__state > * {
+		grid-area: 1 / 1;
+	}
+
+	.td-switch__input:checked ~ .td-switch__state > .td-switch__state-off,
+	.td-switch__input:not(:checked) ~ .td-switch__state > .td-switch__state-on {
+		visibility: hidden;
+	}
+
+	/* QĐ 8: a shown hint / error → the host becomes a column; a site-hidden <td-hint> changes nothing (Codex r2 #11).
+	   v0.53.2 centres the host on an inline text line with `vertical-align: middle` — on a two-row column that would centre
+	   the whole column and lift the switch row. Instead the SWITCH ROW keeps v0.53.2's position: the column's baseline is the
+	   track's bottom edge (the first flex item of the switch row has no text baseline → synthesised from its bottom), raised
+	   to baseline + ½ex − ½ track height = the track centre on the parent's `middle` line. A switch without a hint / error is
+	   untouched (v0.53.2 rules). */
+	td-toggle:has(> :is(.td-field__note:not([hidden]), td-hint:not([hidden]):not([data-td-suppressed]), .td-field-error)) {
+		display: inline-flex;
+		flex-direction: column;
+		align-items: flex-start;
+		vertical-align: calc(0.5ex - var(--td-switch-h) / 2);
+	}
+
+	td-toggle[size="sm"]:has(> :is(.td-field__note:not([hidden]), td-hint:not([hidden]):not([data-td-suppressed]), .td-field-error)) {
+		--td-switch-h: 1.25rem; /* = .td-switch--sm (the host needs the track height of its size) */
+	}
+
+	td-toggle[size="lg"]:has(> :is(.td-field__note:not([hidden]), td-hint:not([hidden]):not([data-td-suppressed]), .td-field-error)) {
+		--td-switch-h: 1.75rem; /* = .td-switch--lg */
+	}
+
+	/* under the label text when there is one (the track width + the gap); the sm / lg widths live on the inner
+	   .td-switch--sm|lg, so they are set again on the notes themselves (values = the size blocks above) */
+	td-toggle:has(> .td-switch .td-switch__label) > :is(.td-field__note, td-hint, .td-field-error) {
+		margin-inline-start: calc(var(--td-switch-w) + var(--td-space-xs));
+	}
+
+	td-toggle[size="sm"] > :is(.td-field__note, td-hint, .td-field-error) {
+		--td-switch-w: 2.25rem;
+	}
+
+	td-toggle[size="lg"] > :is(.td-field__note, td-hint, .td-field-error) {
+		--td-switch-w: 3.5rem;
+	}
+}
+
+/* v0.54.0 (dsuite, plan "Lệch" #12): a toggle WITH on-text / off-text shares the baseline of the surrounding text — the
+   host's baseline is the state text's. A flex container's baseline comes from its baseline-aligned items, so the label
+   and the state text are `align-self: baseline` (the track stays centred); their common line is pushed down by half the
+   free row height (row = max(min-height, track); text line = 1.4em, the switch's line-height) so text and track keep the
+   v0.53.2 visual centring. The host drops `vertical-align: middle` for `baseline` (also with a hint / error: the
+   column's baseline is then the state text too). A toggle without on / off text is untouched (v0.53.2). Append-only. */
+@layer td.component {
+	.td-switch:has(> .td-switch__state) > :is(.td-switch__label, .td-switch__state) {
+		align-self: baseline;
+		margin-block-start: max(0px, (max(24px, var(--td-switch-h)) - 1.4em) / 2);
+	}
+
+	@media (pointer: coarse) {
+		.td-switch:has(> .td-switch__state) > :is(.td-switch__label, .td-switch__state) {
+			margin-block-start: max(0px, (max(var(--td-touch-min), var(--td-switch-h)) - 1.4em) / 2); /* row min-height 44 */
+		}
+	}
+
+	td-toggle:has(> .td-switch > .td-switch__state),
+	td-toggle:has(> .td-switch > .td-switch__state):has(> :is(.td-field__note:not([hidden]), td-hint:not([hidden]):not([data-td-suppressed]), .td-field-error)) {
+		vertical-align: baseline;
+	}
+}

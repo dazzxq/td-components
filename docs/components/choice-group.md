@@ -309,7 +309,7 @@ document.getElementById('theme-switch').addEventListener('change', (e) => {
 | `icon-only` | boolean | — | 0.52.0, chỉ `segmented`: nhãn ẩn trực quan (vẫn là tên truy cập). |
 | `stretch` | boolean | — | 0.53.1, chỉ `segmented`: thanh lấp cột chứa nó ([Bố cục ở chỗ hẹp](#bố-cục-ở-chỗ-hẹp-0531)). |
 | `required` / `disabled` | boolean | — | [Mục 3](#3-required); `disabled` khoá cả nhóm (cả `<fieldset disabled>` tổ tiên). |
-| `helper-text` / `error-text` | string | — | Ghi chú / lỗi dưới nhóm (error contract). |
+| `helper-text` / `error-text` | string | — | Ghi chú / lỗi dưới nhóm (error contract). 0.54.0: có lỗi thì ghi chú ẩn; nội dung giàu: `<td-hint>` con — [Hint](hint.md). |
 | `aria-label` | string | — | Tên khi không có `label`. |
 
 ## Property & method

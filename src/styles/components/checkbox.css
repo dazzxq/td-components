@@ -110,3 +110,25 @@
 		}
 	}
 }
+
+/* v0.54.0 (plan docs/internal/plans/v0.54.0-hint.md QĐ 8, Codex r2 #11–12) — APPEND-ONLY block (v0.53.2 owns the host /
+   .td-checkbox rules above; a checkbox without a hint / error is unchanged). */
+@layer td.component {
+	td-checkbox:has(> :is(.td-field__note:not([hidden]), td-hint:not([hidden]):not([data-td-suppressed]), .td-field-error)) {
+		display: inline-flex;
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	td-checkbox:has(> .td-checkbox .td-checkbox__label) > :is(.td-field__note, td-hint, .td-field-error) {
+		margin-inline-start: calc(var(--td-checkbox-box) + var(--td-space-xs));
+	}
+
+	td-checkbox[size="sm"] > :is(.td-field__note, td-hint, .td-field-error) {
+		--td-checkbox-box: 1rem;
+	}
+
+	td-checkbox[size="lg"] > :is(.td-field__note, td-hint, .td-field-error) {
+		--td-checkbox-box: 1.5rem;
+	}
+}

@@ -138,7 +138,7 @@ export class TdMediaField extends TdFormElement {
 
   static get observedAttributes() {
     return [...super.observedAttributes, 'value', 'label', 'aspect-ratio', 'preview-fit', 'accept-kind', 'usage',
-      'preview-src', 'preview-alt', 'kind', 'alt', 'crop', 'prompt', 'helper-text', 'error-text',
+      'preview-src', 'preview-alt', 'kind', 'alt', 'crop', 'prompt', 'error-text',
       'croppable', 'crop-ratio', 'focal-point', 'focal'];
   }
 
@@ -533,7 +533,8 @@ export class TdMediaField extends TdFormElement {
     const label = this.getAttribute('label') || '';
     const help = this.getAttribute('helper-text') || '';
     const err = this.errorMessage;
-    const described = [help ? `${id}-help` : '', err ? `${id}-error` : ''].filter(Boolean).join(' ');
+    // v0.54.0 (QĐ 3): while an error shows the helper is hidden and out of the description
+    const described = [help && !err ? `${id}-help` : '', err ? `${id}-error` : ''].filter(Boolean).join(' ');
     const croppable = this._croppable();
     this._focalOn(); // warns once when focal-point / focal lack usage
     let inner;
@@ -570,7 +571,7 @@ export class TdMediaField extends TdFormElement {
         ? `<div class="td-field td-media-field__usage"><label class="td-field__label" for="${e(id)}-alt">${e(this._label('alt'))}</label>`
           + `<input type="text" class="td-field__control td-media-field__alt" id="${e(id)}-alt" maxlength="${ALT_MAX}"${dis}></div>`
         : '')
-      + (help ? `<span class="td-media-field__help" id="${e(id)}-help">${e(help)}</span>` : '')
+      + (help ? `<span class="td-media-field__help" id="${e(id)}-help"${err ? ' hidden' : ''}>${e(help)}</span>` : '')
       + (err ? `<span class="td-field-error" id="${e(id)}-error" data-for="${e(id)}">${e(err)}</span>` : '');
   }
 
@@ -631,9 +632,14 @@ export class TdMediaField extends TdFormElement {
     this._applyErrorState();
   }
 
+  /** @protected v0.54.0: the helper note keeps its `span.td-media-field__help#{id}-help` (contract @1) */
+  _helperNoteSpec() {
+    return { tag: 'span', className: 'td-media-field__help', idSuffix: 'help' };
+  }
+
   /** @protected helper note in the open button's description */
   _describedByIds() {
-    return this.getAttribute('helper-text') ? [`${this.id}-help`] : [];
+    return this._helperDescribedByIds();
   }
 
   /** @protected label clicks / validity bubble → the open button */
@@ -812,6 +818,7 @@ export class TdMediaField extends TdFormElement {
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (oldVal === newVal || !this._initialized) {
       super.attributeChangedCallback(name, oldVal, newVal);
       return;

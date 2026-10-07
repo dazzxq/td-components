@@ -284,6 +284,7 @@ mình không có", "không tự sửa role của chính mình", CSRF, `lock_vers
 | `data` | JSON | — | `{"v":1,"columns":[…],"rows":[…],"cells":{…},"value":{…}}` (≤ 512 KiB) — cùng đường validate |
 | `disabled` | boolean | — | Khoá mọi ô, không gửi gì. `<fieldset disabled>` cũng vậy |
 | `aria-label` | string | — | Tên lưới khi không có `label` |
+| `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. Không có lỗi riêng: gợi ý luôn hiện, id đi theo ô đang active. |
 
 **Vì sao mặc định cuộn trong khung 70vh:** lưới rộng phải cuộn ngang, mà `overflow-x` biến khung thành vùng sticky cho
 **cả** trục dọc — header không thể dính theo cuộn trang. Lưới tự cuộn dọc thì header + cột nhãn luôn thấy. `max-height="none"`

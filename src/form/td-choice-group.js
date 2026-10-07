@@ -112,7 +112,7 @@ export class TdChoiceGroup extends TdFormElement {
   };
 
   static get observedAttributes() {
-    return [...super.observedAttributes, 'value', 'label', 'variant', 'size', 'icon-only', 'stretch', 'helper-text', 'error-text',
+    return [...super.observedAttributes, 'value', 'label', 'variant', 'size', 'icon-only', 'stretch', 'error-text',
       'aria-label'];
   }
 
@@ -132,7 +132,6 @@ export class TdChoiceGroup extends TdFormElement {
     this._value = '';
     this._valueSet = false;
     this._warned = new Set();
-    this._runtimeHelper = null;
     this._groupName = `td-choice-${++_groupCounter}`;
     // An external <label for="{host id}"> focuses the group's Tab stop; it never SELECTS (the base forwarder would click
     // the radio). Registered before the base forwarder (connectedCallback) → it runs first and stops it.
@@ -288,7 +287,6 @@ export class TdChoiceGroup extends TdFormElement {
     this._applyDisabled();
     this._applyRequired();
     this._applyName();
-    this._applyHelper();
     this._applyCurrent();
     this._syncForm();
     this._applyErrorState();
@@ -434,6 +432,7 @@ export class TdChoiceGroup extends TdFormElement {
   // --- in-place attribute handling ---
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (oldVal === newVal || !this._initialized || !this._groupEl()) {
       super.attributeChangedCallback(name, oldVal, newVal);
       return;
@@ -451,10 +450,6 @@ export class TdChoiceGroup extends TdFormElement {
         return;
       case 'value':
         this.setValue(newVal ?? '');
-        return;
-      case 'helper-text':
-        this._runtimeHelper = null;
-        this._applyHelper();
         return;
       case 'disabled':
         this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
@@ -586,27 +581,19 @@ export class TdChoiceGroup extends TdFormElement {
     cur.textContent = o ? `: ${o.label}${o.unavailable ? ` — ${this._noteText(o)}` : ''}` : '';
   }
 
-  /** @private @returns {string} */
-  _effectiveHelper() {
-    if (this._runtimeHelper != null) return this._runtimeHelper;
-    return this.getAttribute('helper-text') || '';
+  /** @protected v0.54.0: the helper note (text or a rich <td-hint>) lives in the footer */
+  _helperSlot() {
+    const footer = this.querySelector(':scope > .td-choice > .td-field__footer');
+    return footer ? { parent: footer, before: null } : super._helperSlot();
   }
 
-  /** @private */
-  _applyHelper() {
-    const note = this.querySelector('.td-choice > .td-field__footer > .td-field__note');
-    if (!note) return;
-    const text = this._effectiveHelper();
-    note.textContent = text;
-    note.hidden = !text;
-    this._syncDescribedBy();
-    this._syncFooter();
-  }
+  /** @protected */
+  _helperChanged() { this._syncFooter(); }
 
   /** @private */
   _syncFooter() {
     const footer = this.querySelector('.td-choice > .td-field__footer');
-    if (footer) footer.hidden = ![...footer.children].some((c) => !c.hidden);
+    if (footer) footer.hidden = ![...footer.children].some((c) => !c.hidden && !c.hasAttribute('data-td-suppressed'));
   }
 
   /** @protected the error note goes first in the footer */
@@ -618,7 +605,7 @@ export class TdChoiceGroup extends TdFormElement {
 
   /** @protected helper note id on the radiogroup (the base adds the error id) */
   _describedByIds() {
-    return this._effectiveHelper() && this.querySelector('.td-choice > .td-field__footer > .td-field__note') ? [`${this.id}-note`] : [];
+    return this._helperDescribedByIds();
   }
 
   /** @protected */
@@ -750,12 +737,6 @@ export class TdChoiceGroup extends TdFormElement {
 
   /** @type {object|null} frozen copy of the selected option */
   get selectedOption() { return TdChoiceGroup._publicOption(this._optionOf(this._value)); }
-
-  /** @param {string} msg helper text ('' clears; a later `helper-text` attribute replaces it) */
-  setHelper(msg) {
-    this._runtimeHelper = msg ? String(msg) : '';
-    this._applyHelper();
-  }
 
   /** Focus the group's Tab stop (the selected option, else the first enabled one). */
   focus(options) {

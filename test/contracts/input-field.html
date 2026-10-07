@@ -23,10 +23,10 @@
 <template data-component="td-input-field" data-markup='<td-input-field id="if-err" type="email" label="Email" helper-text="Dùng email công ty" error-text="Email không hợp lệ" value="x"></td-input-field>'>
   <div class="td-field td-field--md">
     <label class="td-field__label" id="if-err-label" for="if-err-control">Email</label>
-    <input type="text" class="td-field__control" id="if-err-control" value="x" inputmode="email" aria-describedby="if-err-note if-err-error" aria-invalid="true" aria-errormessage="if-err-error">
+    <input type="text" class="td-field__control" id="if-err-control" value="x" inputmode="email" aria-describedby="if-err-error" aria-invalid="true" aria-errormessage="if-err-error">
     <div class="td-field__footer">
       <span class="td-field-error" id="if-err-error" data-for="if-err">Email không hợp lệ</span>
-      <div class="td-field__note" id="if-err-note">Dùng email công ty</div>
+      <div class="td-field__note" id="if-err-note" hidden>Dùng email công ty</div>
     </div>
   </div>
 </template>

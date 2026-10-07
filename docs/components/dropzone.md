@@ -178,6 +178,7 @@ viewport < 360px.
 | `prompt-title` | string | — | 0.33.0 — tiêu đề vùng chọn kiểu xếp chồng (mục 6). Text. |
 | `prompt-text` | string | — | 0.33.0 — dòng phụ dưới tiêu đề (mục 6). Text. |
 | `hint-style` | `badges` | — | 0.33.0 — `badges`: gợi ý thành các `td-badge` (mục 6); giá trị khác = dòng `<p>` như cũ. |
+| `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
 Đổi `label`, `accept`, `accept-label`, `multiple`, `max-size`, `max-files`, `preview`, `required`, `disabled`,
 `prompt-title`, `prompt-text`, `hint-style` → dựng lại giao diện

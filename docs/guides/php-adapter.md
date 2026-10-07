@@ -48,6 +48,8 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_choice_group (0.49.0)](#td_choice_group-0490)
 - [td_toggle: tone / locked (0.52.0)](#td_toggle-tone--locked-0520)
 - [td_rating, td_carousel (0.50.0)](#td_rating-td_carousel-0500)
+- [Gợi ý: `helper_text` (0.54.0)](#gợi-ý-helper_text-054)
+- [td_hint (0.54.0)](#td_hint-0540)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -119,7 +121,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.53.2/
+public/assets/vendor/td-components/0.54.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -127,7 +129,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.53.2';
+const TD_VERSION = '0.54.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -258,6 +260,7 @@ td_color_value(mixed $v): ?string                      // 0.48.0: chuẩn hoá m
 td_choice_group(string $name, array $options, string|int|null $value = null, array $o = []): string   // 0.49.0 (luôn element)
 td_rating(int|float|string|null $value, array $o = []): string   // 0.50.0 (luôn element, chỉ đọc)
 td_carousel(array $slides, array $o = []): string   // 0.50.0 (luôn element; slide = Td::html(markup của template) | chuỗi = chữ)
+td_hint(string $for, string|TdTrustedHtml $content, array $o = []): string   // 0.54.0 (gợi ý cho control của site)
 Td::html(string $html): TdTrustedHtml   // 0.50.0: đánh dấu markup TIN CẬY (opt-in hatch của td_carousel) — không bao giờ cho input người dùng
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
@@ -631,7 +634,7 @@ native** cộng hai thứ:
 
 - `td.css` tạo dáng `select.td-dropdown__native` **đúng hộp của trigger**: cao `--td-field-h-md`, padding, viền
   `--td-field-border`, bo `--td-field-radius-md`, font / màu theo token field, rộng 100 %; host mang kiểu chữ của
-  `.td-dropdown` (nhãn cùng cao). Từ **0.53.2** ([ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)) select
+  `.td-dropdown` (nhãn cùng cao). Từ **0.54.0** ([ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)) select
   còn có **chevron của trigger** vẽ bằng CSS gradient (`appearance: none` — gradient không phải ảnh, CSP `img-src` không
   đổi; trước đó giữ mũi tên native và WebKit vẽ nút hệ thống bo 5 px), và **chế độ mặc định (native) cũng vậy**: select
   trần trong `<td-dropdown>` chưa define được tạo dáng y hệt — nâng cấp không xô lệch ở cả hai chế độ (gate
@@ -1167,7 +1170,7 @@ Không có helper cho `<td-tree>` dạng cây luôn hiện (cây quyền là tra
 | `id` | id của **input** (`<label for>` của site). Element: host = `{id}-host`; native: ghi chú / lỗi / đơn vị = `{id}-note`… |
 | `class` | native → wrapper `div.td-field`; element → host |
 | `attrs` | attribute thêm trên **input** (allowlist). Giữ chỗ (bị bỏ, không phân biệt hoa thường): `type` `class` `id` `inputmode` `autocomplete` `spellcheck` `name` `value` `min` `max` `step` `placeholder` `required` `aria-required` `disabled` `readonly` `aria-label` `aria-labelledby` `aria-describedby` `aria-invalid` `aria-errormessage` `pattern` `maxlength` `minlength` `list` + mọi `data-td-*` |
-| `stepper` | 0.53.2, **chỉ chế độ element**: host `stepper` + `td-number--stepper` + hai `button.td-number__step` (`type=button`, `tabindex=-1`, `aria-controls`, icon `minus` / `plus`) ở hai đầu hộp — `td.css` ẩn chúng (vẫn giữ chỗ) tới khi module định nghĩa element; tên nút ("Giảm / Tăng {label}") do component đặt. Chế độ native bỏ qua (`type=number` có nút xoay của trình duyệt) |
+| `stepper` | 0.54.0, **chỉ chế độ element**: host `stepper` + `td-number--stepper` + hai `button.td-number__step` (`type=button`, `tabindex=-1`, `aria-controls`, icon `minus` / `plus`) ở hai đầu hộp — `td.css` ẩn chúng (vẫn giữ chỗ) tới khi module định nghĩa element; tên nút ("Giảm / Tăng {label}") do component đặt. Chế độ native bỏ qua (`type=number` có nút xoay của trình duyệt) |
 
 ```html
 <!-- td_number_input('price', '12990000', ['label' => 'Giá bán', 'suffix' => '₫', 'required' => true, 'element' => true]) -->
@@ -1799,10 +1802,10 @@ host `disabled`).
 | `$value` | lựa chọn được chọn (`string` / `int`); không có trong `$options` → không chọn gì (ghi vào cảnh báo gộp) |
 | `label`, `aria_label` | nhãn nhóm (tên của `role="radiogroup"`); `aria_label` khi không có `label` |
 | `variant` | `'button'` (mặc định) \| `'swatch'` \| `'segmented'` (0.52.0: thanh viên thuốc, icon + nhãn — [Choice group › mục 7](../components/choice-group.md#7-thanh-chọn-segmented-0520)) |
-| `size` | 0.53.2, chỉ `segmented`: `'sm'` \| `'md'` (mặc định) \| `'lg'`; khác → `md` |
-| `icon_only` | 0.53.2, chỉ `segmented`: `true` → nhãn của lựa chọn **có icon** thành `td-sr-only` (vẫn là tên truy cập) |
-| `stretch` | 0.53.2, chỉ `segmented`: `true` → attribute `stretch` trên host (thanh lấp cột; markup bên trong không đổi, không `stretch` → giống từng byte 0.53.0). Bố cục ở chỗ hẹp: [Choice group › Bố cục ở chỗ hẹp](../components/choice-group.md#bố-cục-ở-chỗ-hẹp-0531) |
-| option `icon` | 0.53.2: tên icon (`/^[a-z][a-z0-9-]{0,63}$/`, `Td::icon()` biết — core hoặc icon site đã đăng ký **ở cả PHP lẫn JS**); sai / không có → bỏ khoá (tính vào cảnh báo gộp), lựa chọn giữ. Chỉ in ở `segmented`; `segmented` không in `swatch` / `image`, `hint` chỉ là mô tả `td-sr-only` |
+| `size` | 0.54.0, chỉ `segmented`: `'sm'` \| `'md'` (mặc định) \| `'lg'`; khác → `md` |
+| `icon_only` | 0.54.0, chỉ `segmented`: `true` → nhãn của lựa chọn **có icon** thành `td-sr-only` (vẫn là tên truy cập) |
+| `stretch` | 0.54.0, chỉ `segmented`: `true` → attribute `stretch` trên host (thanh lấp cột; markup bên trong không đổi, không `stretch` → giống từng byte 0.53.0). Bố cục ở chỗ hẹp: [Choice group › Bố cục ở chỗ hẹp](../components/choice-group.md#bố-cục-ở-chỗ-hẹp-0531) |
+| option `icon` | 0.54.0: tên icon (`/^[a-z][a-z0-9-]{0,63}$/`, `Td::icon()` biết — core hoặc icon site đã đăng ký **ở cả PHP lẫn JS**); sai / không có → bỏ khoá (tính vào cảnh báo gộp), lựa chọn giữ. Chỉ in ở `segmented`; `segmented` không in `swatch` / `image`, `hint` chỉ là mô tả `td-sr-only` |
 | `required`, `disabled` | trên host + mọi radio |
 | `helper_text`, `error_text` | ghi chú / lỗi dưới nhóm (`aria-describedby` / `aria-invalid` trên radiogroup) |
 | `id` | id của **host** (radio: `{id}-o0`, `{id}-o1`…; mặc định `td-{name}-{n}`, phần `{name}` bị cắt để cả id ≤ 100 ký tự — giữ tiền tố `td-` và hậu tố số duy nhất) |
@@ -1872,6 +1875,47 @@ cũng vậy, kể cả `null` / `false` / `''`) là **ép chế độ element** 
 - **Nhãn tĩnh toàn site (cả hai):** không có option `labels`. PHP in chữ mặc định tiếng Việt; site đổi `TdRating.labels` /
   `TdCarousel.labels` trong JS thì lúc nâng cấp rating được render lại bằng chữ JS, carousel chỉ ghi lại nhãn **khung**
   (slide không bị chạm) — không bao giờ trộn hai bộ. Cần nhãn theo từng phần tử (site đa ngôn ngữ) → bản sau.
+
+<a id="gợi-ý-helper_text-054"></a>
+
+## Gợi ý: `helper_text` (0.54.0)
+
+Mọi helper form có option `'helper_text'` (chữ, escape): `td_field`, `td_number_input`, `td_choice_group`,
+`td_media_field`, `td_media_gallery`, `td_dropdown`, `td_multiselect`, `td_tree_select`, `td_toggle`, `td_checkbox`,
+`td_otp_input`, `td_scan_input`, `td_datetime_range`, `td_check_matrix`, `td_color_picker`.
+
+```php
+echo td_dropdown('city', $cities, '', ['label' => 'Thành phố', 'helper_text' => 'Nơi giao hàng', 'element' => true]);
+echo td_toggle('notify', true, 'Nhận email', ['helper_text' => 'Tối đa một email mỗi tuần']);
+echo td_otp_input('code', ['label' => 'Mã xác thực', 'helper_text' => '6 chữ số trong SMS', 'error' => $err]);
+```
+
+- In `div.td-field__note#{id host}-note` ngay **trước** dòng lỗi (media: giữ `span.__help#{id}-help`), attribute
+  `helper-text` trên host, và id ghi chú trong `aria-describedby` của control.
+- Có cả gợi ý lẫn lỗi (`error` / `error_text`): ghi chú `hidden` và **không** trong `aria-describedby` — giống component sau
+  khi chạy (đổi so với ≤ 0.53: `td_field` / `td_number_input` / `td_choice_group` / media in cả hai).
+- `td_field` / `td_number_input`: tên cũ `hint` vẫn chạy; có cả hai thì `helper_text` thắng.
+- `td_toggle` / `td_checkbox`: có khoá `helper_text` (kể cả rỗng) → luôn **chế độ element** (switch / checkbox native trần
+  không có chỗ cho mô tả). `td_toggle` thêm `on_text` / `off_text` (chữ trạng thái nhìn thấy, ≤ 200 ký tự, cũng buộc
+  element): in trong `<label>`, CSS đổi chữ khi không JS, **không** nối vào `aria-describedby` (mô tả tĩnh sẽ sai khi người
+  dùng bật / tắt — component nối chữ của trạng thái hiện tại sau khi chạy). Có `on_text` thì chữ mặc định của `tone` không
+  in nữa (`status_text` tường minh vẫn in).
+- Không có `helper_text` → markup **giống từng byte** bản 0.53.1. Contract SSR vẫn `*@1` (phần thêm).
+- Không có link / markup trong `helper_text`. Cần link: [`td_hint()`](#td_hint-0540) cho control của site, hoặc
+  `<td-hint>` con viết trong template cho control của kit.
+
+## td_hint (0.54.0)
+
+```php
+echo '<textarea id="note" name="note" aria-describedby="note-hint"></textarea>';
+echo td_hint('note', 'Không ghi số điện thoại ở đây.');                         // chữ (escape)
+echo td_hint('slug', Td::html('Xem <a href="/huong-dan/slug">hướng dẫn</a>'));  // markup CỦA template site
+```
+
+`<td-hint for="{for}" id="{for}-hint">…</td-hint>` — options `id`, `class`, `attrs` (allowlist; `for` / `id` / `class` /
+`data-td-*` giữ). PHP không sửa được markup của control: **tự in** `aria-describedby="{for}-hint"` trên control (không JS);
+khi module `hint` chạy, id đã có không bị thêm trùng. `$for` rỗng / có khoảng trắng → `''` + một cảnh báo. Chuỗi luôn là
+chữ; markup chỉ qua `Td::html()` — không bao giờ bọc nội dung người dùng nhập. Xem [Hint](../components/hint.md).
 
 ## An toàn: escape và whitelist
 

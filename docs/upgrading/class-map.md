@@ -124,6 +124,8 @@ Spinner dùng chung: `.td-spinner.td-spinner--{sm|md|lg}`; màu qua custom prope
 | td ≤ 0.7 | `.td-placeholder` | bỏ (placeholder của ô editable vẽ bằng `:empty::before`) | `:empty` | 0.8.0 |
 | td ≤ 0.7 | `.td-input-counter` | `div.td-field__counter` (trong `div.td-field__footer`) | `[data-state="limit"]` khi đạt giới hạn | 0.8.0 |
 | td ≤ 0.7 | `.td-input-note` | `div.td-field__note` (helper) + `span.td-field-error` (lỗi, hiện cùng lúc) | `[hidden]` | 0.8.0 |
+| td ≤ 0.53 | gợi ý riêng từng control (5 control) | `div.td-field__note#{id}-note` trên **mọi** form control (media giữ `.td-media-*__help`); `<td-hint>` cho nội dung giàu; gợi ý **ẩn** khi có lỗi | `[hidden]`, `td-hint[data-td-suppressed]` | 0.54.0 |
+| td ≤ 0.53 | (không có) | `td-toggle` `.td-switch__state > .td-switch__state-on / -off` (chữ trạng thái nhìn thấy) | `:checked` của input | 0.54.0 |
 
 ## td-slider
 

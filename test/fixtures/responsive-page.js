@@ -34,6 +34,7 @@ import '../../src/form/td-checkbox.js';
 import '../../src/form/td-slider.js';
 import '../../src/form/td-password-meter.js';
 import '../../src/form/td-repeater.js';
+import '../../src/form/td-hint.js'; // v0.54.0
 import '../../src/display/td-tabs.js';
 import '../../src/display/td-pagination.js';
 import '../../src/display/td-table.js';
@@ -207,6 +208,18 @@ export function mountResponsiveFixture(root) {
     <td-choice-group id="rsp-choice-long" name="pkg" label="Gói bảo hành"></td-choice-group>
     <td-choice-group id="rsp-choice-swatch" name="color" label="Màu sắc" variant="swatch" value="den"></td-choice-group>
     <td-number-input id="rsp-stepper" name="qty" label="Số lượng" stepper min="1" max="5" value="1" clamp></td-number-input>
+  </section>
+  <section class="rsp-section" data-section="hints"><h2>Gợi ý (v0.54)</h2>
+    <td-dropdown id="rsp-hint-dd" name="ship" label="Kho xuất hàng" helper-text="Phí vận chuyển được tính theo khu vực của kho xuất hàng — chọn kho gần người nhận nhất để giao nhanh hơn"></td-dropdown>
+    <td-toggle id="rsp-hint-toggle" name="notify" size="lg" label="Nhận email thông báo về đơn hàng và khuyến mãi" helper-text="Tối đa một email mỗi tuần; bạn có thể tắt bất cứ lúc nào trong phần cài đặt tài khoản"></td-toggle>
+    <td-checkbox id="rsp-hint-checkbox" name="tos" label="Đồng ý điều khoản sử dụng"><td-hint>Xem <a href="#tos">điều khoản sử dụng và chính sách quyền riêng tư</a> trước khi tiếp tục.</td-hint></td-checkbox>
+    <td-input-field id="rsp-hint-field" name="slug" label="Đường dẫn"><td-hint>Chỉ chữ thường, số và dấu <code>-</code>, ví dụ <code>iphone-16-pro-max-256gb-chinh-hang</code>.</td-hint></td-input-field>
+    <label for="rsp-hint-native">Ghi chú giao hàng</label><textarea id="rsp-hint-native" class="td-field__control" rows="2"></textarea>
+    <td-hint for="rsp-hint-native" id="rsp-hint-native-hint">Không ghi số điện thoại; shipper sẽ gọi theo số trong đơn.</td-hint>
+    <table id="rsp-hint-table"><tbody>
+      <tr><td>iPhone 17 Pro Max</td><td><td-toggle aria-label="Dùng iPhone 17 Pro Max" on-text="Đang dùng" off-text="Đã lưu trữ" checked></td-toggle></td></tr>
+      <tr><td>Galaxy S26</td><td><td-toggle aria-label="Dùng Galaxy S26" on-text="Đang dùng" off-text="Đã lưu trữ"></td-toggle></td></tr>
+    </tbody></table>
   </section>
   <section class="rsp-section" data-section="scan-input"><h2>Quét mã</h2>
     <td-scan-input id="rsp-scan" label="Mã đơn hàng" placeholder="Quét mã vạch trên phiếu xuất kho" beep></td-scan-input>

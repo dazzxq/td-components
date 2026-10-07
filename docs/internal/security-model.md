@@ -509,6 +509,27 @@ Server **vẫn phải** kiểm giá trị lựa chọn thuộc tập hợp lệ 
   abort theo từng lý do đóng, 50 lần mở / đóng), `src/feedback/td-v053-menu-custom.engines.browser-test.js`, CSP state
   `td-menu.panel-*`.
 
+## 6n. Gợi ý: `helper-text`, `<td-hint>`, `td_hint()` (v0.54.0)
+
+- **`helper-text` / `setHelper()` / PHP `helper_text` luôn là chữ**: `textContent` (JS), `Td::e()` (PHP) — không có đường
+  chuỗi → HTML. `on-text` / `off-text` của `td-toggle` cũng vậy (≤ 200 code point, cắt như `status-text`).
+- **`<td-hint>` không bao giờ đọc / ghi `innerHTML`**: không render; con của nó là node của trang (DOM tin cậy của dev, như
+  hàng custom ADR 0026). Control kit lấy `<td-hint>` con ra trước lần render đầu và gắn lại **đúng node đó** (không clone,
+  không sanitize, không đọc HTML) — nội dung của site phải sạch CSP.
+- **Liên kết `for`**: chỉ đọc / ghi `aria-describedby` (token id), gỡ **đúng token đã ghi** (không xoá id của trang); tìm
+  đích bằng `getElementById` trong cùng tree scope (không vượt shadow root). Không đọc / ghi attribute nào khác của đích.
+- **Chờ control kit chưa define (Codex impl r2):** một broker cấp module — đúng **một** `customElements.whenDefined(tag)` cho
+  mỗi tag trong suốt vòng đời module; hint đăng ký / huỷ (WeakRef ổn định mỗi hint, không trùng, không giữ hint đã bỏ);
+  gỡ / gắn lại đích, ngắt / nối hint, render lại control cha bao nhiêu lần cũng không thêm reaction nào. Chỉ tag `td-*` chờ
+  (chỉ control kit có hợp đồng liên kết); phần tử khác (kể cả custom element của site) được nối `aria-describedby` ngay.
+  Khi tag được define, chỉ hint **còn kết nối** được kiểm lại. Test: 2 000× mỗi đường → 1 lần `whenDefined`.
+- **PHP `td_hint($for, $content)`**: chuỗi = chữ; markup **chỉ** qua `Td::html()` (`TdTrustedHtml`, hatch tường minh đã có
+  của `td_carousel` — §2); không bao giờ bọc nội dung người dùng nhập. `for` / `id` / `class` / `data-td-*` là tên của kit
+  trong `attrs`; `$for` rỗng / có khoảng trắng → không in gì.
+- Gợi ý **không phải kiểm soát** gì cả (chỉ mô tả). Test: `src/base/td-v054-helper.engines.browser-test.js`,
+  `src/form/td-v054-hint.engines.browser-test.js`, `test/php/td-v054-php.test.js` (escape, `Td::html`, tên giữ), CSP state
+  `td-hint.for-native`, `td-input-field.v054-rich-hint`.
+
 ## 7. Trách nhiệm của site
 
 Những thứ kit **cố ý không làm** và site phải làm, nếu không thì có lỗ hổng dù kit đúng. Trang người dùng tương ứng:

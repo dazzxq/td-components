@@ -18,7 +18,7 @@ Mọi import đều theo dạng `@dazzxq/td-components/<tên>` (xem [Cài đặt
 nạp `td.css` một lần cho cả trang.
 
 **Render phía server (SSR) từ PHP:** dùng [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói —
-`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field`, `td_media_gallery`, `td_scan_input`, `td_filter_chips`, `td_datetime_range`, `td_check_matrix`, `td_rating`, `td_carousel` in đúng markup của component
+`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field`, `td_media_gallery`, `td_scan_input`, `td_filter_chips`, `td_datetime_range`, `td_check_matrix`, `td_rating`, `td_carousel`, `td_hint` in đúng markup của component
 (control native, chạy không cần JS). Component không có helper PHP (menu, table, tabs, pagination, empty-state, trigger
 lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
 
@@ -41,6 +41,7 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 | [Tree select](tree-select.md) | `<td-tree-select>` | `/tree-select` | có | Chọn một / nhiều nút của cây trong ô gọn (combobox + popup cây): danh mục cha, chuyên mục; nâng cấp `<select>` con; PHP `td_tree_select` |
 | [Number input](number-input.md) | `<td-number-input>` | `/number-input` | có | Ô nhập số / tiền: hiện `12.990.000`, gửi số sạch (BigInt, 30 chữ số), hậu tố `₫` / `%`, `min` / `max` / `step`, dán số có dấu chấm phẩy, `clamp` tuỳ chọn, `stepper` (nút − / +, 0.49.0); PHP `td_number_input` |
 | [Choice group](choice-group.md) | `<td-choice-group>` | `/choice-group` | có (một mục; chưa chọn → không có mục) | Chọn một trong N dạng nút (chữ + giá / chấm màu / ảnh nhỏ) hoặc ô màu (màu / ảnh); `disabled` (không có) ≠ `unavailable` (hết hàng, vẫn chọn được); radio native — chạy không JS; PHP `td_choice_group` (0.49.0); `variant="segmented"` (thanh viên thuốc icon + nhãn, vd. chuyển theme) từ 0.52.0 |
+| [Hint](hint.md) | `helper-text` + `<td-hint>` | `/hint` | không | 0.54.0: gợi ý dưới control — `helper-text` / `setHelper()` trên **mọi** form control (ẩn khi có lỗi), `<td-hint>` con cho link / `<code>`, `<td-hint for>` cho control của site; PHP `helper_text` + `td_hint()` |
 | [Repeater](repeater.md) | `<td-repeater>` | `/repeater` | không (field trong dòng tự gửi) | Danh sách dòng động (thêm / xoá / sắp xếp bằng nút ↑ ↓ ×, `sortable`: kéo thả + bàn phím) từ `<template>` của app: "Hộp gồm", FAQ, quyền lợi; `min-rows` / `max-rows`; app tự đặt `name` qua `rows-change` |
 | [Password meter](password-meter.md) | `<td-password-meter>` | `/password-meter` | không | Đo độ mạnh mật khẩu tại chỗ: thanh 4 mức, nhãn đọc được, checklist điều kiện, hook `score` |
 | [OTP input](otp-input.md) | `<td-otp-input>` | `/otp-input` | có | Nhập mã một lần 6 chữ số (2FA, xác thực lại): một input thật, dán / tự điền từ SMS; PHP `td_otp_input` |

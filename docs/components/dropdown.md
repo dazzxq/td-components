@@ -337,6 +337,7 @@ có khi JS đã nạp — bản `<select>` native không có nó).
 | `disabled` | boolean | `false` | Vô hiệu hoá (cũng tự vô hiệu trong `<fieldset disabled>`). Đang mở mà bị disable → đóng. |
 | `error-text` | string | — | Thông báo lỗi hiển thị (error contract). |
 | `create-label` | string | — | Bật dòng hành động "Thêm mới" cố định ở đáy menu với chữ này (0.22.0). Rỗng / vắng = tắt. Xem [mục 10](#10-dòng--thêm-mới-ở-cuối-menu-create-label-0220). |
+| `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
 Đổi `value`, `placeholder`, `disabled`, `required`, `name`, `aria-label`, `error-text`, `create-label` được cập nhật
 **tại chỗ** (giữ focus; menu đang mở vẫn mở). Đổi `label`, `searchable`, `allow-clear`, `max-height`, `value-key`, `label-key` sẽ đóng menu và render lại.

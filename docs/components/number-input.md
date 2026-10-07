@@ -175,7 +175,7 @@ nhưng **giữ chỗ** tới khi module tải (không xô lệch, không có nú
 | `value` | chuẩn | `''` | Giá trị **mặc định** (dạng chuẩn). Đổi sau khi render → đặt luôn giá trị sống (không event). `form.reset()` về giá trị này. |
 | `label` | string | — | Nhãn hiển thị (`<label for>` nội bộ). |
 | `placeholder` | string | — | |
-| `helper-text` / `error-text` | string | — | Ghi chú / lỗi dưới ô (error contract). |
+| `helper-text` / `error-text` | string | — | Ghi chú / lỗi dưới ô (error contract). 0.54.0: có lỗi thì ghi chú ẩn; nội dung giàu: `<td-hint>` con — [Hint](hint.md). |
 | `size` | `sm` \| `md` \| `lg` | `md` | Cỡ như input field. |
 | `required` / `disabled` / `readonly` | boolean | — | |
 | `min` / `max` | chuẩn | `min` vắng = `0` | Khoảng hợp lệ (báo lỗi, không chặn gõ). `min` âm mới nhận số âm. |
@@ -202,6 +202,7 @@ Dấu phân cách là attribute — kit **không đọc** cài đặt tiền t�
 | `valueAsNumber` | `number` (chỉ đọc) | `Number(value)`, `NaN` khi rỗng; mất chính xác trên 2^53. |
 | `getValue()` / `setValue(v)` | | `setValue` nhận chuỗi chuẩn hoặc `number` hữu hạn mà `String(n)` không có `e`; sai → `''` + cảnh báo. Không phát event. |
 | `setHelper(msg)` | `(string) => void` | Ghi chú runtime. |
+| `helperMessage` | `string` (chỉ đọc) | 0.54.0: ghi chú đang áp. |
 | `setError(msg)` / `clearError()` / `errorMessage` | | Error contract. |
 | `form`, `validity`, `validationMessage`, `willValidate`, `checkValidity()`, `reportValidity()` | | Như control native. |
 | `TdNumberInput.messages` | static | Văn bản (dưới). |

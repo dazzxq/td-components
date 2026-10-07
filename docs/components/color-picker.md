@@ -169,6 +169,7 @@ popup cuộn bình thường. Ô / nút ≥ 44px trên màn hình cảm ứng.
 | `eyedropper` | bật | `"false"` → không có nút lấy màu |
 | `error-text` | — | Lỗi hiển thị (error contract chung) |
 | `aria-label` | — | Tên đọc khi không có `label` |
+| `helper-text` | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
 ## Property, method, sự kiện
 

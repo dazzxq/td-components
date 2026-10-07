@@ -19,7 +19,7 @@ const cut = (v) => {
 };
 
 /** v0.52.0: attributes patched in place (no re-render). */
-const EXTRAS = new Set(['tone', 'status-text', 'locked', 'locked-reason']);
+const EXTRAS = new Set(['tone', 'status-text', 'locked', 'locked-reason', 'on-text', 'off-text']);
 
 /**
  * Toggle switch — token-native (needs td.css; no Tailwind). Styles: src/styles/components/switch.css
@@ -38,6 +38,9 @@ const EXTRAS = new Set(['tone', 'status-text', 'locked', 'locked-reason']);
  *       <span class="td-switch__icon td-switch__icon--on" data-td-icon="check">svg</span>
  *     </span></span>
  *     [<span class="td-switch__label">…</span>]
+ *     [<span class="td-switch__state" aria-hidden="true">                         (v0.54.0: on-text / off-text)
+ *        [<span class="td-switch__state-on" id="{id}-on">…</span>][<span class="td-switch__state-off" id="{id}-off">…</span>]
+ *      </span>]
  *   </label>
  *   [<span class="td-switch__status td-sr-only" id="{id}-status">…</span>]      (v0.52.0: tone / status-text)
  *   [<span class="td-switch__lock-reason td-sr-only" id="{id}-lock">…</span>]   (v0.52.0: locked)
@@ -65,6 +68,9 @@ const EXTRAS = new Set(['tone', 'status-text', 'locked', 'locked-reason']);
  * @attr {string} status-text - description while ON (v0.52.0; default from the tone)
  * @attr {boolean} locked - the user cannot change it (v0.52.0); still focusable + submitted
  * @attr {string} locked-reason - why (v0.52.0); description = messages.locked + ": " + reason
+ * @attr {string} on-text - visible state text while ON (v0.54.0; CSS shows it from :checked, the description carries the
+ *   current one — never the name; replaces the tone's default status description)
+ * @attr {string} off-text - visible state text while OFF (v0.54.0)
  * @fires change - detail: { checked: boolean } — the requested state (exactly one per user action)
  * @fires commit-error - detail: { checked: boolean, error } — a `commit()` failed and the switch reverted
  */
@@ -73,7 +79,7 @@ export class TdToggle extends TdCheckableElement {
   static SSR_NAME = 'toggle';
 
   static get observedAttributes() {
-    return [...super.observedAttributes, 'controlled', 'tone', 'status-text', 'locked', 'locked-reason'];
+    return [...super.observedAttributes, 'controlled', 'tone', 'status-text', 'locked', 'locked-reason', 'on-text', 'off-text'];
   }
 
   static get booleanAttributes() { return [...super.booleanAttributes, 'controlled', 'locked']; }
@@ -112,8 +118,19 @@ export class TdToggle extends TdCheckableElement {
     return t === 'success' || t === 'warning' ? t : '';
   }
 
-  /** @private v0.52.0: a status description exists (a tone, or a non-empty status-text) */
-  _hasStatus() { return !!this._tone() || !!this.getAttribute('status-text'); }
+  /**
+   * @private v0.52.0: a status description exists (a tone, or a non-empty status-text). v0.54.0 (QĐ 10): with `on-text`
+   * the tone's DEFAULT text is dropped (the visible state text already says it) — an explicit status-text stays.
+   */
+  _hasStatus() {
+    // tone first: short-circuits before reading a (possibly multi-MB) status-text — as v0.52 did (perf budget test)
+    return (!!this._tone() && !this.getAttribute('on-text')) || !!this.getAttribute('status-text');
+  }
+
+  /** @private v0.54.0: the visible state texts ('' = none for that state) */
+  _stateTexts() {
+    return { on: cut(this.getAttribute('on-text') || ''), off: cut(this.getAttribute('off-text') || '') };
+  }
 
   /** @private v0.52.0: the icon name of the ON slot */
   _onIcon() { return this._tone() === 'warning' ? 'clock' : 'check'; }
@@ -147,12 +164,28 @@ export class TdToggle extends TdCheckableElement {
       + (locked ? '<span class="td-switch__icon td-switch__icon--lock" data-td-icon="lock"></span>' : '')
       + '</span></span>'
       + (label ? `<span class="td-switch__label">${this.escapeHtml(label)}</span>` : '')
+      + this._stateHtml(id)
       + '</label>'
       + (this._hasStatus() ? `<span class="td-switch__status td-sr-only" id="${id}-status"></span>` : '')
       + (locked ? `<span class="td-switch__lock-reason td-sr-only" id="${id}-lock"></span>` : '');
   }
 
+  /**
+   * @private v0.54.0 (QĐ 10): the state text wrapper — empty spans (the texts are STATE, filled in place like the v0.52
+   * descriptions), aria-hidden (never the name; the description references the current one directly).
+   * @param {string} id escaped host id
+   */
+  _stateHtml(id) {
+    const t = this._stateTexts();
+    if (!t.on && !t.off) return '';
+    return '<span class="td-switch__state" aria-hidden="true">'
+      + (t.on ? `<span class="td-switch__state-on" id="${id}-on"></span>` : '')
+      + (t.off ? `<span class="td-switch__state-off" id="${id}-off"></span>` : '')
+      + '</span>';
+  }
+
   attributeChangedCallback(name, oldVal, newVal) {
+    if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     const live = oldVal !== newVal && this._initialized && !!this.querySelector(':scope > .td-switch');
     // v0.52.0: in place — never a re-render (the 2FA flow sets the tone while the input has focus)
     if (live && EXTRAS.has(name)) {
@@ -210,7 +243,40 @@ export class TdToggle extends TdCheckableElement {
     }
     if (locked) input.setAttribute('aria-readonly', 'true');
     else input.removeAttribute('aria-readonly');
+    this._applyState(root);
     this._syncDescribedBy();
+  }
+
+  /**
+   * @private v0.54.0 (QĐ 10): the state text parts IN PLACE, structure exactly render()'s (wrapper after the label text,
+   * the on span before the off span), texts set.
+   * @param {Element} root the `label.td-switch`
+   */
+  _applyState(root) {
+    const t = this._stateTexts();
+    let box = root.querySelector(':scope > .td-switch__state');
+    if (!t.on && !t.off) {
+      box?.remove();
+      return;
+    }
+    if (!box) {
+      box = document.createElement('span');
+      box.className = 'td-switch__state';
+      box.setAttribute('aria-hidden', 'true');
+      root.appendChild(box);
+    }
+    for (const [key, text] of [['on', t.on], ['off', t.off]]) {
+      let s = box.querySelector(`:scope > .td-switch__state-${key}`);
+      if (!text) { s?.remove(); continue; }
+      if (!s) {
+        s = document.createElement('span');
+        s.className = `td-switch__state-${key}`;
+        if (key === 'on') box.prepend(s);
+        else box.appendChild(s);
+      }
+      s.id = `${this.id}-${key}`;
+      if (s.textContent !== text) s.textContent = text;
+    }
   }
 
   /**
@@ -218,15 +284,25 @@ export class TdToggle extends TdCheckableElement {
    * are the component's, not the page's: claim them before the first describedby sync so they follow the state.
    */
   hydrateExisting() {
-    this._ownDescribedBy = new Set([`${this.id}-status`, `${this.id}-lock`]);
+    // v0.54.0: + the state text ids (PHP never wires them — Codex r2 #13 — but a hand-written markup might)
+    this._ownDescribedBy = new Set([`${this.id}-status`, `${this.id}-lock`, `${this.id}-on`, `${this.id}-off`]);
     super.hydrateExisting();
   }
 
   /** @protected v0.52.0: the status description while ON + the lock description while locked */
   _describedByIds() {
     const ids = [];
+    // v0.54.0 (QĐ 10): the CURRENT state text first — from the live input (not the attribute: a click before the
+    // upgrade, a reset, a reverted commit() all land on input.checked)
+    const input = this._focusTarget();
+    const box = this.querySelector(':scope > .td-switch > .td-switch__state');
+    if (input && box) {
+      const cur = box.querySelector(`:scope > .td-switch__state-${input.checked ? 'on' : 'off'}`);
+      if (cur && cur.id) ids.push(cur.id);
+    }
     if (this._hasStatus() && this.hasAttribute('checked') && this.querySelector(':scope > .td-switch__status')) ids.push(`${this.id}-status`);
     if (this.hasAttribute('locked') && this.querySelector(':scope > .td-switch__lock-reason')) ids.push(`${this.id}-lock`);
+    ids.push(...this._helperDescribedByIds()); // v0.54.0
     return ids;
   }
 
@@ -297,6 +373,12 @@ export class TdToggle extends TdCheckableElement {
     const root = this.querySelector('.td-switch');
     if (input) { if (on) input.setAttribute('aria-busy', 'true'); else input.removeAttribute('aria-busy'); }
     if (root) root.toggleAttribute('data-pending', on);
+  }
+
+  /** @protected v0.54.0: a reset may change only the native input (attribute unchanged) — the state id follows it */
+  _restoreDefaults() {
+    super._restoreDefaults();
+    this._syncDescribedBy();
   }
 
   /** Controlled: cancel the native toggle and emit the requested state once. Pending commit: ignore activation. */

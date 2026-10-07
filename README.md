@@ -5,7 +5,7 @@ Không Shadow DOM, CSP-strict, vanilla ES modules, một file CSS `td.css`, giao
 Việt. Lõi nhỏ; site tuỳ biến qua token `--td-*`, hook và attribute/property — không sửa lõi.
 
 ```bash
-npm install github:dazzxq/td-components#v0.53.2
+npm install github:dazzxq/td-components#v0.54.0
 ```
 
 (Cài từ GitHub cần nhánh + tag đã được push lên remote.)

@@ -412,7 +412,7 @@ từng byte). Chi tiết option: [PHP adapter › td_media_gallery](../guides/ph
 | `required` | boolean | — | ≡ `min ≥ 1` |
 | `disabled` | boolean | — | Cũng theo `<fieldset disabled>`; không gửi gì |
 | `prompt` | chuỗi | "Chọn ảnh" | Chữ khung rỗng |
-| `helper-text` / `error-text` | chuỗi | — | Ghi chú / lỗi (hợp đồng lỗi chung) |
+| `helper-text` / `error-text` | chuỗi | — | Ghi chú / lỗi (hợp đồng lỗi chung). 0.54.0: có lỗi thì ghi chú ẩn; đổi `helper-text` không render lại; `setHelper()` / `helperMessage`; nội dung giàu: `<td-hint>` con — [Hint](hint.md) |
 
 ## Property & method
 

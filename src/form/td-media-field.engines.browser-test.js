@@ -377,9 +377,10 @@ describe('td-media-field — form value', () => {
     expect(!!q(el, '.td-field-error')).to.equal(false);
   });
 
-  it('error-text + helper-text: describedby "help error", note after the help', () => {
+  it('error-text + helper-text: v0.54.0 (QĐ 3) the help hides and leaves the description while the error shows', () => {
     const { el } = mk({ name: 'hero', 'helper-text': 'JPG, PNG', 'error-text': 'Sai' });
-    expect(openBtn(el).getAttribute('aria-describedby')).to.equal(`${el.id}-help ${el.id}-error`);
+    expect(openBtn(el).getAttribute('aria-describedby')).to.equal(`${el.id}-error`);
+    expect(el.querySelector('.td-media-field__help').hidden).to.equal(true);
     expect(el.lastElementChild.className).to.equal('td-field-error');
     el.removeAttribute('error-text');
     expect(openBtn(el).getAttribute('aria-describedby')).to.equal(`${el.id}-help`);

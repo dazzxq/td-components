@@ -73,7 +73,9 @@ Cách từng `type` được render bên trong (quan trọng khi bạn style ho�
 
 - `label` tạo `<label>` nối với control, nên bấm vào nhãn sẽ focus ô nhập.
 - `required` thêm dấu `*` đỏ sau nhãn (có `aria-hidden`, chỉ để nhìn) và `aria-required="true"` trên control.
-- `helper-text` hiện dưới ô. Khi có lỗi, **gợi ý vẫn hiện cùng lỗi** (lỗi đứng trên).
+- `helper-text` hiện dưới ô. **0.54.0:** khi có lỗi, gợi ý **ẩn** và rời khỏi mô tả (lỗi thay chỗ nó); hết lỗi thì
+  trở lại — luật chung của mọi form control, xem [Hint](hint.md). Viết chữ lỗi tự đủ nghĩa. Link / `<code>` trong gợi ý:
+  đặt `<td-hint>` làm con của `<td-input-field>`.
 
 Không muốn nhãn hiện ra? Dùng `aria-label`, hoặc một `<label for>` ở ngoài trỏ vào `id` của host:
 
@@ -270,7 +272,7 @@ document.getElementById('fs').disabled = true;          // field bị disabled, 
 | `value` | string | `''` | Giá trị ban đầu (property `value` là giá trị sống). Đổi attribute cập nhật tại chỗ (giữ focus, con trỏ). Giá trị lúc gắn vào là mặc định khi reset. |
 | `placeholder` | string | — | Chữ gợi ý trong ô. Với `contenteditable` hiện bằng CSS (`data-placeholder`), không bao giờ nằm trong giá trị. |
 | `label` | string | — | Nhãn hiển thị. |
-| `helper-text` | string | — | Dòng gợi ý dưới ô (vẫn hiện khi có lỗi). |
+| `helper-text` | string | — | Dòng gợi ý dưới ô (0.54.0: ẩn khi có lỗi). Nội dung giàu: `<td-hint>` con — [Hint](hint.md). |
 | `error-text` | string | — | Dòng lỗi (error contract). |
 | `required` | boolean | không | Bắt buộc: dấu `*`, `aria-required`, `valueMissing` khi rỗng. |
 | `disabled` | boolean | không | Tắt ô (cũng có tác dụng qua `<fieldset disabled>`). Không gửi trong form. |
@@ -313,7 +315,8 @@ dụng từ 0.16.0.
 | `setError(message: string)` | `void` | Hiện lỗi. `''` để xoá. |
 | `clearError()` | `void` | Xoá lỗi (từ `setError` hoặc `error-text`). |
 | `errorMessage` | `string` (chỉ đọc) | Lỗi đang hiện, `''` nếu không có. |
-| `setHelper(msg: string)` | `void` | Đặt dòng gợi ý runtime. `''` để ẩn. |
+| `setHelper(msg: string)` | `void` | Đặt dòng gợi ý runtime. `''` để ẩn. (0.54.0: chung cho mọi form control) |
+| `helperMessage` | `string` (chỉ đọc) | 0.54.0: chữ gợi ý đang áp (`''` = không có). |
 | `setDisabled(bool)` | `void` | Bật/tắt `disabled`. |
 | `setReadOnly(bool)` | `void` | Bật/tắt `readonly`. |
 | `focus(options?)` | `void` | Focus control bên trong. |
