@@ -8,6 +8,9 @@
  * affix (`.td-field--affix` > `.td-field__box`, the control inside transparent / borderless) and td-number-input
  * (`.td-number__box`, moved here from number-input.css with the same computed values); affix parts
  * `.td-field__affix(--prefix|--suffix|--slot)` / `.td-number__affix…` + icon slots.
+ * v0.58.0 (plan v0.58.0-floating-label, ADR 0031): `label-mode="floating"` — `.td-field--floating` (control or box BEFORE the
+ * label), `.td-field--always-float`, `.td-field--ph-label`; the raised / resting state is pure CSS (`:placeholder-shown`,
+ * `:focus`, `:autofill`), identical before and after the upgrade.
  */
 @layer td.tokens {
 	:root {
@@ -27,6 +30,12 @@
 		   declared here on purpose: unset it falls back to --td-field-note-size AT THE NOTE (see .td-field-error), so a
 		   site that enlarges the hints — on :root or on a subtree — gets errors as big; a site sets it to size errors
 		   on their own. */
+		/* v0.58.0 (ADR 0031): floating label (label-mode="floating") — field heights per size (≥ 44 px: touch) and the scale
+		   of the raised label (0.857 × 14 px = 12 px = --td-text-xs; dwp 0.78) */
+		--td-field-float-h-sm: 48px;
+		--td-field-float-h-md: 56px;
+		--td-field-float-h-lg: 64px;
+		--td-field-float-scale: 0.857;
 	}
 
 	@media (pointer: coarse) {
@@ -55,6 +64,10 @@
 		--td-field-note: var(--td-color-text-muted);
 		--td-field-label: var(--td-color-text-label);
 		--td-field-affix-fg: var(--td-color-text-muted); /* v0.55.0: affix text / icon (≥ 4.7:1 on every field fill — contrast gate) */
+		/* v0.58.0: floating label — resting / raised = the placeholder colour (dwp); focused = the accent (text ≥ 4.7:1 on
+		   every field fill — the focus BORDER colour is only ≥ 3:1) */
+		--td-field-float-label: var(--td-field-placeholder);
+		--td-field-float-label-focus: var(--td-accent);
 	}
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
@@ -94,6 +107,19 @@
 	td-input-field:not(:defined):not([data-td-ssr]) {
 		display: block;
 		min-height: 2.5rem;
+	}
+
+	/* v0.58.0: a hand-written floating host reserves the floating field height */
+	td-input-field[label-mode="floating"][label]:not(:defined):not([data-td-ssr]) {
+		min-height: var(--td-field-float-h-md);
+	}
+
+	td-input-field[label-mode="floating"][label][size="sm"]:not(:defined):not([data-td-ssr]) {
+		min-height: var(--td-field-float-h-sm);
+	}
+
+	td-input-field[label-mode="floating"][label][size="lg"]:not(:defined):not([data-td-ssr]) {
+		min-height: var(--td-field-float-h-lg);
 	}
 
 	.td-field {
@@ -182,8 +208,9 @@
 	   --td-field-rows through CSSOM — field-sizing ignores the rows attribute) and never above the max, then scroll. */
 	.td-field--textarea .td-field__control[data-autoresize] {
 		field-sizing: content;
-		min-block-size: calc(var(--td-field-rows, 4) * 1lh + 2 * var(--_td-field-pad-y) + 2px);
-		max-block-size: var(--td-field-autoresize-max, calc(16lh + 2 * var(--_td-field-pad-y) + 2px));
+		/* v0.58.0: top + bottom padding (asymmetric in a floating field; = 2 × --_td-field-pad-y otherwise) */
+		min-block-size: calc(var(--td-field-rows, 4) * 1lh + var(--_td-field-pad-top, var(--_td-field-pad-y)) + var(--_td-field-pad-bottom, var(--_td-field-pad-y)) + 2px);
+		max-block-size: var(--td-field-autoresize-max, calc(16lh + var(--_td-field-pad-top, var(--_td-field-pad-y)) + var(--_td-field-pad-bottom, var(--_td-field-pad-y)) + 2px));
 		overflow-y: auto;
 		resize: none;
 	}
@@ -527,6 +554,192 @@
 
 		:is(.td-number__affix, .td-field__affix):not(:is(.td-number__affix--slot, .td-field__affix--slot)) {
 			color: GrayText;
+		}
+	}
+
+	/*
+	 * v0.58.0 — floating label (plan v0.58.0-floating-label QĐ 3–12 + M0 F1, ADR 0031; source: dwp label_mode=floating).
+	 * The control (or the affix box) comes BEFORE the real <label for>; the label is ONE line (QĐ 6c: its box — the hit box
+	 * once transformed — never reaches the value line), centred at rest by position, raised by transform only (functional
+	 * transform — minimal surfaces rule 4 exception). It keeps its pointer events: a press on it is the native label
+	 * activation (QĐ 6b). Raised when focused, filled (`:not(:placeholder-shown)` — the LIVE value), autofilled, or always
+	 * (date family, affix). No JS state: identical before and after the upgrade.
+	 */
+	.td-field--floating {
+		--_td-field-h: var(--td-field-float-h-md);
+		--_td-field-pad-x: 14px;
+		--_td-field-pad-top: 22px;
+		--_td-field-pad-bottom: 6px;
+		--_td-field-pad: var(--_td-field-pad-top) var(--_td-field-pad-x) var(--_td-field-pad-bottom);
+		--_td-field-float-shift: -15px;
+		--_td-field-float-ta-min: 96px;
+		--_td-field-float-ta-pad-top: 24px;
+		--_td-field-float-ta-label-top: 16px;
+
+		position: relative;
+	}
+
+	.td-field--floating.td-field--sm {
+		--_td-field-h: var(--td-field-float-h-sm);
+		--_td-field-pad-x: 12px;
+		--_td-field-pad-top: 20px;
+		--_td-field-pad-bottom: 4px;
+		--_td-field-float-shift: -13px;
+		--_td-field-float-ta-min: 84px;
+		--_td-field-float-ta-pad-top: 22px;
+		--_td-field-float-ta-label-top: 14px;
+	}
+
+	.td-field--floating.td-field--lg {
+		--_td-field-h: var(--td-field-float-h-lg);
+		--_td-field-pad-x: 16px;
+		--_td-field-pad-top: 26px;
+		--_td-field-pad-bottom: 8px;
+		--_td-field-float-shift: -18px;
+		--_td-field-float-ta-min: 108px;
+		--_td-field-float-ta-pad-top: 30px;
+		--_td-field-float-ta-label-top: 18px;
+	}
+
+	/* an input grows with its value line (large text) — never below the field height */
+	.td-field--floating > input.td-field__control {
+		height: auto;
+		min-height: var(--_td-field-h);
+	}
+
+	.td-field--floating.td-field--textarea {
+		--_td-field-pad-top: var(--_td-field-float-ta-pad-top);
+	}
+
+	.td-field--floating.td-field--textarea > .td-field__control {
+		min-height: var(--_td-field-float-ta-min);
+	}
+
+	/* the affix box: value + affixes on the lower row, under the raised label */
+	.td-field--floating > .td-field__box {
+		padding-block: var(--_td-field-pad-top) var(--_td-field-pad-bottom);
+	}
+
+	.td-field--floating > .td-field__label {
+		position: absolute;
+		inset-block-start: calc(var(--_td-field-h) / 2 - 0.75em);
+		inset-inline-start: calc(var(--_td-field-pad-x) + 1px);
+		display: block;
+		max-inline-size: calc(100% - 2 * var(--_td-field-pad-x) - 2px);
+		margin: 0;
+		overflow: hidden;
+		font-weight: var(--td-fw-normal);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-float-label);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		cursor: text;
+		-webkit-user-select: none; /* WebKit: unprefixed user-select is not applied */
+		user-select: none;
+		transform-origin: left center;
+		transition:
+			transform var(--td-dur-fast) var(--td-ease),
+			color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-field--floating.td-field--lg > .td-field__label {
+		font-size: var(--td-text-base);
+	}
+
+	.td-field--floating.td-field--textarea > .td-field__label {
+		inset-block-start: var(--_td-field-float-ta-label-top);
+	}
+
+	.td-field--floating > .td-field__label:dir(rtl) {
+		transform-origin: right center;
+	}
+
+	/* raised: focused, filled, always (date family / affix) — autofill in rules of their own (an unknown selector drops one) */
+	.td-field--floating > .td-field__control:focus + .td-field__label,
+	.td-field--floating > .td-field__control:not(:placeholder-shown) + .td-field__label,
+	.td-field--floating > .td-field__box:focus-within + .td-field__label,
+	.td-field--always-float > .td-field__label {
+		max-inline-size: calc((100% - 2 * var(--_td-field-pad-x) - 2px) / var(--td-field-float-scale));
+		transform: translateY(var(--_td-field-float-shift)) scale(var(--td-field-float-scale));
+	}
+
+	.td-field--floating > .td-field__control:autofill + .td-field__label {
+		max-inline-size: calc((100% - 2 * var(--_td-field-pad-x) - 2px) / var(--td-field-float-scale));
+		transform: translateY(var(--_td-field-float-shift)) scale(var(--td-field-float-scale));
+	}
+
+	.td-field--floating > .td-field__control:-webkit-autofill + .td-field__label {
+		max-inline-size: calc((100% - 2 * var(--_td-field-pad-x) - 2px) / var(--td-field-float-scale));
+		transform: translateY(var(--_td-field-float-shift)) scale(var(--td-field-float-scale));
+	}
+
+	.td-field--floating > .td-field__control:focus + .td-field__label,
+	.td-field--floating > .td-field__box:focus-within + .td-field__label {
+		color: var(--td-field-float-label-focus);
+	}
+
+	.td-field--floating > .td-field__control:disabled + .td-field__label,
+	.td-field--floating > .td-field__box:has(> .td-field__control:disabled) + .td-field__label {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+	}
+
+	/* textarea: the content scrolls through the top padding — the raised label gets the field fill behind it (QĐ 8) */
+	.td-field--floating.td-field--textarea > .td-field__control:is(:focus, :not(:placeholder-shown)) + .td-field__label {
+		padding-inline: 2px;
+		margin-inline-start: -2px;
+		background: var(--td-field-bg);
+		border-radius: 2px;
+	}
+
+	.td-field--floating.td-field--textarea > .td-field__control:focus + .td-field__label {
+		background: var(--td-field-bg-focus);
+	}
+
+	.td-field--floating.td-field--textarea > .td-field__control[readonly] + .td-field__label {
+		background: var(--td-field-bg-readonly);
+	}
+
+	.td-field--floating.td-field--textarea > .td-field__control:disabled + .td-field__label {
+		background: var(--td-field-bg-disabled);
+	}
+
+	/* a real placeholder shows only once the label is raised (focus); opacity, not colour: forced colours force colour */
+	.td-field--floating:not(.td-field--always-float) > .td-field__control:not(:focus)::placeholder {
+		opacity: 0;
+	}
+
+	/* M0 → F1: no real placeholder — the control carries the label text as its placeholder (= the name), never shown */
+	.td-field--ph-label > .td-field__control::placeholder,
+	.td-field--ph-label > .td-field__box > .td-field__control::placeholder {
+		opacity: 0;
+	}
+
+	@media (pointer: coarse) {
+		/* value text 16 px (line 24 px): sm keeps the value line inside 48 px */
+		.td-field--floating.td-field--sm {
+			--_td-field-pad-bottom: 2px;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-field--floating > .td-field__label {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-field--floating > .td-field__label {
+			color: CanvasText;
+		}
+
+		.td-field--floating > .td-field__control:disabled + .td-field__label,
+		.td-field--floating > .td-field__box:has(> .td-field__control:disabled) + .td-field__label {
+			color: GrayText;
+		}
+
+		.td-field--floating.td-field--textarea > .td-field__control:is(:focus, :not(:placeholder-shown)) + .td-field__label {
+			background: Canvas;
 		}
 	}
 }

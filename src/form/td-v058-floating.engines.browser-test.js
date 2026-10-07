@@ -220,8 +220,8 @@ describe('v0.58.0 floating — state from every value source (pure CSS)', () => 
       }
     };
     walk(link.sheet.cssRules);
-    expect(rules.some((s) => s.includes(':autofill')), rules.join(' | ')).to.equal(true);
-    expect(rules.some((s) => s.includes(':-webkit-autofill')), rules.join(' | ')).to.equal(true);
+    // two separate rules (Firefox / WebKit serialise the -webkit- alias as :autofill)
+    expect(rules.length, rules.join(' | ')).to.equal(2);
   });
 
   it('date-family: always floated (native UI shows dd/mm/yyyy)', () => {
@@ -386,14 +386,15 @@ describe('v0.58.0 floating — geometry + hit box (QĐ 6, 6b, 6c — Codex plan 
   });
 
   it('long label: one line with an ellipsis, never wider than the field', async () => {
-    const el = one('label="Địa chỉ nhận hàng đầy đủ gồm số nhà, tên đường, phường, quận và thành phố"');
+    const el = one();
+    el.setAttribute('label', 'Địa chỉ nhận hàng đầy đủ gồm số nhà, tên đường, phường, quận và thành phố');
     await frame();
     const l = labelOf(el);
     expect(getComputedStyle(l).textOverflow).to.equal('ellipsis');
     expect(l.scrollWidth > l.clientWidth).to.equal(true);
     expect(rect(l).right <= rect(ctl(el)).right).to.equal(true);
     ctl(el).focus();
-    expect(rect(l).right <= rect(ctl(el)).right + 0.5).to.equal(true);
+    expect(rect(l).right <= rect(ctl(el)).right + 0.5, `raised ${JSON.stringify(rect(l))} field ${JSON.stringify(rect(ctl(el)))} ${getComputedStyle(l).maxWidth} ${getComputedStyle(l).transform}`).to.equal(true);
   });
 
   it('textarea: resting label near the top; the raised label has a solid backing (text scrolls under it)', async () => {
