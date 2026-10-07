@@ -2,6 +2,33 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.56.0
+
+**`td-repeater` `value` / `disabled` / `readonly`, icon + preset nút thao tác cho catalog, PHP `td_date()`** (owner duyệt danh
+sách Catalog của dsuite). Plan `docs/internal/plans/v0.56.0-repeater-icons-date.md`, Codex plan-review APPROVE 2 vòng,
+impl-review APPROVE 2 vòng + security-review APPROVE 2 vòng; [ADR 0029](docs/internal/decisions/0029-repeater-field-values-and-lock.md).
+Có đổi hành vi nhỏ — `docs/upgrading/breaking-changes.md#0560`.
+
+### Added
+
+- `td-repeater`: `value` (get / set) — mảng object mỗi hàng, field nhận diện bằng `data-td-field="key"` (không đụng `name` /
+  `form`), đọc rồi gán lại không đổi gì; setter tôn trọng `min-rows` / `max-rows` (trần 1000 khi không có `max-rows`), bắn đúng
+  một `rows-change` `reason: 'set'`, không làm form "bẩn". Hook `readRow(row, defaultRead)` / `writeRow(row, data, defaultWrite)`
+  cho field đặc biệt.
+- `td-repeater` `disabled` (như `<fieldset disabled>`: không gửi, không thêm / xoá / sắp xếp) và `readonly` (vẫn gửi, không sửa
+  được; field không hỗ trợ readonly → cảnh báo + hook `TdRepeater.lockField`). `<fieldset disabled>` bao ngoài được nhận đúng;
+  gỡ khoá trả lại đúng thuộc tính kit đã thêm.
+- Icon core: `archive`, `restore`, `category` (cây thư mục), `brand` (tag), `product` (package), `ban` + alias `archive-restore`,
+  `folder-tree`, `tag`, `trademark`, `package`.
+- `td-action-button` preset `archive` (Lưu trữ), `restore` (Khôi phục), `discontinue` (Ngừng kinh doanh); PHP
+  `Td::registerActionPresets()` (site đăng ký preset riêng ở PHP như `registerPreset` của JS).
+- PHP `td_datetime_picker()` + `td_date()` (chỉ ngày): SSR `datetime-picker@1`, `<input type="date">` native khi chưa có JS
+  (gửi ISO `yyyy-mm-dd`), khoảng năm khớp picker, `helper_text`, `min` / `max`, không xê dịch khi nâng cấp (≤ 1 px).
+
+### Security
+
+- Cảnh báo console của repeater escape ký tự điều khiển / U+2028 / U+2029 trong key do API đưa vào (CWE-117).
+
 ## 0.55.0
 
 **Chữ / icon đứng trước – sau ô nhập (`prefix` / `suffix`) cho `td-input-field` + `td-number-input`, `locale` cho số, token cỡ

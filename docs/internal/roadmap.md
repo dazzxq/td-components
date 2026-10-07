@@ -62,6 +62,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.54.0: `helper-text` cho mọi form control + `<td-hint>` + toggle `on-text` / `off-text` ([ADR 0027](decisions/0027-shared-helper-contract.md)) — plan [v0.54.0-hint](plans/v0.54.0-hint.md)
 - `done` v0.54.1: vá property gán trước khi nâng cấp (template clone / createElement trước define) — plan [v0.54.1-preupgrade-props](plans/v0.54.1-preupgrade-props.md)
 - `done` v0.55.0: `prefix` / `suffix` input-field + number-input, `locale` số, `--td-field-note-size` ([ADR 0028](decisions/0028-field-affix-number-locale.md)) — plan [v0.55.0-affix-number](plans/v0.55.0-affix-number.md)
+- `done` v0.56.0: `td-repeater` `value` / `disabled` / `readonly`, 6 icon + 3 preset nút thao tác, PHP `td_date()` ([ADR 0029](decisions/0029-repeater-field-values-and-lock.md)) — plan [v0.56.0-repeater-icons-date](plans/v0.56.0-repeater-icons-date.md)
 - `todo`: RTL — phím ← ở hai đầu `td-choice-group` quay vòng ngược chiều radio native (có từ v0.49, phát hiện ở v0.53.1)
 - `todo` kiểm tay VoiceOver / NVDA: toggle `locked` (0.52) + menu panel (0.53) — owner: phát hành trước, kiểm sau
 - Ngày từ v0.33 trở đi: **rebaseline từ ngày v0.31 xong thực tế** (không nén test / acceptance để giữ lịch cũ ~11/11 –
