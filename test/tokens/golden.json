@@ -1510,6 +1510,11 @@
     "@color-scheme": "dark"
   },
   "added": {
+    "--td-switch-state-fg": {
+      "light": "rgb(107, 107, 115)",
+      "dark": "rgb(172, 172, 180)",
+      "why": "v0.54.0: td-toggle on-text / off-text (visible state text) = --td-color-text-muted (≥ 4.7 on every surface, contrast gate)"
+    },
     "--td-color-surface-raised": {
       "light": "rgb(255, 255, 255)",
       "dark": "rgb(28, 28, 30)",
