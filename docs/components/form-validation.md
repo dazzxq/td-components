@@ -416,7 +416,8 @@ bảng `labels`/`messages` của từng component) — xem [Extending](../custom
 | `--td-form-summary-pressed-bg` | `var(--td-color-pressed)` (dark: `rgb(0 0 0 / 40%)`) | Nền link khi nhấn (0.42.1: dark làm tối nền thay vì phủ trắng — chữ lỗi 6.3:1, trước 3.30) |
 | `--td-form-summary-radius` | `var(--td-radius-md)` | Bo góc khung |
 
-Dòng lỗi dưới field là `.td-field-error` (màu `--td-field-error`, chữ `--td-text-xs`).
+Dòng lỗi dưới field là `.td-field-error` (màu `--td-field-error`; cỡ chữ `--td-field-error-size`, 0.57.1 — không đặt thì
+theo `--td-field-note-size`: `--td-text-xs`, cảm ứng `--td-text-sm`; xem [Hint](hint.md#tuỳ-biến-giao-diện)).
 
 **td.css không style control gốc khi lỗi.** Site tự viết rule, ví dụ:
 

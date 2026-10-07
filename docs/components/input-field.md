@@ -404,7 +404,8 @@ cũng được cập nhật (thay đổi bằng code không bị tính là ngư�
 | `--td-field-affix-fg` | `var(--td-color-text-muted)` | Màu chữ / icon tiền tố / hậu tố (≥ 4.7:1 trên nền ô thường / focus / read-only / disabled — gate). Dùng chung với number-input (`--td-number-affix-fg` mặc định theo nó). 0.55.0. |
 | `--td-field-affix-gap` | `var(--td-space-2xs)` | Khoảng giữa affix và giá trị trong hộp. 0.55.0. |
 | `--td-field-affix-icon` | `1.125em` | Cỡ icon affix (theo cỡ chữ ô). 0.55.0. |
-| `--td-field-note-size` | `var(--td-text-xs)` (cảm ứng `var(--td-text-sm)`) | Cỡ chữ gợi ý — xem [Hint](hint.md#tuỳ-biến-giao-diện). 0.55.0. |
+| `--td-field-note-size` | `var(--td-text-xs)` (cảm ứng `var(--td-text-sm)`) | Cỡ chữ gợi ý — xem [Hint](hint.md#tuỳ-biến-giao-diện). 0.55.0. 0.57.1: chữ lỗi cũng theo nó (khi chưa đặt `--td-field-error-size`). |
+| `--td-field-error-size` | không khai báo → `var(--td-field-note-size)` | Cỡ chữ lỗi (`.td-field-error`, mọi control). Đặt khi muốn lỗi khác cỡ gợi ý. 0.57.1. |
 
 Theme tối đổi `--td-field-bg-disabled`, `--td-field-bg-readonly` (surface-muted) và quầng focus (22 % accent, vì 12 %
 không thấy trên nền tối); placeholder / nhãn / viền theo token chung (`--td-color-text-muted` `#acacb4`,

@@ -2,6 +2,26 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.57.1
+
+**Chữ lỗi to theo chữ gợi ý (`--td-field-error-size`) + `TdModal` focus ban đầu theo `[autofocus]`** (dsuite: nâng gợi ý lên
+14 px thì lỗi vẫn 12 px; modal có bảng với công tắc ở hàng đầu nhận focus vào công tắc). Codex impl-review APPROVE 2 vòng.
+Có đổi hành vi nhỏ — `docs/upgrading/breaking-changes.md#0571`.
+
+### Added
+
+- Token `--td-field-error-size` cho mọi `.td-field-error` (kể cả lỗi trong footer của ô nhập). Không đặt → theo
+  `--td-field-note-size` **tại chỗ** (`var(--td-field-error-size, var(--td-field-note-size))`), nên đặt cỡ gợi ý cho một vùng
+  (`.checkout { --td-field-note-size: … }`) cũng nâng lỗi trong vùng đó. Mặc định không đổi (xs; sm trên màn cảm ứng).
+
+### Changed
+
+- `TdModal`: focus ban đầu — `focusTarget` → phần tử `[autofocus]` đầu tiên dùng được trong body / footer (bỏ qua disabled /
+  ẩn; host không focus được như `<td-input-field autofocus>` chuyển cho control bên trong; `tabindex="-1"` hiện được cũng nhận)
+  → thứ tự cũ (field đầu tiên → phần tử focus được đầu tiên → nút X → dialog). Không có `autofocus` → như cũ. `autoFocus:
+  false` / `confirm` không đổi. `td-drawer` / `td-media-picker` chưa đổi.
+- Site đã đặt `--td-field-note-size`: chữ lỗi giờ cùng cỡ gợi ý (muốn giữ 12 px: `--td-field-error-size: var(--td-text-xs)`).
+
 ## 0.57.0
 
 **Bảng cây: `<td-table tree>` — dòng lồng nhau có cột thao tác / toggle, mở–đóng, tải con lười, `moveRow`** (owner duyệt danh

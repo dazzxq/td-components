@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.57.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.57.1)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.57.1](#0571) | Đổi hành vi nhỏ (`TdModal` focus ban đầu theo `autofocus`) + đổi giao diện **chỉ khi site đặt `--td-field-note-size`** + thêm token `--td-field-error-size` | Không bắt buộc. Modal có phần tử `autofocus` trong body / footer: focus ban đầu giờ vào đó (trước: field đầu tiên) — `focusTarget` / `autoFocus: false` / `confirm` không đổi. Site đã đặt `--td-field-note-size`: chữ lỗi giờ to theo; muốn giữ lỗi 12 px → `--td-field-error-size: var(--td-text-xs)`. |
 | [0.57.0](#0570) | Thêm tính năng (bảng cây `td-table tree`) + đổi hành vi nhỏ (menu "Thao tác" của card) | Không bắt buộc. Bảng cây là opt-in (`tree` + `row-key`); bảng không `tree` giống từng byte. Menu "Thao tác" (dạng card, > 2 action) giờ đọc dòng **lúc mở** và kiểm lại **lúc chọn**: dòng đã rời bảng trong lúc menu mở (đổi trang, `data` mới) → không phát `row-action` (trước: phát cho dòng **đang** ở chỉ số cũ — có thể là dòng khác). `getState()` thêm `expandedKeys`. |
 | [0.56.0](#0560) | Thêm tính năng (`td-repeater` `value` / `disabled` / `readonly`, 6 icon + 3 preset nút thao tác, PHP `td_datetime_picker` / `td_date`, `Td::registerActionPresets`) + đổi hành vi nhỏ | Kiểm tra `registerIcons()` của site: tên **`archive`, `restore`, `category`, `brand`, `product`, `ban`** giờ là icon core → đăng ký trùng tên **ném lỗi** (đổi tên icon site, vd. `site-archive`). Alias mới `archive-restore`, `folder-tree`, `tag`, `trademark`, `package` (icon site cùng tên vẫn thắng). App xử lý `rows-change` bằng `switch (reason)` không có nhánh mặc định: thêm `'set'`. |
 | [0.55.0](#0550) | Đổi hành vi rất nhỏ (`td-number-input`, phím `.` / `,`) + thêm tính năng (tiền tố / hậu tố cho `td-input-field`, icon / slot affix, `locale`, `--td-field-note-size`) | Không bắt buộc. Ô số có `decimals > 0`: gõ `.` **hoặc** `,` khi chưa có dấu thập phân giờ ra dấu thập phân của ô (trước: dấu nhóm bị chặn). Luật CSS hộp số chuyển sang `field.css` (cùng giá trị). |
@@ -80,6 +81,20 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.57.1
+
+**Mức: đổi hành vi nhỏ + đổi giao diện có điều kiện.**
+
+- **`TdModal` tôn trọng `autofocus`:** thứ tự focus ban đầu giờ là `focusTarget` → phần tử `autofocus` đầu tiên dùng được
+  trong body / footer (bỏ qua cái disabled / ẩn; host như `<td-input-field autofocus>` → ô nhập của nó) → thứ tự cũ.
+  Modal không có `autofocus` không đổi gì. Modal đã có `autofocus` (trước bị bỏ qua) giờ mở với focus ở đó — thường là
+  điều bạn muốn ([modal § Bàn phím & trợ năng](../components/modal.md#bàn-phím--trợ-năng)). `td-drawer` chưa đổi.
+- **Cỡ chữ lỗi theo `--td-field-note-size`:** `.td-field-error` dùng `var(--td-field-error-size, var(--td-field-note-size))`.
+  Mặc định giống từng pixel (cả hai `--td-text-xs`, cảm ứng `--td-text-sm`). Site đã tăng `--td-field-note-size` (vd.
+  0.875rem): lỗi giờ cũng 14 px (trước kẹt 12 px, nhỏ hơn gợi ý). Muốn giữ như cũ:
+  `:root { --td-field-error-size: var(--td-text-xs); }` (lưu ý: khi đó trên cảm ứng lỗi cũng 12 px — đặt thêm trong
+  `@media (pointer: coarse)` nếu cần).
 
 ## 0.57.0
 

@@ -161,7 +161,8 @@ Trên mọi form control: `helperText` (phản chiếu `helper-text`), `setHelpe
 | Token | Mặc định | Dùng cho |
 |---|---|---|
 | `--td-field-note` | `--td-color-text-muted` | Màu chữ gợi ý (ghi chú của control và `<td-hint>`), ≥ 4.7:1 trên mọi bề mặt (gate contrast) |
-| `--td-field-note-size` (0.55.0) | `var(--td-text-xs)`; cảm ứng (`pointer: coarse`): `var(--td-text-sm)` | Cỡ chữ của **mọi** gợi ý: ghi chú trong footer (input-field / number-input / choice-group), ghi chú dưới các control khác, chữ trợ giúp của media-field / media-gallery, `<td-hint>` (con và `for`). Không đổi chữ lỗi / bộ đếm |
+| `--td-field-note-size` (0.55.0) | `var(--td-text-xs)`; cảm ứng (`pointer: coarse`): `var(--td-text-sm)` | Cỡ chữ của **mọi** gợi ý: ghi chú trong footer (input-field / number-input / choice-group), ghi chú dưới các control khác, chữ trợ giúp của media-field / media-gallery, `<td-hint>` (con và `for`). 0.57.1: chữ lỗi cũng theo nó (trừ khi đặt `--td-field-error-size`); bộ đếm không đổi |
+| `--td-field-error-size` (0.57.1) | không khai báo → `var(--td-field-note-size)` (cùng cỡ gợi ý, ở `:root` hay trong vùng) | Cỡ chữ của **mọi** dòng lỗi `.td-field-error` (lỗi trong footer input-field / number-input, lỗi dưới các control khác, lỗi do `form-validation` ghi) |
 
 Cách control `--td-space-2xs`. Link trong `<td-hint>` lấy màu chữ gợi ý + gạch chân; `<code>` dùng `--td-font-mono`.
 
@@ -172,6 +173,12 @@ Gợi ý to hơn mà **không** đụng `--td-text-xs` (token chung của cả k
 :root { --td-field-note-size: 0.875rem; }
 /* chỉ một vùng */
 .checkout { --td-field-note-size: var(--td-text-sm); }
+```
+
+Từ 0.57.1 chữ lỗi to theo (trước 0.57.1 lỗi giữ 12 px — nhỏ hơn gợi ý 14 px). Muốn lỗi cỡ riêng:
+
+```css
+:root { --td-field-note-size: 0.875rem; --td-field-error-size: 0.8125rem; }
 ```
 
 Ghi chú trong footer chia hàng với bộ đếm ký tự: chữ to hơn chỉ xuống dòng trong cột của nó, bộ đếm giữ cột phải.

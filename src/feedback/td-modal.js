@@ -26,6 +26,7 @@
  *   anywhere); Escape is consumed and does nothing (ADR 0006 — it never closes, and it never reaches a layer
  *   below); higher layers (dropdown menu, tooltip, loading) get the keyboard first. One scroll lease per stack.
  * - Focus: moves into the dialog on open. Initial target: `focusTarget` (only if connected AND inside the dialog)
+ *   → v0.57.1 the first usable `[autofocus]` of the body / footer
  *   → first body field → first focusable other than the X → the X → the dialog. `autoFocus:false` → the dialog.
  *   On close, focus returns to the opener only when this dialog was on top (else it stays where it is); if the
  *   opener is gone/outside the new top dialog, the new top dialog is focused. Restored BEFORE `onClose`.
@@ -326,6 +327,20 @@ export class TdModal {
         && tryFocus(focusTarget)) return;
       const body = dialog.querySelector('.td-modal__body');
       const eligible = new Set(focusablesIn(dialog));
+      // v0.57.1: the first usable [autofocus] of the body / footer (DOM order). A host that is not focusable itself
+      // (e.g. <td-input-field autofocus>) hands it to its first eligible descendant; disabled / hidden ones are skipped
+      // (eligible = focusablesIn: not :disabled, no [hidden]/[inert] ancestor, rendered, visible).
+      for (const part of dialog.querySelectorAll('.td-modal__body, .td-modal__footer')) {
+        for (const el of part.querySelectorAll('[autofocus]')) {
+          if (el.matches(':disabled') || el.hasAttribute('disabled')) continue;
+          if (eligible.has(el) && tryFocus(el)) return;
+          // Codex impl r1: a visible element focusable only by script (tabindex="-1") is a valid autofocus target too
+          const shown = !el.closest('[hidden], [inert]') && el.getClientRects().length > 0;
+          if (shown && !eligible.has(el) && tryFocus(el)) return;
+          const inner = [...eligible].find((f) => f !== el && el.contains(f));
+          if (inner && tryFocus(inner)) return;
+        }
+      }
       const fields = body ? [...body.querySelectorAll(FIELD)].filter((el) => eligible.has(el)) : [];
       for (const el of fields) if (tryFocus(el)) return;
       const close = dialog.querySelector('.td-modal__close');
