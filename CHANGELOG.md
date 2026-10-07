@@ -2,6 +2,26 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.54.1
+
+**Vá: property gán trước khi phần tử kit được nâng cấp không còn bị mất** (dsuite: `td-table` clone từ `<template>`, gán
+`columns` / `data` rồi mới gắn vào modal → bảng rỗng). Plan `docs/internal/plans/v0.54.1-preupgrade-props.md`, Codex
+impl-review APPROVE 2 vòng. Không đổi API; site có thể bỏ mẹo "gán lại trong `onShow`".
+
+### Fixed
+
+- Mọi phần tử kit: property gán khi phần tử **chưa nâng cấp** (clone nội dung `<template>`, `document.createElement` trước
+  `customElements.define`, tài liệu `DOMParser` rồi `adoptNode`) được phát lại qua setter ở lần kết nối đầu, đúng thứ tự gán,
+  trước render / hydrate. Làm chung ở base class (tự phát hiện mọi setter), không còn danh sách riêng từng component — 5
+  component trước đây mất giá trị: `td-table` (`columns`, `data`, `selectedKeys`, các hook …), `td-tabs`, `td-media-grid`
+  (`onSelectChange`), `td-hint` (`htmlFor`), `td-drawer` (`open`).
+- `td-drawer`: `open = false` trên drawer đang đóng gỡ luôn attribute `open` (trước: `<td-drawer open>` + `open = false`
+  trước nâng cấp vẫn mở ra).
+
+### Giới hạn (docs)
+
+- `importNode` / `cloneNode` tạo bản sao: property JS không đi theo bản sao (chuẩn DOM) — gán sau khi sao.
+
 ## 0.54.0
 
 **Hint thống nhất cho mọi form control + `<td-hint>` + chữ trạng thái của `td-toggle`** (owner, qua dsuite: "hỗ trợ td hint cho
