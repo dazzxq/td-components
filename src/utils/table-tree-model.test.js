@@ -414,3 +414,61 @@ describe('table-tree-model — move / moveRow (QĐ 17, QĐ 18)', () => {
     assert.equal(tree(m), JSON.stringify([{ k: 'x', c: [{ k: 'y', c: [] }] }, { k: 'l', c: null }]));
   });
 });
+
+describe('table-tree-model — deep / hostile input (Codex impl r1 #1, sec r1 #1–#2)', () => {
+  const levels = (m) => Math.max(...m.flat.map((n) => n.depth)) + 1;
+  const depthWarns = (w) => w.filter((x) => /deeper than/.test(x)).length;
+
+  it('a flat parent-key chain of 50 000 rows: no stack overflow, exactly 16 levels, one depth warning', () => {
+    const rows = Array.from({ length: 50000 }, (_, i) => ({ id: i, parentId: i ? i - 1 : null }));
+    const { m, warns } = mk(rows, { parentKey: 'parentId' });
+    assert.equal(levels(m), TREE_MAX_DEPTH);
+    assert.equal(m.flat.length, TREE_MAX_DEPTH);
+    assert.equal(depthWarns(warns), 1);
+    assert.equal(m.node(TREE_MAX_DEPTH), undefined, 'a dropped row does not own its key');
+    assert.equal(m.getTree().length, 1);
+  });
+
+  it('a nested children chain of 50 000 levels: no stack overflow, exactly 16 levels, one depth warning', () => {
+    const top = { id: 0 };
+    let cur = top;
+    for (let i = 1; i < 50000; i++) {
+      cur.children = [{ id: i }];
+      cur = cur.children[0];
+    }
+    const { m, warns } = mk([top]);
+    assert.equal(levels(m), TREE_MAX_DEPTH);
+    assert.equal(m.flat.length, TREE_MAX_DEPTH);
+    assert.equal(depthWarns(warns), 1);
+    m.expandAll();
+    assert.equal(m.visible(m.roots, null).length, TREE_MAX_DEPTH);
+  });
+
+  it('10 000-row chain and a 10 000-row single cycle build in linear time (< 200 ms); cycle rows become roots, one warning', () => {
+    const chain = Array.from({ length: 10000 }, (_, i) => ({ id: i, parentId: i ? i - 1 : null }));
+    let t0 = performance.now();
+    mk(chain, { parentKey: 'parentId' });
+    const tChain = performance.now() - t0;
+    const ring = Array.from({ length: 10000 }, (_, i) => ({ id: i, parentId: (i + 1) % 10000 }));
+    t0 = performance.now();
+    const { m, warns } = mk(ring, { parentKey: 'parentId' });
+    const tRing = performance.now() - t0;
+    assert.ok(tChain < 200, `chain ${tChain.toFixed(1)} ms`);
+    assert.ok(tRing < 200, `cycle ${tRing.toFixed(1)} ms`);
+    assert.equal(m.roots.length, 10000);
+    assert.equal(warns.filter((w) => /cycle/.test(w)).length, 1);
+  });
+
+  it('a failing build leaves the previous tree intact (atomic commit)', () => {
+    const m = new TableTreeModel({ keyOf: (r) => r.id, warn: () => {} });
+    m.setData(NESTED());
+    m.expandAll();
+    const snap = tree(m);
+    const flat = m.flat.map((n) => n.id).join();
+    m._isLazy = () => { throw new Error('hook'); };
+    assert.throws(() => m.setData([{ id: 'q', hasChildren: true }]));
+    assert.equal(tree(m), snap, 'old tree kept after a throwing build');
+    assert.equal(m.flat.map((n) => n.id).join(), flat);
+    assert.equal(m.node('q'), undefined, 'no key of the failed build leaked into the owners');
+  });
+});

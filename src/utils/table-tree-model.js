@@ -86,34 +86,38 @@ export class TableTreeModel {
     if (typeof opts.hasChildren === 'function') this._hasChildren = opts.hasChildren;
     this._readField = typeof opts.readField === 'function' ? opts.readField
       : (row, f) => (row && typeof row === 'object' ? row[f] : undefined);
-    this._owners = new Map();
-    this._count = 0;
     const rows = Array.isArray(data) ? data : [];
-    this.roots = this._parentKey ? this._buildFlat(rows) : this._buildNested(rows, null);
+    // Codex impl r1 #1: built into LOCAL structures and committed at the end — a throw never leaves a half-rebuilt
+    // model. Every walk is iterative (no recursion on data depth: a 50 000-row chain is fine).
+    const ctx = { owners: new Map(), base: null, count: 0 };
+    const roots = this._parentKey ? this._buildFlat(rows, ctx) : this._buildNested(rows, null, ctx);
+    this._owners = ctx.owners;
+    this.roots = roots;
     this._dirty();
-    if (this._count > TREE_WARN_NODES) {
-      this._warnOnce('size', `td-table: tree with ${this._count} rows — consider loadChildren (lazy branches) for large trees.`);
+    if (ctx.count > TREE_WARN_NODES) {
+      this._warnOnce('size', `td-table: tree with ${ctx.count} rows — consider loadChildren (lazy branches) for large trees.`);
     }
   }
 
-  /** @private one node; registers the key owner (a later duplicate is a leaf, QĐ 2) */
-  _node(row, parent) {
+  /**
+   * @private one node; registers the key owner in `ctx.owners` (a key already owned there or in `ctx.base` → a later
+   * duplicate: a leaf, QĐ 2)
+   */
+  _node(row, parent, ctx) {
     let key = null;
     try { key = this._keyOf(row); } catch { key = null; }
     const id = keyId(key);
     let dup = false;
-    if (id !== null) {
-      if (this._owners.has(id)) {
-        dup = true;
-        this._warnOnce('dup', 'td-table: duplicate row key in the tree — a later row with the same key is a leaf (no expand, no selection; its branch is not shown).');
-      }
+    if (id !== null && (ctx.owners.has(id) || (ctx.base && ctx.base.has(id)))) {
+      dup = true;
+      this._warnOnce('dup', 'td-table: duplicate row key in the tree — a later row with the same key is a leaf (no expand, no selection; its branch is not shown).');
     }
     const node = {
       key: id === null ? null : key, id, row, parent, depth: parent ? parent.depth + 1 : 0,
       children: [], lazy: false, dup, loading: false, loadError: false, seq: 0, ctrl: null, promise: null,
     };
-    if (id !== null && !dup) this._owners.set(id, node);
-    this._count += 1;
+    if (id !== null && !dup) ctx.owners.set(id, node);
+    ctx.count += 1;
     return node;
   }
 
@@ -128,19 +132,30 @@ export class TableTreeModel {
     return true;
   }
 
-  /** @private nested rows (children-key arrays) under `parent` */
-  _buildNested(rows, parent) {
+  /**
+   * @private nested rows (children-key arrays) under `parent`, preorder (the first row of a key in preorder owns it).
+   * Iterative (explicit stack of sibling lists); rows deeper than the cap are never visited.
+   */
+  _buildNested(rows, parent, ctx) {
     const out = [];
-    const depth = parent ? parent.depth + 1 : 0;
-    if (this._tooDeep(depth)) return out;
+    if (this._tooDeep(parent ? parent.depth + 1 : 0)) return out;
     const ck = this._childrenKey;
-    for (const row of rows) {
-      const node = this._node(row, parent);
-      out.push(node);
+    const stack = [{ rows, i: 0, parent, out }];
+    while (stack.length) {
+      const f = stack[stack.length - 1];
+      if (f.i >= f.rows.length) {
+        stack.pop();
+        continue;
+      }
+      const row = f.rows[f.i++];
+      const node = this._node(row, f.parent, ctx);
+      f.out.push(node);
       if (node.id === null || node.dup) continue; // a leaf: its branch is not shown
       const kids = row && typeof row === 'object' ? row[ck] : undefined;
-      if (Array.isArray(kids)) node.children = this._buildNested(kids, node);
-      else if (this._isLazy(row)) {
+      if (Array.isArray(kids)) {
+        node.children = [];
+        if (kids.length && !this._tooDeep(node.depth + 1)) stack.push({ rows: kids, i: 0, parent: node, out: node.children });
+      } else if (this._isLazy(row)) {
         node.children = null;
         node.lazy = true;
       }
@@ -148,89 +163,109 @@ export class TableTreeModel {
     return out;
   }
 
-  /** @private flat rows (parent-key): parent = the row owning `String(row[parentKey])`; orphans / cycles → roots */
-  _buildFlat(rows) {
+  /**
+   * @private flat rows (parent-key): parent = the row owning `String(row[parentKey])`; orphans / cycles → roots.
+   * Codex sec r1 #2: O(n) — the parent links form a functional graph; one colouring pass (unvisited / on the current
+   * path / done) finds every cycle, a memoised pass computes the depths; rows deeper than the cap are dropped.
+   */
+  _buildFlat(rows, ctx) {
     const pk = this._parentKey;
     const ck = this._childrenKey;
-    // pass 1: keys + owners (first row of a key in data order)
-    const items = rows.map((row) => ({ row, node: null }));
-    for (const it of items) {
-      it.node = this._node(it.row, null);
-      if (!this._warned.has('both') && it.row && typeof it.row === 'object' && Array.isArray(it.row[ck])) {
+    const n = rows.length;
+    const nodes = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const row = rows[i];
+      nodes[i] = this._node(row, null, ctx);
+      if (!this._warned.has('both') && row && typeof row === 'object' && Array.isArray(row[ck])) {
         this._warnOnce('both', 'td-table: `parent-key` is set — `children-key` arrays in the rows are ignored.');
       }
     }
-    // pass 2: parent identity of each row
-    const parentOf = new Map();
+    const index = new Map();
+    for (let i = 0; i < n; i++) index.set(nodes[i], i);
+    // parent index of each row (-1 = root)
+    const par = new Int32Array(n).fill(-1);
     let orphan = false;
-    for (const it of items) {
+    for (let i = 0; i < n; i++) {
       let pid = null;
-      try { pid = keyId(this._readField(it.row, pk)); } catch { pid = null; }
-      if (pid !== null && !this._owners.has(pid)) {
-        orphan = true;
-        pid = null;
-      }
-      parentOf.set(it.node, pid === null ? null : this._owners.get(pid));
+      try { pid = keyId(this._readField(rows[i], pk)); } catch { pid = null; }
+      if (pid === null) continue;
+      const owner = ctx.owners.get(pid);
+      if (!owner) orphan = true;
+      else par[i] = index.get(owner);
     }
     if (orphan) this._warnOnce('orphan', 'td-table: a row\'s parent key is not in data (orphan) — that row is shown as a root.');
-    // pass 3: cycles → EVERY row on a cycle becomes a root (found first, cut after)
-    const onCycle = new Set();
-    for (const it of items) {
-      const seen = new Set([it.node]);
-      for (let p = parentOf.get(it.node); p; p = parentOf.get(p)) {
-        if (p === it.node) {
-          onCycle.add(it.node);
-          break;
+    // cycles: 0 unvisited · 1 on the current path · 2 done
+    const state = new Uint8Array(n);
+    const path = [];
+    let cycle = false;
+    for (let s = 0; s < n; s++) {
+      if (state[s]) continue;
+      path.length = 0;
+      let v = s;
+      while (v !== -1 && state[v] === 0) {
+        state[v] = 1;
+        path.push(v);
+        v = par[v];
+      }
+      if (v !== -1 && state[v] === 1) {
+        // the path from v to its end is a cycle: every row on it becomes a root
+        cycle = true;
+        const members = [];
+        for (let k = path.length - 1; k >= 0; k--) {
+          members.push(path[k]);
+          if (path[k] === v) break;
         }
-        if (seen.has(p)) break; // a cycle further up (its own rows are found when they are visited)
-        seen.add(p);
+        for (const m of members) par[m] = -1;
       }
+      for (const p of path) state[p] = 2;
     }
-    for (const n of onCycle) parentOf.set(n, null);
-    const cycle = onCycle.size > 0;
     if (cycle) this._warnOnce('cycle', 'td-table: parent keys form a cycle — the rows of the cycle are shown as roots.');
-    // pass 4: attach in data order; depth from the roots (deeper than the cap → dropped with its branch)
-    const kids = new Map();
-    const roots = [];
-    for (const it of items) {
-      const p = parentOf.get(it.node);
-      if (!p) roots.push(it.node);
-      else {
-        if (!kids.has(p)) kids.set(p, []);
-        kids.get(p).push(it.node);
+    // depths (memoised, iterative)
+    const depth = new Int32Array(n).fill(-1);
+    for (let s = 0; s < n; s++) {
+      if (depth[s] >= 0) continue;
+      path.length = 0;
+      let v = s;
+      while (v !== -1 && depth[v] < 0) {
+        path.push(v);
+        v = par[v];
       }
+      let d = v === -1 ? -1 : depth[v];
+      for (let k = path.length - 1; k >= 0; k--) depth[path[k]] = ++d;
     }
-    const attach = (node, depth) => {
-      node.depth = depth;
-      const list = kids.get(node) || [];
-      if (node.id === null || node.dup) {
-        node.children = [];
-        for (const c of list) this._dropBranch(c, kids);
-        return;
+    // attach in data order; a row at depth ≥ the cap is dropped (its key forgotten), so are its descendants
+    const hadKids = new Uint8Array(n);
+    const roots = [];
+    let deep = false;
+    for (let i = 0; i < n; i++) {
+      const node = nodes[i];
+      node.depth = depth[i];
+      if (depth[i] >= TREE_MAX_DEPTH) {
+        deep = true;
+        if (node.id !== null && ctx.owners.get(node.id) === node) ctx.owners.delete(node.id);
+        continue;
       }
-      if (list.length && this._tooDeep(depth + 1)) {
-        node.children = [];
-        for (const c of list) this._dropBranch(c, kids);
-        return;
+      const p = par[i];
+      if (p === -1) {
+        roots.push(node);
+        continue;
       }
-      for (const c of list) {
-        c.parent = node;
-        attach(c, depth + 1);
-      }
-      node.children = list;
-      if (!list.length && this._isLazy(node.row)) {
+      hadKids[p] = 1;
+      const parent = nodes[p];
+      if (parent.id === null || parent.dup) continue; // never: a parent is an owner
+      node.parent = parent;
+      parent.children.push(node);
+    }
+    if (deep) this._tooDeep(TREE_MAX_DEPTH);
+    for (let i = 0; i < n; i++) {
+      const node = nodes[i];
+      if (depth[i] >= TREE_MAX_DEPTH || node.id === null || node.dup) continue;
+      if (!hadKids[i] && this._isLazy(node.row)) {
         node.children = null;
         node.lazy = true;
       }
-    };
-    for (const r of roots) attach(r, 0);
+    }
     return roots;
-  }
-
-  /** @private a node that is not shown: forget its key ownership (with its branch) */
-  _dropBranch(node, kids) {
-    if (node.id !== null && this._owners.get(node.id) === node) this._owners.delete(node.id);
-    for (const c of kids.get(node) || []) this._dropBranch(c, kids);
   }
 
   _dirty() {
@@ -242,13 +277,12 @@ export class TableTreeModel {
   get flat() {
     if (!this._flat) {
       const out = [];
-      const walk = (list) => {
-        for (const n of list) {
-          out.push(n);
-          if (n.children) walk(n.children);
-        }
-      };
-      walk(this.roots);
+      const stack = this.roots.slice().reverse();
+      while (stack.length) {
+        const n = stack.pop();
+        out.push(n);
+        if (n.children) for (let i = n.children.length - 1; i >= 0; i--) stack.push(n.children[i]);
+      }
       this._flat = out;
     }
     return this._flat;
@@ -353,18 +387,26 @@ export class TableTreeModel {
     const offset = Number.isFinite(opts.offset) ? opts.offset : 0;
     const total = Number.isFinite(opts.total) ? opts.total : roots.length;
     const status = typeof opts.status === 'function' ? opts.status : null;
-    const walk = (node, level, setsize, posinset) => {
-      out.push({ node, level, setsize, posinset });
-      if (!this.isExpanded(node) || !this.expandable(node)) return;
+    // preorder, iterative (explicit stack of frames pushed in reverse)
+    const stack = [];
+    for (let i = roots.length - 1; i >= 0; i--) stack.push({ node: roots[i], level: 1, setsize: total, posinset: offset + i + 1 });
+    while (stack.length) {
+      const e = stack.pop();
+      if (e.status) {
+        out.push(e);
+        continue;
+      }
+      const { node, level } = e;
+      out.push(e);
+      if (!this.isExpanded(node) || !this.expandable(node)) continue;
       if (node.children === null) {
         const s = status ? status(node) : null;
-        if (s) out.push({ status: s, node, level: level + 1, setsize: 1, posinset: 1 });
-        return;
+        if (s) stack.push({ status: s, node, level: level + 1, setsize: 1, posinset: 1 });
+        continue;
       }
       const kids = sortNodes(node.children, cmp);
-      kids.forEach((c, i) => walk(c, level + 1, kids.length, i + 1));
-    };
-    roots.forEach((r, i) => walk(r, 1, total, offset + i + 1));
+      for (let i = kids.length - 1; i >= 0; i--) stack.push({ node: kids[i], level: level + 1, setsize: kids.length, posinset: i + 1 });
+    }
     return out;
   }
 
@@ -409,7 +451,9 @@ export class TableTreeModel {
       node.loadError = true;
       return { ok: false, error: err || new TypeError('loadChildren must resolve to an array') };
     }
-    const kids = this._parentKey ? this._buildLevel(res, node) : this._buildNested(res, node);
+    const ctx = { owners: new Map(), base: this._owners, count: 0 };
+    const kids = this._parentKey ? this._buildLevel(res, node, ctx) : this._buildNested(res, node, ctx);
+    for (const [id, owner] of ctx.owners) this._owners.set(id, owner); // committed after a complete build
     node.children = kids;
     node.lazy = false;
     this._dirty();
@@ -417,11 +461,11 @@ export class TableTreeModel {
   }
 
   /** @private flat mode: ONE level of loaded children (their parent field is not read) */
-  _buildLevel(rows, parent) {
+  _buildLevel(rows, parent, ctx) {
     const out = [];
     if (this._tooDeep(parent.depth + 1)) return out;
     for (const row of rows) {
-      const node = this._node(row, parent);
+      const node = this._node(row, parent, ctx);
       out.push(node);
       if (node.id !== null && !node.dup && this._isLazy(row)) {
         node.children = null;
@@ -454,7 +498,12 @@ export class TableTreeModel {
   /** @private levels below `node` (0 = no loaded children) */
   _height(node) {
     let h = 0;
-    for (const c of node.children || []) h = Math.max(h, 1 + this._height(c));
+    const stack = [[node, 0]];
+    while (stack.length) {
+      const [x, d] = stack.pop();
+      if (d > h) h = d;
+      for (const c of x.children || []) stack.push([c, d + 1]);
+    }
     return h;
   }
 
@@ -502,18 +551,26 @@ export class TableTreeModel {
     fromList.splice(fromIndex, 1);
     toList.splice(to, 0, node);
     node.parent = parent;
-    const relevel = (x, d) => {
+    const stack = [[node, level - 1]];
+    while (stack.length) {
+      const [x, d] = stack.pop();
       x.depth = d;
-      for (const c of x.children || []) relevel(c, d + 1);
-    };
-    relevel(node, level - 1);
+      for (const c of x.children || []) stack.push([c, d + 1]);
+    }
     this._dirty();
     return { ok: true, node, from, to: { parent, index: to } };
   }
 
   /** Snapshot in model order: `[{ key, row, children: [...] | null }]` (null = lazy, not loaded yet). */
   getTree() {
-    const snap = (list) => list.map((n) => ({ key: n.key, row: n.row, children: n.children === null ? null : snap(n.children) }));
-    return snap(this.roots);
+    const out = [];
+    const stack = this.roots.map((n) => [n, out]).reverse();
+    while (stack.length) {
+      const [n, into] = stack.pop();
+      const t = { key: n.key, row: n.row, children: n.children === null ? null : [] };
+      into.push(t);
+      if (n.children) for (let i = n.children.length - 1; i >= 0; i--) stack.push([n.children[i], t.children]);
+    }
+    return out;
   }
 }
