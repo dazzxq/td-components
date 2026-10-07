@@ -2,10 +2,10 @@ import { escapeHtml } from '../utils/escape.js';
 import '../styles/story-layout.css';
 import './td-action-button.js';
 
-/** The 23 dcms2 presets (TdActionButton.presets) — listed here so the story renders without a DOM. */
+/** The 23 dcms2 presets + the 3 kit presets of v0.56.0 (TdActionButton.presets) — listed so the story renders without a DOM. */
 const PRESETS = ['edit', 'view', 'review', 'remove', 'unpublish', 'withdraw', 'return', 'log', 'versions', 'password', 'reset',
   'open', 'copy', 'delete', 'download', 'moveup', 'movedown', 'publish', 'send-to-publish', 'submit', 'claim', 'release',
-  'force-release'];
+  'force-release', 'archive', 'restore', 'discontinue'];
 const pick = (v, list, def) => (list.includes(v) ? v : def);
 
 export default {
@@ -37,7 +37,7 @@ export const Default = {
   args: { action: 'edit', size: 'md', tone: '', label: '', icon: '', disabled: false, loading: false },
 };
 
-/** Every dcms2 preset (hover / focus → tooltip = the label). */
+/** Every preset (hover / focus → tooltip = the label). */
 export const AllPresets = {
   render: () => `<div class="td-action-group">${PRESETS.map((a) => `<td-action-button action="${a}"></td-action-button>`).join('')}</div>`,
 };
@@ -55,8 +55,21 @@ export const RowActions = {
       <td-action-button action="view" href="#bai-viet-1"></td-action-button>
       <td-action-button action="edit"></td-action-button>
       <td-action-button action="versions"></td-action-button>
-      <td-action-button action="archive" icon="inbox" label="Lưu trữ" tone="warning"></td-action-button>
+      <td-action-button action="pin-top" icon="star" label="Ghim lên đầu"></td-action-button>
       <td-action-button action="delete" disabled></td-action-button>
+    </div>
+  `,
+};
+
+/** v0.56.0: product / inventory row — archive, restore (out of the archive), discontinue (reversible → warning). */
+export const InventoryActions = {
+  render: () => `
+    <div class="td-action-group">
+      <td-action-button action="edit"></td-action-button>
+      <td-action-button action="archive"></td-action-button>
+      <td-action-button action="restore"></td-action-button>
+      <td-action-button action="discontinue"></td-action-button>
+      <td-action-button action="discontinue" label="Ngừng bán"></td-action-button>
     </div>
   `,
 };

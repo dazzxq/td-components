@@ -10,6 +10,8 @@
  *   submit     a native submit of the dirty form navigates without a dialog.
  *   affix      v0.55.0: td-input-field / td-number-input with prefix / suffix / icons / a [slot] button — pressing the slot
  *              button and changing affix attributes / locale at run time is never dirty (no dialog); typing is.
+ *   repeater   v0.56.0 (plan v0.56.0-repeater-icons-date R5): td-repeater `value =` / `readonly` / `disabled` from code
+ *              after a click → no dialog; the user typed, then `disabled` from code took the fields out → dialog.
  *
  * WebKit: best-effort — when Playwright's WebKit does not raise the dialog for a dirty page, it is noted, not failed.
  * Run: npm run test:engines
@@ -39,6 +41,18 @@ const AFFIX_PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><
   <td-input-field id="site" name="site" label="Website" prefix="https://" value="congty"><button type="button" slot="suffix" id="sb">x</button></td-input-field>
   <td-number-input id="price" name="price" label="Giá" suffix="₫" suffix-icon="lock" value="1000"></td-number-input>
 </form>
+</body></html>`;
+
+const REPEATER_PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
+<script type="module">
+  import { trackFormDirty } from '${ORIGIN}/src/utils/form-validation.js';
+  import '${ORIGIN}/src/form/td-repeater.js';
+  await customElements.whenDefined('td-repeater');
+  window.tracker = trackFormDirty(document.getElementById('f'));
+  window.__ready = true;
+</script></head><body>
+<form id="f" action="${ORIGIN}/other" method="get"><td-repeater label="Dòng"><template><div data-td-row><input data-td-field="a" name="items[]"></div></template>
+<div data-td-row><input id="a0" data-td-field="a" name="items[]" value="a"></div></td-repeater><button id="go">Lưu</button></form>
 </body></html>`;
 
 const report = createReport('Form dirty beforeunload engines');
@@ -141,6 +155,29 @@ async function runEngine(name, launcher) {
     check(`${name} affix: typing in the boxed control is dirty`, typed, String(typed));
     r = await leave(page, { dismiss: true });
     soft(`${name} affix dirty: dialog shown`, r.seen.includes('beforeunload'), JSON.stringify(r));
+    await context.close();
+
+    // v0.56.0 repeater: code changes never count; disabled after a user edit does (fields leave FormData)
+    ({ page, context } = await freshPage(browser, REPEATER_PAGE));
+    await page.click('#a0');
+    await page.evaluate(() => {
+      const rep = document.querySelector('td-repeater');
+      rep.value = [{ a: 'x' }, { a: 'y' }];
+      rep.readonly = true;
+      rep.readonly = false;
+      rep.disabled = true;
+    });
+    r = await leave(page);
+    check(`${name} repeater value / readonly / disabled from code: no dialog`, r.seen.length === 0 && r.left, JSON.stringify(r));
+    await context.close();
+
+    ({ page, context } = await freshPage(browser, REPEATER_PAGE));
+    await page.click('#a0');
+    await page.keyboard.type('Z');
+    await page.keyboard.press('Backspace');
+    await page.evaluate(() => { document.querySelector('td-repeater').disabled = true; });
+    r = await leave(page, { dismiss: true });
+    soft(`${name} repeater disabled after a user edit: dialog (fields left FormData)`, r.seen.includes('beforeunload') && !r.left, JSON.stringify(r));
     await context.close();
   } finally {
     await browser.close();

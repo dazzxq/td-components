@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.55.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.56.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.56.0](#0560) | Thêm tính năng (`td-repeater` `value` / `disabled` / `readonly`, 6 icon + 3 preset nút thao tác, PHP `td_datetime_picker` / `td_date`, `Td::registerActionPresets`) + đổi hành vi nhỏ | Kiểm tra `registerIcons()` của site: tên **`archive`, `restore`, `category`, `brand`, `product`, `ban`** giờ là icon core → đăng ký trùng tên **ném lỗi** (đổi tên icon site, vd. `site-archive`). Alias mới `archive-restore`, `folder-tree`, `tag`, `trademark`, `package` (icon site cùng tên vẫn thắng). App xử lý `rows-change` bằng `switch (reason)` không có nhánh mặc định: thêm `'set'`. |
 | [0.55.0](#0550) | Đổi hành vi rất nhỏ (`td-number-input`, phím `.` / `,`) + thêm tính năng (tiền tố / hậu tố cho `td-input-field`, icon / slot affix, `locale`, `--td-field-note-size`) | Không bắt buộc. Ô số có `decimals > 0`: gõ `.` **hoặc** `,` khi chưa có dấu thập phân giờ ra dấu thập phân của ô (trước: dấu nhóm bị chặn). Luật CSS hộp số chuyển sang `field.css` (cùng giá trị). |
 | [0.54.0](#0540) | Đổi hành vi + đổi giao diện nhỏ (hint / lỗi) + thêm tính năng (`helper-text` mọi control, `<td-hint>`, toggle `on-text` / `off-text`) | Không bắt buộc, nhưng xem lại: đang hiện lỗi thì hint **ẩn** (trước 5 control hiện cả hai) — câu lỗi nên tự đủ nghĩa; lỗi checkbox / toggle thụt dưới nhãn; PHP giờ giữ `attrs['aria-describedby']` của site ở chế độ element. Import map: thêm `hint`. Thay các dòng hint tự viết bằng `helper-text` / `<td-hint for>`. |
 | [0.53.1](#0531) | Đổi giao diện nhỏ (`td-choice-group variant="segmented" size="sm"`) | Không bắt buộc. `sm` gọn hơn (đệm ngang 6 px, icon 16 px, khoảng icon 4 px, chữ nhỏ hơn); muốn giữ cũ: đặt lại `--td-choice-seg-px` / `--td-choice-seg-icon` / `--td-choice-seg-icon-gap` / `--td-choice-seg-font` trên `.td-choice--sm`. Thanh segmented giờ cuộn ngang bên trong khi quá hẹp (trước: tràn ra ngoài). |
@@ -78,6 +79,23 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.56.0
+
+**Mức: thêm tính năng + đổi hành vi nhỏ.**
+
+- **Tên icon core mới:** `archive`, `restore`, `category`, `brand`, `product`, `ban` (+ alias `archive-restore`,
+  `folder-tree`, `tag`, `trademark`, `package`). `registerIcons({ archive: … })` (JS) / `Td::registerIcons(['archive' => …])`
+  (PHP) của site giờ **ném lỗi** vì trùng tên core — đổi tên icon site (`site-archive`) hoặc dùng icon core. Site đăng ký
+  icon trùng tên **alias** thì icon site vẫn thắng như trước. (Đã quét dsuite / dwp / 135: không site nào đăng ký các tên này.)
+- **Preset nút thao tác mới:** `archive` (Lưu trữ, warning), `restore` (Khôi phục, standard), `discontinue` (Ngừng kinh doanh,
+  warning). Site đã `TdActionButton.registerPreset('archive', …)` vẫn chạy (ghi đè preset của kit); PHP giờ đăng ký được bằng
+  `Td::registerActionPresets()` — trước đó phải truyền `icon` + `label` mỗi lời gọi.
+- **`td-repeater` `rows-change` có thêm `reason: 'set'`** (gán `value`). Code chỉ đọc `rows` / đặt tên không phải sửa; code
+  `switch (reason)` liệt kê đủ nhánh mà không có `default` thì thêm `'set'`.
+- **`td-repeater` quan sát `disabled` / `readonly`:** repeater đang mang sẵn một trong hai thuộc tính này (trước vô nghĩa)
+  giờ **khoá** thật sau khi nâng cấp ([repeater § 8](../components/repeater.md#8-khoá-disabled--readonly-0560)).
+- **PHP:** thêm `td_datetime_picker()` / `td_date()` — markup mọi helper khác giống từng byte.
 
 ## 0.55.0
 

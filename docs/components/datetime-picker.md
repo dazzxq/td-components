@@ -66,16 +66,20 @@ Giá trị phải là ngày thật (có tính năm nhuận: `29/02/2025` sai, `2
 
 ### 2. Giá trị ban đầu từ server (PHP)
 
-Attribute `value` nhận định dạng display, hoặc ISO của mode (từ 0.18.0: `2026-06-15T10:30` ở mode datetime). Chuỗi
-**DB** (`2026-06-15 10:30:00`, có dấu cách) thì không — hãy đổi trước khi in:
+**0.56.0: dùng helper** — in đúng markup, nhận mọi định dạng (cả chuỗi DB), chạy cả khi không có JS (ô ngày native tạo
+dáng như trigger), JS nhận **tại chỗ** không nháy ([PHP adapter § td_datetime_picker / td_date](../guides/php-adapter.md#td_datetime_picker--td_date-0560)):
 
 ```php
-<td-datetime-picker name="publish_at" label="Thời gian đăng"
-  value="<?= $post['publish_at'] ? htmlspecialchars(date('d/m/Y - H:i', strtotime($post['publish_at'])), ENT_QUOTES) : '' ?>">
-</td-datetime-picker>
+<?= td_datetime_picker('publish_at', $post['publish_at'], ['label' => 'Thời gian đăng']) ?>   // '2026-06-15 10:30:00' được
+<?= td_date('ngay_giao', $order['ship_date'], ['label' => 'Ngày giao', 'min' => date('Y-m-d'), 'required' => true]) ?>
 ```
 
-Hoặc để nguyên chuỗi DB và gán bằng JS:
+Không có `min` / `max`, giá trị server ngoài năm 2000–2099 bị bỏ (một cảnh báo PHP) — như picker coi năm đó là không hợp
+lệ; ngày sinh / ngày cũ thì đặt `min` (vd. `'min' => '1900-01-01'`). Không JS, ô native gửi định dạng của trình duyệt:
+`yyyy-mm-dd` (mode date — trùng iso) / `yyyy-mm-ddThh:mm` (mode datetime).
+
+In tay (không dùng helper): attribute `value` nhận định dạng display, hoặc ISO của mode (từ 0.18.0: `2026-06-15T10:30` ở
+mode datetime). Chuỗi **DB** (`2026-06-15 10:30:00`, có dấu cách) thì không — đổi trước khi in, hoặc gán bằng JS:
 
 ```js
 picker.setDBValue('2026-06-15 10:30:00');   // cũng nhận '2026-06-15T10:30'
@@ -363,6 +367,10 @@ giữ 5 dòng: đặt `--td-dtp-visible: 5` trong `@media (max-width: 719.98px)`
   <span class="td-field-error" id="{host}-error" data-for="{host}">…</span>   <!-- chỉ khi có lỗi -->
 </td-datetime-picker>
 ```
+
+Markup PHP (0.56.0, `data-td-ssr="datetime-picker@1"`) có thêm `input.td-dtp__native` (ô ngày native, `id="{host}-native"`)
+giữa nhãn và trigger, nhãn `for="{host}-native"`; trước khi nâng cấp ô native mang hộp của trigger và trigger bị ẩn
+(`td-datetime-picker:not(:defined)`); khi nâng cấp component gỡ ô native và trỏ nhãn sang trigger.
 
 Thân hộp thoại (bên trong TdModal; `{p}` = `{host}-dtp{n}`, `n` tăng mỗi lần mở):
 

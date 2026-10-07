@@ -1990,6 +1990,61 @@
       "settle": 450,
       "pseudo": "focus",
       "focusSelector": ".td-dtp-wheel__list"
+    },
+    {
+      "state": "ssr-pre-date",
+      "module": "/src/icons/td-icon.js",
+      "markup": "<td-datetime-picker data-td-ssr=\"datetime-picker@1\" id=\"csp-dtp\" name=\"ngay\" mode=\"date\" value=\"15/06/2026\" label=\"Ngày giao\"><div class=\"td-dtp\" data-state=\"closed\"><label class=\"td-field__label\" id=\"csp-dtp-label\" for=\"csp-dtp-native\">Ngày giao</label><input class=\"td-dtp__native\" type=\"date\" id=\"csp-dtp-native\" name=\"ngay\" value=\"2026-06-15\" min=\"2000-01-01\" max=\"2099-12-31\"><button type=\"button\" class=\"td-dtp__trigger\" id=\"csp-dtp-trigger\" role=\"combobox\" aria-haspopup=\"dialog\" aria-expanded=\"false\"><span class=\"td-dtp__value\">15/06/2026</span><span class=\"td-dtp__icon\" data-td-icon=\"calendar\" aria-hidden=\"true\"></span></button></div></td-datetime-picker>",
+      "selectors": [
+        "td-datetime-picker:not(:defined) .td-dtp__native",
+        ".td-dtp__trigger",
+        ".td-field__label"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.56.0 (plan D7, ADR 0025 kind (a)): php td_date() BEFORE the element is defined (only the icon module): the native date input carries the closed trigger's box, the trigger is display none; text-sized boxes (label, the browser's date text inside the native input) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front"
+    },
+    {
+      "state": "ssr-pre-datetime-disabled",
+      "module": "/src/icons/td-icon.js",
+      "markup": "<td-datetime-picker data-td-ssr=\"datetime-picker@1\" id=\"csp-dtp-dt\" name=\"hen\" mode=\"datetime\" value=\"15/06/2026 - 09:30\" label=\"Giờ hẹn\" disabled><div class=\"td-dtp\" data-state=\"closed\"><label class=\"td-field__label\" id=\"csp-dtp-dt-label\" for=\"csp-dtp-dt-native\">Giờ hẹn</label><input class=\"td-dtp__native\" type=\"datetime-local\" id=\"csp-dtp-dt-native\" name=\"hen\" value=\"2026-06-15T09:30\" min=\"2000-01-01T00:00\" max=\"2099-12-31T23:59\" disabled><button type=\"button\" class=\"td-dtp__trigger\" id=\"csp-dtp-dt-trigger\" role=\"combobox\" aria-haspopup=\"dialog\" aria-expanded=\"false\" disabled><span class=\"td-dtp__value\">15/06/2026 - 09:30</span><span class=\"td-dtp__icon\" data-td-icon=\"calendar\" aria-hidden=\"true\"></span></button></div></td-datetime-picker>",
+      "selectors": [
+        "td-datetime-picker:not(:defined) .td-dtp__native:disabled",
+        ".td-dtp__trigger"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.56.0: php td_datetime_picker() disabled before define: the native datetime-local input = the disabled trigger surface; text-sized boxes (label, the browser's date text inside the native input) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front"
+    },
+    {
+      "state": "ssr-adopted",
+      "markup": "<td-datetime-picker data-td-ssr=\"datetime-picker@1\" id=\"csp-dtp\" name=\"ngay\" mode=\"date\" value=\"15/06/2026\" label=\"Ngày giao\"><div class=\"td-dtp\" data-state=\"closed\"><label class=\"td-field__label\" id=\"csp-dtp-label\" for=\"csp-dtp-native\">Ngày giao</label><input class=\"td-dtp__native\" type=\"date\" id=\"csp-dtp-native\" name=\"ngay\" value=\"2026-06-15\" min=\"2000-01-01\" max=\"2099-12-31\"><button type=\"button\" class=\"td-dtp__trigger\" id=\"csp-dtp-trigger\" role=\"combobox\" aria-haspopup=\"dialog\" aria-expanded=\"false\"><span class=\"td-dtp__value\">15/06/2026</span><span class=\"td-dtp__icon\" data-td-icon=\"calendar\" aria-hidden=\"true\"></span></button></div></td-datetime-picker>",
+      "selectors": [
+        ".td-dtp__trigger",
+        ".td-dtp__value",
+        ".td-field__label"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.56.0: the same php markup adopted in place under the strict CSP (native input removed, trigger shown); text-sized boxes (label, the browser's date text inside the native input) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front"
     }
   ],
   "td-tooltip": [
@@ -3294,6 +3349,61 @@
         "margin-left"
       ],
       "selectorNote": "v0.31.0 opt-in sortable: the handle opens the action group (same ghost button as ↑ ↓ ×, touch-action none); the host is the placeholder's containing block"
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-repeater label=\"Hộp gồm\" disabled sortable><template><div data-td-row><input aria-label=\"Tên\"></div></template><div data-td-row><input aria-label=\"Tên\" value=\"Sạc\"></div><div data-td-row><input aria-label=\"Tên\" value=\"Cáp\"></div></td-repeater>",
+      "selectors": [
+        "td-repeater",
+        ".td-repeater__actions > .td-sortable__handle:disabled",
+        ".td-repeater__btn--remove:disabled",
+        ".td-repeater__add:disabled"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.56.0 (plan R7 / R8 / R6) — text-sized boxes (the add button's label, the row input's intrinsic width, the auto margin of the actions) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front; disabled = like <fieldset disabled>: kit buttons + row inputs disabled natively, host aria-disabled; the app's own row inputs are not snapshotted (unstyled by the kit: the host page / Tailwind preflight styles them)"
+    },
+    {
+      "state": "readonly",
+      "markup": "<td-repeater label=\"Hộp gồm\" readonly sortable><template><div data-td-row><input aria-label=\"Tên\"></div></template><div data-td-row><input aria-label=\"Tên\" value=\"Sạc\"></div><div data-td-row><input aria-label=\"Tên\" value=\"Cáp\"></div></td-repeater>",
+      "selectors": [
+        ".td-repeater__row",
+        ".td-repeater__actions",
+        ".td-repeater__footer"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.56.0 (plan R7 / R8 / R6) — text-sized boxes (the add button's label, the row input's intrinsic width, the auto margin of the actions) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front; readonly: every kit button hidden → the empty action cluster is display none, the footer drops its padding; the app's own row inputs are not snapshotted (unstyled by the kit: the host page / Tailwind preflight styles them)"
+    },
+    {
+      "state": "fieldset-disabled",
+      "markup": "<fieldset disabled><td-repeater label=\"Hộp gồm\" sortable><template><div data-td-row><input aria-label=\"Tên\"></div></template><div data-td-row><input aria-label=\"Tên\" value=\"Sạc\"></div><div data-td-row><input aria-label=\"Tên\" value=\"Cáp\"></div></td-repeater></fieldset>",
+      "selectors": [
+        ".td-repeater__actions > .td-sortable__handle:disabled",
+        ".td-repeater__btn--up:disabled",
+        ".td-repeater__add:disabled"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.56.0 (plan R7 / R8 / R6) — text-sized boxes (the add button's label, the row input's intrinsic width, the auto margin of the actions) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front; an ancestor fieldset[disabled]: the browser disables the buttons natively, the repeater writes nothing"
     }
   ],
   "td-sortable": [
@@ -4346,6 +4456,16 @@
         ".td-btn--action"
       ],
       "selectorNote": "v0.36.0: CSS-only group (gap 4 / 8 coarse)"
+    },
+    {
+      "state": "kit-presets",
+      "markup": "<div class=\"td-action-group\"><td-action-button action=\"archive\"></td-action-button><td-action-button action=\"restore\"></td-action-button><td-action-button action=\"discontinue\"></td-action-button></div>",
+      "selectors": [
+        ".td-btn--action-warning",
+        ".td-btn--action-standard",
+        ".td-btn__icon svg"
+      ],
+      "selectorNote": "v0.56.0 (plan A2): the kit presets archive / discontinue (warning) + restore (standard) — existing tone tokens, new icons"
     }
   ],
   "td-scan-input": [

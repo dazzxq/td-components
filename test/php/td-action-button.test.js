@@ -77,10 +77,14 @@ function withWarnings(args) {
 }
 
 describe('td-action-button presets (QĐ 11) — one inventory', () => {
-  test('JS: exactly the 23 dcms2 keys (camelCase → kebab), every icon in the registry', async () => {
+  test('JS: the 23 dcms2 keys (camelCase → kebab) then the 3 kit presets of v0.56.0, every icon in the registry', async () => {
     const names = Object.keys(TdActionButton.presets);
-    assert.equal(names.length, 23);
-    assert.deepEqual(names, ACTION_BUTTON_FIXTURES.dcmsKeys.map(canonAction));
+    assert.equal(names.length, 26);
+    assert.deepEqual(names, [...ACTION_BUTTON_FIXTURES.dcmsKeys.map(canonAction), ...ACTION_BUTTON_FIXTURES.kitKeys]);
+    // v0.56.0 (plan A2): archive / restore / discontinue — reversible status changes, never `danger`
+    assert.deepEqual(TdActionButton.presets.archive, { icon: 'archive', label: 'Lưu trữ', tone: 'warning' });
+    assert.deepEqual(TdActionButton.presets.restore, { icon: 'restore', label: 'Khôi phục', tone: 'standard' });
+    assert.deepEqual(TdActionButton.presets.discontinue, { icon: 'ban', label: 'Ngừng kinh doanh', tone: 'warning' });
     assert.equal(canonAction('sendToPublish'), 'send-to-publish');
     assert.equal(canonAction('forceRelease'), 'force-release');
     assert.equal(canonAction('moveup'), 'moveup');
@@ -116,7 +120,7 @@ describe('php td_action_button — element mode == render() (QĐ 14)', opts, () 
       }
     }
     const res = runPhp(calls.map(({ fn, args }) => ({ fn, args })), { baseUrl: '/' });
-    assert.equal(res.length, 23 * 27);
+    assert.equal(res.length, 26 * 27);
     res.forEach((r, i) => {
       const { args: [name, o], mode } = calls[i];
       const ctx = `${name} ${o.tone} ${o.size} ${mode}`;
@@ -228,6 +232,40 @@ describe('php td_action_button — element mode == render() (QĐ 14)', opts, () 
     assert.equal(c.attrs.get('class'), 'td-btn td-btn--action td-btn--action-danger td-btn--action-md a b');
     assert.equal(c.attrs.get('disabled'), '');
     assert.ok(r.out.includes('data-icon="trash"'));
+  });
+
+  test('v0.56.0 Td::registerActionPresets: site presets render like JS registerPreset; bad data rejected as a whole batch', () => {
+    const code = `require ${JSON.stringify(join(ROOT, 'php/td.php'))}; use TdComponents\\Td; Td::configure('/', ${JSON.stringify(ROOT)});`
+      + ` $o = [];`
+      + ` Td::registerActionPresets(['pin-top' => ['icon' => 'star', 'label' => 'Ghim', 'tone' => 'standard'], 'archive' => ['icon' => 'inbox', 'label' => 'Cất kho']]);`
+      + ` $o['pin'] = td_action_button('pin-top', ['element' => true]); $o['archive'] = td_action_button('archive', ['element' => true]);`
+      + ` $o['edit'] = td_action_button('edit', ['element' => true]);`
+      + ` foreach ([`
+      + `   ['bad name' => ['icon' => 'star', 'label' => 'X']], ['ok-one' => ['icon' => 'star', 'label' => 'X'], 'bad-icon' => ['icon' => 'no-such-icon', 'label' => 'X']],`
+      + `   ['no-label' => ['icon' => 'star', 'label' => '  ']], ['bad-tone' => ['icon' => 'star', 'label' => 'X', 'tone' => 'info']], ['null-tone' => ['icon' => 'star', 'label' => 'X', 'tone' => null]], ['not-array' => 'star'],`
+      + ` ] as $i => $defs) { try { Td::registerActionPresets($defs); $o['bad' . $i] = 'accepted'; } catch (InvalidArgumentException $e) { $o['bad' . $i] = 'rejected'; } }`
+      + ` $o['partial'] = td_action_button('ok-one', ['element' => true]);`
+      + ` echo json_encode($o, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);`;
+    const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-d', 'log_errors=0', '-d', 'error_reporting=E_ALL', '-r', code], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    const o = JSON.parse(r.stdout);
+    const pin = splitHost(o.pin);
+    assert.equal(pin.control.attrs.get('aria-label'), 'Ghim');
+    assert.ok(pin.control.inner.includes('data-td-icon="star"'));
+    // the same preset registered in JS renders the same control (element mode = render())
+    TdActionButton.registerPreset('pin-top', { icon: 'star', label: 'Ghim', tone: 'standard' });
+    try {
+      const js = control(jsRender(pin.host));
+      assert.deepEqual(withoutState(pin.control.attrs), withoutState(js.attrs));
+      assert.equal(pin.control.inner, js.inner);
+    } finally { delete TdActionButton.presets['pin-top']; }
+    // a site preset replaces the kit one of the same name (site table first)
+    assert.equal(splitHost(o.archive).control.attrs.get('aria-label'), 'Cất kho');
+    assert.ok(splitHost(o.archive).control.inner.includes('data-td-icon="inbox"'));
+    assert.equal(splitHost(o.edit).control.attrs.get('aria-label'), 'Chỉnh sửa');
+    for (let i = 0; i < 6; i += 1) assert.equal(o[`bad${i}`], 'rejected', `bad${i}`);
+    assert.equal(o.partial, '', 'all or nothing: ok-one of a rejected batch is not registered');
+    assert.ok(/td_action_button: unknown action "ok-one"/.test(r.stderr), r.stderr);
   });
 
   test('test/ssr/fixtures/action-button.html is fresh (node test/ssr/build-action-button-fixture.mjs)', () => {

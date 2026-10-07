@@ -235,6 +235,50 @@ describe('trackFormDirty — td controls', () => {
     await until(() => !t.isDirty());
   });
 
+  // v0.56.0 (plan v0.56.0-repeater-icons-date R5): value / disabled / readonly from code are not user changes
+  const repForm = () => mount(`<form id="f"><td-repeater label="Dòng"><template><div data-td-row><input data-td-field="a" name="items[]"></div></template>
+      <div data-td-row><input data-td-field="a" name="items[]" value="a"></div></td-repeater><input name="other" value="o"></form>`);
+
+  it('v0.56 td-repeater: value = […] / disabled / readonly from code before any user edit → not dirty', async () => {
+    const form = repForm();
+    const rep = /** @type {any} */ (form.querySelector('td-repeater'));
+    await frames(2);
+    const { t, log } = track(form);
+    rep.value = [{ a: 'x' }, { a: 'y' }];
+    rep.readonly = true;
+    rep.readonly = false;
+    rep.disabled = true;
+    await frames(2);
+    expect(new FormData(form).getAll('items[]')).to.deep.equal([]);
+    expect(t.check()).to.equal(false);
+    expect(log).to.deep.equal([]);
+    expect(unload()).to.equal(false);
+  });
+
+  it('v0.56 td-repeater: readonly never changes the snapshot; disabled AFTER a user edit takes the fields out → dirty (like <fieldset disabled>)', async () => {
+    const form = repForm();
+    const rep = /** @type {any} */ (form.querySelector('td-repeater'));
+    await frames(2);
+    const { t } = track(form);
+    const other = form.querySelector('input[name="other"]');
+    await typeIn(other, 'z');
+    await until(() => t.isDirty());
+    await sendKeys({ press: 'Backspace' });
+    await until(() => !t.isDirty());
+    rep.readonly = true;
+    expect(t.check()).to.equal(false);
+    rep.readonly = false;
+    rep.disabled = true;
+    expect(t.check()).to.equal(true);
+    rep.disabled = false;
+    expect(t.check()).to.equal(false);
+    rep.value = [{ a: 'changed' }];
+    expect(t.check()).to.equal(true); // after the user reached the form, a code change of FormData counts (snapshot)
+    t.markClean();
+    rep.value = [{ a: 'again' }];
+    expect(t.check()).to.equal(false);
+  });
+
   it('a custom element defined AFTER trackFormDirty (hydrate) is no fake dirty — also after the user starts editing', async () => {
     const tag = `td-v044-late-${Math.random().toString(36).slice(2, 8)}`;
     const form = mount(`<form id="f"><input name="a" value="1"><${tag} name="late"></${tag}></form>`);

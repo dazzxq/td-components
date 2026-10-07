@@ -12,7 +12,158 @@ const REF_ATTRS = ['for', 'aria-labelledby', 'aria-describedby', 'aria-controls'
 const FOCUSABLE = 'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), '
   + 'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
 
+/** v0.56.0 (plan v0.56.0-repeater-icons-date R1): the field key of a row (never derived from `name`). */
+const FIELD = 'data-td-field';
+/** Longest key / tag text a warning repeats (app data — console only, never markup). */
+const WARN_TEXT_MAX = 64;
+/** Codex security r1 (CWE-117): a site/API-supplied text in a console warning — C0 / DEL / C1 controls and U+2028 / U+2029
+ * escaped as \uXXXX (no forged log lines), then capped. */
+const logSafe = (v) => String(v).slice(0, WARN_TEXT_MAX)
+  .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+
+/** v0.56.0 (R8): input types whose value is text the user types → `readonly` applies (HTML: readonly is honoured). */
+const READONLY_TYPES = new Set(['text', 'search', 'url', 'tel', 'email', 'password', 'number', 'date', 'month', 'week',
+  'time', 'datetime-local']);
+/** v0.56.0 (R8): inputs that are never a field the user edits (no lock, no warning). */
+const NOT_FIELD_TYPES = new Set(['hidden', 'button', 'submit', 'reset', 'image']);
+
 let _uid = 0;
+
+/**
+ * v0.56.0 (R1): the fields of `row` grouped by key, in DOM order — a field belongs to its NEAREST row (nested repeaters
+ * never mix). Only form fields: input, select, textarea, custom elements (anything else carrying the key is ignored).
+ * @param {Element} row
+ * @returns {Map<string, Element[]>}
+ */
+function fieldGroups(row) {
+  const groups = new Map();
+  for (const el of row.querySelectorAll(`[${FIELD}]`)) {
+    if (el.closest(`[${ROW}]`) !== row) continue;
+    const key = el.getAttribute(FIELD);
+    if (!key) continue;
+    const n = el.localName;
+    if (n !== 'input' && n !== 'select' && n !== 'textarea' && !n.includes('-')) continue;
+    const list = groups.get(key);
+    if (list) list.push(el);
+    else groups.set(key, [el]);
+  }
+  return groups;
+}
+
+/**
+ * v0.56.0 (R2): how a group of fields is read / written — by ELEMENT KIND, never by tag name list.
+ * @param {Element[]} els
+ * @returns {{ kind: 'text'|'multi'|'check'|'checks'|'radio'|'bool'|'nested'|'custom'|'file', els: Element[] }}
+ */
+function kindOf(els) {
+  const first = /** @type {any} */ (els[0]);
+  if (first.localName === 'input') {
+    const t = first.type;
+    if (t === 'file') return { kind: 'file', els };
+    if (t === 'radio') return { kind: 'radio', els: els.filter((e) => /** @type {any} */ (e).type === 'radio') };
+    if (t === 'checkbox') {
+      const boxes = els.filter((e) => /** @type {any} */ (e).type === 'checkbox');
+      return { kind: boxes.length > 1 ? 'checks' : 'check', els: boxes };
+    }
+    return { kind: 'text', els };
+  }
+  if (first.localName === 'select') return { kind: first.multiple ? 'multi' : 'text', els };
+  if (first.localName === 'textarea') return { kind: 'text', els };
+  if (typeof first.checked === 'boolean') return { kind: 'bool', els };
+  return { kind: first.localName === 'td-repeater' ? 'nested' : 'custom', els };
+}
+
+/** @param {Function} C @returns {string[]} the class's observed attributes (a throwing getter → none) */
+function observedOf(C) {
+  try {
+    const list = C.observedAttributes;
+    return Array.isArray(list) ? list : [];
+  } catch { return []; }
+}
+
+/**
+ * v0.56.0 (R7 / R8): the attribute that locks `el` in `mode`, found from its KIND / CLASS (never a tag list) — null when
+ * it has no such capability (or is a custom element not defined yet: decided once it is).
+ * @param {Element} el @param {'disabled'|'readonly'} mode
+ * @returns {'disabled'|'readonly'|'locked'|null}
+ */
+function lockAttr(el, mode) {
+  const n = el.localName;
+  if (n.includes('-')) {
+    const C = customElements.get(n);
+    if (!C) return null;
+    const obs = observedOf(C);
+    if (mode === 'disabled') return C.formAssociated === true || obs.includes('disabled') ? 'disabled' : null;
+    if (obs.includes('readonly')) return 'readonly';
+    return obs.includes('locked') ? 'locked' : null; // td-toggle 0.52: frozen, still submitted
+  }
+  if (mode === 'disabled') return 'disabled'; // input / select / textarea / button: like <fieldset disabled>
+  if (n === 'textarea') return 'readonly';
+  return n === 'input' && READONLY_TYPES.has(/** @type {HTMLInputElement} */ (el).type) ? 'readonly' : null;
+}
+
+/**
+ * v0.56.0 (R8): a field `readonly` cannot lock, named for the one warning — null when it is not a field the user edits
+ * (buttons, hidden inputs, non-form custom elements) or not defined yet.
+ * @param {Element} el
+ * @returns {string|null}
+ */
+function unlockableName(el) {
+  const n = el.localName;
+  if (n.includes('-')) {
+    const C = customElements.get(n);
+    if (!C) return null;
+    return C.formAssociated === true || el.hasAttribute(FIELD) ? n : null;
+  }
+  if (n === 'button') return null;
+  if (n === 'select') return 'select';
+  const t = /** @type {HTMLInputElement} */ (el).type;
+  return NOT_FIELD_TYPES.has(t) ? null : `input[type=${t}]`;
+}
+
+/** @param {{ kind: string, els: any[] }} f */
+function readField({ kind, els }) {
+  const el = els[0];
+  switch (kind) {
+    case 'multi': return [...el.selectedOptions].map((o) => o.value);
+    case 'check':
+    case 'bool': return !!el.checked;
+    case 'checks': return els.filter((e) => e.checked).map((e) => e.value);
+    case 'radio': return els.find((e) => e.checked)?.value ?? null;
+    case 'nested':
+    case 'custom': return el.value;
+    default: return el.value;
+  }
+}
+
+/** @param {{ kind: string, els: any[] }} f @param {boolean} present @param {unknown} v */
+function writeField({ kind, els }, present, v) {
+  const el = els[0];
+  const list = present && Array.isArray(v) ? v.map(String) : [];
+  switch (kind) {
+    case 'multi':
+      for (const o of el.options) o.selected = list.includes(o.value);
+      return;
+    case 'check':
+    case 'bool':
+      el.checked = present && !!v;
+      return;
+    case 'checks':
+      for (const e of els) e.checked = list.includes(e.value);
+      return;
+    case 'radio':
+      for (const e of els) e.checked = present && v != null && e.value === String(v);
+      return;
+    case 'nested':
+      el.value = present ? v : [];
+      return;
+    case 'custom':
+      el.value = present ? v : '';
+      return;
+    default:
+      el.value = present ? String(v ?? '') : '';
+  }
+}
 
 /**
  * <td-repeater> — dynamic list of rows (add / remove / reorder) built from the app's own markup (v0.30.0, plan
@@ -50,6 +201,21 @@ let _uid = 0;
  *   and Escape goes through `_move()` → one `rows-change` `reason: 'move'` `source: 'user'` each (no `order-change`).
  *   Without `sortable` nothing of it exists (an app handle button gets `hidden`).
  *
+ * - v0.56.0 data (plan v0.56.0-repeater-icons-date R1–R4, ADR 0029): fields marked `data-td-field="key"` are read / written
+ *   by `value` (an array of row objects, one per row, DOM order) — by element kind (text / select / multiple / one
+ *   checkbox → boolean / checkbox group → values / radio group → value | null / td-* `checked` → boolean / other td-*
+ *   `value`, a nested td-repeater its own array); `input[type=file]` is skipped. Still NEVER `name` / `form`: the app's
+ *   naming recipe on `rows-change` stays the one source of FormData names. Setting `value` reuses rows BY POSITION
+ *   (clamped to min-rows / max-rows, else `MAX_VALUE_ROWS`) and fires ONE `rows-change` `reason: 'set'` `source: 'api'`.
+ *   Per instance hooks `readRow(row, defaultRead)` / `writeRow(row, data, defaultWrite)` replace the defaults.
+ *
+ * - v0.56.0 lock (R5–R11, ADR 0029): `disabled` = like <fieldset disabled> (kit buttons + every row control `disabled`,
+ *   host `aria-disabled`, nothing submitted); `readonly` = structure locked (kit buttons `hidden`) + fields with the
+ *   CAPABILITY locked (`readonly` / td-toggle `locked`, found from the element kind / class; the rest: one warning +
+ *   `TdRepeater.lockField` hook). Only the HOST lock writes attributes, and the kit removes exactly what it set. An
+ *   ancestor <fieldset disabled> (not in its first <legend>) blocks the user too but writes nothing (the browser disables
+ *   the buttons natively). API calls (`addRow`, `removeRow`, `moveRow`, `value`) still work, like code on a native input.
+ *
  * @element td-repeater
  * @attr {string} label - visible group label (text)
  * @attr {number} min-rows - integer 0–200 (default 0; above `MAX_MIN_ROWS` = 200 → ignored + one warning): never fewer
@@ -57,7 +223,9 @@ let _uid = 0;
  * @attr {number} max-rows - integer ≥ 0 (default none): no add past it (rows already there are kept)
  * @attr {string} add-label - text of the add button (default `TdRepeater.labels.add`)
  * @attr {boolean} sortable - v0.31.0: drag handle + keyboard lift (texts: `TdSortable.labels`, shared)
- * @fires rows-change - detail: { reason: 'init'|'add'|'remove'|'move'|'sync', source: 'user'|'api', rows, row?, index?, from?, to? }
+ * @attr {boolean} disabled - v0.56.0: like <fieldset disabled> (after the upgrade; server-side: wrap a <fieldset disabled>)
+ * @attr {boolean} readonly - v0.56.0: no structural change + capable fields readonly (still submitted)
+ * @fires rows-change - detail: { reason: 'init'|'add'|'remove'|'move'|'sync'|'set', source: 'user'|'api', rows, row?, index?, from?, to? }
  * @fires before-remove - cancelable, user × only; detail: { row, index }
  */
 export class TdRepeater extends TdBaseElement {
@@ -83,9 +251,28 @@ export class TdRepeater extends TdBaseElement {
    */
   static MAX_MIN_ROWS = OrderedCollectionModel.MAX_MIN;
 
+  /**
+   * v0.56.0 (R3, Q5): without `max-rows`, `value = data` never builds more rows than this (one warning, the rest dropped)
+   * — data from a server / API can never drive an unbounded clone loop.
+   */
+  static MAX_VALUE_ROWS = 1000;
+
   static get observedAttributes() {
-    return ['label', 'min-rows', 'max-rows', 'add-label', 'sortable'];
+    return ['label', 'min-rows', 'max-rows', 'add-label', 'sortable', 'disabled', 'readonly'];
   }
+
+  /** v0.56.0 (R11): `disabled` / `readonly` are boolean properties (`sortable` stays as it was — Q6). */
+  static get booleanAttributes() { return ['disabled', 'readonly']; }
+
+  /**
+   * v0.56.0 (R8, Q2) site hook: lock a row control the kit cannot (or should not) lock itself. Called for every control
+   * of every row while the host is locked (`mode` 'disabled' | 'readonly' — on every repaint: must be idempotent), and
+   * with `mode` null when that lock goes. Return `true` = handled by the site (the kit sets nothing on it). Default: false.
+   * @param {Element} _el
+   * @param {'disabled'|'readonly'|null} _mode
+   * @returns {boolean}
+   */
+  static lockField(_el, _mode) { return false; }
 
   constructor() {
     super();
@@ -112,6 +299,17 @@ export class TdRepeater extends TdBaseElement {
     this._help = null;
     /** @type {WeakSet<Element>} handles whose aria-label the kit owns */
     this._ownName = new WeakSet();
+    /** @private v0.56.0 hooks (null = the default reader / writer) */
+    this._readRow = null;
+    this._writeRow = null;
+    /** @private v0.56.0 (R6) attributes the HOST lock set: element → names (released exactly; pruned on every apply) */
+    this._owned = new Map();
+    /** @private v0.56.0 host aria-disabled before the host lock (undefined = not locked; null = was absent) */
+    this._hostAria = undefined;
+    /** @private v0.56.0 controls a site TdRepeater.lockField() handled → the mode it locked them in */
+    this._siteLocked = new Map();
+    /** @private custom element names waited for (lock decided once defined) */
+    this._pendingDefs = new Set();
   }
 
   // --- public API ---
@@ -158,10 +356,58 @@ export class TdRepeater extends TdBaseElement {
     return this._move(from, to, 'api');
   }
 
+  /**
+   * v0.56.0 (R2, R4): the rows' data — one object per row (DOM order) of its `data-td-field` fields. Read straight from
+   * the DOM (also upgraded-but-detached); a new array every time. Before the upgrade the element is a plain HTMLElement
+   * (no rows value) — `await customElements.whenDefined('td-repeater')` first.
+   * @returns {Array<Record<string, unknown>>}
+   */
+  get value() {
+    this._flush();
+    return this._domRows().map((row) => this._readOne(row));
+  }
+
+  /**
+   * v0.56.0 (R3): rebuild the rows from data — rows reused by position (same nodes, focus kept), new ones from the
+   * template, extra ones removed from the end; count clamped to min-rows / max-rows (else MAX_VALUE_ROWS); every key of a
+   * row written (absent → the empty value of its kind). One `rows-change` `{ reason: 'set', source: 'api' }` (none
+   * before the first connect: the upgrade's `init` reports the rows). Not an array → one warning, nothing changes.
+   * Runs while `disabled` / `readonly` too (like `.value` of a disabled input).
+   * @param {Array<Record<string, unknown>>} data
+   */
+  set value(data) {
+    if (!Array.isArray(data)) {
+      console.warn('td-repeater: value must be an array of row objects — ignored.');
+      return;
+    }
+    this._setValue(data);
+  }
+
+  /**
+   * v0.56.0 hook: `(row, defaultRead) => object` reading one row (default null = the kit reader). A throwing hook (or one
+   * returning a non-object) → console.error + the default.
+   * @returns {((row: HTMLElement, defaultRead: (row: HTMLElement) => Record<string, unknown>) => Record<string, unknown>)|null}
+   */
+  get readRow() { return this._readRow; }
+  set readRow(fn) { this._readRow = typeof fn === 'function' ? fn : null; }
+
+  /**
+   * v0.56.0 hook: `(row, data, defaultWrite) => void` writing one row (default null = the kit writer). A throwing hook →
+   * console.error + the default.
+   * @returns {((row: HTMLElement, data: Record<string, unknown>, defaultWrite: (row: HTMLElement, data: object) => void) => void)|null}
+   */
+  get writeRow() { return this._writeRow; }
+  set writeRow(fn) { this._writeRow = typeof fn === 'function' ? fn : null; }
+
   // --- lifecycle (in place: never renders over the children) ---
 
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal || !this._initialized || !this._started) return;
+    if (name === 'disabled' || name === 'readonly') {
+      if (this._blocked()) this._ctl?.cancel('external'); // a lift / drag in progress ends where it is
+      this._applyHostLock();
+      return;
+    }
     if (name === 'label') this._syncLabel();
     else if (name === 'add-label') this._syncAddLabel();
     else if (name === 'sortable') {
@@ -214,6 +460,111 @@ export class TdRepeater extends TdBaseElement {
     }
     if (first) this._changed({ reason: 'init', source: 'api' });
     else if (!same || filled) this._changed({ reason: 'sync', source: 'api' });
+  }
+
+  // --- data (v0.56.0) ---
+
+  /** @private */
+  _setValue(data) {
+    const started = this._started;
+    if (started) this._flush();
+    else {
+      // upgraded, not connected yet (or the early replay): write the DOM rows directly — the first render upgrades them
+      this._applyLimits();
+      this._readTemplate();
+    }
+    const { min, max } = this._model;
+    const cap = Number.isFinite(max) ? max : TdRepeater.MAX_VALUE_ROWS;
+    let list = data;
+    if (list.length > cap) {
+      this._warnOnce('valueover', `td-repeater: value has ${list.length} rows, more than ${Number.isFinite(max)
+        ? `max-rows=${max}` : `TdRepeater.MAX_VALUE_ROWS (${cap})`} — the rest is dropped.`);
+      list = list.slice(0, cap);
+    }
+    const n = Math.max(list.length, min);
+    const rows = started ? this._model.keys() : this._domRows();
+    while (rows.length < n) {
+      if (!this._templateOk) break; // warned by _readTemplate
+      const row = this._cloneRow();
+      this._insertRowNode(row, rows.length);
+      if (started) this._model.insert(row, rows.length);
+      rows.push(row);
+    }
+    while (rows.length > n) {
+      const row = rows.pop();
+      if (started) this._model.remove(row);
+      row.remove();
+    }
+    rows.forEach((row, i) => {
+      const d = list[i];
+      const obj = d && typeof d === 'object' && !Array.isArray(d) ? d : {};
+      if (d != null && obj !== d) this._warnOnce('valuerow', 'td-repeater: a value row must be an object — written as empty.');
+      this._writeOne(row, obj);
+    });
+    if (started) this._changed({ reason: 'set', source: 'api' });
+  }
+
+  /** @private one row through the hook (or the default reader) */
+  _readOne(row) {
+    const read = (r) => this._readFields(r);
+    const fn = this._readRow;
+    if (fn) {
+      try {
+        const out = fn.call(this, row, read);
+        if (out && typeof out === 'object') return out;
+        console.error('td-repeater: readRow must return an object — the default reader is used.');
+      } catch (err) {
+        console.error('td-repeater: readRow threw — the default reader is used.', err);
+      }
+    }
+    return read(row);
+  }
+
+  /** @private one row through the hook (or the default writer) */
+  _writeOne(row, data) {
+    const write = (r, d) => this._writeFields(r, d && typeof d === 'object' ? d : {});
+    const fn = this._writeRow;
+    if (fn) {
+      try {
+        fn.call(this, row, data, write);
+        return;
+      } catch (err) {
+        console.error('td-repeater: writeRow threw — the default writer is used.', err);
+      }
+    }
+    write(row, data);
+  }
+
+  /** @private the default reader (R2): own properties (Object.fromEntries — a `__proto__` key stays a plain key) */
+  _readFields(row) {
+    const out = [];
+    for (const [key, els] of fieldGroups(row)) {
+      const f = kindOf(els);
+      if (f.kind === 'file') { this._warnFile(); continue; }
+      out.push([key, readField(f)]);
+    }
+    return Object.fromEntries(out);
+  }
+
+  /** @private the default writer (R2 / R3): every key of the row written; data keys without a field → one warning */
+  _writeFields(row, data) {
+    const groups = fieldGroups(row);
+    for (const [key, els] of groups) {
+      const f = kindOf(els);
+      if (f.kind === 'file') { this._warnFile(); continue; }
+      const present = Object.prototype.hasOwnProperty.call(data, key);
+      writeField(f, present, present ? data[key] : undefined);
+    }
+    const unknown = Object.keys(data).filter((k) => !groups.has(k));
+    if (unknown.length) {
+      this._warnOnce('valuekey', `td-repeater: value key "${logSafe(unknown[0])}"${unknown.length > 1
+        ? ` (+${unknown.length - 1})` : ''} has no [data-td-field] in the row — ignored.`);
+    }
+  }
+
+  /** @private */
+  _warnFile() {
+    this._warnOnce('file', 'td-repeater: input[type=file] cannot be read or written by value — skipped.');
   }
 
   // --- structure ---
@@ -379,6 +730,7 @@ export class TdRepeater extends TdBaseElement {
       if (this._templateOk && this._model.canAdd()) this._addBtn.removeAttribute('aria-disabled');
       else this._addBtn.setAttribute('aria-disabled', 'true');
     }
+    this._applyHostLock(); // v0.56.0 (R10): every new / repainted row gets the current lock
   }
 
   /** @private a new row from the template, ids made unique */
@@ -521,7 +873,7 @@ export class TdRepeater extends TdBaseElement {
         commit: () => {}, // rows-change already fired for every step
         nameOf: (row, i) => defaultItemName(row, i, SORTABLE_LABELS),
         live: this._live,
-        enabled: () => this.hasAttribute('sortable'),
+        enabled: () => this.hasAttribute('sortable') && !this._blocked(), // v0.56.0 (R6): host lock or fieldset
         labels: SORTABLE_LABELS,
         reconcile: () => this._flush(), // review round 1 IMPL-1: pending outside changes → 'external' + sync first
         placePlaceholder: (ph) => {
@@ -586,10 +938,162 @@ export class TdRepeater extends TdBaseElement {
     }
   }
 
+  // --- lock (v0.56.0, R6–R10) ---
+
+  /** @private the host's own lock: 'disabled' (wins) | 'readonly' | null */
+  _hostLock() {
+    if (this.hasAttribute('disabled')) return 'disabled';
+    return this.hasAttribute('readonly') ? 'readonly' : null;
+  }
+
+  /**
+   * @private An ancestor <fieldset disabled> disables the host (HTML rule): any `fieldset[disabled]` above it, unless the
+   * host sits in THAT fieldset's first <legend> child. Computed on demand from the page only (never from what the kit
+   * wrote), nothing is written for it.
+   */
+  _fieldsetDisabled() {
+    for (let fs = this.parentElement?.closest('fieldset'); fs; fs = fs.parentElement?.closest('fieldset')) {
+      if (!fs.hasAttribute('disabled')) continue;
+      const legend = [...fs.children].find((c) => c.localName === 'legend');
+      if (legend && legend.contains(this)) continue;
+      return true;
+    }
+    return false;
+  }
+
+  /** @private user interaction blocked: the host lock or a disabled fieldset */
+  _blocked() {
+    return this._hostLock() !== null || this._fieldsetDisabled();
+  }
+
+  /** @private this repeater's own buttons (row actions, sort handles, add) — never a nested repeater's */
+  _kitButtons() {
+    return [...this.querySelectorAll('.td-repeater__btn, .td-repeater__add')].filter((b) => b.closest('td-repeater') === this);
+  }
+
+  /**
+   * @private The form controls of one row: native input / select / textarea / button (not the kit's) and custom elements
+   * as a whole (their inner parts are theirs; a nested td-repeater locks its own rows).
+   * @param {Element} row
+   * @returns {Element[]}
+   */
+  _rowControls(row) {
+    const out = [];
+    const walk = (parent) => {
+      for (const el of parent.children) {
+        const n = el.localName;
+        if (n === 'template') continue;
+        if (n.includes('-')) out.push(el);
+        else if (n === 'input' || n === 'select' || n === 'textarea' || n === 'button') {
+          if (!el.classList.contains('td-repeater__btn')) out.push(el);
+        } else walk(el);
+      }
+    };
+    walk(row);
+    return out;
+  }
+
+  /**
+   * @private Bring every owned attribute in line with the host lock (idempotent; called on attribute change and on every
+   * repaint). Releases first what is no longer wanted (incl. elements that left the host), then sets what is missing —
+   * never touching an attribute the app put there itself.
+   */
+  _applyHostLock() {
+    if (!this._started) return;
+    const mode = this._hostLock();
+    /** @type {Map<Element, Set<string>>} */
+    const want = new Map();
+    const add = (el, attr) => {
+      let set = want.get(el);
+      if (!set) want.set(el, (set = new Set()));
+      set.add(attr);
+    };
+    const site = new Map();
+    const released = new Set();
+    const unlockable = new Set();
+    if (mode) {
+      for (const b of this._kitButtons()) add(b, mode === 'disabled' ? 'disabled' : 'hidden');
+      for (const row of this._model.keys()) {
+        for (const el of this._rowControls(row)) {
+          const prev = this._siteLocked.get(el);
+          if (prev && prev !== mode) { this._siteHook(el, null); released.add(el); }
+          if (this._siteHook(el, mode)) { site.set(el, mode); continue; }
+          const attr = lockAttr(el, mode);
+          if (attr) add(el, attr);
+          else if (mode === 'readonly') {
+            const name = unlockableName(el);
+            if (name) unlockable.add(name);
+          }
+          this._waitDefined(el);
+        }
+      }
+    }
+    for (const [el, attrs] of this._owned) {
+      const keep = want.get(el);
+      for (const a of [...attrs]) {
+        if (keep && keep.has(a)) continue;
+        el.removeAttribute(a);
+        attrs.delete(a);
+      }
+      if (!attrs.size) this._owned.delete(el);
+    }
+    for (const el of [...this._siteLocked.keys()]) {
+      if (site.has(el)) continue;
+      if (!released.has(el)) this._siteHook(el, null);
+      this._siteLocked.delete(el);
+    }
+    for (const [el, m] of site) this._siteLocked.set(el, m);
+    for (const [el, attrs] of want) {
+      for (const a of attrs) {
+        let mine = this._owned.get(el);
+        if (!mine?.has(a) && el.hasAttribute(a)) continue; // the app's own: never taken over, never removed
+        if (!el.hasAttribute(a)) el.setAttribute(a, a === 'aria-disabled' ? 'true' : '');
+        if (!mine) this._owned.set(el, (mine = new Set()));
+        mine.add(a);
+      }
+    }
+    // Codex impl r1 #2: the host's aria-disabled is forced to "true" while host-disabled (an app's "false" would otherwise
+    // keep it announced as enabled); the prior value is snapshotted and restored exactly when the lock goes
+    if (mode === 'disabled') {
+      if (this._hostAria === undefined) this._hostAria = this.getAttribute('aria-disabled');
+      if (this.getAttribute('aria-disabled') !== 'true') this.setAttribute('aria-disabled', 'true');
+    } else if (this._hostAria !== undefined) {
+      if (this._hostAria === null) this.removeAttribute('aria-disabled');
+      else this.setAttribute('aria-disabled', this._hostAria);
+      this._hostAria = undefined;
+    }
+    if (unlockable.size) {
+      this._warnOnce('readonly', `td-repeater: readonly cannot lock ${[...unlockable].join(', ')} — they stay editable `
+        + '(use TdRepeater.lockField() or <fieldset disabled>).');
+    }
+  }
+
+  /** @private TdRepeater.lockField() of the site, guarded (a throw = not handled) */
+  _siteHook(el, mode) {
+    try {
+      return TdRepeater.lockField(el, mode) === true;
+    } catch (err) {
+      console.error('td-repeater: TdRepeater.lockField threw — the kit rule is used.', err);
+      return false;
+    }
+  }
+
+  /** @private a custom element not defined yet: decide its lock once it is */
+  _waitDefined(el) {
+    const n = el.localName;
+    if (!n.includes('-') || customElements.get(n) || this._pendingDefs.has(n)) return;
+    this._pendingDefs.add(n);
+    customElements.whenDefined(n).then(() => {
+      this._pendingDefs.delete(n);
+      this._applyHostLock();
+    }, () => {});
+  }
+
   // --- events ---
 
   /** @private click delegate (buttons are real `<button type="button">`; fieldset-disabled ones fire nothing) */
   _onClick(e) {
+    if (this._blocked()) return; // v0.56.0 (R6): locked by the host or a disabled fieldset — nothing, no announcement
     const target = /** @type {Element} */ (e.target);
     const b = target instanceof Element ? target.closest('button[data-td-repeater-action]') : null;
     if (!b || b.closest('td-repeater') !== this) return;

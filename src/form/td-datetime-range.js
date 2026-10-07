@@ -7,7 +7,7 @@ import { matchesBelow } from '../utils/breakpoints-internal.js';
 import { DatetimeEditor } from './datetime-panel.js';
 import {
   parseBound, invalidReason, normalizeMinuteStep, snapMinuteDown, partsFromDate, toModeParts, parseModeValue,
-  parseModeDb, parseIsoLocal, formatModeDisplay, formatModeDb, formatModeIso, compareModeParts, MODE_PARTS,
+  parseModeDb, formatModeDisplay, formatModeDb, formatModeIso, compareModeParts, MODE_PARTS, toNativeValue, fromNativeValue,
 } from '../utils/datetime.js';
 import {
   normalizeRangeMode, requiredParts, lastMinute, emptyParts, isEmptyParts, defaultPresets, resolvePreset, sameRange,
@@ -19,38 +19,13 @@ const DEFAULT_MAX_YEAR = 2099;
 const SIDES = /** @type {const} */ (['start', 'end']);
 /** Every form-associated element (the SSR gate counts them: exactly the two natives + the trigger). */
 const FORM_ASSOCIATED = 'input, textarea, select, button, fieldset, output, object';
-const RE_NATIVE_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const RE_NATIVE_DATETIME = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})(?::\d{2}(?:\.\d{1,3})?)?$/;
 const STATE_MAX = 64; // a restored side longer than this is ignored (formStateRestoreCallback)
 
-const pad2 = (n) => String(n).padStart(2, '0');
 const fill = (template, vars) => String(template).replace(/\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : ''));
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 
-/**
- * Native `<input type=date|datetime-local>` value of valid parts (`yyyy-mm-dd` | `yyyy-mm-ddThh:mm`).
- * @param {import('../utils/datetime.js').DateTimeParts} p @param {'date'|'datetime'} mode
- */
-export function toNativeValue(p, mode) {
-  const d = formatModeIso(p, 'date');
-  return mode === 'datetime' ? `${d}T${pad2(p.hour)}:${pad2(p.minute)}` : d;
-}
-
-/**
- * Parts of a native input value (strict: `yyyy-mm-dd` | `yyyy-mm-ddThh:mm[:ss[.mmm]]`); anything else → null.
- * @param {unknown} v @param {'date'|'datetime'} mode
- */
-export function fromNativeValue(v, mode) {
-  if (typeof v !== 'string') return null;
-  let p = null;
-  if (mode === 'datetime') {
-    const m = RE_NATIVE_DATETIME.exec(v);
-    p = m ? parseIsoLocal(m[1]) : null;
-  } else if (RE_NATIVE_DATE.test(v)) {
-    p = parseModeValue(v, 'date');
-  }
-  return p && !invalidReason(p) ? toModeParts(p, mode) : null;
-}
+// v0.56.0: the native value helpers moved to src/utils/datetime.js (shared with td-datetime-picker); re-exported here
+export { toNativeValue, fromNativeValue };
 
 /**
  * `<td-datetime-range>` — a date (or date-time) RANGE "from – to" with quick presets (v0.40.0, plan

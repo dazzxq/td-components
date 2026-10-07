@@ -266,6 +266,21 @@ export function mountResponsiveFixture(root) {
         <td-number-input name="box[0][qty]" data-name="box[{i}][qty]" aria-label="Số lượng" value="1" min="1" max="99"></td-number-input>
       </div>
     </td-repeater></form>
+    <!-- v0.56.0: locked repeaters — readonly (no button, no empty tool row < 480) and disabled -->
+    <td-repeater id="rsp-rep-ro" label="Hộp gồm (chỉ xem)" readonly sortable>
+      <template><div data-td-row class="rsp-row"><td-input-field data-td-field="name" aria-label="Phụ kiện"></td-input-field></div></template>
+      <div data-td-row class="rsp-row">
+        <td-input-field data-td-field="name" name="ro[0][name]" aria-label="Phụ kiện" value="Sạc nhanh 20W chính hãng"></td-input-field>
+        <td-number-input data-td-field="qty" name="ro[0][qty]" aria-label="Số lượng" value="1" min="1" max="99"></td-number-input>
+      </div>
+    </td-repeater>
+    <td-repeater id="rsp-rep-dis" label="Hộp gồm (khoá)" disabled sortable>
+      <template><div data-td-row class="rsp-row"><td-input-field data-td-field="name" aria-label="Phụ kiện"></td-input-field></div></template>
+      <div data-td-row class="rsp-row">
+        <td-input-field data-td-field="name" name="dis[0][name]" aria-label="Phụ kiện" value="Sạc nhanh 20W chính hãng"></td-input-field>
+        <td-number-input data-td-field="qty" name="dis[0][qty]" aria-label="Số lượng" value="1" min="1" max="99"></td-number-input>
+      </div>
+    </td-repeater>
     <div class="rsp-row">
       <td-toggle label="Công khai"></td-toggle>
       <td-checkbox label="Tôi đồng ý với điều khoản sử dụng"></td-checkbox>

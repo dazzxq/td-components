@@ -113,6 +113,20 @@
 		pointer-events: none;
 	}
 
+	/* v0.56.0 (R8) readonly: the kit hides its buttons (`hidden`) — no dead button; an action cluster / footer left with
+	   nothing visible takes no room (no gap, no empty line under 480px) */
+	.td-repeater__btn[hidden] {
+		display: none;
+	}
+
+	.td-repeater__actions:not(:has(> :not([hidden], .td-sr-only))) {
+		display: none;
+	}
+
+	.td-repeater__footer:not(:has(> :not([hidden], .td-sr-only))) {
+		padding-top: 0;
+	}
+
 	.td-repeater__footer {
 		box-sizing: border-box;
 		display: flex;

@@ -20,7 +20,28 @@ const EXPECTED = {
   'external-link': 'external',
   expand: 'fullscreen',
   pen: 'pencil',
+  // v0.56.0 (plan A1): Lucide names of the new core icons + `trademark` (Lucide has no trademark glyph)
+  'archive-restore': 'restore',
+  'folder-tree': 'category',
+  tag: 'brand',
+  trademark: 'brand',
+  package: 'product',
 };
+
+// v0.56.0 (plan A1): core icons for archive / restore / category tree / brand / product / ban (Lucide 1.52.0 geometry)
+const V056 = { archive: 'archive', restore: 'archive-restore', category: 'folder-tree', brand: 'tag', product: 'package', ban: 'ban' };
+
+test('v0.56.0: the 6 new core icons exist with their Lucide source name; no alias `box` (Lucide box is another shape)', () => {
+  for (const [name, lucide] of Object.entries(V056)) {
+    assert.ok(Object.hasOwn(json.icons, name), name);
+    assert.equal(json.icons[name].lucide, lucide, name);
+    assert.equal(json.icons[name].paint, 'stroke', name);
+    assert.equal(hasIcon(name), true, name);
+    assert.ok(listIcons().includes(name), name);
+  }
+  assert.equal(hasIcon('box'), false);
+  assert.equal(Object.keys(json.icons).length, 70);
+});
 
 test('icons.json aliases: the F6 table, every target a core icon, no alias shadows a core name', () => {
   assert.deepEqual(json.aliases, EXPECTED);

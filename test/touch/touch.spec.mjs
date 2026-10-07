@@ -21,6 +21,7 @@
  * v0.50.0 td-carousel (ADR 0024): a sideways swipe on the strip scrolls it (page still), a vertical swipe STARTING on the
  *   strip scrolls the PAGE (no pan-x trap), a tap on "next" moves exactly one page, buttons / dots show the pressed state,
  *   touch-action of the viewport stays auto; WebKit smoke: next / prev by tap.
+ * v0.56.0: a disabled td-repeater's buttons show no pressed state (the readonly one has no button at all).
  * Firefox is not in this lane (no reliable touch emulation). Synthetic pointer events only test state machines.
  *
  *   node test/touch/touch.spec.mjs            (npm run test:touch; TOUCH_ONLY=<case substring> for a subset)
@@ -268,6 +269,20 @@ async function controlMatrix(tag, page, input) {
       expect(now === rest, `${what}: ${now} ≠ ${rest}`);
     });
   }
+
+  // v0.56.0 (plan R7): a button of a `disabled` repeater has no pressed look (it is disabled like in a fieldset)
+  await it(tag, 'pressed: disabled td-repeater button keeps its own fill', async () => {
+    await load(page);
+    const sel = '#rsp-rep-dis .td-repeater__btn--remove';
+    await quiet(page, sel);
+    const rest = await bgOf(page, sel);
+    const pt = await centre(page, sel);
+    await input.down(pt);
+    await frames(page, 2);
+    const now = await bgOf(page, sel);
+    await input.cancel();
+    expect(now === rest, `disabled repeater button: ${now} ≠ ${rest}`);
+  });
 }
 
 /** CDP touch (Chromium) */

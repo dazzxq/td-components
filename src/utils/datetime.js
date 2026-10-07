@@ -746,3 +746,33 @@ export function dayKey(instant, timeZone = '') {
   const p = zonedParts(instant, timeZone);
   return `${pad4(p.year)}-${pad2(p.month)}-${pad2(p.day)}`;
 }
+
+// --- Native <input type=date|datetime-local> values (v0.40.0 td-datetime-range; shared with td-datetime-picker v0.56.0) ---
+
+const RE_NATIVE_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const RE_NATIVE_DATETIME = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})(?::\d{2}(?:\.\d{1,3})?)?$/;
+
+/**
+ * Native `<input type=date|datetime-local>` value of valid parts (`yyyy-mm-dd` | `yyyy-mm-ddThh:mm`).
+ * @param {DateTimeParts} p @param {'date'|'datetime'} mode
+ */
+export function toNativeValue(p, mode) {
+  const d = formatModeIso(p, 'date');
+  return mode === 'datetime' ? `${d}T${pad2(p.hour)}:${pad2(p.minute)}` : d;
+}
+
+/**
+ * Parts of a native input value (strict: `yyyy-mm-dd` | `yyyy-mm-ddThh:mm[:ss[.mmm]]`); anything else → null.
+ * @param {unknown} v @param {'date'|'datetime'} mode
+ */
+export function fromNativeValue(v, mode) {
+  if (typeof v !== 'string') return null;
+  let p = null;
+  if (mode === 'datetime') {
+    const m = RE_NATIVE_DATETIME.exec(v);
+    p = m ? parseIsoLocal(m[1]) : null;
+  } else if (RE_NATIVE_DATE.test(v)) {
+    p = parseModeValue(v, 'date');
+  }
+  return p && !invalidReason(p) ? toModeParts(p, mode) : null;
+}

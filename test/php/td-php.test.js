@@ -323,6 +323,8 @@ describe('php/td.php', opts, () => {
     assert.deepEqual(json.aliases, {
       x: 'close', 'chevron-left': 'prev', 'chevron-right': 'next', 'chevron-up': 'up', 'chevron-down': 'down',
       ellipsis: 'more', 'external-link': 'external', expand: 'fullscreen', pen: 'pencil',
+      // v0.56.0 (plan A1)
+      'archive-restore': 'restore', 'folder-tree': 'category', tag: 'brand', trademark: 'brand', package: 'product',
     });
     const names = Object.keys(json.aliases);
     const res = runPhp([...names.map((n) => ({ fn: 'td_icon', args: [n] })), { fn: 'Td::iconAliases', args: [] }]);
