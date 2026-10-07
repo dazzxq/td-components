@@ -193,7 +193,8 @@ TdLightbox.open(items, {
 - Bố cục: màn hình **≥ 1024px** → hai cột (ảnh | panel rộng `--td-lb-panel-w`), zoom bị cắt theo cột ảnh; **< 1024px** →
   **bottom sheet** đóng sẵn, chỉ lộ tay nắm (nút `.td-lightbox__grab`, `aria-expanded`, tên = `labels.info`). Chạm tay
   nắm, vuốt lên trên panel (> 32px) hoặc vuốt lên trên ảnh (> 60px) để mở; vuốt xuống (> 32px) khi panel đang ở đầu
-  để đóng. Sheet luôn đóng khi mở lightbox và khi panel chuyển sang "không có".
+  để đóng. Sheet luôn đóng khi mở lightbox và khi panel chuyển sang "không có". Sheet nằm **trên** thanh ‹ đếm › của
+  điện thoại (0.53.2): mở ra thì che thanh đó; đóng lại thì chỉ tay nắm ló dưới thanh, thanh vẫn bấm được.
 - Khi có panel: dải caption dưới ảnh bị ẩn (tránh lặp), nút **Quay lại** (góc trên trái, `labels.back`) hiện ra và
   đóng lightbox. Panel cuộn về đầu mỗi slide.
 

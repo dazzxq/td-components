@@ -182,7 +182,10 @@ describe('v0.17.0 E5 — PHP SSR markup', () => {
         const a = ssr.matches(sel) ? ssr : ssr.querySelector(sel);
         const b = comp.matches(sel) ? comp : comp.querySelector(sel);
         expect(!!a, `${key} ${sel} in SSR`).to.equal(!!b);
-        if (a) expect(styles(a), `${key} ${sel}`).to.deep.equal(styles(b));
+        // v0.53.2: inside the inline-flex <td-toggle> host the switch is a flex item (blockified: `flex`); the standalone
+        // PHP switch keeps `inline-flex` — the same box
+        const norm = (st) => (sel === '.td-switch' ? { ...st, display: st.display.replace(/^inline-/, '') } : st);
+        if (a) expect(norm(styles(a)), `${key} ${sel}`).to.deep.equal(norm(styles(b)));
       }
       return { ssr, comp };
     }

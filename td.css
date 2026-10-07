@@ -2116,13 +2116,18 @@
 }
 
 @layer td.component {
+	/* v0.53.2: the host box IS the switch box. As `inline-block` around the inline-flex switch, the host was a line box
+	   with descender space under the switch (md: 29 px for a 24 px switch) and sat on the track bottom → next to text the
+	   switch rode 2.5 px (flex row, align-items: center) to 6.5 px (inline line) above the text. `inline-flex` drops the
+	   line box; `vertical-align: middle` centres it on the text of an inline line (with or without the kit label). */
 	td-toggle {
-		display: inline-block;
+		display: inline-flex;
+		vertical-align: middle;
 	}
 
-	/* v0.25.0 safety net (ADR 0012): hand-written host before define → reserve the switch row height */
+	/* v0.25.0 safety net (ADR 0012): hand-written host before define → reserve the switch row height (same box model as
+	   the upgraded host, so nothing moves when the module arrives) */
 	td-toggle:not(:defined):not([data-td-ssr]) {
-		display: inline-block;
 		min-height: 1.5rem;
 	}
 
@@ -2132,6 +2137,8 @@
 
 		position: relative;
 		display: inline-flex;
+		vertical-align: middle; /* v0.53.2: the standalone PHP switch (native mode) centres on an inline text line too;
+		   inside <td-toggle> it is a flex item (no effect) */
 		gap: var(--td-space-xs);
 		align-items: center;
 		min-width: 24px;   /* hit target ≥ 24×24 */
@@ -4224,8 +4231,11 @@
 			max-height: calc(100dvh - var(--td-lb-sheet-peek) - 1rem);
 		}
 
-		/* Bottom sheet, closed by default: only the grab handle peeks out. Swipe up / tap to open. */
+		/* Bottom sheet, closed by default: only the grab handle peeks out. Swipe up / tap to open.
+		   v0.53.2: above the phone rail (‹ counter ›, z-index 3) so the opened sheet covers it; closed, only the
+		   grabber peeks below the rail, so the rail stays reachable. Still under the toolbar (10). */
 		.td-lightbox__panel {
+			z-index: 4;
 			inset-block: auto 0;
 			inset-inline: 0;
 			width: auto;

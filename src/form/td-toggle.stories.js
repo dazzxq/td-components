@@ -150,3 +150,18 @@ export const TwoFactorRecipe = {
     return wrap;
   },
 };
+
+/**
+ * v0.53.2 "Căn dọc cạnh chữ": a toggle without the kit label next to text — in an inline-flex row (align-items: center),
+ * in a plain text line and as the standalone PHP switch. The host box is the switch box (no descender space).
+ */
+export const CanDocCanhChu = {
+  name: 'Căn dọc cạnh chữ',
+  render: () => `<div class="sb-stack">
+    <div class="sb-row"><td-toggle controlled aria-label="Trạng thái gói A" checked></td-toggle><span>Đang dùng</span></div>
+    <div class="sb-row"><td-toggle size="sm" aria-label="Nhỏ" checked></td-toggle><span>Nhỏ (sm)</span></div>
+    <div class="sb-row"><td-toggle size="lg" aria-label="Lớn"></td-toggle><span>Lớn (lg)</span></div>
+    <p>Trạng thái: <td-toggle controlled aria-label="Trạng thái gói B" checked></td-toggle> Đang dùng</p>
+    <p>Có nhãn: <td-toggle label="Thông báo" checked></td-toggle> — cùng dòng chữ</p>
+  </div>`,
+};

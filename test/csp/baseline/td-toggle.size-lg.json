@@ -24,7 +24,7 @@
       "margin-top": "0px",
       "margin-bottom": "0px",
       "margin-left": "0px",
-      "display": "inline-flex",
+      "display": "flex",
       "position": "relative",
       "top": "0px",
       "left": "0px",
