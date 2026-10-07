@@ -124,6 +124,19 @@ describe('td-repeater value — read (R1, R2)', () => {
     expect(rep.value).to.deep.equal([{ title: 'A', parts: [{ part: 'p1' }] }]);
   });
 
+  it('an unknown value key is logged with control / line-separator characters escaped (Codex security r1, CWE-117)', async () => {
+    const warns = capture('warn');
+    const wrap = mount('<td-repeater><template><div data-td-row><input data-td-field="a" aria-label="A"></div></template></td-repeater>');
+    await tick();
+    const rep = wrap.querySelector('td-repeater');
+    rep.value = [{ a: 'x', 'k\r\n[ERROR] forged\u2028\u2029\u001b\u0085': 'y' }];
+    await tick();
+    const msg = warns.find((m) => /value key/.test(m));
+    expect(!!msg, 'warned').to.equal(true);
+    expect(/[\r\n\u2028\u2029\u001b\u0085]/.test(msg)).to.equal(false);
+    expect(msg.includes('k\\u000d\\u000a[ERROR] forged\\u2028\\u2029\\u001b\\u0085')).to.equal(true);
+  });
+
   it('input[type=file] is skipped with ONE warning', async () => {
     const warns = capture('warn');
     const row = '<div data-td-row><input data-td-field="a" aria-label="A"><input type="file" data-td-field="f" aria-label="Tệp"></div>';

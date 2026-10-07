@@ -16,6 +16,10 @@ const FOCUSABLE = 'input:not([type="hidden"]):not([disabled]), select:not([disab
 const FIELD = 'data-td-field';
 /** Longest key / tag text a warning repeats (app data — console only, never markup). */
 const WARN_TEXT_MAX = 64;
+/** Codex security r1 (CWE-117): a site/API-supplied text in a console warning — C0 / DEL / C1 controls and U+2028 / U+2029
+ * escaped as \uXXXX (no forged log lines), then capped. */
+const logSafe = (v) => String(v).slice(0, WARN_TEXT_MAX)
+  .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
 
 /** v0.56.0 (R8): input types whose value is text the user types → `readonly` applies (HTML: readonly is honoured). */
 const READONLY_TYPES = new Set(['text', 'search', 'url', 'tel', 'email', 'password', 'number', 'date', 'month', 'week',
@@ -551,7 +555,7 @@ export class TdRepeater extends TdBaseElement {
     }
     const unknown = Object.keys(data).filter((k) => !groups.has(k));
     if (unknown.length) {
-      this._warnOnce('valuekey', `td-repeater: value key "${String(unknown[0]).slice(0, WARN_TEXT_MAX)}"${unknown.length > 1
+      this._warnOnce('valuekey', `td-repeater: value key "${logSafe(unknown[0])}"${unknown.length > 1
         ? ` (+${unknown.length - 1})` : ''} has no [data-td-field] in the row — ignored.`);
     }
   }
