@@ -123,7 +123,8 @@ export class TdToggle extends TdCheckableElement {
    * the tone's DEFAULT text is dropped (the visible state text already says it) — an explicit status-text stays.
    */
   _hasStatus() {
-    return !!this.getAttribute('status-text') || (!!this._tone() && !this.getAttribute('on-text'));
+    // tone first: short-circuits before reading a (possibly multi-MB) status-text — as v0.52 did (perf budget test)
+    return (!!this._tone() && !this.getAttribute('on-text')) || !!this.getAttribute('status-text');
   }
 
   /** @private v0.54.0: the visible state texts ('' = none for that state) */
