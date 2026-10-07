@@ -789,6 +789,131 @@
         "td-hint a"
       ],
       "settle": 300
+    },
+    {
+      "state": "affix-text",
+      "markup": "<td-input-field label=\"Website\" prefix=\"https://\" suffix=\".vn\" value=\"congty\"></td-input-field>",
+      "selectors": [
+        ".td-field--affix",
+        ".td-field__box",
+        ".td-field__control",
+        ".td-field__affix--prefix",
+        ".td-field__affix--suffix"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.55.0 (plan v0.55.0-affix-number Gate): text-sized affix / box tracks follow the platform font metrics — grid-template-columns / height / width / margin-left excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "affix-icon",
+      "markup": "<td-input-field type=\"search\" label=\"Tìm kiếm\" prefix-icon=\"search\" suffix=\"mAh\" suffix-icon=\"lock\"></td-input-field>",
+      "selectors": [
+        ".td-field__affix--prefix",
+        ".td-field__affix--prefix .td-field__affix-icon",
+        ".td-field__affix--prefix .td-field__affix-svg",
+        ".td-field__affix--suffix .td-field__affix-svg"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.55.0 (plan v0.55.0-affix-number Gate): text-sized affix / box tracks follow the platform font metrics — grid-template-columns / height / width / margin-left excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "affix-slot",
+      "markup": "<td-input-field type=\"password\" label=\"Mật khẩu\"><button type=\"button\" slot=\"suffix\" aria-label=\"Hiện mật khẩu\">x</button></td-input-field>",
+      "selectors": [
+        ".td-field__box",
+        ".td-field__control",
+        ".td-field__affix--slot"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.55.0 (plan v0.55.0-affix-number Gate): text-sized affix / box tracks follow the platform font metrics — grid-template-columns / height / width / margin-left excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "affix-focus",
+      "markup": "<td-input-field label=\"Giá\" suffix=\"đ\" value=\"12\"></td-input-field>",
+      "selectors": [
+        ".td-field__box",
+        ".td-field__control",
+        ".td-field__affix--suffix"
+      ],
+      "settle": 300,
+      "pseudo": "focus",
+      "focusSelector": ".td-field__control",
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.55.0 (plan v0.55.0-affix-number Gate): text-sized affix / box tracks follow the platform font metrics — grid-template-columns / height / width / margin-left excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "affix-error",
+      "markup": "<td-input-field label=\"Giá\" prefix=\"$\" value=\"12\" error-text=\"Giá không hợp lệ\"></td-input-field>",
+      "selectors": [
+        ".td-field__box",
+        ".td-field__control",
+        ".td-field__affix--prefix",
+        ".td-field-error"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.55.0 (plan v0.55.0-affix-number Gate): text-sized affix / box tracks follow the platform font metrics — grid-template-columns / height / width / margin-left excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "affix-disabled",
+      "markup": "<td-input-field label=\"Giá vốn\" suffix=\"đ\" value=\"5000\" disabled></td-input-field>",
+      "selectors": [
+        ".td-field__box",
+        ".td-field__control",
+        ".td-field__affix--suffix"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.55.0 (plan v0.55.0-affix-number Gate): text-sized affix / box tracks follow the platform font metrics — grid-template-columns / height / width / margin-left excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "affix-rtl",
+      "markup": "<div dir=\"rtl\"><td-input-field label=\"Website\" prefix=\"https://\" suffix=\".vn\"></td-input-field></div>",
+      "selectors": [
+        ".td-field__box",
+        ".td-field__affix--prefix",
+        ".td-field__affix--suffix"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.55.0 (plan v0.55.0-affix-number Gate): text-sized affix / box tracks follow the platform font metrics — grid-template-columns / height / width / margin-left excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
     }
   ],
   "td-dropdown": [
@@ -3087,6 +3212,42 @@
         "margin-left"
       ],
       "selectorNote": "v0.49.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets (wrap, 44px targets) are gated by test:responsive and the engines tests. Minus at the minimum: aria-disabled colour."
+    },
+    {
+      "state": "icon",
+      "markup": "<td-number-input name=\"price\" label=\"Giá bán\" value=\"12990000\" prefix-icon=\"search\" suffix=\"₫\" suffix-icon=\"lock\"></td-number-input>",
+      "selectors": [
+        ".td-number__box",
+        ".td-number__affix--prefix",
+        ".td-number__affix--suffix",
+        ".td-number__affix-icon",
+        ".td-number__affix-svg"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.55.0 (plan v0.55.0-affix-number Gate): text-sized affix / box tracks follow the platform font metrics — grid-template-columns / height / width / margin-left excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "locale-en",
+      "markup": "<td-number-input name=\"amount\" label=\"Amount\" locale=\"en-US\" decimals=\"2\" value=\"1234567.5\" prefix=\"$\"></td-number-input>",
+      "selectors": [
+        ".td-number__box",
+        ".td-number__control",
+        ".td-number__affix--prefix"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.55.0 (plan v0.55.0-affix-number Gate): text-sized affix / box tracks follow the platform font metrics — grid-template-columns / height / width / margin-left excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
     }
   ],
   "td-repeater": [
