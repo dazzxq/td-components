@@ -35,6 +35,7 @@ Mỗi subpath trong `package.json#exports` trỏ thẳng vào một file source 
 ```text
 connectedCallback (lần đầu)
   _setupProperties()            accessor + replay property gán sớm (render bị chặn); tên đã replay → _earlyProps (0.26)
+                                0.54.1: replay MỌI setter của class (tự dò prototype), không chỉ tên observed attribute
   _initialized = true
   canHydrate()                  hook, mặc định false — đọc host SAU replay; không được sửa DOM
   hydratable → gỡ data-td-ssr   dấu đã dùng (nhận hay không), lần render sau không đọc nhầm
@@ -54,6 +55,16 @@ connectedCallback (gắn lại sau disconnect)
   thắng attribute host. Giá trị reset luôn là mặc định native (`defaultValue` / `defaultChecked`), không từ property
   sớm. (`TdInputField.setValue()` gọi trong lúc replay còn nhớ giá trị gốc ở `_earlyValue` — control `type=number`
   native sẽ làm sạch mất chuỗi không phải số trước khi hydrate đổi nó sang `text`.)
+- **0.54.1 — property gán trước khi nâng cấp** (plan v0.54.1-preupgrade-props): bản sao `<template>`, `createElement`
+  trước `define`, node của document DOMParser là `HTMLElement` thường → gán `el.columns = …` tạo own data property che
+  accessor của class sau khi nâng cấp. `_setupProperties()` gom mọi own data property có **setter trên chuỗi prototype**
+  (dưới `HTMLElement.prototype`; tên `_…` bỏ qua) hoặc là tên observed attribute, theo **thứ tự trang đã gán**, rồi gán
+  lại khi render bị chặn (`utils/upgrade-props.js`). Không danh sách tay: setter mới tự được phủ; test
+  `td-v0541-preupgrade-props.engines` liệt kê setter của mọi element và đòi một ca cho từng tên. Component không kế thừa
+  base (`td-drawer`) gọi `replayPreUpgradeProps(this)` ở `connectedCallback`. Vòng riêng còn lại chỉ ở component cần
+  giá trị **trước** `super.connectedCallback()` hoặc có ngữ nghĩa riêng (dropdown / chip-input / choice-group nâng cấp
+  `<select>` con, cropper thứ tự presets, check-matrix `_earlyData`, scan-input `values`, diff, tree / tree-select /
+  masked-value replay cả ở constructor).
 - **Không hoãn (review round 3, ADR 0012 mục 5):** bản đầu 0.26 cho `canHydrate()` trả `'defer'` (chờ `blur` khi
   control lệch đang focus, kèm `deferHydration` / `_deferred` / `_ssrMirror`); ba vòng review liên tiếp tìm lỗi ở
   đường đó nên đã **gỡ hẳn**. `canHydrate()` chỉ trả boolean; mọi lệch markup của control có state → render an toàn
