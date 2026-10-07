@@ -193,7 +193,8 @@ Chữ `prefix` / `suffix` có từ 0.30. Từ 0.55.0 thêm **icon** và **phần
 - `prefix-icon` / `suffix-icon`: tên icon registry, nằm **trong** span affix của bên đó, ở mép ngoài (`[icon]$` / `₫[icon]`),
   trang trí. Không icon / không slot: markup **giống hệt** 0.54.
 - Con `[slot="prefix"|"suffix"]`: chuyển (cùng node) vào `span.td-number__affix--slot` cạnh ô; thắng chữ / icon của bên đó
-  (ẩn đi + một cảnh báo). Đọc ở lần render đầu; kit không đụng ngữ nghĩa (nút: tự đặt tên + `type="button"`). Với `stepper`:
+  (ẩn đi + một cảnh báo). Đọc ở lần render đầu; kit không đụng ngữ nghĩa (nút: tự đặt tên + `type="button"`). **Chỉ
+  trên host không có `data-td-ssr`**: host SSR có con `[slot]` bị cổng hydrate từ chối → render an toàn, con bị bỏ. Với `stepper`:
   nằm giữa nút − / + và ô. Bấm nút trong slot không cướp focus.
 - Đơn vị đọc qua mô tả như cũ (`unit-label` → `suffix` → `prefix`).
 

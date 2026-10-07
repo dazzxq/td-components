@@ -332,3 +332,103 @@ describe('v0.55.0 affix — robustness', () => {
     }
   });
 });
+
+// Codex security r1 SEC-01 — SSR markup is modifiable before the module loads (security-model.md): slot children on a
+// server-rendered host (`data-td-ssr`) are never adopted (PHP never prints them, Q4) — they fail the hydration gate and are
+// dropped by the safe render; a mutated / foreign slot wrapper never survives a re-connect. FormData = the field only.
+/** what php/td.php element mode prints for a minimal host: render() + the no-JS name (+ number value) on the control */
+function ssrMarkup(tag, id, name, value, extraChild = '') {
+  const proto = document.createElement(tag); // defined: constructed, never connected
+  proto.id = id;
+  proto.setAttribute('name', name);
+  proto.setAttribute('value', value);
+  const add = tag === 'td-number-input' ? ` name="${name}" value="${value}"` : ` name="${name}"`;
+  const inner = proto.render().replace(/(<input [^>]*class="td-(?:field|number)__control"[^>]*?)>/, `$1${add}>`);
+  return `<${tag} data-td-ssr="${tag.slice(3)}@1" id="${id}" name="${name}" value="${value}">${extraChild}${inner}</${tag}>`;
+}
+const entries = (form) => [...new FormData(form)].map(([k, v]) => [k, String(v)]);
+
+for (const k of KINDS) {
+  describe(`v0.55.0 SEC-01 — ${k.tag}: slot children never bypass the SSR gate`, () => {
+    let n = 0;
+    const sid = () => `sec-${k.block}-${++n}`;
+
+    it('control: the same SSR markup WITHOUT slot children is adopted in place', () => {
+      const id = sid();
+      const form = mount(`<form>${ssrMarkup(k.tag, id, 'f', '5')}</form>`).querySelector('form');
+      const el = form.querySelector(k.tag);
+      expect(el._hydrated === true, 'hydrated').to.equal(true);
+      expect(entries(form)).to.deep.equal([['f', '5']]);
+    });
+
+    const INJECTED = [
+      ['a hidden input', '<input slot="prefix" type="hidden" name="role" value="admin">'],
+      ['a submit button with formaction', '<button slot="suffix" type="submit" name="go" value="1" formaction="/evil">x</button>'],
+      ['a slot child with unexpected attributes / elements', '<span slot="prefix" style="color:red" data-x="1"><textarea name="z">t</textarea><select name="s"><option selected>o</option></select></span>'],
+    ];
+    for (const [what, child] of INJECTED) {
+      it(`SSR host + ${what} in a [slot] → not adopted, dropped; FormData = the field only`, async () => {
+        const warns = captureWarn();
+        const id = sid();
+        const form = mount(`<form>${ssrMarkup(k.tag, id, 'f', '5', child)}</form>`).querySelector('form');
+        const el = form.querySelector(k.tag);
+        await wait();
+        expect(el._hydrated === true, 'never adopted with a slot child').to.equal(false);
+        expect(entries(form)).to.deep.equal([['f', '5']]);
+        expect(form.querySelectorAll('[slot], [formaction], textarea, select, input[type="hidden"]').length, 'injected nodes dropped').to.equal(0);
+        expect(!!el.querySelector(`.${k.block}__affix--slot`), 'no slot wrapper').to.equal(false);
+        expect(warns.filter((w) => /server-rendered/.test(w)).length).to.equal(1);
+      });
+    }
+
+    it('non-SSR host: a slot wrapper mutated (extra attribute + a foreign input) before disconnect + reconnect → a fresh wrapper with the page node only', async () => {
+      const form = mount(`<form><${k.tag} name="v" value="1"><button type="button" slot="suffix" class="pg">×</button></${k.tag}></form>`).querySelector('form');
+      const el = form.querySelector(k.tag);
+      const btn = form.querySelector('button.pg');
+      const w = slotWrap(k, el, 'suffix');
+      w.setAttribute('data-x', '1');
+      const evil = Object.assign(document.createElement('input'), { type: 'hidden', name: 'evil', value: '1' });
+      w.appendChild(evil);
+      el.remove();
+      form.append(el);
+      await wait();
+      const now = slotWrap(k, el, 'suffix');
+      expect(!!now && now !== w && !now.hasAttribute('data-x'), 'fresh wrapper').to.equal(true);
+      expect(btn.parentElement === now, 'the page node kept').to.equal(true);
+      expect(evil.isConnected, 'the foreign node dropped').to.equal(false);
+      expect(entries(form)).to.deep.equal([['v', '1']]);
+    });
+
+    it('non-SSR host: the page node swapped for a foreign one inside the wrapper → dropped on re-connect', async () => {
+      const form = mount(`<form><${k.tag} name="v" value="1"><button type="button" slot="prefix" class="pg">?</button></${k.tag}></form>`).querySelector('form');
+      const el = form.querySelector(k.tag);
+      const btn = form.querySelector('button.pg');
+      const evil = Object.assign(document.createElement('button'), { type: 'submit', name: 'evil', value: '1' });
+      evil.setAttribute('formaction', '/evil');
+      btn.replaceWith(evil);
+      el.remove();
+      form.append(el);
+      await wait();
+      expect(evil.isConnected).to.equal(false);
+      expect(btn.parentElement === slotWrap(k, el, 'prefix')).to.equal(true);
+      expect(form.querySelectorAll('[formaction]').length).to.equal(0);
+      expect(entries(form)).to.deep.equal([['v', '1']]);
+    });
+
+    it('hydrated host: a foreign slot-like wrapper added to the box before disconnect + reconnect → safe re-render, dropped', async () => {
+      const id = sid();
+      const form = mount(`<form>${ssrMarkup(k.tag, id, 'f', '5')}</form>`).querySelector('form');
+      const el = form.querySelector(k.tag);
+      expect(el._hydrated === true).to.equal(true);
+      const fake = document.createElement('span');
+      fake.className = `${k.block}__affix ${k.block}__affix--suffix ${k.block}__affix--slot`;
+      fake.innerHTML = '<input type="hidden" name="role" value="admin">';
+      ctl(k, el).after(fake);
+      el.remove();
+      form.append(el);
+      await wait();
+      expect(fake.isConnected, 'the foreign wrapper never survives the re-connect').to.equal(false);
+      expect(entries(form)).to.deep.equal([['f', '5']]);
+    });
+  });
+}

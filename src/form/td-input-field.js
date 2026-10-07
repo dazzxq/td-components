@@ -883,7 +883,7 @@ export class TdInputField extends TdFormElement {
 
   /** Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own (else restore). */
   canRebind() {
-    detachAffixSlots(this); // v0.55.0: page content, never the component's markup — mounted again by the bind
+    detachAffixSlots(this, 'td-field'); // v0.55.0: page content, never the component's markup — mounted again by the bind
     return this._ssrRevalidate(this._ssrStateSource());
   }
 

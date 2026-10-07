@@ -18,11 +18,22 @@ export const AFFIX_SIDES = ['prefix', 'suffix'];
 
 /**
  * Take every direct `[slot="prefix"|"suffix"]` child out of `host` (document order kept per side).
+ * Codex security r1 SEC-01: NOT on a host carrying `data-td-ssr` — server markup never has slot children (PHP has no rich
+ * affix, Q4), so on an SSR host they stay where they are and take part in the hydration gate like any unexpected node
+ * (mismatch → safe clean render, which drops them: an injected `<input type=hidden>` / `<button formaction>` never reaches
+ * the form). Slots stay supported on hosts without the marker (JS / hand-written markup).
  * @param {HTMLElement} host
  * @returns {{ prefix: Element[], suffix: Element[] }}
  */
 export function takeAffixSlots(host) {
   const out = { prefix: [], suffix: [] };
+  if (host.hasAttribute('data-td-ssr')) {
+    if ([...host.children].some((c) => AFFIX_SIDES.includes(c.getAttribute('slot')))) {
+      host._lateSlotWarned = true; // this message replaces the "added later" one of the first render
+      console.warn(`<${host.localName}>: [slot="prefix"|"suffix"] children are not supported on a server-rendered host (data-td-ssr) — dropped`);
+    }
+    return out;
+  }
   for (const c of [...host.children]) {
     const side = c.getAttribute('slot');
     if (side !== 'prefix' && side !== 'suffix') continue;
@@ -75,12 +86,20 @@ export function mountAffixSlots(host, control, block) {
     const nodes = slots[side] || [];
     if (!nodes.length) continue;
     let w = host._affixWrap[side];
+    // Codex security r1 SEC-01 (b): a wrapper that is no longer exactly the kit's (an attribute added / changed, a foreign
+    // node inside) is dropped; a fresh one gets only the page nodes taken at the first render
+    let stale = null;
+    if (w && !wrapIntact(w, block, side, nodes)) {
+      stale = w;
+      w.remove();
+      w = null;
+    }
     if (!w) {
       w = document.createElement('span');
-      w.className = `${block}__affix ${block}__affix--${side} ${block}__affix--slot`;
+      w.className = wrapClass(block, side);
       host._affixWrap[side] = w;
     }
-    for (const n of nodes) if (!n.parentNode) w.appendChild(n);
+    for (const n of nodes) if (!n.parentNode || n.parentNode === stale) w.appendChild(n);
     if (side === 'prefix' ? control.previousSibling !== w : control.nextSibling !== w) {
       if (side === 'prefix') control.before(w);
       else control.after(w);
@@ -88,13 +107,31 @@ export function mountAffixSlots(host, control, block) {
   }
 }
 
+/** @param {string} block @param {string} side @returns {string} the slot wrapper's only attribute (class) */
+const wrapClass = (block, side) => `${block}__affix ${block}__affix--${side} ${block}__affix--slot`;
+
 /**
- * Take the slot wrappers out of the DOM (they are page content, never part of the component's SSR markup) — before the
- * re-connect revalidation; the next bind mounts them again.
- * @param {HTMLElement & { _affixWrap?: object }} host
+ * Is `w` still exactly the wrapper the kit created: one attribute (its class, unchanged) and only the page's own slot
+ * nodes inside?
+ * @param {Element} w @param {string} block @param {string} side @param {Node[]} nodes
  */
-export function detachAffixSlots(host) {
-  for (const w of Object.values(host._affixWrap || {})) w.remove();
+function wrapIntact(w, block, side, nodes) {
+  return w.attributes.length === 1 && w.getAttribute('class') === wrapClass(block, side)
+    && [...w.childNodes].every((n) => nodes.includes(n));
+}
+
+/**
+ * Take the kit's own slot wrappers out of the DOM before the re-connect revalidation (page content, never part of the
+ * component's SSR markup); the next bind mounts them again. Codex security r1 SEC-01 (b): only the exact node the kit
+ * created, still intact — a mutated / foreign wrapper stays visible to the revalidation (→ safe re-render).
+ * @param {HTMLElement & { _affixWrap?: object, _affixSlots?: object }} host
+ * @param {'td-field'|'td-number'} block
+ */
+export function detachAffixSlots(host, block) {
+  for (const side of AFFIX_SIDES) {
+    const w = host._affixWrap?.[side];
+    if (w && wrapIntact(w, block, side, host._affixSlots?.[side] || [])) w.remove();
+  }
 }
 
 /**

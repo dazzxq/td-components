@@ -265,6 +265,8 @@ bên trong (`.td-field__control`), nên trình quản lý mật khẩu và bàn 
   parse lại) vào `span.td-field__affix--slot` cạnh control, sống qua mọi lần render lại. Bên có slot thì chữ / icon của bên
   đó bị ẩn (+ một cảnh báo khi đặt cả hai). Nhiều con cùng bên → giữ thứ tự. Con `[slot]` chỉ được đọc ở **lần render đầu**:
   thêm sau đó thì không được nhận (cảnh báo một lần) — tạo phần tử với con trước khi gắn vào trang, hoặc tạo lại field.
+  **Slot affix chỉ dành cho host không có `data-td-ssr`**: trên host SSR (markup PHP — PHP không bao giờ in slot) con
+  `[slot]` bị cổng hydrate từ chối → render an toàn, con bị bỏ (không vào form) + một cảnh báo.
   Kit **không** đụng ngữ nghĩa của nó: icon trang trí → bạn tự `aria-hidden="true"`; nút → bạn tự đặt tên (`aria-label`),
   `type="button"` (nếu không nút trong `<form>` là nút submit), tự xử lý click. Bấm vào nút / link / ô trong slot không cướp
   focus về ô nhập. Tab: ô nhập → nội dung slot hậu tố (thứ tự DOM). Trên cảm ứng nút của bạn nên ≥ 44 px.

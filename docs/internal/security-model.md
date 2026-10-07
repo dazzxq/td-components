@@ -540,8 +540,13 @@ Server **vẫn phải** kiểm giá trị lựa chọn thuộc tập hợp lệ 
   của server), và vẫn đi qua allowlist thẻ / attribute SVG của `_ssrUnsafe()`.
 - **Con `[slot="prefix"|"suffix"]`** là node của chính trang (DOM tin cậy của dev, như `<td-hint>` con / hàng custom ADR
   0026): kit chỉ **chuyển chỗ** (không clone, không đọc / ghi `innerHTML`, không sanitize), không đổi attribute của nó. Không
-  có API nhận chuỗi HTML cho affix (PHP cũng không — Q4). Slot không bao giờ có trong markup SSR được nhận: con được lấy ra
-  trước `canHydrate()`, vỏ slot bị gỡ trước khi `canRebind()` so markup.
+  có API nhận chuỗi HTML cho affix (PHP cũng không — Q4).
+- **Slot affix chỉ trên host không có `data-td-ssr`; trên host SSR chúng bị cổng hydrate từ chối** (Codex security r1
+  SEC-01): markup SSR sửa được trước khi JS tải, nên con `[slot]` của host SSR **không** được lấy ra trước `canHydrate()` —
+  chúng là node lạ như mọi node khác → `_markupMatches` / `_ssrUnsafe` từ chối → render an toàn, con bị bỏ (một
+  `<input type=hidden>` / `<button formaction>` tiêm vào không bao giờ vào form; FormData chỉ có field). Khi gắn lại, chỉ vỏ
+  slot **đúng node kit tạo, còn nguyên** (một attribute `class` đúng, chỉ chứa node slot ban đầu) được gỡ trước khi so;
+  vỏ bị sửa / vỏ lạ vẫn hiện trước cổng (→ render lại) và lần mount sau dựng vỏ mới chỉ với node slot ban đầu.
 - **`locale`** chỉ chọn trong tập dấu cố định (`.` `,` khoảng trắng, rỗng): bảng tĩnh; ngoài bảng thì ký tự Intl trả về phải
   thuộc đúng tập đó (NBSP / NNBSP chuẩn hoá) — không bao giờ chèn ký tự tuỳ ý vào hiển thị hay vào `parseLoose`. Giá trị gửi
   đi vẫn chỉ là chuỗi chuẩn. Cảnh báo PHP chỉ ghi tên option + kiểu + độ dài (không giá trị).
