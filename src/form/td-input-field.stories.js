@@ -1,6 +1,7 @@
 import { escapeHtml } from '../utils/escape.js';
 import '../styles/story-layout.css';
 import './td-input-field.js';
+import '../icons/td-icon-element.js';
 
 export default {
   title: 'Form/InputField',
@@ -220,4 +221,50 @@ export const TextareaAutoresize = {
   render: () => '<div class="sb-stack"><td-input-field type="textarea" label="Tóm tắt" rows="2" autoresize '
     + 'placeholder="Gõ nhiều dòng…"></td-input-field><p class="sb-note">CSS field-sizing (Chromium/Safari mới); '
     + 'trình duyệt khác giữ chiều cao theo rows.</p></div>',
+};
+
+const esc = (v) => escapeHtml(String(v ?? ''));
+const opt = (name, v) => (v != null && v !== '' ? ` ${name}="${esc(v)}"` : '');
+
+/** v0.55.0 prefix / suffix (text + registry icon): decorative, the unit is read through the description (unit-label). */
+export const Affixes = {
+  args: { label: 'Website', prefix: 'https://', suffix: '.vn', 'prefix-icon': '', 'suffix-icon': '', 'unit-label': '' },
+  argTypes: {
+    prefix: { control: 'text' }, suffix: { control: 'text' }, 'prefix-icon': { control: 'text' },
+    'suffix-icon': { control: 'text' }, 'unit-label': { control: 'text' },
+  },
+  render: (args) => `<div class="sb-stack">
+    <td-input-field name="site"${opt('label', args.label)}${opt('prefix', args.prefix)}${opt('suffix', args.suffix)}${opt('prefix-icon', args['prefix-icon'])}${opt('suffix-icon', args['suffix-icon'])}${opt('unit-label', args['unit-label'])}></td-input-field>
+    <td-input-field name="battery" type="number" label="Dung lượng pin" suffix="mAh" unit-label="mi-li-am-pe giờ" value="5000"></td-input-field>
+    <td-input-field name="q" type="search" label="Tìm sản phẩm" prefix-icon="search" placeholder="Tên, mã SKU…"></td-input-field>
+    <td-input-field name="price" label="Giá (lỗi)" suffix="đ" unit-label="đồng" value="12" error-text="Giá tối thiểu 1.000 đ"></td-input-field>
+    <td-input-field name="locked" label="Khoá" prefix="https://" value="congty.vn" disabled></td-input-field>
+    <td-input-field name="pw" type="password" label="Mật khẩu" size="lg" prefix-icon="lock" suffix="8+ ký tự"></td-input-field>
+    <p class="sb-note">Affix không bao giờ nằm trong giá trị; textarea / date / time bỏ affix (một cảnh báo).</p></div>`,
+};
+
+/** v0.55.0 page Elements in [slot="prefix"|"suffix"]: moved (same node), never hidden from AT — the page names / wires them. */
+export const AffixSlot = {
+  render: () => `<form class="sb-stack" id="if-slot">
+    <td-input-field name="password" type="password" label="Mật khẩu" autocomplete="current-password">
+      <button type="button" slot="suffix" class="sb-pw-toggle" aria-label="Hiện mật khẩu" aria-pressed="false">Hiện</button>
+    </td-input-field>
+    <td-input-field name="q" type="search" label="Tìm" value="iphone">
+      <td-icon slot="prefix" name="search" aria-hidden="true"></td-icon>
+      <button type="button" slot="suffix" class="sb-clear" aria-label="Xoá">×</button>
+    </td-input-field></form>`,
+  play: ({ canvasElement }) => {
+    const pw = canvasElement.querySelector('td-input-field[name="password"]');
+    canvasElement.querySelector('.sb-pw-toggle').addEventListener('click', (e) => {
+      const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+      e.currentTarget.setAttribute('aria-pressed', String(on));
+      e.currentTarget.textContent = on ? 'Ẩn' : 'Hiện';
+      pw.querySelector('.td-field__control').type = on ? 'text' : 'password';
+    });
+    canvasElement.querySelector('.sb-clear').addEventListener('click', () => {
+      const q = canvasElement.querySelector('td-input-field[name="q"]');
+      q.setValue('');
+      q.focus();
+    });
+  },
 };
