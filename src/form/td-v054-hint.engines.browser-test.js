@@ -431,6 +431,16 @@ describe('v0.54.0 <td-hint> — one whenDefined per tag (broker, Codex impl r2)'
     expect(desc(d.querySelector('#w1'))).to.deep.equal(['w1-hint']);
   });
 
+  it('Codex impl r4 #10: a non-HTML td-* target (SVG) links natively at once, no whenDefined', async () => {
+    const calls = spy();
+    const d = box('<svg><td-late-svg id="sv"></td-late-svg></svg><td-hint for="sv" id="sv-hint">Gợi ý</td-hint>');
+    await settle();
+    const t = d.querySelector('#sv');
+    expect(t.namespaceURI).to.equal('http://www.w3.org/2000/svg');
+    expect(calls.get('td-late-svg')).to.equal(undefined);
+    expect(desc(t)).to.deep.equal(['sv-hint']);
+  });
+
   it('Codex impl r3 #9: an INVALID td-* name (whenDefined rejects) falls back to the native link, no unhandled rejection', async () => {
     const unhandled = [];
     const onRej = (e) => { unhandled.push(e); e.preventDefault(); };

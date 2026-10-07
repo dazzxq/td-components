@@ -230,13 +230,14 @@ export class TdHint extends TdBaseElement {
     const token = this.id;
     const tag = want ? want.localName : '';
     let defined = true;
-    if (want && tag.startsWith('td-') && !NO_WAIT.has(tag)) {
+    const html = !!want && want.namespaceURI === 'http://www.w3.org/1999/xhtml'; // SVG / MathML can never be custom elements
+    if (want && html && tag.startsWith('td-') && !NO_WAIT.has(tag)) {
       if (!validCEName(tag)) NO_WAIT.add(tag); // `<td-!>` parses but can never be defined: link natively
       else {
         try { defined = !!customElements.get(tag); } catch { NO_WAIT.add(tag); }
       }
     }
-    const pending = !!want && tag.startsWith('td-') && !NO_WAIT.has(tag) && !defined;
+    const pending = html && tag.startsWith('td-') && !NO_WAIT.has(tag) && !defined;
     // Codex impl r1 #5: a wait for another tag (or none needed any more) is dropped before anything else
     if (this._wait && (!pending || this._wait !== tag)) this._cancelWait();
     if (this._link && this._link.target === want && this._link.token === token) return;
