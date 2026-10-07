@@ -441,7 +441,6 @@
       "state": "v054-hint-label",
       "markup": "<td-toggle label=\"Nhận email\" helper-text=\"Tối đa một email mỗi tuần\"></td-toggle>",
       "selectors": [
-        "td-toggle",
         ".td-switch",
         ".td-switch__track",
         ".td-switch__label",
@@ -453,7 +452,7 @@
       "state": "v054-hint-error",
       "markup": "<td-toggle label=\"Nhận email\" size=\"lg\" helper-text=\"Gợi ý\" error-text=\"Không lưu được\"></td-toggle>",
       "selectors": [
-        "td-toggle",
+        ".td-switch__label",
         ".td-field-error"
       ],
       "settle": 300
@@ -475,7 +474,6 @@
       "state": "v054-state-cell-on",
       "markup": "<table><tr><td>Hàng</td><td><td-toggle aria-label=\"Dùng\" checked on-text=\"Đang dùng\" off-text=\"Đã lưu trữ\"></td-toggle></td></tr></table>",
       "selectors": [
-        "td-toggle",
         ".td-switch",
         ".td-switch__state",
         ".td-switch__state-on",
@@ -579,9 +577,9 @@
       "state": "v054-hint-error",
       "markup": "<td-checkbox label=\"Đồng ý\" size=\"sm\" helper-text=\"Gợi ý\" error-text=\"Bắt buộc\"></td-checkbox><td-checkbox label=\"Đồng ý\" helper-text=\"Bắt buộc để tiếp tục\"></td-checkbox>",
       "selectors": [
-        "td-checkbox",
-        ".td-field__note",
-        ".td-field-error"
+        ".td-checkbox__label",
+        ".td-field-error",
+        "td-checkbox + td-checkbox .td-field__note"
       ],
       "settle": 300
     }
@@ -979,7 +977,6 @@
       "state": "v054-hint",
       "setup": "const d=document.createElement('td-dropdown'); d.setAttribute('label','Thành phố'); d.setAttribute('helper-text','Nơi giao hàng'); d.options=[{value:'hn',label:'Hà Nội'}]; window.__mount.appendChild(d);",
       "selectors": [
-        "td-dropdown",
         ".td-dropdown__trigger",
         ".td-field__note"
       ],
