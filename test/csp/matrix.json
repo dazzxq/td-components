@@ -3357,8 +3357,7 @@
         "td-repeater",
         ".td-repeater__actions > .td-sortable__handle:disabled",
         ".td-repeater__btn--remove:disabled",
-        ".td-repeater__add:disabled",
-        ".td-repeater__row input:disabled"
+        ".td-repeater__add:disabled"
       ],
       "settle": 200,
       "excludeProps": [
@@ -3368,7 +3367,7 @@
         "height",
         "grid-template-columns"
       ],
-      "selectorNote": "v0.56.0 (plan R7 / R8 / R6) — text-sized boxes (the add button's label, the row input's intrinsic width, the auto margin of the actions) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front; disabled = like <fieldset disabled>: kit buttons + row inputs disabled natively, host aria-disabled"
+      "selectorNote": "v0.56.0 (plan R7 / R8 / R6) — text-sized boxes (the add button's label, the row input's intrinsic width, the auto margin of the actions) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front; disabled = like <fieldset disabled>: kit buttons + row inputs disabled natively, host aria-disabled; the app's own row inputs are not snapshotted (unstyled by the kit: the host page / Tailwind preflight styles them)"
     },
     {
       "state": "readonly",
@@ -3376,8 +3375,7 @@
       "selectors": [
         ".td-repeater__row",
         ".td-repeater__actions",
-        ".td-repeater__footer",
-        ".td-repeater__row input[readonly]"
+        ".td-repeater__footer"
       ],
       "settle": 200,
       "excludeProps": [
@@ -3387,7 +3385,7 @@
         "height",
         "grid-template-columns"
       ],
-      "selectorNote": "v0.56.0 (plan R7 / R8 / R6) — text-sized boxes (the add button's label, the row input's intrinsic width, the auto margin of the actions) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front; readonly: every kit button hidden → the empty action cluster is display none, the footer drops its padding"
+      "selectorNote": "v0.56.0 (plan R7 / R8 / R6) — text-sized boxes (the add button's label, the row input's intrinsic width, the auto margin of the actions) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front; readonly: every kit button hidden → the empty action cluster is display none, the footer drops its padding; the app's own row inputs are not snapshotted (unstyled by the kit: the host page / Tailwind preflight styles them)"
     },
     {
       "state": "fieldset-disabled",
