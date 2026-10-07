@@ -82,11 +82,17 @@ describe('v0.54.0 td-toggle on-text / off-text (QĐ 10)', () => {
   it('controlled, pending commit() and its revert keep exactly one state id matching input.checked', async () => {
     const el = mount('<td-toggle id="t3" controlled label="A" on-text="Bật" off-text="Tắt"></td-toggle>').firstElementChild;
     await settle();
-    el.addEventListener('change', (e) => { el.commit(async () => false, e.detail.checked); });
+    let release;
+    const gate = new Promise((r) => { release = r; });
+    el.addEventListener('change', (e) => { el.commit(async () => { await gate; return false; }, e.detail.checked); });
+    const failed = new Promise((r) => el.addEventListener('commit-error', r, { once: true }));
     input(el).click();
     await settle();
-    expect(desc(el)).to.deep.equal([input(el).checked ? 't3-on' : 't3-off']);
-    await new Promise((r) => el.addEventListener('commit-error', r, { once: true }));
+    expect(input(el).checked, 'optimistic: on while pending').to.equal(true);
+    expect(desc(el)).to.deep.equal(['t3-on']);
+    expect(vis(on(el))).to.equal(true);
+    release();
+    await failed;
     await settle();
     expect(input(el).checked).to.equal(false);
     expect(desc(el)).to.deep.equal(['t3-off']);

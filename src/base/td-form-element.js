@@ -62,6 +62,14 @@ export const ssrIsErrorNote = (n) => n.nodeType === 1 && n.localName === 'span' 
   && [...n.attributes].every((a) => ['class', 'id', 'data-for'].includes(a.name)) && n.children.length === 0;
 
 /**
+ * v0.54.0 (plan v0.54.0-hint QĐ 11): the helper note php/td.php prints for a control (`div.td-field__note#{host}-note`,
+ * text only, optionally `hidden` while an error shows) — the SSR checks accept it right before the error note.
+ * @param {Node} n @param {string} hostId
+ */
+export const ssrIsHelperNote = (n, hostId) => n.nodeType === 1 && n.localName === 'div' && ssrClassKey(n) === 'td-field__note'
+  && n.id === `${hostId}-note` && [...n.attributes].every((a) => ['class', 'id', 'hidden'].includes(a.name)) && n.children.length === 0;
+
+/**
  * Base class for form-associated td-components. Extends {@link TdBaseElement}
  * with native form participation via **ElementInternals** (no Shadow DOM).
  *
