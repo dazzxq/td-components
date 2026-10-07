@@ -218,3 +218,16 @@ describe('v0.55.0 td-number-input — decimals is a maximum: no padding, no roun
     expect(d.value).to.equal('6');
   });
 });
+
+describe('v0.55.0 Codex impl r1 #1 — separator cache: an absent attribute is not the literal "null"', () => {
+  it('group-separator absent → "null" at run time re-resolves (exactly one warning, default kept)', () => {
+    const warns = captureWarn();
+    const el = num('value="1234"');
+    expect(ctl(el).value).to.equal('1.234');
+    el.setAttribute('group-separator', 'null');
+    expect(warns.filter((w) => /group-separator="null"/.test(w)).length).to.equal(1);
+    expect(ctl(el).value).to.equal('1.234');
+    el.setAttribute('decimal-separator', 'null');
+    expect(warns.filter((w) => /decimal-separator="null"/.test(w)).length).to.equal(1);
+  });
+});

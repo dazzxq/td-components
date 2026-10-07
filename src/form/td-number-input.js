@@ -167,7 +167,7 @@ export class TdNumberInput extends TdFormElement {
     const loc = (this.getAttribute('locale') || '').trim();
     const g = this.getAttribute('group-separator');
     const d = this.getAttribute('decimal-separator');
-    const key = `${loc}\u0000${g}\u0000${d}`;
+    const key = JSON.stringify([loc, g, d]); // Codex impl r1 #1: an absent attribute (null) ≠ the literal "null"
     if (this._sepCache?.key === key) return this._sepCache.seps;
     let pair = null;
     if (loc) {
@@ -930,7 +930,7 @@ export class TdNumberInput extends TdFormElement {
 
   /** Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own. */
   canRebind() {
-    detachAffixSlots(this); // v0.55.0: page content, never the component's markup — mounted again by the bind
+    detachAffixSlots(this, 'td-number'); // v0.55.0: page content, never the component's markup — mounted again by the bind
     return this._ssrRevalidate(this._ssrStateSource());
   }
 
