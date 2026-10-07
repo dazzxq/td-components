@@ -1,6 +1,7 @@
 import { escapeHtml } from '../utils/escape.js';
 import { safeColor } from '../utils/css-safe.js';
 import { ensurePressStates } from '../utils/press.js';
+import { takePreUpgradeProps } from '../utils/upgrade-props.js';
 
 /**
  * v0.25.0 (ADR 0012): parse the SSR marker `data-td-ssr="<name>@<schema>"` (name: lower-case kebab token; schema: a
@@ -178,25 +179,26 @@ export class TdBaseElement extends HTMLElement {
 
   /**
    * Install the attribute-backed property accessors (camelCase of each observed attribute) and replay any value
-   * assigned BEFORE connect / before `customElements.define` (such a value lives in an own data property that
-   * would otherwise shadow the accessor and never reach the attribute). Names that already have an accessor on
-   * the prototype chain (e.g. a subclass `value` getter/setter) keep it; an early value is replayed through it.
+   * assigned BEFORE connect / before the upgrade (such a value lives in an own data property that would otherwise
+   * shadow the accessor and never reach the attribute). Names that already have an accessor on the prototype chain
+   * (e.g. a subclass `value` getter/setter) keep it; an early value is replayed through it.
+   * v0.54.1: EVERY class setter is replayed, not only the attribute-backed names (`columns`, `data`, hooks… — found
+   * automatically, see utils/upgrade-props.js), in the page's assignment order, renders suppressed.
    * v0.26.0 (F0): the replayed property names are recorded in `this._earlyProps` (a Set, read-only afterwards) — SSR
    * hydration lets such a value win over the live state of the server-rendered control.
    * @private
    */
   _setupProperties() {
     const booleans = new Set(this.constructor.booleanAttributes);
-    const early = [];
-    /** @type {Set<string>} property names assigned before connect / define (camelCase) */
-    this._earlyProps = new Set();
+    /** @type {Map<string, string>} camelCase property → observed attribute */
+    const attrOf = new Map();
     for (const attr of this.constructor.observedAttributes) {
-      const prop = attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-      if (Object.prototype.hasOwnProperty.call(this, prop)) {
-        early.push([prop, this[prop]]);
-        this._earlyProps.add(prop);
-        delete this[prop];
-      }
+      attrOf.set(attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase()), attr);
+    }
+    const early = takePreUpgradeProps(this, attrOf);
+    /** @type {Set<string>} property names assigned before connect / define (camelCase) */
+    this._earlyProps = new Set(early.map(([prop]) => prop));
+    for (const [prop, attr] of attrOf) {
       if (prop in this) continue; // a subclass accessor (incl. camelCase of a dashed attribute) is kept
       const isBool = booleans.has(attr);
       Object.defineProperty(this, prop, {

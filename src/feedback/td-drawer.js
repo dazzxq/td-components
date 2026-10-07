@@ -58,6 +58,7 @@ import { openDialogLayer } from './dialog-layer.js';
 import { LAYERS, focusablesIn } from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { transitionEndMs } from '../utils/transition.js';
+import { replayPreUpgradeProps } from '../utils/upgrade-props.js';
 
 const SIDES = ['start', 'end'];
 const SIZES = ['sm', 'md', 'lg', 'xl'];
@@ -194,6 +195,9 @@ export class TdDrawer extends HTMLElement {
   }
 
   connectedCallback() {
+    // v0.54.1: `open` (or any setter) assigned before the upgrade (template clone, createElement before define) is an
+    // own property shadowing the accessor — replayed through the setter now that the drawer is in the page
+    replayPreUpgradeProps(this);
     if (this.hasAttribute('open') && this._state === 'closed') this.show();
   }
 
