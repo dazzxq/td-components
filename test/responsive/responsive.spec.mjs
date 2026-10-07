@@ -431,6 +431,29 @@ async function runConfig(browser, c) {
       return errs;
     });
     check(tag, 'td-filter-chips + column menu (v0.39.0)', chipErr);
+    // v0.54.0 (plan v0.54.0-hint gate "responsive"): long hints wrap inside the section (no horizontal overflow), the toggle /
+    // checkbox notes start under the label text, the state text stays on the switch row in a narrow table cell
+    const hintErr = await page.evaluate(() => {
+      const errs = [];
+      const sec = document.querySelector('[data-section="hints"]');
+      const s = sec.getBoundingClientRect();
+      for (const n of sec.querySelectorAll('.td-field__note:not([hidden]), td-hint')) {
+        const r = n.getBoundingClientRect();
+        if (r.left < s.left - 0.5 || r.right > s.right + 0.5) errs.push(`${n.closest('[id]')?.id || n.id}: hint outside the section`);
+      }
+      if (sec.scrollWidth > sec.clientWidth + 1) errs.push(`section overflows ${sec.scrollWidth} > ${sec.clientWidth}`);
+      const tg = document.getElementById('rsp-hint-toggle');
+      const lab = tg.querySelector('.td-switch__label').getBoundingClientRect();
+      const note = tg.querySelector('.td-field__note').getBoundingClientRect();
+      if (Math.abs(note.left - lab.left) > 0.6) errs.push(`toggle note ${note.left} not under the label ${lab.left}`);
+      for (const t of document.querySelectorAll('#rsp-hint-table td-toggle')) {
+        const tr = t.querySelector('.td-switch__track').getBoundingClientRect();
+        const st = t.querySelector('.td-switch__state').getBoundingClientRect();
+        if (Math.abs((st.top + st.bottom) / 2 - (tr.top + tr.bottom) / 2) > 4) errs.push('state text off the switch row');
+      }
+      return errs;
+    });
+    check(tag, 'hints + toggle state text (v0.54.0)', hintErr);
     // v0.46.0 (plan v0.46.0-diff M5): td-diff — layout by host width, the forced table scrolls INSIDE its box, rows and
     // values inside the section, summaries ≥ 44 (coarse) / ≥ 24 (mouse)
     const diffErr = await page.evaluate((coarse) => {

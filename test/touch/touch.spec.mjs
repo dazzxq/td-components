@@ -1195,6 +1195,28 @@ async function webkitSmoke(browser) {
       expect(m.sw <= m.vw, `horizontal overflow ${m.sw} > ${m.vw}`);
     });
 
+    // v0.54.0 (plan v0.54.0-hint gate "touch"): every hint ≥ 14 px on a coarse pointer (footer note, host note, <td-hint>);
+    // a tap on the toggle's state text flips it (it sits in the label); a tap on a link inside a <td-hint> child of a
+    // checkbox does NOT tick it (the hint is outside the label)
+    await it(tag, 'hints ≥ 14 px; tap on the state text flips the toggle; a link in a checkbox hint does not tick it', async () => {
+      await load(page);
+      await page.locator('#rsp-hint-table').scrollIntoViewIfNeeded();
+      const fs = await page.evaluate(() => [...document.querySelectorAll('[data-section="hints"] :is(.td-field__note:not([hidden]), td-hint)')]
+        .map((n) => [n.closest('[id]')?.id || n.localName, parseFloat(getComputedStyle(n).fontSize)]));
+      for (const [id, f] of fs) expect(f >= 14, `${id} hint font-size ${f}`);
+      expect(fs.length >= 5, `hints found: ${fs.length}`);
+      const off = '#rsp-hint-table tr:nth-child(2) td-toggle';
+      await tap(`${off} .td-switch__state`);
+      await page.waitForTimeout(50);
+      const on = await page.evaluate((s) => document.querySelector(s).checked, off);
+      expect(on, 'tap on the state text did not flip the toggle');
+      await page.evaluate(() => { const a = document.querySelector('#rsp-hint-checkbox td-hint a'); a.addEventListener('click', (e) => e.preventDefault()); });
+      await page.locator('#rsp-hint-checkbox td-hint a').scrollIntoViewIfNeeded();
+      await tap('#rsp-hint-checkbox td-hint a');
+      await page.waitForTimeout(50);
+      expect(!(await page.evaluate(() => document.getElementById('rsp-hint-checkbox').checked)), 'the hint link ticked the checkbox');
+    });
+
     await it(tag, 'carousel: next / prev by tap (v0.50.0)', async () => {
       await load(page);
       await tap('#rsp-carousel [data-td-carousel="next"]');
