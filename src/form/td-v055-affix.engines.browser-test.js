@@ -300,3 +300,35 @@ describe('v0.55.0 (release lead A) — --td-field-note-size drives every helper 
     expect(getComputedStyle(err).fontSize, 'the error keeps its size').to.not.equal('14px');
   });
 });
+
+describe('v0.55.0 affix — robustness', () => {
+  for (const tag of ['td-input-field', 'td-number-input']) {
+    it(`${tag}: a focused slot button keeps the focus through a structural re-render`, async () => {
+      const wrap = mount(`<${tag} label="A"><button type="button" slot="suffix" class="pg">×</button></${tag}>`);
+      const el = wrap.querySelector(tag);
+      const btn = wrap.querySelector('button.pg');
+      btn.focus();
+      el.setAttribute('label', 'B');
+      el.setAttribute('size', 'lg');
+      await wait();
+      expect(btn.isConnected && document.activeElement === btn, 'focus kept on the slot button').to.equal(true);
+    });
+  }
+
+  it('two very long affixes in a 200 px column shrink with an ellipsis; the box never overflows, the control keeps ≥ 4ch', async () => {
+    const wrap = mount('<div class="lc"><td-input-field label="X" prefix="https://www.mot-ten-mien-rat-rat-dai.example/" '
+      + 'suffix="/mot-duong-dan-cung-rat-dai/index.html" value="a"></td-input-field></div>');
+    wrap.querySelector('.lc').style.setProperty('width', '200px');
+    await wait(20);
+    const el = wrap.querySelector('td-input-field');
+    const host = el.getBoundingClientRect();
+    const box = el.querySelector('.td-field__box').getBoundingClientRect();
+    const ctl = el.querySelector('.td-field__control');
+    expect(box.right <= host.right + 0.5, `box ${box.right} ≤ host ${host.right}`).to.equal(true);
+    expect(ctl.getBoundingClientRect().width >= parseFloat(getComputedStyle(ctl).minWidth) - 0.5, 'control ≥ 4ch').to.equal(true);
+    for (const side of ['prefix', 'suffix']) {
+      const a = el.querySelector(`.td-field__affix--${side}`);
+      expect(a.scrollWidth > a.clientWidth, `${side} cut`).to.equal(true);
+    }
+  });
+});

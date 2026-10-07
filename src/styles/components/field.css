@@ -432,6 +432,8 @@
 	}
 
 	.td-field__affix {
+		flex-shrink: 1; /* two long affixes in a narrow column shrink (ellipsis) before the box overflows */
+		min-inline-size: 0;
 		max-inline-size: 50%; /* a long affix never squeezes the value out: cut with an ellipsis (the description reads it all) */
 		overflow: hidden;
 		color: var(--td-field-affix-fg);
@@ -444,6 +446,7 @@
 
 	/* a slot holds the page's own nodes (a button with its focus ring): never clipped, the page's colours */
 	:is(.td-number__affix--slot, .td-field__affix--slot) {
+		flex-shrink: 0;
 		display: inline-flex;
 		align-items: center;
 		max-inline-size: none;

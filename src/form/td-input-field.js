@@ -4,7 +4,8 @@ import {
 import { ssrMarker } from '../base/td-base-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import {
-  affixIcon, affixMarkup, detachAffixSlots, mountAffixSlots, slotInteractive, takeAffixSlots, warnLateSlots,
+  affixIcon, affixMarkup, detachAffixSlots, mountAffixSlots, renderKeepingSlotFocus, slotInteractive, takeAffixSlots,
+  warnLateSlots,
 } from './field-affix.js';
 
 /**
@@ -247,7 +248,7 @@ export class TdInputField extends TdFormElement {
   /** @private v0.55.0 (Q6): a [slot] child added after the first render is not adopted — say so once */
   _doRender() {
     if (this._initialized) warnLateSlots(this);
-    super._doRender();
+    renderKeepingSlotFocus(this, () => super._doRender());
   }
 
   // --- Resolved attributes ---

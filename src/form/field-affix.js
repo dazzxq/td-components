@@ -114,6 +114,19 @@ export function slotInteractive(target, box, block) {
 }
 
 /**
+ * Run a full render (`render`) keeping the focus of page content inside a slot (a focused "show password" button whose
+ * field re-renders for a label / size change gets its focus back once the wrapper is mounted again).
+ * @param {HTMLElement & { _affixWrap?: object }} host
+ * @param {() => void} render
+ */
+export function renderKeepingSlotFocus(host, render) {
+  const active = host.ownerDocument.activeElement;
+  const inSlot = !!active && Object.values(host._affixWrap || {}).some((w) => w.contains(active));
+  render();
+  if (inSlot && active.isConnected && host.ownerDocument.activeElement !== active) active.focus({ preventScroll: true });
+}
+
+/**
  * Q6: [slot] children are read on the first render only — warn ONCE when the page added one later (it is not adopted;
  * a render replaces it).
  * @param {HTMLElement & { _lateSlotWarned?: boolean }} host
