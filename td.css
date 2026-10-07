@@ -824,6 +824,15 @@
 		/* v0.55.0 (ADR 0028): prefix / suffix of td-input-field + td-number-input */
 		--td-field-affix-gap: var(--td-space-2xs);
 		--td-field-affix-icon: 1.125em;
+		/* v0.55.0 (release lead, dsuite): the font size of EVERY helper note (input / number footer note, the block note of
+		   the other controls, the media help spans, <td-hint>) — a site sets it without touching --td-text-xs */
+		--td-field-note-size: var(--td-text-xs);
+	}
+
+	@media (pointer: coarse) {
+		:root {
+			--td-field-note-size: var(--td-text-sm); /* ≥ 14px on touch screens (v0.36.0 QĐ 67) */
+		}
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
@@ -1070,6 +1079,7 @@
 	}
 
 	.td-field__note {
+		font-size: var(--td-field-note-size); /* v0.55.0: = the footer size by default (xs; sm on touch) */
 		color: var(--td-field-note);
 	}
 
@@ -1079,7 +1089,7 @@
 		display: block;
 		margin-top: var(--td-space-2xs);
 		font-family: var(--td-font-sans); /* outside the control's root block: never inherit the host font */
-		font-size: var(--td-text-xs);
+		font-size: var(--td-field-note-size);
 		line-height: var(--td-leading-normal);
 		overflow-wrap: anywhere;
 	}
@@ -1108,12 +1118,8 @@
 			font-size: var(--td-text-sm);
 		}
 
-		/* v0.54.0: the helper note outside a footer + the media help spans (td-hint: hint.css) */
-		:not(.td-field__footer) > .td-field__note:not([hidden]), /* = the specificity of the base rule above */
-		.td-media-field__help,
-		.td-media-gallery__help {
-			font-size: var(--td-text-sm);
-		}
+		/* v0.54.0: the helper notes (block note, media help spans, td-hint) — v0.55.0: through --td-field-note-size
+		   (sm on touch screens, set on :root above) */
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -1345,7 +1351,7 @@
 	td-hint {
 		margin-top: var(--td-space-2xs);
 		font-family: var(--td-font-sans);
-		font-size: var(--td-text-xs);
+		font-size: var(--td-field-note-size); /* v0.55.0: the shared helper-note size (field.css) */
 		line-height: var(--td-leading-normal);
 		color: var(--td-field-note);
 		overflow-wrap: anywhere;
@@ -1365,7 +1371,7 @@
 		grid-column: 1;
 		min-width: 0;
 		margin: 0;
-		font-size: inherit;
+		font-size: var(--td-field-note-size);
 	}
 
 	td-hint a {
@@ -1377,16 +1383,6 @@
 	td-hint code {
 		font-family: var(--td-font-mono);
 		font-size: 0.95em;
-	}
-
-	@media (pointer: coarse) {
-		td-hint {
-			font-size: var(--td-text-sm);
-		}
-
-		.td-field__footer > td-hint {
-			font-size: inherit;
-		}
 	}
 }
 
@@ -14792,7 +14788,7 @@
 	.td-media-field__help {
 		display: block;
 		margin-block-start: var(--td-space-2xs);
-		font-size: var(--td-text-xs);
+		font-size: var(--td-field-note-size); /* v0.55.0: the shared helper-note size (field.css) */
 		color: var(--td-field-note);
 	}
 
@@ -15262,7 +15258,7 @@
 	.td-media-gallery__help {
 		display: block;
 		margin-block-start: var(--td-space-2xs);
-		font-size: var(--td-text-xs);
+		font-size: var(--td-field-note-size); /* v0.55.0: the shared helper-note size (field.css) */
 		color: var(--td-field-note);
 	}
 

@@ -255,3 +255,48 @@ describe('v0.55.0 affix — td-input-field types (QĐ 1)', () => {
     expect(TdInputField.observedAttributes.includes('prefix-icon')).to.equal(true);
   });
 });
+
+describe('v0.55.0 (release lead A) — --td-field-note-size drives every helper note', () => {
+  it('default: the footer note, the block note and <td-hint> keep --td-text-xs (= the footer size)', async () => {
+    const wrap = mount('<td-input-field label="A" helper-text="Gợi ý"></td-input-field>'
+      + '<td-dropdown label="B" helper-text="Gợi ý"></td-dropdown>'
+      + '<label for="x">X</label><input id="x"><td-hint for="x">Gợi ý <b>giàu</b></td-hint>');
+    await import('./td-dropdown.js');
+    await import('./td-hint.js');
+    await wait(20);
+    const xs = getComputedStyle(document.documentElement).getPropertyValue('--td-text-xs').trim();
+    const px = (el) => getComputedStyle(el).fontSize;
+    const probe = document.createElement('div');
+    probe.style.setProperty('font-size', xs);
+    wrap.appendChild(probe);
+    const want = px(probe);
+    expect(px(wrap.querySelector('td-input-field .td-field__note'))).to.equal(want);
+    expect(px(wrap.querySelector('td-input-field .td-field__footer'))).to.equal(want);
+    expect(px(wrap.querySelector('td-dropdown .td-field__note'))).to.equal(want);
+    expect(px(wrap.querySelector('td-hint'))).to.equal(want);
+  });
+
+  it('a site value (0.875rem) reaches every note but NOT the counter / error; 360 px: the counter keeps its column, nothing overflows', async () => {
+    const wrap = mount('<div class="np"><td-input-field label="Mô tả" max-length="120" value="abc" '
+      + 'helper-text="Một gợi ý khá dài để xuống dòng trong cột ghi chú khi chữ gợi ý to 14 px trên màn hình hẹp 360"></td-input-field>'
+      + '<td-number-input label="Giá" helper-text="Đã gồm VAT" error-text="Sai"></td-number-input></div>');
+    const np = wrap.querySelector('.np');
+    np.style.setProperty('width', '360px');
+    np.style.setProperty('--td-field-note-size', '0.875rem');
+    await wait(20);
+    const f = np.querySelector('td-input-field');
+    const note = f.querySelector('.td-field__note');
+    const counter = f.querySelector('.td-field__counter');
+    const footer = f.querySelector('.td-field__footer');
+    expect(getComputedStyle(note).fontSize).to.equal('14px');
+    expect(getComputedStyle(counter).fontSize, 'counter keeps the footer size').to.not.equal('14px');
+    const n = note.getBoundingClientRect();
+    const c = counter.getBoundingClientRect();
+    expect(Math.abs(n.top - c.top) <= 1, 'same first row').to.equal(true);
+    expect(n.right <= c.left + 0.5, `note left of the counter (${n.right} ≤ ${c.left})`).to.equal(true);
+    expect(n.height > c.height, 'the note wraps in its own column').to.equal(true);
+    expect(footer.scrollWidth <= footer.clientWidth + 1, 'no horizontal overflow').to.equal(true);
+    const err = np.querySelector('td-number-input .td-field-error');
+    expect(getComputedStyle(err).fontSize, 'the error keeps its size').to.not.equal('14px');
+  });
+});

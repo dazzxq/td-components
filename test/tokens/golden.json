@@ -1510,6 +1510,10 @@
     "@color-scheme": "dark"
   },
   "added": {
+    "--td-field-affix-fg": { "light": "rgb(107, 107, 115)", "dark": "rgb(172, 172, 180)", "why": "v0.55.0: prefix / suffix text + icon of td-input-field / td-number-input (= --td-color-text-muted, ≥ 4.7 on every field fill — contrast gate); --td-number-affix-fg aliases it" },
+    "--td-field-affix-gap": { "light": "0.25rem", "dark": "0.25rem", "why": "v0.55.0: gap between the affix parts and the value in the field box (--td-number-affix-gap aliases it, same value)" },
+    "--td-field-note-size": { "light": "0.75rem", "dark": "0.75rem", "why": "v0.55.0 (release lead, dsuite): font size of every helper note (= --td-text-xs; --td-text-sm under pointer: coarse) — sites enlarge hints without touching --td-text-xs" },
+    "--td-field-affix-icon": { "light": "1.125em", "dark": "1.125em", "why": "v0.55.0: size of a prefix-icon / suffix-icon (follows the field font size)" },
     "--td-switch-state-fg": {
       "light": "rgb(107, 107, 115)",
       "dark": "rgb(172, 172, 180)",

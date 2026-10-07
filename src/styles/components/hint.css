@@ -8,7 +8,7 @@
 	td-hint {
 		margin-top: var(--td-space-2xs);
 		font-family: var(--td-font-sans);
-		font-size: var(--td-text-xs);
+		font-size: var(--td-field-note-size); /* v0.55.0: the shared helper-note size (field.css) */
 		line-height: var(--td-leading-normal);
 		color: var(--td-field-note);
 		overflow-wrap: anywhere;
@@ -28,7 +28,7 @@
 		grid-column: 1;
 		min-width: 0;
 		margin: 0;
-		font-size: inherit;
+		font-size: var(--td-field-note-size);
 	}
 
 	td-hint a {
@@ -40,15 +40,5 @@
 	td-hint code {
 		font-family: var(--td-font-mono);
 		font-size: 0.95em;
-	}
-
-	@media (pointer: coarse) {
-		td-hint {
-			font-size: var(--td-text-sm);
-		}
-
-		.td-field__footer > td-hint {
-			font-size: inherit;
-		}
 	}
 }
