@@ -52,6 +52,17 @@ const DCMS_PRESETS = [
 ];
 
 /**
+ * v0.56.0 (plan v0.56.0-repeater-icons-date A2): presets of the KIT, after the dcms2 table (same shape, same PHP mirror
+ * Td::ACTION_PRESETS). Reversible status changes are `warning` (`danger` stays for data loss — `delete`); `restore` (out
+ * of the archive) is not `return` (`undo-2`, "Trả lại" — the review flow).
+ */
+const KIT_PRESETS = [
+  ['archive', 'archive', 'Lưu trữ', 'warning'],
+  ['restore', 'restore', 'Khôi phục', 'standard'],
+  ['discontinue', 'ban', 'Ngừng kinh doanh', 'warning'],
+];
+
+/**
  * Canonical preset key: dcms2 camelCase → kebab-case (`sendToPublish` → `send-to-publish`), lower-cased; only
  * `[a-z0-9-]` keys are valid (anything else → null, never looked up).
  * @param {string|null|undefined} action
@@ -97,8 +108,8 @@ export class TdActionButton extends TdButton {
   /** SSR markup contract `data-td-ssr="action-button@1"` (independent of `button@1`). */
   static SSR_SCHEMA = 1;
 
-  /** Preset registry (site-editable object): name → { icon, label, tone }. */
-  static presets = Object.fromEntries(DCMS_PRESETS.map(([name, icon, label, tone]) => [name, { icon, label, tone }]));
+  /** Preset registry (site-editable object): name → { icon, label, tone }. The dcms2 presets, then the kit's (v0.56.0). */
+  static presets = Object.fromEntries([...DCMS_PRESETS, ...KIT_PRESETS].map(([name, icon, label, tone]) => [name, { icon, label, tone }]));
 
   static get observedAttributes() {
     return [...super.observedAttributes.filter((a) => !IGNORED.has(a)), 'action', 'tone'];

@@ -42,7 +42,8 @@ note.prepend(tdIcon('info', { size: 'l', label: 'Thông tin' })); // icon có ng
 
 ## Danh sách icon core
 
-39 icon. Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide.
+70 icon (0.56.0). Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide. Bảng dưới là nhóm nền; các nhóm
+thêm sau (nút thao tác, toggle, theme, kho / danh mục) liệt kê ở các đoạn tiếp theo — danh sách đầy đủ: `listIcons()`.
 
 | Tên td | Lucide | | Tên td | Lucide |
 |---|---|---|---|---|
@@ -87,6 +88,23 @@ Nhóm icon cho màn quản trị (CMS) — `trash`, `pencil`, `copy`, `log-out`,
 `tone="warning"`) và công tắc theme Tự động (`monitor`) / Sáng (`sun`) / Tối (`moon`) của
 [choice group `segmented`](choice-group.md#7-thanh-chọn-segmented-0520).
 
+`archive`, `restore`, `category`, `brand`, `product`, `ban` có từ **0.56.0** (màn quản lý kho / danh mục; hình học
+Lucide `lucide-static` 1.52.0):
+
+| Tên td | Lucide | Dùng cho | Alias |
+|---|---|---|---|
+| `archive` | archive | lưu trữ | — |
+| `restore` | archive-restore | khôi phục (khỏi lưu trữ) | `archive-restore` |
+| `category` | folder-tree | danh mục / cây thư mục | `folder-tree` |
+| `brand` | tag | nhãn hiệu / hãng | `tag`, `trademark` |
+| `product` | package | sản phẩm / hộp | `package` |
+| `ban` | ban | ngừng / chặn (nút `discontinue`) | — |
+
+Không có alias `box`: Lucide có icon `box` **khác hình** (khối lập phương). Logo hãng thật (brand icon) không vào core
+([ADR 0010](../internal/decisions/0010-icon-registry.md)) — site đăng ký bằng `registerIcons()`. **Lưu ý nâng cấp:** tên
+core mới làm `registerIcons()` của site **ném lỗi** nếu site đã dùng đúng tên đó
+([breaking-changes § 0.56.0](../upgrading/breaking-changes.md)).
+
 Danh sách luôn đúng nhất là lấy từ code, vì site có thể đã đăng ký thêm:
 
 ```js
@@ -110,6 +128,10 @@ Một số tên quen thuộc (tên Lucide / Font Awesome) được nhận như *
 | `external-link` | `external` |
 | `expand` | `fullscreen` |
 | `pen` | `pencil` |
+| `archive-restore` (0.56.0) | `restore` |
+| `folder-tree` (0.56.0) | `category` |
+| `tag` / `trademark` (0.56.0) | `brand` |
+| `package` (0.56.0) | `product` |
 
 - SVG vẽ ra giống hệt icon đích, và `data-icon` là **tên core** (`tdIcon('x')` → `data-icon="close"`).
 - Alias chỉ áp khi tên đó **không** phải icon core và chưa được site đăng ký: site `registerIcons({ pen: … })` thì

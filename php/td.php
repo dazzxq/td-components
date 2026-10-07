@@ -139,6 +139,8 @@ namespace TdComponents {
         private static ?array $kitAliases = null;
         /** @var array<string,array> */
         private static array $siteIcons = [];
+        /** @var array<string,array{0:string,1:string,2:string}> v0.56.0 site action presets (registerActionPresets) */
+        private static array $sitePresets = [];
         private static bool $allowHttp = false;
 
         /**
@@ -290,6 +292,8 @@ namespace TdComponents {
         /**
          * v0.36.0: the 23 dcms2 action presets — name => [icon, label, tone]. MUST equal TdActionButton.presets
          * (src/form/td-action-button.js; parity: test/php/td-action-button.test.js). Plan v0.36.0 QĐ 11.
+         * v0.56.0 (plan A2): + the kit presets archive / restore / discontinue (JS KIT_PRESETS), after the dcms2 ones.
+         * A site adds / replaces presets with Td::registerActionPresets() (and the same in JS: TdActionButton.registerPreset).
          */
         public const ACTION_PRESETS = [
             'edit' => ['pencil', 'Chỉnh sửa', 'standard'],
@@ -315,6 +319,9 @@ namespace TdComponents {
             'claim' => ['hand', 'Nhận bài', 'standard'],
             'release' => ['reply', 'Nhả bài', 'warning'],
             'force-release' => ['user-x', 'Nhả bài cho người khác', 'danger'],
+            'archive' => ['archive', 'Lưu trữ', 'warning'],
+            'restore' => ['restore', 'Khôi phục', 'standard'],
+            'discontinue' => ['ban', 'Ngừng kinh doanh', 'warning'],
         ];
         /** @internal JS `\s` (String.prototype.trim / RegExp \s) as a PCRE /u class body — parity with media-field-model.js. */
         public const JS_WS = '\t\n\x{0B}\f\r \x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}';
@@ -792,6 +799,52 @@ namespace TdComponents {
             return self::iconDef($name) !== null;
         }
 
+        /**
+         * v0.56.0 (plan A3): register (or replace) action presets of td_action_button — the PHP twin of
+         * `TdActionButton.registerPreset()` (same rules: kebab-case name, non-empty label (trimmed), tone standard |
+         * warning | danger (default standard), an icon Td::hasIcon() knows). Anything invalid → InvalidArgumentException
+         * and NOTHING of the batch is registered. A site preset wins over the kit preset of the same name. Register the
+         * same presets in JS too: an element-mode host whose label differs from the JS one re-renders (safe) with JS's.
+         * @param array<string,array{icon:string,label:string,tone?:string}> $defs
+         */
+        public static function registerActionPresets(array $defs): void
+        {
+            $clean = [];
+            foreach ($defs as $name => $def) {
+                $name = (string) $name;
+                if (!preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name)) {
+                    throw new InvalidArgumentException('Td::registerActionPresets: invalid name (kebab-case [a-z0-9-])');
+                }
+                if (!is_array($def)) {
+                    throw new InvalidArgumentException("Td::registerActionPresets(\"$name\"): definition must be an array");
+                }
+                $label = isset($def['label']) && is_string($def['label'])
+                    ? (string) preg_replace('/^[' . self::JS_WS . ']+|[' . self::JS_WS . ']+$/u', '', $def['label']) : '';
+                if ($label === '') {
+                    throw new InvalidArgumentException("Td::registerActionPresets(\"$name\"): label must be a non-empty string");
+                }
+                $tone = $def['tone'] ?? 'standard';
+                if (!in_array($tone, self::ACTION_TONES, true)) {
+                    throw new InvalidArgumentException("Td::registerActionPresets(\"$name\"): tone must be standard | warning | danger");
+                }
+                $icon = $def['icon'] ?? null;
+                if (!is_string($icon) || !self::hasIcon($icon)) {
+                    throw new InvalidArgumentException("Td::registerActionPresets(\"$name\"): unknown icon");
+                }
+                $clean[$name] = [$icon, $label, $tone];
+            }
+            self::$sitePresets = $clean + self::$sitePresets; // all or nothing
+        }
+
+        /**
+         * v0.56.0: the preset of a canonical key — a site preset (registerActionPresets) first, then Td::ACTION_PRESETS.
+         * @return array{0:string,1:string,2:string}|null
+         */
+        public static function actionPreset(string $key): ?array
+        {
+            return self::$sitePresets[$key] ?? self::ACTION_PRESETS[$key] ?? null;
+        }
+
         private static function validateIcon(string $name, mixed $def): array
         {
             if (!is_array($def)) {
@@ -1212,14 +1265,15 @@ namespace {
      * preset), id, class, attrs (Td::ALLOWED_ATTRS + aria-* / data-*; owned names and data-td-* dropped), element
      * (default Td::configure ssr_elements): the `<td-action-button data-td-ssr="action-button@1">` host + the exact
      * control <td-action-button> renders (hydrated in place). An action that is neither a preset nor given icon + label
-     * → '' + one E_USER_WARNING. A site preset registered only in JS must pass icon + label here.
+     * → '' + one E_USER_WARNING. A site preset registered only in JS must pass icon + label here (or be registered
+     * with Td::registerActionPresets() too — v0.56.0).
      */
     function td_action_button(string $action, array $o = []): string
     {
         $trim = static fn (string $s): string => (string) preg_replace('/^[' . Td::JS_WS . ']+|[' . Td::JS_WS . ']+$/u', '', $s);
         $action = $trim($action);
         $key = strtolower((string) preg_replace('/([a-z0-9])([A-Z])/', '$1-$2', $action));
-        $preset = preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $key) && isset(Td::ACTION_PRESETS[$key]) ? Td::ACTION_PRESETS[$key] : null;
+        $preset = preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $key) ? Td::actionPreset($key) : null; // v0.56.0: site presets first
         $ownIcon = isset($o['icon']) && is_string($o['icon']) ? $trim($o['icon']) : '';
         $ownIcon = $ownIcon !== '' && Td::hasIcon($ownIcon) ? $ownIcon : '';
         $icon = $ownIcon !== '' ? $ownIcon : ($preset !== null && Td::hasIcon($preset[0]) ? $preset[0] : '');

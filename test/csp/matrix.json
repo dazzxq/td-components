@@ -4346,6 +4346,16 @@
         ".td-btn--action"
       ],
       "selectorNote": "v0.36.0: CSS-only group (gap 4 / 8 coarse)"
+    },
+    {
+      "state": "kit-presets",
+      "markup": "<div class=\"td-action-group\"><td-action-button action=\"archive\"></td-action-button><td-action-button action=\"restore\"></td-action-button><td-action-button action=\"discontinue\"></td-action-button></div>",
+      "selectors": [
+        ".td-btn--action-warning",
+        ".td-btn--action-standard",
+        ".td-btn__icon svg"
+      ],
+      "selectorNote": "v0.56.0 (plan A2): the kit presets archive / discontinue (warning) + restore (standard) — existing tone tokens, new icons"
     }
   ],
   "td-scan-input": [

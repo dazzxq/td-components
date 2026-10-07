@@ -10,6 +10,9 @@ Icons added in 0.35.0 (`crop`, `crosshair`, `rotate-ccw`) follow the same rule.
 Icons added in 0.36.0 for `<td-action-button>` (`send`, `arrow-down-to-line`, `rewind`, `undo-2`, `history`, `layers`,
 `key-round`, `arrow-up`, `arrow-down`, `hand`, `reply`, `user-x`) follow the same rule (`key-round`'s filled dot is a
 stroked `r=".5"` circle — the registry has no per-node `fill`).
+Icons added in 0.56.0 (`archive`, `restore` ← archive-restore, `category` ← folder-tree, `brand` ← tag, `product` ←
+package, `ban`) were checked against lucide-static 1.52.0 and follow the same rules (`tag`'s filled dot is a stroked
+`r=".5"` circle).
 
 ISC License
 

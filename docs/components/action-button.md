@@ -51,7 +51,7 @@ Cần `td.css`. Module tự nạp [`td-tooltip`](tooltip.md) (singleton tự kh�
 | `title` | `aria-label` + `data-tooltip` (đọc một lần, không hai) |
 | preset lạ → `''` + `console.warn` | như vậy: không render gì + cảnh báo **một lần** mỗi tên |
 
-## Preset (23, từ dcms2)
+## Preset (26: 23 từ dcms2 + 3 của kit)
 
 | `action` | Icon | Nhãn | Tone |
 |---|---|---|---|
@@ -78,10 +78,19 @@ Cần `td.css`. Module tự nạp [`td-tooltip`](tooltip.md) (singleton tự kh�
 | `claim` | `hand` | Nhận bài | standard |
 | `release` | `reply` | Nhả bài | warning |
 | `force-release` | `user-x` | Nhả bài cho người khác | danger |
+| `archive` (0.56.0) | `archive` | Lưu trữ | warning |
+| `restore` (0.56.0) | `restore` | Khôi phục | standard |
+| `discontinue` (0.56.0) | `ban` | Ngừng kinh doanh | warning |
 
 `copy` chỉ là **nút** (phát `click`) — muốn copy thật dùng [`<td-copy>`](copy.md). 12 icon mới cho bảng này (Lucide,
 ISC): `send`, `arrow-down-to-line`, `rewind`, `undo-2`, `history`, `layers`, `key-round`, `arrow-up`, `arrow-down`,
 `hand`, `reply`, `user-x` — dùng được ở mọi nơi nhận tên icon.
+
+Ba preset của kit (0.56.0, màn quản lý kho / sản phẩm): `archive` (ẩn khỏi danh sách nhưng đảo ngược được → `warning`,
+như `remove`), `restore` (khôi phục khỏi lưu trữ — thao tác an toàn; **khác** `return` "Trả lại" của luồng duyệt bài),
+`discontinue` (đổi trạng thái, đảo ngược được → `warning`; `danger` dành cho mất dữ liệu như `delete`). Không có xác nhận
+trong preset — xác nhận là việc của app (`TdModal.confirm`), như `delete`. Đổi nhãn theo từng nút: `label` /
+`aria-label`; theo cả site: `registerPreset()` (JS) + `Td::registerActionPresets()` (PHP), ví dụ dưới.
 
 ## Attribute
 
@@ -109,11 +118,14 @@ render lại; đổi `label` / `aria-label` = **tại chỗ** (cùng node, focus
   thuộc 3 giá trị, `icon` có trong registry; sai → `TypeError`.
 
 **Đăng ký trước khi in host** (hoặc trước khi `define`): registry không giữ danh sách instance, nên host đã render giữ
-markup cũ tới khi đổi `action`. Preset chỉ đăng ký ở JS thì PHP phải truyền `icon` + `label`.
+markup cũ tới khi đổi `action`. Preset chỉ đăng ký ở JS thì PHP phải truyền `icon` + `label` — hoặc đăng ký cùng preset
+ở PHP (0.56.0, dưới).
 
 ```js
 import { TdActionButton } from '@dazzxq/td-components/action-button';
-TdActionButton.registerPreset('archive', { icon: 'inbox', label: 'Lưu trữ', tone: 'warning' });
+TdActionButton.registerPreset('pin-top', { icon: 'star', label: 'Ghim lên đầu' });
+// đổi nhãn một preset của kit cho cả site:
+TdActionButton.registerPreset('discontinue', { icon: 'ban', label: 'Ngừng bán', tone: 'warning' });
 ```
 
 ## Nhóm `.td-action-group`
@@ -126,6 +138,21 @@ Class CSS (không JS): `inline-flex`, xuống dòng khi hẹp, khoảng cách 4 
 Option: `label`, `icon`, `tone`, `size`, `disabled`, `href`, `target`, `aria_label`, `id`, `class`, `attrs` (allowlist
 `Td::ALLOWED_ATTRS` + `aria-*` / `data-*`; tên kit sở hữu và `data-td-*` bị bỏ), `element` (mặc định theo
 `Td::configure(…, ['ssr_elements' => …])`). Bảng preset chép trong `Td::ACTION_PRESETS` (parity với JS bằng test).
+
+**`Td::registerActionPresets(array $defs)`** (0.56.0) — bản PHP của `registerPreset()`, cùng luật: tên kebab-case,
+`label` khác rỗng, `tone` thuộc 3 giá trị (mặc định `standard`), `icon` có trong `Td::hasIcon()`. Sai bất kỳ mục nào →
+`InvalidArgumentException` và **không** mục nào của lô được đăng ký. Preset của site thắng preset cùng tên của kit.
+
+```php
+Td::registerActionPresets([
+    'pin-top' => ['icon' => 'star', 'label' => 'Ghim lên đầu'],
+    'discontinue' => ['icon' => 'ban', 'label' => 'Ngừng bán', 'tone' => 'warning'],
+]);
+echo td_action_button('pin-top', ['element' => true]);
+```
+
+Đổi preset ở PHP thì **phải** đổi cùng ở JS (`registerPreset` với cùng dữ liệu): host element mode có nhãn / icon khác
+bản JS sẽ bị render lại (an toàn) bằng dữ liệu JS — không nháy sai nhưng mất lợi ích nhận tại chỗ.
 
 - **Element mode**: `<td-action-button data-td-ssr="action-button@1" action="…">` + control y hệt `render()` (SVG icon
   in sẵn) → module nhận **tại chỗ** (cùng `<button>`, không nháy). Markup lệch (nhãn / icon khác, thuộc tính lạ như

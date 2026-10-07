@@ -1570,6 +1570,174 @@ export default {
         }
       ]
     ]
+  },
+  "archive": {
+    "viewBox": "0 0 24 24",
+    "paint": "stroke",
+    "nodes": [
+      [
+        "rect",
+        {
+          "width": "20",
+          "height": "5",
+          "x": "2",
+          "y": "3",
+          "rx": "1"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M10 12h4"
+        }
+      ]
+    ]
+  },
+  "restore": {
+    "viewBox": "0 0 24 24",
+    "paint": "stroke",
+    "nodes": [
+      [
+        "rect",
+        {
+          "width": "20",
+          "height": "5",
+          "x": "2",
+          "y": "3",
+          "rx": "1"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M4 8v11a2 2 0 0 0 2 2h2"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M20 8v11a2 2 0 0 1-2 2h-2"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "m9 15 3-3 3 3"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M12 12v9"
+        }
+      ]
+    ]
+  },
+  "category": {
+    "viewBox": "0 0 24 24",
+    "paint": "stroke",
+    "nodes": [
+      [
+        "path",
+        {
+          "d": "M20 10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2.5a1 1 0 0 1-.8-.4l-.9-1.2A1 1 0 0 0 15 3h-2a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M20 21a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1h-2.9a1 1 0 0 1-.88-.55l-.42-.85a1 1 0 0 0-.92-.6H13a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1Z"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M3 5a2 2 0 0 0 2 2h3"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M3 3v13a2 2 0 0 0 2 2h3"
+        }
+      ]
+    ]
+  },
+  "brand": {
+    "viewBox": "0 0 24 24",
+    "paint": "stroke",
+    "nodes": [
+      [
+        "path",
+        {
+          "d": "M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
+        }
+      ],
+      [
+        "circle",
+        {
+          "cx": "7.5",
+          "cy": "7.5",
+          "r": ".5"
+        }
+      ]
+    ]
+  },
+  "product": {
+    "viewBox": "0 0 24 24",
+    "paint": "stroke",
+    "nodes": [
+      [
+        "path",
+        {
+          "d": "M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M12 22V12"
+        }
+      ],
+      [
+        "polyline",
+        {
+          "points": "3.29 7 12 12 20.71 7"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "m7.5 4.27 9 5.15"
+        }
+      ]
+    ]
+  },
+  "ban": {
+    "viewBox": "0 0 24 24",
+    "paint": "stroke",
+    "nodes": [
+      [
+        "circle",
+        {
+          "cx": "12",
+          "cy": "12",
+          "r": "10"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M4.929 4.929 19.07 19.071"
+        }
+      ]
+    ]
   }
 };
 
@@ -1583,5 +1751,10 @@ export const aliases = {
   "ellipsis": "more",
   "external-link": "external",
   "expand": "fullscreen",
-  "pen": "pencil"
+  "pen": "pencil",
+  "archive-restore": "restore",
+  "folder-tree": "category",
+  "tag": "brand",
+  "trademark": "brand",
+  "package": "product"
 };
