@@ -79,7 +79,17 @@ async function mk(attrs = 'tree row-key="id"', { columns = COLS, data = CATS(), 
 }
 const trs = (el) => [...el.querySelectorAll('.td-table__body > tr')];
 const dataTrs = (el) => trs(el).filter((tr) => tr.hasAttribute('data-row-idx'));
-const nameOf = (tr) => tr.querySelector('[data-col="0"]')?.textContent.replace(/\s+/g, ' ').trim();
+/** Text of the first column (the card label + the toggle / spacer excluded). */
+const nameOf = (tr) => {
+  const td = tr.querySelector('[data-col="0"]');
+  if (!td) return undefined;
+  let t = '';
+  for (const n of td.childNodes) {
+    if (n.nodeType === 1 && n.matches('.td-table__cell-label, .td-table__tree-toggle, .td-table__tree-spacer')) continue;
+    t += n.textContent;
+  }
+  return t.replace(/\s+/g, ' ').trim();
+};
 const names = (el) => dataTrs(el).map(nameOf);
 const row = (el, name) => dataTrs(el).find((tr) => nameOf(tr) === name);
 const aria = (tr) => ['aria-level', 'aria-setsize', 'aria-posinset', 'aria-expanded'].map((a) => tr.getAttribute(a));
@@ -91,13 +101,24 @@ const record = (el, name) => {
   return ev;
 };
 const statusP = (el) => el.querySelector('.td-table > [role="status"]');
-/** Every text the live region shows (MutationObserver on its children). */
+/** Every text written to the live region, in order (read from the mutation records, not the current text). */
 function liveLog(el) {
   const log = [];
   const p = statusP(el);
-  const mo = new MutationObserver(() => { if (p.textContent) log.push(p.textContent); });
+  const mo = new MutationObserver((recs) => {
+    for (const r of recs) {
+      if (r.type === 'characterData' && r.target.data) log.push(r.target.data);
+      for (const n of r.addedNodes) if (n.nodeType === 3 && n.data) log.push(n.data);
+    }
+  });
   mo.observe(p, { childList: true, characterData: true, subtree: true });
   return log;
+}
+/** Focus the last tab stop BEFORE the body (top pagination / sort buttons, else #before) — Tab then enters the body. */
+function focusBeforeBody(el) {
+  const top = [...el.querySelectorAll('.td-table__header button, .td-table__header a[href], thead button')]
+    .filter((b) => !b.disabled && b.tabIndex >= 0 && b.getClientRects().length);
+  (top[top.length - 1] || document.getElementById('before')).focus();
 }
 /** Sequential tab stops inside the table body (tabIndex ≥ 0, not disabled). */
 const bodyTabStops = (el) => [...el.querySelectorAll('.td-table__body, .td-table__body *')]
@@ -190,7 +211,7 @@ describe('v0.57.0 td-table tree — keyboard + roving focus (QĐ 7)', () => {
   it('one tab stop: Tab enters on the first row; ↓ ↑ Home End move the row focus (no wrap)', async () => {
     const el = await mk('tree row-key="id"', { before: '<input id="before" aria-label="trước">' });
     expect(dataTrs(el).map((tr) => tr.getAttribute('tabindex'))).to.deep.equal(['0', '-1', '-1']);
-    document.getElementById('before').focus();
+    focusBeforeBody(el);
     await press(TAB);
     expect(active() === row(el, 'Áo')).to.equal(true);
     await press('ArrowDown');
@@ -284,7 +305,7 @@ describe('v0.57.0 td-table tree — keyboard + roving focus (QĐ 7)', () => {
     await press(TAB);
     expect(active().textContent.trim()).to.equal('Xoá');
     await press(TAB);
-    expect(active().id).to.equal('after');
+    expect(!!active().closest('.td-table__footer'), 'out of the body, on to the bottom pagination').to.equal(true);
     await press(SHIFT_TAB);
     expect(active().textContent.trim()).to.equal('Xoá');
     expect(active().closest('tr') === ao).to.equal(true);
@@ -315,9 +336,9 @@ describe('v0.57.0 td-table tree — keyboard + roving focus (QĐ 7)', () => {
     input.focus();
     input.setSelectionRange(3, 3);
     await press('ArrowLeft');
+    expect(input.selectionStart).to.equal(2);
     await press('ArrowDown');
     expect(active() === input).to.equal(true);
-    expect(input.selectionStart).to.equal(2);
     expect(row(el, 'Áo').getAttribute('aria-expanded')).to.equal('false');
   });
 
@@ -610,7 +631,7 @@ describe('v0.57.0 td-table tree — lazy children (QĐ 13)', () => {
       const el = await mk('tree row-key="id"', { data: LAZY(), before: '<input id="before" aria-label="trước">',
         setup: (t) => { t.loadChildren = () => { calls += 1; return calls === 1 ? Promise.reject(new Error('x')) : new Promise(() => {}); }; } });
       const log = liveLog(el);
-      document.getElementById('before').focus();
+      focusBeforeBody(el);
       await press(TAB);
       expect(active() === row(el, 'Lười')).to.equal(true);
       await press('ArrowRight');
@@ -794,7 +815,7 @@ describe('v0.57.0 td-table tree — moveRow (QĐ 17 / 17b / 18)', () => {
     renders = [];
     expect(el.moveRow('thun', 'quan', 1)).to.equal(true);
     expect(names(el)).to.deep.equal(['Áo', 'Áo khoác', 'Quần', 'Jeans', 'Áo thun', 'Cổ tròn', 'Phụ kiện']);
-    expect(renders).to.deep.equal([['thun', 2], ['tron', 3]]);
+    expect(renders, 'only the moved row (its parentKey changed; its branch keeps level + parent)').to.deep.equal([['thun', 2]]);
     expect(aria(row(el, 'Áo khoác'))).to.deep.equal(['2', '1', '1', null]);
     expect(aria(row(el, 'Jeans'))).to.deep.equal(['2', '2', '1', null]);
     expect(aria(row(el, 'Áo thun'))).to.deep.equal(['2', '2', '2', 'true']);

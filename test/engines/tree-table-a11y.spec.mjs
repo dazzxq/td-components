@@ -102,7 +102,9 @@ const domFacts = (page) => page.evaluate(() => {
     const toggle = tr.querySelector('.td-table__tree-toggle');
     return {
       role: tr.getAttribute('role'),
-      name: tr.querySelector('[data-col="0"]').textContent.replace(/\s+/g, ' ').trim(),
+      name: [...tr.querySelector('[data-col="0"]').childNodes]
+        .filter((n) => !(n.nodeType === 1 && n.matches('.td-table__cell-label, .td-table__tree-toggle, .td-table__tree-spacer')))
+        .map((n) => n.textContent).join('').replace(/\s+/g, ' ').trim(),
       attrs: ['aria-level', 'aria-setsize', 'aria-posinset', 'aria-expanded'].map((a) => tr.getAttribute(a)),
       cells: [...tr.children].every((td) => td.getAttribute('role') === 'gridcell'),
       toggle: toggle ? { tag: toggle.tagName, type: toggle.getAttribute('type'), tabindex: toggle.getAttribute('tabindex'),

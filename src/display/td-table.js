@@ -18,13 +18,19 @@ const ACTION_VARIANTS = new Set(['primary', 'secondary', 'success', 'danger', 'w
 /** More visible actions than this → card mode shows one "Thao tác" menu button instead (QĐ 18). */
 const CARD_INLINE_ACTIONS = 2;
 /** Attributes whose change rebuilds the structure; every other observed attribute updates in place (D11). */
-const STRUCTURAL = new Set(['title', 'heading-level', 'zebra', 'max-height', 'column-menu']);
+const STRUCTURAL = new Set(['title', 'heading-level', 'zebra', 'max-height', 'column-menu',
+  'tree', 'children-key', 'parent-key', 'tree-column']);
 /** v0.37.0: `selectable` values that turn row selection off (absent attribute = off too). */
 const SELECT_OFF = new Set(['none', 'false', '0', 'off']);
 /** Max length of a row name in the selection control's aria-label (QĐ 7). */
 const ROW_LABEL_MAX = 80;
 /** Row-selection controls (delegated listeners). */
 const SELECT_CTL = '.td-table__select, .td-table__select-all';
+/** v0.57.0 (QĐ 13): a lazy branch shows its "Đang tải…" row only after this delay (no flash; = td-tree LOADING_MS). */
+const TREE_LOADING_MS = 400;
+/** v0.57.0 (QĐ 7): the elements of a row that roving takes out of the Tab order (same list as layers.js FOCUSABLE). */
+const ROVE_SEL = 'a[href], area[href], button, input:not([type="hidden"]), select, textarea, summary, iframe, '
+  + 'object, embed, video[controls], audio[controls], [tabindex], [contenteditable]:not([contenteditable="false"])';
 
 let seq = 0;
 
@@ -62,7 +68,8 @@ function readKeyField(row, field) {
 function cellText(td) {
   let text = '';
   for (const n of td.childNodes) {
-    if (n.nodeType === 1 && n.classList.contains('td-table__cell-label')) continue;
+    if (n.nodeType === 1 && (n.classList.contains('td-table__cell-label') || n.classList.contains('td-table__tree-toggle')
+      || n.classList.contains('td-table__tree-spacer'))) continue;
     text += n.textContent;
   }
   return Array.from(text.replace(/\s+/g, ' ').trim()).slice(0, ROW_LABEL_MAX).join('').trim();
@@ -229,6 +236,16 @@ export class TdTable extends TdBaseElement {
     columns: 'Cột',
     columnsReset: 'Khôi phục mặc định',
     columnsMin: 'Cần ít nhất {n} cột',
+    // v0.57.0 tree table. `{label}` = the row's name (as selectRow).
+    expandRow: 'Mở {label}',
+    collapseRow: 'Thu gọn {label}',
+    treeLoading: 'Đang tải…',
+    treeLoadError: 'Không tải được các dòng con',
+    treeRetry: 'Thử lại',
+    treeLoadingRow: 'Đang tải các dòng con của {label}…',
+    treeLoaded: 'Đã tải {n} dòng con của {label}',
+    treeLoadErrorRow: 'Không tải được các dòng con của {label}',
+    treeRetrying: 'Đang tải lại…',
   };
 
   /** v0.37.0 (ADR 0018): form-associated for the optional `name` (the selected keys). NOT a TdFormElement. */
@@ -237,12 +254,13 @@ export class TdTable extends TdBaseElement {
   static get observedAttributes() {
     return ['per-page', 'active-color', 'zebra', 'loading', 'loading-rows', 'title', 'heading-level', 'aria-label',
       'empty-title', 'empty-text', 'server-mode', 'total-items', 'max-height',
-      'selectable', 'row-key', 'max-selected', 'name', 'disabled', 'controlled', 'column-menu', 'min-visible'];
+      'selectable', 'row-key', 'max-selected', 'name', 'disabled', 'controlled', 'column-menu', 'min-visible',
+      'tree', 'children-key', 'parent-key', 'tree-column', 'max-depth'];
   }
 
   // `zebra` is tri-state (default ON), so it is NOT a boolean attribute — see the `zebra` accessor.
   static get booleanAttributes() {
-    return ['loading', 'server-mode', 'disabled', 'controlled', 'column-menu'];
+    return ['loading', 'server-mode', 'disabled', 'controlled', 'column-menu', 'tree'];
   }
 
   constructor() {
@@ -303,6 +321,34 @@ export class TdTable extends TdBaseElement {
     this._hidden = new Set();
     /** Per column: its key as a string when hideable (unique non-empty key), else null. */
     this._hideKeys = [];
+    // v0.57.0 tree table (plan v0.57.0-tree-table): the model lives for the element's lifetime (expandedKeys before
+    // the first render); it is rebuilt from `data` when `_treeDirty`.
+    this._tree = new TableTreeModel({ keyOf: (row) => this._keyOf(row), warn: (msg) => console.warn(msg) });
+    this._treeDirty = true;
+    /** The body holds rows of the current model (incremental updates allowed). */
+    this._treeRendered = false;
+    this._loadChildren = null;
+    this._rowHasChildren = null;
+    this._canDrop = null;
+    /** tr → { node, status, level, key, enabled, label } (rows of the current body). */
+    this._trInfo = new WeakMap();
+    /** node → its data row tr; node → its status row tr. */
+    this._nodeTr = new WeakMap();
+    this._statusTr = new WeakMap();
+    /** Original tabindex of the controls roving took out of the Tab order (QĐ 7). */
+    this._savedTab = new WeakMap();
+    /** The roving row (tabindex 0) and its identity (survives re-renders): `{ id, status }`. */
+    this._activeTr = null;
+    this._activeKey = null;
+    this._treeMo = null;
+    /** Lazy loads: node → { timer, seq, announced } (QĐ 13). */
+    this._loadTimers = new Map();
+    /** Nodes whose "Đang tải…" status row is shown (after TREE_LOADING_MS, or at once after Retry). */
+    this._statusShown = new Set();
+    /** Server mode: local root-count change from moveRow until the app sends data / total-items (QĐ 17b.3). */
+    this._rootDelta = 0;
+    /** Full re-render: where the focus goes when its row is gone (moveRow). */
+    this._refocusFallback = null;
     this._internals = null;
     if (typeof this.attachInternals === 'function') {
       try { this._internals = this.attachInternals(); } catch { this._internals = null; }
@@ -313,12 +359,19 @@ export class TdTable extends TdBaseElement {
     this.addEventListener('keydown', (e) => this._onSelectKeydown(e));
     this.addEventListener('keyup', (e) => this._onSelectKeyup(e));
     this.addEventListener('mousedown', (e) => this._onSelectMousedown(e));
+    this.addEventListener('keydown', (e) => this._onTreeKeydown(e));
+    this.addEventListener('focusin', (e) => this._onTreeFocusin(e));
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._ro?.disconnect();
     this._ro = null;
+    // v0.57.0: requests in flight are aborted (opening again / reconnecting reloads); timers + observer go
+    this._tree.abortAll();
+    this._clearLoadTimers();
+    this._treeMo?.disconnect();
+    this._treeMo = null;
   }
 
   // --- JS properties ---
@@ -390,13 +443,48 @@ export class TdTable extends TdBaseElement {
   /** Known rows of the selected keys, selection order; a key whose row was never seen is skipped. */
   get selectedRows() {
     const out = [];
+    // v0.57.0 (QĐ 11, Codex r1 #4): tree mode → identity → the OWNING node of the model (never an index into `data`)
+    const tree = this._treeOn() ? this._treeModel() : null;
     for (const id of this._sel.ids()) {
+      if (tree) {
+        const row = tree.ownerOf(id)?.row ?? this._rowCache.get(id);
+        if (row !== undefined) out.push(row);
+        continue;
+      }
       const di = this._isServerMode() ? undefined : this._dataRows().get(id);
       const row = (di === undefined ? undefined : this._data[di]) ?? this._rowCache.get(id);
       if (row !== undefined) out.push(row);
     }
     return out;
   }
+
+  // --- v0.57.0 tree table: properties (plan v0.57.0-tree-table QĐ 4, 13, 18) ---
+
+  /** Expanded keys: the known ones in preorder, then remembered ones not in the tree now. Set = replace, silent. */
+  get expandedKeys() { return this._tree.expandedKeys(); }
+  set expandedKeys(keys) {
+    this._tree.setExpanded(keys);
+    this._treeRefresh();
+  }
+
+  /** `(row, { signal }) => Promise<Array>|Array` — children of a lazy branch (`rowHasChildren`). */
+  get loadChildren() { return this._loadChildren; }
+  set loadChildren(fn) {
+    this._loadChildren = typeof fn === 'function' ? fn : null;
+    if (this._initialized && this._treeRendered) this._treeAutoLoad();
+  }
+
+  /** `(row) => boolean` — a row without children in the data that can load some (default `row.hasChildren === true`). */
+  get rowHasChildren() { return this._rowHasChildren; }
+  set rowHasChildren(fn) {
+    this._rowHasChildren = typeof fn === 'function' ? fn : null;
+    this._treeDirty = true;
+    if (this._initialized && this._treeOn()) this._update();
+  }
+
+  /** `({ key, row, parentKey, parentRow, index, level }) => boolean` — may moveRow put a row there? A throw = false. */
+  get canDrop() { return this._canDrop; }
+  set canDrop(fn) { this._canDrop = typeof fn === 'function' ? fn : null; }
 
   /** `layout` attribute (`auto` | `table` | `cards`) — CSS only, never re-renders. */
   get layout() {
@@ -491,8 +579,14 @@ export class TdTable extends TdBaseElement {
       const k = c && c.key != null ? String(c.key) : '';
       counts.set(k, (counts.get(k) || 0) + 1);
     }
+    const treeCi = this._treeColIndex();
     this._hideKeys = cols.map((col, ci) => {
       const c = col || {};
+      if (ci === treeCi) {
+        // v0.57.0 (QĐ 14): the tree column (indent + toggle) is never hidden
+        if (c.hideable === true || c.hidden === true) this._warnOnce('td-table: the tree column cannot be hidden — `hideable` / `hidden` ignored.');
+        return null;
+      }
       const hideable = typeof c.hideable === 'boolean' ? c.hideable
         : !(roles[ci] === 'primary' || roles[ci] === 'actions' || Array.isArray(c.actions));
       if (!hideable) return null;
@@ -532,6 +626,7 @@ export class TdTable extends TdBaseElement {
     this._root.classList.toggle('td-table--fixed', this._isFixedLayout());
     const empty = this._tbody.querySelector(':scope > .td-table__empty-row > .td-table__empty');
     if (empty) empty.setAttribute('colspan', String(this._emptySpan()));
+    for (const td of this._tbody.querySelectorAll(':scope > .td-table__row--tree-status > td')) td.setAttribute('colspan', String(this._emptySpan()));
   }
 
   _emptySpan() {
@@ -652,6 +747,11 @@ export class TdTable extends TdBaseElement {
     if (name === 'max-selected') return; // read at the next user action
     if (name === 'min-visible') { if (this._root) this._applyHidden(); return; }
     if (name === 'disabled') { this._paintSelection(); return; }
+    // v0.57.0: tree structure attributes rebuild the model; `max-depth` is read by moveRow; a new `total-items` is the
+    // app's truth again (the local root-count change of moveRow is dropped — QĐ 17b.3)
+    if (name === 'max-depth') return;
+    if (name === 'tree' || name === 'children-key' || name === 'parent-key') this._treeDirty = true;
+    if (name === 'total-items') this._rootDelta = 0;
     if (name === 'loading' && newVal === null) { this._awaiting = false; this._reqSort = null; this._lastReq = null; }
     if (STRUCTURAL.has(name)) this._doRender();
     else this._update();
@@ -660,6 +760,7 @@ export class TdTable extends TdBaseElement {
   /** @private The row identity changed: clear the selection (no event) and rebuild. */
   _rowKeyChanged() {
     this._dataIndex = null;
+    this._treeDirty = true;
     if (!this._initialized) return;
     this._sel.clear();
     this._rowCache.clear();
@@ -677,9 +778,11 @@ export class TdTable extends TdBaseElement {
     this._computeHidden();
     const title = this._getTitle();
     const h = `h${this._getHeadingLevel()}`;
+    const tree = this._treeOn();
     const mods = (this._isZebra() ? ' td-table--zebra' : '')
       + (this._isFixedLayout() ? ' td-table--fixed' : '')
-      + (this._getMaxHeight() ? ' td-table--scroll-y' : '');
+      + (this._getMaxHeight() ? ' td-table--scroll-y' : '')
+      + (tree ? ' td-table--tree' : '');
     const pad = this._cellPadClass();
     const esc = (v) => this.escapeHtml(v);
     const roles = this._cardRoles();
@@ -706,7 +809,7 @@ export class TdTable extends TdBaseElement {
       + ` item-label="${esc(TdTable.labels.itemLabel)}" aria-label="${esc(label)}"></td-pagination></div>`;
     return `<div class="td-table${mods}" data-state="ready">`
       + `<div class="td-table__header">${titleHtml}${colBtn}${pag('td-table__pagination', TdTable.labels.paginationTop, true)}</div>`
-      + '<div class="td-table__scroll"><table class="td-table__table" role="table">'
+      + `<div class="td-table__scroll"><table class="td-table__table" role="${tree ? 'treegrid' : 'table'}">`
       + `<thead class="td-table__head" role="rowgroup"><tr role="row">${selHead}${heads}</tr></thead>`
       + '<tbody class="td-table__body" role="rowgroup"></tbody></table></div>'
       + `<div class="td-table__footer" hidden>${pag('td-table__pagination td-table__pagination--bottom', TdTable.labels.paginationBottom, false)}</div>`
@@ -725,6 +828,9 @@ export class TdTable extends TdBaseElement {
     if (mode !== 'none' && !this._selOn) {
       this._warnOnce('td-table: `selectable` needs `rowKey` (row-key) — no selection column (rows are never selected by index).');
     }
+    if (this.hasAttribute('tree') && !this.rowKey) {
+      this._warnOnce('td-table: `tree` needs `rowKey` (row-key) — only the root rows are shown, as a flat table.');
+    }
     this.innerHTML = this.render();
     this._root = this.firstElementChild;
     this._header = this._root.querySelector(':scope > .td-table__header');
@@ -735,6 +841,15 @@ export class TdTable extends TdBaseElement {
     this._pagTop = this._header.querySelector(':scope > .td-table__pagination > td-pagination');
     this._pagBottom = this._footer.querySelector('td-pagination');
     this._status = this._root.querySelector(':scope > [role="status"]');
+    // v0.57.0 (QĐ 7): roving tabindex is re-applied to rows whose content changes (app controls re-rendering)
+    this._treeMo?.disconnect();
+    this._treeMo = null;
+    this._activeTr = null;
+    this._treeRendered = false;
+    if (this._treeOn() && typeof MutationObserver !== 'undefined') {
+      this._treeMo = new MutationObserver((recs) => this._onTreeMutations(recs));
+      this._treeMo.observe(this._tbody, { childList: true, subtree: true });
+    }
     this._selAll = this._selOn ? this._table.querySelector(':scope > thead > tr > th > .td-table__select-all') : null;
     if (this._selAll) fillIconSlots(this._selAll);
     const colBtn = this._header.querySelector(':scope > .td-table__columns');
@@ -755,16 +870,21 @@ export class TdTable extends TdBaseElement {
 
   /** @private Sorted + paged view of the data; clamps the page (fixes 2.8.3). */
   _view() {
+    if (this._treeOn()) return this._treeView();
+    // v0.57.0 (QĐ 1): `tree` without rowKey → the roots only (parent-key data: rows without a parent key)
+    const pk = this.hasAttribute('tree') ? this._parentKeyAttr() : '';
+    const isRoot = (row) => keyId(readKeyField(row, pk)) === null;
     if (this._isServerMode()) {
       const total = this._getServerTotal();
       if (total !== null) {
         const pages = Math.max(1, Math.ceil(total / this._getPerPage()));
         this._currentPage = Math.min(Math.max(1, this._currentPage), pages);
       }
-      return { rows: this._data, src: null, total };
+      return { rows: pk ? this._data.filter(isRoot) : this._data, src: null, total };
     }
     // review ISSUE-4: sort / page SOURCE INDICES (into `data`), so row selection knows which occurrence a row is
-    const order = this._sortedIndices();
+    let order = this._sortedIndices();
+    if (pk) order = order.filter((i) => isRoot(this._data[i]));
     const per = this._getPerPage();
     const pages = Math.max(1, Math.ceil(order.length / per));
     this._currentPage = Math.min(Math.max(1, this._currentPage), pages);
@@ -795,8 +915,10 @@ export class TdTable extends TdBaseElement {
     if (active && (this._pagTop?.contains(active) || this._pagBottom?.contains(active))) {
       this._refocusPagination = this._pagTop.contains(active) ? 'top' : 'bottom';
     }
-    const { rows, src, total } = this._view();
+    const { rows, src, total, entries } = this._view();
     const empty = !loading && rows.length === 0;
+    // v0.57.0 (QĐ 7): a full re-render with the focus in the body → the row with the same key gets it back
+    const refocus = entries ? this._treeFocusState() : null;
 
     // Body
     if (loading || empty) {
@@ -806,14 +928,51 @@ export class TdTable extends TdBaseElement {
     }
     if (loading) this._tbody.innerHTML = this._skeletonHtml();
     else if (empty) this._renderEmpty();
+    else if (entries) this._renderTree(entries);
     else this._renderRows(rows, src);
+    this._treeRendered = !!entries && !loading && !empty;
+    if (!this._treeRendered) this._activeTr = null;
     this._pageRows = loading || empty ? [] : rows;
     this._paintSelection();
 
-    // Paginations (updated in place: live region + focus restore stay inside td-pagination). v0.39.0: a controlled
-    // request in flight keeps them (focus stays on the activated page button).
+    const showPag = this._syncPag(total, loading, server);
+
+    // State + naming
+    this._root.setAttribute('data-state', loading ? 'loading' : empty ? 'empty' : 'ready');
+    if (loading) this._table.setAttribute('aria-busy', 'true');
+    else this._table.removeAttribute('aria-busy');
+    const statusText = loading ? TdTable.labels.loading : '';
+    if (this._status.textContent !== statusText) this._status.textContent = statusText;
+    this._applyName(this._table);
+    this._applyStyles();
+    this._syncOverflow();
+
+    if (this._treeRendered) {
+      this._treeRovingAll();
+      this._treeRefocus(refocus);
+      this._treeAutoLoad();
+    }
+
+    if (!loading && !showPag) this._refocusPagination = null;
+    if (showPag && this._refocusPagination) {
+      const which = this._refocusPagination;
+      this._refocusPagination = null;
+      const a = document.activeElement;
+      if (!a || a === document.body || !a.isConnected) {
+        const p = which === 'top' ? this._pagTop : this._pagBottom;
+        p.querySelector('.td-pagination__page[aria-current="page"]')?.focus();
+      }
+    }
+  }
+
+  /**
+   * @private Paginations (updated in place: live region + focus restore stay inside td-pagination). v0.39.0: a
+   * controlled request in flight keeps them (focus stays on the activated page button).
+   * @returns {boolean} shown
+   */
+  _syncPag(total, loading, server) {
     let showPag = !loading || this._awaiting;
-    let count = total;
+    const count = total;
     if (server) {
       if (total === null) {
         showPag = false;
@@ -834,27 +993,7 @@ export class TdTable extends TdBaseElement {
     this._pagTop.parentElement.hidden = !showPag;
     this._footer.hidden = !showPag;
     this._header.hidden = !showPag && !this._getTitle() && !this._colMenuOn();
-
-    // State + naming
-    this._root.setAttribute('data-state', loading ? 'loading' : empty ? 'empty' : 'ready');
-    if (loading) this._table.setAttribute('aria-busy', 'true');
-    else this._table.removeAttribute('aria-busy');
-    const statusText = loading ? TdTable.labels.loading : '';
-    if (this._status.textContent !== statusText) this._status.textContent = statusText;
-    this._applyName(this._table);
-    this._applyStyles();
-    this._syncOverflow();
-
-    if (!loading && !showPag) this._refocusPagination = null;
-    if (showPag && this._refocusPagination) {
-      const which = this._refocusPagination;
-      this._refocusPagination = null;
-      const a = document.activeElement;
-      if (!a || a === document.body || !a.isConnected) {
-        const p = which === 'top' ? this._pagTop : this._pagBottom;
-        p.querySelector('.td-pagination__page[aria-current="page"]')?.focus();
-      }
-    }
+    return showPag;
   }
 
   /** @private title → aria-labelledby, else host aria-label, else the fallback label (D18, review ISSUE-4). */
@@ -869,46 +1008,74 @@ export class TdTable extends TdBaseElement {
   }
 
   _renderRows(rows, src = null) {
+    const P = this._rowParts();
+    if (this._selOn) this._pageSelection(rows, src);
+    this._tbody.innerHTML = rows.map((row, ri) => this._rowHtml(row, ri, P, null)).join('');
+    this._bindRows([...this._tbody.children], rows, 0, null, true);
+  }
+
+  /** @private What every row of one render shares (v0.57.0: split out of _renderRows — QĐ 12). */
+  _rowParts() {
     const esc = (v) => this.escapeHtml(v);
-    const pad = this._cellPadClass();
     const cols = this._columns;
-    const roles = this._cardRoles();
     const labels = cols.map((col) => {
       const l = col && col.label != null ? String(col.label) : '';
       return `<span class="td-table__cell-label" aria-hidden="true">${esc(l)}</span>`;
     });
-    const sel = this._selOn;
-    if (sel) this._pageSelection(rows, src);
+    const tree = this._treeOn();
+    const cellRole = tree ? 'gridcell' : 'cell';
     // v0.37.0: the selection cell comes first (no data-col: data columns keep 0..n-1); its state is painted after.
-    const selCell = sel ? '<td class="td-table__cell td-table__cell--select td-table__card-select" role="cell" data-card="select">'
+    const selCell = this._selOn ? `<td class="td-table__cell td-table__cell--select td-table__card-select" role="${cellRole}" data-card="select">`
       + `<button type="button" class="td-table__select" role="checkbox" aria-checked="false">${checkMarkHTML('md')}</button></td>` : '';
-    this._tbody.innerHTML = rows.map((row, ri) => {
-      const cells = cols.map((col, ci) => {
-        const c = col || {};
-        const actions = Array.isArray(c.actions);
-        const cls = `td-table__cell${c.ellipsis && !actions ? ' td-table__cell--ellipsis' : ''}`
-          + `${this._isNowrap(c) ? ' td-table__cell--nowrap' : ''}${actions ? ' td-table__cell--actions' : ''}${pad}`;
-        const attrs = `class="${cls}" role="cell" data-col="${ci}" data-col-key="${esc(String(c.key ?? ''))}"`
-          + ` data-card="${roles[ci]}"${this._hiddenAttr(ci)}`;
-        if (actions) return `<td ${attrs}>${labels[ci]}${this._actionsHtml(c, row)}</td>`;
-        if (typeof c.render === 'function') return `<td ${attrs}>${labels[ci]}</td>`;
-        const v = row && typeof row === 'object' ? row[c.key] : undefined;
-        const text = v == null ? '' : String(v);
-        if (c.ellipsis) return `<td ${attrs}>${labels[ci]}<div class="td-table__truncate" title="${esc(text)}">${esc(text)}</div></td>`;
-        return `<td ${attrs}>${labels[ci]}${esc(text)}</td>`;
-      }).join('');
-      return `<tr class="td-table__row" role="row" data-row-idx="${ri}">${selCell}${cells}</tr>`;
-    }).join('');
+    return { esc, pad: this._cellPadClass(), cols, roles: this._cardRoles(), labels, selCell, cellRole, treeCi: tree ? this._treeColIndex() : -1 };
+  }
 
-    const trs = this._tbody.children;
+  /**
+   * @private One body row. `e` = the tree entry (`{ node, level, setsize, posinset }`) or null (flat table: the markup
+   * is byte-identical to v0.54).
+   */
+  _rowHtml(row, ri, P, e) {
+    const { esc, pad, cols, roles, labels } = P;
+    const cells = cols.map((col, ci) => {
+      const c = col || {};
+      const actions = Array.isArray(c.actions);
+      const treeCell = ci === P.treeCi;
+      const cls = `td-table__cell${c.ellipsis && !actions ? ' td-table__cell--ellipsis' : ''}`
+        + `${this._isNowrap(c) ? ' td-table__cell--nowrap' : ''}${actions ? ' td-table__cell--actions' : ''}`
+        + `${treeCell ? ' td-table__cell--tree' : ''}${pad}`;
+      const attrs = `class="${cls}" role="${P.cellRole}" data-col="${ci}" data-col-key="${esc(String(c.key ?? ''))}"`
+        + ` data-card="${roles[ci]}"${this._hiddenAttr(ci)}`;
+      // v0.57.0 (QĐ 8, QĐ 14): the toggle (or a same-width spacer) leads the tree cell, outside .td-table__truncate
+      const lead = treeCell ? labels[ci] + this._treeToggleHtml(e.node) : labels[ci];
+      if (actions) return `<td ${attrs}>${lead}${this._actionsHtml(c, row)}</td>`;
+      if (typeof c.render === 'function') return `<td ${attrs}>${lead}</td>`;
+      const v = row && typeof row === 'object' ? row[c.key] : undefined;
+      const text = v == null ? '' : String(v);
+      if (c.ellipsis) return `<td ${attrs}>${lead}<div class="td-table__truncate" title="${esc(text)}">${esc(text)}</div></td>`;
+      return `<td ${attrs}>${lead}${esc(text)}</td>`;
+    }).join('');
+    return `<tr class="td-table__row" role="row" data-row-idx="${ri}"${e ? this._treeRowAttrs(e) : ''}>${P.selCell}${cells}</tr>`;
+  }
+
+  /**
+   * @private After rows are in the DOM: action icons + card menus, `render` cells (column by column), selection names.
+   * `at` = the page index of the first row (number) or one index per row (array, tree inserts); `entries` (tree) adds
+   * the `ctx` argument of `render`; `full` = the rows are the whole body.
+   */
+  _bindRows(trs, rows, at, entries, full) {
+    const cols = this._columns;
+    const sel = this._selOn;
+    const riOf = (i) => (Array.isArray(at) ? at[i] : at + i);
     // Actions (QĐ 18): icons from the registry, the "Thao tác" menu button bound as an APG menu button (TdMenu).
+    // v0.57.0 (QĐ 12, Codex r1 #3): the menu reads its row LIVE from the button (never an index frozen at render).
     if (cols.some((c) => c && Array.isArray(c.actions))) {
-      fillIconSlots(this._tbody, '.td-table__actions [data-td-icon]');
-      for (const btn of this._tbody.querySelectorAll('.td-table__actions-menu')) {
-        const td = btn.closest('td');
-        const ci = Number(td.getAttribute('data-col'));
-        const ri = Number(td.parentElement.getAttribute('data-row-idx'));
-        TdMenu.bind(btn, () => this._menuItems(ci, ri), { align: 'end' });
+      if (full) fillIconSlots(this._tbody, '.td-table__actions [data-td-icon]');
+      else for (const tr of trs) fillIconSlots(tr, '.td-table__actions [data-td-icon]');
+      for (const tr of trs) {
+        for (const btn of tr.querySelectorAll('.td-table__actions-menu')) {
+          const ci = Number(btn.closest('td').getAttribute('data-col'));
+          TdMenu.bind(btn, () => this._menuItems(ci, btn), { align: 'end' });
+        }
       }
     }
 
@@ -916,11 +1083,13 @@ export class TdTable extends TdBaseElement {
     // The cell already holds its aria-hidden card label, so content is APPENDED after it.
     cols.forEach((col, ci) => {
       if (!col || typeof col.render !== 'function' || Array.isArray(col.actions)) return;
-      rows.forEach((row, ri) => {
-        const td = trs[ri].children[ci + (sel ? 1 : 0)];
+      trs.forEach((tr, i) => {
+        const row = rows[i];
+        const ri = riOf(i);
+        const td = tr.children[ci + (sel ? 1 : 0)];
         let out;
         try {
-          out = col.render(row, ri);
+          out = entries ? col.render(row, ri, this._renderCtx(entries[i])) : col.render(row, ri);
         } catch (err) {
           console.error('td-table: column render threw', err); // the cell stays empty
           return;
@@ -938,6 +1107,7 @@ export class TdTable extends TdBaseElement {
       });
     });
 
+    if (entries) return; // tree: names + toggles in _treeLabels
     if (sel) this._bindSelectRows(trs);
   }
 
@@ -1272,17 +1442,28 @@ export class TdTable extends TdBaseElement {
     return `<div class="td-table__actions${menu ? ' td-table__actions--menu' : ''}">${btns}${more}</div>`;
   }
 
-  /** @private TdMenu items of the card-mode menu (labels are text; disabled items are inert). */
-  _menuItems(ci, ri) {
+  /**
+   * @private TdMenu items of the card-mode menu (labels are text; disabled items are inert). v0.57.0 (QĐ 12, Codex r1
+   * #3): the row is read LIVE from the menu button when the menu opens, and checked again when an item is chosen — a
+   * row that left the body (branch closed, page changed) or whose index now points at another row → nothing.
+   */
+  _menuItems(ci, btn) {
     const col = this._columns[ci];
+    const tr = btn.closest('tr');
+    const ri = tr && tr.parentElement === this._tbody ? Number(tr.getAttribute('data-row-idx')) : -1;
+    if (!col || !Array.isArray(col.actions) || !(ri >= 0 && ri < this._pageRows.length)) return [];
     const row = this._pageRows[ri];
-    if (!col || !Array.isArray(col.actions) || ri >= this._pageRows.length) return [];
     return this._rowActions(col, row).map(({ a, idx, disabled }) => ({
       label: a.label == null ? '' : String(a.label),
       icon: typeof a.icon === 'string' && hasIcon(a.icon) ? a.icon : undefined,
       danger: a.variant === 'danger',
       disabled,
-      onSelect: () => this._fireRowAction(ci, idx, ri),
+      onSelect: () => {
+        if (!tr.isConnected || tr.parentElement !== this._tbody) return;
+        const now = Number(tr.getAttribute('data-row-idx'));
+        if (this._pageRows[now] !== row) return;
+        this._fireRowAction(ci, idx, now);
+      },
     }));
   }
 
@@ -1379,6 +1560,16 @@ export class TdTable extends TdBaseElement {
   _onClick(e) {
     this._flushPage(); // v0.39.0: the click that changed the page has finished its page-change dispatch
     const t = e.target instanceof Element ? e.target : null;
+    // v0.57.0: the tree toggle (QĐ 8) and the "Thử lại" button of a failed lazy branch (QĐ 13)
+    const tt = t && this._treeRendered ? t.closest('.td-table__tree-toggle, .td-table__tree-retry') : null;
+    if (tt && tt.closest('td-table') === this) {
+      const tr = tt.closest('tr');
+      const info = tr && this._trInfo.get(tr);
+      if (!info) return;
+      if (tt.classList.contains('td-table__tree-retry')) this._treeRetry(tr);
+      else this._treeSetExpanded(info.node, !this._tree.isExpanded(info.node), true);
+      return;
+    }
     const btn = t ? t.closest(`.td-table__sort, .td-table__action, ${SELECT_CTL}`) : null;
     if (!btn || btn.closest('td-table') !== this) return;
     if (btn.matches(SELECT_CTL)) {
@@ -1599,6 +1790,8 @@ export class TdTable extends TdBaseElement {
   setData(data) {
     this._data = Array.isArray(data) ? data : [];
     this._dataIndex = null;
+    this._treeDirty = true;
+    this._rootDelta = 0;
     if (!this._isServerMode()) this._currentPage = 1;
     if (this._initialized) this._update();
   }
@@ -1628,9 +1821,11 @@ export class TdTable extends TdBaseElement {
       perPage: this._getPerPage(),
       sort: this._sortState(),
       filters: this._filters,
-      totalItems: this._isServerMode() ? this._getServerTotal() : this._data.length,
+      // v0.57.0 (QĐ 10): a client tree counts its ROOTS (the paginations page roots)
+      totalItems: this._isServerMode() ? this._getServerTotal() : this._treeOn() ? this._treeModel().roots.length : this._data.length,
       requestId: this._reqSeq,
       selection: { mode: this._selMode(), keys: this._sel.keys() },
+      expandedKeys: this._tree.expandedKeys(),
     };
   }
 
@@ -1661,8 +1856,11 @@ export class TdTable extends TdBaseElement {
       if (hasData) {
         this._data = o.data;
         this._dataIndex = null;
+        this._treeDirty = true;
+        this._rootDelta = 0;
         if (!this._isServerMode()) this._currentPage = 1;
       }
+      if ('expandedKeys' in o) this._tree.setExpanded(o.expandedKeys); // v0.57.0 (QĐ 4)
       const page = num(o.page);
       if (Number.isFinite(page)) this._currentPage = Math.max(1, page);
       if (hasData) {
@@ -1719,6 +1917,792 @@ export class TdTable extends TdBaseElement {
   /** Is this key selected (1 and "1" are the same row)? */
   isSelected(key) { return this._sel.has(key); }
 
+  // --- v0.57.0 tree table: public API (plan v0.57.0-tree-table QĐ 4, 17) — all silent (no event) ---
+
+  /** Open a row's branch (a lazy one loads). An unknown key is remembered (opened when it shows up). */
+  expand(key) {
+    const n = this._treeOn() ? this._treeModel().node(key) : null;
+    if (n) this._treeSetExpanded(n, true, false);
+    else this._tree.expand(key);
+  }
+
+  /** Close a row's branch. */
+  collapse(key) {
+    const n = this._treeOn() ? this._treeModel().node(key) : null;
+    if (n) this._treeSetExpanded(n, false, false);
+    else this._tree.collapse(key);
+  }
+
+  /** Open ↔ close. */
+  toggleExpanded(key) {
+    const n = this._treeOn() ? this._treeModel().node(key) : null;
+    if (n ? this._tree.isExpanded(n) : this._tree.expandedKeys().some((k) => keyId(k) === keyId(key))) this.collapse(key);
+    else this.expand(key);
+  }
+
+  /** Open every LOADED branch (lazy branches are not loaded — no request storm). */
+  expandAll() {
+    if (this._treeOn()) this._treeModel().expandAll();
+    this._treeRefresh();
+  }
+
+  /** Close every branch (also forgets remembered keys of rows that are gone). */
+  collapseAll() {
+    this._tree.collapseAll();
+    this._treeRefresh();
+  }
+
+  /**
+   * Move a row (with its branch) under `parentKey` (null = root) at `index` = its FINAL position (from 0) among the new
+   * siblings, counted after removing it (QĐ 17). `index` must be an integer ≥ 0 (a larger one = the end). Refused
+   * (unknown key / parent, the parent's children not loaded, into itself or its branch, deeper than `max-depth`,
+   * `canDrop` false / throwing, bad index) → false + one warning, nothing changes. The same place → true, nothing
+   * happens. The app's `data` is never written: the new order lives in the table (getTree()). Silent.
+   * @returns {boolean}
+   */
+  moveRow(key, parentKey = null, index = 0) {
+    if (!this._treeOn()) {
+      this._warnOnce('td-table: moveRow needs `tree` and `rowKey`.');
+      return false;
+    }
+    const m = this._treeModel();
+    const focus = this._treeRendered ? this._treeFocusState() : null;
+    const r = m.move(key, parentKey, index, { maxDepth: this._maxDepth(), canDrop: this._canDrop });
+    if (!r.ok) return false;
+    if (r.noop) return true;
+    const server = this._isServerMode();
+    // QĐ 17b.3: server mode keeps a LOCAL root-count change until the app sends data / total-items again
+    if (server) this._rootDelta += (r.to.parent === null ? 1 : 0) - (r.from.parent === null ? 1 : 0);
+    if (!this._initialized || !this._root || this._batching || this._isLoading() || !this._treeRendered) return true;
+    let inBlock = false;
+    for (let p = focus ? focus.node : null; p; p = p.parent) if (p === r.node) inBlock = true;
+    // QĐ 17b.6: focus inside the moved block whose row is no longer shown → the new parent, else the row now at the
+    // old place (next, then previous)
+    const fallback = inBlock ? () => {
+      const ptr = r.node.parent ? this._nodeTr.get(r.node.parent) : null;
+      if (ptr && ptr.parentElement === this._tbody) return ptr;
+      const rows = this._rovingRows();
+      return rows[focus.index] || rows[focus.index - 1] || null;
+    } : null;
+    if (!server && (r.from.parent === null || r.to.parent === null)) {
+      // client mode: the page is cut by roots → the whole page again
+      this._refocusFallback = fallback;
+      try { this._update(); } finally { this._refocusFallback = null; }
+    } else {
+      this._treeSync({ fallback });
+    }
+    return true;
+  }
+
+  /** The tree in the table's order: `[{ key, row, children: [...] | null }]` (null = lazy, not loaded yet). */
+  getTree() {
+    return this._treeOn() ? this._treeModel().getTree() : [];
+  }
+
+  // --- v0.57.0 tree table: internals ---
+
+  /** @private `tree` is on AND a rowKey exists (else the roots as a flat table + one warning — QĐ 1). */
+  _treeOn() { return this.hasAttribute('tree') && !!this.rowKey; }
+
+  _parentKeyAttr() { return (this.getAttribute('parent-key') || '').trim(); }
+
+  /** @private `max-depth` (integer ≥ 1, default 16 = TREE_MAX_DEPTH, capped there by the model). */
+  _maxDepth() {
+    const raw = (this.getAttribute('max-depth') || '').trim();
+    const n = Number(raw);
+    if (!raw) return 16;
+    if (Number.isInteger(n) && n >= 1) return n;
+    this._warnOnce(`td-table: ignored invalid max-depth "${raw}" — use an integer ≥ 1.`);
+    return 16;
+  }
+
+  /** @private The model, rebuilt from `data` when something structural changed. */
+  _treeModel() {
+    if (this._treeDirty) {
+      this._treeDirty = false;
+      this._clearLoadTimers();
+      this._tree.setData(this._data, {
+        childrenKey: (this.getAttribute('children-key') || '').trim() || 'children',
+        parentKey: this._parentKeyAttr() || null,
+        hasChildren: this._rowHasChildren || ((row) => !!row && typeof row === 'object' && row.hasChildren === true),
+        readField: readKeyField,
+      });
+    }
+    return this._tree;
+  }
+
+  /**
+   * @private Index of the tree column (QĐ 14): `tree-column` = a column key; default = the card `primary` column, else
+   * the first column that is not an `actions` column (an actions column never holds the tree).
+   */
+  _treeColIndex() {
+    if (!this._treeOn() || !this._columns.length) return -1;
+    const cols = this._columns;
+    const isAct = (c) => !!c && Array.isArray(c.actions);
+    const want = (this.getAttribute('tree-column') || '').trim();
+    if (want) {
+      const ci = cols.findIndex((c) => c && String(c.key ?? '') === want);
+      if (ci >= 0 && !isAct(cols[ci])) return ci;
+      this._warnOnce(ci >= 0 ? `td-table: tree-column "${want}" is an actions column — the default tree column is used.`
+        : `td-table: tree-column "${want}" is not a column key — the default tree column is used.`);
+    }
+    const pi = this._cardRoles().indexOf('primary');
+    if (pi >= 0 && !isAct(cols[pi])) return pi;
+    const first = cols.findIndex((c) => !isAct(c));
+    return first >= 0 ? first : 0;
+  }
+
+  /** @private The current client sort as a row comparator (null = model order). */
+  _sortCmp() {
+    const { col: ci, direction } = this._sort;
+    const col = ci === null ? null : this._columns[ci];
+    return col ? compareRows(col.key, direction) : null;
+  }
+
+  /**
+   * @private Tree view (QĐ 9, 10, 17b.3): client → roots sorted within their group, paged BY ROOT; server → the roots
+   * of `data` as they are, the root count = `total-items` + the local moveRow change. `total` feeds the paginations,
+   * `entries` = the rows to show (+ status rows).
+   */
+  _treeView() {
+    const m = this._treeModel();
+    const per = this._getPerPage();
+    const server = this._isServerMode();
+    const cmp = server ? null : this._sortCmp();
+    let roots;
+    let total;
+    let ariaTotal;
+    if (server) {
+      roots = m.roots;
+      const t = this._getServerTotal();
+      if (t === null) total = null;
+      else if (this._rootDelta === 0) {
+        const pages = Math.max(1, Math.ceil(t / per));
+        this._currentPage = Math.min(Math.max(1, this._currentPage), pages);
+        total = t;
+      } else {
+        // a provisional count: never cut / clamp the page; at least the current page stays in range
+        ariaTotal = Math.max(0, t + this._rootDelta);
+        total = Math.max(ariaTotal, (this._currentPage - 1) * per + 1);
+      }
+    } else {
+      const sorted = m.sortedRoots(cmp);
+      const pages = Math.max(1, Math.ceil(sorted.length / per));
+      this._currentPage = Math.min(Math.max(1, this._currentPage), pages);
+      const start = (this._currentPage - 1) * per;
+      roots = sorted.slice(start, start + per);
+      total = sorted.length;
+    }
+    const offset = (this._currentPage - 1) * per;
+    if (ariaTotal === undefined) ariaTotal = total === null ? offset + roots.length : total;
+    const entries = m.visible(roots, cmp, { offset, total: ariaTotal, status: (n) => this._statusOf(n) });
+    const rows = [];
+    for (const e of entries) if (!e.status) rows.push(e.node.row);
+    return { rows, src: null, total, entries };
+  }
+
+  /** @private The status row of an open branch without children: 'error' | 'loading' (after the delay) | null. */
+  _statusOf(node) {
+    if (node.loadError) return 'error';
+    return node.loading && this._statusShown.has(node) ? 'loading' : null;
+  }
+
+  /** @private ` aria-level … tabindex` of a tree row (QĐ 6): aria-expanded only on parents; aria-busy while loading. */
+  _treeRowAttrs(e) {
+    const m = this._tree;
+    const n = e.node;
+    const can = m.expandable(n);
+    return ` aria-level="${e.level}" aria-setsize="${e.setsize}" aria-posinset="${e.posinset}"`
+      + (can ? ` aria-expanded="${m.isExpanded(n) ? 'true' : 'false'}"` : '')
+      + (n.loading ? ' aria-busy="true"' : '') + ' tabindex="-1"';
+  }
+
+  /** @private The toggle (QĐ 8: a real button, out of the Tab order, named in _treeLabels) or a spacer for a leaf. */
+  _treeToggleHtml(node) {
+    if (!this._tree.expandable(node)) return '<span class="td-table__tree-spacer" aria-hidden="true"></span>';
+    return '<button type="button" class="td-table__tree-toggle" tabindex="-1">'
+      + '<span class="td-table__tree-icon" data-td-icon="next" data-td-icon-size="16" aria-hidden="true"></span></button>';
+  }
+
+  /** @private `ctx` of `render(row, rowIndex, ctx)` (QĐ 12). */
+  _renderCtx(e) {
+    const m = this._tree;
+    const n = e.node;
+    const can = m.expandable(n);
+    return { level: e.level, parentKey: n.parent ? n.parent.key : null, hasChildren: can, expanded: can && m.isExpanded(n) };
+  }
+
+  /** @private Per-row record kept on the tr: identity, level, parent at render, selection key / enabled, name. */
+  _treeRowInfo(e) {
+    const n = e.node;
+    const key = n.id !== null && !n.dup ? n.key : null;
+    const enabled = this._selOn && key !== null && this._isRowSelectable(n.row);
+    if (key !== null && this._sel.has(key)) this._rowCache.set(n.id, n.row);
+    return { node: n, status: null, level: e.level, parent: n.parent, key, enabled, label: '' };
+  }
+
+  /** @private A status row (QĐ 13, Codex r2 #7): a real treegrid row of level n + 1 in the roving list. */
+  _statusRowHtml(e, P) {
+    const L = TdTable.labels;
+    const esc = P.esc;
+    const body = e.status === 'error'
+      ? `<span class="td-table__tree-status-text">${esc(L.treeLoadError)}</span>`
+        + `<button type="button" class="td-btn td-btn--sm td-btn--secondary td-table__tree-retry">${esc(L.treeRetry)}</button>`
+      : `<span class="td-table__tree-status-text">${esc(L.treeLoading)}</span>`;
+    return `<tr class="td-table__row td-table__row--tree-status" role="row" aria-level="${e.level}" aria-setsize="1"`
+      + ` aria-posinset="1" tabindex="-1"><td class="td-table__cell td-table__tree-status${P.pad}" role="gridcell"`
+      + ` colspan="${this._emptySpan()}" data-state="${e.status}">${body}</td></tr>`;
+  }
+
+  /** @private Register a new tr: info, node → tr, CSSOM indent level (CSP-safe). */
+  _treeAdopt(tr, info) {
+    this._trInfo.set(tr, info);
+    (info.status ? this._statusTr : this._nodeTr).set(info.node, tr);
+    tr.style.setProperty('--td-table-tree-level', String(info.level - 1));
+  }
+
+  /** @private Full body render of the tree (sort / page / data / columns). */
+  _renderTree(entries) {
+    const P = this._rowParts();
+    const infos = [];
+    const html = [];
+    let ri = 0;
+    for (const e of entries) {
+      if (e.status) {
+        infos.push({ node: e.node, status: e.status, level: e.level });
+        html.push(this._statusRowHtml(e, P));
+        continue;
+      }
+      infos.push(this._treeRowInfo(e));
+      html.push(this._rowHtml(e.node.row, ri, P, e));
+      ri += 1;
+    }
+    this._tbody.innerHTML = html.join('');
+    const trs = [];
+    const data = [];
+    [...this._tbody.children].forEach((tr, i) => {
+      this._treeAdopt(tr, infos[i]);
+      if (!infos[i].status) {
+        trs.push(tr);
+        data.push(entries[i]);
+      }
+    });
+    this._bindRows(trs, data.map((e) => e.node.row), 0, data, true);
+    this._treeLabels(trs, 0, true);
+    this._treeArrays(trs);
+  }
+
+  /**
+   * @private Names (like v0.37 `_bindSelectRows`: the primary cell's text, else rowFallback) → the selection control
+   * and the toggle's "Mở / Thu gọn {label}"; icons of the new toggles / marks.
+   */
+  _treeLabels(trs, at, full) {
+    const L = TdTable.labels;
+    const pi = this._cardRoles().indexOf('primary');
+    const sel = '.td-table__tree-toggle [data-td-icon], .td-table__select [data-td-icon]';
+    if (full) fillIconSlots(this._tbody, sel);
+    else for (const tr of trs) fillIconSlots(tr, sel);
+    trs.forEach((tr, i) => {
+      const info = this._trInfo.get(tr);
+      const td = pi >= 0 ? tr.querySelector(`:scope > [data-col="${pi}"]`) : null;
+      info.label = (td && cellText(td)) || fill(L.rowFallback, { n: (Array.isArray(at) ? at[i] : at + i) + 1 });
+      tr.querySelector(':scope > .td-table__cell--select > .td-table__select')?.setAttribute('aria-label', fill(L.selectRow, { label: info.label }));
+      this._treeToggleLabel(tr);
+    });
+  }
+
+  /** @private The toggle's name follows the state ("Mở {label}" / "Thu gọn {label}"). */
+  _treeToggleLabel(tr) {
+    const info = this._trInfo.get(tr);
+    const t = tr.querySelector(':scope > .td-table__cell--tree > .td-table__tree-toggle');
+    if (!t || !info) return;
+    const L = TdTable.labels;
+    const v = fill(this._tree.isExpanded(info.node) ? L.collapseRow : L.expandRow, { label: info.label });
+    if (t.getAttribute('aria-label') !== v) t.setAttribute('aria-label', v);
+  }
+
+  /** @private The page arrays (row-action / selection / labels) + `data-row-idx`, from the data rows in DOM order. */
+  _treeArrays(trs) {
+    this._pageRows = [];
+    this._pageKeys = [];
+    this._pageEnabled = [];
+    this._pageLabels = [];
+    trs.forEach((tr, i) => {
+      const info = this._trInfo.get(tr);
+      const v = String(i);
+      if (tr.getAttribute('data-row-idx') !== v) tr.setAttribute('data-row-idx', v);
+      this._pageRows.push(info.node.row);
+      this._pageKeys.push(info.key);
+      this._pageEnabled.push(info.enabled);
+      this._pageLabels.push(info.label);
+    });
+  }
+
+  /** @private A reused row after a tree change: ARIA numbers, expanded / busy, toggle ↔ spacer (leaf ↔ parent). */
+  _treeUpdateRow(tr, e) {
+    const m = this._tree;
+    const n = e.node;
+    const set = (a, v) => { if (tr.getAttribute(a) !== v) tr.setAttribute(a, v); };
+    set('aria-setsize', String(e.setsize));
+    set('aria-posinset', String(e.posinset));
+    const can = m.expandable(n);
+    if (can) set('aria-expanded', m.isExpanded(n) ? 'true' : 'false');
+    else tr.removeAttribute('aria-expanded');
+    if (n.loading) set('aria-busy', 'true');
+    else tr.removeAttribute('aria-busy');
+    const cell = tr.querySelector(':scope > .td-table__cell--tree');
+    if (cell) {
+      const t = cell.querySelector(':scope > .td-table__tree-toggle');
+      const sp = cell.querySelector(':scope > .td-table__tree-spacer');
+      if (can && !t && sp) {
+        const tpl = document.createElement('template');
+        tpl.innerHTML = this._treeToggleHtml(n);
+        const btn = tpl.content.firstElementChild;
+        sp.replaceWith(btn);
+        fillIconSlots(btn);
+      } else if (!can && t) {
+        const focused = t === document.activeElement;
+        const span = document.createElement('span');
+        span.className = 'td-table__tree-spacer';
+        span.setAttribute('aria-hidden', 'true');
+        t.replaceWith(span);
+        if (focused) tr.focus();
+      }
+    }
+    this._treeToggleLabel(tr);
+  }
+
+  /**
+   * @private Incremental update of the body after open / close / load / moveRow (QĐ 12, 17b): rows that stay are KEPT
+   * (same nodes, focus, app state), new rows are rendered and bound alone (`render` only for them — and for a row whose
+   * level or parent changed), rows that leave are removed; then the page arrays, data-row-idx, ARIA numbers, selection
+   * paint, roving and focus. Anything structural (data, loading, empty) → the full `_update()`.
+   * @param {{ fallback?: Function|null }} [opts] where the focus goes when its row left (default: the nearest shown
+   *   ancestor, then the row now at the old place)
+   */
+  _treeSync(opts = {}) {
+    if (!this._root || this._batching) return;
+    if (this._isLoading() || this._treeDirty || !this._treeRendered) {
+      this._update();
+      return;
+    }
+    const { rows, entries, total } = this._view();
+    if (!rows.length) {
+      this._update();
+      return;
+    }
+    const tbody = this._tbody;
+    const focus = this._treeFocusState();
+    const oldTrs = [...tbody.children];
+    const keepData = new Map();
+    const keepStatus = new Map();
+    for (const tr of oldTrs) {
+      const info = this._trInfo.get(tr);
+      if (info) (info.status ? keepStatus : keepData).set(info.node, tr);
+    }
+    const P = this._rowParts();
+    const want = [];
+    const fresh = [];
+    let ri = 0;
+    for (const e of entries) {
+      if (e.status) {
+        const tr = keepStatus.get(e.node);
+        const info = tr && this._trInfo.get(tr);
+        if (info && info.status === e.status && info.level === e.level) {
+          keepStatus.delete(e.node);
+          want.push(tr);
+        } else {
+          fresh.push({ at: want.length, e, html: this._statusRowHtml(e, P) });
+          want.push(null);
+        }
+        continue;
+      }
+      const tr = keepData.get(e.node);
+      const info = tr && this._trInfo.get(tr);
+      if (info && info.level === e.level && info.parent === e.node.parent) {
+        keepData.delete(e.node);
+        want.push(tr);
+        this._treeUpdateRow(tr, e);
+      } else {
+        fresh.push({ at: want.length, e, ri, html: this._rowHtml(e.node.row, ri, P, e) });
+        want.push(null);
+      }
+      ri += 1;
+    }
+    const keep = new Set(want);
+    for (const tr of oldTrs) if (!keep.has(tr)) tr.remove();
+    if (fresh.length) {
+      const tpl = document.createElement('template');
+      tpl.innerHTML = `<table><tbody>${fresh.map((f) => f.html).join('')}</tbody></table>`;
+      const made = [...tpl.content.querySelector('tbody').children];
+      fresh.forEach((f, k) => {
+        want[f.at] = made[k];
+        this._treeAdopt(made[k], f.e.status ? { node: f.e.node, status: f.e.status, level: f.e.level } : this._treeRowInfo(f.e));
+      });
+    }
+    let cursor = tbody.firstElementChild;
+    for (const tr of want) {
+      if (tr === cursor) cursor = cursor.nextElementSibling;
+      else tbody.insertBefore(tr, cursor);
+    }
+    const freshData = fresh.filter((f) => !f.e.status);
+    if (freshData.length) {
+      const trs = freshData.map((f) => want[f.at]);
+      const at = freshData.map((f) => f.ri);
+      this._bindRows(trs, freshData.map((f) => f.e.node.row), at, freshData.map((f) => f.e), false);
+      this._treeLabels(trs, at, false);
+      const styles = this._columns.map((c) => this._getColumnWidthStyles(c));
+      for (const tr of trs) {
+        for (const cell of tr.querySelectorAll(':scope > [data-col]')) {
+          const st = styles[Number(cell.getAttribute('data-col'))];
+          if (st && Object.keys(st).length) applyStyles(cell, st);
+        }
+      }
+    }
+    this._treeArrays(want.filter((tr) => !this._trInfo.get(tr).status));
+    this._paintSelection();
+    if (this._isServerMode()) this._syncPag(total, false, true);
+    // roving: new rows join (inactive); the active row may have left
+    let act = this._activeTr && this._activeTr.parentElement === tbody ? this._activeTr : null;
+    for (const f of fresh) this._roveRow(want[f.at], false);
+    if (!act) act = this._treeFindActive();
+    this._activeTr = null;
+    if (act) this._setActive(act);
+    this._treeRestoreFocus(focus, opts.fallback || null);
+    this._treeMo?.takeRecords();
+    this._syncOverflow();
+    this._treeAutoLoad();
+  }
+
+  /** @private Open / close a node; `user` → `expanded-change` (QĐ 5). A lazy branch loads (QĐ 13). */
+  _treeSetExpanded(node, expanded, user) {
+    const m = this._tree;
+    if (expanded && !m.expandable(node)) return false;
+    const changed = expanded ? m.expand(node.key) : m.collapse(node.key);
+    if (!changed) return false;
+    if (expanded && node.children === null && !node.loading) {
+      if (!this._loadChildren) {
+        this._warnOnce('td-table: a lazy row (rowHasChildren) was opened without a loadChildren hook.');
+        m.collapse(node.key);
+        return false;
+      }
+      this._treeLoad(node, false);
+    }
+    this._treeSync();
+    if (user) this.emit('expanded-change', { key: node.key, row: node.row, expanded });
+    return true;
+  }
+
+  /** @private expandedKeys / expandAll / collapseAll: incremental when the tree is on screen, else a full update. */
+  _treeRefresh() {
+    if (!this._initialized || !this._root || !this._treeOn()) return;
+    if (this._treeRendered && !this._treeDirty) this._treeSync();
+    else this._update();
+  }
+
+  /** @private Load the shown, open, not-loaded lazy branches (after a render / data / reconnect — QĐ 4). */
+  _treeAutoLoad() {
+    if (!this._treeRendered) return;
+    const m = this._tree;
+    const todo = [];
+    for (const tr of this._tbody.children) {
+      const info = this._trInfo.get(tr);
+      const n = info && !info.status ? info.node : null;
+      if (n && n.children === null && n.lazy && !n.loading && !n.loadError && m.isExpanded(n)) todo.push(n);
+    }
+    if (!todo.length) return;
+    if (!this._loadChildren) {
+      this._warnOnce('td-table: a lazy row (rowHasChildren) was opened without a loadChildren hook.');
+      for (const n of todo) m.collapse(n.key);
+      this._treeSync();
+      return;
+    }
+    for (const n of todo) this._treeLoad(n, false);
+    this._treeSync();
+  }
+
+  /**
+   * @private Load a lazy branch (QĐ 13): aria-busy at once; the status row + "Đang tải các dòng con của {label}…" only
+   * when still loading after TREE_LOADING_MS (the timer of an older request never speaks for a newer one); done →
+   * children inserted (+ "Đã tải {n}…" if "loading" was announced); error → status row with "Thử lại", `load-error`,
+   * announced at once.
+   */
+  _treeLoad(node, retry) {
+    const m = this._tree;
+    const p = m.load(node, this._loadChildren);
+    const old = this._loadTimers.get(node);
+    if (old && old.seq === node.seq) return; // the same request (shared)
+    if (old) clearTimeout(old.timer);
+    const t = { timer: 0, seq: node.seq, announced: !!retry };
+    this._loadTimers.set(node, t);
+    const label = () => this._trInfo.get(this._nodeTr.get(node))?.label || String(node.key);
+    const shown = () => m.isExpanded(node) && this._nodeTr.get(node)?.parentElement === this._tbody;
+    t.timer = setTimeout(() => {
+      if (this._loadTimers.get(node) !== t || !node.loading || node.seq !== t.seq) return;
+      this._statusShown.add(node);
+      if (!shown()) return;
+      this._treeSync();
+      t.announced = true;
+      this._announce(fill(TdTable.labels.treeLoadingRow, { label: label() }));
+    }, TREE_LOADING_MS);
+    p.then((res) => {
+      if (res.stale || this._loadTimers.get(node) !== t) return;
+      clearTimeout(t.timer);
+      this._loadTimers.delete(node);
+      this._statusShown.delete(node);
+      const visible = shown();
+      this._treeSync();
+      if (res.ok) {
+        if (t.announced && visible) this._announce(fill(TdTable.labels.treeLoaded, { n: res.n, label: label() }));
+      } else {
+        this.emit('load-error', { key: node.key, row: node.row, error: res.error });
+        if (visible) this._announce(fill(TdTable.labels.treeLoadErrorRow, { label: label() }));
+      }
+    });
+  }
+
+  /** @private "Thử lại" (QĐ 13): the status row turns "Đang tải…" at once, focus → the parent row, announced. */
+  _treeRetry(statusTr) {
+    const info = this._trInfo.get(statusTr);
+    if (!info || !this._loadChildren) return;
+    const node = info.node;
+    const parent = this._nodeTr.get(node);
+    this._treeLoad(node, true);
+    this._statusShown.add(node);
+    this._treeSync({ fallback: () => parent });
+    if (parent && parent.parentElement === this._tbody) this._focusRow(parent);
+    this._announce(TdTable.labels.treeRetrying);
+  }
+
+  _clearLoadTimers() {
+    for (const t of this._loadTimers.values()) clearTimeout(t.timer);
+    this._loadTimers.clear();
+    this._statusShown.clear();
+  }
+
+  // --- v0.57.0 roving row focus (QĐ 7) ---
+
+  /** @private Rows of the roving list: data rows + status rows (never skeleton / empty rows). */
+  _rovingRows() {
+    return [...this._tbody.children].filter((tr) => this._trInfo.has(tr));
+  }
+
+  /** @private The row that should hold tabindex 0 now: the remembered identity, else the first row. */
+  _treeFindActive() {
+    const rows = this._rovingRows();
+    const k = this._activeKey;
+    if (k && k.id !== null) {
+      const tr = rows.find((r) => {
+        const i = this._trInfo.get(r);
+        return i.node.id === k.id && !!i.status === !!k.status;
+      });
+      if (tr) return tr;
+    }
+    return rows[0] || null;
+  }
+
+  /** @private After a full render: one tab stop, every other row (and its controls) out of the Tab order. */
+  _treeRovingAll() {
+    const act = this._treeFindActive();
+    this._activeTr = act;
+    if (act) {
+      const i = this._trInfo.get(act);
+      this._activeKey = { id: i.node.id, status: i.status };
+    }
+    for (const tr of this._rovingRows()) this._roveRow(tr, tr === act);
+    this._treeMo?.takeRecords();
+  }
+
+  /** @private Make `tr` the roving row (the old one leaves the Tab order with its controls). */
+  _setActive(tr) {
+    if (!tr) return;
+    const old = this._activeTr;
+    this._activeTr = tr;
+    const info = this._trInfo.get(tr);
+    if (info) this._activeKey = { id: info.node.id, status: info.status };
+    if (old && old !== tr && old.parentElement === this._tbody) this._roveRow(old, false);
+    this._roveRow(tr, true);
+  }
+
+  /**
+   * @private The row's own tabindex (0 / -1) and its controls: out of the Tab order (original tabindex kept in a
+   * WeakMap) unless this is the active row (given back). Controls of nested tables (in `render`) are left alone.
+   */
+  _roveRow(tr, on) {
+    const v = on ? '0' : '-1';
+    if (tr.getAttribute('tabindex') !== v) tr.setAttribute('tabindex', v);
+    for (const el of tr.querySelectorAll(ROVE_SEL)) {
+      if (el.closest('tr') !== tr) continue;
+      if (on) {
+        if (!this._savedTab.has(el)) continue;
+        const orig = this._savedTab.get(el);
+        this._savedTab.delete(el);
+        if (orig === null) el.removeAttribute('tabindex');
+        else el.setAttribute('tabindex', orig);
+      } else if (!this._savedTab.has(el)) {
+        this._savedTab.set(el, el.getAttribute('tabindex'));
+        if (el.getAttribute('tabindex') !== '-1') el.setAttribute('tabindex', '-1');
+      }
+    }
+  }
+
+  /** @private Content of rows changed (an app control re-rendered): re-apply roving to those rows. */
+  _onTreeMutations(recs) {
+    if (!this._treeRendered) return;
+    const rows = new Set();
+    for (const r of recs) {
+      if (r.target === this._tbody) {
+        for (const n of r.addedNodes) if (n.nodeType === 1) rows.add(n);
+        continue;
+      }
+      let t = r.target;
+      while (t && t.parentElement !== this._tbody) t = t.parentElement;
+      if (t) rows.add(t);
+    }
+    for (const tr of rows) if (tr.parentElement === this._tbody && this._trInfo.has(tr)) this._roveRow(tr, tr === this._activeTr);
+  }
+
+  /** @private A control of another row took focus (pointer, script): that row becomes the roving row. */
+  _onTreeFocusin(e) {
+    if (!this._treeRendered || !this._tbody) return;
+    let tr = e.target instanceof Element ? e.target : null;
+    if (!tr || !this._tbody.contains(tr)) return;
+    while (tr && tr.parentElement !== this._tbody) tr = tr.parentElement;
+    if (tr && tr !== this._activeTr && this._trInfo.has(tr)) this._setActive(tr);
+  }
+
+  _focusRow(tr) {
+    if (!tr) return;
+    this._setActive(tr);
+    tr.focus();
+  }
+
+  /** @private Where the focus is in the body: its row, the control index in that row (-1 = the row itself). */
+  _treeFocusState() {
+    const a = document.activeElement;
+    if (!a || !this._tbody || !this._tbody.contains(a)) return null;
+    let tr = a;
+    while (tr && tr.parentElement !== this._tbody) tr = tr.parentElement;
+    const info = tr && this._trInfo.get(tr);
+    if (!info) return null;
+    const control = a === tr ? -1 : [...tr.querySelectorAll(ROVE_SEL)].filter((x) => x.closest('tr') === tr).indexOf(a);
+    return { el: a, tr, node: info.node, id: info.node.id, status: info.status, control, index: this._rovingRows().indexOf(tr) };
+  }
+
+  /** @private Focus the same control (by index) of `tr`, or the row. */
+  _focusRowControl(tr, control) {
+    this._setActive(tr);
+    const c = control >= 0 ? [...tr.querySelectorAll(ROVE_SEL)].filter((x) => x.closest('tr') === tr)[control] : null;
+    (c || tr).focus();
+  }
+
+  /** @private After an incremental update: the same element, else its row re-created, else `fallback` / ancestor / old place. */
+  _treeRestoreFocus(state, fallback) {
+    if (!state) return;
+    if (state.el.isConnected && this._tbody.contains(state.el)) {
+      if (document.activeElement !== state.el) state.el.focus({ preventScroll: true });
+      return;
+    }
+    // a data row re-created (level / parent changed) → the same control; a REPLACED status row → its parent (QĐ 13)
+    let tr = state.status ? null : this._nodeTr.get(state.node);
+    if (tr && tr.parentElement === this._tbody) {
+      this._focusRowControl(tr, state.control);
+      return;
+    }
+    tr = fallback ? fallback(state) : null;
+    if (!tr) {
+      for (let p = state.status ? state.node : state.node.parent; p && !tr; p = p.parent) {
+        const x = this._nodeTr.get(p);
+        if (x && x.parentElement === this._tbody) tr = x;
+      }
+    }
+    if (!tr) {
+      const rows = this._rovingRows();
+      tr = rows[state.index] || rows[state.index - 1] || null;
+    }
+    if (tr) this._focusRow(tr);
+  }
+
+  /** @private After a full render (QĐ 7): the row with the same key if shown, else the moveRow fallback, else the first row. */
+  _treeRefocus(state) {
+    if (!state) return;
+    const a = document.activeElement;
+    if (a && a !== document.body && a.isConnected && !this._tbody.contains(a) && a !== state.el) return; // moved elsewhere
+    const node = state.id !== null ? this._tree.ownerOf(state.id) : null;
+    let tr = node ? (state.status ? this._statusTr : this._nodeTr).get(node) : null;
+    if (tr && tr.parentElement === this._tbody) {
+      this._focusRowControl(tr, state.control);
+      return;
+    }
+    tr = this._refocusFallback ? this._refocusFallback(state) : null;
+    if (!tr) tr = this._rovingRows()[0] || null;
+    if (tr) this._focusRow(tr);
+  }
+
+  /** @private Keyboard on a ROW (QĐ 7) — never while the focus is inside a control of the row. */
+  _onTreeKeydown(e) {
+    if (!this._treeRendered || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+    const tr = e.target;
+    if (!(tr instanceof Element) || tr.parentElement !== this._tbody) return;
+    const info = this._trInfo.get(tr);
+    if (!info) return;
+    const m = this._tree;
+    const rows = this._rovingRows();
+    const i = rows.indexOf(tr);
+    let key = e.key;
+    if ((key === 'ArrowLeft' || key === 'ArrowRight') && getComputedStyle(this).direction === 'rtl') {
+      key = key === 'ArrowLeft' ? 'ArrowRight' : 'ArrowLeft';
+    }
+    const node = info.node;
+    switch (key) {
+      case 'ArrowDown': this._focusRow(rows[i + 1]); break;
+      case 'ArrowUp': this._focusRow(rows[i - 1]); break;
+      case 'Home': this._focusRow(rows[0]); break;
+      case 'End': this._focusRow(rows[rows.length - 1]); break;
+      case 'ArrowRight': {
+        if (info.status || !m.expandable(node)) break;
+        if (!m.isExpanded(node)) {
+          this._treeSetExpanded(node, true, true);
+          break;
+        }
+        const next = rows[i + 1];
+        const ni = next && this._trInfo.get(next);
+        if (ni && ni.level === info.level + 1) this._focusRow(next);
+        break;
+      }
+      case 'ArrowLeft': {
+        if (!info.status && m.expandable(node) && m.isExpanded(node)) {
+          this._treeSetExpanded(node, false, true);
+          break;
+        }
+        const parent = info.status ? node : node.parent;
+        const ptr = parent ? this._nodeTr.get(parent) : null;
+        if (ptr && ptr.parentElement === this._tbody) this._focusRow(ptr);
+        break;
+      }
+      case '*': {
+        if (info.status) break;
+        const sibs = node.parent ? node.parent.children : m.roots;
+        const opened = [];
+        for (const s of sibs) {
+          if (s.children && s.children.length && m.expandable(s) && m.expand(s.key)) opened.push(s);
+        }
+        if (opened.length) this._treeSync();
+        for (const s of opened) this.emit('expanded-change', { key: s.key, row: s.row, expanded: true });
+        break;
+      }
+      case ' ': {
+        if (info.status || !this._selOn || e.repeat) break;
+        const btn = tr.querySelector(':scope > .td-table__cell--select > .td-table__select');
+        if (btn && !btn.disabled) this._activateSelect(btn, e.shiftKey);
+        break;
+      }
+      default:
+        return;
+    }
+    e.preventDefault();
+  }
+
   /** Merge options (non-array `columns`/`data` are ignored; `data` follows setData's page rule, then `page`). */
   update(opts = {}) {
     const o = opts && typeof opts === 'object' ? opts : {};
@@ -1732,8 +2716,13 @@ export class TdTable extends TdBaseElement {
     if (Array.isArray(o.data)) {
       this._data = o.data;
       this._dataIndex = null;
+      this._treeDirty = true;
+      this._rootDelta = 0;
       if (!this._isServerMode()) this._currentPage = 1;
     }
+    // v0.57.0 tree table
+    if (o.expandedKeys !== undefined) this._tree.setExpanded(o.expandedKeys);
+    if (o.loadChildren !== undefined) this._loadChildren = typeof o.loadChildren === 'function' ? o.loadChildren : null;
     // v0.37.0: rowKey first (it clears the selection), then the rest
     if (typeof o.rowKey === 'function' || typeof o.rowKey === 'string') this.rowKey = o.rowKey;
     if (o.rowSelectable !== undefined) this._rowSelectable = typeof o.rowSelectable === 'function' ? o.rowSelectable : null;
