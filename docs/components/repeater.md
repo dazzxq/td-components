@@ -236,6 +236,50 @@ rep.writeRow = (row, data, write) => { write(row, data); myEditor(row).setConten
 Tham số cuối là bộ đọc / ghi mặc định (gọi để giữ phần còn lại của dòng). Hook ném lỗi (hoặc `readRow` không trả object)
 → `console.error` + dùng mặc định.
 
+### 8. Khoá: `disabled` / `readonly` (0.56.0)
+
+```html
+<td-repeater label="Hộp gồm" disabled>…</td-repeater>   <!-- như <fieldset disabled> -->
+<td-repeater label="Hộp gồm" readonly>…</td-repeater>   <!-- màn xem: không sửa cấu trúc -->
+```
+
+| | `disabled` | `readonly` |
+|---|---|---|
+| Nút ↑ ↓ × / kéo / Thêm | `disabled` native (mờ như fieldset disabled, không Tab tới) | `hidden` (không có nút chết; cụm nút / footer trống không chiếm chỗ) |
+| Field trong dòng | **mọi** control form (`input`, `select`, `textarea`, `button` của app, td-* form-associated) nhận `disabled` → **không gửi** | field **có năng lực** nhận `readonly` (input chữ / số / ngày / giờ, `textarea`, td-* có thuộc tính `readonly`) hoặc `locked` (td-toggle) → **vẫn gửi** |
+| Host | `aria-disabled="true"` | — (`aria-readonly` không hợp lệ cho `group`; field readonly tự báo) |
+| Property | `rep.disabled = true` | `rep.readonly = true` |
+
+- `disabled` thắng `readonly`. Kit **chỉ gỡ đúng thứ nó đã đặt**: field app tự `disabled` / `readonly` từ trước giữ nguyên
+  khi bỏ khoá; chuyển `disabled → readonly → (không)` không để sót thuộc tính nào.
+- **Năng lực readonly dò theo loại / class**, không theo danh sách tag: component mới có thuộc tính `readonly` tự được phủ.
+  Field **không** có năng lực (select, checkbox, radio, file, td-dropdown, td-checkbox, td-datetime-*…) **giữ nguyên** + một
+  cảnh báo console liệt kê tag — kit không giả lập khoá (chặn click / input ẩn = dễ vỡ). Site cần khoá hết: hook tĩnh
+
+  ```js
+  TdRepeater.lockField = (el, mode) => {          // mode: 'disabled' | 'readonly' | null (bỏ khoá)
+    if (el.localName !== 'td-dropdown') return false; // false = để kit xử lý theo luật trên
+    el.toggleAttribute('data-locked', mode !== null); // việc của site; phải idempotent (gọi mỗi lần vẽ lại)
+    return true;                                    // true = site đã xử lý, kit không đặt gì
+  };
+  ```
+
+  hoặc dùng `disabled` / `<fieldset disabled>`.
+- **`<fieldset disabled>` tổ tiên** (không nằm trong `<legend>` đầu của nó) cho cùng kết quả với `disabled`: nút và field bị
+  trình duyệt tắt natively, kéo thả / bàn phím của `sortable` tắt theo. Kit **không ghi** gì cho trường hợp này — bật lại
+  fieldset là mọi thứ hết khoá.
+- Đang khoá: bấm nút không làm gì (không thông báo), kéo / nhấc dở bị huỷ. **API vẫn chạy** (`addRow`, `removeRow`,
+  `moveRow`, `value =`) như code gán `.value` cho input disabled; dòng mới nhận khoá ngay.
+- Focus đang ở nút / field vừa bị `disabled` → để trình duyệt xử lý như fieldset (Chromium chuyển focus về `body`; Firefox /
+  WebKit giữ nhưng không thao tác được).
+- **Phạm vi:** khoá áp khi đổi thuộc tính và mỗi lần dòng được vẽ lại (thêm, `sync`, `set`). Field app chèn **vào trong** một
+  dòng đã có sau khi khoá không được theo dõi tới lần `rows-change` sau → tắt / bật lại thuộc tính.
+- **Không JS / server:** `disabled` / `readonly` trên host chỉ có hiệu lực **sau** nâng cấp. Muốn khoá từ đầu (kể cả khi JS
+  chưa tới): bọc `<fieldset disabled>`, hoặc in `readonly` / `disabled` trên chính field (của app — kit không gỡ).
+- **Form dirty (v0.44):** gán `value` / `disabled` / `readonly` từ code không làm form bẩn khi người dùng chưa sửa gì. Đã sửa
+  rồi mới bật `disabled` → field rời FormData → form **bẩn** (giống `<fieldset disabled>` native). Khoá trong lúc lưu: dùng
+  `readonly` (FormData không đổi), hoặc gọi `markClean()` sau khi lưu xong.
+
 ## Responsive (0.34.0)
 
 Host `<td-repeater>` là **container** (`container: td-repeater / inline-size`). Khi repeater **hẹp hơn 480px** (điện thoại,
@@ -256,6 +300,8 @@ cột → tự xuống hàng mới); luật site đặt chỗ cụm công cụ t
 | `max-rows` | số nguyên ≥ 0 (được lớn hơn 200) | không giới hạn | Không thêm quá; dòng đã có (server in nhiều hơn) được giữ hết. `max-rows < min-rows` → `max = min` + cảnh báo. |
 | `add-label` | string | `TdRepeater.labels.add` | Chữ trên nút thêm. |
 | `sortable` | boolean | — | 0.31.0: tay nắm kéo thả + nhấc bằng bàn phím (mục 6). Bật / tắt lúc chạy được. |
+| `disabled` | boolean | — | 0.56.0: như `<fieldset disabled>` (mục 8). Property `disabled`. |
+| `readonly` | boolean | — | 0.56.0: khoá cấu trúc + field có năng lực `readonly` / `locked`, vẫn gửi (mục 8). Property `readonly`. |
 
 Đổi attribute sau khi nâng cấp → cập nhật tại chỗ (tăng `min-rows` → nối dòng + `rows-change` `sync`).
 
@@ -270,6 +316,7 @@ cột → tự xuống hàng mới); luật site đặt chỗ cụm công cụ t
 | `value` | `Array<object>` (get / set) | 0.56.0: dữ liệu các field `data-td-field` của từng dòng ([mục 7](#7-dữ-liệu-value-0560)). Gán → một `rows-change` `set`. |
 | `readRow` / `writeRow` | `function \| null` | 0.56.0: hook đọc / ghi một dòng — `(row, read)` / `(row, data, write)`. |
 | `TdRepeater.MAX_VALUE_ROWS` | `1000` (static) | 0.56.0: trần số dòng khi gán `value` mà không có `max-rows`. |
+| `TdRepeater.lockField(el, mode)` | static hook `→ boolean` | 0.56.0: site khoá field kit không khoá được; `true` = đã xử lý (mục 8). |
 | `TdRepeater.labels` | static | Văn bản (xem dưới). |
 | `TdRepeater.MAX_MIN_ROWS` | `200` (static) | Trần của `min-rows` (chống vòng clone vô hạn khi `min-rows` đến từ dữ liệu). |
 
@@ -356,7 +403,8 @@ Không có animation.
 - Host và mỗi dòng là `role="group"` có tên ("Hộp gồm", "Dòng 2") → trình đọc màn hình báo đang ở dòng nào.
 - Nút có tên kèm số dòng ("Xoá dòng 2"); nút biên `aria-disabled` vẫn focus được và được đọc là "mờ".
 - Thông báo thêm / xoá / chuyển / đầy / tối thiểu qua live region `role="status"` (text).
-- `<fieldset disabled>` tổ tiên tắt toàn bộ nút như mọi `<button>`. Nút luôn `type="button"` → không submit form.
+- `<fieldset disabled>` tổ tiên tắt toàn bộ nút như mọi `<button>` (0.56.0: kéo thả `sortable` tắt theo). Nút luôn
+  `type="button"` → không submit form. Khoá của host: mục 8.
 
 ## Bảo mật
 
@@ -372,6 +420,7 @@ Không có animation.
 ## Cảm ứng
 
 - Sắp xếp bằng tay nắm (khi `sortable`) theo ngưỡng của [td-sortable](sortable.md#cảm-ứng): ngón 10 px, bút 8, chuột 4. Nút thêm / xoá / tay nắm có hình nhấn; hover chỉ trên con trỏ mịn.
+- Nút `disabled` (0.56.0) không có hình nhấn; `readonly` không có nút nào.
 
 Chuẩn chung: [Cảm ứng](../guides/touch.md).
 

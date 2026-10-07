@@ -587,6 +587,38 @@ async function runConfig(browser, c) {
       return errs;
     });
     check(tag, 'datetime range host (v0.40.0)', dtrErr);
+    // v0.56.0: a readonly repeater has no button and its empty tool cluster takes no room (no extra line < 480px); the
+    // footer drops its padding; a disabled one keeps its (disabled) buttons inside the host
+    const repLockErr = await page.evaluate(() => {
+      const errs = [];
+      const ro = document.querySelector('#rsp-rep-ro');
+      if (ro) {
+        for (const row of ro.querySelectorAll(':scope > .td-repeater__row')) {
+          const box = row.querySelector('.td-repeater__actions');
+          if (box && getComputedStyle(box).display !== 'none') errs.push('#rsp-rep-ro: the empty action cluster still takes room');
+          const fields = [...row.children].filter((c) => !c.classList.contains('td-repeater__actions')).map((c) => c.getBoundingClientRect());
+          const r = row.getBoundingClientRect();
+          const pad = parseFloat(getComputedStyle(row).paddingTop) + parseFloat(getComputedStyle(row).paddingBottom);
+          const lines = new Set(fields.map((f) => Math.round(f.top)));
+          const content = Math.max(...fields.map((f) => f.bottom)) - Math.min(...fields.map((f) => f.top));
+          if (r.height > content + pad + 1) errs.push(`#rsp-rep-ro: row ${Math.round(r.height)}px > fields ${Math.round(content)} + padding (${lines.size} line(s))`);
+        }
+        if ([...ro.querySelectorAll('button')].some((b) => b.getBoundingClientRect().height > 0)) errs.push('#rsp-rep-ro: a visible button');
+        const foot = ro.querySelector('.td-repeater__footer');
+        if (foot && foot.getBoundingClientRect().height > 1) errs.push(`#rsp-rep-ro: footer ${foot.getBoundingClientRect().height}px tall`);
+      }
+      const dis = document.querySelector('#rsp-rep-dis');
+      if (dis) {
+        const host = dis.getBoundingClientRect();
+        for (const b of dis.querySelectorAll('.td-repeater__btn, .td-repeater__add')) {
+          const r = b.getBoundingClientRect();
+          if (!b.disabled) errs.push('#rsp-rep-dis: a kit button is not disabled');
+          if (r.right > host.right + 0.5 || r.left < host.left - 0.5) errs.push('#rsp-rep-dis: a button outside the host');
+        }
+      }
+      return errs;
+    });
+    check(tag, 'repeater readonly / disabled (v0.56.0)', repLockErr);
     // v0.49.0: td-choice-group options stay inside the host and never overlap (long labels wrap inside the button); the
     // 160 px stepper keeps its box inside the column with a usable field between the two buttons
     const v049Err = await page.evaluate(() => {

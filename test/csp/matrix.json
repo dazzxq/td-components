@@ -3294,6 +3294,63 @@
         "margin-left"
       ],
       "selectorNote": "v0.31.0 opt-in sortable: the handle opens the action group (same ghost button as ↑ ↓ ×, touch-action none); the host is the placeholder's containing block"
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-repeater label=\"Hộp gồm\" disabled sortable><template><div data-td-row><input aria-label=\"Tên\"></div></template><div data-td-row><input aria-label=\"Tên\" value=\"Sạc\"></div><div data-td-row><input aria-label=\"Tên\" value=\"Cáp\"></div></td-repeater>",
+      "selectors": [
+        "td-repeater",
+        ".td-repeater__actions > .td-sortable__handle:disabled",
+        ".td-repeater__btn--remove:disabled",
+        ".td-repeater__add:disabled",
+        ".td-repeater__row input:disabled"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.56.0 (plan R7 / R8 / R6) — text-sized boxes (the add button's label, the row input's intrinsic width, the auto margin of the actions) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front; disabled = like <fieldset disabled>: kit buttons + row inputs disabled natively, host aria-disabled"
+    },
+    {
+      "state": "readonly",
+      "markup": "<td-repeater label=\"Hộp gồm\" readonly sortable><template><div data-td-row><input aria-label=\"Tên\"></div></template><div data-td-row><input aria-label=\"Tên\" value=\"Sạc\"></div><div data-td-row><input aria-label=\"Tên\" value=\"Cáp\"></div></td-repeater>",
+      "selectors": [
+        ".td-repeater__row",
+        ".td-repeater__actions",
+        ".td-repeater__footer",
+        ".td-repeater__row input[readonly]"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.56.0 (plan R7 / R8 / R6) — text-sized boxes (the add button's label, the row input's intrinsic width, the auto margin of the actions) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front; readonly: every kit button hidden → the empty action cluster is display none, the footer drops its padding"
+    },
+    {
+      "state": "fieldset-disabled",
+      "markup": "<fieldset disabled><td-repeater label=\"Hộp gồm\" sortable><template><div data-td-row><input aria-label=\"Tên\"></div></template><div data-td-row><input aria-label=\"Tên\" value=\"Sạc\"></div><div data-td-row><input aria-label=\"Tên\" value=\"Cáp\"></div></td-repeater></fieldset>",
+      "selectors": [
+        ".td-repeater__actions > .td-sortable__handle:disabled",
+        ".td-repeater__btn--up:disabled",
+        ".td-repeater__add:disabled"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.56.0 (plan R7 / R8 / R6) — text-sized boxes (the add button's label, the row input's intrinsic width, the auto margin of the actions) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front; an ancestor fieldset[disabled]: the browser disables the buttons natively, the repeater writes nothing"
     }
   ],
   "td-sortable": [

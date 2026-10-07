@@ -17,6 +17,12 @@ const FIELD = 'data-td-field';
 /** Longest key / tag text a warning repeats (app data — console only, never markup). */
 const WARN_TEXT_MAX = 64;
 
+/** v0.56.0 (R8): input types whose value is text the user types → `readonly` applies (HTML: readonly is honoured). */
+const READONLY_TYPES = new Set(['text', 'search', 'url', 'tel', 'email', 'password', 'number', 'date', 'month', 'week',
+  'time', 'datetime-local']);
+/** v0.56.0 (R8): inputs that are never a field the user edits (no lock, no warning). */
+const NOT_FIELD_TYPES = new Set(['hidden', 'button', 'submit', 'reset', 'image']);
+
 let _uid = 0;
 
 /**
@@ -61,6 +67,54 @@ function kindOf(els) {
   if (first.localName === 'textarea') return { kind: 'text', els };
   if (typeof first.checked === 'boolean') return { kind: 'bool', els };
   return { kind: first.localName === 'td-repeater' ? 'nested' : 'custom', els };
+}
+
+/** @param {Function} C @returns {string[]} the class's observed attributes (a throwing getter → none) */
+function observedOf(C) {
+  try {
+    const list = C.observedAttributes;
+    return Array.isArray(list) ? list : [];
+  } catch { return []; }
+}
+
+/**
+ * v0.56.0 (R7 / R8): the attribute that locks `el` in `mode`, found from its KIND / CLASS (never a tag list) — null when
+ * it has no such capability (or is a custom element not defined yet: decided once it is).
+ * @param {Element} el @param {'disabled'|'readonly'} mode
+ * @returns {'disabled'|'readonly'|'locked'|null}
+ */
+function lockAttr(el, mode) {
+  const n = el.localName;
+  if (n.includes('-')) {
+    const C = customElements.get(n);
+    if (!C) return null;
+    const obs = observedOf(C);
+    if (mode === 'disabled') return C.formAssociated === true || obs.includes('disabled') ? 'disabled' : null;
+    if (obs.includes('readonly')) return 'readonly';
+    return obs.includes('locked') ? 'locked' : null; // td-toggle 0.52: frozen, still submitted
+  }
+  if (mode === 'disabled') return 'disabled'; // input / select / textarea / button: like <fieldset disabled>
+  if (n === 'textarea') return 'readonly';
+  return n === 'input' && READONLY_TYPES.has(/** @type {HTMLInputElement} */ (el).type) ? 'readonly' : null;
+}
+
+/**
+ * v0.56.0 (R8): a field `readonly` cannot lock, named for the one warning — null when it is not a field the user edits
+ * (buttons, hidden inputs, non-form custom elements) or not defined yet.
+ * @param {Element} el
+ * @returns {string|null}
+ */
+function unlockableName(el) {
+  const n = el.localName;
+  if (n.includes('-')) {
+    const C = customElements.get(n);
+    if (!C) return null;
+    return C.formAssociated === true || el.hasAttribute(FIELD) ? n : null;
+  }
+  if (n === 'button') return null;
+  if (n === 'select') return 'select';
+  const t = /** @type {HTMLInputElement} */ (el).type;
+  return NOT_FIELD_TYPES.has(t) ? null : `input[type=${t}]`;
 }
 
 /** @param {{ kind: string, els: any[] }} f */
@@ -151,6 +205,13 @@ function writeField({ kind, els }, present, v) {
  *   (clamped to min-rows / max-rows, else `MAX_VALUE_ROWS`) and fires ONE `rows-change` `reason: 'set'` `source: 'api'`.
  *   Per instance hooks `readRow(row, defaultRead)` / `writeRow(row, data, defaultWrite)` replace the defaults.
  *
+ * - v0.56.0 lock (R5–R11, ADR 0029): `disabled` = like <fieldset disabled> (kit buttons + every row control `disabled`,
+ *   host `aria-disabled`, nothing submitted); `readonly` = structure locked (kit buttons `hidden`) + fields with the
+ *   CAPABILITY locked (`readonly` / td-toggle `locked`, found from the element kind / class; the rest: one warning +
+ *   `TdRepeater.lockField` hook). Only the HOST lock writes attributes, and the kit removes exactly what it set. An
+ *   ancestor <fieldset disabled> (not in its first <legend>) blocks the user too but writes nothing (the browser disables
+ *   the buttons natively). API calls (`addRow`, `removeRow`, `moveRow`, `value`) still work, like code on a native input.
+ *
  * @element td-repeater
  * @attr {string} label - visible group label (text)
  * @attr {number} min-rows - integer 0–200 (default 0; above `MAX_MIN_ROWS` = 200 → ignored + one warning): never fewer
@@ -158,6 +219,8 @@ function writeField({ kind, els }, present, v) {
  * @attr {number} max-rows - integer ≥ 0 (default none): no add past it (rows already there are kept)
  * @attr {string} add-label - text of the add button (default `TdRepeater.labels.add`)
  * @attr {boolean} sortable - v0.31.0: drag handle + keyboard lift (texts: `TdSortable.labels`, shared)
+ * @attr {boolean} disabled - v0.56.0: like <fieldset disabled> (after the upgrade; server-side: wrap a <fieldset disabled>)
+ * @attr {boolean} readonly - v0.56.0: no structural change + capable fields readonly (still submitted)
  * @fires rows-change - detail: { reason: 'init'|'add'|'remove'|'move'|'sync'|'set', source: 'user'|'api', rows, row?, index?, from?, to? }
  * @fires before-remove - cancelable, user × only; detail: { row, index }
  */
@@ -191,8 +254,21 @@ export class TdRepeater extends TdBaseElement {
   static MAX_VALUE_ROWS = 1000;
 
   static get observedAttributes() {
-    return ['label', 'min-rows', 'max-rows', 'add-label', 'sortable'];
+    return ['label', 'min-rows', 'max-rows', 'add-label', 'sortable', 'disabled', 'readonly'];
   }
+
+  /** v0.56.0 (R11): `disabled` / `readonly` are boolean properties (`sortable` stays as it was — Q6). */
+  static get booleanAttributes() { return ['disabled', 'readonly']; }
+
+  /**
+   * v0.56.0 (R8, Q2) site hook: lock a row control the kit cannot (or should not) lock itself. Called for every control
+   * of every row while the host is locked (`mode` 'disabled' | 'readonly' — on every repaint: must be idempotent), and
+   * with `mode` null when that lock goes. Return `true` = handled by the site (the kit sets nothing on it). Default: false.
+   * @param {Element} _el
+   * @param {'disabled'|'readonly'|null} _mode
+   * @returns {boolean}
+   */
+  static lockField(_el, _mode) { return false; }
 
   constructor() {
     super();
@@ -222,6 +298,12 @@ export class TdRepeater extends TdBaseElement {
     /** @private v0.56.0 hooks (null = the default reader / writer) */
     this._readRow = null;
     this._writeRow = null;
+    /** @private v0.56.0 (R6) attributes the HOST lock set: element → names (released exactly; pruned on every apply) */
+    this._owned = new Map();
+    /** @private v0.56.0 controls a site TdRepeater.lockField() handled → the mode it locked them in */
+    this._siteLocked = new Map();
+    /** @private custom element names waited for (lock decided once defined) */
+    this._pendingDefs = new Set();
   }
 
   /**
@@ -332,6 +414,11 @@ export class TdRepeater extends TdBaseElement {
 
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal || !this._initialized || !this._started) return;
+    if (name === 'disabled' || name === 'readonly') {
+      if (this._blocked()) this._ctl?.cancel('external'); // a lift / drag in progress ends where it is
+      this._applyHostLock();
+      return;
+    }
     if (name === 'label') this._syncLabel();
     else if (name === 'add-label') this._syncAddLabel();
     else if (name === 'sortable') {
@@ -654,6 +741,7 @@ export class TdRepeater extends TdBaseElement {
       if (this._templateOk && this._model.canAdd()) this._addBtn.removeAttribute('aria-disabled');
       else this._addBtn.setAttribute('aria-disabled', 'true');
     }
+    this._applyHostLock(); // v0.56.0 (R10): every new / repainted row gets the current lock
   }
 
   /** @private a new row from the template, ids made unique */
@@ -796,7 +884,7 @@ export class TdRepeater extends TdBaseElement {
         commit: () => {}, // rows-change already fired for every step
         nameOf: (row, i) => defaultItemName(row, i, SORTABLE_LABELS),
         live: this._live,
-        enabled: () => this.hasAttribute('sortable'),
+        enabled: () => this.hasAttribute('sortable') && !this._blocked(), // v0.56.0 (R6): host lock or fieldset
         labels: SORTABLE_LABELS,
         reconcile: () => this._flush(), // review round 1 IMPL-1: pending outside changes → 'external' + sync first
         placePlaceholder: (ph) => {
@@ -861,10 +949,153 @@ export class TdRepeater extends TdBaseElement {
     }
   }
 
+  // --- lock (v0.56.0, R6–R10) ---
+
+  /** @private the host's own lock: 'disabled' (wins) | 'readonly' | null */
+  _hostLock() {
+    if (this.hasAttribute('disabled')) return 'disabled';
+    return this.hasAttribute('readonly') ? 'readonly' : null;
+  }
+
+  /**
+   * @private An ancestor <fieldset disabled> disables the host (HTML rule): any `fieldset[disabled]` above it, unless the
+   * host sits in THAT fieldset's first <legend> child. Computed on demand from the page only (never from what the kit
+   * wrote), nothing is written for it.
+   */
+  _fieldsetDisabled() {
+    for (let fs = this.parentElement?.closest('fieldset'); fs; fs = fs.parentElement?.closest('fieldset')) {
+      if (!fs.hasAttribute('disabled')) continue;
+      const legend = [...fs.children].find((c) => c.localName === 'legend');
+      if (legend && legend.contains(this)) continue;
+      return true;
+    }
+    return false;
+  }
+
+  /** @private user interaction blocked: the host lock or a disabled fieldset */
+  _blocked() {
+    return this._hostLock() !== null || this._fieldsetDisabled();
+  }
+
+  /** @private this repeater's own buttons (row actions, sort handles, add) — never a nested repeater's */
+  _kitButtons() {
+    return [...this.querySelectorAll('.td-repeater__btn, .td-repeater__add')].filter((b) => b.closest('td-repeater') === this);
+  }
+
+  /**
+   * @private The form controls of one row: native input / select / textarea / button (not the kit's) and custom elements
+   * as a whole (their inner parts are theirs; a nested td-repeater locks its own rows).
+   * @param {Element} row
+   * @returns {Element[]}
+   */
+  _rowControls(row) {
+    const out = [];
+    const walk = (parent) => {
+      for (const el of parent.children) {
+        const n = el.localName;
+        if (n === 'template') continue;
+        if (n.includes('-')) out.push(el);
+        else if (n === 'input' || n === 'select' || n === 'textarea' || n === 'button') {
+          if (!el.classList.contains('td-repeater__btn')) out.push(el);
+        } else walk(el);
+      }
+    };
+    walk(row);
+    return out;
+  }
+
+  /**
+   * @private Bring every owned attribute in line with the host lock (idempotent; called on attribute change and on every
+   * repaint). Releases first what is no longer wanted (incl. elements that left the host), then sets what is missing —
+   * never touching an attribute the app put there itself.
+   */
+  _applyHostLock() {
+    if (!this._started) return;
+    const mode = this._hostLock();
+    /** @type {Map<Element, Set<string>>} */
+    const want = new Map();
+    const add = (el, attr) => {
+      let set = want.get(el);
+      if (!set) want.set(el, (set = new Set()));
+      set.add(attr);
+    };
+    const site = new Map();
+    const released = new Set();
+    const unlockable = new Set();
+    if (mode) {
+      if (mode === 'disabled') add(this, 'aria-disabled');
+      for (const b of this._kitButtons()) add(b, mode === 'disabled' ? 'disabled' : 'hidden');
+      for (const row of this._model.keys()) {
+        for (const el of this._rowControls(row)) {
+          const prev = this._siteLocked.get(el);
+          if (prev && prev !== mode) { this._siteHook(el, null); released.add(el); }
+          if (this._siteHook(el, mode)) { site.set(el, mode); continue; }
+          const attr = lockAttr(el, mode);
+          if (attr) add(el, attr);
+          else if (mode === 'readonly') {
+            const name = unlockableName(el);
+            if (name) unlockable.add(name);
+          }
+          this._waitDefined(el);
+        }
+      }
+    }
+    for (const [el, attrs] of this._owned) {
+      const keep = want.get(el);
+      for (const a of [...attrs]) {
+        if (keep && keep.has(a)) continue;
+        el.removeAttribute(a);
+        attrs.delete(a);
+      }
+      if (!attrs.size) this._owned.delete(el);
+    }
+    for (const el of [...this._siteLocked.keys()]) {
+      if (site.has(el)) continue;
+      if (!released.has(el)) this._siteHook(el, null);
+      this._siteLocked.delete(el);
+    }
+    for (const [el, m] of site) this._siteLocked.set(el, m);
+    for (const [el, attrs] of want) {
+      for (const a of attrs) {
+        let mine = this._owned.get(el);
+        if (!mine?.has(a) && el.hasAttribute(a)) continue; // the app's own: never taken over, never removed
+        if (!el.hasAttribute(a)) el.setAttribute(a, a === 'aria-disabled' ? 'true' : '');
+        if (!mine) this._owned.set(el, (mine = new Set()));
+        mine.add(a);
+      }
+    }
+    if (unlockable.size) {
+      this._warnOnce('readonly', `td-repeater: readonly cannot lock ${[...unlockable].join(', ')} — they stay editable `
+        + '(use TdRepeater.lockField() or <fieldset disabled>).');
+    }
+  }
+
+  /** @private TdRepeater.lockField() of the site, guarded (a throw = not handled) */
+  _siteHook(el, mode) {
+    try {
+      return TdRepeater.lockField(el, mode) === true;
+    } catch (err) {
+      console.error('td-repeater: TdRepeater.lockField threw — the kit rule is used.', err);
+      return false;
+    }
+  }
+
+  /** @private a custom element not defined yet: decide its lock once it is */
+  _waitDefined(el) {
+    const n = el.localName;
+    if (!n.includes('-') || customElements.get(n) || this._pendingDefs.has(n)) return;
+    this._pendingDefs.add(n);
+    customElements.whenDefined(n).then(() => {
+      this._pendingDefs.delete(n);
+      this._applyHostLock();
+    }, () => {});
+  }
+
   // --- events ---
 
   /** @private click delegate (buttons are real `<button type="button">`; fieldset-disabled ones fire nothing) */
   _onClick(e) {
+    if (this._blocked()) return; // v0.56.0 (R6): locked by the host or a disabled fieldset — nothing, no announcement
     const target = /** @type {Element} */ (e.target);
     const b = target instanceof Element ? target.closest('button[data-td-repeater-action]') : null;
     if (!b || b.closest('td-repeater') !== this) return;

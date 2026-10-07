@@ -113,3 +113,44 @@ export const Sortable = {
     show();
   },
 };
+
+const BOX_ROW = (i, name, qty) => `<div data-td-row class="sb-rep-row">
+  <td-input-field data-td-field="name" ${i === null ? '' : `name="box[${i}][name]" `}data-name="box[{i}][name]" aria-label="Phụ kiện"${name ? ` value="${esc(name)}"` : ''}></td-input-field>
+  <input type="number" class="td-field__control" data-td-field="qty" ${i === null ? '' : `name="box[${i}][qty]" `}data-name="box[{i}][qty]" aria-label="Số lượng" value="${esc(qty)}">
+</div>`;
+
+/** v0.56.0 `value`: the rows' data from `data-td-field` (get), rebuilt from data (set) — names still the app's recipe. */
+export const Value = {
+  render: () => `<div class="sb-stack"><form>
+    <td-repeater label="Hộp gồm" min-rows="1" max-rows="5">
+      <template>${BOX_ROW(null, '', 1)}</template>
+      ${BOX_ROW(0, 'Sạc 20W', 1)}
+    </td-repeater></form>
+    <div class="td-action-group">
+      <button type="button" class="td-btn td-btn--secondary td-btn--sm" data-act="read">Đọc value</button>
+      <button type="button" class="td-btn td-btn--secondary td-btn--sm" data-act="set">Gán 3 dòng</button>
+    </div><pre class="sb-rep-pre">value: —</pre></div>`,
+  play: ({ canvasElement }) => {
+    const rep = canvasElement.querySelector('td-repeater');
+    const out = canvasElement.querySelector('.sb-rep-pre');
+    rep.addEventListener('rows-change', (e) => rename(e.detail.rows));
+    rename(rep.rows);
+    canvasElement.querySelector('[data-act="read"]').addEventListener('click', () => { out.textContent = JSON.stringify(rep.value, null, 1); });
+    canvasElement.querySelector('[data-act="set"]').addEventListener('click', () => {
+      rep.value = [{ name: 'Sạc 20W', qty: '1' }, { name: 'Cáp USB-C', qty: '2' }, { name: 'Ốp lưng' }];
+      out.textContent = JSON.stringify(rep.value, null, 1);
+    });
+  },
+};
+
+/** v0.56.0 `disabled`: like <fieldset disabled> — no button works, every field is disabled and not submitted. */
+export const Disabled = {
+  render: () => `<div class="sb-stack"><td-repeater label="Hộp gồm (khoá)" disabled sortable>
+    <template>${BOX_ROW(null, '', 1)}</template>${BOX_ROW(0, 'Sạc 20W', 1)}${BOX_ROW(1, 'Cáp USB-C', 2)}</td-repeater></div>`,
+};
+
+/** v0.56.0 `readonly`: no structural change (no button at all), capable fields readonly — still submitted. */
+export const Readonly = {
+  render: () => `<div class="sb-stack"><td-repeater label="Hộp gồm (chỉ xem)" readonly sortable>
+    <template>${BOX_ROW(null, '', 1)}</template>${BOX_ROW(0, 'Sạc 20W', 1)}${BOX_ROW(1, 'Cáp USB-C', 2)}</td-repeater></div>`,
+};

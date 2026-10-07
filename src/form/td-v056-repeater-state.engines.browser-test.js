@@ -41,7 +41,8 @@ const rowsOf = (rep) => [...rep.children].filter((c) => c.hasAttribute('data-td-
 const kitButtons = (rep) => [...rep.querySelectorAll('.td-repeater__btn, .td-repeater__add')].filter((b) => b.closest('td-repeater') === rep);
 const addBtn = (rep) => rep.querySelector(':scope > .td-repeater__footer .td-repeater__add');
 const formData = (form) => [...new FormData(form).entries()].map(([k, v]) => `${k}=${v}`);
-const focusable = (el) => { el.focus(); return document.activeElement === el; };
+/** Firefox / WebKit keep the focus on a button that BECOMES disabled (Chromium blurs it) — start from the body. */
+const focusable = (el) => { document.activeElement?.blur?.(); el.focus(); return document.activeElement === el; };
 
 /** text input + select + td-input-field + td-toggle + td-dropdown + a checkbox, app-named. */
 const ROW = (i, v = '') => `<div data-td-row>
@@ -262,10 +263,13 @@ describe('td-repeater lock transitions (R6)', () => {
     const fs = w.querySelector('fieldset');
     const rep = /** @type {any} */ (w.querySelector('td-repeater'));
     await tick();
-    const html = rep.innerHTML;
     fs.disabled = true;
     expect(rep._blocked()).to.equal(true);
-    expect(rep.innerHTML === html).to.equal(true);
+    // the td-* fields update themselves (formDisabledCallback); the REPEATER writes nothing
+    expect(rep._owned.size).to.equal(0);
+    expect(rep.hasAttribute('aria-disabled')).to.equal(false);
+    expect(kitButtons(rep).some((b) => b.hasAttribute('disabled') || b.hidden)).to.equal(false);
+    expect(rowsOf(rep)[0].querySelector('input').hasAttribute('disabled')).to.equal(false);
     fs.disabled = false;
     const rec = record(rep);
     addBtn(rep).click();
