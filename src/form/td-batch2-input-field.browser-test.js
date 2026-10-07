@@ -140,13 +140,16 @@ describe('batch 2 — td-input-field required + describedby', () => {
     expect(ids(input, 'aria-describedby')).to.deep.equal(['d1-note', 'd1-counter']);
     input.setAttribute('aria-describedby', `extra-hint ${input.getAttribute('aria-describedby')}`);
     el.setError('Sai');
-    expect(ids(input, 'aria-describedby')).to.have.members(['extra-hint', 'd1-note', 'd1-counter', 'd1-error']);
+    // v0.54.0 (plan v0.54.0-hint QĐ 3): the note leaves the description while the error shows
+    expect(ids(input, 'aria-describedby')).to.have.members(['extra-hint', 'd1-counter', 'd1-error']);
     expect(input.getAttribute('aria-errormessage')).to.equal('d1-error');
     el.setHelper('');
     expect(ids(input, 'aria-describedby')).to.have.members(['extra-hint', 'd1-counter', 'd1-error']);
     el.clearError();
     expect(ids(input, 'aria-describedby')).to.have.members(['extra-hint', 'd1-counter']);
     expect(input.hasAttribute('aria-errormessage')).to.equal(false);
+    el.setHelper('Gợi ý');
+    expect(ids(input, 'aria-describedby')).to.have.members(['extra-hint', 'd1-note', 'd1-counter']);
   });
 });
 
@@ -197,15 +200,16 @@ describe('batch 2 — td-input-field error contract', () => {
     expect(ctl(el).getAttribute('aria-invalid')).to.equal('true');
   });
 
-  it('helper and error coexist (error first, helper kept — D17)', () => {
+  it('v0.54.0 (QĐ 3, replaces D17): the error hides the helper; the counter stays; cleared → the helper is back', () => {
     const el = mount('<td-input-field helper-text="Gợi ý" max-length="9"></td-input-field>');
     el.setError('Sai rồi');
     const footer = el.querySelector('.td-field__footer');
     const kids = [...footer.children].filter((c) => !c.hidden).map((c) => c.className);
-    expect(kids).to.deep.equal(['td-field-error', 'td-field__note', 'td-field__counter']);
+    expect(kids).to.deep.equal(['td-field-error', 'td-field__counter']);
     expect(el.querySelector('.td-field__note').textContent).to.equal('Gợi ý');
     el.setError('');
-    expect(el.querySelector('.td-field__note').textContent).to.equal('Gợi ý');
+    const back = [...footer.children].filter((c) => !c.hidden).map((c) => c.className);
+    expect(back).to.deep.equal(['td-field__note', 'td-field__counter']);
   });
 
   it('validate-on="blur" mirrors the constraint message into the error', () => {

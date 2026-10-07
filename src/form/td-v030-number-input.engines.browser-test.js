@@ -570,7 +570,7 @@ describe('td-number-input — form + lifecycle', () => {
     expect(ctl(el).value).to.equal('777.000');
   });
 
-  it('label / host aria-label / external label name the control; aria-describedby has the unit, note, error', () => {
+  it('label / host aria-label / external label name the control; aria-describedby has the unit, error (v0.54.0: the note leaves while an error shows)', () => {
     const el = num('label="Giá bán" suffix="₫" unit-label="đồng" helper-text="Đã gồm VAT" error-text="Sai"');
     const c = ctl(el);
     expect(c.labels.length).to.equal(1);
@@ -579,7 +579,10 @@ describe('td-number-input — form + lifecycle', () => {
     const unit = el.querySelector(`#${CSS.escape(`${el.id}-unit`)}`);
     expect(unit.textContent).to.equal('đồng');
     expect(unit.hidden).to.equal(true);
-    for (const id of [`${el.id}-unit`, `${el.id}-note`, `${el.id}-error`]) expect(ids.includes(id)).to.equal(true, id);
+    for (const id of [`${el.id}-unit`, `${el.id}-error`]) expect(ids.includes(id)).to.equal(true, id);
+    expect(ids.includes(`${el.id}-note`)).to.equal(false);
+    el.clearError();
+    expect(c.getAttribute('aria-describedby').split(' ')).to.include(`${el.id}-note`);
     const b = num('aria-label="Giá vốn" prefix="$"');
     expect(ctl(b).getAttribute('aria-label')).to.equal('Giá vốn');
     expect(b.querySelector(`#${CSS.escape(`${b.id}-unit`)}`).textContent).to.equal('$');

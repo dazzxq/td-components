@@ -95,7 +95,7 @@ describe('review round 1', () => {
     const { el, form } = mk({ name: 'g', usage: true, croppable: true, items: three }, { adapter: createMockAdapter() });
     lis(el)[0].querySelector('.td-media-gallery__crop-btn').click();
     await until(() => dialogRoots().some((r) => r.getAttribute('data-state') === 'open'), 4000, 'dialog open');
-    el.setAttribute('helper-text', 'Ghi chú mới');
+    el.setAttribute('label', 'Ảnh mới'); // a structural attribute (v0.54.0: helper-text is now patched in place)
     await until(() => dialogRoots().length === 0, 4000, 'dialog closed');
     el.querySelector('.td-media-gallery__add').click();
     expect(opens.length).to.equal(1);
