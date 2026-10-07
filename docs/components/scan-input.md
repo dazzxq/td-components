@@ -175,6 +175,7 @@ chờ** (quét thêm khi đã đủ → "Đã đủ {max} mã"). Trần cứng *
 | `refocus` | `scan` | `off` / `scan` / `always` |
 | `beep`, `muted` | tắt | Âm báo / tắt tiếng |
 | `error-text` | — | Lỗi của app (hợp đồng lỗi chung; `setError()` / `clearError()`) |
+| `helper-text` | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
 ## Property, method, sự kiện
 

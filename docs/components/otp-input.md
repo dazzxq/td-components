@@ -245,6 +245,7 @@ option và id: [Adapter PHP › td_otp_input](../guides/php-adapter.md#td_otp_in
 | `readonly` | boolean | — | Xem được, không sửa; ô có nền read-only. |
 | `error-text` | string | — | Lỗi hiển thị (error contract). |
 | `aria-label` | string | — | Tên truy cập khi không có `label`. |
+| `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
 ## Property & method
 

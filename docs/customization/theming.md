@@ -485,6 +485,7 @@ token chung); `--td-dropdown-option-active-line` hết tác dụng.
 | `--td-switch-edge` | `var(--td-control-border-soft)` | | Viền toggle |
 | `--td-switch-thumb` | `#fff` | | Núm toggle |
 | `--td-switch-thumb-on` | `var(--td-switch-thumb)` | | Núm khi bật (0.52.0; `tone` đặt lại) |
+| `--td-switch-state-fg` | `var(--td-color-text-muted)` | | Chữ `on-text` / `off-text` (0.54.0), ≥ 4.7:1 |
 | `--td-switch-on-success` / `-on-warning` | `var(--td-color-success)` / `var(--td-color-warning)` | (theo hợp đồng) | Rãnh bật của `tone="success"` / `"warning"` (0.52.0) |
 | `--td-switch-thumb-tone` | `var(--td-color-on-status)` | (theo hợp đồng: núm tối) | Núm trên rãnh có tone (0.52.0) |
 

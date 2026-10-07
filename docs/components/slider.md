@@ -167,6 +167,7 @@ Lỗi = viền núm màu lỗi + `aria-invalid`/`aria-errormessage`/`aria-descri
 | `disabled` | boolean | không | Tắt (cũng qua `<fieldset disabled>`). |
 | `error-text` | string | — | Dòng lỗi (error contract). |
 | `id` | string | tự sinh `td-td-slider-{n}` | Tự gán nếu thiếu; id con: `{id}-label`, `{id}-control`, `{id}-error`. |
+| `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
 ## Property & method
 

@@ -138,6 +138,7 @@ el.open(); el.close(); el.toggle();
 | `value` | — | giá trị ban đầu: một = chuỗi; nhiều = JSON mảng |
 | `value-label` / `value-labels` | — | nhãn cho giá trị chưa tải (mục 4) |
 | `disabled`, `required`, `error-text`, `aria-label` | | như mọi control form của kit |
+| `helper-text` | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
 ## Property & method
 

@@ -167,6 +167,7 @@ Hiện lỗi = viền ô màu lỗi + `aria-invalid="true"` + `aria-errormessage
 | `indeterminate` | boolean | không | 0.36.0: trạng thái lưng chừng (vạch ngang, "mixed"). Người dùng bấm thì tự gỡ. Không gửi trong form. |
 | `error-text` | string | — | Dòng lỗi (error contract). |
 | `id` | string | tự sinh `td-td-checkbox-{n}` | Tự gán nếu thiếu, để `<label for>` và id lỗi hoạt động. |
+| `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. Checkbox / toggle: dưới chữ nhãn (không nhãn: dưới control). |
 
 ## Property & method
 

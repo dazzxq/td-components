@@ -227,6 +227,10 @@ Khi có lỗi, control bên trong nhận `aria-invalid="true"`, `aria-errormessa
 chứa **text** được chèn vào (với input-field là đầu `.td-field__footer`, với slider là trong `.td-slider`, còn lại là
 cuối host). Attribute `error-text` mới nhất luôn thắng giá trị `setError()` trước đó.
 
+**Gợi ý và lỗi (0.54.0).** Mọi form control có gợi ý `helper-text` / `setHelper()` (`<td-hint>` con cho link) — một dòng
+chữ dưới control, nối vào `aria-describedby`. **Khi lỗi hiện, gợi ý ẩn** và rời khỏi mô tả; hết lỗi thì trở lại. Viết
+chữ lỗi tự đủ nghĩa (người dùng không còn thấy gợi ý lúc lỗi). Chi tiết: [Hint](../components/hint.md).
+
 **`setError()` không đổi validity.** Một ô `setError('Email đã tồn tại')` vẫn `validity.valid === true` và form vẫn
 submit được. Muốn chặn submit, dùng `setCustomValidity()` (hoặc `rules` của TdFormValidation).
 
