@@ -174,6 +174,28 @@ namespace TdComponents {
         public const SSR_TREE_SELECT = 'tree-select@1';
         /** v0.30.0: td_number_input element mode (<td-number-input> + the native type=number control). */
         public const SSR_NUMBER = 'number-input@1';
+        /**
+         * v0.55.0 (plan v0.55.0-affix-number QĐ 11, ADR 0028): td_number_input `locale` → [group, decimal] — the SAME table
+         * as NUMBER_LOCALES in src/utils/number-locale.js (lower-case BCP 47 tag, whole tag; test/ssr/number-locale.cases.json
+         * checks both). Never Intl / ext-intl: the server markup does not depend on any ICU.
+         */
+        public const NUMBER_LOCALES = [
+            'vi' => ['.', ','], 'vi-vn' => ['.', ','],
+            'en' => [',', '.'], 'en-us' => [',', '.'], 'en-gb' => [',', '.'],
+            'de' => ['.', ','], 'de-de' => ['.', ','], 'de-at' => [' ', ','],
+            'fr' => [' ', ','], 'fr-fr' => [' ', ','],
+            'id' => ['.', ','], 'id-id' => ['.', ','],
+            'ja' => [',', '.'], 'ja-jp' => [',', '.'],
+            'ko' => [',', '.'], 'ko-kr' => [',', '.'],
+            'zh' => [',', '.'], 'zh-cn' => [',', '.'], 'zh-tw' => [',', '.'],
+            'th' => [',', '.'], 'th-th' => [',', '.'],
+            'pt' => ['.', ','], 'pt-br' => ['.', ','],
+            'es' => ['.', ','], 'es-es' => ['.', ','],
+            'it' => ['.', ','], 'it-it' => ['.', ','],
+            'nl' => ['.', ','], 'nl-nl' => ['.', ','],
+            'ru' => [' ', ','], 'ru-ru' => [' ', ','],
+            'pl' => [' ', ','], 'pl-pl' => [' ', ','],
+        ];
         /** v0.31.0: td_masked_value (always — the masked string only, never the real value). */
         public const SSR_MASKED_VALUE = 'masked-value@1';
         /** v0.32.0: td_media_field (always the element <td-media-field> + the no-JS hidden inputs). */
@@ -1305,6 +1327,11 @@ namespace {
      * size sm|md|lg, placeholder, hint (helper text), error, required, disabled, readonly, max_length, minlength,
      * pattern, min, max, step, rows, autocomplete, inputmode, enterkeyhint, autocapitalize, spellcheck, autofocus,
      * id (wrapper id; control = {id}-control), class (wrapper), attrs (control).
+     * v0.55.0: prefix, suffix (text), prefix_icon, suffix_icon (registry icon name), unit_label (the unit as read aloud;
+     * default suffix, else prefix) for types text|search|email|url|tel|password|number — the control goes in
+     * `div.td-field__box` with decorative `span.td-field__affix--{prefix|suffix}` (aria-hidden) + a hidden
+     * `span#{id}-unit` first in aria-describedby (the same tree <td-input-field> renders). Other types: dropped + one
+     * E_USER_WARNING (option names only). Page Elements in the affix are JS / hand-written markup only ([slot]).
      * v0.26.0 `element` (bool, default Td::configure ssr_elements = false): print the `<td-input-field
      * data-td-ssr="input-field@1">` host + the exact markup <td-input-field> renders, with the native control keeping
      * name / value / constraints / autocomplete (works without JS; hydrated in place — no flash). `id` is then the
@@ -1336,8 +1363,10 @@ namespace {
             }
         }
         $hints = Td::inputHints($hintSrc);
+        $aff = td__field_affix($o, $type); // v0.55.0
         // v0.54.0 (QĐ 3): while an error shows the note is hidden and out of the description
-        $desc = trim(($hint !== '' && $error === '' ? "$id-note " : '') . ($error !== '' ? "$id-error" : ''));
+        $desc = trim(($aff !== null && $aff['unit'] !== null ? "$id-unit " : '') . ($hint !== '' && $error === '' ? "$id-note " : '')
+            . ($error !== '' ? "$id-error" : ''));
         $ctl = [
             'class' => 'td-field__control',
             'id' => "$id-control",
@@ -1366,6 +1395,7 @@ namespace {
         } else {
             $control = '<input' . Td::ownAttrs(['type' => $type] + $ctl + ['value' => $value], $taken) . Td::attrs($extra, $taken) . '>';
         }
+        $control = td__affix_box($aff, $control, $id);
         $label = isset($o['label']) && (string) $o['label'] !== ''
             ? '<label class="td-field__label" id="' . Td::e($id) . '-label" for="' . Td::e($id) . '-control">' . Td::e((string) $o['label'])
                 . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</label>'
@@ -1376,7 +1406,7 @@ namespace {
         }
         // The note is always present (hidden when empty) — same footer tree as <td-input-field>.
         $footer .= '<div class="td-field__note" id="' . Td::e($id) . '-note"' . ($hint === '' || $error !== '' ? ' hidden' : '') . '>' . Td::e($hint) . '</div>';
-        return '<div class="td-field td-field--' . $size . ($type === 'textarea' ? ' td-field--textarea' : '')
+        return '<div class="td-field td-field--' . $size . ($type === 'textarea' ? ' td-field--textarea' : '') . ($aff !== null ? ' td-field--affix' : '')
             . Td::e(Td::classTokens($o['class'] ?? null)) . '" id="' . Td::e($id) . '">'
             . $label . $control . '<div class="td-field__footer"' . ($hint === '' && $error === '' ? ' hidden' : '') . '>' . $footer . '</div></div>';
     }
@@ -2217,6 +2247,11 @@ namespace {
      * v0.49.0 `stepper` (element mode only — native mode keeps the browser's own spin buttons): the box also holds the − / +
      * buttons of <td-number-input stepper> (`type=button`, `tabindex=-1`, icon slots; hidden by td.css until the module
      * defines the element — the place is kept, no dead control; their names are set by the component).
+     * v0.55.0: prefix_icon / suffix_icon (registry icon inside the affix span, on its outer edge); `locale` (BCP 47, looked
+     * up in Td::NUMBER_LOCALES — whole tag, case-insensitive, no ext-intl) resolves the separators pairwise with
+     * group_separator / decimal_separator and element mode prints them as `group-separator` / `decimal-separator` (never
+     * `locale`: the hydrated markup never depends on the browser's ICU); a tag outside the table → default + one
+     * E_USER_WARNING. The value stays canonical (never pre-formatted).
      */
     function td_number_input(string $name, mixed $value = null, array $o = []): string
     {
@@ -2229,6 +2264,17 @@ namespace {
         $decFallback = $groupEff === ',' ? '.' : ',';
         $decimal = isset($o['decimal_separator']) && in_array($o['decimal_separator'], [',', '.'], true) && $o['decimal_separator'] !== $groupEff
             ? $o['decimal_separator'] : null;
+        // v0.55.0 (QĐ 11): a known locale → both separators resolved pairwise with the explicit ones, printed on the host
+        $loc = $o['locale'] ?? null;
+        if ($loc !== null && $loc !== '') {
+            $pair = td__number_locale($loc);
+            if ($pair === null) {
+                $len = is_string($loc) ? ', ' . min(strlen($loc), 9999) . ' chars' : '';
+                trigger_error('td_number_input: locale (' . get_debug_type($loc) . "$len) is not in Td::NUMBER_LOCALES — the default separators are used", E_USER_WARNING);
+            } else {
+                [$group, $decimal] = td__number_separators($pair, $o['group_separator'] ?? null, $o['decimal_separator'] ?? null);
+            }
+        }
         // Security review: ONLY string / int are accepted (a float 12.5 / INF / NAN, bool, array… is rejected, never
         // coerced); the warning names the option, the PHP type and a bounded length — never the raw value (logs).
         $canon = static function (string $what, mixed $v) use ($decimals): ?string {
@@ -2266,6 +2312,8 @@ namespace {
         $placeholder = $str('placeholder');
         $prefix = $str('prefix');
         $suffix = $str('suffix');
+        $prefixIcon = td__icon_opt($o, 'prefix_icon'); // v0.55.0
+        $suffixIcon = td__icon_opt($o, 'suffix_icon');
         $unitLabel = $str('unit_label');
         $aria = $str('aria_label');
         $unit = $unitLabel ?? $suffix ?? $prefix;
@@ -2312,9 +2360,9 @@ namespace {
             . '" data-td-icon-class="td-number__step-svg">' . Td::icon($icon, 'm', '', 'td-number__step-svg') . '</span></button>';
         $box = '<div class="td-number__box">'
             . ($stepper ? $stepBtn('down', 'minus') : '')
-            . ($prefix !== null ? '<span class="td-number__affix td-number__affix--prefix" aria-hidden="true">' . Td::e($prefix) . '</span>' : '')
+            . td__affix_span('prefix', $prefix, $prefixIcon, 'td-number')
             . $control
-            . ($suffix !== null ? '<span class="td-number__affix td-number__affix--suffix" aria-hidden="true">' . Td::e($suffix) . '</span>' : '')
+            . td__affix_span('suffix', $suffix, $suffixIcon, 'td-number')
             . ($unit !== null ? '<span id="' . $b . '-unit" hidden>' . Td::e($unit) . '</span>' : '')
             . ($stepper ? $stepBtn('up', 'plus') : '')
             . '</div>';
@@ -2350,6 +2398,8 @@ namespace {
             'decimal-separator' => $decimal,
             'prefix' => $prefix,
             'suffix' => $suffix,
+            'prefix-icon' => $prefixIcon,
+            'suffix-icon' => $suffixIcon,
             'unit-label' => $unitLabel,
             'clamp' => !empty($o['clamp']),
             'aria-label' => $aria,
@@ -2372,6 +2422,113 @@ namespace {
             return null;
         }
         return preg_match('/^-0(\.0+)?$/D', $v) ? substr($v, 1) : $v;
+    }
+
+    /**
+     * @internal v0.55.0 (plan v0.55.0-affix-number QĐ 11) — the table pair of a `locale` option (whole tag, case-insensitive;
+     * a regional tag is listed or it is not in the table), else null. Same rules as tableSeparators() in
+     * src/utils/number-locale.js.
+     * @return array{0:string,1:string}|null
+     */
+    function td__number_locale(mixed $locale): ?array
+    {
+        if (!is_string($locale)) {
+            return null;
+        }
+        $tag = strtolower(trim($locale));
+        return $tag !== '' && isset(Td::NUMBER_LOCALES[$tag]) ? Td::NUMBER_LOCALES[$tag] : null;
+    }
+
+    /**
+     * @internal v0.55.0 (Codex plan r1 #2) — resolveSeparators() of src/utils/number-locale.js: [group, decimal] from the
+     * locale pair (null = no locale: the v0.54 rules) and the explicit separators (anything not allowed = absent). An explicit
+     * side wins; the inferred other side moves off it when they would be equal; both explicit and equal → the group wins.
+     * @return array{0:string,1:string}
+     */
+    function td__number_separators(?array $pair, mixed $group, mixed $decimal): array
+    {
+        $gx = is_string($group) && in_array($group, ['.', ',', ' ', ''], true) ? $group : null;
+        $dx = $decimal === ',' || $decimal === '.' ? $decimal : null;
+        $for = static fn (string $g): string => $g === ',' ? '.' : ',';
+        if ($pair === null) {
+            $g = $gx ?? '.';
+            return [$g, $dx !== null && $dx !== $g ? $dx : $for($g)];
+        }
+        [$pg, $pd] = $pair;
+        if ($gx !== null && $dx !== null) {
+            return [$gx, $dx !== $gx ? $dx : $for($gx)];
+        }
+        if ($gx !== null) {
+            return [$gx, $pd !== $gx ? $pd : $for($gx)];
+        }
+        if ($dx !== null) {
+            return [$pg !== $dx ? $pg : ($dx === '.' ? ',' : '.'), $dx];
+        }
+        return [$pg, $pd];
+    }
+
+    /** @internal v0.55.0: a trimmed icon-name option (`prefix_icon` / `suffix_icon`), null when absent / empty / not text. */
+    function td__icon_opt(array $o, string $key): ?string
+    {
+        $v = td__str($o[$key] ?? null);
+        return $v !== null && trim($v) !== '' ? trim($v) : null;
+    }
+
+    /**
+     * @internal v0.55.0 (QĐ 3): one side's decorative affix span — exactly affixMarkup() of src/form/field-affix.js
+     * (`[icon][text]` in a prefix, `[text][icon]` in a suffix; the icon slot carries the inline SVG, re-drawn on bind).
+     * '' when the side has neither text nor icon.
+     */
+    function td__affix_span(string $side, ?string $text, ?string $icon, string $block): string
+    {
+        if ($text === null && $icon === null) {
+            return '';
+        }
+        $svg = $icon !== null
+            ? '<span class="' . $block . '__affix-icon" data-td-icon="' . Td::e($icon) . '" data-td-icon-class="' . $block . '__affix-svg">'
+                . Td::icon($icon, 'm', '', $block . '__affix-svg') . '</span>'
+            : '';
+        $t = Td::e($text ?? '');
+        return '<span class="' . $block . '__affix ' . $block . '__affix--' . $side . '" aria-hidden="true">'
+            . ($side === 'prefix' ? $svg . $t : $t . $svg) . '</span>';
+    }
+
+    /**
+     * @internal v0.55.0 (QĐ 1, 8): the td_field affix options, or null (none, or a type without affix → dropped + one
+     * warning naming the options). `unit` = unit_label ?? suffix ?? prefix (the text read through `{id}-unit`).
+     * @return array{prefix:array{0:?string,1:?string},suffix:array{0:?string,1:?string},unit:?string,attrs:array<string,?string>}|null
+     */
+    function td__field_affix(array $o, string $type): ?array
+    {
+        $prefix = td__str($o['prefix'] ?? null);
+        $suffix = td__str($o['suffix'] ?? null);
+        $pi = td__icon_opt($o, 'prefix_icon');
+        $si = td__icon_opt($o, 'suffix_icon');
+        if ($prefix === null && $suffix === null && $pi === null && $si === null) {
+            return null;
+        }
+        if (!in_array($type, ['text', 'search', 'email', 'url', 'tel', 'password', 'number'], true)) {
+            trigger_error("td_field: prefix / suffix / prefix_icon / suffix_icon / unit_label are not supported for type=$type — ignored", E_USER_WARNING);
+            return null;
+        }
+        $unitLabel = td__str($o['unit_label'] ?? null);
+        return [
+            'prefix' => [$prefix, $pi],
+            'suffix' => [$suffix, $si],
+            'unit' => $unitLabel ?? $suffix ?? $prefix,
+            'attrs' => ['prefix' => $prefix, 'suffix' => $suffix, 'prefix-icon' => $pi, 'suffix-icon' => $si, 'unit-label' => $unitLabel],
+        ];
+    }
+
+    /** @internal v0.55.0: the control inside `div.td-field__box` with the affix spans + the hidden unit (no affix: as is). */
+    function td__affix_box(?array $aff, string $control, string $unitBase): string
+    {
+        if ($aff === null) {
+            return $control;
+        }
+        return '<div class="td-field__box">' . td__affix_span('prefix', $aff['prefix'][0], $aff['prefix'][1], 'td-field') . $control
+            . td__affix_span('suffix', $aff['suffix'][0], $aff['suffix'][1], 'td-field')
+            . ($aff['unit'] !== null ? '<span id="' . Td::e("$unitBase-unit") . '" hidden>' . Td::e($aff['unit']) . '</span>' : '') . '</div>';
     }
 
     /**
@@ -4801,8 +4958,10 @@ namespace {
             $range[$k] = isset($o[$k]) && is_scalar($o[$k]) && (string) $o[$k] !== '' ? (string) $o[$k] : null;
         }
         $rows = $textarea ? (Td::intOpt($o['rows'] ?? null, 1) ?? '3') : null;
-        // component-owned description ids, in the component's order: helper note, counter, error
-        $desc = trim(($hint !== null && $error === null ? "$hostId-note " : '') . ($max !== null ? "$hostId-counter " : '') . ($error !== null ? "$hostId-error" : ''));
+        $aff = td__field_affix($o, $type); // v0.55.0
+        // component-owned description ids, in the component's order: [unit], helper note, counter, error
+        $desc = trim(($aff !== null && $aff['unit'] !== null ? "$hostId-unit " : '') . ($hint !== null && $error === null ? "$hostId-note " : '')
+            . ($max !== null ? "$hostId-counter " : '') . ($error !== null ? "$hostId-error" : ''));
         $ctl = [
             'type' => $textarea ? null : $type,
             'class' => 'td-field__control',
@@ -4832,6 +4991,7 @@ namespace {
         $control = $textarea
             ? '<textarea' . $own . Td::attrs($extra, $taken) . '>' . "\n" . Td::e($value) . '</textarea>'
             : '<input' . $own . Td::attrs($extra, $taken) . '>';
+        $control = td__affix_box($aff, $control, $hostId);
         $hid = Td::e($hostId);
         $labelHtml = $label !== null
             ? '<label class="td-field__label" id="' . $hid . '-label" for="' . Td::e($cid) . '">' . Td::e($label)
@@ -4845,7 +5005,7 @@ namespace {
             $footer .= '<div class="td-field__counter" id="' . $hid . '-counter"' . ($count >= (int) $max ? ' data-state="limit"' : '')
                 . '>' . $count . '/' . $max . ' ký tự</div>';
         }
-        $inner = '<div class="td-field td-field--' . $size . ($textarea ? ' td-field--textarea' : '') . '">' . $labelHtml . $control
+        $inner = '<div class="td-field td-field--' . $size . ($textarea ? ' td-field--textarea' : '') . ($aff !== null ? ' td-field--affix' : '') . '">' . $labelHtml . $control
             . '<div class="td-field__footer"' . ($hint === null && $error === null && $max === null ? ' hidden' : '') . '>' . $footer . '</div></div>';
         $host = [
             'data-td-ssr' => Td::SSR_FIELD,
@@ -4867,7 +5027,7 @@ namespace {
         ] + $range + [
             'rows' => $rows,
             'field-id' => $callerId,
-        ] + $hints + ['aria-label' => $ariaLabel];
+        ] + ($aff['attrs'] ?? []) + $hints + ['aria-label' => $ariaLabel];
         $hostTaken = [];
         return '<td-input-field' . Td::ownAttrs($host, $hostTaken) . '>' . $inner . '</td-input-field>';
     }
