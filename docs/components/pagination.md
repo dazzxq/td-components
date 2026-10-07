@@ -105,6 +105,22 @@ trong khoảng hợp lệ), cộng trang 1 và trang cuối; khoảng trống đ
 `…`. Tổng số trang ≤ `max-pages` thì hiện hết. Quy tắc này áp khi thanh rộng ≥ 480px; hẹp hơn xem
 [Responsive](#responsive-v0340).
 
+### 6. Chữ thông tin riêng cho một thanh (`formatInfo`) — từ 0.57.2
+
+`TdPagination.labels.info` đổi chữ cho **cả site**; muốn chữ khác cho **một** thanh, gán hook `formatInfo`:
+
+```js
+const pag = document.querySelector('#orders-pag');
+pag.formatInfo = ({ from, to, total, totalPages }) => `${from}–${to} trong ${total} đơn (${totalPages} trang)`;
+```
+
+`ctx = { from, to, total, item, page, perPage, totalPages, text }` (`text` = chữ mặc định, để nối thêm). Giá trị trả về là
+**text** (ghi bằng `textContent`, không bao giờ thành HTML). Trả không phải chuỗi / ném lỗi → chữ mặc định + **một**
+cảnh báo console (mỗi phần tử). Gán lại (kể cả đúng hàm cũ) → dòng thông tin được tính lại **tại chỗ** (nút không dựng lại,
+focus giữ nguyên) — dùng khi dữ liệu hook đọc đã đổi mà các attribute thì không. `null` → chữ mặc định. Gán được cả trước
+khi element upgrade. `td-table` dùng chính hook này cho [bảng cây](table.md#13-bảng-cây--dòng-lồng-nhau-tree--từ-0570)
+(hook của bảng là `formatPageInfo`).
+
 ## Responsive (v0.34.0)
 
 Host `<td-pagination>` là **container** (`container: td-pagination / inline-size`): bố cục đổi theo **bề rộng của chính
@@ -155,6 +171,7 @@ giữ.
 |---|---|---|
 | `setPage(page)` | `(number) => void` | Chuyển tới trang (kẹp vào `[1, totalPages]`); nếu khác trang hiện tại thì cập nhật `current-page` **và phát `page-change`**. |
 | `getState()` | `() => { totalItems, itemsPerPage, currentPage, totalPages }` | Trạng thái đã kẹp. `totalPages` tối thiểu là 1. |
+| `formatInfo` | `(ctx) => string` \| `null` | Chữ dòng thông tin của thanh này (mục 6); kết quả là text. Từ 0.57.2. |
 | `TdPagination.labels` | static object | Chữ giao diện, site ghi đè được (xem dưới). |
 
 ### `TdPagination.labels`
@@ -258,7 +275,7 @@ chỉ `active-color` mới tự tính màu chữ.
 
 ## Bảo mật
 
-`item-label`, `aria-label` và `TdPagination.labels` được escape; `active-color` qua `safeColor` (giá trị như `red;}` bị bỏ). Số trang tối đa trong
+`item-label`, `aria-label`, `TdPagination.labels` và chữ trả về từ `formatInfo` được escape / ghi dạng text; `active-color` qua `safeColor` (giá trị như `red;}` bị bỏ). Số trang tối đa trong
 DOM bị chặn bởi `max-pages ≤ 25`, nên giá trị lớn từ API/CMS không làm phình DOM.
 
 ## Cảm ứng
