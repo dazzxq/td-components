@@ -161,9 +161,20 @@ Trên mọi form control: `helperText` (phản chiếu `helper-text`), `setHelpe
 | Token | Mặc định | Dùng cho |
 |---|---|---|
 | `--td-field-note` | `--td-color-text-muted` | Màu chữ gợi ý (ghi chú của control và `<td-hint>`), ≥ 4.7:1 trên mọi bề mặt (gate contrast) |
+| `--td-field-note-size` (0.55.0) | `var(--td-text-xs)`; cảm ứng (`pointer: coarse`): `var(--td-text-sm)` | Cỡ chữ của **mọi** gợi ý: ghi chú trong footer (input-field / number-input / choice-group), ghi chú dưới các control khác, chữ trợ giúp của media-field / media-gallery, `<td-hint>` (con và `for`). Không đổi chữ lỗi / bộ đếm |
 
-Cỡ chữ `--td-text-xs` (cảm ứng: `--td-text-sm`, ≥ 14 px), cách control `--td-space-2xs`. Link trong `<td-hint>` lấy màu
-chữ gợi ý + gạch chân; `<code>` dùng `--td-font-mono`.
+Cách control `--td-space-2xs`. Link trong `<td-hint>` lấy màu chữ gợi ý + gạch chân; `<code>` dùng `--td-font-mono`.
+
+Gợi ý to hơn mà **không** đụng `--td-text-xs` (token chung của cả kit):
+
+```css
+/* CSS của site, không layer → thắng mặc định, cả trên cảm ứng */
+:root { --td-field-note-size: 0.875rem; }
+/* chỉ một vùng */
+.checkout { --td-field-note-size: var(--td-text-sm); }
+```
+
+Ghi chú trong footer chia hàng với bộ đếm ký tự: chữ to hơn chỉ xuống dòng trong cột của nó, bộ đếm giữ cột phải.
 
 ## Cấu trúc DOM & class
 

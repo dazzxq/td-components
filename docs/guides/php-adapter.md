@@ -121,7 +121,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.54.1/
+public/assets/vendor/td-components/0.55.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -129,7 +129,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.54.1';
+const TD_VERSION = '0.55.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -471,6 +471,19 @@ tách khỏi trang (cấu trúc hoặc attribute ngoài allowlist) → render l�
 | `id` | id của wrapper; control = `{id}-control`, nhãn `{id}-label`, ghi chú `{id}-note`, lỗi `{id}-error` |
 | `class` | class thêm trên wrapper `.td-field` |
 | `attrs` | attribute thêm trên **control** |
+| `prefix`, `suffix` | 0.55.0: chữ trang trí trước / sau giá trị (`https://`, `mAh`, `đ`) — escape. Control vào `div.td-field__box`, wrapper thêm `td-field--affix`, mỗi bên một `span.td-field__affix--{prefix\|suffix}[aria-hidden]` |
+| `prefix_icon`, `suffix_icon` | 0.55.0: tên icon registry (`Td::icon`; tên lạ → ô rỗng), ở mép ngoài của bên đó, SVG inline sẵn |
+| `unit_label` | 0.55.0: chữ đơn vị đọc to (mặc định `suffix`, rồi `prefix`), in `span#{id}-unit[hidden]` và đứng **đầu** `aria-describedby` |
+
+Affix (0.55.0) chỉ cho `type` `text` `search` `email` `url` `tel` `password` `number`; type khác → bỏ + một `E_USER_WARNING`
+(chỉ tên option). Không dùng option affix → markup giống từng byte 0.54. Phần tử giàu (nút hiện mật khẩu…) **không** đi
+qua PHP: viết `<button slot="suffix">` trong `<td-input-field>` (JS / markup tay — [Input field](../components/input-field.md#tiền-tố--hậu-tố-chữ-icon-phần-tử-của-trang-0550)).
+
+```php
+<?= td_field('site', '', ['label' => 'Website', 'prefix' => 'https://', 'suffix' => '.vn']) ?>
+<?= td_field('q', '', ['label' => 'Tìm sản phẩm', 'type' => 'search', 'prefix_icon' => 'search', 'element' => true]) ?>
+<?= td_field('price', $price, ['label' => 'Giá', 'suffix' => 'đ', 'unit_label' => 'đồng']) ?>
+```
 
 Sáu thuộc tính `autocomplete` … `autofocus` truyền qua `attrs` (kiểu 135: `'attrs' => ['inputmode' => 'numeric']`)
 cũng đi qua cùng whitelist; option cùng tên thắng `attrs`.
@@ -1160,7 +1173,9 @@ Không có helper cho `<td-tree>` dạng cây luôn hiện (cây quyền là tra
 | `decimals` | số chữ số lẻ tối đa, `0`–`10` (mặc định `0`) |
 | `group_separator` | `'.'` (mặc định) \| `','` \| `' '` \| `''` (không nhóm) — chỉ có tác dụng khi có JS |
 | `decimal_separator` | `','` (mặc định; `'.'` khi nhóm là `','`) \| `'.'`; trùng dấu nhóm → bỏ |
+| `locale` | 0.55.0: thẻ BCP 47 tra trong `Td::NUMBER_LOCALES` (cùng bảng với JS, không cần ext-intl; không phân biệt hoa thường, tra cả thẻ) → hai dấu phân cách, giải theo cặp với `group_separator` / `decimal_separator` tường minh. Element in `group-separator` / `decimal-separator` lên host (không in `locale`). Thẻ ngoài bảng (`de-CH`, `pt-PT`…) → mặc định + `E_USER_WARNING` (không in giá trị). Giá trị vẫn chuẩn |
 | `prefix`, `suffix` | đơn vị trang trí trong hộp (`$`, `₫`, `%`), `aria-hidden` |
+| `prefix_icon`, `suffix_icon` | 0.55.0: icon registry **trong** span affix của bên đó (mép ngoài), SVG inline sẵn; host `prefix-icon` / `suffix-icon` |
 | `unit_label` | chữ đọc cho đơn vị (ví dụ `đồng`); mặc định = `suffix` / `prefix`. In trong `span#{base}-unit[hidden]`, nối vào `aria-describedby` |
 | `label`, `hint`, `error`, `placeholder` | như `td_field` (nhãn có `*` khi `required`; `error` → `span.td-field-error` + `aria-invalid`) |
 | `required`, `disabled`, `readonly` | native trên input (element: cả trên host) |

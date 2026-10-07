@@ -258,7 +258,7 @@
 	.td-media-field__help {
 		display: block;
 		margin-block-start: var(--td-space-2xs);
-		font-size: var(--td-text-xs);
+		font-size: var(--td-field-note-size); /* v0.55.0: the shared helper-note size (field.css) */
 		color: var(--td-field-note);
 	}
 

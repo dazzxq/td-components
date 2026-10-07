@@ -342,3 +342,26 @@ describe('number-format — step keeps |dir| after aligning (impl review round 1
     assert.equal(step('1501', 10, { step: '500', max: '3000' }), '3000');
   });
 });
+
+describe('number-format — v0.55.0 QĐ 9: `decimals` is a MAXIMUM — never padded, never rounded (locked)', () => {
+  const o = vi({ decimals: 2 });
+  it('typed 6,7 stays 6,7 (value 6.7); typed 6,70 keeps both digits (value 6.70)', () => {
+    assert.deepEqual(edit('6,7', 3, o), { display: '6,7', caret: 3, value: '6.7', bad: false });
+    assert.deepEqual(edit('6,70', 4, o), { display: '6,70', caret: 4, value: '6.70', bad: false });
+  });
+  it('a value 6.7 is shown 6,7 (no padding to 6,70); 6.70 stays 6,70 (the data is kept as given)', () => {
+    assert.equal(format('6.7', o), '6,7');
+    assert.equal(format('6.70', o), '6,70');
+    assert.equal(parseCanonical('6.7', 2), '6.7');
+    assert.equal(parseCanonical('6.70', 2), '6.70');
+  });
+  it('a 3rd fraction digit is never rounded: refused by the gate, cut by the edit safety net (6,789 → 6,78)', () => {
+    assert.equal(parseCanonical('6.789', 2), null);
+    assert.equal(edit('6,789', 5, o).value, '6.78');
+    assert.equal(parseLoose('6,7891', o), null); // paste: more fraction digits than `decimals` → refused, never rounded
+  });
+  it('↑ from 6,7 with step 0.1 → 6,8; a trailing decimal while typing (6,) commits as 6', () => {
+    assert.equal(step('6.7', 1, { step: '0.1', base: '0', min: '0' }), '6.8');
+    assert.deepEqual(edit('6,', 2, o), { display: '6,', caret: 2, value: '6', bad: false });
+  });
+});

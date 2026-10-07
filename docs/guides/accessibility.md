@@ -90,6 +90,12 @@ mô tả riêng của component, trước lỗi); lỗi hiện thì gợi ý r�
 thì tự in `aria-describedby` trong markup. Chữ trạng thái nhìn thấy của `td-toggle` (`on-text` / `off-text`) là mô tả của
 trạng thái **hiện tại**, không bao giờ là tên. Xem [Hint](../components/hint.md).
 
+**Đơn vị = mô tả, không phải tên (0.55.0).** Tiền tố / hậu tố của `td-input-field` / `td-number-input` (`https://`, `mAh`,
+`₫`, icon) là trang trí (`aria-hidden`); đơn vị được đọc qua `span#{id}-unit[hidden]` đứng **đầu** mô tả (`unit-label` →
+`suffix` → `prefix`), vẫn còn khi có lỗi. Không chèn chữ ẩn vào nhãn: tên giữ đúng chữ nhìn thấy (WCAG 2.5.3 — người
+điều khiển bằng giọng nói gọi "Giá", không phải "Giá đồng") và không đọc hai lần. Phần tử `[slot]` (nút hiện mật khẩu, nút
+xoá) là của trang: kit không ẩn, không đặt tên — tự `aria-label` / `aria-pressed`, icon trang trí tự `aria-hidden="true"`.
+
 Tooltip có chính sách tên cố định (chỉ áp cho `<button>`, `<a href>`, `input[type=button|submit|reset|image]` và role
 `button|link|tab|menuitem`):
 

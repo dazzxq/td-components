@@ -1,7 +1,12 @@
 import {
-  TdFormElement, ssrClassKey, ssrContentNodes, ssrSameAttrs, ssrIsErrorNote, SSR_ARIA_DATA, SSR_CONTROL_ATTRS,
+  TdFormElement, ssrClassKey, ssrContentNodes, ssrSameAttrs, ssrSamePart, ssrIsErrorNote, SSR_ARIA_DATA, SSR_CONTROL_ATTRS,
 } from '../base/td-form-element.js';
 import { ssrMarker } from '../base/td-base-element.js';
+import { fillIconSlots } from '../icons/td-icon.js';
+import {
+  affixIcon, affixMarkup, detachAffixSlots, mountAffixSlots, renderKeepingSlotFocus, slotInteractive, takeAffixSlots,
+  warnLateSlots,
+} from './field-affix.js';
 
 /**
  * v0.26.0 SSR (ADR 0012) — native constraint attributes a NORMALLY rendered + bound control carries, per public type
@@ -35,9 +40,19 @@ const SSR_ONLY = ['name', 'autofocus'];
  * keep their type (native picker); the form value of those is the control's own normalised `.value` (v0.18.0).
  *
  * DOM contract (class map: docs/upgrading/class-map.md):
- *   <div class="td-field td-field--{sm|md|lg}[ td-field--textarea| td-field--editable]">
+ *   <div class="td-field td-field--{sm|md|lg}[ td-field--textarea| td-field--editable][ td-field--affix]">
  *     [<label class="td-field__label" id="{host}-label" for="{controlId}">…[<span class="td-field__required" aria-hidden="true"> *</span>]</label>]
  *     <input|textarea class="td-field__control" id="{controlId}" [aria-required] [aria-describedby] [aria-invalid aria-errormessage]>
+ *       — v0.55.0 with an affix (types text|search|email|url|tel|password|number), the input sits in a box:
+ *     <div class="td-field__box">
+ *       [<span class="td-field__affix td-field__affix--prefix" aria-hidden="true" [hidden]>[icon slot]{prefix}</span>]
+ *       [<span class="td-field__affix td-field__affix--prefix td-field__affix--slot">{page nodes}</span>]   (after bind)
+ *       <input class="td-field__control" …>
+ *       [<span class="td-field__affix td-field__affix--suffix td-field__affix--slot">{page nodes}</span>]   (after bind)
+ *       [<span class="td-field__affix td-field__affix--suffix" aria-hidden="true" [hidden]>{suffix}[icon slot]</span>]
+ *       [<span id="{host}-unit" hidden>{unit-label | suffix | prefix}</span>]
+ *     </div>
+ *     (icon slot = <span class="td-field__affix-icon" data-td-icon="{name}" data-td-icon-class="td-field__affix-svg">)
  *       | <div class="td-field__control" id="{controlId}" contenteditable role="textbox" aria-multiline="true"
  *              [aria-labelledby="{host}-label"] [aria-placeholder data-placeholder] [aria-readonly] [aria-disabled]></div>
  *     <div class="td-field__footer" [hidden]>
@@ -50,7 +65,12 @@ const SSR_ONLY = ['name', 'autofocus'];
  * - `controlId` = `field-id` (verbatim) or `{host-id}-control`; the internal label always targets it.
  * - Accessible name: internal `label` → host `aria-label` → external `<label for="host-id">` (aria-labelledby).
  * - v0.54.0 (plan v0.54.0-hint QĐ 3): while an error shows the helper note is hidden and leaves the description (D17
- *   dropped); `aria-describedby` = consumer ids + note + counter + error (D3). The helper contract (helper-text,
+ *   dropped); `aria-describedby` = consumer ids + [unit (v0.55.0)] + note + counter + error (D3).
+ * - v0.55.0 (plan v0.55.0-affix-number, ADR 0028): `prefix` / `suffix` (text), `prefix-icon` / `suffix-icon` (registry
+ *   name), direct `[slot="prefix"|"suffix"]` children (page Elements, moved — read on the first render only) are
+ *   decorative / page-owned; the unit is a DESCRIPTION (`unit-label` → `suffix` → `prefix`), never part of the name or the
+ *   value. A press on the box / an affix focuses the control (not on interactive slot content). Other types: ignored + one
+ *   warning. The helper contract (helper-text,
  *   setHelper, a rich <td-hint> child in the footer) lives in TdFormElement.
  * - value/placeholder/helper/error/disabled/readonly/required update IN PLACE (focus + caret kept).
  * - Exactly one `input` and one `change` per user action (native ones stopped at the host); `change` only when
@@ -98,6 +118,10 @@ const SSR_ONLY = ['name', 'autofocus'];
  * @attr {string} spellcheck - true|false → the control, v0.17.0
  * @attr {boolean} autofocus - Focus the control once when the field is first attached (only when nothing else
  *   outside `<body>` already holds focus), v0.17.0
+ * @attr {string} prefix / suffix - Decorative text before / after the value ("https://", "mAh", "đ"), v0.55.0
+ * @attr {string} prefix-icon / suffix-icon - Decorative registry icon on the outer edge of that side, v0.55.0
+ * @attr {string} unit-label - The unit as read aloud (description); default suffix, else prefix, v0.55.0
+ * @slot prefix / suffix - Page Elements (a button, <td-icon>…) next to the control; they win over that side's text / icon
  * @fires input - detail: { value } — once per user edit
  * @fires change - detail: { value } — on blur, only when the value changed since focus
  */
@@ -112,7 +136,7 @@ export class TdInputField extends TdFormElement {
       'max-length', 'limit-type', 'min', 'max', 'step',
       'label', 'error-text',
       'field-id', 'rows', 'validate-on', 'aria-label', 'autoresize', 'minlength', 'pattern',
-      ...TdInputField._nativeAttrs,
+      ...TdInputField._nativeAttrs, ...TdInputField._affixAttrs,
     ];
   }
 
@@ -187,8 +211,15 @@ export class TdInputField extends TdFormElement {
     return TdInputField._nativeEnums[name]?.includes(v) ? v : null;
   }
 
+  /** @private v0.55.0 affix attributes (structural: the box appears / changes; focus + caret kept). */
+  static _affixAttrs = ['prefix', 'suffix', 'prefix-icon', 'suffix-icon', 'unit-label'];
+
+  /** @private v0.55.0 (QĐ 1): types that take an affix (the others ignore it + one warning). */
+  static _affixTypes = ['text', 'search', 'email', 'url', 'tel', 'password', 'number'];
+
   /** @private Attributes that change the DOM structure → full re-render. Everything else updates in place. */
-  static _structural = new Set(['type', 'size', 'label', 'max-length', 'limit-type', 'rows', 'field-id', 'autoresize']);
+  static _structural = new Set(['type', 'size', 'label', 'max-length', 'limit-type', 'rows', 'field-id', 'autoresize',
+    ...TdInputField._affixAttrs]);
 
   /** @private Known public types. */
   static _types = [
@@ -207,7 +238,46 @@ export class TdInputField extends TdFormElement {
     this._userEdited = false;
   }
 
+  connectedCallback() {
+    // v0.55.0 (QĐ 3): the page's [slot="prefix"|"suffix"] children leave the host BEFORE the first render / hydrate (render
+    // replaces innerHTML; the SSR checks never see them) and are mounted next to the control after every bind
+    if (!this._initialized) this._affixSlots = takeAffixSlots(this);
+    super.connectedCallback();
+  }
+
+  /** @private v0.55.0 (Q6): a [slot] child added after the first render is not adopted — say so once */
+  _doRender() {
+    if (this._initialized) warnLateSlots(this);
+    renderKeepingSlotFocus(this, () => super._doRender());
+  }
+
   // --- Resolved attributes ---
+
+  /**
+   * @private v0.55.0: the affix of each side + the unit read aloud, or null (no affix → the v0.54 markup). An unsupported
+   * type drops it with one warning; a slot wins over its side's text / icon (one warning).
+   * @returns {{ prefix: {text: string, icon: string, slot: boolean}, suffix: {text: string, icon: string, slot: boolean}, unit: string }|null}
+   */
+  _affixState() {
+    const part = (side) => ({ text: this.getAttribute(side) || '', icon: affixIcon(this, side), slot: !!this._affixSlots?.[side]?.length });
+    const prefix = part('prefix');
+    const suffix = part('suffix');
+    if (![prefix, suffix].some((p) => p.text || p.icon || p.slot)) return null;
+    if (!TdInputField._affixTypes.includes(this._type())) {
+      if (!this._affixTypeWarned) {
+        this._affixTypeWarned = true;
+        console.warn(`<td-input-field>: prefix / suffix (text, icon, slot) are not supported for type="${this._type()}" — ignored`);
+      }
+      return null;
+    }
+    for (const [side, p] of [['prefix', prefix], ['suffix', suffix]]) {
+      if (p.slot && (p.text || p.icon) && !this._affixSlotWarned?.[side]) {
+        this._affixSlotWarned = { ...this._affixSlotWarned, [side]: true };
+        console.warn(`<td-input-field>: a [slot="${side}"] child replaces ${side} / ${side}-icon (both are set)`);
+      }
+    }
+    return { prefix, suffix, unit: this.getAttribute('unit-label') || suffix.text || prefix.text };
+  }
 
   /** @private @returns {string} public type (unknown → text) */
   _type() {
@@ -295,12 +365,20 @@ export class TdInputField extends TdFormElement {
       control = `<input type="${inputType}" class="td-field__control" id="${esc(controlId)}" value="${esc(value)}"${maxAttr}${modeAttr}>`;
     }
 
+    // v0.55.0 (QĐ 3): an affix puts the control in a box with the decorative parts + the hidden unit text
+    const aff = this._affixState();
+    if (aff) {
+      const unit = aff.unit ? `<span id="${esc(this.id)}-unit" hidden>${esc(aff.unit)}</span>` : '';
+      control = `<div class="td-field__box">${affixMarkup('prefix', aff.prefix, 'td-field')}${control}`
+        + `${affixMarkup('suffix', aff.suffix, 'td-field')}${unit}</div>`;
+    }
+
     let counter = '';
     if (maxLength) {
       counter = `<div class="td-field__counter" id="${esc(this.id)}-counter">${this._counterText(value)}</div>`;
     }
 
-    return `<div class="td-field td-field--${this._size()}${mod}">${labelHtml}${control}`
+    return `<div class="td-field td-field--${this._size()}${mod}${aff ? ' td-field--affix' : ''}">${labelHtml}${control}`
       + `<div class="td-field__footer"><div class="td-field__note" id="${esc(this.id)}-note" hidden></div>${counter}</div>`
       + '</div>';
   }
@@ -317,7 +395,8 @@ export class TdInputField extends TdFormElement {
     });
     // Native `change` (input/textarea commit) never reaches the page; the host emits its own on blur.
     this.listen(field, 'change', (e) => e.stopPropagation());
-    this.listen(field, 'blur', () => this._onBlur());
+    this.listen(field, 'blur', () => { if (!this._keepingFocus) this._onBlur(); });
+    this._bindAffix(field);
 
     this._applyPlaceholder();
     this._applyInteractivity();
@@ -329,6 +408,22 @@ export class TdInputField extends TdFormElement {
     this._syncForm(); // an untouched required field already blocks submit
     this._applyErrorState(); // also syncs aria-describedby + footer
     this._autofocusOnce();
+  }
+
+  /**
+   * @private v0.55.0 (QĐ 3, 5): the box — a press on it (or an affix) focuses the control, never on interactive slot
+   * content; icon slots drawn; the page's slot nodes mounted next to the control.
+   */
+  _bindAffix(field) {
+    const box = field.parentElement?.classList.contains('td-field__box') ? field.parentElement : null;
+    if (!box) return;
+    this.listen(box, 'mousedown', (e) => {
+      if (e.target === field || field.disabled || slotInteractive(e.target, box, 'td-field')) return;
+      e.preventDefault();
+      field.focus();
+    });
+    fillIconSlots(box, ':scope > .td-field__affix > [data-td-icon]');
+    mountAffixSlots(this, field, 'td-field');
   }
 
   /** @private Forward the whitelisted native attributes (autocomplete, inputmode, …) to the control, in place. */
@@ -416,7 +511,29 @@ export class TdInputField extends TdFormElement {
       return;
     }
     if (TdInputField._structural.has(name)) {
-      super.attributeChangedCallback(name, oldVal, newVal); // full re-render
+      // v0.55.0 (Codex plan r1 #3): an affix change re-renders the box — a focused control gets the focus, the caret and
+      // its focus baseline back (the live value is rendered); the replaced control's blur is not a user blur
+      const field = this._getFieldElement();
+      const keep = TdInputField._affixAttrs.includes(name) && field === this.ownerDocument.activeElement;
+      const atFocus = this._valueAtFocus;
+      let sel = null;
+      if (keep) {
+        try { sel = field.selectionStart == null ? null : [field.selectionStart, field.selectionEnd, field.selectionDirection || 'none']; } catch { /* no selection API */ }
+      }
+      this._keepingFocus = keep;
+      try {
+        super.attributeChangedCallback(name, oldVal, newVal); // full re-render
+        if (keep) {
+          const now = this._getFieldElement();
+          now?.focus({ preventScroll: true });
+          if (now && sel) {
+            try { now.setSelectionRange(...sel); } catch { /* no selection API */ }
+          }
+          this._valueAtFocus = atFocus;
+        }
+      } finally {
+        this._keepingFocus = false;
+      }
       return;
     }
     switch (name) {
@@ -576,9 +693,11 @@ export class TdInputField extends TdFormElement {
     else super._mountErrorNote(note);
   }
 
-  /** @protected Helper + counter ids for the control's aria-describedby (the base adds the error id). */
+  /** @protected [unit (v0.55.0)] + helper + counter ids for the control's aria-describedby (the base adds the error id). */
   _describedByIds() {
-    const ids = this._helperDescribedByIds();
+    const box = this.querySelector(':scope > .td-field > .td-field__box');
+    const unit = box && [...box.children].find((c) => c.id === `${this.id}-unit`);
+    const ids = [...(unit ? [unit.id] : []), ...this._helperDescribedByIds()];
     if (this.querySelector('.td-field__counter')) ids.push(`${this.id}-counter`);
     return ids;
   }
@@ -764,14 +883,24 @@ export class TdInputField extends TdFormElement {
 
   /** Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own (else restore). */
   canRebind() {
+    detachAffixSlots(this, 'td-field'); // v0.55.0: page content, never the component's markup — mounted again by the bind
     return this._ssrRevalidate(this._ssrStateSource());
   }
 
-  /** @protected Review round 4: `div.td-field` (unique host child) > `input|textarea.td-field__control` (unique child). */
+  /**
+   * @protected Review round 4: `div.td-field` (unique host child) > `input|textarea.td-field__control` (unique child);
+   * v0.55.0: with an affix, `div.td-field` > `div.td-field__box` (unique) > the control (unique).
+   */
   _ssrSlotControl() {
     const roots = [...this.children].filter((e) => e.localName === 'div' && e.classList.contains('td-field'));
     if (roots.length !== 1) return null;
-    const c = [...roots[0].children].filter((e) => (e.localName === 'input' || e.localName === 'textarea')
+    let parent = roots[0];
+    if (this._affixState()) {
+      const boxes = [...parent.children].filter((e) => e.localName === 'div' && e.classList.contains('td-field__box'));
+      if (boxes.length !== 1) return null;
+      parent = boxes[0];
+    }
+    const c = [...parent.children].filter((e) => (e.localName === 'input' || e.localName === 'textarea')
       && e.classList.contains('td-field__control'));
     return c.length === 1 ? c[0] : null;
   }
@@ -804,7 +933,7 @@ export class TdInputField extends TdFormElement {
     if (state.focused && this._valueAtFocus == null) this._valueAtFocus = control.defaultValue;
     this._userEdited = state.edited;
     // the component's own description ids are re-added (in its order) by the bind; the page's own ids stay
-    const own = new Set([`${this.id}-note`, `${this.id}-counter`, `${this.id}-error`]);
+    const own = new Set([`${this.id}-unit`, `${this.id}-note`, `${this.id}-counter`, `${this.id}-error`]);
     const rest = (control.getAttribute('aria-describedby') || '').split(/\s+/).filter((t) => t && !own.has(t));
     if (rest.length) control.setAttribute('aria-describedby', rest.join(' '));
     else control.removeAttribute('aria-describedby');
@@ -820,7 +949,8 @@ export class TdInputField extends TdFormElement {
 
   /**
    * @protected Review round 2: the known skeleton — one `div.td-field` > [optional label (text + at most the required
-   * star), THIS control, footer of text-only error note / helper note / counter, each at most once].
+   * star), THIS control (v0.55.0: or the box holding it among at most 3 spans), footer of text-only error note / helper
+   * note / counter, each at most once].
    */
   _ssrSkeletonOk() {
     const kids = ssrContentNodes(this);
@@ -835,7 +965,13 @@ export class TdInputField extends TdFormElement {
         || els[0].localName !== 'span' || els[0].children.length))) return false;
       i = 1;
     }
-    if (parts[i] !== this._ssrControl || parts.length !== i + 2) return false;
+    if (parts.length !== i + 2) return false;
+    if (parts[i] !== this._ssrControl) {
+      const box = parts[i];
+      if (box.localName !== 'div' || !box.classList.contains('td-field__box') || this._ssrControl?.parentElement !== box) return false;
+      const kids = ssrContentNodes(box);
+      if (kids.length > 4 || kids.some((n) => n.nodeType !== 1 || (n !== this._ssrControl && n.localName !== 'span'))) return false;
+    }
     const footer = parts[i + 1];
     if (footer.localName !== 'div' || !footer.classList.contains('td-field__footer')) return false;
     const seen = new Set();
@@ -913,8 +1049,21 @@ export class TdInputField extends TdFormElement {
       const l = have[i];
       if (w.localName === 'label') return this._ssrLabelOk(l, w);
       if (w.classList.contains('td-field__control')) return this._ssrControlOk(l, w, first);
+      if (w.classList.contains('td-field__box')) return this._ssrBoxOk(l, w, first);
       return this._ssrFooterOk(l, w);
     });
+  }
+
+  /**
+   * @private v0.55.0 (QĐ 7): the affix box — same attributes, the affix spans / unit text exactly render()'s (an icon slot
+   * compared by its attributes: fillIconSlots re-draws it), the control through the same check as without a box.
+   */
+  _ssrBoxOk(box, want, first) {
+    if (box.localName !== 'div' || !ssrSameAttrs(box, want)) return false;
+    const have = ssrContentNodes(box);
+    const need = [...want.children];
+    if (have.length !== need.length || have.some((n) => n.nodeType !== 1)) return false;
+    return need.every((w, i) => (w.classList.contains('td-field__control') ? this._ssrControlOk(have[i], w, first) : ssrSamePart(have[i], w)));
   }
 
   /** @private Internal label: same attributes, the label text, then at most the required star. */

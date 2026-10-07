@@ -14,7 +14,7 @@ chữ số) → dùng [number input](number-input.md); `type="number"` ở đây
 | Import | `import '@dazzxq/td-components/input-field';` (class: `import { TdInputField } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + BEM `.td-field` từ 0.8.0, `autoresize` từ 0.13.0, hydrate SSR tại chỗ từ 0.26.0) |
+| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + BEM `.td-field` từ 0.8.0, `autoresize` từ 0.13.0, hydrate SSR tại chỗ từ 0.26.0, tiền tố / hậu tố từ 0.55.0) |
 
 Cần `td.css` trên trang (xem [Cài đặt](../getting-started/installation.md)).
 
@@ -241,6 +241,47 @@ bên trong (`.td-field__control`), nên trình quản lý mật khẩu và bàn 
 - `autofocus` chỉ chạy **một lần** khi field gắn vào trang lần đầu; không cướp focus nếu đã có phần tử khác (ngoài
   `<body>`) đang được focus, không focus field disabled. Thêm `autofocus` sau đó hoặc render lại không focus lần nữa.
 
+### Tiền tố / hậu tố: chữ, icon, phần tử của trang (0.55.0)
+
+```html
+<td-input-field name="site" label="Website" prefix="https://" suffix=".vn"></td-input-field>
+<td-input-field name="battery" type="number" label="Dung lượng pin" suffix="mAh" unit-label="mi-li-am-pe giờ"></td-input-field>
+<td-input-field name="q" type="search" label="Tìm sản phẩm" prefix-icon="search"></td-input-field>
+
+<!-- phần tử của trang (nút hiện mật khẩu, nút xoá, <td-icon>…) -->
+<td-input-field name="password" type="password" label="Mật khẩu" autocomplete="current-password">
+  <button type="button" slot="suffix" class="pw-toggle" aria-label="Hiện mật khẩu" aria-pressed="false">👁</button>
+</td-input-field>
+```
+
+- `prefix` / `suffix` là **chữ** (escape), `prefix-icon` / `suffix-icon` là **tên icon** trong registry
+  ([Icons](icons.md); tên lạ → không vẽ gì). Cùng một bên được có cả icon và chữ: icon luôn ở **mép ngoài**
+  (`[icon] https://` … `mAh [icon]`). Affix **không bao giờ** nằm trong giá trị / FormData.
+- Có ít nhất một affix thì control vào trong hộp `.td-field__box` (hộp mang viền / nền / focus ring; bấm vào hộp hay
+  affix là focus ô). Không affix: markup **giống hệt** 0.54.
+- Chỉ cho `type` `text` · `search` · `email` · `url` · `tel` · `password` · `number`. `textarea`, `contenteditable`,
+  `date`, `month`, `datetime-local`, `time`: affix bị bỏ + một cảnh báo console (markup như không có affix).
+- **Phần tử của trang:** con trực tiếp `[slot="prefix"]` / `[slot="suffix"]` được **chuyển** (cùng node, không clone, không
+  parse lại) vào `span.td-field__affix--slot` cạnh control, sống qua mọi lần render lại. Bên có slot thì chữ / icon của bên
+  đó bị ẩn (+ một cảnh báo khi đặt cả hai). Nhiều con cùng bên → giữ thứ tự. Con `[slot]` chỉ được đọc ở **lần render đầu**:
+  thêm sau đó thì không được nhận (cảnh báo một lần) — tạo phần tử với con trước khi gắn vào trang, hoặc tạo lại field.
+  **Slot affix chỉ dành cho host không có `data-td-ssr`**: trên host SSR (markup PHP — PHP không bao giờ in slot) con
+  `[slot]` bị cổng hydrate từ chối → render an toàn, con bị bỏ (không vào form) + một cảnh báo.
+  Kit **không** đụng ngữ nghĩa của nó: icon trang trí → bạn tự `aria-hidden="true"`; nút → bạn tự đặt tên (`aria-label`),
+  `type="button"` (nếu không nút trong `<form>` là nút submit), tự xử lý click. Bấm vào nút / link / ô trong slot không cướp
+  focus về ô nhập. Tab: ô nhập → nội dung slot hậu tố (thứ tự DOM). Trên cảm ứng nút của bạn nên ≥ 44 px.
+- Đổi các attribute affix lúc chạy là render lại hộp nhưng **giữ** focus, con trỏ và giá trị (không phát `change`).
+- Chữ affix dài bị cắt bằng `…` (tối đa nửa bề rộng hộp); mô tả cho trình đọc màn hình vẫn đủ.
+
+**Trợ năng:** chữ / icon hiển thị là trang trí (`aria-hidden`). Đơn vị được đọc qua **mô tả** (`aria-describedby` →
+`span#{host}-unit[hidden]`, đứng **đầu** mô tả): `unit-label` → nếu không có thì `suffix` → nếu không thì `prefix` (một luật
+cho cả kit, giống [number-input](number-input.md)). Tên truy cập vẫn là nhãn (không bị đổi thành "Giá đồng"), đơn vị không bị
+đọc hai lần, và vẫn ở lại trong mô tả khi có lỗi. Có cả tiền tố và hậu tố (`https://` … `.vn`) chỉ một được đọc (hậu tố) —
+muốn đọc khác thì đặt `unit-label`.
+
+Không bóc tiền tố khỏi giá trị dán vào (dán `https://a.vn` vào ô có `prefix="https://"` giữ nguyên chuỗi) — xử lý ở site nếu
+cần.
+
 ### Trong form
 
 ```html
@@ -295,6 +336,9 @@ document.getElementById('fs').disabled = true;          // field bị disabled, 
 | `autocapitalize` | string | — | `off` \| `none` \| `on` \| `sentences` \| `words` \| `characters` → control. 0.17.0. |
 | `spellcheck` | string | — | `true` \| `false` → control. 0.17.0. |
 | `autofocus` | boolean | không | Focus control **một lần** khi field gắn vào trang lần đầu, trừ khi đã có phần tử khác đang giữ focus, hoặc field disabled. 0.17.0. |
+| `prefix` / `suffix` | string | — | Chữ trang trí trước / sau giá trị (`https://`, `mAh`, `đ`). Chỉ type `text` / `search` / `email` / `url` / `tel` / `password` / `number`. Đổi = render lại hộp (giữ focus, con trỏ). 0.55.0. |
+| `prefix-icon` / `suffix-icon` | string | — | Tên icon registry ở mép ngoài của bên đó (trang trí). 0.55.0. |
+| `unit-label` | string | `suffix`, rồi `prefix` | Đơn vị **đọc to** (mô tả), ví dụ `đồng` cho `đ`. 0.55.0. |
 | `id` | string | tự sinh `td-td-input-field-{n}` | Nếu không đặt, kit tự gán để `<label for>` và các id con hoạt động. |
 
 ## Property & method
@@ -357,6 +401,10 @@ cũng được cập nhật (thay đổi bằng code không bị tính là ngư�
 | `--td-field-radius-sm` / `-md` / `-lg` | `10px` / `12px` / `14px` | Bo góc theo size. |
 | `--td-field-h-sm` / `-md` / `-lg` | `32px` / `40px` / `48px` | Chiều cao theo size. |
 | `--td-field-autoresize-max` | khoảng 16 dòng | Chiều cao tối đa khi `autoresize` (không khai báo sẵn, đặt khi cần). |
+| `--td-field-affix-fg` | `var(--td-color-text-muted)` | Màu chữ / icon tiền tố / hậu tố (≥ 4.7:1 trên nền ô thường / focus / read-only / disabled — gate). Dùng chung với number-input (`--td-number-affix-fg` mặc định theo nó). 0.55.0. |
+| `--td-field-affix-gap` | `var(--td-space-2xs)` | Khoảng giữa affix và giá trị trong hộp. 0.55.0. |
+| `--td-field-affix-icon` | `1.125em` | Cỡ icon affix (theo cỡ chữ ô). 0.55.0. |
+| `--td-field-note-size` | `var(--td-text-xs)` (cảm ứng `var(--td-text-sm)`) | Cỡ chữ gợi ý — xem [Hint](hint.md#tuỳ-biến-giao-diện). 0.55.0. |
 
 Theme tối đổi `--td-field-bg-disabled`, `--td-field-bg-readonly` (surface-muted) và quầng focus (22 % accent, vì 12 %
 không thấy trên nền tối); placeholder / nhãn / viền theo token chung (`--td-color-text-muted` `#acacb4`,
@@ -426,12 +474,31 @@ Input field là tầng nội dung: luôn nền đặc, không bao giờ là kín
 | `.td-field-error` | Dòng lỗi (dùng chung mọi control), `id="{host-id}-error"`. |
 | `.td-field__note` | Gợi ý, `id="{host-id}-note"`, `hidden` khi rỗng. |
 | `.td-field__counter` + `[data-state="limit"]` | Bộ đếm, `id="{host-id}-counter"`. |
+| `.td-field--affix` > `.td-field__box` (0.55.0) | Có affix: hộp mang dáng ô (viền, nền, focus ring qua `:focus-within`, read-only / disabled / lỗi đọc từ control bằng `:has()`), control bên trong trong suốt, không viền. |
+| `.td-field__affix.td-field__affix--{prefix\|suffix}` (0.55.0) | Chữ / icon trang trí, `aria-hidden="true"`; `hidden` khi bên đó có slot. Icon: `span.td-field__affix-icon[data-td-icon]` > `svg.td-field__affix-svg`. |
+| `.td-field__affix--slot` (0.55.0) | Vỏ chứa phần tử `[slot]` của trang (không `aria-hidden`). |
+| `span#{host-id}-unit[hidden]` (0.55.0) | Chữ đơn vị cho mô tả (`unit-label` → `suffix` → `prefix`). |
 | Trên control: `[aria-invalid="true"]`, `:disabled` / `[aria-disabled]`, `[readonly]` / `[aria-readonly]`, `:focus-visible` | Trạng thái. |
 
 - Id đều sinh từ id của host: `{host}-label`, `{host}-control` (hoặc `field-id`), `{host}-note`, `{host}-counter`,
   `{host}-error`.
-- `aria-describedby` của control = các id **bạn** tự thêm vào (được giữ lại) + note (khi có gợi ý) + counter + error
-  (khi có lỗi).
+- `aria-describedby` của control = các id **bạn** tự thêm vào (được giữ lại) + unit (0.55.0, khi có affix) + note (khi có
+  gợi ý) + counter + error (khi có lỗi).
+- Có affix (0.55.0), control nằm trong hộp:
+
+  ```html
+  <div class="td-field td-field--md td-field--affix">
+    <label class="td-field__label" id="site-label" for="site-control">Website</label>
+    <div class="td-field__box">
+      <span class="td-field__affix td-field__affix--prefix" aria-hidden="true">https://</span>
+      <input type="text" class="td-field__control" id="site-control" aria-describedby="site-unit">
+      <span class="td-field__affix td-field__affix--suffix" aria-hidden="true">.vn<span class="td-field__affix-icon"
+            data-td-icon="link" data-td-icon-class="td-field__affix-svg"><svg …></svg></span></span>
+      <span id="site-unit" hidden>.vn</span>
+    </div>
+    <div class="td-field__footer" hidden>…</div>
+  </div>
+  ```
 - Render phía server: `td_field('email', '', ['label' => 'Email', 'type' => 'email'])` của
   [adapter PHP](../guides/php-adapter.md#td_field) in đúng khối `.td-field` trên với control native (chạy với chỉ
   `td.css`, password manager nhận được). Không dùng PHP thì in tay khối trên (bên trong `<td-input-field id="…">` hoặc
@@ -487,6 +554,11 @@ Khi module nạp, `td-input-field` **nhận** markup đó (`canHydrate()`):
   (`canRebind()`, chặt: không còn `name` / ràng buộc của bản không-JS); bị sửa lúc tách → render lại giữ giá trị.
   `<td-input-field>` tạo bằng JS / viết tay không dấu: hành vi như trước (render lại khi gắn lại).
 
+- **Affix (0.55.0, `@1` chỉ thêm):** `td_field` có `prefix` / `suffix` / `prefix_icon` / `suffix_icon` / `unit_label` in
+  đúng hộp `.td-field__box` trên (icon kèm SVG inline, vẽ lại cùng hộp khi bind) → nhận tại chỗ như mọi ca khác. Không dùng
+  option affix → markup giống từng byte 0.54. Phần tử `[slot]` không bao giờ đến từ PHP; markup viết tay có `data-td-ssr` +
+  con `[slot]`: con được lấy ra trước khi so, hộp của `render()` khác markup → render an toàn + khôi phục.
+
 `data-td-ssr` bị gỡ sau lần kết nối đầu. Hợp đồng `@1` là phiên bản **cấu trúc markup**, không phải phiên bản gói.
 
 ## Bàn phím & trợ năng
@@ -501,14 +573,20 @@ Khi module nạp, `td-input-field` **nhận** markup đó (`canHydrate()`):
   `aria-readonly`, vẫn focus được.
 - Thay đổi attribute (giá trị, placeholder, gợi ý, lỗi, disabled, readonly, required, min/max/step) cập nhật **tại
   chỗ**: không mất focus, không nhảy con trỏ. Chỉ `type`, `size`, `label`, `max-length`, `limit-type`, `rows`,
-  `field-id`, `autoresize` gây render lại (giá trị đang gõ được giữ).
+  `field-id`, `autoresize` và (0.55.0) các attribute affix gây render lại (giá trị đang gõ được giữ; affix: cả focus +
+  con trỏ).
+- Tiền tố / hậu tố (0.55.0): trang trí cho mắt, đơn vị đọc qua mô tả (xem
+  [Tiền tố / hậu tố](#tiền-tố--hậu-tố-chữ-icon-phần-tử-của-trang-0550)); phần tử `[slot]` giữ nguyên ngữ nghĩa của trang.
 - Trên màn cảm ứng: ô cao tối thiểu 44 px và chữ ≥ 16 px (iOS không tự zoom khi focus).
 - Chế độ tương phản cưỡng bức (`forced-colors`): viền lỗi thành nét đứt 2 px.
 
 ## Bảo mật
 
-- `label`, `helper-text`, `error-text`, `placeholder`, `value` luôn là **text** (được escape / gán bằng
-  `textContent`). Không đưa HTML vào được.
+- `label`, `helper-text`, `error-text`, `placeholder`, `value`, `prefix`, `suffix`, `unit-label` luôn là **text** (được
+  escape / gán bằng `textContent`). Không đưa HTML vào được. `prefix-icon` / `suffix-icon` là **tên** tra trong registry
+  icon (không phải SVG / HTML).
+- Con `[slot="prefix"|"suffix"]` là **node của chính trang** (tin cậy như mọi markup trang viết) — kit chỉ chuyển chỗ, không
+  bao giờ nhận chuỗi HTML cho affix.
 - Giá trị của `contenteditable` là text thuần (`innerText`). Đừng đọc `innerHTML` của control để lấy nội dung.
 - Vẫn phải escape khi **bạn** in lại giá trị người dùng ra trang. Xem [Bảo mật](../guides/security.md).
 
@@ -522,6 +600,11 @@ Khi module nạp, `td-input-field` **nhận** markup đó (`canHydrate()`):
   `type="text"`, không có ràng buộc; dùng `validity` của host.
 - **Nghe `change` để bắt từng lần gõ**: `change` chỉ phát khi rời ô; dùng `input`.
 - **Hai field dùng cùng `field-id`**: id trùng làm nhãn trỏ sai; để mặc định nếu không có lý do đặc biệt.
+- **`el.prefix = 'https://'` không có tác dụng** (0.55.0): `prefix` là property native của DOM (namespace) — dùng
+  `setAttribute('prefix', …)`. `suffix` / `prefixIcon` / `suffixIcon` / `unitLabel` là property bình thường.
+- **Nút trong `slot` submit form** (0.55.0): `<button>` mặc định là `type="submit"` — đặt `type="button"`.
+- **Thêm con `[slot]` sau khi field đã hiện** không có tác dụng (0.55.0) — chỉ đọc ở lần render đầu.
+- **`prefix="https://"` nhưng giá trị gửi đi thiếu `https://`**: affix không bao giờ nằm trong giá trị; ghép ở server nếu cần.
 
 ## Xem thêm
 

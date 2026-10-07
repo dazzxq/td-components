@@ -78,3 +78,26 @@ export const Stepper = {
     canvasElement.querySelector('#ni-stepper').addEventListener('change', (e) => { out.textContent = `change: ${e.detail?.value ?? ''}`; });
   },
 };
+
+/** v0.55.0: registry icons inside the affix span + a page Element in [slot] (moved, keeps its own semantics). */
+export const IconsAndSlot = {
+  render: () => `<div class="sb-stack">
+    <td-number-input name="price" label="Giá bán" suffix="₫" suffix-icon="lock" unit-label="đồng" value="12990000"></td-number-input>
+    <td-number-input name="q" label="Tìm theo giá" prefix-icon="search" suffix="₫" value="5000000"></td-number-input>
+    <td-number-input name="fee" label="Phí" decimals="2" suffix="%" value="1.5">
+      <button type="button" slot="prefix" aria-label="Giải thích phí" class="sb-help">?</button>
+    </td-number-input>
+    <td-number-input name="qty" label="Số lượng" stepper min="1" max="9" value="2" prefix-icon="search"></td-number-input></div>`,
+};
+
+/** v0.55.0 `locale`: the separators only (fixed table, Intl for other tags) — the value is never rounded / padded. */
+export const Locale = {
+  args: { locale: 'en-US' },
+  argTypes: { locale: { control: 'text' } },
+  render: (args) => `<div class="sb-stack">
+    <td-number-input name="a"${opt('locale', args.locale)} label="Amount (locale)" decimals="2" prefix="$" value="1234567.5"></td-number-input>
+    <td-number-input name="b" locale="vi" label="vi" decimals="2" suffix="₫" value="1234567.5"></td-number-input>
+    <td-number-input name="c" locale="fr" label="fr" decimals="2" suffix="€" value="1234567.5"></td-number-input>
+    <td-number-input name="d" locale="de" group-separator="," label="de + group ," decimals="2" value="1234567.5"></td-number-input>
+    <p class="sb-note">Gõ "." hoặc "," khi decimals &gt; 0 → dấu thập phân của ô (bàn phím ảo theo máy).</p></div>`,
+};

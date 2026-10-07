@@ -2,6 +2,37 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.55.0
+
+**Chữ / icon đứng trước – sau ô nhập (`prefix` / `suffix`) cho `td-input-field` + `td-number-input`, `locale` cho số, token cỡ
+chữ gợi ý** (owner duyệt danh sách Catalog của dsuite). Plan `docs/internal/plans/v0.55.0-affix-number.md`, Codex plan-review
+APPROVE 2 vòng, impl-review APPROVE 3 vòng + security-review APPROVE 2 vòng; [ADR 0028](docs/internal/decisions/0028-field-affix-number-locale.md).
+Có đổi hành vi nhỏ — `docs/upgrading/breaking-changes.md#0550`.
+
+### Added
+
+- `td-input-field`: `prefix` / `suffix` (chữ: "inch", "mAh", "https://"), `prefix-icon` / `suffix-icon`, `unit-label`
+  (tên đọc của đơn vị) và con `[slot="prefix"|"suffix"]` (Element của trang, không nhận chuỗi HTML). Đơn vị được đọc **một lần**
+  như mô tả, tên vẫn là nhãn. Chỉ host **không** có `data-td-ssr` nhận slot (trên host SSR, slot bị cổng hydrate từ chối).
+- `td-number-input`: `prefix-icon` / `suffix-icon`, slot, `locale` (BCP 47 → dấu nhóm / thập phân từ bảng cố định chung JS +
+  PHP; ngoài bảng: JS kiểm qua Intl, PHP mặc định + cảnh báo). Intl không bao giờ dùng để in giá trị (không làm tròn tiền).
+- PHP: `td_field` (`prefix`, `suffix`, `prefix_icon`, `suffix_icon`, `unit_label`), `td_number_input` (`prefix_icon`,
+  `suffix_icon`, `locale` — in ra `group-separator` / `decimal-separator` tường minh). Không dùng option mới → markup giống
+  từng byte 0.54.
+- Token `--td-field-note-size` (cỡ chữ mọi gợi ý: `.td-field__note`, `<td-hint>`, note của checkbox / toggle / choice-group …;
+  mặc định như cũ) + `--td-field-affix-fg` / `--td-field-affix-gap` / `--td-field-affix-icon`.
+
+### Changed
+
+- `td-number-input` có `decimals > 0`: gõ `.` hoặc `,` (kể cả dấu nhóm của ô) chèn **dấu thập phân của ô** — bàn phím điện thoại
+  hiện dấu theo máy, không theo ô.
+
+### Docs
+
+- `decimals` là số lẻ **tối đa** (không thêm 0, không làm tròn) — giá trị `6.70` từ DB hiện `6,70`: site tự chuẩn hoá.
+- Checkbox / toggle chế độ element (PHP `helper_text` buộc chế độ này từ 0.54): **host** là form control, gửi `value` qua
+  ElementInternals; `<input>` bên trong chỉ để hiển thị (đọc `el.value` / `el.checked` / `FormData`, không đọc input trong).
+
 ## 0.54.1
 
 **Vá: property gán trước khi phần tử kit được nâng cấp không còn bị mất** (dsuite: `td-table` clone từ `<template>`, gán

@@ -137,6 +137,12 @@ thì chạy đúng với cả hai chế độ.)
 - Trình duyệt khôi phục form (quay lại trang không qua bfcache): trạng thái bật/tắt được đặt lại đúng, attribute
   `value` giữ nguyên (0.16.0).
 
+**Host là control của form (chế độ element, kể cả PHP `helper_text` / `on_text` / `off_text`).** `<td-toggle>` đã nâng cấp — viết
+tay, tạo bằng JS, hoặc PHP `td_toggle` có `helper_text` / `on_text` / `off_text` / `tone` / `locked` (các khoá này buộc chế độ
+element) — gửi giá trị **từ host** qua ElementInternals (cùng base với `td-checkbox`). `<input>` bên trong chỉ để hiển thị /
+bàn phím: sau nâng cấp nó không mang `name` / `value` của form, `input.value` đọc ra `"on"`. Đọc `el.checked` / `el.value` trên
+host hoặc `new FormData(form)`, đừng đọc ô bên trong.
+
 ### Căn dọc cạnh chữ (0.53.2)
 
 Host `<td-toggle>` là `inline-flex` + `vertical-align: middle`: **hộp host đúng bằng hộp công tắc** (trước 0.53.2 host là

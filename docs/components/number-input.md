@@ -17,7 +17,7 @@ cần định dạng tiền / số lớn / dán từ Excel, hoá đơn → `<td-
 | Import | `import '@dazzxq/td-components/number-input'` (class: `import { TdNumberInput } from '@dazzxq/td-components'`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.30.0 (token-native: cần `td.css`) |
+| Từ phiên bản | 0.30.0 (token-native: cần `td.css`; icon / slot affix + `locale` từ 0.55.0) |
 
 ## Ví dụ nhanh
 
@@ -45,9 +45,16 @@ Mọi giá trị vào / ra (attribute `value` / `min` / `max` / `step`, property
 phân chuẩn**: `-?(0|[1-9][0-9]*)(\.[0-9]+)?` — dấu thập phân là `.`, không dấu nhóm, không đơn vị, tối đa 30 chữ số
 (nguyên + lẻ). Phần hiển thị (`12.990.000`, `1.234,5`) chỉ là lớp vẽ.
 
-- **Không làm tròn, không cắt.** `decimals` là số chữ số lẻ **tối đa**; giá trị giữ đúng số chữ số lẻ đã gõ (`12,5`
-  không thành `12,50`). Attribute `value="1.234"` khi `decimals="2"` → bị **bỏ** + một cảnh báo console (không lặng lẽ
-  thành `1.23`). Cùng luật cho `min` / `max` / `step` và `setValue()`.
+#### Tối đa N chữ số lẻ — không đệm, không làm tròn
+
+- **Không làm tròn, không cắt, không đệm.** `decimals` là số chữ số lẻ **tối đa**; giá trị giữ đúng số chữ số lẻ đã gõ:
+  gõ `6,7` (`decimals="2"`) → hiện `6,7`, gửi `6.7` (không thành `6,70`); gõ `6,70` → giữ `6,70` / `6.70`; chữ số lẻ thứ 3
+  bị chặn (không làm tròn `6,789` → `6,79`). Attribute `value="1.234"` khi `decimals="2"` → bị **bỏ** + một cảnh báo console
+  (không lặng lẽ thành `1.23`). Cùng luật cho `min` / `max` / `step` và `setValue()`. (Có test khoá từ 0.55.0.)
+- **Thấy `6,70` dù không gõ số 0?** Gần như luôn là **dữ liệu** đã đệm: cột `DECIMAL(10,2)` trả `"6.70"` và trang in nguyên
+  chuỗi đó vào `value`. Kit giữ đúng chuỗi được đưa vào (đó là dữ liệu, không phải định dạng). Muốn hiện `6,7`: chuẩn hoá ở
+  site trước khi in — PHP `rtrim(rtrim($v, '0'), '.')` (chỉ khi chuỗi có dấu `.`), JS
+  `v.includes('.') ? v.replace(/\.?0+$/, '') : v`.
 - **Rỗng ≠ 0.** Ô trống gửi `name=""` (giống `<input>` native; Laravel `ConvertEmptyStringsToNull` → `null`); `required`
   → `valueMissing`. Không bao giờ tự thành `0`.
 - **`min` vắng = sàn ngầm 0** (không nhận số âm — đúng cho tiền / ngưỡng). Cần số âm (điều chỉnh ±) → đặt `min` âm
@@ -65,6 +72,10 @@ phân chuẩn**: `-?(0|[1-9][0-9]*)(\.[0-9]+)?` — dấu thập phân là `.`, 
 - Dấu nhóm tự thêm khi gõ; **con trỏ không nhảy** (gõ giữa nhóm vẫn đứng sau chữ số vừa gõ). Backspace ngay sau dấu nhóm
   (`12.|990`) xoá **chữ số trước nó** (`1.990`); Delete ngay trước dấu nhóm xoá chữ số sau nó — không bị "kẹt".
 - Phím `.` của **bàn phím số** (NumpadDecimal) luôn ra dấu thập phân của ô (người dùng vi bấm `.` vẫn ra `,`).
+- **0.55.0 — bàn phím ảo:** bàn phím `decimal` của iOS / Android hiện dấu thập phân **theo máy**, không theo ô (máy tiếng Anh
+  chỉ có `.` trong ô vi dùng `,`). Khi `decimals > 0` và ô **chưa** có dấu thập phân (ngoài vùng chọn), gõ `.` **hoặc** `,` —
+  kể cả khi đó là dấu nhóm của ô — ra **dấu thập phân của ô**. Dấu nhóm không bao giờ cần gõ (kit tự thêm). `decimals = 0`
+  hoặc đã có dấu thập phân: phím đó bị bỏ như trước. Dán / tự điền không đổi (luật mục 3).
 - `min` / `max` **không chặn gõ** (`min="1000"` vẫn gõ được "5" trước "000").
 - Không đổi giá trị khi lăn chuột (khác `type=number` native — một nguồn lỗi nhập tiền).
 - Rời ô: `12,` → `12`; chỉ `-` → rỗng.
@@ -167,6 +178,59 @@ PHP: `td_number_input('qty', 1, ['element' => true, 'stepper' => true, 'min' => 
 nhưng **giữ chỗ** tới khi module tải (không xô lệch, không có nút chết khi chưa có JS). Chế độ native (`element` false) bỏ qua
 `stepper` (ô `type=number` có nút xoay của trình duyệt).
 
+### 9. Tiền tố / hậu tố: icon và phần tử của trang (0.55.0)
+
+Chữ `prefix` / `suffix` có từ 0.30. Từ 0.55.0 thêm **icon** và **phần tử của trang** — cùng API, cùng hộp với
+[input field](input-field.md#tiền-tố--hậu-tố-chữ-icon-phần-tử-của-trang-0550):
+
+```html
+<td-number-input name="price" label="Giá bán" suffix="₫" suffix-icon="lock" unit-label="đồng"></td-number-input>
+<td-number-input name="fee" label="Phí" decimals="2" suffix="%">
+  <button type="button" slot="prefix" aria-label="Giải thích phí">?</button>
+</td-number-input>
+```
+
+- `prefix-icon` / `suffix-icon`: tên icon registry, nằm **trong** span affix của bên đó, ở mép ngoài (`[icon]$` / `₫[icon]`),
+  trang trí. Không icon / không slot: markup **giống hệt** 0.54.
+- Con `[slot="prefix"|"suffix"]`: chuyển (cùng node) vào `span.td-number__affix--slot` cạnh ô; thắng chữ / icon của bên đó
+  (ẩn đi + một cảnh báo). Đọc ở lần render đầu; kit không đụng ngữ nghĩa (nút: tự đặt tên + `type="button"`). **Chỉ
+  trên host không có `data-td-ssr`**: host SSR có con `[slot]` bị cổng hydrate từ chối → render an toàn, con bị bỏ. Với `stepper`:
+  nằm giữa nút − / + và ô. Bấm nút trong slot không cướp focus.
+- Đơn vị đọc qua mô tả như cũ (`unit-label` → `suffix` → `prefix`).
+
+### 10. `locale` — chỉ suy ra dấu phân cách (0.55.0)
+
+```html
+<td-number-input name="amount" label="Amount" locale="en-US" decimals="2" prefix="$"></td-number-input> <!-- 1,234,567.5 -->
+<td-number-input name="prix" label="Prix" locale="fr" decimals="2" suffix="€"></td-number-input>         <!-- 1 234 567,5 -->
+```
+
+- `locale` (BCP 47) chỉ quyết định **dấu nhóm** và **dấu thập phân**. Giá trị vẫn định dạng bằng luật mục 1–3 (BigInt, không
+  làm tròn / đệm) — `Intl.NumberFormat` **không** được dùng để in số (nó làm tròn VND về 0 lẻ, đệm USD thành 2 lẻ, không nhóm
+  số 4 chữ số ở `es`, nhóm lakh ở `en-IN`, đổi chữ số ở `ar`).
+- Bảng cố định (không phân biệt hoa thường, tra **cả thẻ** — thẻ vùng có trong bảng hoặc không, không rơi ngầm về ngôn ngữ):
+
+  | Thẻ | Nhóm | Thập phân |
+  |---|---|---|
+  | `vi` `vi-VN` · `de` `de-DE` · `id` `id-ID` · `pt` `pt-BR` · `es` `es-ES` · `it` `it-IT` · `nl` `nl-NL` | `.` | `,` |
+  | `en` `en-US` `en-GB` · `ja` `ja-JP` · `ko` `ko-KR` · `zh` `zh-CN` `zh-TW` · `th` `th-TH` | `,` | `.` |
+  | `fr` `fr-FR` · `ru` `ru-RU` · `pl` `pl-PL` · `de-AT` | khoảng trắng | `,` |
+
+- Thẻ **ngoài bảng** (chỉ JS): suy từ `Intl` của trình duyệt, nhận khi dấu nhóm là `.` / `,` / khoảng trắng (NBSP / NNBSP
+  → khoảng trắng thường) và dấu thập phân `,` / `.`, khác nhau, và Intl không rơi sang ngôn ngữ khác (`pt-PT` → khoảng trắng
+  / `,`; `en-IN`, `es-MX` → `,` / `.`). Không dùng được (`de-CH` dùng `'`, `ar-*`, tag sai, ngôn ngữ lạ) → `.` / `,` mặc định
+  + một cảnh báo console.
+- **Thứ tự thắng:** `group-separator` / `decimal-separator` tường minh > `locale` > mặc định. Giải theo **cặp**: bên tường
+  minh thắng, bên suy ra tự tránh nếu trùng (`locale="de" group-separator=","` → thập phân `.`; `locale="en"
+  decimal-separator=","` → nhóm `.`). Không có `locale`: y hệt 0.54.
+- Đổi `locale` lúc chạy định dạng lại **tại chỗ** (cùng ô, giữ focus, không phát event). Dán đọc theo dấu thập phân của
+  locale. Giá trị gửi đi luôn là số chuẩn.
+- **PHP** `'locale' => 'en-US'`: tra cùng bảng (không cần ext-intl), in `group-separator` / `decimal-separator` tường minh
+  lên host (không in `locale` — markup hydrate không phụ thuộc ICU của trình duyệt). Thẻ ngoài bảng → mặc định +
+  `E_USER_WARNING`.
+- Giới hạn có chủ đích: nhóm luôn 3 chữ số (`en-IN` ra `1,234,567`, `es` nhóm cả số 4 chữ số), không đổi chữ số (Ả Rập),
+  không có `currency` (đơn vị: `prefix` / `suffix` / `unit-label`), không đọc `<html lang>` để tự chọn.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -181,9 +245,11 @@ nhưng **giữ chỗ** tới khi module tải (không xô lệch, không có nú
 | `min` / `max` | chuẩn | `min` vắng = `0` | Khoảng hợp lệ (báo lỗi, không chặn gõ). `min` âm mới nhận số âm. |
 | `step` | chuẩn, > 0 | 1 (cho ↑ / ↓) | Bước của ↑ / ↓ + `stepMismatch` (chỉ khi có attribute). |
 | `decimals` | `0`–`10` | `0` | Số chữ số lẻ tối đa. |
-| `group-separator` | `.` \| `,` \| ` ` \| `` | `.` | Dấu nhóm hàng nghìn (`""` = không nhóm). |
-| `decimal-separator` | `,` \| `.` | `,` (`.` khi nhóm là `,`) | Trùng dấu nhóm → về mặc định + cảnh báo. |
+| `group-separator` | `.` \| `,` \| ` ` \| `` | `.` (theo `locale`) | Dấu nhóm hàng nghìn (`""` = không nhóm). |
+| `decimal-separator` | `,` \| `.` | `,` (`.` khi nhóm là `,`; theo `locale`) | Trùng dấu nhóm → về mặc định + cảnh báo. |
+| `locale` | BCP 47 | — | 0.55.0: suy ra hai dấu phân cách ([mục 10](#10-locale--chỉ-suy-ra-dấu-phân-cách-0550)); dấu tường minh thắng. Đổi lúc chạy: tại chỗ. |
 | `prefix` / `suffix` | string | — | Đơn vị trang trí trong hộp (`$`, `₫`, `%`), `aria-hidden`. Đặt bằng attribute (`el.prefix` là property native của DOM). |
+| `prefix-icon` / `suffix-icon` | string | — | 0.55.0: tên icon registry trong span affix (mép ngoài), trang trí. Đổi = vẽ lại (giữ giá trị, focus, con trỏ). |
 | `unit-label` | string | `suffix` / `prefix` | Chữ trình đọc màn hình đọc cho đơn vị (vd. `đồng`), qua `aria-describedby`. |
 | `clamp` | boolean | — | Kẹp vào `[min, max]` khi rời ô + thông báo. |
 | `inputmode` | string | tự suy | Ghi đè bàn phím ảo. Mặc định: `numeric` (không lẻ, không âm) / `decimal` (có lẻ) / `text` (cho phép âm — bàn phím số iOS không có dấu trừ). |
@@ -240,8 +306,9 @@ readonly) — nhìn y hệt input field. Thêm:
 
 | Token | Mặc định | Tác dụng |
 |---|---|---|
-| `--td-number-affix-fg` | `var(--td-color-text-muted)` | Màu chữ tiền tố / hậu tố (≥ 4.7:1 trên nền ô) |
-| `--td-number-affix-gap` | `var(--td-space-2xs)` | Khoảng cách affix ↔ số |
+| `--td-number-affix-fg` | `var(--td-field-affix-fg)` (0.55.0; = `var(--td-color-text-muted)`) | Màu chữ / icon tiền tố / hậu tố (≥ 4.7:1 trên nền ô) |
+| `--td-number-affix-gap` | `var(--td-field-affix-gap)` (0.55.0; = `var(--td-space-2xs)`) | Khoảng cách affix ↔ số |
+| `--td-field-affix-icon` | `1.125em` | 0.55.0: cỡ icon affix (dùng chung với input field) |
 | `--td-number-step-size` | `2.5rem` | 0.49.0: bề rộng nút − / + (≥ 44px trên cảm ứng) |
 | `--td-number-step-fg` | `var(--td-control-fg)` | 0.49.0: icon − / + (≥ 3.2:1; `aria-disabled` dùng màu disabled của nút, ≥ 2.2:1) |
 | `--td-number-stepper-w` | `9rem` | 0.49.0: bề rộng host ở chế độ `stepper` |
@@ -267,7 +334,11 @@ Số căn **trái** (như mọi ô nhập — không đổi thói quen gõ), ch�
 ```
 
 - Trạng thái đọc từ control: `:focus` (hộp có `:focus-within`), `:disabled`, `[readonly]`, `[aria-invalid="true"]`.
-- Bấm vào hộp / affix → focus ô.
+- Bấm vào hộp / affix → focus ô (0.55.0: trừ nút / link / ô trong slot).
+- 0.55.0: icon affix = `span.td-number__affix-icon[data-td-icon][data-td-icon-class="td-number__affix-svg"]` bên trong
+  `span.td-number__affix`; slot = `span.td-number__affix.td-number__affix--{side}.td-number__affix--slot` (do JS gắn sau
+  bind, không `aria-hidden`) ngay trước / sau ô. Luật hộp dùng chung với input field (`field.css`,
+  `:is(.td-number__box, .td-field__box)`).
 - `stepper` (0.49.0): `.td-field` thêm `td-number--stepper`; hộp = `button.td-number__step.td-number__step--down` (`type=button`,
   `tabindex=-1`, `aria-controls`, `aria-label`, icon `minus`) + [tiền tố] + ô + [hậu tố] + [đơn vị ẩn] +
   `button.td-number__step.td-number__step--up` (icon `plus`); biên = `aria-disabled="true"`.
@@ -290,6 +361,9 @@ Số căn **trái** (như mọi ô nhập — không đổi thói quen gõ), ch�
   + focus.
 - `stepper` (0.49.0, schema **vẫn** `@1`): hai nút được so đúng `render()` (thẻ, `type`, class, `tabindex`, `aria-controls`,
   ô icon); tên nút là trạng thái (áp sau khi nhận, không so). Kit cũ gặp markup có nút → từ chối → render an toàn (không hỏng).
+- 0.55.0 (schema **vẫn** `@1`, chỉ thêm): `prefix_icon` / `suffix_icon` in ô icon kèm SVG inline trong span affix (so theo
+  attribute, vẽ lại cùng hộp); `locale` in thành `group-separator` / `decimal-separator` → nhận tại chỗ. Không dùng option mới:
+  markup giống từng byte 0.54.
 
 ## Bàn phím & trợ năng
 
@@ -297,6 +371,7 @@ Số căn **trái** (như mọi ô nhập — không đổi thói quen gõ), ch�
 |---|---|
 | 0–9, dấu thập phân, `-` (khi cho phép) | Nhập |
 | `.` bàn phím số | Dấu thập phân của ô |
+| `.` hoặc `,` khi `decimals > 0` và chưa có dấu thập phân | 0.55.0: dấu thập phân của ô (bàn phím ảo theo máy) |
 | ↑ / ↓ | ± `step` (kẹp khoảng) |
 | PageUp / PageDown | ± 10 × `step` |
 | (chuột / chạm) − / + | ± `step` — `stepper`, ngoài vòng Tab |
@@ -311,6 +386,8 @@ Số căn **trái** (như mọi ô nhập — không đổi thói quen gõ), ch�
 ## Bảo mật
 
 - `label`, `prefix`, `suffix`, `unit-label`, `helper-text`, `error-text`, `placeholder` đều là text (escape / `textContent`).
+  `prefix-icon` / `suffix-icon` là tên tra registry; con `[slot]` là node của chính trang (không có chuỗi HTML). `locale`
+  chỉ chọn trong tập dấu cố định (`.` `,` khoảng trắng) — không bao giờ chèn ký tự Intl trả về khác tập đó.
 - Giá trị gửi đi chỉ có thể là chuỗi chuẩn (hoặc rỗng) — không có đường nào để chuỗi định dạng lọt vào FormData.
 - Server **vẫn phải** kiểm giá trị (khoảng, bước, số lẻ) và parse bằng kiểu chính xác (`BIGINT` / `DECIMAL`, `bcmath`,
   `brick/math`) — đừng ép qua `float`, đừng `(int) "12.990.000"`.
@@ -328,12 +405,12 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - **`value` attribute bị bỏ + cảnh báo console** → không ở dạng chuẩn (`12.990.000`, `1,5`, nhiều số lẻ hơn `decimals`).
   Truyền `12990000`, `1.5`.
 - **Không gõ được số âm** → `min` vắng = sàn 0; đặt `min` âm.
-- **Không gõ được `.`** trong ô vi → `.` là dấu nhóm (tự thêm); dấu thập phân là `,` (hoặc phím `.` của bàn phím số).
+- **Không gõ được `.`** trong ô vi → 0.55.0: khi `decimals > 0`, `.` ra `,`; với `decimals = 0` thì không có phần lẻ.
 - **`el.prefix = '$'` không có tác dụng** → `prefix` là property native của DOM (namespace); dùng `setAttribute('prefix', '$')`.
 - **Server nhận `12`** → đang đọc ô không phải td-number-input (hoặc tự ghép chuỗi hiển thị); `FormData` của component luôn
   là số sạch.
-- Không có: nhóm kiểu Ấn Độ (lakh), `locale` / `Intl`, làm tròn / pad phần lẻ, rút gọn `K` / `M`, ngoặc kế toán,
-  số khoa học, RTL, nhấn giữ − / + để tự lặp.
+- Không có: nhóm kiểu Ấn Độ (lakh), định dạng bằng `Intl` (`locale` chỉ chọn dấu phân cách), `currency`, làm tròn / pad
+  phần lẻ, rút gọn `K` / `M`, ngoặc kế toán, số khoa học, nhấn giữ − / + để tự lặp.
 
 ## Xem thêm
 

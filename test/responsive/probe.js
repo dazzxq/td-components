@@ -102,8 +102,9 @@ export function analyze(opts) {
       let target = el;
       if (el.tagName === 'INPUT' && (r0.width <= 2 || r0.height <= 2 || Number(cs0.opacity) === 0)) target = el.closest('label') || el.parentElement;
       else if (!vis(el)) continue;
-      // a field box that forwards a press to its input (td-number-input, td-chip-input) is the real target
-      const fwd = el.tagName === 'INPUT' && el.closest('.td-number__box, .td-chip-input__box');
+      // a field box that forwards a press to its input (td-number-input, td-chip-input, v0.55.0 td-input-field with an affix)
+      // is the real target
+      const fwd = el.tagName === 'INPUT' && el.closest('.td-number__box, .td-chip-input__box, .td-field__box');
       if (fwd) target = fwd;
       if (!vis(target)) continue;
       let rr = target.getBoundingClientRect();
