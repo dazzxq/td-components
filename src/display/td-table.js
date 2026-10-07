@@ -289,6 +289,11 @@ export class TdTable extends TdBaseElement {
     this._formatPageInfo = null;
     this._infoRows = 0;
     this._pagInfo = (c) => this._pageInfoText(c);
+    /** Texts resolved in the current pagination sync (state key → text): the hook runs ONCE per state, both bars
+     * show the same string. Cleared at every sync. */
+    this._infoMemo = new Map();
+    /** formatPageInfo failed once already (one warning per table, whatever the error). */
+    this._infoWarned = false;
     /** Rows of the rendered page (row-action → `row`). */
     this._pageRows = [];
     /** Sorted column by INDEX (fixes numeric/duplicate keys). */
@@ -418,7 +423,10 @@ export class TdTable extends TdBaseElement {
   get formatPageInfo() { return this._formatPageInfo; }
   set formatPageInfo(fn) {
     this._formatPageInfo = typeof fn === 'function' ? fn : null;
-    if (this._root) this._syncPagInfo(); // the text only — the body is not re-rendered
+    if (this._root) {
+      this._infoMemo.clear();
+      this._syncPagInfo(); // the text only — the body is not re-rendered
+    }
   }
 
   /** v0.39.0: keys of the hidden columns, in column order (silent setter; `null` = the `hidden` flags of `columns`). */
@@ -999,6 +1007,7 @@ export class TdTable extends TdBaseElement {
    */
   _syncPag(total, loading, server) {
     let showPag = !loading || this._awaiting;
+    this._infoMemo.clear(); // a new sync: the formatter may answer differently now
     const count = total;
     if (server) {
       if (total === null) {
@@ -1049,7 +1058,18 @@ export class TdTable extends TdBaseElement {
     if (!this._formatPageInfo) return text;
     const ctx = { from: c.from, to: c.to, total: c.total, item: c.item, rows, totalRows: this._getTotalRows(), tree,
       page: c.page, perPage: c.perPage, text };
-    return hookText(this._formatPageInfo, ctx, (m) => this._warnOnce(m), 'td-table: formatPageInfo') ?? text;
+    // Codex impl r1: evaluated once per state per sync — the second bar gets the SAME string (a stateful / time-based
+    // formatter cannot make the two bars disagree)
+    const key = JSON.stringify([ctx.from, ctx.to, ctx.total, ctx.item, rows, ctx.totalRows, tree, ctx.page, ctx.perPage, text]);
+    if (this._infoMemo.has(key)) return this._infoMemo.get(key);
+    const warn = (m) => {
+      if (this._infoWarned) return;
+      this._infoWarned = true;
+      console.warn(m);
+    };
+    const out = hookText(this._formatPageInfo, ctx, warn, 'td-table: formatPageInfo') ?? text;
+    this._infoMemo.set(key, out);
+    return out;
   }
 
   /** @private All data rows: server → `total-rows` (integer ≥ 0) or null; client → the tree model size / `data`. */

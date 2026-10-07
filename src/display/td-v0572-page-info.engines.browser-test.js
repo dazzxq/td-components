@@ -211,6 +211,41 @@ describe('v0.57.2 td-table formatPageInfo', () => {
   }
 });
 
+describe('v0.57.2 formatPageInfo evaluated once per sync (Codex impl r1)', () => {
+  it('a stateful formatter (counter): both bars show the identical text after each sync', async () => {
+    let n = 0;
+    const el = await mk('tree row-key="id"', { setup: (t) => { t.formatPageInfo = (c) => `#${++n} · ${c.rows} dòng`; } });
+    const t0 = text(el); // asserts top === bottom
+    expect(t0.endsWith('· 3 dòng')).to.equal(true);
+    el.expand('ao');
+    await frames(1);
+    expect(text(el).endsWith('· 5 dòng')).to.equal(true);
+    el.expand('thun');
+    await frames(1);
+    expect(text(el).endsWith('· 6 dòng')).to.equal(true);
+    el.formatPageInfo = (c) => `@${++n} · ${c.rows}`;
+    await frames(1);
+    expect(text(el).startsWith('@')).to.equal(true);
+    el.data = CATS();
+    await frames(2);
+    text(el);
+  });
+
+  it('a formatter throwing a different error on each call → exactly one warning per table', async () => {
+    let n = 0;
+    const el = await mk('tree row-key="id"', { setup: (t) => { t.formatPageInfo = () => { throw new Error(`lỗi ${++n}`); }; } });
+    el.expand('ao');
+    await frames(1);
+    el.collapse('ao');
+    await frames(1);
+    el.formatPageInfo = () => { throw new Error(`khác ${++n}`); };
+    await frames(1);
+    expect(n).to.be.at.least(3);
+    expect(text(el)).to.equal('Hiển thị 1-3 / 3 nhóm · 3 dòng');
+    expect(warns.filter((w) => w.includes('formatPageInfo'))).to.have.length(1);
+  });
+});
+
 describe('v0.57.2 server mode', () => {
   const page = () => [{ id: 'R1', name: 'R1', children: [{ id: 'c1', name: 'c1' }, { id: 'c2', name: 'c2' }] }, { id: 'R2', name: 'R2' }];
 
