@@ -12,6 +12,8 @@
  *   `#rsp-diff-table` (view="table": scrolls inside its box on a narrow page).
  * v0.39.0: section `filters` — a filter bar (search + dropdown) → `#rsp-chips` (td-filter-chips) → `#rsp-table-filters`
  * (server-mode controlled, column-menu, the "Số điện thoại" column hidden).
+ * v0.55.0: section `affix` — td-input-field / td-number-input with prefix / suffix / icons / a page [slot] button, again in
+ *   the 280 px column (a very long prefix: ellipsis, the control keeps ≥ 4ch, the box never overflows the column).
  * v0.40.0: td-datetime-range (form grid + 280 px column via controls(); a 160 px datetime host; opener `#g-dtr`).
  * v0.45.0: section `steps-timeline` — td-steps (6 steps horizontal, vertical, clickable in a 280 px column) and
  * td-timeline (40 items, details open, fixed `now`; again in the 280 px column).
@@ -208,6 +210,16 @@ export function mountResponsiveFixture(root) {
     <td-choice-group id="rsp-choice-long" name="pkg" label="Gói bảo hành"></td-choice-group>
     <td-choice-group id="rsp-choice-swatch" name="color" label="Màu sắc" variant="swatch" value="den"></td-choice-group>
     <td-number-input id="rsp-stepper" name="qty" label="Số lượng" stepper min="1" max="5" value="1" clamp></td-number-input>
+  </section>
+  <section class="rsp-section" data-section="affix"><h2>Tiền tố / hậu tố (v0.55)</h2>
+    <td-input-field id="rsp-affix-site" name="site" label="Website" prefix="https://" suffix=".vn" value="congty"></td-input-field>
+    <td-input-field id="rsp-affix-pw" name="pw" type="password" label="Mật khẩu" prefix-icon="lock"><button type="button" slot="suffix" class="rsp-affix-btn" aria-label="Hiện mật khẩu">👁</button></td-input-field>
+    <td-number-input id="rsp-affix-num" name="amount" label="Amount" locale="en" decimals="2" prefix-icon="search" suffix="USD" suffix-icon="lock" value="32990000.5"></td-number-input>
+    <div class="rsp-narrow">
+      <td-input-field id="rsp-affix-long" name="url" label="Đường dẫn" prefix="https://www.mot-ten-mien-rat-dai-cua-cong-ty.example/" suffix="/index.html" value="san-pham"></td-input-field>
+      <td-input-field id="rsp-affix-pw-n" name="pw2" type="password" label="Mật khẩu" prefix-icon="lock" suffix="8+ ký tự"><button type="button" slot="suffix" class="rsp-affix-btn" aria-label="Hiện mật khẩu">👁</button></td-input-field>
+      <td-number-input id="rsp-affix-num-n" name="price-n" label="Giá bán" prefix-icon="search" suffix="₫" suffix-icon="lock" value="32990000"></td-number-input>
+    </div>
   </section>
   <section class="rsp-section" data-section="hints"><h2>Gợi ý (v0.54)</h2>
     <td-dropdown id="rsp-hint-dd" name="ship" label="Kho xuất hàng" helper-text="Phí vận chuyển được tính theo khu vực của kho xuất hàng — chọn kho gần người nhận nhất để giao nhanh hơn"></td-dropdown>

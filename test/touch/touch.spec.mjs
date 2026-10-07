@@ -10,7 +10,8 @@
  *     sideways scroll without sorting / switching. v0.47.0: td-check-matrix — a tap toggles one cell, a swipe on the grid
  *     scrolls its box without toggling, a tap on a locked cell shows its note, the pressed look of a cell.
  *     v0.49.0: a choice-group option selects on one tap (pressed while down, nothing stuck), a swipe starting on the
- *     options scrolls; five quick taps on the stepper + = +5, no zoom.
+ *     options scrolls; five quick taps on the stepper + = +5, no zoom. v0.55.0: affix boxes ≥ 44 px / text ≥ 16 px, a tap on
+ *     an affix focuses the control, a tap on a page [slot] button does not (it gets its click), number inputmode.
  * (b) Chromium CDP Input.dispatchTouchEvent — continuous swipes and two-finger pinches: lightbox swipe-follow
  *     (commit / spring / flick / RTL / one item rubber band / edge / zoomed / cancel / reduced motion / settle races),
  *     cropper pinch + touchcancel.
@@ -594,6 +595,39 @@ async function chromiumSemantics(browser) {
       expect(st.value === '6' && st.changes === 5, `taps: ${JSON.stringify(st)}`);
       expect(Math.abs(st.scale - 1) < 0.01, `zoomed: scale ${st.scale}`);
       expect(!st.focused, 'a tap on + focused the field (virtual keyboard)');
+    });
+
+    // v0.55.0 affix boxes (td-input-field + td-number-input)
+    await it(tag, 'affix: box ≥ 44 px + text ≥ 16 px; a tap on an affix focuses the control, a tap on a slot button does not; inputmode', async () => {
+      await load(page);
+      const m = await page.evaluate(() => {
+        const px = (el) => parseFloat(getComputedStyle(el).fontSize);
+        return ['#rsp-affix-site', '#rsp-affix-pw', '#rsp-affix-num'].map((id) => {
+          const el = document.querySelector(id);
+          const box = el.querySelector('.td-field__box, .td-number__box');
+          const ctl = box.querySelector('input');
+          const aff = box.querySelector(':scope > [class*="__affix--"]:not([class*="--slot"])');
+          return { id, h: box.getBoundingClientRect().height, ctl: px(ctl), aff: aff ? px(aff) : 16, mode: ctl.getAttribute('inputmode') };
+        });
+      });
+      for (const r of m) expect(r.h >= 44 - 0.5 && r.ctl >= 16 && r.aff >= 16, `affix box on touch: ${JSON.stringify(r)}`);
+      expect(m[2].mode === 'decimal', `number inputmode ${m[2].mode}`);
+      const pt = await centre(page, '#rsp-affix-site .td-field__affix--prefix');
+      await page.touchscreen.tap(pt.x, pt.y);
+      await page.waitForFunction(() => document.activeElement?.closest('#rsp-affix-site') != null, null, { timeout: 2000 }).catch(() => {});
+      const f1 = await page.evaluate(() => document.activeElement === document.querySelector('#rsp-affix-site .td-field__control'));
+      expect(f1, 'a tap on the prefix did not focus the control');
+      await page.evaluate(() => {
+        document.activeElement?.blur();
+        window.__slot = 0;
+        document.querySelector('#rsp-affix-pw .rsp-affix-btn').addEventListener('click', () => { window.__slot += 1; });
+      });
+      const b = await centre(page, '#rsp-affix-pw .rsp-affix-btn');
+      await page.touchscreen.tap(b.x, b.y);
+      await page.waitForFunction(() => window.__slot === 1, null, { timeout: 2000 }).catch(() => {});
+      const st = await page.evaluate(() => ({ clicks: window.__slot,
+        control: document.activeElement === document.querySelector('#rsp-affix-pw .td-field__control') }));
+      expect(st.clicks === 1 && !st.control, `slot button tap: ${JSON.stringify(st)}`);
     });
 
     // v0.52.0 segmented (size sm, icon-only) + locked switch

@@ -35,6 +35,9 @@
  *
  * v0.47.0: td-check-matrix (12 roles × 40 permissions, max-height 24rem): no page overflow (the grid scrolls inside its
  * box), cells / bulk cells / group buttons / column picker ≥ 44 coarse; < 720 the one-column mode (generic checks).
+ * v0.55.0: the `affix` section — td-input-field / td-number-input boxes with prefix / suffix / icons / a [slot] button (also in
+ *   the 280 px column): box inside the host, the control ≥ 4ch, no affix over the control, a long affix ends in an ellipsis;
+ *   the input of a .td-field__box is probed through its box (the box forwards the press).
  * v0.50.0: td-carousel + td-rating — the `carousel` section of the page (controls inside the section, no overlap, ratings
  *   on one line) and, on their own pages, the PHP markup of test/ssr/fixtures/carousel.html (3 / 8 / 12 / 13 pages,
  *   per-view attribute) BEFORE → AFTER the module loads (C21): CLS 0 (controls + host heights equal; Chromium:
@@ -634,6 +637,32 @@ async function runConfig(browser, c) {
       return errs;
     }));
     check(tag, 'segmented (v0.53.1 layout levels) + toned / locked switch (v0.52.0)', v052Err);
+    // v0.55.0: affix boxes — the box inside its host / column, the control keeps ≥ 4ch (≥ its min-width) between the affixes,
+    // affix / slot never overlap the control, a too long affix is cut with an ellipsis (not wrapped, not overflowing)
+    const v055Err = await page.evaluate(() => {
+      const errs = [];
+      const hit = (a, b) => a.left < b.right - 0.5 && b.left < a.right - 0.5;
+      for (const el of document.querySelectorAll('[data-section="affix"] :is(td-input-field, td-number-input)')) {
+        const box = el.querySelector('.td-field__box, .td-number__box');
+        const ctl = box.querySelector('.td-field__control, .td-number__control');
+        const host = el.getBoundingClientRect();
+        const b = box.getBoundingClientRect();
+        const c = ctl.getBoundingClientRect();
+        if (b.right > host.right + 0.5 || b.left < host.left - 0.5) errs.push(`#${el.id}: box outside the host`);
+        const minW = el.localName === 'td-input-field' ? parseFloat(getComputedStyle(ctl).minWidth) : 24;
+        if (c.width < minW - 0.5) errs.push(`#${el.id}: control ${c.width.toFixed(1)}px < ${minW}px`);
+        for (const a of box.querySelectorAll(':scope > [class*="__affix"]:not([hidden])')) {
+          const r = a.getBoundingClientRect();
+          if (hit(r, c)) errs.push(`#${el.id}: ${a.className} overlaps the control`);
+          if (r.right > b.right + 0.5 || r.left < b.left - 0.5) errs.push(`#${el.id}: ${a.className} outside the box`);
+          if (r.height > b.height + 0.5) errs.push(`#${el.id}: ${a.className} wraps (taller than the box)`);
+        }
+      }
+      const long = document.querySelector('#rsp-affix-long .td-field__affix--prefix');
+      if (long && !(long.scrollWidth > long.clientWidth && getComputedStyle(long).textOverflow === 'ellipsis')) errs.push('#rsp-affix-long: the long prefix is not cut with an ellipsis');
+      return errs;
+    });
+    check(tag, 'affix boxes (v0.55.0)', v055Err);
     if (errors.length) check(tag, 'page errors', errors);
 
     if (!c.fallback) await runOverlays(page, c, tag, shot);
