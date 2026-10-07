@@ -4231,8 +4231,11 @@
 			max-height: calc(100dvh - var(--td-lb-sheet-peek) - 1rem);
 		}
 
-		/* Bottom sheet, closed by default: only the grab handle peeks out. Swipe up / tap to open. */
+		/* Bottom sheet, closed by default: only the grab handle peeks out. Swipe up / tap to open.
+		   v0.53.2: above the phone rail (‹ counter ›, z-index 3) so the opened sheet covers it; closed, only the
+		   grabber peeks below the rail, so the rail stays reachable. Still under the toolbar (10). */
 		.td-lightbox__panel {
+			z-index: 4;
 			inset-block: auto 0;
 			inset-inline: 0;
 			width: auto;

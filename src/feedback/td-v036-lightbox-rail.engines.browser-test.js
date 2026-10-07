@@ -127,6 +127,33 @@ describe('v0.36.0 td-lightbox phone rail (< 480)', () => {
   });
 });
 
+describe('v0.53.2 td-lightbox phone: the open info sheet covers the rail', () => {
+  for (const [w, h] of [[360, 780], [390, 844]]) {
+    it(`${w}×${h}: sheet opened → the ‹ counter › rail is underneath it (the sheet is on top where they overlap)`, async () => {
+      await setViewport({ width: w, height: h });
+      await openReady(items(12), { panel: () => { const d = document.createElement('div'); d.textContent = 'Thông tin ảnh '.repeat(80); return d; } });
+      await until(() => overlay().getAttribute('data-nav') === 'rail');
+      $('.td-lightbox__grab').click();
+      await until(() => $('.td-lightbox__panel').getAttribute('data-sheet') === 'open');
+      await settle();
+      const panel = $('.td-lightbox__panel');
+      const r = rect($('.td-lightbox__rail'));
+      expect(overlaps(r, rect(panel)), 'the open sheet reaches the rail (test precondition)').to.equal(true);
+      for (const el of [$('[data-action="prev"]'), $('.td-lightbox__counter'), $('[data-action="next"]')]) {
+        const b = rect(el);
+        const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+        expect(panel.contains(hit), `${el.className || el.dataset.action}: hit ${hit && hit.className}`).to.equal(true);
+      }
+      // closing again: the rail is on top / reachable once the sheet is down
+      $('.td-lightbox__grab').click();
+      await until(() => $('.td-lightbox__panel').getAttribute('data-sheet') !== 'open');
+      await settle();
+      const nb = rect($('[data-action="next"]'));
+      expect($('[data-action="next"]').contains(document.elementFromPoint(nb.left + nb.width / 2, nb.top + nb.height / 2))).to.equal(true);
+    });
+  }
+});
+
 describe('v0.36.0 td-lightbox gestures', () => {
   it('LTR: a leftward swipe = next; RTL: a rightward swipe = next', async () => {
     await setViewport({ width: 390, height: 844 });
