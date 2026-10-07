@@ -12,6 +12,8 @@
  *     v0.49.0: a choice-group option selects on one tap (pressed while down, nothing stuck), a swipe starting on the
  *     options scrolls; five quick taps on the stepper + = +5, no zoom. v0.55.0: affix boxes ≥ 44 px / text ≥ 16 px, a tap on
  *     an affix focuses the control, a tap on a page [slot] button does not (it gets its click), number inputmode.
+ *     v0.58.0: floating fields ≥ 44 px / value ≥ 16 px, a tap on the resting and on the raised label focuses the control,
+ *     the raised label's hit box stays above the value line.
  * (b) Chromium CDP Input.dispatchTouchEvent — continuous swipes and two-finger pinches: lightbox swipe-follow
  *     (commit / spring / flick / RTL / one item rubber band / edge / zoomed / cancel / reduced motion / settle races),
  *     cropper pinch + touchcancel.
@@ -645,6 +647,43 @@ async function chromiumSemantics(browser) {
       const st = await page.evaluate(() => ({ clicks: window.__slot,
         control: document.activeElement === document.querySelector('#rsp-affix-pw .td-field__control') }));
       expect(st.clicks === 1 && !st.control, `slot button tap: ${JSON.stringify(st)}`);
+    });
+
+    // v0.58.0 floating labels (QĐ 6, 6b, 6c — Codex plan r1 #3, r2 #5)
+    await it(tag, 'floating: field ≥ 44 px + value ≥ 16 px; a tap on the resting / raised label focuses the control; a tap on the value text hits the control', async () => {
+      await load(page);
+      const m = await page.evaluate(() => ['#rsp-fl-empty', '#rsp-fl-value', '#rsp-fl-date', '#rsp-fl-prefix'].map((id) => {
+        const el = document.querySelector(id);
+        const ctl = el.querySelector('.td-field__control');
+        const field = el.querySelector('.td-field__box') || ctl;
+        const label = el.querySelector('.td-field > .td-field__label');
+        const cs = getComputedStyle(field);
+        const f = field.getBoundingClientRect();
+        return { id, h: f.height, fs: parseFloat(getComputedStyle(ctl).fontSize), labelBottom: label.getBoundingClientRect().bottom,
+          valueTop: f.top + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop), raised: getComputedStyle(label).transform !== 'none' };
+      }));
+      for (const r of m) {
+        expect(r.h >= 44 - 0.5 && r.fs >= 16, `floating field on touch: ${JSON.stringify(r)}`);
+        if (r.raised) expect(r.labelBottom <= r.valueTop - 0.5, `raised label over the value line on touch: ${JSON.stringify(r)}`);
+      }
+      for (const id of ['#rsp-fl-empty', '#rsp-fl-value']) {
+        await page.evaluate(() => document.activeElement?.blur());
+        await page.evaluate((s) => document.querySelector(s).scrollIntoView({ block: 'center' }), id);
+        const pt = await centre(page, `${id} .td-field > .td-field__label`);
+        await page.touchscreen.tap(pt.x, pt.y);
+        await page.waitForFunction((s) => document.activeElement === document.querySelector(`${s} .td-field__control`), id, { timeout: 2000 }).catch(() => {});
+        const ok = await page.evaluate((s) => document.activeElement === document.querySelector(`${s} .td-field__control`), id);
+        expect(ok, `${id}: a tap on the label did not focus the control`);
+      }
+      const hit = await page.evaluate(() => {
+        const el = document.querySelector('#rsp-fl-value');
+        const ctl = el.querySelector('.td-field__control');
+        const cs = getComputedStyle(ctl);
+        const r = ctl.getBoundingClientRect();
+        const y = r.top + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop) + 2;
+        return [0.2, 0.5, 0.8].every((fx) => document.elementFromPoint(r.left + r.width * fx, y) === ctl);
+      });
+      expect(hit, 'value-line points do not hit the control on touch');
     });
 
     // v0.52.0 segmented (size sm, icon-only) + locked switch

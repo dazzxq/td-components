@@ -107,3 +107,9 @@
 		min-block-size: 44px;
 	}
 }
+
+/* v0.58.0: large text (text tokens × 2) — the floating field grows with its value line, the value is never clipped */
+.rsp-big-text {
+	--td-text-sm: 1.75rem;
+	--td-text-base: 2rem;
+}

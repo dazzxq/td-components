@@ -38,6 +38,8 @@
  * v0.55.0: the `affix` section — td-input-field / td-number-input boxes with prefix / suffix / icons / a [slot] button (also in
  *   the 280 px column): box inside the host, the control ≥ 4ch, no affix over the control, a long affix ends in an ellipsis;
  *   the input of a .td-field__box is probed through its box (the box forwards the press).
+ * v0.58.0: the `floating` section — td-input-field label-mode="floating": the label inside its host on one line (ellipsis), the
+ *   raised label's hit box above the value line, value-line points hit the control; large text (`.rsp-big-text`) never clips.
  * v0.50.0: td-carousel + td-rating — the `carousel` section of the page (controls inside the section, no overlap, ratings
  *   on one line) and, on their own pages, the PHP markup of test/ssr/fixtures/carousel.html (3 / 8 / 12 / 13 pages,
  *   per-view attribute) BEFORE → AFTER the module loads (C21): CLS 0 (controls + host heights equal; Chromium:
@@ -727,6 +729,41 @@ async function runConfig(browser, c) {
       return errs;
     });
     check(tag, 'affix boxes (v0.55.0)', v055Err);
+    // v0.58.0: floating labels — the label inside its host, one line (ellipsis when too long), the raised label's hit box
+    // above the value line and value-line points hit the control (QĐ 6c); large text: the value is never clipped
+    const v058Err = await page.evaluate(() => {
+      const errs = [];
+      for (const el of document.querySelectorAll('[data-section="floating"] td-input-field')) {
+        el.scrollIntoView({ block: 'center' });
+        const root = el.querySelector('.td-field');
+        const label = root.querySelector(':scope > .td-field__label');
+        const ctl = root.querySelector('.td-field__control');
+        const field = root.querySelector(':scope > .td-field__box') || ctl;
+        const host = el.getBoundingClientRect();
+        const l = label.getBoundingClientRect();
+        const f = field.getBoundingClientRect();
+        if (l.left < host.left - 0.5 || l.right > host.right + 0.5) errs.push(`#${el.id}: label outside the host`);
+        if (label.scrollWidth > label.clientWidth + 1 && getComputedStyle(label).textOverflow !== 'ellipsis') errs.push(`#${el.id}: long label not cut`);
+        const lineH = parseFloat(getComputedStyle(label).lineHeight);
+        if (l.height > lineH * 1.05 + 1) errs.push(`#${el.id}: label wraps (${l.height.toFixed(1)} px)`);
+        if (ctl.localName === 'input' && ctl.scrollHeight > ctl.clientHeight + 1) errs.push(`#${el.id}: value clipped`);
+        if (el.closest('.rsp-big-text')) continue; // px geometry (dwp): large text grows the field, the label keeps its px offsets
+        if (getComputedStyle(label).transform === 'none') continue;
+        const cs = getComputedStyle(field);
+        const top = f.top + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop);
+        if (l.bottom > top - 0.5) errs.push(`#${el.id}: raised label ${l.bottom.toFixed(1)} over the value line ${top.toFixed(1)}`);
+        const c = ctl.getBoundingClientRect();
+        const y = top + 2;
+        if (y < innerHeight && y > 0) {
+          for (const fx of [0.2, 0.5, 0.8]) {
+            const hit = document.elementFromPoint(c.left + c.width * fx, y);
+            if (hit && hit !== ctl && !ctl.contains(hit) && hit.closest('td-input-field') === el) errs.push(`#${el.id}: value line hits ${hit.className}`);
+          }
+        }
+      }
+      return errs;
+    });
+    check(tag, 'floating labels (v0.58.0)', v058Err);
     if (errors.length) check(tag, 'page errors', errors);
 
     if (!c.fallback) await runOverlays(page, c, tag, shot);

@@ -148,6 +148,15 @@ export function renderedPairs() {
   add('field affix on the field fill (rest / focus)', '--td-color-text-muted', ['--td-control-bg'], 4.7, { gateLight: true });
   add('field affix on the read-only fill', '--td-color-text-muted', ['--td-color-surface-muted'], 4.7, { gateLight: true });
   add('field affix on the disabled fill', '--td-color-text-muted', ['--td-color-fill'], 2.2, { gateLight: true });
+  // v0.58.0 floating label of td-input-field (field.css: resting / raised = --td-field-float-label = --td-field-placeholder =
+  // --td-color-text-muted; focused = --td-field-float-label-focus = --td-accent; disabled = --td-field-fg-disabled =
+  // --td-color-text-muted) on every fill the field takes (rest / focus = --td-control-bg, read-only = --td-color-surface-muted,
+  // disabled = --td-color-fill light / --td-color-surface-muted dark) — text threshold (the raised label is 12 px text)
+  add('floating label on the field fill', '--td-color-text-muted', ['--td-control-bg'], 4.7, { gateLight: true });
+  add('floating label on the read-only fill', '--td-color-text-muted', ['--td-color-surface-muted'], 4.7, { gateLight: true });
+  add('floating label focused on the field fill', '--td-accent', ['--td-control-bg'], 4.7, { gateLight: true });
+  add('floating label focused on the read-only fill', '--td-accent', ['--td-color-surface-muted'], 4.7, { gateLight: true });
+  add('floating label on the disabled fill', '--td-color-text-muted', ['--td-color-fill'], 2.2, { gateLight: true });
   return P;
 }
 
