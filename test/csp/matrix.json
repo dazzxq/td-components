@@ -1990,6 +1990,61 @@
       "settle": 450,
       "pseudo": "focus",
       "focusSelector": ".td-dtp-wheel__list"
+    },
+    {
+      "state": "ssr-pre-date",
+      "module": "/src/icons/td-icon.js",
+      "markup": "<td-datetime-picker data-td-ssr=\"datetime-picker@1\" id=\"csp-dtp\" name=\"ngay\" mode=\"date\" value=\"15/06/2026\" label=\"Ngày giao\"><div class=\"td-dtp\" data-state=\"closed\"><label class=\"td-field__label\" id=\"csp-dtp-label\" for=\"csp-dtp-native\">Ngày giao</label><input class=\"td-dtp__native\" type=\"date\" id=\"csp-dtp-native\" name=\"ngay\" value=\"2026-06-15\" min=\"2000-01-01\" max=\"2099-12-31\"><button type=\"button\" class=\"td-dtp__trigger\" id=\"csp-dtp-trigger\" role=\"combobox\" aria-haspopup=\"dialog\" aria-expanded=\"false\"><span class=\"td-dtp__value\">15/06/2026</span><span class=\"td-dtp__icon\" data-td-icon=\"calendar\" aria-hidden=\"true\"></span></button></div></td-datetime-picker>",
+      "selectors": [
+        "td-datetime-picker:not(:defined) .td-dtp__native",
+        ".td-dtp__trigger",
+        ".td-field__label"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.56.0 (plan D7, ADR 0025 kind (a)): php td_date() BEFORE the element is defined (only the icon module): the native date input carries the closed trigger's box, the trigger is display none; text-sized boxes (label, the browser's date text inside the native input) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front"
+    },
+    {
+      "state": "ssr-pre-datetime-disabled",
+      "module": "/src/icons/td-icon.js",
+      "markup": "<td-datetime-picker data-td-ssr=\"datetime-picker@1\" id=\"csp-dtp-dt\" name=\"hen\" mode=\"datetime\" value=\"15/06/2026 - 09:30\" label=\"Giờ hẹn\" disabled><div class=\"td-dtp\" data-state=\"closed\"><label class=\"td-field__label\" id=\"csp-dtp-dt-label\" for=\"csp-dtp-dt-native\">Giờ hẹn</label><input class=\"td-dtp__native\" type=\"datetime-local\" id=\"csp-dtp-dt-native\" name=\"hen\" value=\"2026-06-15T09:30\" min=\"2000-01-01T00:00\" max=\"2099-12-31T23:59\" disabled><button type=\"button\" class=\"td-dtp__trigger\" id=\"csp-dtp-dt-trigger\" role=\"combobox\" aria-haspopup=\"dialog\" aria-expanded=\"false\" disabled><span class=\"td-dtp__value\">15/06/2026 - 09:30</span><span class=\"td-dtp__icon\" data-td-icon=\"calendar\" aria-hidden=\"true\"></span></button></div></td-datetime-picker>",
+      "selectors": [
+        "td-datetime-picker:not(:defined) .td-dtp__native:disabled",
+        ".td-dtp__trigger"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.56.0: php td_datetime_picker() disabled before define: the native datetime-local input = the disabled trigger surface; text-sized boxes (label, the browser's date text inside the native input) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front"
+    },
+    {
+      "state": "ssr-adopted",
+      "markup": "<td-datetime-picker data-td-ssr=\"datetime-picker@1\" id=\"csp-dtp\" name=\"ngay\" mode=\"date\" value=\"15/06/2026\" label=\"Ngày giao\"><div class=\"td-dtp\" data-state=\"closed\"><label class=\"td-field__label\" id=\"csp-dtp-label\" for=\"csp-dtp-native\">Ngày giao</label><input class=\"td-dtp__native\" type=\"date\" id=\"csp-dtp-native\" name=\"ngay\" value=\"2026-06-15\" min=\"2000-01-01\" max=\"2099-12-31\"><button type=\"button\" class=\"td-dtp__trigger\" id=\"csp-dtp-trigger\" role=\"combobox\" aria-haspopup=\"dialog\" aria-expanded=\"false\"><span class=\"td-dtp__value\">15/06/2026</span><span class=\"td-dtp__icon\" data-td-icon=\"calendar\" aria-hidden=\"true\"></span></button></div></td-datetime-picker>",
+      "selectors": [
+        ".td-dtp__trigger",
+        ".td-dtp__value",
+        ".td-field__label"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.56.0: the same php markup adopted in place under the strict CSP (native input removed, trigger shown); text-sized boxes (label, the browser's date text inside the native input) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front"
     }
   ],
   "td-tooltip": [

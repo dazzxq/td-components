@@ -1,4 +1,5 @@
-import { TdFormElement } from '../base/td-form-element.js';
+import { TdFormElement, ssrContentNodes, ssrSameAttrs, ssrSamePart, ssrIsErrorNote } from '../base/td-form-element.js';
+import { ssrMarker } from '../base/td-base-element.js';
 import { ValueTitleWatcher, displayedValueText } from '../utils/value-title.js';
 import { TdModal } from '../feedback/td-modal.js';
 import { fillIconSlots } from '../icons/td-icon.js';
@@ -6,12 +7,14 @@ import { DatetimeEditor } from './datetime-panel.js';
 import {
   parseBound, invalidReason, normalizeMinuteStep, snapMinuteDown, partsFromDate, compareParts,
   normalizeMode, toModeParts, parseModeValue, parseModeDb, formatModeDisplay, formatModeDb, formatModeIso,
-  compareModeParts, MODE_PARTS,
+  compareModeParts, MODE_PARTS, toNativeValue, fromNativeValue,
 } from '../utils/datetime.js';
 
 const DEFAULT_MIN_YEAR = 2000; // dcms parity (D5): the range used when `min` / `max` are not set
 const DEFAULT_MAX_YEAR = 2099;
 const MODE_SUFFIX = { datetime: '', date: 'Date', month: 'Month', year: 'Year' };
+/** Every form-associated element (v0.56.0 SSR gate: exactly the native input + the trigger). */
+const FORM_ASSOCIATED = 'input, textarea, select, button, fieldset, output, object';
 
 const fill = (template, vars) => String(template).replace(/\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : ''));
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
@@ -61,6 +64,13 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
  * A malformed or impossible value (e.g. 31/02, 25:99, a year
  * outside the default 2000–2099) sets `badInput` and submits the raw string; `min` / `max` set `rangeUnderflow` /
  * `rangeOverflow`; `required` + empty → `valueMissing`. Error contract: `error-text`, `setError()`, `clearError()`.
+ *
+ * **SSR (v0.56.0, contract `datetime-picker@1`, plan v0.56.0-repeater-icons-date D4–D7):** php td_datetime_picker() /
+ * td_date() print the host + `div.td-dtp` > [label for={id}-native] + `input.td-dtp__native` (type date | datetime-local:
+ * the no-JS field, styled like the trigger before define) + the trigger. The element adopts EXACTLY that markup in place
+ * (its own gate — the shared TdFormElement one allows a single control): state = early property > the LIVE native value
+ * > attribute, the host's FormData first, then the native input loses its form attributes and goes, its focus moves to
+ * the trigger, the label points at the trigger. Anything else → safe render + the live value of the one native candidate.
  *
  * Ported from DCMS DateTimePicker.
  *
@@ -450,8 +460,10 @@ export class TdDatetimePicker extends TdFormElement {
 
   _captureDefaults() {
     super._captureDefaults();
-    /** @private null = no initial `value` attr; a string = explicit. */
-    this._defaultValueAttr = this.getAttribute('value');
+    const d = this._ssrDefault;
+    this._ssrDefault = null;
+    /** @private null = no initial `value` attr; a string = explicit (v0.56.0: the SERVER value of SSR markup). */
+    this._defaultValueAttr = d ? d.value : this.getAttribute('value');
     /** @private the mode the default value was written for (reset converts it if `mode` changed since — review v0.18.0) */
     this._defaultMode = this._mode();
   }
@@ -472,6 +484,184 @@ export class TdDatetimePicker extends TdFormElement {
 
   _focusTarget() {
     return this._trigger();
+  }
+
+  // --- SSR (contract datetime-picker@1, v0.56.0 D5) ---
+
+  /**
+   * Marker `datetime-picker@1` + EXACTLY the skeleton php td_datetime_picker() prints → adopt in place; anything else →
+   * safe render now + the live native value (only from exactly one native candidate) + the focus on the trigger.
+   * @returns {boolean}
+   */
+  canHydrate() {
+    const m = ssrMarker(this);
+    if (!m || m.name !== 'datetime-picker') return false;
+    this.removeAttribute('data-td-ssr'); // consumed (not `hydratable`: a re-connect renders again)
+    this._ssrDefault = { value: this.getAttribute('value') };
+    const gate = m.schema === 1 ? this._ssrGate() : null;
+    if (gate) {
+      this._ssrAdopt = gate;
+      return true;
+    }
+    const mode = this._mode();
+    let live;
+    const c = this.querySelectorAll('input');
+    if (!(this._earlyProps && this._earlyProps.has('value')) && c.length === 1 && (mode === 'date' || mode === 'datetime')) {
+      const v = c[0].value;
+      if (v === '') live = '';
+      else {
+        const p = fromNativeValue(v, mode);
+        if (p) live = formatModeDisplay(p, mode);
+      }
+    }
+    const active = this.ownerDocument.activeElement;
+    this._ssrRestore = { live, refocus: !!active && active !== this && this.contains(active) };
+    this._ssrFreshRender = true;
+    return false;
+  }
+
+  hydrateExisting() {
+    const g = this._ssrAdopt;
+    this._ssrAdopt = null;
+    if (!g) return;
+    const mode = this._mode();
+    const server = fromNativeValue(g.input.getAttribute('value'), mode);
+    this._ssrDefault = { value: server ? formatModeDisplay(server, mode) : null }; // form reset → the server value
+    const hadFocus = this.ownerDocument.activeElement === g.input;
+    // (1) state: early property > the LIVE native value (dirty, typed before define) > attribute
+    if (!(this._earlyProps && this._earlyProps.has('value'))) {
+      const v = g.input.value;
+      if (v === '') this.removeAttribute('value');
+      else {
+        const p = fromNativeValue(v, mode);
+        if (p) this.setAttribute('value', formatModeDisplay(p, mode)); // out of the year domain → badInput, kept as typed
+      }
+    }
+    if (g.label) g.label.setAttribute('for', `${this.id}-trigger`);
+    this._errorNote = g.note;
+    // (2) the host's FormData FIRST…
+    this._updateValueText();
+    this._syncForm();
+    // (3) …then the no-JS input loses every form attribute and goes (FormData holds ONE entry)
+    for (const a of ['name', 'value', 'required', 'min', 'max', 'step']) g.input.removeAttribute(a);
+    g.input.remove();
+    // (4) the native input had the focus → the trigger
+    if (hadFocus) g.trigger.focus({ preventScroll: true });
+  }
+
+  /** @protected refused markup was replaced: the live native value (when unambiguous) + the focus */
+  _restoreSsrState(s) {
+    if (s.live !== undefined) {
+      if (s.live === '') this.removeAttribute('value');
+      else this.setAttribute('value', s.live);
+      this._updateValueText();
+      this._syncForm();
+    }
+    if (s.refocus) this._trigger()?.focus({ preventScroll: true });
+  }
+
+  /**
+   * @private The strict gate. Returns the parts to adopt, or null.
+   * @returns {{ input: HTMLInputElement, trigger: HTMLElement, label: HTMLElement|null, note: HTMLElement|null }|null}
+   */
+  _ssrGate() {
+    const mode = this._mode();
+    if (mode !== 'date' && mode !== 'datetime') return null;
+    const nodes = this._ssrWithoutHelperNote(ssrContentNodes(this)); // v0.54.0: minus the PHP helper note
+    if (!nodes || !nodes.length || nodes.some((n) => n.nodeType !== 1) || nodes.length > 2) return null;
+    const [box, note = null] = nodes;
+    const msg = this.errorMessage;
+    if (note) {
+      if (!msg || !ssrIsErrorNote(note) || note.id !== `${this.id}-error` || note.getAttribute('data-for') !== this.id
+        || note.textContent !== msg) return null;
+    } else if (msg) return null;
+    const tpl = document.createElement('template');
+    tpl.innerHTML = this.render();
+    const wantBox = tpl.content.firstElementChild;
+    if (!wantBox || box.localName !== 'div' || box.namespaceURI !== wantBox.namespaceURI || !ssrSameAttrs(box, wantBox)) return null;
+    const have = ssrContentNodes(box);
+    const want = [...wantBox.children];
+    if (have.some((n) => n.nodeType !== 1) || have.length !== want.length + 1) return null;
+    const required = this.hasAttribute('required');
+    let label = null;
+    if (want.length === 2) {
+      // php points the label at the native input (no JS) and prints the required star (JS adds it after render)
+      const wl = want[0];
+      wl.setAttribute('for', `${this.id}-native`);
+      if (required) {
+        const star = document.createElement('span');
+        star.className = 'td-field__required';
+        star.setAttribute('aria-hidden', 'true');
+        star.textContent = ' *';
+        wl.appendChild(star);
+      }
+      if (!ssrSamePart(have[0], wl)) return null;
+      label = /** @type {HTMLElement} */ (have[0]);
+    }
+    const input = /** @type {HTMLInputElement} */ (have[have.length - 2]);
+    const trigger = /** @type {HTMLElement} */ (have[have.length - 1]);
+    const wt = want[want.length - 1];
+    if (required) wt.setAttribute('aria-required', 'true');
+    if (!this._ssrTriggerOk(trigger, wt) || !this._ssrNativeOk(input, mode)) return null;
+    const controls = [...this.querySelectorAll(FORM_ASSOCIATED)];
+    if (controls.length !== 2 || controls[0] !== input || controls[1] !== trigger) return null;
+    return { input, trigger, label, note: /** @type {HTMLElement|null} */ (note) };
+  }
+
+  /** @private the trigger = render()'s attributes (+ aria-required); value span (class + data-placeholder, text only) + the empty icon slot */
+  _ssrTriggerOk(live, want) {
+    if (live.localName !== 'button' || !ssrSameAttrs(live, want)) return false;
+    const kids = ssrContentNodes(live);
+    if (kids.length !== 2 || kids.some((n) => n.nodeType !== 1)) return false;
+    const [value, icon] = kids;
+    if (value.localName !== 'span' || value.className !== 'td-dtp__value' || value.children.length
+      || ![...value.attributes].every((a) => a.name === 'class' || (a.name === 'data-placeholder' && a.value === ''))) return false;
+    // the icon slot must be EMPTY (ssrSamePart would skip its content; fillIconSlots draws it after adoption)
+    return ssrSameAttrs(icon, want.children[1]) && icon.localName === 'span' && ssrContentNodes(icon).length === 0;
+  }
+
+  /** @private the no-JS input = php's exactly (its `value` may be any valid native value of the mode) */
+  _ssrNativeOk(live, mode) {
+    const want = this._nativeTemplate(mode);
+    if (live.localName !== 'input' || live.namespaceURI !== want.namespaceURI || live.childNodes.length) return false;
+    const attrs = [...live.attributes].filter((a) => a.name !== 'value');
+    if (attrs.length !== want.attributes.length) return false;
+    if (!attrs.every((a) => want.hasAttribute(a.name) && (a.name === 'class'
+      ? [...live.classList].sort().join(' ') === [...want.classList].sort().join(' ') : a.value === want.getAttribute(a.name)))) return false;
+    const v = live.getAttribute('value');
+    return v == null || v === '' || !!fromNativeValue(v, mode);
+  }
+
+  /**
+   * @private the expected no-JS input (php td_datetime_picker), without `value`. Without min / max it carries the
+   * picker's default year domain (2000–2099) — on the native input only (D3b).
+   */
+  _nativeTemplate(mode) {
+    const id = this.id;
+    const input = document.createElement('input');
+    input.className = 'td-dtp__native';
+    input.setAttribute('type', mode === 'datetime' ? 'datetime-local' : 'date');
+    input.setAttribute('id', `${id}-native`);
+    const name = this.getAttribute('name');
+    if (name) input.setAttribute('name', name);
+    const { min, max } = this._bounds();
+    if (!min && !max) {
+      input.setAttribute('min', mode === 'datetime' ? `${DEFAULT_MIN_YEAR}-01-01T00:00` : `${DEFAULT_MIN_YEAR}-01-01`);
+      input.setAttribute('max', mode === 'datetime' ? `${DEFAULT_MAX_YEAR}-12-31T23:59` : `${DEFAULT_MAX_YEAR}-12-31`);
+    } else {
+      if (min) input.setAttribute('min', toNativeValue(min, mode));
+      if (max) input.setAttribute('max', toNativeValue(max, mode));
+    }
+    if (mode === 'datetime' && this.getAttribute('minute-step') != null) input.setAttribute('step', String(this._minuteStep() * 60));
+    if (this.hasAttribute('required')) input.setAttribute('required', '');
+    if (this.hasAttribute('disabled')) input.setAttribute('disabled', '');
+    const aria = this.getAttribute('aria-label');
+    if (!this.getAttribute('label') && aria) input.setAttribute('aria-label', aria);
+    if (this.errorMessage) {
+      input.setAttribute('aria-invalid', 'true');
+      input.setAttribute('aria-describedby', `${id}-error`);
+    } else if (this.helperMessage) input.setAttribute('aria-describedby', `${id}-note`);
+    return input;
   }
 
   /** @private */

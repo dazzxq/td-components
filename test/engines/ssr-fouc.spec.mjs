@@ -26,6 +26,8 @@
  *             until blur, then the trigger in the same box.
  *   bare      a bare <select> put into an already defined <td-dropdown> / <td-tree-select> looks like v0.51.0 (the
  *             pre-upgrade rules never match a defined host).
+ *   v0.56.0   dtp-* (td_datetime_picker / td_date): the native input styled like the trigger (kind (a), unconditional) —
+ *             parity in every run, ≥ 16 px on touch, focus ring / disabled surface = the trigger's, no-JS submit.
  *   nojs      javaScriptEnabled false (scripting: none): multiple lists keep their rows, datetime keeps the two-row
  *             native block, no reserved strips (scan / check-matrix / copy), Tab focus ring, a real form submit and
  *             `required` blocking it.
@@ -58,7 +60,9 @@ for (const line of FIXTURE.split('\n')) {
 const ALL = [...CASES.keys()];
 const AFFECTED = ALL.filter((id) => !CASES.get(id).kind.startsWith('guard'));
 const SELECTS = ['dd-n', 'dd-n-ph', 'dd-n-nolabel', 'dd-n-req', 'dd-n-dis', 'dd-n-search', 'dd-n-long', 'dd-e', 'dd-e-ph', 'dd-e-dis', 'ts-n', 'ts-e'];
-const FIELDS = [...SELECTS, 'ts-n-multi', 'ts-e-multi', 'dtr-date', 'dtr-dis', 'dtr-empty'];
+// v0.56.0: td_datetime_picker / td_date (the native input styled like the trigger, ADR 0025 kind (a))
+const DTP = ['dtp-date', 'dtp-datetime', 'dtp-dis', 'dtp-empty', 'dtp-help', 'dtp-err', 'dtp-narrow'];
+const FIELDS = [...SELECTS, 'ts-n-multi', 'ts-e-multi', 'dtr-date', 'dtr-dis', 'dtr-empty', ...DTP];
 
 const failures = [];
 const notes = [];
@@ -137,6 +141,7 @@ const CONTROL = {
   'td-tree-select': ':scope > .td-tree-select__native, .td-tree-select__control',
   'td-chip-input': ':scope > .td-chip-input__native, .td-chip-input__box',
   'td-datetime-range': '.td-dtr__trigger, .td-dtr__natives',
+  'td-datetime-picker': '.td-dtp__trigger, .td-dtp__native',
   'td-scan-input': '.td-scan__box',
   'td-check-matrix': '.td-check-matrix__scroll',
 };
@@ -161,11 +166,13 @@ function measureAll(control) {
     }
     const label = [...host.querySelectorAll('.td-field__label, .td-dtr__label, .td-scan__label')]
       .find((el) => el.getBoundingClientRect().height > 0);
+    const dtp = host.querySelector('.td-dtp__native');
     const chev = host.querySelector(':scope > select, :scope > .td-tree-select__native');
     const cs = chev ? getComputedStyle(chev) : null;
     out[s.dataset.case] = {
       box: s.getBoundingClientRect().height, host: rel(host), ctl: rel(ctl), ctlTag: ctl ? `${ctl.localName}.${ctl.classList[0] || ''}` : null,
       label: rel(label), chips: host.querySelectorAll('.td-chip-input__chip').length,
+      dtpFont: dtp ? parseFloat(getComputedStyle(dtp).fontSize) : null,
       select: cs ? { appearance: cs.appearance || cs.webkitAppearance, bg: cs.backgroundImage, fontSize: parseFloat(cs.fontSize), posX: cs.backgroundPositionX } : null,
     };
   }
@@ -272,6 +279,9 @@ async function runMain(browser, engine, width, { theme = '', forced = false, tou
       for (const id of ids.filter((i) => SELECTS.includes(i))) {
         check(`${run} ${id}: pre-upgrade select ≥ 16px on touch (Q1, ADR 0019)`, before[id].select?.fontSize >= 16, String(before[id].select?.fontSize));
       }
+      for (const id of ids.filter((i) => DTP.includes(i))) {
+        check(`${run} ${id}: pre-upgrade native date input ≥ 16px on touch (v0.56.0 D7)`, before[id].dtpFont >= 16, String(before[id].dtpFont));
+      }
     }
     if (dir === 'rtl') {
       for (const id of ids.filter((i) => SELECTS.includes(i))) {
@@ -294,7 +304,7 @@ async function runMain(browser, engine, width, { theme = '', forced = false, tou
 /** datetime-range box focus / disabled (pre-upgrade, no module). */
 async function runFocus(browser, engine, { forced = false } = {}) {
   const run = `${engine} focus${forced ? ' forced' : ''}`;
-  const { page, context } = await openPage(browser, pageHtml(['dtr-date', 'dtr-dis', 'dd-n']), {
+  const { page, context } = await openPage(browser, pageHtml(['dtr-date', 'dtr-dis', 'dd-n', 'dtp-date', 'dtp-dis']), {
     viewport: { width: 1280, height: 900 }, ...(forced ? { forcedColors: 'active' } : {}),
   });
   try {
@@ -331,6 +341,29 @@ async function runFocus(browser, engine, { forced = false } = {}) {
     await page.focus('#dtr-dis-start', { timeout: 2000 }).catch(() => {});
     const active = await page.evaluate(() => document.activeElement?.id || '');
     check(`${run}: disabled natives not focusable`, active !== 'dtr-dis-start', active);
+    // v0.56.0: td_date native input — focus ring = the trigger's; disabled = the disabled trigger surface
+    await page.evaluate(() => document.activeElement?.blur());
+    await page.keyboard.press('Tab'); // keyboard focus → :focus-visible in every engine
+    await page.focus('#dtp-date-native');
+    const d = await page.evaluate(() => {
+      const cs = getComputedStyle(document.querySelector('#dtp-date-native'));
+      const probe = document.createElement('i');
+      probe.className = 'td-dtp__trigger';
+      document.body.append(probe);
+      probe.style.setProperty('border-color', 'var(--td-field-focus)');
+      probe.style.setProperty('box-shadow', 'var(--td-field-focus-ring)');
+      const want = { border: getComputedStyle(probe).borderTopColor, shadow: getComputedStyle(probe).boxShadow };
+      probe.remove();
+      const dis = getComputedStyle(document.querySelector('#dtp-dis-native'));
+      const tdis = getComputedStyle(document.querySelector('#dtp-dis .td-dtp__trigger'));
+      return { focusVisible: document.querySelector('#dtp-date-native').matches(':focus-visible'), border: cs.borderTopColor, shadow: cs.boxShadow,
+        outlineStyle: cs.outlineStyle, outlineWidth: cs.outlineWidth, want, dbg: dis.backgroundColor, dcolor: dis.color, tbg: tdis.backgroundColor, tcolor: tdis.color };
+    });
+    if (d.focusVisible) {
+      if (forced) check(`${run}: dtp native :focus-visible → 2px solid outline`, d.outlineStyle === 'solid' && d.outlineWidth === '2px', JSON.stringify(d));
+      else check(`${run}: dtp native :focus-visible ring = trigger focus ring`, d.border === d.want.border && d.shadow === d.want.shadow && d.shadow !== 'none', JSON.stringify(d));
+    } else notes.push(`${run}: dtp native not :focus-visible after a scripted focus (engine heuristic) — ring not compared`);
+    check(`${run}: dtp disabled native = disabled trigger surface`, d.dbg === d.tbg && d.dcolor === d.tcolor, JSON.stringify(d));
   } finally {
     await context.close();
   }
@@ -401,7 +434,7 @@ async function runBare(browser, engine) {
 /** No JS (scripting: none): the v0.51.0 native fallbacks stay usable; no reserved strips. */
 async function runNoJs(browser, engine) {
   const run = `${engine} nojs`;
-  const ids = ['dd-n', 'dd-n-req', 'ts-n-multi', 'ci-2', 'dtr-date', 'scan-narrow', 'cm-narrow', 'copy-md'];
+  const ids = ['dd-n', 'dd-n-req', 'ts-n-multi', 'ci-2', 'dtr-date', 'scan-narrow', 'cm-narrow', 'copy-md', 'dtp-date'];
   const { page, context, posts } = await openPage(browser, pageHtml(ids, { form: true }), { viewport: { width: 390, height: 900 }, javaScriptEnabled: false });
   try {
     const r = await page.evaluate(() => {
@@ -440,6 +473,7 @@ async function runNoJs(browser, engine) {
     await Promise.all([page.waitForURL(`${ORIGIN}/__submit`).catch(() => {}), page.click('#submit')]);
     const body = posts[0] || '';
     check(`${run}: submit carries the native values`, /(^|&)city=dn(&|$)/.test(body) && /(^|&)req=b(&|$)/.test(body), body.slice(0, 200));
+    check(`${run}: td_date native input submits yyyy-mm-dd (v0.56.0)`, /(^|&)ngay=2026-06-15(&|$)/.test(body), body.slice(0, 300));
   } finally {
     await context.close();
   }

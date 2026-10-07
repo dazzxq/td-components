@@ -7650,6 +7650,52 @@
 		font-family: var(--td-font-sans); /* the error-contract note sits outside .td-dtp */
 	}
 
+	/*
+	 * v0.56.0 pre-upgrade parity (ADR 0025 kind (a), plan v0.56.0-repeater-icons-date D7): php td_datetime_picker() /
+	 * td_date() print a native date / datetime-local input (the no-JS field) next to the trigger. Until the element is
+	 * defined (and forever without JS) the native input IS the field — the same box as the closed trigger (height,
+	 * border, radius, padding, font), the browser's own date text and calendar icon inside (accepted, like the range) —
+	 * and the trigger is hidden. The element removes the input when it adopts the markup, so no rule ever matches a
+	 * defined host.
+	 */
+	td-datetime-picker:not(:defined) .td-dtp__trigger {
+		display: none;
+	}
+
+	td-datetime-picker:not(:defined) .td-dtp__native {
+		box-sizing: border-box;
+		display: block;
+		width: 100%;
+		min-width: 0;
+		height: var(--td-field-h-md);
+		padding: 8px 14px;
+		margin: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: var(--td-field-fg);
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+	}
+
+	td-datetime-picker:not(:defined) .td-dtp__native:focus-visible {
+		border-color: var(--td-field-focus);
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	td-datetime-picker:not(:defined) .td-dtp__native:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	td-datetime-picker:not(:defined) .td-dtp__native[aria-invalid="true"] {
+		border-color: var(--td-field-error);
+	}
+
 	/* ---- Host: trigger ---- */
 	.td-dtp {
 		box-sizing: border-box;
@@ -7950,9 +7996,15 @@
 	}
 
 	@media (pointer: coarse) {
-		.td-dtp__trigger {
+		.td-dtp__trigger,
+		td-datetime-picker:not(:defined) .td-dtp__native {
 			height: auto;
 			min-height: var(--td-touch-min);
+		}
+
+		/* v0.56.0: the pre-upgrade native input ≥ 16px (iOS does not zoom on focus); 16 → 14 on upgrade, same box (ADR 0025 §5) */
+		td-datetime-picker:not(:defined) .td-dtp__native {
+			font-size: max(1rem, 1em);
 		}
 
 		.td-dtp-panel__input {
@@ -7996,8 +8048,18 @@
 
 	@media (forced-colors: active) {
 		.td-dtp__trigger,
-		.td-dtp-panel__input {
+		.td-dtp-panel__input,
+		td-datetime-picker:not(:defined) .td-dtp__native {
 			border-color: CanvasText;
+		}
+
+		td-datetime-picker:not(:defined) .td-dtp__native:focus-visible {
+			outline: 2px solid Highlight;
+		}
+
+		td-datetime-picker:not(:defined) .td-dtp__native:disabled {
+			color: GrayText;
+			border-color: GrayText;
 		}
 
 		.td-dtp__trigger:focus-visible,
