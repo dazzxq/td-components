@@ -36,6 +36,8 @@ const CASES = [
       data: [{ id: '1', a: 'x1', b: 'y1' }, { id: '2', a: 'x2', b: 'y2' }],
       onSort: fn(), onPageChange: fn(), onRowAction: fn(), hiddenColumns: ['b'], rowKey: 'id', rowSelectable: fn(),
       onSelectChange: fn(), selectedKeys: ['2'], layout: 'cards', cardBelow: 'lg', cellPaddingClass: 'px-2', zebra: false,
+      // v0.57.0 tree table
+      expandedKeys: ['1'], loadChildren: fn(), rowHasChildren: fn(), canDrop: fn(),
     }),
     check(el) {
       const text = el.textContent;
