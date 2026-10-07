@@ -175,7 +175,15 @@ async function runEngine(name, launcher) {
     await page.click('#a0');
     await page.keyboard.type('Z');
     await page.keyboard.press('Backspace');
-    await page.evaluate(() => { document.querySelector('td-repeater').disabled = true; });
+    // the edit was undone (Z, Backspace): the tracker may already have computed "clean" and disarmed beforeunload in its
+    // per-frame batch (Linux Firefox CI) — a change made by CODE re-arms only through check() (form-dirty contract), so
+    // assert the fresh state first, then check() like an app does after locking
+    const dirtyNow = await page.evaluate(() => {
+      document.querySelector('td-repeater').disabled = true;
+      return window.tracker.isDirty();
+    });
+    check(`${name} repeater disabled after a user edit: isDirty() (fields left FormData)`, dirtyNow === true, String(dirtyNow));
+    await page.evaluate(() => window.tracker.check());
     r = await leave(page, { dismiss: true });
     soft(`${name} repeater disabled after a user edit: dialog (fields left FormData)`, r.seen.includes('beforeunload') && !r.left, JSON.stringify(r));
     await context.close();

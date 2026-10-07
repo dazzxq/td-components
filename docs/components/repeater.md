@@ -278,7 +278,8 @@ Tham số cuối là bộ đọc / ghi mặc định (gọi để giữ phần c
   chưa tới): bọc `<fieldset disabled>`, hoặc in `readonly` / `disabled` trên chính field (của app — kit không gỡ).
 - **Form dirty (v0.44):** gán `value` / `disabled` / `readonly` từ code không làm form bẩn khi người dùng chưa sửa gì. Đã sửa
   rồi mới bật `disabled` → field rời FormData → form **bẩn** (giống `<fieldset disabled>` native). Khoá trong lúc lưu: dùng
-  `readonly` (FormData không đổi), hoặc gọi `markClean()` sau khi lưu xong.
+  `readonly` (FormData không đổi), hoặc gọi `markClean()` sau khi lưu xong. `isDirty()` luôn tính lại; cảnh báo rời trang
+  (`beforeunload`) đã gỡ vì form sạch chỉ bật lại qua sự kiện người dùng — đổi bằng code thì gọi `tracker.check()` sau đó.
 
 ## Responsive (0.34.0)
 
