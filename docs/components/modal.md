@@ -334,8 +334,8 @@ window.addEventListener('beforeunload', (e) => {
 | `onClose` | `(value) => void` | `null` | Gọi **đúng một lần** cho mọi đường đóng (X, action, `close`/`closeById`/`closeAll`, Escape khi `escapeCloses`), **sau khi** focus đã được trả về. `value` = `value` của action đã bấm, còn lại là `undefined`. Lỗi bị bắt và `console.error`. |
 | `onShow` | `(root, payload) => void` | — | Gọi một lần sau khi modal ở trạng thái `open` (khung hình thứ hai). Không gọi nếu modal đã bị đóng trước đó. Lỗi bị bắt và `console.warn`, modal vẫn mở bình thường. `root` là phần tử `.td-modal`. |
 | `onShowPayload` | `any` | — | Tham số thứ hai của `onShow`. |
-| `autoFocus` | `boolean` | `true` | `false` → focus vào chính dialog thay vì field đầu tiên (tránh bàn phím ảo bật lên trên điện thoại). |
-| `focusTarget` | `HTMLElement` | `null` | Phần tử nhận focus ban đầu. Chỉ được dùng khi nó đã gắn vào DOM **và** nằm trong dialog (vì vậy thường là phần tử bạn truyền trong `body`). |
+| `autoFocus` | `boolean` | `true` | `false` → focus vào chính dialog thay vì field đầu tiên / phần tử `autofocus` (tránh bàn phím ảo bật lên trên điện thoại). |
+| `focusTarget` | `HTMLElement` | `null` | Phần tử nhận focus ban đầu. Chỉ được dùng khi nó đã gắn vào DOM **và** nằm trong dialog (vì vậy thường là phần tử bạn truyền trong `body`). Thắng `autofocus`. |
 | `bodyPadding` | `string` | — | Padding của body (giá trị CSS `padding` hợp lệ, ví dụ `'0'`, `'2rem 1rem'`). Dùng chuỗi có đơn vị: số trần như `16` bị từ chối (chỉ `0` hợp lệ). |
 | `bodyOverflow` | `string` | — | `visible` \| `hidden` \| `auto` \| `scroll` \| `clip`. Giá trị khác → bỏ qua + `console.warn`. |
 | `themeRoot` | `Element` | — | 0.42.0: hiển thị theo theme của vùng `[data-td-theme]` chứa phần tử này ([theming › Theme theo vùng](../customization/theming.md#popup-mở-từ-trong-vùng), ADR 0020). Không truyền → theme của trang. |
@@ -548,9 +548,11 @@ trong `<template>` rồi truyền `template.content.cloneNode(true)` làm `body`
 
 ## Bàn phím & trợ năng
 
-- **Mở:** focus vào dialog ngay lập tức, rồi (sau khi bố trí xong) chuyển tới: `focusTarget` → field đầu tiên trong
-  body (`input`, `textarea`, `select` không disabled) → phần tử focus được đầu tiên không phải nút X → nút X → chính
-  dialog. `autoFocus: false` → chính dialog. `confirm` → nút Hủy.
+- **Mở:** focus vào dialog ngay lập tức, rồi (sau khi bố trí xong) chuyển tới: `focusTarget` → phần tử `autofocus`
+  đầu tiên dùng được trong body / footer (0.57.1 — đã gắn DOM, focus được, không disabled, không ẩn; host như
+  `<td-input-field autofocus>` chuyển focus vào ô nhập của nó) → field đầu tiên trong body (`input`, `textarea`,
+  `select` không disabled) → phần tử focus được đầu tiên không phải nút X → nút X → chính dialog. `autoFocus: false` →
+  chính dialog. `confirm` → nút Hủy.
 - **Tab / Shift+Tab:** bị giữ trong dialog (focus bị kéo lại nếu lọt ra ngoài). Nút đóng của [toast](toast.md) đang hiện
   cũng nằm trong vòng Tab, để toast không bị "kẹt" sau modal.
 - **Escape:** mặc định **không làm gì** nhưng bị modal "nuốt" — không lọt xuống lightbox hay lớp dưới. Với
@@ -610,6 +612,20 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - **Đổi hành vi 0.16.0 — `onConfirm` đồng bộ trả `false` hoặc ném lỗi giữ hộp thoại mở** (giống `onClick` của
   `actions`; lỗi được ghi `console.error`). Trước 0.16.0 hai trường hợp này resolve `true` và đóng. `confirm()` chỉ
   resolve khi người dùng xác nhận thành công hoặc huỷ / đóng, nên code dựa vào "ném lỗi vẫn đóng" cần sửa lại.
+- **Chọn focus ban đầu bằng `autofocus` (0.57.1).** Không đặt gì thì focus rơi vào **input đầu tiên** của body — với
+  một bảng có cột công tắc (switch) đứng trước form, đó là công tắc của dòng đầu, không phải ô bạn muốn gõ. Đặt
+  `autofocus` lên field chính (hoặc nút chính, kể cả nút trong `footer` tự dựng) là đủ, không cần giữ tham chiếu để
+  truyền `focusTarget`:
+
+  ```js
+  TdModal.show({
+    title: 'Sửa nhóm',
+    body: `${tableHtml}<td-input-field label="Tên nhóm" autofocus></td-input-field>`,
+  });
+  ```
+
+  Phần tử `autofocus` bị disabled / ẩn được bỏ qua (lấy cái dùng được tiếp theo, hết thì về thứ tự cũ).
+  `focusTarget` vẫn thắng; `autoFocus: false` vẫn focus chính dialog.
 - **`closable: false` không làm modal "không đóng được"** — nó chỉ ẩn nút X. Hãy luôn cho người dùng ít nhất một nút
   footer để thoát.
 - **`bodyPadding: 16` (số) bị từ chối** với `console.warn`; viết `'16px'` hoặc `'1rem'`.
