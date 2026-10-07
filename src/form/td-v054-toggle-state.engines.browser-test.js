@@ -240,3 +240,88 @@ describe('v0.54.0 checkable layout: hint / error under the label, baseline kept 
     });
   }
 });
+
+// dsuite (2026-10-07, measured): "Trạng thái: [toggle] Đang dùng" — with v0.53.2's `vertical-align: middle` the switch is
+// centred on the x-height and the state text sits ~1.7 px below the label's baseline. With on-text / off-text the host's
+// baseline IS the state text's: it shares the exact baseline with the surrounding text (±0.5 px), the track stays centred
+// on the text (±2.5 px). Without on/off text nothing changes (td-v0532-toggle-align stays green unchanged).
+describe('v0.54.0 on-text / off-text share the baseline of the surrounding text (dsuite)', () => {
+  const TEXT = 'font: 14px/1.5 system-ui, sans-serif';
+  const PROBE = '<span class="bp" style="display:inline-block;width:0;height:0"></span>'; // test-only: bottom = baseline
+  const mid = (r) => (r.top + r.bottom) / 2;
+  /** the baseline of the visible state text (a zero-size inline-block probe inside it) */
+  function stateBaseline(t) {
+    const s = t.querySelector(t.checked ? '.td-switch__state-on' : '.td-switch__state-off');
+    if (!s.querySelector('.bp')) s.insertAdjacentHTML('beforeend', PROBE);
+    return s.querySelector('.bp').getBoundingClientRect().bottom;
+  }
+  function check(where, label, t) {
+    const lb = label.querySelector('.bp').getBoundingClientRect().bottom;
+    const sb = stateBaseline(t);
+    expect(Math.abs(sb - lb) <= 0.5, `${where}: state baseline ${sb} vs label baseline ${lb}`).to.equal(true);
+    const tr = mid(t.querySelector('.td-switch__track').getBoundingClientRect());
+    const tx = mid(label.getBoundingClientRect());
+    expect(Math.abs(tr - tx) <= 2.5, `${where}: track centre ${tr} vs text centre ${tx}`).to.equal(true);
+  }
+  const TOGGLES = [];
+  for (const size of ['sm', 'md', 'lg']) {
+    for (const checked of ['', ' checked']) {
+      TOGGLES.push(`<td-toggle size="${size}" aria-label="Dùng"${checked} on-text="Đang dùng" off-text="Đã lưu trữ"></td-toggle>`);
+      TOGGLES.push(`<td-toggle size="${size}" label="Gói A"${checked} on-text="Đang dùng" off-text="Đã lưu trữ"></td-toggle>`);
+    }
+  }
+
+  it('a plain inline text line: "Trạng thái: [toggle on-text]"', async () => {
+    const d = mount(TOGGLES.map((h) => `<p style="${TEXT};margin:6px"><span class="lab">Trạng thái:${PROBE}</span> ${h}</p>`).join(''));
+    await settle();
+    for (const p of d.querySelectorAll('p')) check(`inline ${p.querySelector('td-toggle').outerHTML.slice(0, 60)}`, p.querySelector('.lab'), p.querySelector('td-toggle'));
+  });
+
+  it('an inline-flex row with align-items: baseline', async () => {
+    const d = mount(TOGGLES.map((h) => `<div style="display:inline-flex;align-items:baseline;gap:8px;${TEXT};margin:6px"><span class="lab">Trạng thái:${PROBE}</span>${h}</div><br>`).join(''));
+    await settle();
+    for (const r of d.querySelectorAll('div')) check(`flex-baseline ${r.querySelector('td-toggle').getAttribute('size')}`, r.querySelector('.lab'), r.querySelector('td-toggle'));
+  });
+
+  for (const [layout, width] of [['table', 900], ['card', 360]]) {
+    it(`td-table cell (${layout} layout): "Trạng thái: [toggle on-text]" in a cell`, async () => {
+      await import('../display/td-table.js');
+      const d = mount(`<div style="width:${width}px;${TEXT}"><td-table></td-table></div>`);
+      const t = d.querySelector('td-table');
+      t.columns = [
+        { key: 'name', label: 'Tên' },
+        { key: 'status', label: 'Trạng thái', render: (row) => {
+          const c = document.createElement('span');
+          c.innerHTML = `<span class="lab">Trạng thái:${PROBE}</span> <td-toggle aria-label="Dùng ${row.name}"${row.on ? ' checked' : ''} on-text="Đang dùng" off-text="Đã lưu trữ"></td-toggle>`;
+          return c;
+        } },
+      ];
+      t.data = [{ name: 'Gói A', on: true }, { name: 'Gói B', on: false }];
+      await settle();
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const labs = [...d.querySelectorAll('.lab')];
+      expect(labs.length).to.equal(2);
+      for (const lab of labs) check(`${layout}`, lab, lab.parentElement.querySelector('td-toggle'));
+    });
+  }
+
+  it('without on/off text the v0.53.2 rule is untouched (vertical-align: middle, the label centred)', async () => {
+    const d = mount('<p><td-toggle label="X"></td-toggle></p>');
+    await settle();
+    const t = d.querySelector('td-toggle');
+    expect(getComputedStyle(t).verticalAlign).to.equal('middle');
+    expect(getComputedStyle(t.querySelector('.td-switch__label')).alignSelf).to.equal('auto');
+  });
+
+  it('with on/off text the label and the state text stay level with each other and centred on the track (±2.5 px)', async () => {
+    const d = mount(['sm', 'md', 'lg'].map((s) => `<p><td-toggle size="${s}" label="Gói A" on-text="Đang dùng" off-text="Đã lưu"></td-toggle></p>`).join(''));
+    await settle();
+    for (const t of d.querySelectorAll('td-toggle')) {
+      const lab = t.querySelector('.td-switch__label').getBoundingClientRect();
+      const st = t.querySelector('.td-switch__state').getBoundingClientRect();
+      const tr = t.querySelector('.td-switch__track').getBoundingClientRect();
+      expect(Math.abs(lab.top - st.top) < 0.5, `label ${lab.top} vs state ${st.top}`).to.equal(true);
+      expect(Math.abs(mid(lab) - mid(tr)) <= 2.5, `label centre ${mid(lab)} vs track ${mid(tr)}`).to.equal(true);
+    }
+  });
+});

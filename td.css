@@ -2543,6 +2543,30 @@
 	}
 }
 
+/* v0.54.0 (dsuite, plan "Lệch" #12): a toggle WITH on-text / off-text shares the baseline of the surrounding text — the
+   host's baseline is the state text's. A flex container's baseline comes from its baseline-aligned items, so the label
+   and the state text are `align-self: baseline` (the track stays centred); their common line is pushed down by half the
+   free row height (row = max(min-height, track); text line = 1.4em, the switch's line-height) so text and track keep the
+   v0.53.2 visual centring. The host drops `vertical-align: middle` for `baseline` (also with a hint / error: the
+   column's baseline is then the state text too). A toggle without on / off text is untouched (v0.53.2). Append-only. */
+@layer td.component {
+	.td-switch:has(> .td-switch__state) > :is(.td-switch__label, .td-switch__state) {
+		align-self: baseline;
+		margin-block-start: max(0px, (max(24px, var(--td-switch-h)) - 1.4em) / 2);
+	}
+
+	@media (pointer: coarse) {
+		.td-switch:has(> .td-switch__state) > :is(.td-switch__label, .td-switch__state) {
+			margin-block-start: max(0px, (max(var(--td-touch-min), var(--td-switch-h)) - 1.4em) / 2); /* row min-height 44 */
+		}
+	}
+
+	td-toggle:has(> .td-switch > .td-switch__state),
+	td-toggle:has(> .td-switch > .td-switch__state):has(> :is(.td-field__note:not([hidden]), td-hint:not([hidden]):not([data-td-suppressed]), .td-field-error)) {
+		vertical-align: baseline;
+	}
+}
+
 /* ---- src/styles/components/loading.css ---- */
 /*
  * TdLoading overlay (src/feedback/td-loading.js). v0.20.0 minimal surfaces: OPAQUE card (glass.css opaque group —
