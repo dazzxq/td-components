@@ -5,6 +5,7 @@ import { TdMenu } from '../feedback/td-menu.js';
 import { cardRoles } from '../utils/table-card-role.js';
 import { KeySelection, keyId } from '../utils/key-selection.js';
 import { checkMarkHTML } from '../utils/check-mark.js';
+import { TableTreeModel, compareRows } from '../utils/table-tree-model.js';
 import './td-pagination.js';
 import './td-empty-state.js';
 
@@ -781,20 +782,9 @@ export class TdTable extends TdBaseElement {
     const idx = data.map((_, i) => i);
     const { col: ci, direction } = this._sort;
     const col = ci === null ? null : this._columns[ci];
-    if (!col || !direction) return idx;
-    const key = col.key;
-    const collator = new Intl.Collator('vi', { numeric: true, sensitivity: 'base' });
-    const sign = direction === 'asc' ? 1 : -1;
-    const val = (row) => (row && typeof row === 'object' ? row[key] : undefined);
-    return idx.sort((ia, ib) => {
-      const va = val(data[ia]);
-      const vb = val(data[ib]);
-      if (va == null && vb == null) return 0;
-      if (va == null) return -sign;
-      if (vb == null) return sign;
-      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * sign;
-      return collator.compare(String(va), String(vb)) * sign;
-    });
+    const cmp = col ? compareRows(col.key, direction) : null;
+    if (!cmp) return idx;
+    return idx.sort((ia, ib) => cmp(data[ia], data[ib]));
   }
 
   _update() {
