@@ -1354,7 +1354,7 @@ namespace {
             'max' => isset($o['max']) && (string) $o['max'] !== '' ? (string) $o['max'] : null,
             'step' => isset($o['step']) && (string) $o['step'] !== '' ? (string) $o['step'] : null,
         ] + $hints + [
-            'aria-describedby' => $desc !== '' ? $desc : null,
+            'aria-describedby' => td__desc_ids($o, $desc, false),
             'aria-invalid' => $error !== '' ? 'true' : null,
             'aria-errormessage' => $error !== '' ? "$id-error" : null,
         ];
@@ -2058,7 +2058,7 @@ namespace {
             'aria-label' => $label === null ? ($aria ?? 'Mã xác thực') : null,
             'aria-invalid' => $error !== null ? 'true' : null,
             'aria-errormessage' => $error !== null ? $errId : null,
-            'aria-describedby' => $ownDesc !== '' ? $ownDesc : null,
+            'aria-describedby' => td__desc_ids($o, $ownDesc, true),
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['type', 'class', 'id', 'inputmode', 'autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck',
@@ -2261,7 +2261,7 @@ namespace {
         $cid = $callerId ?? $base . '-control';
         $str = static fn (string $k): ?string => isset($o[$k]) && is_scalar($o[$k]) && !is_bool($o[$k]) && (string) $o[$k] !== '' ? (string) $o[$k] : null;
         $label = $str('label');
-        $hint = $str('helper_text') ?? $str('hint'); // v0.54.0: helper_text (canonical) > hint (alias)
+        $hint = td__helper_opt($o, true); // v0.54.0: helper_text (canonical, presence-aware) > hint (alias)
         $error = $str('error');
         $placeholder = $str('placeholder');
         $prefix = $str('prefix');
@@ -2292,7 +2292,7 @@ namespace {
             'disabled' => $disabled,
             'readonly' => $readonly,
             'aria-label' => $label === null ? $aria : null,
-            'aria-describedby' => $desc !== '' ? $desc : null,
+            'aria-describedby' => td__desc_ids($o, $desc, true),
             'aria-invalid' => $error !== null ? 'true' : null,
             'aria-errormessage' => $error !== null ? "$base-error" : null,
         ], $taken);
@@ -3348,7 +3348,7 @@ namespace {
             'aria-label' => $label === null ? ($aria ?? Td::SCAN_LABELS['input']) : null,
             'aria-invalid' => $error !== null && !$multiple ? 'true' : null,
             'aria-errormessage' => $error !== null && !$multiple ? $errId : null,
-            'aria-describedby' => $ownDesc !== '' ? $ownDesc : null,
+            'aria-describedby' => td__desc_ids($o, $ownDesc, true),
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['type', 'class', 'id', 'autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck', 'enterkeyhint',
@@ -4679,7 +4679,35 @@ namespace {
      */
     function td__helper_opt(array $o, bool $hintAlias = false): ?string
     {
-        return td__str($o['helper_text'] ?? null) ?? ($hintAlias ? td__str($o['hint'] ?? null) : null);
+        // Codex impl r1 #3: presence-aware — a `helper_text` key (even empty / null) is the caller's answer; `hint` only
+        // when the key is absent
+        if (array_key_exists('helper_text', $o)) {
+            return td__str($o['helper_text']);
+        }
+        return $hintAlias ? td__str($o['hint'] ?? null) : null;
+    }
+
+    /**
+     * @internal v0.54.0 (Codex impl r1 #2): the control's aria-describedby = the caller's own tokens (`attrs` key
+     * `aria-describedby`, any case) FIRST, then the component-owned ids (helper note / unit / counter / error), deduped.
+     * `$siteAlone`: the helper reserves `aria-describedby` in `attrs` (element mode / helpers that always did) → the caller
+     * tokens are printed here even without own ids; otherwise (native td_field) null leaves them to `attrs` as before
+     * (byte-identical).
+     */
+    function td__desc_ids(array $o, string $own, bool $siteAlone): ?string
+    {
+        $site = [];
+        foreach ((is_array($o['attrs'] ?? null) ? $o['attrs'] : []) as $k => $v) {
+            if (strtolower((string) $k) === 'aria-describedby' && is_scalar($v) && !is_bool($v)) {
+                $site = preg_split('/\s+/', trim((string) $v), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            }
+        }
+        $mine = preg_split('/\s+/', trim($own), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if (!$mine && !$siteAlone) {
+            return null;
+        }
+        $all = array_values(array_unique([...$site, ...$mine]));
+        return $all ? implode(' ', $all) : null;
     }
 
     /**
@@ -4788,7 +4816,7 @@ namespace {
             'maxlength' => $max,
             'minlength' => $minlength,
         ] + $range + $hints + [
-            'aria-describedby' => $desc !== '' ? $desc : null,
+            'aria-describedby' => td__desc_ids($o, $desc, true),
             'aria-invalid' => $error !== null ? 'true' : null,
             'aria-errormessage' => $error !== null ? "$hostId-error" : null,
             'aria-label' => $label === null ? $ariaLabel : null,
@@ -7144,7 +7172,7 @@ namespace {
             trigger_error('td_check_matrix: invalid ' . ($res['reason'] === 'name' ? 'name (empty or ending in [])' : 'data (' . $res['reason'] . ')')
                 . ' — nothing is submitted', E_USER_WARNING);
             return $host . '<div class="td-check-matrix" data-state="broken">' . $nameEl
-                . '<p class="td-check-matrix__broken">' . Td::e($L['broken']) . '</p></div></td-check-matrix>';
+                . '<p class="td-check-matrix__broken">' . Td::e($L['broken']) . '</p></div>' . td__helper_note($help, $h, false) . '</td-check-matrix>';
         }
         $m = $res['model'];
         $C = count($m['columns']);
@@ -7387,7 +7415,7 @@ namespace {
             'aria-label' => $label === null ? ($aria ?? Td::COLOR_LABELS['input']) : null,
             'aria-invalid' => $error !== null ? 'true' : null,
             'aria-errormessage' => $error !== null ? $errId : null,
-            'aria-describedby' => $ownDesc !== '' ? $ownDesc : null,
+            'aria-describedby' => td__desc_ids($o, $ownDesc, true),
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['type', 'class', 'id', 'inputmode', 'autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck',

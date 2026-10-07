@@ -42,14 +42,15 @@ const describedLists = (html) => [...html.matchAll(/aria-describedby="([^"]*)"/g
 
 describe('php/td.php — helper_text on every form helper (v0.54.0)', opts, () => {
   test('without helper_text / hint / on_text / off_text: byte-identical to v0.53.1 (hint.baseline.json)', () => {
-    const calls = HINT_FIXTURES.cases.map((c) => {
+    const cases = HINT_FIXTURES.cases.filter((c) => !c.siteDesc); // siteDesc: v0.53.1 dropped the caller id (a fix)
+    const calls = cases.map((c) => {
       const args = structuredClone(c.args);
       const o = args[args.length - 1];
       for (const k of ['helper_text', 'hint', 'on_text', 'off_text']) delete o[k];
       return [c.fn, args];
     });
     const out = run(calls);
-    HINT_FIXTURES.cases.forEach((c, i) => assert.equal(out[i].html, BASELINE[c.id], `${c.id}: byte-identical`));
+    cases.forEach((c, i) => assert.equal(out[i].html, BASELINE[c.id], `${c.id}: byte-identical`));
   });
 
   test('host helper-text + the note (text, escaped) + the description; hidden and out of the description with an error', () => {
@@ -141,6 +142,59 @@ describe('php/td.php — helper_text on every form helper (v0.54.0)', opts, () =
       ['td_check_matrix', ['c', [{ key: 'a', label: 'A' }], [{ key: 'r', label: 'R' }], [], { id: 'r3', attrs: { 'helper-text': 'evil' } }]],
     ]);
     for (const { html } of out) assert.ok(!html.includes('evil'), html);
+  });
+});
+
+describe('php/td.php — v0.54.0 Codex impl r1 (#2 caller aria-describedby, #3 presence-aware helper_text, #7 check-matrix broken)', opts, () => {
+  const descOf = (html, id) => new RegExp(`<(?:input|textarea)[^>]* id="${id}"[^>]*?aria-describedby="([^"]*)"`).exec(html)?.[1] ?? null;
+
+  test('#2 the caller attrs aria-describedby is kept FIRST, deduped, before the owned ids — native + element, 6 helpers', () => {
+    const site = { attrs: { 'Aria-DescribedBy': 'page-a  page-b page-a' } };
+    const out = run([
+      ['td_field', ['a', '', { id: 'f1', helper_text: 'H', ...site }]],
+      ['td_field', ['a', '', { id: 'f2', element: true, helper_text: 'H', error: 'E', ...site }]],
+      ['td_number_input', ['n', null, { id: 'n1', helper_text: 'H', suffix: 'kg', ...site }]],
+      ['td_number_input', ['n', null, { id: 'n2', element: true, helper_text: 'H', ...site }]],
+      ['td_otp_input', ['o', { id: 'o1', helper_text: 'H', ...site }]],
+      ['td_otp_input', ['o', { id: 'o2', element: true, error: 'E', ...site }]],
+      ['td_scan_input', ['s', { id: 's1', helper_text: 'H', ...site }]],
+      ['td_scan_input', ['s', { id: 's2', element: true, helper_text: 'H', ...site }]],
+      ['td_color_picker', ['c', { id: 'c1', helper_text: 'H', ...site }]],
+      ['td_color_picker', ['c', { id: 'c2', element: true, ...site }]],
+    ]).map((r) => r.html);
+    const want = [
+      ['f1-control', 'page-a page-b f1-note'], ['f2', 'page-a page-b f2-host-error'],
+      ['n1', 'page-a page-b n1-unit n1-note'], ['n2', 'page-a page-b n2-host-note'],
+      ['o1', 'page-a page-b o1-note'], ['o2', 'page-a page-b o2-host-error'],
+      ['s1', 'page-a page-b s1-note'], ['s2', 'page-a page-b s2-host-note'],
+      ['c1', 'page-a page-b c1-note'], ['c2', 'page-a page-b'],
+    ];
+    want.forEach(([id, d], i) => {
+      assert.equal(descOf(out[i], id), d, `${id}: ${noSvg(out[i])}`);
+      assert.equal((out[i].match(/aria-describedby=/gi) || []).length, 1, `${id}: one attribute`);
+    });
+  });
+
+  test('#2 native td_field without own ids: the caller attribute is printed by attrs exactly as before (bytes)', () => {
+    const [r] = run([['td_field', ['a', '', { id: 'y', attrs: { 'aria-describedby': 'p1' } }]]]);
+    assert.ok(r.html.includes('name="a" value="" aria-describedby="p1">'), r.html);
+  });
+
+  test('#3 presence-aware: a helper_text key (even empty / null) wins, `hint` is never used then', () => {
+    const out = run([
+      ['td_field', ['a', '', { id: 'p1', helper_text: '', hint: 'Cũ' }]],
+      ['td_field', ['a', '', { id: 'p2', element: true, helper_text: null, hint: 'Cũ' }]],
+      ['td_number_input', ['n', null, { id: 'p3', helper_text: '', hint: 'Cũ' }]],
+      ['td_number_input', ['n', null, { id: 'p4', hint: 'Cũ' }]],
+    ]).map((r) => r.html);
+    for (const h of out.slice(0, 3)) assert.ok(!h.includes('Cũ') && !/aria-describedby="[^"]*-note/.test(h), h);
+    assert.ok(out[3].includes('>Cũ</div>'), 'absent key → the hint alias');
+  });
+
+  test('#7 td_check_matrix broken state still prints the helper note before closing the host', () => {
+    const [r] = run([['td_check_matrix', ['perms[]', [{ key: 'a', label: 'A' }], [{ key: 'r', label: 'R' }], [], { id: 'bk', helper_text: 'Gợi ý' }]]]);
+    assert.equal(r.warns.length, 1);
+    assert.ok(r.html.endsWith('</p></div><div class="td-field__note" id="bk-note">Gợi ý</div></td-check-matrix>'), r.html);
   });
 });
 

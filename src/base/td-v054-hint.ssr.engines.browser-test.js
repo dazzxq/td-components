@@ -70,6 +70,7 @@ describe('v0.54.0 SSR — helper_text adopted in place, every form helper', () =
       if (c.hydrated) expect(note === B[c.id].note, `${c.id}: the server note node is kept`).to.equal(true);
       expect(note.textContent).to.equal(c.text ?? c.args[c.args.length - 1].helper_text);
       const t = tokens(el._ariaTarget());
+      if (c.siteDesc) expect(t[0], `${c.id}: the caller's id kept first`).to.equal(c.siteDesc);
       if (c.error) {
         expect(note.hidden, 'hidden with the error').to.equal(true);
         expect(t).to.not.include(noteId(c));
