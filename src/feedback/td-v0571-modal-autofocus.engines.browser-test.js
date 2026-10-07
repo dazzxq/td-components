@@ -50,6 +50,16 @@ describe('v0.57.1 td-modal — [autofocus] wins the initial focus', () => {
     expect(active() === root.querySelector('#nm'), describeActive()).to.equal(true);
   });
 
+  it('autofocus on a visible element focusable only by script (tabindex="-1") is honoured (Codex impl r1)', async () => {
+    const root = await open({ body: `${TABLE}<div id="sum" tabindex="-1" autofocus>Tóm tắt</div>` });
+    expect(active() === root.querySelector('#sum'), describeActive()).to.equal(true);
+  });
+
+  it('a hidden tabindex="-1" autofocus is skipped (old order)', async () => {
+    const root = await open({ body: `${TABLE}<div hidden><div id="sum" tabindex="-1" autofocus>x</div></div>` });
+    expect(active() === root.querySelector('#sw'), describeActive()).to.equal(true);
+  });
+
   it('autofocus on a body button', async () => {
     const root = await open({ body: `${TABLE}<button type="button" id="go" autofocus>Đi</button>` });
     expect(active() === root.querySelector('#go'), describeActive()).to.equal(true);

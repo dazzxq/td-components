@@ -333,8 +333,12 @@ export class TdModal {
       for (const part of dialog.querySelectorAll('.td-modal__body, .td-modal__footer')) {
         for (const el of part.querySelectorAll('[autofocus]')) {
           if (el.matches(':disabled') || el.hasAttribute('disabled')) continue;
-          const target = eligible.has(el) ? el : [...eligible].find((f) => el.contains(f));
-          if (target && tryFocus(target)) return;
+          if (eligible.has(el) && tryFocus(el)) return;
+          // Codex impl r1: a visible element focusable only by script (tabindex="-1") is a valid autofocus target too
+          const shown = !el.closest('[hidden], [inert]') && el.getClientRects().length > 0;
+          if (shown && !eligible.has(el) && tryFocus(el)) return;
+          const inner = [...eligible].find((f) => f !== el && el.contains(f));
+          if (inner && tryFocus(inner)) return;
         }
       }
       const fields = body ? [...body.querySelectorAll(FIELD)].filter((el) => eligible.has(el)) : [];
