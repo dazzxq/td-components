@@ -4,6 +4,10 @@
  * Content layer: solid fill, never glass. State: :focus / :focus-visible / :disabled / [readonly] /
  * [aria-readonly] / [aria-disabled] / [aria-invalid="true"] / :empty (editable placeholder) on the control,
  * [data-state="limit"] on the counter (colour only — D9), [hidden] on the footer/note.
+ * v0.55.0 (plan v0.55.0-affix-number QĐ 6, ADR 0028): ONE "box looks like the control" rule for td-input-field with an
+ * affix (`.td-field--affix` > `.td-field__box`, the control inside transparent / borderless) and td-number-input
+ * (`.td-number__box`, moved here from number-input.css with the same computed values); affix parts
+ * `.td-field__affix(--prefix|--suffix|--slot)` / `.td-number__affix…` + icon slots.
  */
 @layer td.tokens {
 	:root {
@@ -13,6 +17,9 @@
 		--td-field-h-sm: 32px;
 		--td-field-h-md: 40px;
 		--td-field-h-lg: 48px;
+		/* v0.55.0 (ADR 0028): prefix / suffix of td-input-field + td-number-input */
+		--td-field-affix-gap: var(--td-space-2xs);
+		--td-field-affix-icon: 1.125em;
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
@@ -34,6 +41,7 @@
 		--td-field-placeholder: var(--td-color-text-muted);    /* 5.28:1 on white (dark: 6.6:1 on #1c1c1e) */
 		--td-field-note: var(--td-color-text-muted);
 		--td-field-label: var(--td-color-text-label);
+		--td-field-affix-fg: var(--td-color-text-muted); /* v0.55.0: affix text / icon (≥ 4.7:1 on every field fill — contrast gate) */
 	}
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
@@ -313,6 +321,197 @@
 
 		.td-field__control[data-placeholder]:empty::before,
 		.td-field__control::placeholder {
+			color: GrayText;
+		}
+	}
+
+	/*
+	 * v0.55.0 — the field box (td-input-field with an affix + td-number-input: same look, same states — the CONTROL look on
+	 * the box, read from the control with :has() / :focus-within). The number selectors keep their 0.54 specificity
+	 * (CSP baselines of td-number-input.* byte-identical).
+	 */
+	:is(.td-number__box, .td-field__box) {
+		display: flex;
+		align-items: center;
+		width: 100%;
+		height: var(--_td-field-h);
+		padding: var(--_td-field-pad);
+		padding-block: 0;
+		margin: 0;
+		color: var(--td-field-fg);
+		cursor: text;
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--_td-field-radius);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-number__box {
+		gap: var(--td-number-affix-gap);
+	}
+
+	.td-field__box {
+		gap: var(--td-field-affix-gap);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: text input box — the focus ring is the feedback */
+		.td-number__box:hover:not(:focus-within, :has(> .td-number__control:disabled)),
+		/* active-exempt: text input box with an affix (v0.55.0) — the focus ring is the feedback */
+		.td-field__box:hover:not(:focus-within, :has(> .td-field__control:disabled)) {
+			border-color: var(--td-field-border-hover);
+		}
+	}
+
+	:is(.td-number__box, .td-field__box):focus-within {
+		background: var(--td-field-bg-focus);
+		border-color: var(--td-field-focus);
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	:is(.td-number__box, .td-field__box):has(> :is(.td-number__control, .td-field__control)[readonly]) {
+		background: var(--td-field-bg-readonly);
+	}
+
+	:is(.td-number__box, .td-field__box):has(> :is(.td-number__control, .td-field__control):disabled) {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	/* a visible error keeps the red border, focused or not */
+	:is(.td-number__box, .td-field__box):has(> :is(.td-number__control, .td-field__control)[aria-invalid="true"]),
+	:is(.td-number__box, .td-field__box):has(> :is(.td-number__control, .td-field__control)[aria-invalid="true"]):focus-within {
+		border-color: var(--td-field-error);
+	}
+
+	/* the input-field control inside the box: transparent, borderless, the box draws every state */
+	.td-field__box > .td-field__control {
+		flex: 1 1 auto;
+		width: 100%;
+		min-width: 4ch;
+		height: 100%;
+		min-height: 0;
+		padding: 0;
+		margin: 0;
+		color: inherit;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		outline: none;
+		box-shadow: none;
+	}
+
+	.td-field__box > .td-field__control:is(:focus, :focus-visible, [readonly], :disabled, [aria-invalid="true"]) {
+		background: transparent;
+		box-shadow: none;
+	}
+
+	/* affix parts (decorative text / icon, or the page's slot nodes) */
+	:is(.td-number__affix, .td-field__affix) {
+		flex: 0 0 auto;
+		white-space: nowrap;
+		user-select: none;
+		unicode-bidi: isolate; /* "https://", "₫" never re-ordered with the value (RTL) */
+	}
+
+	.td-number__affix {
+		color: var(--td-number-affix-fg);
+	}
+
+	.td-field__affix {
+		max-inline-size: 50%; /* a long affix never squeezes the value out: cut with an ellipsis (the description reads it all) */
+		overflow: hidden;
+		color: var(--td-field-affix-fg);
+		text-overflow: ellipsis;
+	}
+
+	:is(.td-number__affix, .td-field__affix)[hidden] {
+		display: none;
+	}
+
+	/* a slot holds the page's own nodes (a button with its focus ring): never clipped, the page's colours */
+	:is(.td-number__affix--slot, .td-field__affix--slot) {
+		display: inline-flex;
+		align-items: center;
+		max-inline-size: none;
+		overflow: visible;
+		color: var(--td-field-fg);
+		user-select: auto;
+	}
+
+	:is(.td-number__affix-icon, .td-field__affix-icon) {
+		display: inline-block;
+		line-height: 0;
+		vertical-align: middle;
+	}
+
+	:is(.td-number__affix-icon, .td-field__affix-icon):empty {
+		display: none;
+	}
+
+	:is(.td-number__affix--prefix, .td-field__affix--prefix) > :is(.td-number__affix-icon, .td-field__affix-icon) {
+		margin-inline-end: var(--td-space-2xs);
+	}
+
+	:is(.td-number__affix--suffix, .td-field__affix--suffix) > :is(.td-number__affix-icon, .td-field__affix-icon) {
+		margin-inline-start: var(--td-space-2xs);
+	}
+
+	.td-number__affix-svg,
+	.td-field__affix-svg {
+		width: var(--td-field-affix-icon);
+		height: var(--td-field-affix-icon);
+	}
+
+	/* before define: the page's slot nodes have not moved into the box yet — never beside the field */
+	:is(td-input-field, td-number-input):not(:defined) > :is([slot="prefix"], [slot="suffix"]) {
+		display: none;
+	}
+
+	@media (pointer: coarse) {
+		:is(.td-number__box, .td-field__box) {
+			min-height: var(--td-touch-min);
+			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
+		}
+
+		.td-field__box > .td-field__control {
+			min-height: 0; /* the box is the 44px target */
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:is(.td-number__box, .td-field__box) {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		:is(.td-number__box, .td-field__box) {
+			border-color: CanvasText;
+		}
+
+		:is(.td-number__box, .td-field__box):focus-within {
+			outline-color: Highlight;
+		}
+
+		:is(.td-number__box, .td-field__box):has(> :is(.td-number__control, .td-field__control)[aria-invalid="true"]) {
+			border-style: dashed;
+			border-width: 2px;
+		}
+
+		.td-field__box > .td-field__control,
+		.td-field__box > .td-field__control[aria-invalid="true"] {
+			border-width: 0;
+		}
+
+		:is(.td-number__affix, .td-field__affix):not(:is(.td-number__affix--slot, .td-field__affix--slot)) {
 			color: GrayText;
 		}
 	}
