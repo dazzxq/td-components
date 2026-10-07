@@ -91,6 +91,10 @@ theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao
 - **PHP:** `td_toggle` / `td_checkbox` có `helper_text` / `on_text` / `off_text` luôn in chế độ element; các helper chế độ element
   giữ `attrs['aria-describedby']` của site (trước bị bỏ). Không dùng option mới và không truyền `aria-describedby` → output giống
   từng byte 0.53.x.
+- **Thêm `helper_text` cho `td_checkbox` / `td_toggle` = đổi sang chế độ element:** host `<td-checkbox>` / `<td-toggle>` mới là
+  control của form (gửi `value` qua ElementInternals); `<input>` bên trong chỉ để hiển thị, sau nâng cấp không còn `name` / `value`
+  — JS của site đọc `querySelector('input[name=…]').value` sẽ không tìm thấy ô (hoặc đọc ra `"on"`). Đọc `el.checked` / `el.value`
+  trên host hoặc `new FormData(form)` ([checkbox.md](../components/checkbox.md#trong-form), [toggle.md](../components/toggle.md#trong-form)).
 - **Import map:** thêm `"@dazzxq/td-components/hint"`.
 
 ## 0.53.1

@@ -89,6 +89,19 @@ Mỗi lần người dùng đổi trạng thái (chuột, chạm, phím Space, b
 
 Nhiều checkbox cùng `name` được gửi thành nhiều cặp, đọc bằng `formData.getAll('name')`.
 
+**Host là control của form (chế độ element, kể cả PHP `helper_text`).** Khi `<td-checkbox>` đã nâng cấp — viết tay, tạo bằng JS,
+hoặc PHP `td_checkbox(…, ['helper_text' => …])` (từ 0.54.0 `helper_text` buộc chế độ element) — chính **host** gửi giá trị qua
+ElementInternals. `<input>` bên trong chỉ để hiển thị / bàn phím: sau nâng cấp nó **không có `name` / `value`** của form, nên
+`input.value` đọc ra `"on"` (mặc định của trình duyệt), không phải giá trị bạn đặt. Đọc trên host (`el.checked`, `el.value`) hoặc
+`new FormData(form)`, đừng `querySelector('input').value` / `form.elements['name']` trỏ vào ô bên trong.
+
+```js
+const cb = document.querySelector('td-checkbox[name="plan"]');
+cb.checked;                          // true / false
+cb.value;                            // "pro" (attribute value; mặc định "on")
+new FormData(form).getAll('plan');   // ["pro"] khi được chọn, [] khi không
+```
+
 ### Trạng thái lưng chừng (`indeterminate`, 0.36.0)
 
 Dùng cho ô "chọn tất cả" khi mới chọn **một phần** (ô hiện vạch ngang, trình đọc màn hình đọc "mixed"):
