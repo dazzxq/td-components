@@ -29,6 +29,12 @@
  * shares the primary line and "select all on this page" is the FIRST chip of the sort bar (label visible).
  * v0.39.0 (plan v0.39.0-filters-range QĐ 8–10): hidden columns ([hidden] on th / td, both modes) + the column-menu
  * button .td-table__columns in the header.
+ * v0.57.0 (plan v0.57.0-tree-table QĐ 8, 13–15): tree table (.td-table--tree, table[role=treegrid]). Indent = CSSOM
+ * --td-table-tree-level on each tr (0 for roots) × --td-table-tree-indent on the tree cell (.td-table__cell--tree);
+ * button.td-table__tree-toggle (icon `next`, turned 90° on tr[aria-expanded="true"], mirrored in RTL) or a same-width
+ * span.td-table__tree-spacer; the focused row (roving tabindex) gets an inset outline; status rows of a lazy branch
+ * (.td-table__row--tree-status: "Đang tải…" / error + "Thử lại"). Cards: child cards indent by level (margin, capped at
+ * --td-table-tree-card-levels) with a guide line on the inline-start edge; the toggle leads the primary line.
  */
 @layer td.tokens {
 	:root {
@@ -44,6 +50,10 @@
 		--td-table-card-pair-min: 0px; /* v0.36.1: min width of a secondary pair (0 = by content; 100% = one per line) */
 		--td-table-card-cell-py: 2px; /* v0.36.1: block padding of a card cell */
 		--td-table-select-w: 3rem; /* v0.37.0: selection column */
+		--td-table-tree-indent: 1.25rem; /* v0.57.0: indent per tree level (table mode) */
+		--td-table-tree-toggle-size: 1.5rem; /* v0.57.0: the tree toggle / spacer (44px on coarse pointers) */
+		--td-table-tree-card-indent: 0.75rem; /* v0.57.0: indent per level of a child card */
+		--td-table-tree-card-levels: 3; /* v0.57.0: deeper cards stop indenting (320px stays without overflow) */
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
@@ -72,6 +82,8 @@
 		/* v0.41.0 (bug fix, v0.37 regression): resting edge of the row-selection mark = the shared checkbox edge. The
 		   `.td-table *` border rule had painted it --td-color-border (1.27:1 on white, 1.22 dark). */
 		--td-table-check-border: var(--td-checkbox-border);
+		/* v0.57.0: guide line on the inline-start edge of a child card (decorative — the level is in aria-level) */
+		--td-table-tree-guide: var(--td-color-border-strong);
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
@@ -433,6 +445,92 @@
 		transition-duration: 0s;
 	}
 
+	/* ---- v0.57.0 tree table (self-contained block; plan v0.57.0-tree-table QĐ 8, 13, 14) ---- */
+	.td-table--tree .td-table__cell--tree,
+	.td-table--tree .td-table__tree-status {
+		padding-inline-start: calc(var(--td-table-cell-px) + var(--td-table-tree-level, 0) * var(--td-table-tree-indent));
+	}
+
+	/* the roving row (one tab stop for the body): an inset ring, visible in forced colours too */
+	.td-table--tree .td-table__body > .td-table__row:focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: -2px;
+	}
+
+	.td-table__tree-toggle,
+	.td-table__tree-spacer {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		inline-size: var(--td-table-tree-toggle-size);
+		min-inline-size: 24px; /* WCAG 2.5.8 with a mouse; 44px on coarse pointers (end of file) */
+		block-size: var(--td-table-tree-toggle-size);
+		min-block-size: 24px;
+		margin-inline-end: var(--td-space-2xs);
+		vertical-align: middle;
+	}
+
+	.td-table__tree-toggle {
+		padding: 0;
+		font: inherit;
+		color: var(--td-table-label-fg);
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-radius-sm);
+		transition: background var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+		-webkit-tap-highlight-color: transparent; /* ADR 0019: the kit's pressed fill replaces the tap flash */
+	}
+
+	.td-table__tree-toggle:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-table__tree-icon {
+		display: inline-flex;
+		line-height: 0;
+		transition: transform var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-table__tree-icon:dir(rtl) {
+		transform: scaleX(-1);
+	}
+
+	.td-table__row[aria-expanded="true"] > .td-table__cell--tree > .td-table__tree-toggle > .td-table__tree-icon {
+		transform: rotate(90deg);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-table__tree-toggle:hover {
+			color: var(--td-table-fg);
+			background: var(--td-color-hover);
+		}
+	}
+
+	/* Pressed (ADR 0019): colour only, applied at once (after the hover rule) */
+	.td-table__tree-toggle:is(:active, [data-td-pressed]) {
+		color: var(--td-table-fg);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	/* Status row of a lazy branch (QĐ 13): a real treegrid row; muted text, the retry button after it */
+	.td-table__tree-status {
+		color: var(--td-table-label-fg);
+	}
+
+	.td-table__tree-status[data-state="error"] {
+		color: var(--td-table-fg);
+	}
+
+	.td-table__tree-retry {
+		margin-inline-start: var(--td-space-sm);
+	}
+
 	/* Ellipsis (D21; v0.34.0: the content is capped, the table keeps its auto layout) */
 	.td-table__truncate {
 		max-inline-size: var(--td-table-ellipsis-max);
@@ -766,6 +864,26 @@
 	:where(td-table[layout="cards"]) .td-table .td-table__row[data-selected]:nth-child(n) {
 		border-color: var(--td-table-card-selected-border);
 	}
+
+	/* v0.57.0 (QĐ 15): a child card indents by level (capped, so 320px never overflows) — the cell indent is for tables */
+	:where(td-table[layout="cards"]) .td-table--tree .td-table__row:nth-child(n) {
+		margin-inline-start: calc(min(var(--td-table-tree-level, 0), var(--td-table-tree-card-levels)) * var(--td-table-tree-card-indent));
+	}
+
+	:where(td-table[layout="cards"]) .td-table--tree .td-table__row:not([aria-level="1"], [data-selected]):nth-child(n) {
+		border-inline-start: 2px solid var(--td-table-tree-guide);
+	}
+
+	:where(td-table[layout="cards"]) .td-table--tree .td-table__row > .td-table__cell--tree,
+	:where(td-table[layout="cards"]) .td-table--tree .td-table__row > .td-table__tree-status {
+		padding-inline-start: 0;
+	}
+
+	:where(td-table[layout="cards"]) .td-table__tree-toggle,
+	:where(td-table[layout="cards"]) .td-table__tree-spacer {
+		margin-inline-start: calc(-1 * var(--td-space-2xs));
+		vertical-align: text-bottom;
+	}
 	/* @td-variants-end */
 
 	/* Empty state: no card inside the card */
@@ -830,13 +948,24 @@
 			min-inline-size: var(--td-touch-min);
 			min-block-size: var(--td-touch-min);
 		}
+
+		/* v0.57.0: a real 44 × 44 tree toggle (the leaf spacer keeps the same width: rows stay aligned) */
+		.td-table .td-table__tree-toggle,
+		.td-table .td-table__tree-spacer {
+			inline-size: var(--td-touch-min);
+			min-inline-size: var(--td-touch-min);
+			block-size: var(--td-touch-min);
+			min-block-size: var(--td-touch-min);
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
 		.td-table__row,
 		.td-table__sort,
 		.td-table__select,
-		.td-table__select-all {
+		.td-table__select-all,
+		.td-table__tree-toggle,
+		.td-table__tree-icon {
 			transition: none;
 		}
 
@@ -883,6 +1012,14 @@
 			background: GrayText;
 		}
 
+		.td-table__tree-toggle {
+			color: ButtonText;
+		}
+
+		.td-table--tree .td-table__body > .td-table__row:focus-visible {
+			outline-color: Highlight;
+		}
+
 		.td-table__skeleton::after {
 			display: none;
 		}
@@ -902,6 +1039,7 @@
 
 	@media (forced-colors: active) {
 		.td-table__sort:is(:active, [data-td-pressed]),
+		.td-table__tree-toggle:is(:active, [data-td-pressed]),
 		.td-table__select:is(:active, [data-td-pressed]):not(:disabled),
 		.td-table__select-all:is(:active, [data-td-pressed]):not(:disabled) {
 			outline: 2px solid Highlight;
