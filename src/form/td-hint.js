@@ -75,6 +75,9 @@ export class TdHint extends TdBaseElement {
     /** @private the tree root this hint is registered with */
     this._root = null;
     this._warnedScope = false;
+    /** @private Codex impl r1 #5: the ONE pending `whenDefined` wait ({ tag, gen }) — never two for the same hint */
+    this._wait = null;
+    this._gen = 0;
   }
 
   canHydrate() { return true; }
@@ -96,7 +99,7 @@ export class TdHint extends TdBaseElement {
     super.connectedCallback();
     if (this._tdOwner) return; // child of a kit control: the control drives it
     if (!this.hasAttribute('for')) return;
-    if (!this.id) this.id = `td-hint-${++_hintIdCounter}`;
+    this._ensureOwnId();
     this._root = this.getRootNode();
     watch(this, this._root);
     this._revalidate();
@@ -110,9 +113,26 @@ export class TdHint extends TdBaseElement {
       queueMicrotask(() => { if (this._tdOwner === owner && !owner.contains(this)) owner._releaseHint?.(this); });
       return;
     }
+    this._release();
+  }
+
+  /** @private unlink, stop watching the root, drop a pending wait (disconnect / `for` removed) */
+  _release() {
     this._unlink();
+    this._cancelWait();
     if (this._root) unwatch(this, this._root);
     this._root = null;
+  }
+
+  /** @private forget the pending whenDefined wait (its callback becomes a no-op: generation token) */
+  _cancelWait() {
+    this._wait = null;
+    this._gen += 1;
+  }
+
+  /** @private Codex impl r1 #4: a standalone hint always has an id (the token it writes) */
+  _ensureOwnId() {
+    if (!this.id) this.id = `td-hint-${++_hintIdCounter}`;
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
@@ -122,8 +142,17 @@ export class TdHint extends TdBaseElement {
       return;
     }
     if (!this.isConnected) return;
-    if (name === 'for' && newVal !== null && !this._root) {
-      if (!this.id) this.id = `td-hint-${++_hintIdCounter}`;
+    if (name === 'for' && newVal === null) { // Codex impl r1 #4: no `for` any more → unlink + unwatch + forget the root
+      this._release();
+      return;
+    }
+    if (!this.hasAttribute('for')) return;
+    if (name === 'id' && !newVal) { // lost its id → a new automatic one (that change re-enters here and revalidates)
+      this._ensureOwnId();
+      return;
+    }
+    if (name === 'for' && !this._root) {
+      this._ensureOwnId();
       this._root = this.getRootNode();
       watch(this, this._root);
     }
@@ -147,13 +176,26 @@ export class TdHint extends TdBaseElement {
     }
     if (want === this) want = null;
     const token = this.id;
+    const tag = want ? want.localName : '';
+    const pending = !!want && tag.startsWith('td-') && tag.includes('-') && !customElements.get(tag);
+    // Codex impl r1 #5: a wait for another tag (or none needed any more) is dropped before anything else
+    if (this._wait && (!pending || this._wait.tag !== tag)) this._cancelWait();
     if (this._link && this._link.target === want && this._link.token === token) return;
     this._unlink();
     if (!want || !token) return;
-    const tag = want.localName;
-    if (tag.includes('-') && !customElements.get(tag) && tag.startsWith('td-')) {
-      // a kit control not upgraded yet: link through its contract once it is defined
-      customElements.whenDefined(tag).then(() => this._revalidate());
+    if (pending) {
+      // a kit control not upgraded yet: link through its contract once it is defined — ONE wait per hint per tag (a burst
+      // of unrelated mutations never stacks registrations); the callback holds the hint weakly and checks its generation
+      if (this._wait) return;
+      const gen = this._gen;
+      this._wait = { tag, gen };
+      const ref = new WeakRef(this);
+      customElements.whenDefined(tag).then(() => {
+        const h = ref.deref();
+        if (!h || !h._wait || h._wait.gen !== gen) return;
+        h._wait = null;
+        if (h.isConnected) h._revalidate();
+      });
       return;
     }
     if (typeof want._linkHint === 'function') {

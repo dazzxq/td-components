@@ -214,6 +214,24 @@ describe('v0.54.0 helper-text — all 19 form controls (QĐ 1, 2)', () => {
         expect(described(el)).to.not.include('site-hint');
       });
 
+      it('Codex impl r1 #6: only the FIRST direct <td-hint> is owned; the others survive the first and later renders untouched', async () => {
+        const el = await mount(c, '', '<td-hint>Một</td-hint><td-hint id="x2">Hai <b>đậm</b></td-hint><td-hint for="nowhere" id="x3">Ba</td-hint>');
+        const two = document.getElementById('x2');
+        const three = document.getElementById('x3');
+        expect(!!two && el.contains(two) && two.parentElement === el, 'second kept as a direct child').to.equal(true);
+        expect(!!three && el.contains(three), 'standalone kept').to.equal(true);
+        expect(two.querySelector('b')?.textContent).to.equal('đậm');
+        expect(two.hasAttribute('data-td-suppressed') || two.id !== 'x2', 'second untouched').to.equal(false);
+        expect(descText(el)).to.include('Một');
+        expect(descText(el)).to.not.include('Hai');
+        el.setAttribute(c.restruct[0], c.restruct[1]);
+        await tick();
+        await tick();
+        expect(document.getElementById('x2') === two && two.parentElement === el, 'same node after re-render').to.equal(true);
+        expect(document.getElementById('x3') === three && el.contains(three)).to.equal(true);
+        expect(idsUnique(el)).to.equal(true);
+      });
+
       it('changing the hint does not make a tracked form dirty', async () => {
         const el = await mount(c, 'helper-text="A"');
         const t = trackFormDirty(el.form, { beforeUnload: false });

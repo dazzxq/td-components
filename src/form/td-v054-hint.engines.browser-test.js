@@ -268,3 +268,90 @@ describe('v0.54.0 <td-hint for> — kit control target', () => {
     expect(d.querySelector('td-hint').hasAttribute('data-td-suppressed')).to.equal(false);
   });
 });
+
+describe('v0.54.0 <td-hint> — Codex impl r1 #4 / #5 (lifecycle, one whenDefined wait)', () => {
+  it('#4 removing `for` unlinks, stops watching the root, forgets it; setting it again links again', async () => {
+    const before = TdHint._observedRoots();
+    const d = box('<input id="lf1" aria-describedby="keep"><td-hint for="lf1" id="lf1-hint">Gợi ý</td-hint>');
+    await settle();
+    const hint = d.querySelector('td-hint');
+    expect(TdHint._observedRoots()).to.equal(Math.max(before, 1));
+    hint.removeAttribute('for');
+    await settle();
+    expect(desc(d.querySelector('#lf1'))).to.deep.equal(['keep']);
+    expect(hint.control).to.equal(null);
+    expect(hint._root).to.equal(null);
+    expect(TdHint._observedRoots()).to.equal(before);
+    hint.setAttribute('for', 'lf1');
+    await settle();
+    expect(desc(d.querySelector('#lf1'))).to.deep.equal(['keep', 'lf1-hint']);
+  });
+
+  it('#4 a connected standalone hint that loses its id gets a new automatic id; the old token leaves, the new joins', async () => {
+    const d = box('<input id="lf2"><td-hint for="lf2" id="lf2-hint">Gợi ý</td-hint>');
+    await settle();
+    const hint = d.querySelector('td-hint');
+    hint.removeAttribute('id');
+    await settle();
+    expect(/^td-hint-\d+$/.test(hint.id), `auto id ${hint.id}`).to.equal(true);
+    expect(desc(d.querySelector('#lf2'))).to.deep.equal([hint.id]);
+    hint.id = '';
+    await settle();
+    expect(/^td-hint-\d+$/.test(hint.id)).to.equal(true);
+    expect(desc(d.querySelector('#lf2'))).to.deep.equal([hint.id]);
+  });
+
+  it('#5 thousands of unrelated mutations while the kit target is undefined → ONE whenDefined registration', async () => {
+    const real = customElements.whenDefined.bind(customElements);
+    let calls = 0;
+    customElements.whenDefined = (t) => { if (t === 'td-v054-burst') calls += 1; return real(t); };
+    cleanup.push(() => { customElements.whenDefined = real; });
+    const d = box('<td-v054-burst id="bu1"></td-v054-burst><td-hint for="bu1" id="bu1-hint">Gợi ý</td-hint>');
+    await settle();
+    for (let i = 0; i < 2000; i++) {
+      const s = document.createElement('span');
+      s.id = `noise-${i}`;
+      d.appendChild(s);
+      if (i % 200 === 0) await tick();
+    }
+    await settle();
+    expect(calls, 'whenDefined registrations').to.equal(1);
+    const { TdInputField } = await import('./td-input-field.js');
+    customElements.define('td-v054-burst', class extends TdInputField {});
+    await settle();
+    expect(desc(d.querySelector('#bu1')._ariaTarget())).to.include('bu1-hint');
+  });
+
+  it('#5 disconnected before the late definition → nothing linked, no error; the wait does not leak into a re-connect', async () => {
+    const d = box('<td-v054-late2 id="lt2"></td-v054-late2><td-hint for="lt2" id="lt2-hint">Gợi ý</td-hint>');
+    await settle();
+    const hint = d.querySelector('td-hint');
+    expect(hint._wait?.tag).to.equal('td-v054-late2');
+    hint.remove();
+    expect(hint._wait).to.equal(null);
+    const { TdInputField } = await import('./td-input-field.js');
+    customElements.define('td-v054-late2', class extends TdInputField {});
+    await settle();
+    expect(hint.control).to.equal(null);
+    expect(desc(d.querySelector('#lt2')._ariaTarget())).to.not.include('lt2-hint');
+    d.appendChild(hint); // back: links through the (now defined) contract
+    await settle();
+    expect(desc(d.querySelector('#lt2')._ariaTarget())).to.include('lt2-hint');
+  });
+
+  it('#5 the target changes to another element while waiting → the wait is dropped (generation), the new target linked', async () => {
+    const d = box('<td-v054-late3 id="lt3"></td-v054-late3><input id="lt3b"><td-hint for="lt3" id="lt3-hint">Gợi ý</td-hint>');
+    await settle();
+    const hint = d.querySelector('td-hint');
+    expect(hint._wait?.tag).to.equal('td-v054-late3');
+    hint.htmlFor = 'lt3b';
+    await settle();
+    expect(hint._wait).to.equal(null);
+    expect(desc(d.querySelector('#lt3b'))).to.deep.equal(['lt3-hint']);
+    const { TdInputField } = await import('./td-input-field.js');
+    customElements.define('td-v054-late3', class extends TdInputField {});
+    await settle();
+    expect(desc(d.querySelector('#lt3')._ariaTarget())).to.not.include('lt3-hint');
+    expect(hint.control === d.querySelector('#lt3b')).to.equal(true);
+  });
+});

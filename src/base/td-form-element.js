@@ -393,9 +393,18 @@ export class TdFormElement extends TdBaseElement {
   /** @private QĐ 4: take the first rich <td-hint> child (no `for`) out of the host, keep the node */
   _takeHintChild() {
     if (this._hintChild) return;
-    const kids = [...this.children].filter((c) => c.localName === 'td-hint' && !c.hasAttribute('for'));
+    const all = [...this.children].filter((c) => c.localName === 'td-hint');
+    const kids = all.filter((c) => !c.hasAttribute('for'));
+    // Codex impl r1 #6: every OTHER direct <td-hint> (a second one, a standalone `for` one) is the page's: set aside with
+    // the owned one before each render (innerHTML would destroy it) and put back, the same node, at the end of the host
+    this._extraHints = all.filter((c) => c !== kids[0]);
+    this._extrasAside = new WeakSet();
+    for (const x of this._extraHints) { x.remove(); this._extrasAside.add(x); }
+    if (kids.length > 1 && !this._warnedHints) {
+      this._warnedHints = true;
+      console.warn(`<${this.localName}>: only the first <td-hint> child is the control's hint; the others are left as they are`);
+    }
     if (!kids.length) return;
-    if (kids.length > 1) console.warn(`<${this.localName}>: only the first <td-hint> child is used`);
     const hint = kids[0];
     hint.remove();
     hint._tdOwner = this;
@@ -508,6 +517,17 @@ export class TdFormElement extends TdBaseElement {
   _bindStep() {
     super._bindStep();
     this._applyHelperState();
+    this._restoreExtraHints();
+  }
+
+  /** @private Codex impl r1 #6: the page's other <td-hint> children the kit set aside come back (same nodes, host end) */
+  _restoreExtraHints() {
+    for (const x of this._extraHints || []) {
+      if (!x.parentNode && this._extrasAside.has(x)) {
+        this._extrasAside.delete(x);
+        this.appendChild(x);
+      }
+    }
   }
 
   /** @private v0.54.0: a full render replaces innerHTML — the rich hint child is set aside first (same node kept). */
@@ -516,6 +536,9 @@ export class TdFormElement extends TdBaseElement {
     if (this._hintChild && this._hintChild.parentNode) {
       this._hintDetached = true;
       this._hintChild.remove();
+    }
+    for (const x of this._extraHints || []) {
+      if (x.parentNode === this) { x.remove(); this._extrasAside.add(x); }
     }
     super._doRender();
   }
