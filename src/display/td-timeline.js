@@ -136,14 +136,7 @@ export class TdTimeline extends TdBaseElement {
   }
 
   connectedCallback() {
-    for (const p of ['items', 'loadMore', 'renderDetails', 'now']) {
-      if (Object.hasOwn(this, p)) {
-        const v = this[p];
-        delete this[p];
-        this[p] = v;
-      }
-    }
-    super.connectedCallback();
+    super.connectedCallback(); // v0.54.1: the base replays items / hooks / now assigned before the upgrade
     this._checkMoreSoon();
   }
 
