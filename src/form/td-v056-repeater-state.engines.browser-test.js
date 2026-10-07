@@ -58,6 +58,25 @@ const TPL = `<template>${ROW('x')}</template>`;
 const repHtml = (attrs = '') => `<form><td-repeater label="Dòng"${attrs}>${TPL}${ROW(0, 'A')}${ROW(1, 'B')}</td-repeater></form>`;
 
 describe('td-repeater disabled (R7)', () => {
+  it('an app aria-disabled="false" on the host is forced to "true" while disabled and restored after (Codex impl r1 #2)', async () => {
+    const w = mount(repHtml(' aria-disabled="false"'));
+    const rep = /** @type {any} */ (w.querySelector('td-repeater'));
+    await tick();
+    rep.disabled = true;
+    await tick();
+    expect(rep.getAttribute('aria-disabled')).to.equal('true');
+    rep.readonly = true;
+    rep.disabled = false;
+    await tick();
+    expect(rep.getAttribute('aria-disabled')).to.equal('false');
+    rep.readonly = false;
+    rep.disabled = true;
+    await tick();
+    rep.disabled = false;
+    await tick();
+    expect(rep.getAttribute('aria-disabled')).to.equal('false');
+  });
+
   it('like <fieldset disabled>: kit buttons + every row control disabled, host aria-disabled, nothing submitted; unlock restores exactly', async () => {
     const w = mount(repHtml(' sortable'));
     const rep = /** @type {any} */ (w.querySelector('td-repeater'));

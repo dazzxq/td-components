@@ -242,7 +242,7 @@ describe('php td_action_button — element mode == render() (QĐ 14)', opts, () 
       + ` $o['edit'] = td_action_button('edit', ['element' => true]);`
       + ` foreach ([`
       + `   ['bad name' => ['icon' => 'star', 'label' => 'X']], ['ok-one' => ['icon' => 'star', 'label' => 'X'], 'bad-icon' => ['icon' => 'no-such-icon', 'label' => 'X']],`
-      + `   ['no-label' => ['icon' => 'star', 'label' => '  ']], ['bad-tone' => ['icon' => 'star', 'label' => 'X', 'tone' => 'info']], ['not-array' => 'star'],`
+      + `   ['no-label' => ['icon' => 'star', 'label' => '  ']], ['bad-tone' => ['icon' => 'star', 'label' => 'X', 'tone' => 'info']], ['null-tone' => ['icon' => 'star', 'label' => 'X', 'tone' => null]], ['not-array' => 'star'],`
       + ` ] as $i => $defs) { try { Td::registerActionPresets($defs); $o['bad' . $i] = 'accepted'; } catch (InvalidArgumentException $e) { $o['bad' . $i] = 'rejected'; } }`
       + ` $o['partial'] = td_action_button('ok-one', ['element' => true]);`
       + ` echo json_encode($o, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);`;
@@ -263,7 +263,7 @@ describe('php td_action_button — element mode == render() (QĐ 14)', opts, () 
     assert.equal(splitHost(o.archive).control.attrs.get('aria-label'), 'Cất kho');
     assert.ok(splitHost(o.archive).control.inner.includes('data-td-icon="inbox"'));
     assert.equal(splitHost(o.edit).control.attrs.get('aria-label'), 'Chỉnh sửa');
-    for (let i = 0; i < 5; i += 1) assert.equal(o[`bad${i}`], 'rejected', `bad${i}`);
+    for (let i = 0; i < 6; i += 1) assert.equal(o[`bad${i}`], 'rejected', `bad${i}`);
     assert.equal(o.partial, '', 'all or nothing: ok-one of a rejected batch is not registered');
     assert.ok(/td_action_button: unknown action "ok-one"/.test(r.stderr), r.stderr);
   });

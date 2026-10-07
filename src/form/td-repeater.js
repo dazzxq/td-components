@@ -304,6 +304,8 @@ export class TdRepeater extends TdBaseElement {
     this._writeRow = null;
     /** @private v0.56.0 (R6) attributes the HOST lock set: element → names (released exactly; pruned on every apply) */
     this._owned = new Map();
+    /** @private v0.56.0 host aria-disabled before the host lock (undefined = not locked; null = was absent) */
+    this._hostAria = undefined;
     /** @private v0.56.0 controls a site TdRepeater.lockField() handled → the mode it locked them in */
     this._siteLocked = new Map();
     /** @private custom element names waited for (lock decided once defined) */
@@ -1010,7 +1012,6 @@ export class TdRepeater extends TdBaseElement {
     const released = new Set();
     const unlockable = new Set();
     if (mode) {
-      if (mode === 'disabled') add(this, 'aria-disabled');
       for (const b of this._kitButtons()) add(b, mode === 'disabled' ? 'disabled' : 'hidden');
       for (const row of this._model.keys()) {
         for (const el of this._rowControls(row)) {
@@ -1050,6 +1051,16 @@ export class TdRepeater extends TdBaseElement {
         if (!mine) this._owned.set(el, (mine = new Set()));
         mine.add(a);
       }
+    }
+    // Codex impl r1 #2: the host's aria-disabled is forced to "true" while host-disabled (an app's "false" would otherwise
+    // keep it announced as enabled); the prior value is snapshotted and restored exactly when the lock goes
+    if (mode === 'disabled') {
+      if (this._hostAria === undefined) this._hostAria = this.getAttribute('aria-disabled');
+      if (this.getAttribute('aria-disabled') !== 'true') this.setAttribute('aria-disabled', 'true');
+    } else if (this._hostAria !== undefined) {
+      if (this._hostAria === null) this.removeAttribute('aria-disabled');
+      else this.setAttribute('aria-disabled', this._hostAria);
+      this._hostAria = undefined;
     }
     if (unlockable.size) {
       this._warnOnce('readonly', `td-repeater: readonly cannot lock ${[...unlockable].join(', ')} — they stay editable `

@@ -827,7 +827,7 @@ namespace TdComponents {
                 if ($label === '') {
                     throw new InvalidArgumentException("Td::registerActionPresets(\"$name\"): label must be a non-empty string");
                 }
-                $tone = $def['tone'] ?? 'standard';
+                $tone = array_key_exists('tone', $def) ? $def['tone'] : 'standard'; // Codex impl r1 #1: an explicit null is invalid (as JS)
                 if (!in_array($tone, self::ACTION_TONES, true)) {
                     throw new InvalidArgumentException("Td::registerActionPresets(\"$name\"): tone must be standard | warning | danger");
                 }
