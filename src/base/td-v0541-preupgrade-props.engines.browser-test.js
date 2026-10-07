@@ -277,4 +277,15 @@ describe('v0.54.1 — properties assigned before the upgrade reach the setters',
     expect(el.selectedRows.map((r) => r.a)).to.deep.equal(['two']);
     expect(el.textContent.includes('one') && el.textContent.includes('two')).to.equal(true);
   });
+
+  it('td-drawer: <td-drawer open> + pre-upgrade open = false stays closed (Codex impl r1)', async () => {
+    const tpl = document.createElement('template');
+    tpl.innerHTML = '<td-drawer open label="Ngăn kéo"><p>Nội dung</p></td-drawer>';
+    const el = tpl.content.cloneNode(true).querySelector('td-drawer');
+    el.open = false;
+    mount().append(el);
+    await tick();
+    expect(el.open).to.equal(false);
+    expect(el.hasAttribute('open')).to.equal(false);
+  });
 });

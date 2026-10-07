@@ -191,7 +191,12 @@ export class TdDrawer extends HTMLElement {
 
   set open(v) {
     if (v) this.show();
-    else this.close('programmatic');
+    else {
+      // Codex impl r1: `open = false` on a closed drawer still drops a reflected `open` (e.g. `<td-drawer open>` + a
+      // pre-upgrade `open = false` replayed before connectedCallback would otherwise open it from the attribute)
+      if (this._state === 'closed' && this.hasAttribute('open')) this._reflect(false);
+      this.close('programmatic');
+    }
   }
 
   connectedCallback() {
