@@ -24,7 +24,7 @@ Mặc định mọi chuỗi đều được escape; raw HTML chỉ có khi opt-i
 Không bao giờ đưa input của người dùng cuối qua các đường này:
 
 - `TdModal.show({ body })`: `body` dạng chuỗi là HTML thô (ưu tiên truyền Node). `confirm/success/error/info`: `message` là text; `messageHtml` là HTML tin cậy (0.9.0).
-- `td-table` column `render(row, rowIdxInPage)`: trả về **Node** (khuyên dùng) hoặc chuỗi HTML thô (trusted, chỉ markup của dev — không bao giờ nhúng dữ liệu hàng chưa escape). Ô không có `render` hiển thị giá trị dạng text.
+- `td-table` column `render(row, rowIdxInPage[, ctx])` (`ctx` ở bảng cây, 0.57.0): trả về **Node** (khuyên dùng) hoặc chuỗi HTML thô (trusted, chỉ markup của dev — không bao giờ nhúng dữ liệu hàng chưa escape). Ô không có `render` hiển thị giá trị dạng text.
 - `td-empty-state` `icon`: ~~chuỗi `<svg` chèn nguyên văn~~ — **đã đóng (0.8.0)**: chuỗi SVG (deprecated) chỉ được render sau khi qua allowlist hình học dùng chung (`svgStringToDefinition`, parse `image/svg+xml`, dựng lại bằng `createElementNS`; `script`/`foreignObject`/`use`/`on*`/`style`/`url()` → từ chối, về `inbox`). Hatch được hỗ trợ: property `iconNode` (SVGElement tin cậy).
 
 - `TdMenu` item `iconNode`: `SVGElement` tin cậy (được clone); `href`: https, http chỉ khi trang là http (không hạ cấp từ HTTPS), link tương đối xét theo protocol sau resolve. `TdFormValidation`: rule tự viết mà throw → field không hợp lệ (fail closed). Nhãn/hint của menu, chip, gợi ý và thông báo của
@@ -263,6 +263,27 @@ tạo; `rowKey` / `rowSelectable` / `onSelectChange` là callback của dev; l�
 - **Callback fail closed**: `rowKey` ném → dòng không chọn được (cảnh báo một lần); `rowSelectable` ném → khoá;
   `onSelectChange` ném → `console.error`, event vẫn phát.
 - **Không `style`**: cột chọn / màu dòng chọn chỉ từ `td.css` (CSP gate `td-table.selection*`).
+
+### 6b'. Bảng cây `td-table tree` (v0.57.0)
+
+[ADR 0030](decisions/0030-tree-table-treegrid.md), plan [v0.57.0-tree-table](plans/v0.57.0-tree-table.md). Mô hình đe
+doạ như 6b; thêm: dòng con (lồng, phẳng `parent-key`, hay trả từ `loadChildren`) cũng do người dùng khác tạo; thao tác
+hàng ("Xoá") phải luôn trúng **đúng dòng** sau khi cây đổi hình.
+
+- **Cùng luật escape**: dòng con đi qua đúng đường vẽ của dòng gốc (giá trị ô escape, `render` vẫn là cửa tin cậy của dev).
+  Tên nút mở / đóng = tên dòng (như ô tick), đặt bằng `setAttribute`; thông báo tải chậm qua `textContent`, mẫu nhãn thay
+  bằng hàm. Khoá (kể cả khoá cha) không vào DOM.
+- **Đọc `parent-key`** bằng cùng bộ đọc chống prototype pollution của `row-key` (`readKeyField`). Mồ côi / vòng lặp → gốc
+  (không treo, không đệ quy vô hạn); khoá trùng → lá (không hai dòng tranh một trạng thái); > 16 cấp bị bỏ.
+- **Đúng dòng**: tra cứu khoá → nút **sở hữu** của mô hình (không đánh chỉ số `data` bằng chỉ số cây — Codex r1 #4);
+  `row-action` đọc `data-row-idx` lúc bấm; menu "Thao tác" của card đọc dòng lúc mở và kiểm lại lúc chọn (dòng đã rời
+  bảng → không phát). Test: mở / đóng / `moveRow` phía trên rồi thao tác → `row` đúng.
+- **`loadChildren`**: nhận `signal`, bị `abort()` khi `data` mới / ngắt; kết quả muộn (thế hệ cũ) bị bỏ — phản hồi cũ
+  không bao giờ chèn vào cây mới. Kết quả không phải mảng = lỗi. Lỗi chỉ hiện chữ cố định (`labels`), không hiện
+  `error.message`.
+- **Kit không ghi dữ liệu app**: `data` / object dòng không bị sửa (test `Object.freeze` sâu); `moveRow` chỉ đổi cây trong
+  bảng — server **luôn** kiểm quyền + ràng buộc cha (vòng, độ sâu) khi lưu; `canDrop` / `max-depth` chỉ là UX.
+- **Không `style`**: thụt lề qua CSSOM `--td-table-tree-level` (số nguyên do kit tính), CSP gate `td-table.v057-*`.
 
 ## 6c. Bộ lọc ngoài, ẩn cột, `td-filter-chips` (v0.39.0)
 

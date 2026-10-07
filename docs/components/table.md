@@ -5,7 +5,8 @@
 Bảng dữ liệu có sắp xếp theo cột, phân trang (trên + dưới), trạng thái đang tải (skeleton), trạng thái rỗng,
 header dính khi cuộn, nút thao tác theo hàng, **dạng card tự động khi chỗ đặt hẹp** (từ 0.34.0) và **chọn dòng**
 theo khoá (một / nhiều, chọn cả trang, Shift chọn dải, giữ qua trang — từ 0.37.0), **bộ lọc ngoài + chế độ
-`controlled`** cho đồng bộ URL và **ẩn / hiện cột** (từ 0.39.0). Cột và dữ liệu đưa vào bằng **JS property** (`columns`, `data`), hỗ trợ cả chế độ client (bảng tự
+`controlled`** cho đồng bộ URL, **ẩn / hiện cột** (từ 0.39.0) và **bảng cây** — dòng lồng nhau, mở / đóng, tải con
+chậm (từ 0.57.0). Cột và dữ liệu đưa vào bằng **JS property** (`columns`, `data`), hỗ trợ cả chế độ client (bảng tự
 sort + cắt trang) lẫn chế độ server (bạn tự gọi API mỗi trang). Dùng cho danh sách dạng hàng/cột; **không** dùng để
 dàn layout (dùng CSS grid) và không dùng cho bảng tĩnh vài dòng không cần sort/phân trang (viết `<table>` thường).
 
@@ -654,6 +655,132 @@ table.addEventListener('columns-change', (e) => {
   đổi **tại chỗ**, không dựng lại bảng → focus trong menu giữ nguyên, lựa chọn dòng giữ nguyên. Cột đang sort bị ẩn →
   sort giữ (state không đổi); hiện lại → `aria-sort` đúng. `table-layout: fixed` tính trên các cột **đang hiện**.
 
+### 13. Bảng cây — dòng lồng nhau (`tree`) — từ 0.57.0
+
+Danh mục, phòng ban, menu nhiều cấp… mà **mỗi dòng vẫn cần cột "Thao tác", toggle trạng thái, chọn dòng, sort, phân
+trang**: bật `tree` (cần `row-key`). Mọi tính năng của bảng chạy trên từng dòng, ở mọi cấp.
+
+```html
+<td-table id="cats" tree row-key="id" title="Danh mục" selectable></td-table>
+```
+
+```js
+cats.columns = [
+  { key: 'name', label: 'Tên', sortable: true },                 // cột cây = cột primary (thụt lề + nút mở / đóng)
+  { key: 'on', label: 'Trạng thái', render: (row, i, ctx) => {    // ctx = { level, parentKey, hasChildren, expanded }
+    const t = document.createElement('td-toggle');
+    t.setAttribute('label', `Hiện ${row.name}`);
+    t.toggleAttribute('checked', row.active);
+    return t;
+  } },
+  { key: 'act', label: 'Thao tác', actions: [{ id: 'edit', label: 'Sửa', icon: 'pencil' }, { id: 'move', label: 'Chuyển vào…' }] },
+];
+// Dữ liệu LỒNG (mặc định: mảng con ở `children`, đổi bằng children-key)…
+cats.data = [
+  { id: 1, name: 'Áo', active: true, children: [{ id: 2, name: 'Áo thun', active: true }, { id: 3, name: 'Áo khoác', active: false }] },
+  { id: 4, name: 'Quần', active: true, hasChildren: true },       // nhánh tải chậm (xem dưới)
+];
+cats.expandedKeys = [1];                                          // mở sẵn (im lặng); mặc định tất cả đóng
+```
+
+**Hai hình dữ liệu, một cây.**
+
+- **Lồng** (mặc định): mảng con ở trường `children` (attribute `children-key` đổi tên trường).
+- **Phẳng**: `parent-key="parentId"` → `data` là danh sách phẳng, cha = dòng có khoá `String(row.parentId)`. `null` /
+  `undefined` / `''` = gốc; khoá cha không có trong `data` (mồ côi) → gốc + một cảnh báo; vòng lặp cha → các dòng trong
+  vòng thành gốc + một cảnh báo. Thứ tự anh em = thứ tự trong `data`. Có `parent-key` thì mảng `children` bị bỏ qua.
+- **Khoá** như chọn dòng (mục 10): `rowKey` / `row-key`. Khoá trùng → lần sau là **lá** (không mở, không chọn, nhánh
+  con của nó không hiện) + một cảnh báo. Thiếu `rowKey` → bảng phẳng **chỉ cấp gốc** + một cảnh báo.
+- Tối đa 16 cấp (sâu hơn bị bỏ + cảnh báo); > 5000 dòng → một cảnh báo gợi ý tải chậm.
+- **Kit không bao giờ sửa `data` của bạn** (kể cả sau `moveRow`): `data` trả lại đúng mảng bạn gán; thứ tự / cha mới
+  chỉ sống trong bảng — đọc bằng `getTree()`.
+
+**Mở / đóng.** Nút mở / đóng (`button.td-table__tree-toggle`, tên "Mở {tên dòng}" / "Thu gọn {tên dòng}") đứng đầu ô
+cây; dòng lá có khoảng trống cùng bề rộng (thẳng cột). Bấm vào **thân dòng không** mở / đóng (thân dòng chứa nút, toggle
+của bạn). Trạng thái mở theo **khoá**, sống qua sort / trang / `data` mới / loading (khoá còn thì còn mở; khoá biến mất
+vẫn được nhớ — `collapseAll()` để quên):
+
+```js
+cats.expand(1); cats.collapse(1); cats.toggleExpanded(1);
+cats.expandAll();          // chỉ các nhánh ĐÃ tải (không bắn hàng loạt request)
+cats.collapseAll();
+cats.expandedKeys;         // get: khoá đang mở (thứ tự cây, rồi khoá đang nhớ) — set: thay, im lặng
+cats.addEventListener('expanded-change', (e) => save(e.detail)); // { key, row, expanded } — CHỈ khi người dùng mở / đóng
+// URL / khôi phục: getState().expandedKeys, setState({ expandedKeys }), update({ expandedKeys })
+```
+
+Mở / đóng **tăng dần**: chỉ các dòng con được chèn / gỡ, dòng khác giữ nguyên node (focus, trạng thái toggle của bạn
+không mất), `render` chỉ chạy cho dòng mới. Sort / đổi trang / `data` mới vẫn vẽ lại cả trang như trước.
+
+**Tải con chậm.** Dòng có `hasChildren: true` (đổi bằng property `rowHasChildren(row) => boolean`) và chưa có con →
+có nút mở; mở lần đầu gọi `loadChildren`:
+
+```js
+cats.loadChildren = async (row, { signal }) => {
+  const res = await fetch(`/api/categories?parent=${encodeURIComponent(row.id)}`, { signal });
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();       // mảng dòng con (dạng lồng; với parent-key: mảng phẳng MỘT cấp con)
+};
+cats.addEventListener('load-error', (e) => console.warn(e.detail)); // { key, row, error }
+```
+
+- Mới nhất thắng: `data` mới / ngắt khỏi trang → request đang chạy bị `abort()`, kết quả muộn bị bỏ; nhánh còn mở thì
+  tải lại. Đóng nhánh khi đang tải **không** huỷ (kết quả được nhớ, mở lại không tải lại).
+- Đang tải: `tr[aria-busy="true"]`; **sau 400 ms** mới hiện dòng "Đang tải…" (tải nhanh không nháy) và đọc "Đang tải các
+  dòng con của {tên}…", xong thì đọc "Đã tải {n} dòng con của {tên}".
+- Lỗi: dòng "Không tải được các dòng con" + nút **Thử lại** (đọc ngay, nhánh vẫn mở); trả `[]` → dòng thành lá; kết quả
+  không phải mảng = lỗi.
+
+**Bàn phím (APG treegrid, focus theo dòng).** Thân bảng là **một điểm Tab**: Tab vào dòng đang hoạt động (mặc định
+dòng đầu trang), ↓ / ↑ dòng kế / trước, Home / End đầu / cuối trang, → mở (đang mở: tới con đầu), ← đóng (đã đóng: về
+cha), `*` mở mọi anh em đã tải, Space chọn dòng (Shift+Space chọn dải), Enter **để dành cho app** (không làm gì). RTL đảo
+← / →. Từ dòng, Tab đi qua **control của chính dòng đó** (ô tick, nút thao tác, toggle của bạn…) rồi ra khỏi bảng; control
+của các dòng khác tạm `tabindex="-1"`. Bấm / focus vào control của dòng khác → dòng đó thành dòng hoạt động. Mũi tên
+khi đang gõ trong ô nhập của dòng **không** bị bắt. **Khác bảng phẳng:** ít điểm Tab hơn (một cho thân bảng + control của
+một dòng, thay vì mọi nút của mọi dòng).
+
+**Chọn dòng với cây.** Như mục 10, tra theo khoá tới đúng dòng ở mọi cấp (`selectedRows` có cả dòng con). "Chọn tất cả
+trên trang" = các dòng **đang hiện** (gồm con đang mở). Shift chọn dải theo thứ tự hiện. Đóng nhánh **giữ** lựa chọn của
+con. Không chọn kiểu "chọn cha = chọn cả nhánh".
+
+**Sort, phân trang.** Sort trong **từng nhóm anh em** (cha luôn trước con). Phân trang **theo gốc**: `per-page` = số
+gốc mỗi trang, gốc đi cùng mọi con cháu đang mở (mở nhánh không đẩy dòng sang trang khác); `total-items` /
+`getState().totalItems` = số gốc. Server mode: `data` = một trang gốc (con lồng sẵn hoặc tải chậm), `total-items` = tổng
+số gốc. Nhược: một gốc có 500 con đang mở = trang dài — dùng `max-height`.
+
+**Cột cây.** Mặc định là cột `primary` (cột đầu, hoặc cột `card: 'primary'`); đổi bằng `tree-column="key"`. Cột cây
+**không ẩn được** (`hideable` / `hidden` bị bỏ + cảnh báo); cột `actions` không làm cột cây được. `ellipsis` trên cột cây:
+nút + thụt lề nằm ngoài phần bị cắt.
+
+**Card (màn hẹp).** Mỗi dòng một card; card con thụt `0.75rem` mỗi cấp, **tối đa 3 cấp** (`--td-table-tree-card-levels`
+— 320px không tràn), có vạch dẫn ở mép đầu; nút mở / đóng đứng đầu dòng primary. Dòng "Đang tải…" / lỗi là một card gọn.
+
+**Đổi cha / thứ tự bằng code — `moveRow(key, parentKey, index)`** (im lặng, không event; kéo thả: bản sau).
+
+```js
+cats.setAttribute('max-depth', '3'); // số cấp tối đa sau khi chuyển (mặc định 16)
+cats.canDrop = ({ key, row, parentKey, parentRow, index, level }) => level <= 3 && !parentRow?.locked; // ném = false
+cats.moveRow(3, null, 0);           // "Áo khoác" thành gốc đầu tiên → true
+cats.moveRow(3, 4, Number.MAX_SAFE_INTEGER); // vào cuối "Quần" (con của nó đã tải)
+```
+
+- `index` = vị trí **cuối cùng** (từ 0) trong nhóm anh em mới, **đếm sau khi gỡ dòng ra** (`getTree()` sau lời gọi có
+  `children[index].key === key`). Anh em `[a, b, c, d]`: `moveRow('a', P, 2)` → `[b, c, a, d]`, `moveRow('d', P, 1)` →
+  `[a, d, b, c]`, `moveRow('b', P, 1)` → không đổi (trả `true`, không vẽ lại). `index` âm / không nguyên / `NaN` /
+  `Infinity` → từ chối; quá lớn → cuối.
+- Trả `false` + một cảnh báo (không đổi gì) khi: khoá / cha không biết, con của cha **chưa tải** (nhánh tải chậm), vào
+  chính nó / con cháu của nó, vượt `max-depth`, `canDrop` trả `false` / ném lỗi.
+- Bảng đồng bộ DOM, ARIA (cấp, vị trí, mở / đóng của cả cha cũ và cha mới), lựa chọn, phân trang, focus (dòng đang focus
+  vào một nhánh đóng → focus về cha mới). Đang sort theo cột thì thứ tự hiển thị vẫn theo sort.
+- **Server mode:** số gốc hiệu lực = `total-items` ± các lần chuyển gốc ↔ con, dùng cho số trang + `aria-setsize`, tới khi
+  bạn gửi lại sự thật (`setState({ data, totalItems })` / `data` / `total-items`). Bảng không tự cắt lại / đổi trang.
+- **Công thức "Chuyển vào…"** (lối thay thế kéo thả, một con trỏ — WCAG 2.5.7): action `move` mở modal có
+  [`td-tree-select`](tree-select.md) chọn cha mới → `cats.moveRow(row.id, parentId, Number.MAX_SAFE_INTEGER)` → lưu lên
+  server (lỗi thì `moveRow` ngược lại về vị trí cũ, lấy từ `getTree()` trước khi chuyển).
+
+**Khi nào dùng `td-tree` thay vì bảng cây?** Chọn giá trị trong cây (form, bộ lọc, chọn cha), không có cột / thao tác
+mỗi dòng → [`td-tree`](tree.md) / [`td-tree-select`](tree-select.md). Danh sách quản trị dạng bảng có cấp bậc → bảng cây.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -681,8 +808,14 @@ table.addEventListener('columns-change', (e) => {
 | `controlled` | boolean | vắng | Chỉ với `server-mode`: bảng không tự áp đổi trang / sort — phát `request-change`, bật skeleton, chờ `setState()` (mục 11). Thiếu `server-mode` → cảnh báo, bỏ qua. Từ 0.39.0. |
 | `column-menu` | boolean | vắng | Nút "Cột" ở header mở menu ẩn / hiện cột (mục 12). Từ 0.39.0. |
 | `min-visible` | number | `1` | Số cột đang hiện tối thiểu (≥ 1). Từ 0.39.0. |
+| `tree` | boolean | vắng | Bảng cây (mục 13): dòng lồng nhau, `role="treegrid"`. Cần `row-key` / `rowKey`. Từ 0.57.0. |
+| `children-key` | string | `children` | Trường mảng con (dữ liệu lồng). Từ 0.57.0. |
+| `parent-key` | string | — | Dữ liệu phẳng: tên trường khoá cha (có thì bỏ qua `children-key`). Từ 0.57.0. |
+| `tree-column` | string | cột `primary` | `key` của cột chứa thụt lề + nút mở / đóng. Từ 0.57.0. |
+| `max-depth` | number | `16` | Số cấp tối đa mà `moveRow` được tạo ra (không cắt dữ liệu bạn đưa). Từ 0.57.0. |
 
-Các attribute `title`, `heading-level`, `zebra`, `max-height`, `selectable`, `row-key`, `column-menu` khi đổi sẽ dựng lại cấu trúc bảng; `layout` /
+Các attribute `title`, `heading-level`, `zebra`, `max-height`, `selectable`, `row-key`, `column-menu`, `tree`,
+`children-key`, `parent-key`, `tree-column` khi đổi sẽ dựng lại cấu trúc bảng; `layout` /
 `card-below` chỉ đổi CSS (không render lại); mọi attribute khác cập nhật tại chỗ (focus được giữ).
 
 ## Property & method
@@ -701,11 +834,11 @@ Các attribute `title`, `heading-level`, `zebra`, `max-height`, `selectable`, `r
 | `setData(data)` | `(Array) => void` | Thay dữ liệu. Client: về trang 1. Server: giữ trang. |
 | `setPage(page)` | `(number) => void` | Chuyển trang (kẹp vào khoảng hợp lệ khi hiển thị). **Không** gọi `onPageChange`, không phát `page-change`. |
 | `setLoading(bool)` | `(boolean) => void` | Bật/tắt attribute `loading`. |
-| `getState()` | `() => { columns, data, page, perPage, sort: { key, direction }, filters, totalItems, requestId, selection: { mode, keys } }` | Trạng thái hiện tại; `sort.key` là `key` gốc của cột. `selection` từ 0.37.0 (`mode`: `'none' \| 'multiple' \| 'single'`). 0.39.0: `filters` (đóng băng), `totalItems` (server: `total-items` hoặc `null`; client: số dòng), `requestId` (của `request-change` mới nhất, 0 khi chưa có). |
-| `setState(state)` | `({ page?, perPage?, sort?, filters?, data?, totalItems?, requestId? }) => boolean` | Áp một lần, im lặng; `requestId` cũ → bỏ qua, trả `false`; có `data` → tắt `loading`. Gọi được trước khi gắn vào trang (mục 11). Từ 0.39.0. |
+| `getState()` | `() => { columns, data, page, perPage, sort: { key, direction }, filters, totalItems, requestId, selection: { mode, keys }, expandedKeys }` | Trạng thái hiện tại; `sort.key` là `key` gốc của cột. `selection` từ 0.37.0 (`mode`: `'none' \| 'multiple' \| 'single'`). 0.39.0: `filters` (đóng băng), `totalItems` (server: `total-items` hoặc `null`; client: số dòng — bảng cây: số **gốc**), `requestId` (của `request-change` mới nhất, 0 khi chưa có). 0.57.0: `expandedKeys`. |
+| `setState(state)` | `({ page?, perPage?, sort?, filters?, data?, totalItems?, requestId?, expandedKeys? }) => boolean` | Áp một lần, im lặng; `requestId` cũ → bỏ qua, trả `false`; có `data` → tắt `loading`. Gọi được trước khi gắn vào trang (mục 11). Từ 0.39.0. |
 | `setFilters(filters, { resetPage })` | `(object, { resetPage?: boolean }) => void` | Phát `request-change` reason `filters` (trang 1 trừ khi `resetPage: false`); không `controlled` → bảng giữ `filters` + về trang đó. Từ 0.39.0. |
 | `hiddenColumns` | `string[] \| null` | `key` các cột đang ẩn (get / set im lặng; `null` = theo `hidden` của cột). Từ 0.39.0. |
-| `update(opts)` | `({ columns?, data?, page?, onSort?, onPageChange?, rowKey?, rowSelectable?, selectedKeys? }) => void` | Gộp nhiều thay đổi một lần. `columns`/`data` không phải mảng bị bỏ qua (không throw). `data` theo quy tắc trang của `setData`, sau đó `page` (nếu có) được áp. `rowKey` áp trước (nó bỏ lựa chọn), rồi `selectedKeys` (0.37.0). |
+| `update(opts)` | `({ columns?, data?, page?, onSort?, onPageChange?, rowKey?, rowSelectable?, selectedKeys?, expandedKeys?, loadChildren? }) => void` | Gộp nhiều thay đổi một lần. `columns`/`data` không phải mảng bị bỏ qua (không throw). `data` theo quy tắc trang của `setData`, sau đó `page` (nếu có) được áp. `rowKey` áp trước (nó bỏ lựa chọn), rồi `selectedKeys` (0.37.0). `expandedKeys` / `loadChildren` từ 0.57.0. |
 | `rowKey` | `string \| (row) => key` | Khoá của dòng (mục 10). Chuỗi = phản chiếu `row-key`. Từ 0.37.0. |
 | `rowSelectable` | `(row) => boolean` | `false` / ném lỗi → dòng không chọn được bởi người dùng. Từ 0.37.0. |
 | `selectedKeys` | `Array` | Khoá đã chọn (mọi trang, thứ tự chọn, kiểu gốc). Gán = thay toàn bộ (lọc khoá sai, bỏ trùng; `single` giữ cái cuối), **không** event. Từ 0.37.0. |
@@ -715,6 +848,14 @@ Các attribute `title`, `heading-level`, `zebra`, `max-height`, `selectable`, `r
 | `toggle(key, { emit })` | | Đảo một khoá. Từ 0.37.0. |
 | `clearSelection({ emit })` | | Bỏ hết (mọi trang). Tên không phải `clear` để khỏi nhầm "xoá dữ liệu". Từ 0.37.0. |
 | `isSelected(key)` | `(key) => boolean` | `1` và `"1"` là một. Từ 0.37.0. |
+| `expandedKeys` | `Array` | Bảng cây: khoá đang mở (thứ tự cây, rồi khoá đang nhớ mà chưa hiện). Gán = thay, **im lặng**. Từ 0.57.0. |
+| `expand(key)` / `collapse(key)` / `toggleExpanded(key)` | `(key) => void` | Mở / đóng một nhánh (nhánh tải chậm thì tải). Im lặng. Khoá chưa có → được nhớ. (Không tên `toggle`: `toggle` là API chọn dòng.) Từ 0.57.0. |
+| `expandAll()` / `collapseAll()` | `() => void` | Mở mọi nhánh **đã tải** / đóng hết (và quên khoá đang nhớ). Im lặng. Từ 0.57.0. |
+| `loadChildren` | `(row, { signal }) => Promise<Array> \| Array` | Con của nhánh tải chậm (mục 13). Từ 0.57.0. |
+| `rowHasChildren` | `(row) => boolean` | Dòng chưa có con trong dữ liệu mà tải được (mặc định `row.hasChildren === true`). Từ 0.57.0. |
+| `canDrop` | `({ key, row, parentKey, parentRow, index, level }) => boolean` | `moveRow` có được đặt dòng vào đó không; `false` / ném → từ chối. Từ 0.57.0. |
+| `moveRow(key, parentKey, index)` | `(key, key \| null, number) => boolean` | Chuyển dòng (cùng nhánh con) sang cha mới ở vị trí cuối `index` (mục 13). Im lặng. Từ 0.57.0. |
+| `getTree()` | `() => Array<{ key, row, children: Array \| null }>` | Ảnh chụp cây theo thứ tự của bảng (`null` = nhánh tải chậm chưa tải). Từ 0.57.0. |
 | `TdTable.labels` | static object | Chuỗi hiển thị, site ghi đè được (xem dưới). |
 
 ### `ColumnDef`
@@ -732,7 +873,7 @@ Các attribute `title`, `heading-level`, `zebra`, `max-height`, `selectable`, `r
 | `nowrap` | boolean | `true` nếu `align: 'right'`, còn lại `false` | Giá trị không xuống dòng (class `td-table__cell--nowrap`). Từ 0.34.0. |
 | `card` | `'lead'` \| `'primary'` \| `'secondary'` \| `'meta'` \| `'actions'` \| `false` | cột đầu `primary` (hoặc `lead` khi cột khác khai báo `primary` — 0.36.1), cột có `actions` → `actions`, còn lại `secondary` | Vai trò trên card (xem cách dùng số 9). Từ 0.34.0; `lead` từ 0.36.1. |
 | `actions` | `Array<{ id, label, icon?, variant?, hidden?, disabled? }>` | — | Nút thao tác theo hàng (xem cách dùng số 8). Từ 0.34.0. |
-| `render` | `(row, rowIdxInPage) => Node \| string \| any` | — | Ô tuỳ biến (xem cách dùng số 3). Nội dung được **nối sau** nhãn card của ô. |
+| `render` | `(row, rowIdxInPage, ctx?) => Node \| string \| any` | — | Ô tuỳ biến (xem cách dùng số 3). Nội dung được **nối sau** nhãn card của ô. 0.57.0, bảng cây: tham số 3 `ctx = { level, parentKey, hasChildren, expanded }` (lúc vẽ dòng đó); ở bảng cây dùng `row`, đừng dựa vào `rowIdxInPage` (vị trí đổi khi mở / đóng nhánh phía trên). |
 | `hideable` | boolean | `true` (`false` cho cột `primary` và cột `actions`) | Cho phép ẩn cột (menu "Cột", `hiddenColumns`). Cần `key` duy nhất khác rỗng. Từ 0.39.0. |
 | `hidden` | boolean | `false` | Ẩn lúc đầu (và khi "Khôi phục mặc định" / `hiddenColumns = null`). Từ 0.39.0. |
 
@@ -763,6 +904,15 @@ Object.assign(TdTable.labels, {
   columns: 'Columns',
   columnsReset: 'Reset to default',
   columnsMin: 'At least {n} columns',
+  expandRow: 'Expand {label}',
+  collapseRow: 'Collapse {label}',
+  treeLoading: 'Loading…',
+  treeLoadError: 'Could not load the child rows',
+  treeRetry: 'Retry',
+  treeLoadingRow: 'Loading the child rows of {label}…',
+  treeLoaded: 'Loaded {n} child rows of {label}',
+  treeLoadErrorRow: 'Could not load the child rows of {label}',
+  treeRetrying: 'Loading again…',
 });
 ```
 
@@ -786,6 +936,10 @@ Object.assign(TdTable.labels, {
 | `columnsReset` | `Khôi phục mặc định` | Mục cuối của menu cột (0.39.0) |
 | `columnsMin` | `Cần ít nhất {n} cột` | Gợi ý trên mục bị khoá bởi `min-visible` (0.39.0) |
 | `selectLimit` | `Tối đa {max} dòng` | Thông báo khi chạm `max-selected` (0.37.0) |
+| `expandRow` / `collapseRow` | `Mở {label}` / `Thu gọn {label}` | Tên nút mở / đóng của bảng cây (`{label}` như `selectRow`) (0.57.0) |
+| `treeLoading` | `Đang tải…` | Dòng trạng thái khi nhánh tải chậm > 400 ms (0.57.0) |
+| `treeLoadError` / `treeRetry` | `Không tải được các dòng con` / `Thử lại` | Dòng lỗi + nút thử lại (0.57.0) |
+| `treeLoadingRow` / `treeLoaded` / `treeLoadErrorRow` / `treeRetrying` | `Đang tải các dòng con của {label}…` / `Đã tải {n} dòng con của {label}` / `Không tải được các dòng con của {label}` / `Đang tải lại…` | Thông báo `role="status"` của tải chậm (0.57.0) |
 
 Đổi `labels` trước khi bảng render (ngay sau import). Các nhãn bên trong `td-pagination` ("Trang trước", "Trang N",
 "Hiển thị …") đổi qua `TdPagination.labels`, xem [pagination.md](pagination.md#tdpaginationlabels).
@@ -800,7 +954,9 @@ Object.assign(TdTable.labels, {
 | `select-limit` | `{ max }` | Một thao tác **người dùng** dừng ở `max-selected` (không bao giờ từ API). Từ 0.37.0. | có (composed) |
 | `request-change` | `{ state: { page, perPage, sort: { key, direction }, filters }, reason: 'page' \| 'sort' \| 'filters', requestId }` — `state` đóng băng | Người dùng đổi trang / sort (mọi chế độ) hoặc `setFilters()`. Sau `sort-change` / `page-change`, trước `onSort` / `onPageChange` (mục 11). Từ 0.39.0. | có (composed) |
 | `columns-change` | `{ hidden: string[], reason: 'toggle' \| 'reset' }` | Người dùng bật / tắt cột hoặc "Khôi phục mặc định" trong menu "Cột". **Không** phát khi gán `hiddenColumns`. Từ 0.39.0. | có (composed) |
-| `row-action` | `{ id, row, rowIndex }` — `id` của action, `row` là chính object hàng trong `data`, `rowIndex` là chỉ số hàng **trong trang hiện tại** (như tham số thứ hai của `render`) | Người dùng bấm một nút action (dạng bảng) hoặc chọn một mục trong menu "Thao tác" (dạng card). Phát **trước** `onRowAction`. Từ 0.34.0. | có (composed) |
+| `row-action` | `{ id, row, rowIndex }` — `id` của action, `row` là chính object hàng trong `data`, `rowIndex` là chỉ số hàng **trong trang hiện tại** (như tham số thứ hai của `render`; bảng cây: vị trí **lúc bấm** trong các dòng đang hiện) | Người dùng bấm một nút action (dạng bảng) hoặc chọn một mục trong menu "Thao tác" (dạng card). Phát **trước** `onRowAction`. Từ 0.34.0. 0.57.0: menu "Thao tác" đọc dòng **lúc mở** và kiểm lại **lúc chọn** — dòng đã rời bảng (trang đổi, `data` mới, nhánh đóng) → không phát. | có (composed) |
+| `expanded-change` | `{ key, row, expanded }` | **Người dùng** mở / đóng một dòng của bảng cây (chuột, chạm, →, ←, `*`). **Không** phát với API (`expand`, `expandedKeys`…). Cùng tên với `td-tree`. Từ 0.57.0. | có (composed) |
+| `load-error` | `{ key, row, error }` | `loadChildren` ném / từ chối / trả không phải mảng. Cùng tên với `td-tree`. Từ 0.57.0. | có (composed) |
 
 ```js
 table.addEventListener('sort-change', (e) => console.log(e.detail)); // { key: 'name', direction: 'asc' }
@@ -856,13 +1012,19 @@ Token (khai báo trong `@layer td.tokens`, override bằng CSS không layer củ
 | `--td-table-check-border` | `var(--td-checkbox-border)` | 0.41.0: viền lúc nghỉ của ô chọn dòng = viền checkbox chung (sửa hồi quy 0.37: viền từng bị vẽ `--td-color-border`, 1.27:1 trên trắng) |
 | `--td-table-row-selected` | accent 8 % (`color-mix`; fallback `rgb(37 99 235 / 8%)`) | Nền dòng / card đã chọn; hover chồng `--td-table-row-hover` lên (0.37.0) |
 | `--td-table-card-selected-border` | `var(--td-accent)` | Viền card đã chọn (≥ 3:1 với nền trang — contrast gate) (0.37.0) |
+| `--td-table-tree-indent` | `1.25rem` | Thụt lề mỗi cấp của ô cây (dạng bảng) (0.57.0) |
+| `--td-table-tree-toggle-size` | `1.5rem` | Nút mở / đóng + khoảng trống của dòng lá (44px với con trỏ thô) (0.57.0) |
+| `--td-table-tree-card-indent` | `0.75rem` | Thụt mỗi cấp của card con (0.57.0) |
+| `--td-table-tree-card-levels` | `3` | Card sâu hơn số cấp này không thụt thêm (0.57.0) |
+| `--td-table-tree-guide` | `var(--td-color-border-strong)` | Vạch dẫn ở mép đầu card con (trang trí — cấp nằm ở `aria-level`) (0.57.0) |
 
 Từ 0.27.0, hàng skeleton của bảng dùng chung token với class [`.td-skeleton`](loading.md#skeleton-khối-giữ-chỗ-thuần-css):
 `--td-table-skeleton` / `--td-table-sheen` mặc định trỏ vào `--td-skeleton-bg` / `--td-skeleton-shine`, còn bo góc và chu
 kỳ lướt đọc thẳng `--td-skeleton-radius` / `--td-skeleton-dur`. Đổi `--td-skeleton-*` trên `:root` là bảng và skeleton
 của site khớp nhau; ghi đè `--td-table-skeleton` / `--td-table-sheen` vẫn chỉ đổi riêng bảng. Markup không đổi.
 
-`--td-table-max-h` do JS đặt (CSSOM) từ attribute `max-height`; không đặt tay.
+`--td-table-max-h` do JS đặt (CSSOM) từ attribute `max-height`; `--td-table-tree-level` (0 cho gốc) do JS đặt trên mỗi
+`tr` của bảng cây; không đặt tay.
 
 ```css
 /* CSS của site — không bọc trong @layer để thắng td.tokens */
@@ -959,6 +1121,15 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
 - Ẩn cột (0.39.0): thuộc tính `hidden` trên `th` / `td` / ô skeleton có `data-col` của cột đó (không bao giờ trên cột
   chọn); hàng rỗng `colspan` = số cột **đang hiện** (+ 1 khi có cột chọn). Đổi tại chỗ, không render lại.
 - Hàng skeleton: `tr.td-table__row.td-table__row--skeleton[aria-hidden="true"]` > `td > span.td-table__skeleton`.
+- **Bảng cây (0.57.0)**: `.td-table.td-table--tree` > `table[role="treegrid"]`; mỗi dòng
+  `tr.td-table__row[role="row"][data-row-idx][aria-level][aria-setsize][aria-posinset][aria-expanded (chỉ dòng có con)]
+  [aria-busy (đang tải con)][tabindex="0|-1"]` (CSSOM `--td-table-tree-level`); ô `td[role="gridcell"]`; ô cây
+  `td.td-table__cell--tree > span.td-table__cell-label + button.td-table__tree-toggle[type="button"][tabindex="-1"]
+  [aria-label="Mở …|Thu gọn …"] > span.td-table__tree-icon` (lá: `span.td-table__tree-spacer[aria-hidden]`) + giá trị.
+  Dòng trạng thái tải chậm: `tr.td-table__row.td-table__row--tree-status[role="row"][aria-level="n+1"][aria-setsize="1"]
+  [aria-posinset="1"] > td.td-table__tree-status[role="gridcell"][colspan][data-state="loading|error"] >
+  span.td-table__tree-status-text [+ button.td-btn.td-btn--sm.td-btn--secondary.td-table__tree-retry]` (không
+  `data-row-idx`). Dòng đang đóng **không** có trong DOM. Khoá không in ra DOM.
 - Hàng rỗng: `tr.td-table__empty-row > td.td-table__empty[colspan] > td-empty-state`.
 - Ô ellipsis: `td.td-table__cell--ellipsis > span.td-table__cell-label + div.td-table__truncate[title]`.
 - Id tiêu đề: `{id của host}-title`, host không có id thì `td-table-{n}-title`.
@@ -980,7 +1151,12 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
 - Menu "Thao tác" là APG menu button (`aria-haspopup="menu"`, `aria-expanded`): Enter / Space / ↓ mở và focus mục đầu,
   ↑ mở và focus mục cuối, Esc đóng và trả focus về nút. Mục bị `disabled(row)` có `aria-disabled` (focus được, không chọn được).
 - Loading: `aria-busy="true"` + một thông báo trạng thái; skeleton `aria-hidden`.
-- **Chọn dòng (0.37.0)** — vẫn là `role="table"`, **không** chuyển sang `grid`: grid buộc mô hình phím theo ô (mũi tên
+- **Bảng cây (0.57.0)** — `tree` → `role="treegrid"` (chỉ bảng cây; bảng phẳng vẫn `table` — ADR 0030): dòng có
+  `aria-level` / `aria-setsize` / `aria-posinset` (gốc khi có phân trang: vị trí toàn cục, tổng số gốc), `aria-expanded`
+  trên dòng có con. Focus **theo dòng** (roving tabindex, một điểm Tab cho thân bảng) — phím: mục 13. Nút mở / đóng là
+  `button` thật có tên (người dùng VoiceOver / TalkBack chạm đúp vào nó), không là điểm Tab. Không `aria-selected` (chọn
+  qua ô tick như bảng phẳng). Dòng "Đang tải…" / lỗi là một dòng của cây (↓ / → từ cha tới được, Tab tới "Thử lại").
+- **Chọn dòng (0.37.0)** — vẫn là `role="table"` (bảng phẳng), **không** chuyển sang `grid`: grid buộc mô hình phím theo ô (mũi tên
   giữa ô, Enter / F2 vào nội dung) xung đột với link / nút / `render` tự do trong ô và với dạng card. Mỗi dòng **một**
   `button[role="checkbox"]` có tên ("Chọn {tên dòng}"), một điểm Tab mỗi dòng (như cột thao tác), không roving. Space
   bật / tắt, Shift+Space chọn dải, Enter không làm gì, mũi tên không làm gì. `single` cũng là checkbox (độc quyền) — không
@@ -1013,17 +1189,26 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
   `URLSearchParams` (không tự ghép chuỗi), server whitelist cột sort / kiểm kiểu + độ dài từng tham số. `requestId` +
   `AbortController` chống phản hồi cũ ghi đè phản hồi mới; `setState` với `requestId` cũ bị bỏ (kể cả khi app quên abort).
   Nhãn cột trong menu "Cột" là `textContent`.
+- **Bảng cây (0.57.0)**: dòng con (lồng, phẳng hay từ `loadChildren`) đi cùng luật escape của cột như dòng gốc;
+  `render` vẫn là cửa tin cậy. `loadChildren` nhận `signal` — huỷ request khi `data` đổi. Kit không ghi vào `data` /
+  object dòng của bạn. `moveRow` chỉ đổi cây trong bảng: server **luôn** kiểm quyền + ràng buộc cha khi lưu.
 - `width` / `minWidth` / `maxWidth` qua whitelist dimension, `align` qua whitelist, `max-height` qua `CSS.supports` +
   cấm `url()`/`var()`; `active-color` qua `safeColor`. Chi tiết: [guides/security.md](../guides/security.md).
 
 ## Cảm ứng
 
 - Nút sắp xếp có hình nhấn; hover hàng chỉ trên con trỏ mịn (hàng không kích hoạt được nên không có hình nhấn). Vuốt ngang bảng cuộn (dạng bảng) không sắp xếp / không chọn.
+- Bảng cây (0.57.0): nút mở / đóng 44 × 44px với con trỏ thô (24px chuột), có hình nhấn; chạm vào thân dòng **không**
+  mở / đóng.
 
 Chuẩn chung: [Cảm ứng](../guides/touch.md).
 
 ## Lưu ý & lỗi thường gặp
 
+- **Bảng cây: mở / đóng không gọi lại `render` cho dòng cũ** (0.57.0) — chỉ dòng mới. Đừng dựa vào `rowIndex` của
+  `render` / thứ tự lời gọi để định danh dòng; dùng `row` (hoặc khoá).
+- **Bảng cây: ít điểm Tab hơn** (0.57.0): Tab vào một dòng rồi đi mũi tên (mục 13). Test tự động duyệt bằng Tab phải
+  đổi theo.
 - **`render` chạy lại mỗi lần cập nhật** (đổi trang, sort, tắt loading, gán `data`…): `tbody` được dựng mới. Vì vậy hàm
   `render` phải tạo Node **mới** mỗi lần gọi (trả về cùng một Node sẽ bị "chuyển" giữa các ô) và nên rẻ.
 - **`width` không có tác dụng** nếu thiếu `widthType: 'fixed'`. Xem cách dùng số 4.
@@ -1053,5 +1238,6 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - [Pagination](pagination.md), [Empty state](empty-state.md), [Menu](menu.md) (menu "Thao tác"), [Icons](icons.md) (icon `up` / `down` / `sort` / `more`)
 - [ADR 0014 — breakpoint + container query](../internal/decisions/0014-breakpoints-container-queries.md)
 - [ADR 0018 — `td-table` chọn dòng](../internal/decisions/0018-table-row-selection.md) · [Ô tick chung (ADR 0017)](../internal/decisions/0017-shared-check-mark.md)
+- [ADR 0030 — bảng cây: treegrid chỉ khi `tree`](../internal/decisions/0030-tree-table-treegrid.md) · [Tree](tree.md) / [Tree select](tree-select.md) (chọn giá trị trong cây)
 - [Theming](../customization/theming.md) · [Styling](../customization/styling.md) · [Hooks](../customization/hooks.md)
 - [Bảo mật](../guides/security.md) · [Trợ năng](../guides/accessibility.md)

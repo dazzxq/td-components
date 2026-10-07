@@ -268,6 +268,7 @@ Dải chọn của bánh xe dùng token `--td-dtp-band-border` (đổi tông ở
 | td ≤ 0.9 | `td.px-6.py-16` (bảng rỗng) | `tr.td-table__empty-row > td.td-table__empty` | `data-state="empty"` | 0.10.0 |
 | td ≤ 0.9 | `.td-table-skel-row` + `.td-table-skel-bar` | `tr.td-table__row--skeleton` + `.td-table__skeleton` | `data-state="loading"` | 0.10.0 |
 | (mới) | — | `th.td-table__th--select` (+ `.td-table__th--select-all`) > `button.td-table__select-all[role=checkbox]` + `span.td-table__select-all-label`; `td.td-table__cell--select.td-table__card-select` > `button.td-table__select[role=checkbox]` (mark `.td-check`) | `aria-checked`, `[disabled]`, `tr[data-selected]` | 0.37.0 |
+| (mới) | — | Bảng cây: `div.td-table.td-table--tree` > `table[role=treegrid]`; `td.td-table__cell--tree` > `button.td-table__tree-toggle` (> `span.td-table__tree-icon`) hoặc `span.td-table__tree-spacer`; dòng trạng thái `tr.td-table__row--tree-status` > `td.td-table__tree-status` > `span.td-table__tree-status-text` (+ `button.td-table__tree-retry`) | `tr[aria-level][aria-setsize][aria-posinset][aria-expanded][aria-busy][tabindex]`, `td.td-table__tree-status[data-state=loading\|error]`, CSSOM `--td-table-tree-level` | 0.57.0 |
 
 `cellPaddingClass` vẫn nhận từ vựng dcms (`px-0` … `px-6`) và chuyển thành `.td-table__cell--px-{n}`.
 

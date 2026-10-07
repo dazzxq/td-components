@@ -2048,6 +2048,31 @@
       "light": "0.375rem",
       "dark": "0.375rem",
       "why": "v0.53.1 segmented gap icon ↔ label (md = v0.52; sm 0.25rem on the variant)"
+    },
+    "--td-table-tree-card-indent": {
+      "light": "0.75rem",
+      "dark": "0.75rem",
+      "why": "v0.57.0 tree table: indent per level of a child card"
+    },
+    "--td-table-tree-card-levels": {
+      "light": "3",
+      "dark": "3",
+      "why": "v0.57.0 tree table: child cards stop indenting after this many levels"
+    },
+    "--td-table-tree-guide": {
+      "light": "rgb(212, 212, 216)",
+      "dark": "rgb(69, 69, 75)",
+      "why": "v0.57.0 tree table: guide line of a child card (= --td-color-border-strong; decorative)"
+    },
+    "--td-table-tree-indent": {
+      "light": "1.25rem",
+      "dark": "1.25rem",
+      "why": "v0.57.0 tree table: indent per tree level (table mode)"
+    },
+    "--td-table-tree-toggle-size": {
+      "light": "1.5rem",
+      "dark": "1.5rem",
+      "why": "v0.57.0 tree table: tree toggle / spacer size (44px on coarse pointers)"
     }
   },
   "lightDeltas": {
