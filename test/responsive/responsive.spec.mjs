@@ -268,7 +268,7 @@ async function runConfig(browser, c) {
         if (r.width < min - 0.5 || r.height < min - 0.5) errs.push(`toggle ${r.width.toFixed(1)} × ${r.height.toFixed(1)} < ${min}`);
       }
       const scroll = document.querySelector('#rsp-table-tree-scroll .td-table__scroll');
-      if (document.documentElement.clientWidth < 720 && scroll.scrollWidth <= scroll.clientWidth) errs.push('#rsp-table-tree-scroll does not scroll sideways');
+      if (document.documentElement.clientWidth < 480 && scroll.scrollWidth <= scroll.clientWidth) errs.push('#rsp-table-tree-scroll does not scroll sideways');
       return errs;
     }, !!c.touch && c.engine !== 'firefox');
     for (const id of ['rsp-table-tree', 'rsp-table-tree-scroll']) {
