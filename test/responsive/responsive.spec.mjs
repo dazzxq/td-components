@@ -232,7 +232,7 @@ async function runConfig(browser, c) {
     check(tag, `overlapping text${where}`, st.overlaps);
     check(tag, `truncated tab labels${where}`, st.truncatedTabs);
     // td-table: card when its container is < 720 (default card-below md); layout="table" never; card mode keeps roles
-    const modes = await page.evaluate(() => ['rsp-table', 'rsp-table-density', 'rsp-table-scroll', 'rsp-table-narrow'].map((id) => {
+    const modes = await page.evaluate(() => ['rsp-table', 'rsp-table-density', 'rsp-table-scroll', 'rsp-table-narrow', 'rsp-table-tree', 'rsp-table-tree-scroll'].map((id) => {
       const host = document.getElementById(id);
       const tr = host.querySelector('tbody tr');
       return { id, width: host.clientWidth, layout: host.getAttribute('layout') || 'auto', display: tr ? getComputedStyle(tr).display : '' };
@@ -244,6 +244,38 @@ async function runConfig(browser, c) {
       if (wantCard !== isCard) modeErr.push(`${m.id} (${m.layout}, host ${m.width}px): ${isCard ? 'card' : 'table'}, want ${wantCard ? 'card' : 'table'}`);
     }
     check(tag, 'td-table mode', modeErr);
+    // v0.57.0 (plan v0.57.0-tree-table Gate): tree table — cards: 6 levels never overflow the host (the card indent stops
+    // at 3 levels = 3 × 0.75rem), the toggle ≥ 44 × 44 on a coarse pointer (≥ 24 mouse); layout="table": the tree scrolls
+    // sideways inside its region; treegrid semantics in both (aria snapshot).
+    const treeErr = await page.evaluate((coarse) => {
+      const errs = [];
+      const host = document.getElementById('rsp-table-tree');
+      const trs = [...host.querySelectorAll('.td-table__body > tr')];
+      if (trs.length !== 7) errs.push(`#rsp-table-tree: ${trs.length} rows (want 7, all open)`);
+      const card = trs[0] && getComputedStyle(trs[0]).display !== 'table-row';
+      if (host.scrollWidth > host.clientWidth + 1) errs.push(`#rsp-table-tree overflows: ${host.scrollWidth} > ${host.clientWidth}`);
+      if (card) {
+        const ml = trs.map((tr) => parseFloat(getComputedStyle(tr).marginInlineStart));
+        if (Math.max(...ml) > 36.5) errs.push(`#rsp-table-tree card indent ${Math.max(...ml)}px > 36 (3 levels)`);
+        if (ml[3] !== ml[5]) errs.push(`#rsp-table-tree card indent keeps growing past 3 levels: ${ml.join(', ')}`);
+        for (const tr of trs) {
+          if (tr.scrollWidth > tr.clientWidth + 1) errs.push(`card "${tr.getAttribute('aria-level')}" overflows: ${tr.scrollWidth} > ${tr.clientWidth}`);
+        }
+      }
+      const min = coarse ? 44 : 24;
+      for (const t of host.querySelectorAll('.td-table__tree-toggle')) {
+        const r = t.getBoundingClientRect();
+        if (r.width < min - 0.5 || r.height < min - 0.5) errs.push(`toggle ${r.width.toFixed(1)} × ${r.height.toFixed(1)} < ${min}`);
+      }
+      const scroll = document.querySelector('#rsp-table-tree-scroll .td-table__scroll');
+      if (document.documentElement.clientWidth < 720 && scroll.scrollWidth <= scroll.clientWidth) errs.push('#rsp-table-tree-scroll does not scroll sideways');
+      return errs;
+    }, !!c.touch && c.engine !== 'firefox');
+    for (const id of ['rsp-table-tree', 'rsp-table-tree-scroll']) {
+      const tSnap = await page.locator(`#${id} table`).ariaSnapshot();
+      if (!tSnap.includes('- treegrid')) treeErr.push(`#${id}: aria snapshot lacks "- treegrid"`);
+    }
+    check(tag, 'td-table tree (v0.57.0)', treeErr);
     // v0.36.1 (plan QĐ 10): card density budgets — phone (360 / 393) and the 700 px card column at 768. Each card ≤ the
     // budget, the sort bar ONE row (same chip top) ≤ 52 coarse / 44 mouse, the `lead` ≥ 14 px coarse (12 px mouse).
     if ([360, 393, 768].includes(c.w)) {

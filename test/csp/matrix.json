@@ -1557,6 +1557,88 @@
         "height"
       ],
       "excludeNote": "v0.39.0: a controlled request in flight — skeleton + aria-busy while BOTH paginations stay (focus kept). The footer holds the pagination text; text-bearing boxes (labels, values, the 'Cột' / 'Xoá tất cả' buttons, menu items) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards): width / height are excluded here; the layout budgets (no overflow, one line per chip, 44px touch targets) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "v057-tree",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('tree',''); t.setAttribute('row-key','id'); t.setAttribute('layout','table'); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên'},{key:'code',label:'Mã'}]; t.data=[{id:'ao',name:'Áo',code:'C1',children:[{id:'thun',name:'Áo thun',code:'C2',children:[{id:'tron',name:'Cổ tròn',code:'C3'}]},{id:'khoac',name:'Áo khoác',code:'C4'}]},{id:'quan',name:'Quần',code:'C5',children:[{id:'jeans',name:'Jeans',code:'C6'}]},{id:'pk',name:'Phụ kiện',code:'C7'}]; t.expandedKeys=['ao','thun'];",
+      "selectors": [
+        ".td-table--tree",
+        ".td-table__row[aria-level=\"1\"]",
+        ".td-table__row[aria-level=\"2\"] > .td-table__cell--tree",
+        ".td-table__row[aria-level=\"3\"] > .td-table__cell--tree",
+        ".td-table__row[aria-expanded=\"true\"] .td-table__tree-toggle",
+        ".td-table__row[aria-expanded=\"true\"] .td-table__tree-icon",
+        ".td-table__row[aria-expanded=\"false\"] .td-table__tree-icon",
+        ".td-table__tree-spacer"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left",
+        "line-height"
+      ],
+      "selectorNote": "v0.57.0: text-sized cells / rows size with the platform font metrics (Linux CI ≠ macOS, lesson of v0.54 daf820c) — grid-template-columns / height / width / margin-left / line-height excluded up front; the tree indent (padding-inline-start, from tokens) stays in the snapshot; the card indent (margin) is gated by test:responsive."
+    },
+    {
+      "state": "v057-tree-card",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('tree',''); t.setAttribute('row-key','id'); t.setAttribute('layout','cards'); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên'},{key:'code',label:'Mã'}]; t.data=[{id:'ao',name:'Áo',code:'C1',children:[{id:'thun',name:'Áo thun',code:'C2',children:[{id:'tron',name:'Cổ tròn',code:'C3'}]},{id:'khoac',name:'Áo khoác',code:'C4'}]},{id:'quan',name:'Quần',code:'C5',children:[{id:'jeans',name:'Jeans',code:'C6'}]},{id:'pk',name:'Phụ kiện',code:'C7'}]; t.expandedKeys=['ao','thun'];",
+      "selectors": [
+        ".td-table__row[aria-level=\"1\"]",
+        ".td-table__row[aria-level=\"2\"]",
+        ".td-table__row[aria-level=\"2\"] > .td-table__cell--tree",
+        ".td-table__row[aria-level=\"3\"]",
+        ".td-table__row[aria-expanded=\"true\"] .td-table__tree-toggle",
+        ".td-table__tree-spacer"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left",
+        "line-height"
+      ],
+      "selectorNote": "v0.57.0: text-sized cells / rows size with the platform font metrics (Linux CI ≠ macOS, lesson of v0.54 daf820c) — grid-template-columns / height / width / margin-left / line-height excluded up front; the tree indent (padding-inline-start, from tokens) stays in the snapshot; the card indent (margin) is gated by test:responsive."
+    },
+    {
+      "state": "v057-tree-loading",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('tree',''); t.setAttribute('row-key','id'); t.setAttribute('layout','table'); t.loadChildren=()=>new Promise(()=>{}); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên'},{key:'code',label:'Mã'}]; t.data=[{id:'l',name:'Lười',code:'C1',hasChildren:true},{id:'z',name:'Cuối',code:'C2'}]; t.expand('l');",
+      "selectors": [
+        ".td-table__row[aria-busy=\"true\"]",
+        ".td-table__row--tree-status",
+        ".td-table__tree-status",
+        ".td-table__tree-status-text"
+      ],
+      "settle": 800,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left",
+        "line-height"
+      ],
+      "selectorNote": "v0.57.0: text-sized cells / rows size with the platform font metrics (Linux CI ≠ macOS, lesson of v0.54 daf820c) — grid-template-columns / height / width / margin-left / line-height excluded up front; the tree indent (padding-inline-start, from tokens) stays in the snapshot; the card indent (margin) is gated by test:responsive. The status row shows after the 400 ms loading delay (settle 800)."
+    },
+    {
+      "state": "v057-tree-error",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('tree',''); t.setAttribute('row-key','id'); t.setAttribute('layout','table'); t.loadChildren=()=>Promise.reject(new Error('x')); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên'},{key:'code',label:'Mã'}]; t.data=[{id:'l',name:'Lỗi',code:'C1',hasChildren:true},{id:'z',name:'Cuối',code:'C2'}]; t.expand('l');",
+      "selectors": [
+        ".td-table__row--tree-status",
+        ".td-table__tree-status[data-state=\"error\"]",
+        ".td-table__tree-status-text",
+        ".td-table__tree-retry"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left",
+        "line-height"
+      ],
+      "selectorNote": "v0.57.0: text-sized cells / rows size with the platform font metrics (Linux CI ≠ macOS, lesson of v0.54 daf820c) — grid-template-columns / height / width / margin-left / line-height excluded up front; the tree indent (padding-inline-start, from tokens) stays in the snapshot; the card indent (margin) is gated by test:responsive."
     }
   ],
   "td-modal": [

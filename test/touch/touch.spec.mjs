@@ -176,6 +176,8 @@ const PRESS_TYPES = [
   { name: 'row select', sel: '#rsp-table-density .td-table__select', token: '--td-color-pressed' },
   { name: 'select all chip', sel: '#rsp-table-density .td-table__select-all', token: '--td-color-pressed' },
   { name: 'tree row', sel: '#g-tree .td-tree__row', token: '--td-option-pressed-bg' },
+  // v0.57.0: td-table tree toggle (a tap opens / closes the branch — pressed only)
+  { name: 'table tree toggle', sel: '#rsp-table-tree .td-table__tree-toggle', token: '--td-color-pressed', noTap: true },
   // v0.45.0: a clickable td-steps step (navigation="back") and a td-timeline details summary
   { name: 'step', sel: '#rsp-steps button.td-steps__step', token: '--td-color-pressed' },
   { name: 'timeline summary', sel: '#rsp-timeline .td-timeline__summary', token: '--td-color-pressed' },
@@ -792,6 +794,29 @@ async function chromiumSemantics(browser) {
       const x1 = await stable((s) => document.querySelector(s).scrollLeft, scroller);
       expect(x1 > x0 + 20, `table did not scroll (${x0} → ${x1})`);
       expect(await page.evaluate(() => window.__sorts) === 0, 'a swipe sorted the table');
+    });
+
+    await it(tag, 'table tree (v0.57.0): toggle is a real 44 × 44 target; a tap on the row body never opens / closes, a tap on the toggle does', async () => {
+      await load(page);
+      const host = '#rsp-table-tree';
+      await page.locator(host).scrollIntoViewIfNeeded();
+      const box = await page.evaluate((h) => {
+        const r = document.querySelector(`${h} .td-table__tree-toggle`).getBoundingClientRect();
+        return { w: r.width, h: r.height };
+      }, host);
+      expect(box.w >= 43.5 && box.h >= 43.5, `toggle ${box.w} × ${box.h}`);
+      await page.evaluate((h) => { window.__exp = []; document.querySelector(h).addEventListener('expanded-change', (e) => window.__exp.push(e.detail.expanded)); }, host);
+      const level = (sel) => page.evaluate((x) => document.querySelector(x).getAttribute('aria-expanded'), sel);
+      const row1 = `${host} .td-table__body > tr[aria-level="1"]`;
+      const cell = await centre(page, `${row1} [data-card="meta"]`);
+      await page.touchscreen.tap(cell.x, cell.y);
+      await frames(page, 3);
+      expect(await level(row1) === 'true' && (await page.evaluate(() => window.__exp.length)) === 0, 'a tap on the row body changed the branch');
+      const t = await centre(page, `${row1} .td-table__tree-toggle`);
+      await page.touchscreen.tap(t.x, t.y);
+      await frames(page, 3);
+      expect(await level(row1) === 'false', 'a tap on the toggle did not close the branch');
+      expect(JSON.stringify(await page.evaluate(() => window.__exp)) === '[false]', 'expanded-change not fired once');
     });
 
     await it(tag, 'tabs: a sideways swipe on the tab strip does not switch tabs', async () => {

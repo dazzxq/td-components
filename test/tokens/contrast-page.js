@@ -130,6 +130,10 @@ for (const state of ['row', 'card']) CASES.push({ kind: 'table-select', v: 'sele
 // v0.37.0 review ISSUE-5: pressed selection controls (data-td-pressed = the real pressed rule) — the card chip label ≥ 4.7
 // and the ticked mark fill ≥ 3 on the pressed fill, the pressed fill differs from rest — light + dark.
 for (const state of ['row-pressed', 'chip-pressed']) CASES.push({ kind: 'table-select', v: 'selected', state, pageOnly: true });
+// v0.57.0 (plan v0.57.0-tree-table Gate): tree toggle icon ≥ 3 on the row fill, the zebra row, the selected row (+ hover
+// wash) and its pressed fill, on a card; status rows "Đang tải…" (muted) and the error text ≥ 4.7 on the table fill — light
+// + dark. The child-card guide line is decorative (the level is aria-level) — exempt, not measured.
+for (const state of ['toggle', 'card', 'status']) CASES.push({ kind: 'table-tree', v: 'tree', state, pageOnly: true });
 // v0.39.0 (plan v0.39.0-filters-range M4): td-filter-chips — chip label (bold) + value ≥ 4.7 on the chip fill, × icon ≥ 3.2
 // on the chip fill and on its hover / pressed fills, chip edge vs page; the td-table "Cột" ghost button label ≥ 4.7 vs the
 // page, rest + pressed — computed colours (`pairs`), light + dark.
@@ -1449,6 +1453,63 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
         { what: 'cell text on the selected tint + hover wash', fg: text, bg: over(tok('--td-table-row-hover'), sel), min: 4.7 }];
     const b = tr.getBoundingClientRect();
     return { rect: { x: b.x, y: b.y, width: b.width, height: b.height }, ink: {}, opacity: 1, hover: false, name: `table-select:${c.v}:${c.state}`, pairs };
+  } else if (c.kind === 'table-tree') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const over = overRgb;
+    const host = document.createElement('td-table');
+    host.setAttribute('tree', '');
+    host.setAttribute('row-key', 'id');
+    host.setAttribute('selectable', '');
+    host.setAttribute('layout', c.state === 'card' ? 'cards' : 'table');
+    stage.appendChild(host);
+    host.columns = [{ key: 'name', label: 'Tên' }, { key: 'code', label: 'Mã' }];
+    host.loadChildren = (row) => (row.id === 'e' ? Promise.reject(new Error('x')) : new Promise(() => {}));
+    host.data = [{ id: 'a', name: 'Áo', code: 'C1', children: [{ id: 'a1', name: 'Áo thun', code: 'C2' }] },
+      { id: 'b', name: 'Quần', code: 'C3', children: [{ id: 'b1', name: 'Jeans', code: 'C4' }] },
+      { id: 'l', name: 'Lười', code: 'C5', hasChildren: true }, { id: 'e', name: 'Lỗi', code: 'C6', hasChildren: true }];
+    host.selectedKeys = ['a'];
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const probe = document.createElement('span');
+    host.appendChild(probe);
+    const tok = (name) => { probe.style.setProperty('color', `var(${name})`); return getComputedStyle(probe).color; };
+    const tableBg = over(tok('--td-table-bg'), page);
+    const zebra = over(tok('--td-table-zebra'), tableBg);
+    const sel = over(tok('--td-table-row-selected'), tableBg);
+    const rows = [...host.querySelectorAll('tbody > tr')];
+    const icon = (tr) => getComputedStyle(tr.querySelector('.td-table__tree-toggle svg') || tr.querySelector('.td-table__tree-toggle')).color;
+    const pairs = [];
+    let target = rows[0];
+    if (c.state === 'toggle') {
+      pairs.push({ what: 'toggle icon vs selected row', fg: icon(rows[0]), bg: sel, min: 3 },
+        { what: 'toggle icon vs selected row + hover wash', fg: icon(rows[0]), bg: over(tok('--td-table-row-hover'), sel), min: 3 },
+        { what: 'toggle icon vs zebra row', fg: icon(rows[1]), bg: zebra, min: 3 },
+        { what: 'toggle icon vs row fill', fg: icon(rows[2]), bg: tableBg, min: 3 });
+      const btn = rows[2].querySelector('.td-table__tree-toggle');
+      btn.setAttribute('data-td-pressed', '');
+      const fill = over(getComputedStyle(btn).backgroundColor, tableBg);
+      pairs.push({ what: 'toggle icon vs its pressed fill', fg: icon(rows[2]), bg: fill, min: 3 },
+        { what: 'pressed fill differs from rest', fg: fill, bg: tableBg, min: 1.05 });
+    } else if (c.state === 'card') {
+      const card = over(tok('--td-table-card-bg'), page);
+      pairs.push({ what: 'toggle icon vs card', fg: icon(rows[1]), bg: card, min: 3 },
+        { what: 'toggle icon vs selected card', fg: icon(rows[0]), bg: over(tok('--td-table-row-selected'), card), min: 3 });
+    } else {
+      host.expand('l');
+      host.expand('e');
+      for (let i = 0; i < 90 && host.querySelectorAll('.td-table__row--tree-status').length < 2; i++) {
+        await new Promise((r) => requestAnimationFrame(r));
+      }
+      const [loadingRow, errorRow] = ['loading', 'error'].map((st) => host.querySelector(`.td-table__tree-status[data-state="${st}"]`));
+      if (!loadingRow || !errorRow) throw new Error('table-tree: no status rows');
+      target = loadingRow;
+      pairs.push({ what: '"Đang tải…" text vs table fill', fg: getComputedStyle(loadingRow).color, bg: tableBg, min: 4.7 },
+        { what: '"Đang tải…" text vs zebra fill', fg: getComputedStyle(loadingRow).color, bg: zebra, min: 4.7 },
+        { what: 'error text vs table fill', fg: getComputedStyle(errorRow).color, bg: tableBg, min: 4.7 },
+        { what: 'error text vs zebra fill', fg: getComputedStyle(errorRow).color, bg: zebra, min: 4.7 });
+    }
+    probe.remove();
+    const b = target.getBoundingClientRect();
+    return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `table-tree:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'v050') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     const over = overRgb;
