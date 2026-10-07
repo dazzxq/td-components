@@ -66,6 +66,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.57.0: bảng cây `<td-table tree>` + `moveRow` / `canDrop` / `max-depth` ([ADR 0030](decisions/0030-tree-table-treegrid.md)) — plan [v0.57.0-tree-table](plans/v0.57.0-tree-table.md)
 - `done` v0.57.1: `--td-field-error-size` + `TdModal` focus ban đầu theo `[autofocus]` (dsuite)
 - `todo`: WebKit — test `:focus-visible` nút đóng toast (v0.21 P4) hỏng cả trên main (phát hiện ở v0.57.1)
+- `todo` v0.57.2 (dsuite 2026-10-08, chờ owner): câu đếm phân trang của bảng cây — hook per-instance `formatPageInfo(ctx)` trên `td-table` (ctx: `from` / `to` / `total` / `item` + `rows` = số dòng đang hiện, `totalRows` khi biết) thay cho chỉ `TdPagination.labels.info` toàn site; docs chế độ server: "một trang = danh sách gốc kèm **trọn** con cháu" (đừng cắt theo dòng phẳng)
 - `todo` v0.58.0: kéo thả đổi cha / thứ tự cho bảng cây (`reorderable`, event `move`, `rowDraggable` — tên đã giữ chỗ trong plan v0.57.0)
 - `todo`: RTL — phím ← ở hai đầu `td-choice-group` quay vòng ngược chiều radio native (có từ v0.49, phát hiện ở v0.53.1)
 - `todo` kiểm tay VoiceOver / NVDA: toggle `locked` (0.52) + menu panel (0.53) — owner: phát hành trước, kiểm sau
