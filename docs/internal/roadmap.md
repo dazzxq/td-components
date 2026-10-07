@@ -63,6 +63,8 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.54.1: vá property gán trước khi nâng cấp (template clone / createElement trước define) — plan [v0.54.1-preupgrade-props](plans/v0.54.1-preupgrade-props.md)
 - `done` v0.55.0: `prefix` / `suffix` input-field + number-input, `locale` số, `--td-field-note-size` ([ADR 0028](decisions/0028-field-affix-number-locale.md)) — plan [v0.55.0-affix-number](plans/v0.55.0-affix-number.md)
 - `done` v0.56.0: `td-repeater` `value` / `disabled` / `readonly`, 6 icon + 3 preset nút thao tác, PHP `td_date()` ([ADR 0029](decisions/0029-repeater-field-values-and-lock.md)) — plan [v0.56.0-repeater-icons-date](plans/v0.56.0-repeater-icons-date.md)
+- `done` v0.57.0: bảng cây `<td-table tree>` + `moveRow` / `canDrop` / `max-depth` ([ADR 0030](decisions/0030-tree-table-treegrid.md)) — plan [v0.57.0-tree-table](plans/v0.57.0-tree-table.md)
+- `todo` v0.58.0: kéo thả đổi cha / thứ tự cho bảng cây (`reorderable`, event `move`, `rowDraggable` — tên đã giữ chỗ trong plan v0.57.0)
 - `todo`: RTL — phím ← ở hai đầu `td-choice-group` quay vòng ngược chiều radio native (có từ v0.49, phát hiện ở v0.53.1)
 - `todo` kiểm tay VoiceOver / NVDA: toggle `locked` (0.52) + menu panel (0.53) — owner: phát hành trước, kiểm sau
 - Ngày từ v0.33 trở đi: **rebaseline từ ngày v0.31 xong thực tế** (không nén test / acceptance để giữ lịch cũ ~11/11 –
