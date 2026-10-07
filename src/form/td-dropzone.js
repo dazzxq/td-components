@@ -222,13 +222,7 @@ export class TdDropzone extends TdFormElement {
   // --- Life cycle ---
 
   connectedCallback() {
-    // A hook assigned before the element upgraded lives in an own data property that shadows the accessor.
-    if (Object.prototype.hasOwnProperty.call(this, 'upload')) {
-      const fn = this.upload;
-      delete this.upload;
-      this.upload = fn;
-    }
-    super.connectedCallback();
+    super.connectedCallback(); // v0.54.1: the base replays an `upload` assigned before the upgrade
     if (!this._bound) this._bind();
   }
 

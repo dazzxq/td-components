@@ -103,13 +103,7 @@ export class TdFilterChips extends TdBaseElement {
   }
 
   connectedCallback() {
-    // `items` assigned before the element was defined lives in an own data property: replay it through the setter
-    if (Object.hasOwn(this, 'items')) {
-      const v = this.items;
-      delete this.items;
-      this.items = v;
-    }
-    super.connectedCallback();
+    super.connectedCallback(); // v0.54.1: the base replays `items` assigned before the element was defined
     if (typeof ResizeObserver !== 'undefined' && !this._ro) {
       this._ro = new ResizeObserver(() => this._syncEdges());
       if (this._list) this._ro.observe(this._list);

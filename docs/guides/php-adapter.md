@@ -121,7 +121,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.54.0/
+public/assets/vendor/td-components/0.54.1/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -129,7 +129,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.54.0';
+const TD_VERSION = '0.54.1';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -634,7 +634,7 @@ native** cộng hai thứ:
 
 - `td.css` tạo dáng `select.td-dropdown__native` **đúng hộp của trigger**: cao `--td-field-h-md`, padding, viền
   `--td-field-border`, bo `--td-field-radius-md`, font / màu theo token field, rộng 100 %; host mang kiểu chữ của
-  `.td-dropdown` (nhãn cùng cao). Từ **0.54.0** ([ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)) select
+  `.td-dropdown` (nhãn cùng cao). Từ **0.51.1** ([ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)) select
   còn có **chevron của trigger** vẽ bằng CSS gradient (`appearance: none` — gradient không phải ảnh, CSP `img-src` không
   đổi; trước đó giữ mũi tên native và WebKit vẽ nút hệ thống bo 5 px), và **chế độ mặc định (native) cũng vậy**: select
   trần trong `<td-dropdown>` chưa define được tạo dáng y hệt — nâng cấp không xô lệch ở cả hai chế độ (gate
@@ -1170,7 +1170,7 @@ Không có helper cho `<td-tree>` dạng cây luôn hiện (cây quyền là tra
 | `id` | id của **input** (`<label for>` của site). Element: host = `{id}-host`; native: ghi chú / lỗi / đơn vị = `{id}-note`… |
 | `class` | native → wrapper `div.td-field`; element → host |
 | `attrs` | attribute thêm trên **input** (allowlist). Giữ chỗ (bị bỏ, không phân biệt hoa thường): `type` `class` `id` `inputmode` `autocomplete` `spellcheck` `name` `value` `min` `max` `step` `placeholder` `required` `aria-required` `disabled` `readonly` `aria-label` `aria-labelledby` `aria-describedby` `aria-invalid` `aria-errormessage` `pattern` `maxlength` `minlength` `list` + mọi `data-td-*` |
-| `stepper` | 0.54.0, **chỉ chế độ element**: host `stepper` + `td-number--stepper` + hai `button.td-number__step` (`type=button`, `tabindex=-1`, `aria-controls`, icon `minus` / `plus`) ở hai đầu hộp — `td.css` ẩn chúng (vẫn giữ chỗ) tới khi module định nghĩa element; tên nút ("Giảm / Tăng {label}") do component đặt. Chế độ native bỏ qua (`type=number` có nút xoay của trình duyệt) |
+| `stepper` | 0.49.0, **chỉ chế độ element**: host `stepper` + `td-number--stepper` + hai `button.td-number__step` (`type=button`, `tabindex=-1`, `aria-controls`, icon `minus` / `plus`) ở hai đầu hộp — `td.css` ẩn chúng (vẫn giữ chỗ) tới khi module định nghĩa element; tên nút ("Giảm / Tăng {label}") do component đặt. Chế độ native bỏ qua (`type=number` có nút xoay của trình duyệt) |
 
 ```html
 <!-- td_number_input('price', '12990000', ['label' => 'Giá bán', 'suffix' => '₫', 'required' => true, 'element' => true]) -->
@@ -1802,10 +1802,10 @@ host `disabled`).
 | `$value` | lựa chọn được chọn (`string` / `int`); không có trong `$options` → không chọn gì (ghi vào cảnh báo gộp) |
 | `label`, `aria_label` | nhãn nhóm (tên của `role="radiogroup"`); `aria_label` khi không có `label` |
 | `variant` | `'button'` (mặc định) \| `'swatch'` \| `'segmented'` (0.52.0: thanh viên thuốc, icon + nhãn — [Choice group › mục 7](../components/choice-group.md#7-thanh-chọn-segmented-0520)) |
-| `size` | 0.54.0, chỉ `segmented`: `'sm'` \| `'md'` (mặc định) \| `'lg'`; khác → `md` |
-| `icon_only` | 0.54.0, chỉ `segmented`: `true` → nhãn của lựa chọn **có icon** thành `td-sr-only` (vẫn là tên truy cập) |
-| `stretch` | 0.54.0, chỉ `segmented`: `true` → attribute `stretch` trên host (thanh lấp cột; markup bên trong không đổi, không `stretch` → giống từng byte 0.53.0). Bố cục ở chỗ hẹp: [Choice group › Bố cục ở chỗ hẹp](../components/choice-group.md#bố-cục-ở-chỗ-hẹp-0531) |
-| option `icon` | 0.54.0: tên icon (`/^[a-z][a-z0-9-]{0,63}$/`, `Td::icon()` biết — core hoặc icon site đã đăng ký **ở cả PHP lẫn JS**); sai / không có → bỏ khoá (tính vào cảnh báo gộp), lựa chọn giữ. Chỉ in ở `segmented`; `segmented` không in `swatch` / `image`, `hint` chỉ là mô tả `td-sr-only` |
+| `size` | 0.52.0, chỉ `segmented`: `'sm'` \| `'md'` (mặc định) \| `'lg'`; khác → `md` |
+| `icon_only` | 0.52.0, chỉ `segmented`: `true` → nhãn của lựa chọn **có icon** thành `td-sr-only` (vẫn là tên truy cập) |
+| `stretch` | 0.53.1, chỉ `segmented`: `true` → attribute `stretch` trên host (thanh lấp cột; markup bên trong không đổi, không `stretch` → giống từng byte 0.53.0). Bố cục ở chỗ hẹp: [Choice group › Bố cục ở chỗ hẹp](../components/choice-group.md#bố-cục-ở-chỗ-hẹp-0531) |
+| option `icon` | 0.52.0: tên icon (`/^[a-z][a-z0-9-]{0,63}$/`, `Td::icon()` biết — core hoặc icon site đã đăng ký **ở cả PHP lẫn JS**); sai / không có → bỏ khoá (tính vào cảnh báo gộp), lựa chọn giữ. Chỉ in ở `segmented`; `segmented` không in `swatch` / `image`, `hint` chỉ là mô tả `td-sr-only` |
 | `required`, `disabled` | trên host + mọi radio |
 | `helper_text`, `error_text` | ghi chú / lỗi dưới nhóm (`aria-describedby` / `aria-invalid` trên radiogroup) |
 | `id` | id của **host** (radio: `{id}-o0`, `{id}-o1`…; mặc định `td-{name}-{n}`, phần `{name}` bị cắt để cả id ≤ 100 ký tự — giữ tiền tố `td-` và hậu tố số duy nhất) |

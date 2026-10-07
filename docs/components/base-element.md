@@ -96,7 +96,7 @@ new / parser tạo element
    ▼
 connectedCallback() lần đầu
    │  _initialized = true
-   │  _setupProperties()  → sinh property cho từng observed attribute
+   │  _setupProperties()  → sinh property cho từng observed attribute; gán lại property đặt trước khi nâng cấp
    │  _doRender():  this.innerHTML = render()  →  afterRender()  →  _applyStyles?.()
    ▼
 attributeChangedCallback(name, old, new)
@@ -115,6 +115,9 @@ connectedCallback() lần sau (element bị di chuyển / gắn lại)
   focus, vị trí cuộn) sẽ mất nếu bạn không giữ nó trong JS. Component tương tác nhiều (tabs, table, pagination của kit)
   override `attributeChangedCallback` để **cập nhật tại chỗ** thay vì render lại.
 - Attribute đổi **trước** khi element vào trang không gây render; lần connect đầu render với giá trị hiện tại.
+- Property gán khi element **chưa nâng cấp** (bản sao từ `<template>`, `createElement` trước `define`, node của
+  `DOMParser`) không mất (0.54.1): lần connect đầu base gán lại qua **mọi setter của class** (tự dò trên prototype, không
+  cần khai báo), đúng thứ tự đã gán, trước lần render đầu. Setter mới của bạn tự được phủ.
 - Di chuyển element (remove + append) gây một lần render lại sau khi connect lại.
 - `afterRender()` chạy sau **mỗi** lần render (lần đầu, mỗi lần đổi attribute, mỗi lần connect lại).
 

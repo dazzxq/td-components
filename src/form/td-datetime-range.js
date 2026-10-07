@@ -174,15 +174,6 @@ export class TdDatetimeRange extends TdFormElement {
 
   set presets(v) { this._presets = Array.isArray(v) ? v : null; }
 
-  connectedCallback() {
-    if (!this._initialized && Object.prototype.hasOwnProperty.call(this, 'presets')) {
-      const v = this.presets; // an own property assigned before the upgrade shadows the accessor: replay it
-      delete this.presets;
-      this.presets = v;
-    }
-    super.connectedCallback();
-  }
-
   // --- Model (derived from the attributes on demand) ---
 
   /** @private */

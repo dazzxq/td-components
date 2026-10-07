@@ -76,15 +76,6 @@ export class TdSteps extends TdBaseElement {
     this.addEventListener('click', (e) => this._onClick(e));
   }
 
-  connectedCallback() {
-    if (Object.hasOwn(this, 'steps')) {
-      const v = this.steps;
-      delete this.steps;
-      this.steps = v;
-    }
-    super.connectedCallback();
-  }
-
   get steps() { return this._steps.map((s) => ({ ...s })); }
   set steps(v) {
     const r = normalizeSteps(v);

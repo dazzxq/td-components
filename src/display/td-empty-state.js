@@ -128,15 +128,8 @@ export class TdEmptyState extends TdBaseElement {
   }
 
   connectedCallback() {
-    // v0.26.0: `actions` / `iconNode` assigned before the element upgraded live in own data properties that shadow the
-    // accessors — re-apply them through the accessors (an early `actions` then replaces server-rendered actions).
-    for (const p of ['actions', 'iconNode']) {
-      if (Object.prototype.hasOwnProperty.call(this, p)) {
-        const v = this[p];
-        delete this[p];
-        this[p] = v;
-      }
-    }
+    // v0.26.0: `actions` / `iconNode` assigned before the element upgraded are replayed through the accessors by the base
+    // (v0.54.1, before the hydrate decision) — an early `actions` then replaces server-rendered actions.
     // Re-connect (moved): the base re-binds (afterRender → icon + actions, listeners included) or re-renders.
     super.connectedCallback();
   }
