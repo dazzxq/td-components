@@ -3,6 +3,10 @@ import {
 } from '../base/td-form-element.js';
 import { ssrMarker } from '../base/td-base-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
+import { localeSeparators, resolveSeparators } from '../utils/number-locale.js';
+import {
+  affixIcon, affixMarkup, detachAffixSlots, mountAffixSlots, slotInteractive, takeAffixSlots, warnLateSlots,
+} from './field-affix.js';
 import {
   asciiDigit, parseCanonical, format, edit, parseLoose, compare, clamp, step as stepValue, stepAligned, fromNumberString,
   MAX_DIGITS,
@@ -13,7 +17,6 @@ const SSR_ONLY = ['name', 'value', 'min', 'max', 'step', 'required'];
 const INPUT_MODES = ['none', 'text', 'decimal', 'numeric', 'tel', 'search', 'email', 'url'];
 /** v0.36.2: `enterkeyhint` values forwarded to the control (same set as td-input-field) */
 const ENTER_KEY_HINTS = ['enter', 'done', 'go', 'next', 'previous', 'search', 'send'];
-const GROUPS = ['.', ',', ' ', ''];
 
 /**
  * <td-number-input> — a formatted number / money field (v0.30.0, plan docs/internal/plans/v0.30.0-number-repeater.md
@@ -43,9 +46,11 @@ const GROUPS = ['.', ',', ' ', ''];
  *       <div class="td-number__box">
  *         [<button type="button" class="td-number__step td-number__step--down" tabindex="-1" aria-controls="{h}-control"
  *                  aria-label="Giảm {label}">(icon minus)</button>  (v0.49.0 `stepper`; `.td-field` + `td-number--stepper`)]
- *         [<span class="td-number__affix td-number__affix--prefix" aria-hidden="true">$</span>]
+ *         [<span class="td-number__affix td-number__affix--prefix" aria-hidden="true" [hidden]>[icon slot]$</span>]
+ *         [<span class="td-number__affix td-number__affix--prefix td-number__affix--slot">{page nodes}</span>]   (v0.55.0, after bind)
  *         <input type="text" class="td-number__control" id="{h}-control" inputmode autocomplete="off" spellcheck="false">
- *         [<span class="td-number__affix td-number__affix--suffix" aria-hidden="true">₫</span>]
+ *         [<span class="td-number__affix td-number__affix--suffix td-number__affix--slot">{page nodes}</span>]   (v0.55.0, after bind)
+ *         [<span class="td-number__affix td-number__affix--suffix" aria-hidden="true" [hidden]>₫[icon slot]</span>]
  *         [<span id="{h}-unit" hidden>{unit-label | suffix | prefix}</span>]
  *         [<button … class="td-number__step td-number__step--up" … aria-label="Tăng {label}">(icon plus)</button>]
  *       </div>
@@ -53,6 +58,7 @@ const GROUPS = ['.', ',', ' ', ''];
  *       <span class="td-sr-only" id="{h}-status" role="status"></span>
  *     </div>
  *   </td-number-input>
+ *   icon slot (v0.55.0) = <span class="td-number__affix-icon" data-td-icon="{name}" data-td-icon-class="td-number__affix-svg">
  *
  * @element td-number-input
  * @attr {string} name
@@ -62,10 +68,16 @@ const GROUPS = ['.', ',', ' ', ''];
  * @attr {boolean} required / disabled / readonly / clamp
  * @attr {string} min / max / step - canonical; `step` > 0
  * @attr {number} decimals - 0..10 (default 0): maximum fraction digits
- * @attr {string} group-separator - `.` | `,` | ` ` | `` (default `.`)
- * @attr {string} decimal-separator - `,` | `.` (default `,`; `.` when the group is `,`)
+ * @attr {string} group-separator - `.` | `,` | ` ` | `` (default `.`; `locale` when set)
+ * @attr {string} decimal-separator - `,` | `.` (default `,`; `.` when the group is `,`; `locale` when set)
+ * @attr {string} locale - v0.55.0: BCP 47 tag → the separators ONLY (table of src/utils/number-locale.js, else Intl —
+ *   validated); explicit separators win, resolved pairwise. Never formats with Intl (no rounding / padding).
  * @attr {string} prefix / suffix - decorative unit text; unit-label - the unit as read aloud (e.g. `đồng`)
- * @attr {string} inputmode - overrides the derived keyboard hint
+ * @attr {string} prefix-icon / suffix-icon - v0.55.0: decorative registry icon inside that affix (outer edge)
+ * @slot prefix / suffix - v0.55.0: page Elements next to the control (moved, read on the first render only); win over the
+ *   text / icon of that side
+ * @attr {string} inputmode - overrides the derived keyboard hint. v0.55.0: with decimals > 0 a typed `.` or `,` is the
+ *   field's decimal separator (virtual keyboards show the DEVICE's decimal key)
  * @attr {string} enterkeyhint - enter|done|go|next|previous|search|send → the control (v0.36.2; other values dropped)
  * @attr {string} validate-on - blur|change|input
  * @attr {boolean} stepper - v0.49.0: − / + buttons around the field (structural). Out of the Tab order (↑ / ↓ / typing are
@@ -99,7 +111,7 @@ export class TdNumberInput extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'value', 'label', 'placeholder', 'error-text', 'size', 'readonly',
       'min', 'max', 'step', 'decimals', 'group-separator', 'decimal-separator', 'prefix', 'suffix', 'unit-label', 'clamp',
-      'inputmode', 'enterkeyhint', 'validate-on', 'aria-label', 'stepper'];
+      'inputmode', 'enterkeyhint', 'validate-on', 'aria-label', 'stepper', 'prefix-icon', 'suffix-icon', 'locale'];
   }
 
   static get booleanAttributes() { return [...super.booleanAttributes, 'readonly', 'clamp', 'stepper']; }
@@ -107,7 +119,7 @@ export class TdNumberInput extends TdFormElement {
   static get errorContract() { return true; }
 
   /** @private attributes that change the DOM structure → re-render */
-  static _structural = new Set(['label', 'size', 'prefix', 'suffix', 'unit-label', 'stepper']);
+  static _structural = new Set(['label', 'size', 'prefix', 'suffix', 'unit-label', 'stepper', 'prefix-icon', 'suffix-icon']);
 
   constructor() {
     super();
@@ -122,7 +134,15 @@ export class TdNumberInput extends TdFormElement {
 
   connectedCallback() {
     if (!this._initialized && !this._valueSet) this._value = this._canonAttr('value') ?? '';
+    // v0.55.0 (plan v0.55.0-affix-number QĐ 3): the page's [slot] children leave the host before the first render / hydrate
+    if (!this._initialized) this._affixSlots = takeAffixSlots(this);
     super.connectedCallback();
+  }
+
+  /** @private v0.55.0 (Q6): a [slot] child added after the first render is not adopted — say so once */
+  _doRender() {
+    if (this._initialized) warnLateSlots(this);
+    super._doRender();
   }
 
   // --- resolved options ---
@@ -137,25 +157,37 @@ export class TdNumberInput extends TdFormElement {
     return 0;
   }
 
-  /** @private */
-  _group() {
-    const raw = this.getAttribute('group-separator');
-    if (raw == null) return '.';
-    if (GROUPS.includes(raw)) return raw;
-    this._warnOnce(`group:${raw}`, `td-number-input: group-separator="${raw}" must be ".", ",", " " or "" — "." is used.`);
-    return '.';
+  /**
+   * @private v0.55.0 (QĐ 11): the separators — explicit group-separator / decimal-separator > `locale` > `.` / `,`, resolved
+   * pairwise (src/utils/number-locale.js); no `locale` = the 0.54 rules. Cached per attribute triple (Intl is built once).
+   * @returns {{ group: string, decimal: string }}
+   */
+  _seps() {
+    const loc = (this.getAttribute('locale') || '').trim();
+    const g = this.getAttribute('group-separator');
+    const d = this.getAttribute('decimal-separator');
+    const key = `${loc}\u0000${g}\u0000${d}`;
+    if (this._sepCache?.key === key) return this._sepCache.seps;
+    let pair = null;
+    if (loc) {
+      pair = localeSeparators(loc);
+      if (!pair) this._warnOnce(`locale:${loc}`, `td-number-input: locale="${loc}" gives no usable separators (not in the table, or Intl gives other characters) — "." / "," are used.`);
+    }
+    const r = resolveSeparators(pair, g, d);
+    if (r.invalid.includes('group')) this._warnOnce(`group:${g}`, `td-number-input: group-separator="${g}" must be ".", ",", " " or "" — "${r.group}" is used.`);
+    if (r.invalid.includes('decimal') || r.invalid.includes('clash')) {
+      this._warnOnce(`decsep:${d}:${r.group}`, `td-number-input: decimal-separator="${d}" is invalid or equals the group separator — "${r.decimal}" is used.`);
+    }
+    const seps = { group: r.group, decimal: r.decimal };
+    this._sepCache = { key, seps };
+    return seps;
   }
 
   /** @private */
-  _decimalSep() {
-    const group = this._group();
-    const fallback = group === ',' ? '.' : ',';
-    const raw = this.getAttribute('decimal-separator');
-    if (raw == null) return fallback;
-    if ((raw === ',' || raw === '.') && raw !== group) return raw;
-    this._warnOnce(`decsep:${raw}:${group}`, `td-number-input: decimal-separator="${raw}" is invalid or equals the group separator — "${fallback}" is used.`);
-    return fallback;
-  }
+  _group() { return this._seps().group; }
+
+  /** @private */
+  _decimalSep() { return this._seps().decimal; }
 
   /** @private canonical attribute through the one gate; invalid → null + one warning */
   _canonAttr(name) {
@@ -238,9 +270,13 @@ export class TdNumberInput extends TdFormElement {
     const id = esc(this.id);
     const cid = esc(this._controlId());
     const label = this.getAttribute('label') || '';
-    const prefix = this.getAttribute('prefix') || '';
-    const suffix = this.getAttribute('suffix') || '';
     const unit = this._unitText();
+    // v0.55.0: text + icon in the same span (a side without either prints nothing — the 0.54 markup); a slot hides it
+    const part = (side) => {
+      const p = { text: this.getAttribute(side) || '', icon: affixIcon(this, side), slot: !!this._affixSlots?.[side]?.length };
+      if (p.slot && (p.text || p.icon)) this._warnOnce(`slot:${side}`, `td-number-input: a [slot="${side}"] child replaces ${side} / ${side}-icon (both are set)`);
+      return p;
+    };
     const stepper = this.hasAttribute('stepper');
     // v0.49.0: the button names are STATE (messages), applied in afterRender — never part of the SSR comparison
     const step = (dir, icon) => `<button type="button" class="td-number__step td-number__step--${dir}" tabindex="-1" aria-controls="${cid}">`
@@ -249,9 +285,9 @@ export class TdNumberInput extends TdFormElement {
       + (label ? `<label class="td-field__label" id="${id}-label" for="${cid}">${esc(label)}</label>` : '')
       + '<div class="td-number__box">'
       + (stepper ? step('down', 'minus') : '')
-      + (prefix ? `<span class="td-number__affix td-number__affix--prefix" aria-hidden="true">${esc(prefix)}</span>` : '')
+      + affixMarkup('prefix', part('prefix'), 'td-number')
       + `<input type="text" class="td-number__control" id="${cid}" inputmode="${esc(this._inputMode())}"${this._enterKeyHint() ? ` enterkeyhint="${this._enterKeyHint()}"` : ''} autocomplete="off" spellcheck="false">`
-      + (suffix ? `<span class="td-number__affix td-number__affix--suffix" aria-hidden="true">${esc(suffix)}</span>` : '')
+      + affixMarkup('suffix', part('suffix'), 'td-number')
       + (unit ? `<span id="${id}-unit" hidden>${esc(unit)}</span>` : '')
       + (stepper ? step('up', 'plus') : '')
       + '</div>'
@@ -271,12 +307,13 @@ export class TdNumberInput extends TdFormElement {
     this.listen(c, 'drop', (e) => e.preventDefault());
     this.listen(c, 'compositionend', () => this._applyEdit(c.value, c.selectionStart ?? c.value.length));
     this.listen(c, 'focus', () => { this._valueAtFocus = this._value; });
-    this.listen(c, 'blur', () => this._onBlur());
+    this.listen(c, 'blur', () => { if (!this._keepingFocus) this._onBlur(); });
     // a press on the box / an affix focuses the control (the box is what looks like the field)
     const box = c.parentElement;
     if (box) {
       this.listen(box, 'mousedown', (e) => {
-        if (e.target === c || c.disabled) return;
+        // v0.55.0: interactive page content of a slot keeps its own press (never the control's focus)
+        if (e.target === c || c.disabled || slotInteractive(e.target, box, 'td-number')) return;
         e.preventDefault();
         // v0.49.0: a stepper button never moves the focus (the field being typed in stays focused, an unfocused field
         // stays unfocused — no virtual keyboard on a tap)
@@ -286,7 +323,8 @@ export class TdNumberInput extends TdFormElement {
       for (const b of box.querySelectorAll(':scope > .td-number__step')) {
         this.listen(b, 'click', () => this._onStepButton(b.classList.contains('td-number__step--up') ? 1 : -1, b));
       }
-      fillIconSlots(box, ':scope > .td-number__step > [data-td-icon]');
+      fillIconSlots(box, ':scope > .td-number__step > [data-td-icon], :scope > .td-number__affix > [data-td-icon]');
+      mountAffixSlots(this, c, 'td-number');
     }
     this._paintValue();
     this._applyPlaceholder();
@@ -308,13 +346,25 @@ export class TdNumberInput extends TdFormElement {
       return;
     }
     if (TdNumberInput._structural.has(name)) {
-      // re-render (value kept: render paints this._value); v0.49.0: a focused control gets the focus back (same baseline)
-      const focused = this._focusTarget() === this.ownerDocument.activeElement;
-      super.attributeChangedCallback(name, oldVal, newVal);
-      if (focused) {
-        const atFocus = this._valueAtFocus;
-        this._focusTarget()?.focus({ preventScroll: true });
-        this._valueAtFocus = atFocus;
+      // re-render (value kept: render paints this._value); v0.49.0: a focused control gets the focus back (same baseline);
+      // v0.55.0: the caret too, and the replaced control's blur is not a user blur (no commit / change)
+      const c = this._focusTarget();
+      const focused = c === this.ownerDocument.activeElement;
+      const atFocus = this._valueAtFocus;
+      const sel = focused && c.selectionStart != null ? [c.selectionStart, c.selectionEnd, c.selectionDirection || 'none'] : null;
+      this._keepingFocus = focused;
+      try {
+        super.attributeChangedCallback(name, oldVal, newVal);
+        if (focused) {
+          const now = this._focusTarget();
+          now?.focus({ preventScroll: true });
+          if (now && sel) {
+            try { now.setSelectionRange(...sel); } catch { /* ignore */ }
+          }
+          this._valueAtFocus = atFocus;
+        }
+      } finally {
+        this._keepingFocus = false;
       }
       return;
     }
@@ -356,6 +406,7 @@ export class TdNumberInput extends TdFormElement {
       case 'decimals':
       case 'group-separator':
       case 'decimal-separator':
+      case 'locale': // v0.55.0: the separators re-format in place (same control, caret kept by the caller's next edit)
         if (name === 'decimals') { this._minAttr(); this._max(); this._stepAttr(); } // re-checked now (warn once)
         this._bad = false;
         this._paintValue();
@@ -517,7 +568,9 @@ export class TdNumberInput extends TdFormElement {
   /** @protected unit + note ids (the base adds the error id) */
   _describedByIds() {
     const ids = [];
-    if (this._unitText() && this.querySelector('.td-number__box > span[hidden]')) ids.push(`${this.id}-unit`);
+    // v0.55.0: by id — a hidden affix span (slot side) is not the unit
+    const box = this.querySelector(':scope > .td-number > .td-number__box');
+    if (box && [...box.children].some((x) => x.id === `${this.id}-unit`)) ids.push(`${this.id}-unit`);
     ids.push(...this._helperDescribedByIds());
     return ids;
   }
@@ -572,6 +625,15 @@ export class TdNumberInput extends TdFormElement {
     const end = c.selectionEnd ?? s;
     const t = e.inputType;
     if (t === 'insertText' && e.data != null) {
+      // v0.55.0 (QĐ 10b): virtual keyboards show the DEVICE's decimal key — with decimals > 0 and no decimal in the field
+      // (outside the selection), `.` or `,` is the field's decimal (the group separator is never typed: the kit adds it)
+      const dec = this._decimalSep();
+      if ((e.data === '.' || e.data === ',') && e.data !== dec && this._decimals() > 0
+        && !(c.value.slice(0, s) + c.value.slice(end)).includes(dec)) {
+        e.preventDefault();
+        this._insertText(dec);
+        return;
+      }
       if (!this._structureOk(c.value, s, end, e.data)) e.preventDefault();
       return;
     }
@@ -867,6 +929,7 @@ export class TdNumberInput extends TdFormElement {
 
   /** Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own. */
   canRebind() {
+    detachAffixSlots(this); // v0.55.0: page content, never the component's markup — mounted again by the bind
     return this._ssrRevalidate(this._ssrStateSource());
   }
 

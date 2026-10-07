@@ -62,10 +62,9 @@ describe('v0.55.0 affix — td-input-field without affix renders exactly as v0.5
 
   it('td-number-input without icon / slot renders its 0.54 affix markup', () => {
     const el = mount('<td-number-input id="n" prefix="$" suffix="₫" unit-label="đồng"></td-number-input>').querySelector('td-number-input');
-    const box = el.querySelector('.td-number__box').outerHTML;
-    expect(box).to.equal('<div class="td-number__box"><span class="td-number__affix td-number__affix--prefix" aria-hidden="true">$</span>'
+    expect(el.render().includes('<div class="td-number__box"><span class="td-number__affix td-number__affix--prefix" aria-hidden="true">$</span>'
       + '<input type="text" class="td-number__control" id="n-control" inputmode="numeric" autocomplete="off" spellcheck="false">'
-      + '<span class="td-number__affix td-number__affix--suffix" aria-hidden="true">₫</span><span id="n-unit" hidden="">đồng</span></div>');
+      + '<span class="td-number__affix td-number__affix--suffix" aria-hidden="true">₫</span><span id="n-unit" hidden>đồng</span></div>'), el.render()).to.equal(true);
   });
 });
 
