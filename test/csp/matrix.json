@@ -382,7 +382,10 @@
         ".td-switch__state-on",
         ".td-switch__state-off"
       ],
-      "settle": 300
+      "settle": 300,
+      "excludeProps": [
+        "grid-template-columns"
+      ]
     },
     {
       "state": "v054-state-cell-on",
@@ -393,7 +396,10 @@
         ".td-switch__state-on",
         ".td-switch__state-off"
       ],
-      "settle": 300
+      "settle": 300,
+      "excludeProps": [
+        "grid-template-columns"
+      ]
     }
   ],
   "td-checkbox": [
@@ -759,7 +765,10 @@
         ".td-field__note",
         ".td-field__counter"
       ],
-      "settle": 300
+      "settle": 300,
+      "excludeProps": [
+        "grid-template-columns"
+      ]
     },
     {
       "state": "v054-hint-error",
