@@ -90,6 +90,28 @@ const CASES = [
   { tag: 'td-checkbox', attrs: { label: 'Ô' }, props: () => ({ indeterminate: true }) },
   { tag: 'td-input-field', attrs: { label: 'Tên' }, props: () => ({ value: 'xin chào' }) },
   { tag: 'td-number-input', attrs: { label: 'Số' }, props: () => ({ value: '12' }) },
+  // v0.55.0 affix / locale (attribute-backed accessors, replayed by the base). `prefix` is attribute-only:
+  // Element.prototype.prefix is the DOM's read-only namespace prefix (assigning it throws in module code) → in `attrs`.
+  {
+    tag: 'td-input-field', attrs: { label: 'Website', prefix: 'https://' },
+    props: () => ({ suffix: '.vn', prefixIcon: 'search', suffixIcon: 'lock', unitLabel: 'tên miền', value: 'congty' }),
+    check(el) {
+      const box = el.querySelector('.td-field__box');
+      expect(!!box, 'affix box rendered').to.equal(true);
+      expect(!!box.querySelector('.td-field__affix--prefix [data-td-icon="search"]'), 'prefix icon').to.equal(true);
+      expect(box.querySelector('.td-field__affix--suffix').textContent).to.equal('.vn');
+      expect(document.getElementById(`${el.id}-unit`)?.textContent).to.equal('tên miền');
+    },
+  },
+  {
+    tag: 'td-number-input', attrs: { label: 'Amount', decimals: '2', prefix: '$' },
+    props: () => ({ suffix: 'USD', prefixIcon: 'search', suffixIcon: 'lock', unitLabel: 'đô la', locale: 'en-US', value: '1234.5' }),
+    check(el) {
+      expect(el.querySelector('.td-number__control').value).to.equal('1,234.5');
+      expect(!!el.querySelector('.td-number__affix--suffix [data-td-icon="lock"]'), 'suffix icon').to.equal(true);
+      expect(document.getElementById(`${el.id}-unit`)?.textContent).to.equal('đô la');
+    },
+  },
   { tag: 'td-otp-input', attrs: { label: 'OTP' }, props: () => ({ length: 4, charset: 'numeric', value: '1234' }) },
   {
     tag: 'td-color-picker', attrs: { label: 'Màu' },
