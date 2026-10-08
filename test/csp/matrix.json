@@ -2101,6 +2101,25 @@
         "line-height"
       ],
       "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "cards-single-page",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('layout','cards'); t.setAttribute('hide-single-page',''); t.setAttribute('per-page','25'); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',sortable:true},{key:'age',label:'Tuổi',sortable:true}]; t.data=[{name:'An',age:30},{name:'Bình',age:25}]; ",
+      "selectors": [
+        ".td-table__header",
+        ".td-table__head > tr",
+        ".td-table__th--sortable",
+        ".td-table__body"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.2 (cards + hide-single-page, top bar hidden): the first sort chip keeps the bar's inset (margin-block-start on the chips). Text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); offsets are gated by the engines test and test:responsive."
     }
   ],
   "td-modal": [
