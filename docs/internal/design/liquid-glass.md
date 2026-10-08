@@ -77,7 +77,7 @@ Cài đặt: [`src/styles/glass.css`](../../../src/styles/glass.css) (recipe + f
 4. **Không scale trang trí** (press / lift / pop / enter). Popup chỉ **fade**. **Ngoại lệ duy nhất (0.21.0, owner
    yêu cầu):** modal vào `scale(0.95) → none` 300ms đường cong lò xo
    `cubic-bezier(0.34, 1.56, 0.64, 1)` (vượt nhẹ) + fade 200ms, ra `scale(0.95)` 200ms / fade 150ms
-   `cubic-bezier(0.4, 0, 0.2, 1)` (0.22.1, mang từ dcms-modal; token `--td-modal-*`; reduced motion → chỉ fade). Wheel datetime cuộn mượt tới giá trị khi mở là chuyển động chức năng. Giữ transform **chức năng**:
+   `cubic-bezier(0.4, 0, 0.2, 1)` (0.22.1, mang từ dcms-modal; token `--td-modal-*`; reduced motion → chỉ fade). Wheel datetime cuộn mượt tới giá trị khi bấm phím là chuyển động chức năng (hiệu ứng cuộn từ 00 **khi mở** chỉ còn ở `<td-datetime-range>` tới 0.61.0; picker đơn căn giữa ngay — 0.60.0). Giữ transform **chức năng**:
    vị trí thumb slider, trượt thumb switch, zoom / kéo lightbox, xoay mũi tên dropdown, sheet modal trượt lên trên
    điện thoại, slide nhẹ của toast / scroll-top, **nhãn nổi của `td-input-field` thu nhỏ + dịch lên khi focus / có giá trị
    (0.58.0, `--td-field-float-scale`, [ADR 0031](../decisions/0031-floating-label-variant.md))** — vị trí + cỡ là trạng thái

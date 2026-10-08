@@ -8,8 +8,10 @@ nhận **hai mục** `name[start]` / `name[end]`.
 
 **Vì sao là element riêng, không phải thuộc tính `range` của `<td-datetime-picker>`?** Giá trị là một **cặp**
 (`getValue()` → `{ start, end }`), form gửi hai mục thay vì một, và picker đơn đang chạy ở mọi site — một cờ đổi kiểu trả
-về sẽ làm hỏng luật / `required` đang có. Hai component dùng chung **một bộ sửa mốc** (ô ngày / tháng / năm + bánh xe giờ /
-phút), nên cách gõ, kiểm tra và bàn phím giống hệt [Datetime picker](datetime-picker.md).
+về sẽ làm hỏng luật / `required` đang có. Tới 0.59.0 hai component dùng chung **một bộ sửa mốc** (ô ngày / tháng / năm + bánh xe giờ / phút). **Từ 0.60.0
+[Datetime picker](datetime-picker.md) dùng lịch dạng lưới; `<td-datetime-range>` GIỮ NGUYÊN bộ sửa mốc cũ** (ba ô số, bánh xe
+cuộn từ 00 khi mở) — chỉ đổi: không có `min` / `max` thì ô "Năm" nhận 1–9999 (hết cửa sổ ngầm 2000–2099). Lịch chọn khoảng
+(bấm 1 = Từ, bấm 2 = Đến, tô khoảng) dự kiến 0.61.0.
 
 **Ngoài phạm vi:** lưới lịch, khoảng theo tháng / năm (`mode="month|year"` → cảnh báo, dùng `date`), preset theo tuần
 (tuần bắt đầu thứ mấy — app tự thêm), đồng bộ URL (việc của app).
@@ -278,7 +280,7 @@ chips.addEventListener('filter-remove', (e) => {
 Token (`:root` hoặc trên từng host): `--td-dtr-preset-h` (chiều cao chip preset, 44px trên cảm ứng),
 `--td-dtr-preset-bg` / `-fg` / `-border` / `-hover-bg`, `--td-dtr-preset-on-bg` / `-on-fg` (preset đang khớp = màu nút
 primary) / `-on-pressed`, `--td-dtr-switch-bg` (nền công tắc "Từ | Đến"), `--td-dtr-tab-on-bg`, `--td-dtr-tab-fg`,
-`--td-dtr-tab-note`. Trigger và ô nhập dùng chung `--td-field-*`; bánh xe dùng `--td-dtp-*` của picker đơn. Chữ preset /
+`--td-dtr-tab-note`. Trigger và ô nhập dùng chung `--td-field-*`; bánh xe dùng `--td-dtp-*` của picker đơn (`.td-dtp-wheel*`, dùng chung). Chữ preset /
 công tắc / dòng lỗi qua gate `test:contrast` ≥ 4.7. Host co tới 160px: chữ trigger bị cắt `…` có `title` đầy đủ.
 
 ## Cấu trúc DOM
@@ -299,8 +301,8 @@ công tắc / dòng lỗi qua gate `test:contrast` ≥ 4.7. Host co tới 160px:
 
 Hộp thoại (thân TdModal): `div.td-dtr-panel[data-mode][data-side]` > `div.td-dtr-panel__presets[role=group]` >
 `button.td-dtr-panel__preset[aria-pressed][data-id]` · `div.td-dtr-panel__switch` > `button.td-dtr-panel__tab[aria-pressed]`
-× 2 · `div.td-dtr-panel__sides` > `fieldset.td-dtr-panel__side[data-side]` (legend + bộ sửa `.td-dtp-panel` của picker
-đơn) × 2 · `p.td-dtr-panel__error[role=alert]` · `p.td-sr-only[role=status]`. 0.59.0 `allow-open-end`: ngay sau legend của
+× 2 · `div.td-dtr-panel__sides` > `fieldset.td-dtr-panel__side[data-side]` (legend + bộ sửa `.td-dtp-panel` — bộ ba ô số cũ, chỉ còn range dùng từ 0.60.0)
+× 2 · `p.td-dtr-panel__error[role=alert]` · `p.td-sr-only[role=status]`. 0.59.0 `allow-open-end`: ngay sau legend của
 nhóm "Đến" — `button.td-dtr-panel__preset.td-dtr-panel__open-end[aria-pressed]` "Không hạn".
 
 ## Bảo mật

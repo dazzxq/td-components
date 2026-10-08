@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.60.0](#0600) | Đổi giao diện + tương tác `td-datetime-picker` (lịch dạng lưới thay ba ô số) + đổi hành vi (hết cửa sổ năm 2000–2099, picker `date`/`month`/`year` chọn là ghi) + SSR `datetime-picker@2` | Không phải sửa code. Test tự động bám `.td-dtp-panel` / `[data-part]` / nút "Chọn" ở `mode="date"` phải đổi selector (có loại xanh giả). Site dựa vào cửa sổ 2000–2099 để chặn dữ liệu → đặt `min` / `max`. Triển khai JS và PHP cùng bản. |
 | [0.59.2](#0592) | Sửa lỗi giao diện (`td-table` dạng thẻ + `hide-single-page`) | Không. Thanh chip sắp xếp cách mép trên như khi còn thanh trên; markup không đổi. |
 | [0.59.1](#0591) | Thêm tính năng (opt-in: `label-position="start"` cho `td-toggle` / `td-checkbox`, PHP `label_position`) | Không bắt buộc. Không dùng → `render()`, PHP và giao diện giống từng byte 0.59.0. |
 | [0.59.0](#0590) | Thêm tính năng (opt-in: `hide-single-page`, `message` mảng / Node, `signed`, `clearable`, `allow-open-end`, icon `price`) + cảnh báo mới (icon lạ của `td-action-button`) | Không bắt buộc. Không dùng option mới → `render()` / PHP giống từng byte 0.58. Console / log PHP có thể xuất hiện **cảnh báo mới** khi `td-action-button` / `td_action_button` dùng `icon` không có trong registry (trước: im lặng) — sửa tên icon. Kiểm tra `registerIcons()` của site: tên **`price`** giờ là icon core (alias `banknote`). |
@@ -86,6 +87,40 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.60.0
+
+**Mức: đổi giao diện + tương tác (không cần đổi markup / attribute / handler), đổi hành vi (hết cửa sổ năm 2000–2099),
+đổi hợp đồng SSR (`datetime-picker@2`).** Thẻ, attribute, định dạng giá trị, `change` `{ value, dbValue }`, method, form và
+helper PHP (`td_date`, `td_datetime_picker`) **giữ nguyên**: site không phải sửa code để tiếp tục chạy.
+
+- **Giao diện + tương tác của hộp chọn ngày đổi hoàn toàn** ([datetime-picker § 10](../components/datetime-picker.md#10-lịch-0600)):
+  lưới tháng bắt đầu Thứ Hai thay cho ba ô số gõ tay; popover neo vào ô ≥ 720px (không còn là một TdModal), bottom sheet
+  < 720px. Người dùng không còn gõ ngày trong picker.
+- **`mode="date"` / `month` / `year`: chọn là ghi ngay** — một lần bấm ghi giá trị, phát `change`, đóng; **không còn nút
+  "Chọn" / "Đóng"**. `mode="datetime"` giữ "Chọn". Site nào mở hộp xác nhận riêng trong `change` nên xem lại (event tới sớm
+  hơn một bước). Chọn lại đúng ngày đang có thì đóng, không `change`.
+- **Cửa sổ năm 2000–2099 bị gỡ** (`<td-datetime-picker>` và `<td-datetime-range>`): không có `min` / `max` thì mọi ngày có thật
+  (năm 1–9999, luôn 4 chữ số) hợp lệ. Giá trị trước đây `badInput` (ví dụ `15/03/1999`) nay hợp lệ **và được gửi đi dạng đã
+  định dạng**. Site dựa vào cửa sổ ngầm để chặn dữ liệu → đặt `min="2000-01-01" max="2099-12-31"` tường minh; server luôn
+  phải tự kiểm. Site đã lách bằng `min="1970-01-01"` có thể bỏ.
+- **PHP**: `td_datetime_picker()` / `td_date()` không còn bỏ giá trị ngoài 2000–2099 và không còn `E_USER_WARNING` tương ứng; ô
+  native không còn `min` ngầm — `max` là của site, không có thì `9999-12-31` (giới hạn biểu diễn của kit).
+- **SSR `datetime-picker@2`**: JS 0.60 nhận tại chỗ cả `@1` (PHP ≤ 0.59, trong lúc nâng cấp dần) lẫn `@2`. JS < 0.60 gặp `@2`
+  thì render lại an toàn (giữ giá trị đang có trong ô native) và vẫn coi năm ngoài 2000–2099 là không hợp lệ cho tới khi cache
+  JS hết hạn — triển khai JS và PHP cùng bản. `datetime-range@1` không đổi.
+- **DOM riêng tư của lịch đổi** — test tự động (Playwright, Cypress…) bám selector cũ sẽ hỏng, và có loại **xanh giả**:
+  `.td-dtp-panel`, `.td-dtp-panel__input`, `[data-part="day|month|year"]`, `.td-dtp-panel__preview` không còn trong picker (vẫn còn
+  trong `<td-datetime-range>` tới 0.61); lịch ≥ 720px không còn là `.td-modal`; khẳng định `.td-dtp-panel` `toHaveCount(0)` nay
+  luôn đúng. Dùng selector ổn định mới (`[data-date]`, `[data-month]`, `[data-year]`, `[data-pick]`, `[data-dir]`,
+  `[data-action]`, hoặc `getByRole('gridcell', …)`) — bảng + công thức chọn 15/03/1999 ở
+  [datetime-picker § 10](../components/datetime-picker.md#10-lịch-0600).
+- **Bánh xe giờ / phút** không còn cuộn từ 00 khi mở (căn ngay). Hộp thoại của `<td-datetime-range>` giữ hiệu ứng tới 0.61.
+- **Nhãn**: `labels.day|month|year|date|dateMonth|dateYear|close` và `messages.incomplete*` không còn hiện trong picker (vẫn khai
+  báo). Thêm các khoá lịch (`prevMonth`, `weekdaysShort`, `weekdaysLong`, `heading`…). `weekdaysShort` / `weekdaysLong` phải là
+  mảng 7 chuỗi (Thứ Hai trước).
+- **Token mới** `--td-cal-*` (trỏ tới token theme có sẵn; `ALGORITHM_VERSION` của bộ sinh palette không đổi).
+- **Báo trước 0.61.0**: `<td-datetime-range>` chuyển sang lịch (bấm 1 = Từ, bấm 2 = Đến) và `.td-dtp-panel*` bị gỡ.
 
 ## 0.59.2
 
