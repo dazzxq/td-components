@@ -830,7 +830,10 @@ async function runConfig(browser, c) {
         const l = el.querySelector(toggle ? '.td-switch__label' : '.td-checkbox__label').getBoundingClientRect();
         const wrap = (el.closest('.rsp-narrow') || sec).getBoundingClientRect();
         if (rtl ? l.left < c.right - 0.5 : l.right > c.left + 0.5) errs.push(`#${id}: label not before the control (label ${l.left.toFixed(1)}–${l.right.toFixed(1)}, control ${c.left.toFixed(1)}–${c.right.toFixed(1)})`);
-        if (Math.abs((l.top + l.bottom) / 2 - (c.top + c.bottom) / 2) > 1.5) errs.push(`#${id}: control not centred on the label`);
+        // with state text the label is baseline-aligned to it (v0.54, any label position — measured identical for the
+        // default and `start`): a WRAPPED label then starts on the state text's line and the row grows below the track,
+        // so the track is not centred on the text block. Pre-existing; centring is asserted without state text only.
+        if (!el.querySelector('.td-switch__state') && Math.abs((l.top + l.bottom) / 2 - (c.top + c.bottom) / 2) > 1.5) errs.push(`#${id}: control not centred on the label`);
         const hr = el.getBoundingClientRect();
         if (hr.left < wrap.left - 0.5 || hr.right > wrap.right + 0.5) errs.push(`#${id}: outside its column (${hr.left.toFixed(1)}–${hr.right.toFixed(1)} vs ${wrap.left.toFixed(1)}–${wrap.right.toFixed(1)})`);
         if (c.left < hr.left - 0.5 || c.right > hr.right + 0.5) errs.push(`#${id}: control outside the host`);
@@ -841,6 +844,7 @@ async function runConfig(browser, c) {
           const r = st.getBoundingClientRect();
           if (r.left < c.right - 0.5) errs.push(`#${id}: state text not after the track`);
           if (r.right > hr.right + 0.5) errs.push(`#${id}: state text outside the host`);
+          if (Math.abs(r.top - l.top) > 1) errs.push(`#${id}: label and state text not on one line (${l.top.toFixed(1)} / ${r.top.toFixed(1)})`);
         }
         for (const n of el.querySelectorAll(':scope > .td-field__note:not([hidden]), :scope > .td-field-error')) {
           const r = n.getBoundingClientRect();
