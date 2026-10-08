@@ -1,0 +1,15 @@
+{
+  "_note": "v0.59.1 (plan docs/internal/plans/v0.59.1-label-position.md): td_toggle / td_checkbox calls WITHOUT label_position. test/ssr/label-position.baseline.json = their markup printed by the v0.59.0 php/td.php (never regenerated: it is the byte-identical reference). test/php/td-v0591-label-position.test.js adds label_position to each call. `mode`: element = the host carries the attribute, native = the label carries the modifier class.",
+  "cases": [
+    { "id": "t-native", "fn": "td_toggle", "mode": "native", "args": ["show", true, "Hiển thị", { "id": "lp-t" }] },
+    { "id": "t-native-sm", "fn": "td_toggle", "mode": "native", "args": ["show", false, "Hiển thị", { "size": "sm", "class": "x-head", "attrs": { "data-a": "1" } }] },
+    { "id": "t-native-nolabel", "fn": "td_toggle", "mode": "native", "args": ["show", false, "", { "aria_label": "Hiển thị" }] },
+    { "id": "t-el", "fn": "td_toggle", "mode": "element", "args": ["show", true, "Hiển thị", { "id": "lp-te", "element": true }] },
+    { "id": "t-el-help", "fn": "td_toggle", "mode": "element", "args": ["notify", false, "Nhận email", { "id": "lp-th", "size": "lg", "helper_text": "Tối đa một email mỗi tuần", "on_text": "Đang bật", "off_text": "Đang tắt" }] },
+    { "id": "t-el-tone", "fn": "td_toggle", "mode": "element", "args": ["tfa", true, "Bắt buộc 2FA", { "id": "lp-tt", "tone": "warning", "status_text": "Chờ quét QR", "locked": true, "locked_reason": "Chính sách", "class": "x-head", "attrs": { "data-a": "1" } }] },
+    { "id": "c-native", "fn": "td_checkbox", "mode": "native", "args": ["agree", true, "Đồng ý", { "id": "lp-c" }] },
+    { "id": "c-native-lg", "fn": "td_checkbox", "mode": "native", "args": ["agree", false, "Đồng ý", { "size": "lg", "value": "yes", "class": "x-head" }] },
+    { "id": "c-el", "fn": "td_checkbox", "mode": "element", "args": ["agree", false, "Đồng ý", { "id": "lp-ce", "element": true }] },
+    { "id": "c-el-help", "fn": "td_checkbox", "mode": "element", "args": ["agree", false, "Đồng ý điều khoản", { "id": "lp-ch", "size": "sm", "helper_text": "Bắt buộc để tiếp tục" }] }
+  ]
+}

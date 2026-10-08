@@ -72,6 +72,9 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
   25/11)
 - B (sau B0 ~01/2027): choice-group + number stepper làm sớm ở v0.49.0 (dsuite); rating chỉ đọc + carousel không autoplay làm ở v0.50.0
 - `done` v0.59.0: dsuite — `hide-single-page`, `TdModal` message Node / mảng, number `signed`, cảnh báo icon lạ + icon `price`, datetime `clearable` / range `allow-open-end` — plan [v0.59.0-dsuite-small](plans/v0.59.0-dsuite-small.md)
+- `done` v0.59.1: `label-position="start"` cho `td-toggle` / `td-checkbox` (dsuite) — plan [v0.59.1-label-position](plans/v0.59.1-label-position.md)
+- `wip` v0.60.0: date picker dạng lịch — thiết kế lại hộp chọn của `td-datetime-picker` tại chỗ (đồng thuận Claude × Codex 2026-10-09) — plan [v0.60.0-calendar-picker](plans/v0.60.0-calendar-picker.md)
+- `todo` v0.61.0: `td-datetime-range` dùng lịch mới (chọn Từ → Đến trên lưới)
 
 ## Chờ nhu cầu (owner 2026-10-08: chỉ làm khi có site cần)
 
@@ -80,6 +83,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - RTL — phím ← ở hai đầu `td-choice-group` quay vòng ngược chiều radio native (có từ v0.49); chưa site nào viết từ phải sang trái
 - Nhãn nổi cho `td-number-input` / `td-dropdown` / control khác (v0.58.0 chỉ `td-input-field`); kiểm tay VoiceOver / NVDA nhãn nổi
 - dsuite 2026-10-08 (owner không làm): chuyển `data-*` của toggle xuống input trong (host là control); `td-dropdown` `locked`; component gập / mở (dùng `<details>` gốc); `choice-group` chỉ đọc; thanh hành động nổi kiểu kính (`aehh-mobile-nav`)
+- Toggle có `on-text` + nhãn dài xuống dòng: công tắc không căn giữa khối chữ (có sẵn, phát hiện ở v0.59.1); bố cục "nhãn sát trái — công tắc sát phải cả hàng" là việc của site
 - Đổi theme lúc chạy (`TdTheme.apply`, theming R3) — light / dark / auto + bộ sinh màu + theme theo vùng đã xong ở v0.41 / v0.42
 - HTML server in sẵn cho dropzone; component dwp/135 chưa quyết; Trusted Types; khúc xạ SVG; nâng `@web/test-runner` / Storybook 9 (xem mục Later bên dưới)
 

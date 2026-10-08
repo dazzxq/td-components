@@ -400,6 +400,81 @@
       "excludeProps": [
         "grid-template-columns"
       ]
+    },
+    {
+      "state": "label-start",
+      "markup": "<td-toggle label=\"Hiển thị\" label-position=\"start\" checked></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__label"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.1 (plan v0.59.1-label-position): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); the label-before-control geometry and the note edge are gated by the engines test, test:responsive and ssr-fouc."
+    },
+    {
+      "state": "label-start-state-note",
+      "markup": "<td-toggle label=\"Hiển thị\" size=\"lg\" label-position=\"start\" on-text=\"Đang hiện\" off-text=\"Đang ẩn\" helper-text=\"Sản phẩm ẩn vẫn mở được bằng đường dẫn\"></td-toggle>",
+      "selectors": [
+        "td-toggle",
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__label",
+        ".td-switch__state",
+        ".td-field__note"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.1 (plan v0.59.1-label-position): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); the label-before-control geometry and the note edge are gated by the engines test, test:responsive and ssr-fouc."
+    },
+    {
+      "state": "label-start-error",
+      "markup": "<td-toggle label=\"Hiển thị\" label-position=\"start\" error-text=\"Không lưu được\"></td-toggle>",
+      "selectors": [
+        ".td-switch__label",
+        ".td-switch__track",
+        ".td-field-error"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.1 (plan v0.59.1-label-position): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); the label-before-control geometry and the note edge are gated by the engines test, test:responsive and ssr-fouc."
+    },
+    {
+      "state": "label-start-native",
+      "markup": "<label class=\"td-switch td-switch--md td-switch--label-start\"><input type=\"checkbox\" role=\"switch\" class=\"td-switch__input\" name=\"show\" checked><span class=\"td-switch__track\" aria-hidden=\"true\"><span class=\"td-switch__thumb\"></span></span><span class=\"td-switch__label\">Hiển thị</span></label>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__label"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.1 (plan v0.59.1-label-position): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); the label-before-control geometry and the note edge are gated by the engines test, test:responsive and ssr-fouc."
     }
   ],
   "td-checkbox": [
@@ -502,6 +577,62 @@
         "td-checkbox + td-checkbox .td-field__note"
       ],
       "settle": 300
+    },
+    {
+      "state": "label-start",
+      "markup": "<td-checkbox label=\"Đồng ý\" label-position=\"start\" checked></td-checkbox>",
+      "selectors": [
+        ".td-checkbox",
+        ".td-checkbox__mark",
+        ".td-checkbox__label"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.1 (plan v0.59.1-label-position): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); the label-before-control geometry and the note edge are gated by the engines test, test:responsive and ssr-fouc."
+    },
+    {
+      "state": "label-start-note",
+      "markup": "<td-checkbox label=\"Đồng ý\" size=\"sm\" label-position=\"start\" helper-text=\"Bắt buộc để tiếp tục\"></td-checkbox><td-checkbox label=\"Đồng ý\" size=\"lg\" label-position=\"start\" error-text=\"Bắt buộc\"></td-checkbox>",
+      "selectors": [
+        "td-checkbox",
+        ".td-checkbox__label",
+        ".td-checkbox__mark",
+        ".td-field__note",
+        "td-checkbox + td-checkbox .td-field-error"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.1 (plan v0.59.1-label-position): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); the label-before-control geometry and the note edge are gated by the engines test, test:responsive and ssr-fouc."
+    },
+    {
+      "state": "label-start-native",
+      "markup": "<label class=\"td-checkbox td-checkbox--md td-checkbox--label-start\"><input type=\"checkbox\" class=\"td-checkbox__input\" name=\"agree\" checked><span class=\"td-checkbox__mark\" aria-hidden=\"true\"></span><span class=\"td-checkbox__label\">Đồng ý</span></label>",
+      "selectors": [
+        ".td-checkbox",
+        ".td-checkbox__mark",
+        ".td-checkbox__label"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.1 (plan v0.59.1-label-position): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); the label-before-control geometry and the note edge are gated by the engines test, test:responsive and ssr-fouc."
     }
   ],
   "td-slider": [

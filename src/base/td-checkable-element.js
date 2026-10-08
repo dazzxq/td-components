@@ -45,6 +45,11 @@ const sameState = (live, want) => live.nodeType === 1 && live.localName === want
  *   come off the input; an external `<label for="{input id}">` moves to the host; the caller's input `id` is kept (and
  *   re-applied after any later render); reset → the native defaults. Any mismatch → safe render AT ONCE + restore
  *   (checked / value / indeterminate / id, and the focus when the input had it) — no deferral (ADR 0012 §5).
+ * - Label side (v0.59.1, plan docs/internal/plans/v0.59.1-label-position.md): host attribute `label-position="start"`
+ *   puts the label BEFORE the control (inline-start; after it in RTL). It is a CSS hook only (`order` on the label span,
+ *   switch.css / checkbox.css): render() and the DOM order are the same, the attribute is NOT observed — a runtime change
+ *   runs no component code (no re-render, focus kept) and the server-printed attribute applies before the upgrade.
+ *   Property: {@link TdCheckableElement#labelPosition}.
  */
 export class TdCheckableElement extends TdFormElement {
   /** v0.26.0: adopts PHP element-mode markup in place; a hydrated element re-binds on re-connect. */
@@ -59,6 +64,21 @@ export class TdCheckableElement extends TdFormElement {
   static get booleanAttributes() { return [...super.booleanAttributes, 'checked']; }
 
   static get errorContract() { return true; }
+
+  /**
+   * v0.59.1: the side of the label — `'start'` (before the control) or `'end'` (after it, the default). Reflects the
+   * `label-position` attribute; any other attribute value reads `'end'`. Setting `'start'` writes the attribute, anything
+   * else removes it (the default needs no attribute).
+   * @type {'start'|'end'}
+   */
+  get labelPosition() {
+    return this.getAttribute('label-position') === 'start' ? 'start' : 'end';
+  }
+
+  set labelPosition(v) {
+    if (v === 'start') this.setAttribute('label-position', 'start');
+    else this.removeAttribute('label-position');
+  }
 
   /** @protected @returns {string} CSS custom property set on the host from the `color` attribute */
   _colorProperty() { return '--td-checkbox-color'; }

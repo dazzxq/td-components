@@ -29,6 +29,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_dropdown](#td_dropdown)
   - [td_dropdown ở chế độ element: vỏ không xô lệch (0.26.0)](#td_dropdown-ở-chế-độ-element-vỏ-không-xô-lệch-0260)
 - [td_toggle và td_checkbox](#td_toggle-và-td_checkbox)
+  - [Nhãn đứng trước: `label_position` (0.59.1)](#nhãn-đứng-trước-label_position-0591)
   - [td_toggle / td_checkbox ở chế độ element (0.26.0)](#td_toggle--td_checkbox-ở-chế-độ-element-0260)
 - [td_icon và icon riêng của site](#td_icon-và-icon-riêng-của-site)
 - [td_badge và td_alert](#td_badge-và-td_alert)
@@ -123,7 +124,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.59.0/
+public/assets/vendor/td-components/0.59.1/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -131,7 +132,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.59.0';
+const TD_VERSION = '0.59.1';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -696,6 +697,7 @@ native** cộng hai thứ:
 | `aria_label` | tên truy cập khi không có `$label` |
 | `class`, `attrs` | trên `<label>` bao ngoài |
 | `input_attrs` | attribute thêm trên `<input>` |
+| `label_position` | **0.59.1** `'start'` \| `'end'` (mặc định `'end'`): `'start'` = nhãn đứng **trước** control — [chi tiết](#nhãn-đứng-trước-label_position-0591) |
 
 `$name = ''` → không có `name` (checkbox chỉ dùng cho JS, như ô chọn khung của 135).
 
@@ -711,6 +713,29 @@ Markup switch (`input` native ẩn thị giác, nhận focus/Space/label):
   <span class="td-switch__label">Wifi</span>
 </label>
 ```
+
+### Nhãn đứng trước: `label_position` (0.59.1)
+
+```php
+<?= td_toggle('show', $visible, 'Hiển thị', ['label_position' => 'start']) ?>
+<?= td_checkbox('agree', false, 'Đồng ý', ['label_position' => 'start', 'element' => true]) ?>
+```
+
+Thứ tự markup **không đổi** (input, phần hình, rồi chữ nhãn); nhãn được đưa ra trước bằng CSS (`order`), nên áp ngay
+khi `td.css` nạp xong — trước cả khi module tới, không xê dịch lúc upgrade — và tự đảo theo RTL.
+
+| Chế độ | PHP in thêm | Ví dụ |
+|---|---|---|
+| native (mặc định) | class modifier trên `<label>`, ngay sau class size | `<label class="td-switch td-switch--md td-switch--label-start">` / `td-checkbox--label-start` |
+| element | attribute trên host (cũng là attribute của component) | `<td-toggle data-td-ssr="toggle@1" … size="md" label-position="start">` |
+
+- Chỉ đúng chuỗi `'start'` mới có tác dụng. `'end'`, giá trị khác, sai hoa thường, không phải chuỗi → mặc định: **không in
+  gì thêm**, không warning, output giống từng byte bản 0.59.0.
+- Không ép chế độ element (khác `tone` / `helper_text`): native vẫn là native.
+- Chế độ element: `label-position` là attribute của kit — `attrs` không đặt / ghi đè được nó.
+- Hợp đồng SSR `toggle@1` / `checkbox@1` không đổi (thêm một attribute trên host, markup bên trong y nguyên).
+- `td_toggle` có `on_text` / `off_text`: nhãn — công tắc — chữ trạng thái. Có `helper_text`: ghi chú thẳng mép đầu của nhãn.
+- Site tự viết markup native cũng dùng được class `td-switch--label-start` / `td-checkbox--label-start`.
 
 ### td_toggle / td_checkbox ở chế độ element (0.26.0)
 
@@ -1640,7 +1665,7 @@ của kit (dd/mm/yyyy, hộp thoại, nhãn tiếng Việt, `min` / `max` của 
     <input class="td-dtp__native" type="date|datetime-local" id="{id}-native" name value min max [step] [required]
            [disabled] [aria-label] [aria-invalid aria-describedby="{id}-error" | aria-describedby="{id}-note"]>
     <button type="button" class="td-dtp__trigger" id="{id}-trigger" role="combobox" …>…</button>   ← ẩn khi chưa có JS
-    [<button type="button" class="td-dtp__clear" aria-label="Xoá ngày" [hidden]>…</button>]   ← 0.59.0 clearable (gốc + td-dtp--clearable)
+    [<button type="button" class="td-dtp__clear" aria-label="Xoá ngày" [hidden]>…</button>]   ← 0.59.1 clearable (gốc + td-dtp--clearable)
   </div>
   [<div class="td-field__note" id="{id}-note">gợi ý</div>] [<span class="td-field-error" id="{id}-error" data-for="{id}">lỗi</span>]
 </td-datetime-picker>

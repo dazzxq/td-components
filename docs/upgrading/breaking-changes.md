@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.59.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.59.1)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.59.1](#0591) | Thêm tính năng (opt-in: `label-position="start"` cho `td-toggle` / `td-checkbox`, PHP `label_position`) | Không bắt buộc. Không dùng → `render()`, PHP và giao diện giống từng byte 0.59.0. |
 | [0.59.0](#0590) | Thêm tính năng (opt-in: `hide-single-page`, `message` mảng / Node, `signed`, `clearable`, `allow-open-end`, icon `price`) + cảnh báo mới (icon lạ của `td-action-button`) | Không bắt buộc. Không dùng option mới → `render()` / PHP giống từng byte 0.58. Console / log PHP có thể xuất hiện **cảnh báo mới** khi `td-action-button` / `td_action_button` dùng `icon` không có trong registry (trước: im lặng) — sửa tên icon. Kiểm tra `registerIcons()` của site: tên **`price`** giờ là icon core (alias `banknote`). |
 | [0.58.0](#0580) | Thêm tính năng (nhãn nổi `label-mode="floating"` cho `td-input-field`, PHP `label_mode`) | Không bắt buộc. Opt-in: không dùng `label-mode` → `render()` và PHP giống từng byte 0.57. Ô floating cao hơn (48 / 56 / 64 px) và control đứng **trước** nhãn trong DOM — CSS / script của site kiểu `.td-field__label + .td-field__control` không khớp ô floating. |
 | [0.57.2](#0572) | Đổi giao diện nhỏ (**chỉ bảng cây**: chữ thông tin phân trang) + thêm hook (`td-table` `formatPageInfo`, attribute `total-rows`; `td-pagination` `formatInfo`) | Không bắt buộc. Bảng cây (`tree` + `row-key`): "Hiển thị 1-3 / 3 mục" → "Hiển thị 1-3 / 3 nhóm · 6 dòng" (đổi qua `TdTable.labels.treeItemLabel` / `treePageInfo` hoặc `formatPageInfo`). Test / script đọc chữ này cần cập nhật. Bảng phẳng giữ nguyên. Server mode bảng cây: xem lại hợp đồng trang (một trang = gốc + toàn bộ con cháu; `total-items` = số gốc). |
@@ -84,6 +85,19 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.59.1
+
+**Mức: thêm tính năng (opt-in), không breaking.** Không đặt `label-position` / `label_position` thì markup JS / PHP và
+giao diện giống từng byte 0.59.0 (baseline CSP cũ không đổi; hợp đồng SSR `toggle@1` / `checkbox@1` không đổi).
+
+- **Nhãn đứng trước control:** `<td-toggle label-position="start">` / `<td-checkbox label-position="start">`, property
+  `labelPosition`, PHP `td_toggle` / `td_checkbox` option `label_position` ([toggle](../components/toggle.md),
+  [checkbox](../components/checkbox.md), [PHP adapter](../guides/php-adapter.md#nhãn-đứng-trước-label_position-0591)).
+  Chỉ CSS (`order`): DOM, tên truy cập, thứ tự focus không đổi; RTL tự đảo.
+- **Tên mới của kit** (tránh trùng nếu site đã tự đặt): attribute host `label-position`, class `td-switch--label-start`,
+  `td-checkbox--label-start`. Chế độ element của PHP: `attrs['label-position']` của site giờ bị bỏ qua (attribute của
+  kit — dùng option `label_position`).
 
 ## 0.59.0
 

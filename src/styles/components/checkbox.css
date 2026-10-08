@@ -132,3 +132,19 @@
 		--td-checkbox-box: 1.5rem;
 	}
 }
+
+/* v0.59.1 (plan docs/internal/plans/v0.59.1-label-position.md) — APPEND-ONLY block: `label-position="start"` puts the
+   label before the box. CSS only (`order` on the label span: same DOM, name, focus order, SSR skeleton; follows the
+   writing direction). Element mode = the host attribute (printed by php td_checkbox → applies before the upgrade);
+   native mode = the modifier class `.td-checkbox--label-start`. A checkbox without it matches nothing here. */
+@layer td.component {
+	td-checkbox[label-position="start"] > .td-checkbox > .td-checkbox__label,
+	.td-checkbox--label-start > .td-checkbox__label {
+		order: -1;
+	}
+
+	/* the label sits on the start edge → the hint / error starts there too (no box-width indent) */
+	td-checkbox[label-position="start"]:has(> .td-checkbox .td-checkbox__label) > :is(.td-field__note, td-hint, .td-field-error) {
+		margin-inline-start: 0;
+	}
+}

@@ -12,7 +12,7 @@ radio native.
 | Import | `import '@dazzxq/td-components/checkbox';` (class: `import { TdCheckbox } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + một event `change` từ 0.7.0, tròn từ 0.14.0, hydrate SSR tại chỗ từ 0.26.0, `indeterminate` + phần hình dùng chung `.td-check` từ 0.36.0) |
+| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + một event `change` từ 0.7.0, tròn từ 0.14.0, hydrate SSR tại chỗ từ 0.26.0, `indeterminate` + phần hình dùng chung `.td-check` từ 0.36.0, `label-position` từ 0.59.1) |
 
 Cần `td.css` trên trang (xem [Cài đặt](../getting-started/installation.md)).
 
@@ -148,6 +148,26 @@ Mặc định tròn (từ 0.14.0). Muốn vuông, đổi token bo góc:
 :root { --td-checkbox-radius: 6px; }
 ```
 
+### Nhãn đứng trước ô tick: `label-position="start"` (0.59.1)
+
+Mặc định nhãn đứng **sau** ô tick. `label-position="start"` đưa nhãn ra **trước**:
+
+```html
+<td-checkbox name="show" label="Hiển thị" label-position="start"></td-checkbox>
+```
+
+- Giá trị: `start` | `end` (mặc định). Giá trị khác (`left`, `START`, rỗng…) = `end`.
+- **Chỉ đổi bằng CSS** (`order` trên chữ nhãn): thứ tự DOM, tên truy cập, thứ tự focus và markup SSR giữ nguyên.
+- Đi theo hướng chữ: trang RTL thì nhãn nằm bên phải, ô tick bên trái.
+- Nhãn + khoảng hở + ô tick vẫn là **một** vùng bấm (một `<label>`); vùng chạm ≥ 44 px trên cảm ứng như cũ.
+- Có `helper-text` / `<td-hint>` / lỗi: dòng ghi chú bắt đầu **thẳng mép đầu của nhãn** (không thụt vào).
+- Không có `label` (chỉ `aria-label`): attribute không có tác dụng.
+- Đổi lúc chạy (`el.labelPosition = 'start'` hoặc `setAttribute`) không render lại: input và focus giữ nguyên.
+- `indeterminate`, `size`, `color` dùng chung được.
+
+PHP: `td_checkbox('show', false, 'Hiển thị', ['label_position' => 'start'])` — xem
+[PHP adapter](../guides/php-adapter.md#nhãn-đứng-trước-label_position-0591).
+
 ### Hiện lỗi (error contract)
 
 ```js
@@ -179,6 +199,7 @@ Hiện lỗi = viền ô màu lỗi + `aria-invalid="true"` + `aria-errormessage
 | `color` | string (màu CSS) | `--td-checkbox-color` | Màu nền khi được chọn, riêng phần tử này. |
 | `indeterminate` | boolean | không | 0.36.0: trạng thái lưng chừng (vạch ngang, "mixed"). Người dùng bấm thì tự gỡ. Không gửi trong form. |
 | `error-text` | string | — | Dòng lỗi (error contract). |
+| `label-position` | `start` \| `end` | `end` | **0.59.1** `start`: nhãn đứng **trước** ô tick (chỉ CSS, DOM không đổi; RTL tự đảo). Khác → `end`. Property `labelPosition`. |
 | `id` | string | tự sinh `td-td-checkbox-{n}` | Tự gán nếu thiếu, để `<label for>` và id lỗi hoạt động. |
 | `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. Checkbox / toggle: dưới chữ nhãn (không nhãn: dưới control). |
 
@@ -186,6 +207,7 @@ Hiện lỗi = viền ô màu lỗi + `aria-invalid="true"` + `aria-errormessage
 
 Property phản chiếu attribute: `checked` (boolean), `value`, `name`, `required`, `disabled`, `label`, `ariaLabel`,
 `size`, `color`, `errorText`, `indeterminate` (0.36.0). Lưu ý `value` trả về `''` khi không có attribute, dù giá trị gửi đi khi đó là `on`.
+`labelPosition` (0.59.1) luôn trả `'start'` hoặc `'end'`; gán `'start'` thì ghi attribute, gán giá trị khác thì gỡ attribute.
 
 > Gán property trước khi phần tử gắn vào trang (hoặc trước khi module được import) vẫn có tác dụng từ 0.16.0: giá
 > trị được áp khi phần tử kết nối lần đầu. Chi tiết: [Cách hoạt động](../concepts/how-it-works.md).

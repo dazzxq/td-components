@@ -2,6 +2,21 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.59.1
+
+**Nhãn bên trái công tắc: `label-position="start"` cho `td-toggle` và `td-checkbox`** (owner, qua dsuite: nút gạt ở đầu trang
+sản phẩm chỉ cần nhãn "Hiển thị" bên trái). Codex impl-review APPROVE. Thêm tính năng, không breaking —
+`docs/upgrading/breaking-changes.md#0591`.
+
+### Added
+
+- `label-position="start" | "end"` (mặc định `end` = như cũ) trên `td-toggle` / `td-checkbox`, property `labelPosition`, PHP
+  `td_toggle` / `td_checkbox` option `label_position` (chế độ element: attribute trên host; chế độ native: class
+  `td-switch--label-start` / `td-checkbox--label-start`). Chỉ đổi bằng CSS (`order`) — thứ tự DOM, tên truy cập, thứ tự focus,
+  vùng bấm và khung SSR giữ nguyên; RTL tự đúng; không xê dịch lúc nâng cấp.
+- Kết hợp: gợi ý / lỗi căn theo mép đầu của nhãn; chữ trạng thái (`on-text` / `off-text`) vẫn nằm phía ngoài công tắc
+  (nhãn — công tắc — chữ trạng thái).
+
 ## 0.59.0
 
 **Năm việc nhỏ từ dsuite (owner duyệt, đều opt-in): phân trang một trang, hộp thoại nhiều dòng, số có dấu `+`, cảnh báo icon

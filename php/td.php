@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.59.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.59.0', __DIR__ . '/public/assets/vendor/td-components/0.59.0');
+ *   require_once '/path/to/vendor/td-components/0.59.1/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.59.1', __DIR__ . '/public/assets/vendor/td-components/0.59.1');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -441,7 +441,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.59.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.59.1') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -1912,6 +1912,10 @@ namespace {
      * v0.52.0: `tone` ('success' | 'warning'), `status_text`, `locked` (bool), `locked_reason` — the presence of any of
      * these keys (array_key_exists, whatever the value) FORCES element mode (a bare native switch cannot carry them). `locked` is a UI state only: the native checkbox can
      * still be flipped before the module upgrades / without JS — the server must ignore changes of a locked field.
+     * v0.59.1: `label_position` ('start' | 'end', default 'end') — 'start' puts the label BEFORE the switch (CSS only, same
+     * markup order): the modifier class `td-switch--label-start` on the label here, the host attribute
+     * `label-position="start"` in element mode. Any other value = 'end' (nothing printed, no warning); it does not force
+     * element mode.
      */
     function td_toggle(string $name, bool $checked = false, string $label = '', array $o = []): string
     {
@@ -1926,7 +1930,8 @@ namespace {
         $size = in_array($o['size'] ?? null, Td::SIZES, true) ? $o['size'] : 'md';
         $input = td__check_input('td-switch__input', $name, $checked, $o, true);
         $taken = [];
-        return '<label' . Td::ownAttrs(['class' => 'td-switch td-switch--' . $size . Td::classTokens($o['class'] ?? null)], $taken)
+        $start = ($o['label_position'] ?? null) === 'start' ? ' td-switch--label-start' : '';
+        return '<label' . Td::ownAttrs(['class' => 'td-switch td-switch--' . $size . $start . Td::classTokens($o['class'] ?? null)], $taken)
             . Td::attrs(is_array($o['attrs'] ?? null) ? $o['attrs'] : [], $taken) . '>' . $input
             . '<span class="td-switch__track" aria-hidden="true"><span class="td-switch__thumb">'
             . '<span class="td-switch__icon td-switch__icon--off">' . Td::icon('close') . '</span>'
@@ -1940,6 +1945,9 @@ namespace {
      * class (label), attrs (label), input_attrs (input).
      * v0.26.0 `element` (bool, default Td::configure ssr_elements): `<td-checkbox data-td-ssr="checkbox@1">` host + the
      * markup <td-checkbox> renders (the input keeps name / value / checked / required / id); class + attrs → host.
+     * v0.59.1: `label_position` ('start' | 'end', default 'end') — 'start' puts the label BEFORE the box (CSS only, same
+     * markup order): the modifier class `td-checkbox--label-start` on the label here, the host attribute
+     * `label-position="start"` in element mode. Any other value = 'end' (nothing printed, no warning).
      */
     function td_checkbox(string $name, bool $checked = false, string $label = '', array $o = []): string
     {
@@ -1950,7 +1958,8 @@ namespace {
         $size = in_array($o['size'] ?? null, Td::SIZES, true) ? $o['size'] : 'md';
         $input = td__check_input('td-checkbox__input', $name, $checked, $o, false);
         $taken = [];
-        return '<label' . Td::ownAttrs(['class' => 'td-checkbox td-checkbox--' . $size . Td::classTokens($o['class'] ?? null)], $taken)
+        $start = ($o['label_position'] ?? null) === 'start' ? ' td-checkbox--label-start' : '';
+        return '<label' . Td::ownAttrs(['class' => 'td-checkbox td-checkbox--' . $size . $start . Td::classTokens($o['class'] ?? null)], $taken)
             . Td::attrs(is_array($o['attrs'] ?? null) ? $o['attrs'] : [], $taken) . '>' . $input
             . '<span class="td-checkbox__mark" aria-hidden="true"><span class="td-checkbox__icon">'
             . Td::icon('check', 'm', '', 'td-checkbox__svg') . '</span></span>'
@@ -5386,6 +5395,8 @@ namespace {
             'disabled' => $disabled,
             'label' => $label !== '' ? $label : null,
             'size' => $size,
+            // v0.59.1: the CSS hook of the label side (exactly 'start'; anything else = the default, nothing printed)
+            'label-position' => ($o['label_position'] ?? null) === 'start' ? 'start' : null,
             'aria-label' => $aria,
             'tone' => $tone,
             'status-text' => $statusText,
@@ -5399,7 +5410,8 @@ namespace {
         $hostTaken = [];
         $html = '<' . ($toggle ? 'td-toggle' : 'td-checkbox') . Td::ownAttrs($host, $hostTaken);
         $hostTaken = td__reserve(['id', 'class', 'name', 'value', 'checked', 'required', 'disabled', 'label', 'size', 'aria-label',
-            'color', 'controlled', 'error-text', 'tone', 'status-text', 'locked', 'locked-reason', 'on-text', 'off-text', 'helper-text'],
+            'color', 'controlled', 'error-text', 'tone', 'status-text', 'locked', 'locked-reason', 'on-text', 'off-text', 'helper-text',
+            'label-position'],
             $hostExtra, $hostTaken);
         return $html . Td::attrs($hostExtra, $hostTaken) . '>' . $inner . '</' . ($toggle ? 'td-toggle' : 'td-checkbox') . '>';
     }

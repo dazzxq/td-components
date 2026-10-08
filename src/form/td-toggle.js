@@ -71,6 +71,8 @@ const EXTRAS = new Set(['tone', 'status-text', 'locked', 'locked-reason', 'on-te
  * @attr {string} on-text - visible state text while ON (v0.54.0; CSS shows it from :checked, the description carries the
  *   current one — never the name; replaces the tone's default status description)
  * @attr {string} off-text - visible state text while OFF (v0.54.0)
+ * @attr {string} label-position - start | end (default: end) — v0.59.1: `start` puts the label before the switch (CSS
+ *   only, same DOM; with on / off text the order is label — switch — state text). Property `labelPosition`.
  * @fires change - detail: { checked: boolean } — the requested state (exactly one per user action)
  * @fires commit-error - detail: { checked: boolean, error } — a `commit()` failed and the switch reverted
  */

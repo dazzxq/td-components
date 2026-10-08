@@ -27,6 +27,8 @@ import { TdCheckableElement } from '../base/td-checkable-element.js';
  * @attr {boolean} indeterminate - v0.36.0: mixed state (native `input.indeterminate` → "mixed" for assistive tech; the
  *   mark shows a bar). Reflected by the `indeterminate` property. A USER toggle clears it (one `change`, no extra event);
  *   setting `checked` from code keeps it (the app owns it, e.g. "select all"). Never submitted; form reset keeps it.
+ * @attr {string} label-position - start | end (default: end) — v0.59.1: `start` puts the label before the box (CSS only,
+ *   same DOM). Property `labelPosition`.
  * @fires change - detail: { checked: boolean } (exactly one per user toggle)
  */
 export class TdCheckbox extends TdCheckableElement {

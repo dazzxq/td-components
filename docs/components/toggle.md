@@ -11,7 +11,7 @@ lực khi bấm "Lưu" hay "Gửi" (ví dụ đồng ý điều khoản trong fo
 | Import | `import '@dazzxq/td-components/toggle';` (class: `import { TdToggle } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.1.0 (mặc định uncontrolled từ 0.2.0, input native `role="switch"` từ 0.7.0, `commit()` từ 0.13.0, hydrate SSR tại chỗ từ 0.26.0, `tone` / `locked` từ 0.52.0, host `inline-flex` căn giữa cạnh chữ từ 0.53.2) |
+| Từ phiên bản | 0.1.0 (mặc định uncontrolled từ 0.2.0, input native `role="switch"` từ 0.7.0, `commit()` từ 0.13.0, hydrate SSR tại chỗ từ 0.26.0, `tone` / `locked` từ 0.52.0, host `inline-flex` căn giữa cạnh chữ từ 0.53.2, `label-position` từ 0.59.1) |
 
 Cần `td.css` trên trang (xem [Cài đặt](../getting-started/installation.md)).
 
@@ -266,6 +266,39 @@ Gợi ý (và lỗi) nằm **dưới chữ nhãn**, thẳng mép với nhãn ở
 không có gợi ý / lỗi không đổi gì (căn hàng trong bảng giữ nguyên). Có lỗi thì gợi ý ẩn. Link trong gợi ý: `<td-hint>`
 con — xem [Hint](hint.md).
 
+### Nhãn đứng trước công tắc: `label-position="start"` (0.59.1)
+
+Mặc định nhãn đứng **sau** công tắc. Muốn nhãn đứng **trước** (vd. công tắc "Hiển thị" ở đầu trang):
+
+```html
+<td-toggle name="show" label="Hiển thị" label-position="start" checked></td-toggle>
+```
+
+| Giá trị | Thứ tự nhìn thấy (LTR) |
+|---|---|
+| `end` (mặc định, hoặc không có attribute) | công tắc — nhãn — chữ trạng thái |
+| `start` | **nhãn — công tắc** — chữ trạng thái |
+
+- Giá trị khác (`left`, `START`, rỗng…) = `end`. Chỉ đúng chuỗi `start` mới có tác dụng.
+- **Chỉ đổi bằng CSS** (`order` trên chữ nhãn): thứ tự DOM, tên truy cập, thứ tự focus và markup SSR giữ nguyên. CSS /
+  script của site đang đọc DOM của công tắc không phải sửa gì.
+- Đi theo hướng chữ: trang RTL thì nhãn nằm bên **phải**, công tắc bên trái. Không có "left" / "right" cố định.
+- Nhãn + khoảng hở + công tắc vẫn là **một** vùng bấm (một `<label>`): bấm vào nhãn là bật / tắt; vùng chạm ≥ 44 px trên
+  cảm ứng như cũ. Khoảng hở vẫn là `--td-space-xs`.
+- Có `on-text` / `off-text`: chữ trạng thái **vẫn đứng sau công tắc** (nó mô tả công tắc, nên nằm sát công tắc ở phía
+  ngoài) — đọc là "Hiển thị ⬤ Đang bật". Vì vậy khi có chữ trạng thái, công tắc không nằm sát mép cuối của host.
+- Có `helper-text` / `<td-hint>` / lỗi: dòng ghi chú bắt đầu **thẳng mép đầu của nhãn** (không thụt vào như khi nhãn đứng
+  sau). Trên một dòng chữ, toggle `start` có ghi chú / lỗi căn theo **baseline của chữ nhãn** (giống toggle có chữ
+  trạng thái); không có ghi chú thì vẫn căn giữa như 0.53.2.
+- Không có `label` (chỉ `aria-label`): attribute không có tác dụng.
+- Đổi lúc chạy (`el.labelPosition = 'start'` hoặc `setAttribute`) không render lại: input giữ nguyên, focus giữ nguyên.
+- `tone`, `locked`, `size`, `color`, `commit()` dùng chung được, không khác gì.
+- Host vẫn là một hộp inline co theo nội dung. Muốn "nhãn sát trái, công tắc sát phải cả hàng" là layout của site (bọc
+  trong hàng flex của trang), kit không tự kéo giãn.
+
+PHP: `td_toggle('show', true, 'Hiển thị', ['label_position' => 'start'])` — xem
+[PHP adapter](../guides/php-adapter.md#nhãn-đứng-trước-label_position-0591).
+
 ### Công thức: cột 2FA trong danh sách người dùng (0.52.0)
 
 Ba trạng thái: **tắt** (không bắt buộc) · **bật + chờ** (admin đã bật, người dùng chưa quét QR) · **bật + xong** (đã
@@ -343,6 +376,7 @@ function markVerified() { t.tone = 'success'; t.statusText = DONE; t.dataset.too
 | `on-text` / `off-text` | string | — | **0.54.0** Chữ trạng thái **nhìn thấy** cạnh công tắc khi bật / tắt (CSS theo `:checked`, cả không JS); mô tả của input = chữ trạng thái hiện tại; không vào tên. ≤ 200 ký tự. Property `onText` / `offText`. |
 | `locked` | boolean | không | 0.52.0: người dùng không đổi được; vẫn focus, vẫn gửi, không `change`. |
 | `locked-reason` | string | — | 0.52.0: lý do; mô tả = `messages.locked` + `": "` + lý do. ≤ 200 ký tự. |
+| `label-position` | `start` \| `end` | `end` | **0.59.1** `start`: nhãn đứng **trước** công tắc (chỉ CSS, DOM không đổi; RTL tự đảo). Có chữ trạng thái: nhãn — công tắc — chữ trạng thái. Khác → `end`. Property `labelPosition`. |
 | `id` | string | tự sinh `td-td-toggle-{n}` | Tự gán nếu thiếu. |
 | `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. Checkbox / toggle: dưới chữ nhãn (không nhãn: dưới control). |
 
@@ -350,7 +384,8 @@ function markVerified() { t.tone = 'success'; t.statusText = DONE; t.dataset.too
 
 Property phản chiếu attribute: `checked`, `controlled` (boolean), `value`, `name`, `required`, `disabled`, `label`,
 `ariaLabel`, `size`, `color`, `errorText`, `tone`, `statusText`, `locked` (boolean), `lockedReason` (0.52.0). `value` trả
-`''` khi không có attribute.
+`''` khi không có attribute. `labelPosition` (0.59.1) luôn trả `'start'` hoặc `'end'`; gán `'start'` thì ghi attribute,
+gán giá trị khác thì gỡ attribute (về mặc định).
 
 `TdToggle.messages` (đổi được cho cả trang): `valueMissing` ("Vui lòng bật tùy chọn này."), `statusSuccess`
 ("Đã xác nhận"), `statusWarning` ("Đang chờ"), `locked` ("Không thể thay đổi") — 0.52.0.
