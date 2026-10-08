@@ -58,3 +58,19 @@ export const WithError = {
 export const AriaLabelOnly = {
   render: () => `<div class="sb-row"><td-checkbox size="sm" aria-label="Chọn"></td-checkbox><td-checkbox aria-label="Chọn"></td-checkbox><td-checkbox size="lg" aria-label="Chọn" checked></td-checkbox></div>`,
 };
+
+/**
+ * v0.59.1 `label-position="start"`: the label BEFORE the box. CSS only — same DOM, one hit area; RTL puts the label on the
+ * right. The hint / error starts on the label's start edge.
+ */
+export const LabelStart = {
+  name: 'Nhãn trước ô tick',
+  render: () => `<div class="sb-stack">
+    <td-checkbox label="Hiển thị" label-position="start" checked></td-checkbox>
+    <td-checkbox label="Hiển thị" label-position="start" size="sm"></td-checkbox>
+    <td-checkbox label="Chọn tất cả" label-position="start" size="lg" indeterminate></td-checkbox>
+    <td-checkbox label="Đồng ý điều khoản" label-position="start" helper-text="Bắt buộc để tiếp tục"></td-checkbox>
+    <td-checkbox label="Đồng ý điều khoản" label-position="start" error-text="Bạn cần chọn mục này để tiếp tục"></td-checkbox>
+    <div dir="rtl"><td-checkbox label="Hiển thị (RTL)" label-position="start" checked></td-checkbox></div>
+  </div>`,
+};

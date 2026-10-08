@@ -165,3 +165,21 @@ export const CanDocCanhChu = {
     <p>Có nhãn: <td-toggle label="Thông báo" checked></td-toggle> — cùng dòng chữ</p>
   </div>`,
 };
+
+/**
+ * v0.59.1 `label-position="start"`: the label BEFORE the switch (a page-header "Hiển thị" toggle). CSS only — same DOM, the
+ * whole label + switch is still one hit area; RTL puts the label on the right. With on / off text: label — switch — state
+ * text. The hint / error starts on the label's start edge.
+ */
+export const LabelStart = {
+  name: 'Nhãn trước công tắc',
+  render: () => `<div class="sb-stack">
+    <td-toggle label="Hiển thị" label-position="start" checked></td-toggle>
+    <td-toggle label="Hiển thị" label-position="start" size="sm"></td-toggle>
+    <td-toggle label="Hiển thị" label-position="start" size="lg" checked></td-toggle>
+    <td-toggle label="Trạng thái kinh doanh" label-position="start" on-text="Đang bán" off-text="Ngừng bán" checked></td-toggle>
+    <td-toggle label="Hiển thị trên trang chủ" label-position="start" helper-text="Sản phẩm ẩn vẫn mở được bằng đường dẫn trực tiếp"></td-toggle>
+    <td-toggle label="Bắt buộc 2FA" label-position="start" checked locked locked-reason="Chính sách công ty"></td-toggle>
+    <div dir="rtl"><td-toggle label="Hiển thị (RTL)" label-position="start" checked></td-toggle></div>
+  </div>`,
+};
