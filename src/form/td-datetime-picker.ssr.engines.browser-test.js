@@ -67,7 +67,7 @@ const noJs = {
   labelFor: hostOf('p-date').querySelector('label').control === nativeOf(hostOf('p-date')),
 };
 const before = {};
-for (const c of SPEC.cases) before[c.id] = { host: hostOf(c.id), trigger: hostOf(c.id).querySelector('.td-dtp__trigger') };
+for (const c of SPEC.cases) before[c.id] = { host: hostOf(c.id), trigger: hostOf(c.id).querySelector('.td-dtp__trigger'), clear: hostOf(c.id).querySelector('.td-dtp__clear') };
 // the user edits natives before define (dirty values), one keeps the focus
 nativeOf(hostOf('p-date')).value = '2026-06-20';
 nativeOf(hostOf('p-datetime')).value = '2026-06-15T10:45';
@@ -128,6 +128,13 @@ describe('v0.56.0 datetime-picker@1 — adopted in place', () => {
       if (c.expect.disabled) expect(h.querySelector('.td-dtp__trigger').disabled).to.equal(true);
       if (c.expect.required) expect(h.validity.valueMissing).to.equal(true);
       if (c.expect.underflow) expect(h.validity.rangeUnderflow).to.equal(true);
+      // v0.59.0 `clearable`: the PHP clear button is adopted (same node), its `hidden` follows the live state
+      if (c.expect.clear) {
+        const b = h.querySelector('.td-dtp__clear');
+        expect(!!b && b === before[c.id].clear, 'clear button adopted').to.equal(true);
+        expect(b.hidden).to.equal(c.expect.clear === 'hidden');
+        expect(b.getAttribute('aria-label')).to.equal('Xoá ngày');
+      } else expect(h.querySelector('.td-dtp__clear')).to.equal(null);
     });
   }
 

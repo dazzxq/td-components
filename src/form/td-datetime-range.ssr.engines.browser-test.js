@@ -133,6 +133,9 @@ describe('v0.40.0 datetime-range@1 — adopted in place', () => {
         expect(h.querySelector('.td-dtr__trigger').getAttribute('aria-invalid')).to.equal('true');
         expect(h.querySelector('.td-field-error').textContent).to.equal(c.expect.error);
       }
+      // v0.59.0 allow-open-end: the trigger text + validity (the end is never required)
+      if (c.expect.trigger) expect(h.querySelector('.td-dtr__value').textContent).to.equal(c.expect.trigger);
+      if (c.expect.valid) expect(h.validity.valid).to.equal(true);
     });
   }
 

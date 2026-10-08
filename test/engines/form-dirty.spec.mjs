@@ -12,6 +12,9 @@
  *              button and changing affix attributes / locale at run time is never dirty (no dialog); typing is.
  *   floating   v0.58.0: td-input-field label-mode="floating" — a click on the label (focus via <label for>), blur and
  *              switching label-mode at run time are never dirty; typing then deleting back is clean, typing is dirty.
+ *   v059       v0.59.0: `signed` / `clearable` / `allow-open-end` / `hide-single-page` switched from code after a click → not
+ *              dirty; the clear button of td-datetime-picker → dirty (dialog); typing in a `signed` number then deleting back
+ *              → clean; "Không hạn" + "Chọn" in td-datetime-range → dirty.
  *   repeater   v0.56.0 (plan v0.56.0-repeater-icons-date R5): td-repeater `value =` / `readonly` / `disabled` from code
  *              after a click → no dialog; the user typed, then `disabled` from code took the fields out → dialog.
  *
@@ -43,6 +46,28 @@ const AFFIX_PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><
   <td-input-field id="site" name="site" label="Website" prefix="https://" value="congty"><button type="button" slot="suffix" id="sb">x</button></td-input-field>
   <td-number-input id="price" name="price" label="Giá" suffix="₫" suffix-icon="lock" value="1000"></td-number-input>
   <td-input-field id="fl" name="fl" label="Họ tên" label-mode="floating"></td-input-field>
+</form>
+</body></html>`;
+
+const V059_PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><link rel="stylesheet" href="${ORIGIN}/td.css">
+<script type="module">
+  import { trackFormDirty } from '${ORIGIN}/src/utils/form-validation.js';
+  import '${ORIGIN}/src/form/td-number-input.js';
+  import '${ORIGIN}/src/form/td-datetime-picker.js';
+  import '${ORIGIN}/src/form/td-datetime-range.js';
+  import '${ORIGIN}/src/display/td-table.js';
+  await Promise.all(['td-number-input', 'td-datetime-picker', 'td-datetime-range', 'td-table'].map((t) => customElements.whenDefined(t)));
+  const t = document.getElementById('tb');
+  t.columns = [{ key: 'a', label: 'A' }];
+  t.data = [{ a: 1 }];
+  window.tracker = trackFormDirty(document.getElementById('f'));
+  window.__ready = true;
+</script></head><body>
+<form id="f" action="${ORIGIN}/other" method="get">
+  <td-number-input id="sg" name="sg" label="Chênh" min="-100" value="5"></td-number-input>
+  <td-datetime-picker id="dc" name="dc" mode="date" value="15/06/2026" label="Hạn"></td-datetime-picker>
+  <td-datetime-range id="ro" name="ro" label="Hiệu lực" start="01/10/2026" end="05/10/2026"></td-datetime-range>
+  <td-table id="tb"></td-table>
 </form>
 </body></html>`;
 
@@ -180,6 +205,51 @@ async function runEngine(name, launcher) {
     await page.keyboard.press('Backspace');
     const flReverted = await page.evaluate(() => window.tracker.isDirty());
     check(`${name} floating: typing is dirty, deleting back is clean`, flTyped && !flReverted, JSON.stringify({ flTyped, flReverted }));
+    await context.close();
+
+    // v0.59.0: the new options from code are not edits; the clear button / "Không hạn" + "Chọn" are; signed revert is clean
+    ({ page, context } = await freshPage(browser, V059_PAGE));
+    await page.click('#sg .td-number__control');
+    await page.evaluate(() => {
+      document.getElementById('sg').signed = true;
+      document.getElementById('dc').clearable = true;
+      document.getElementById('ro').allowOpenEnd = true;
+      document.getElementById('tb').hideSinglePage = true;
+      document.getElementById('sg').signed = false;
+      document.getElementById('dc').clearable = false;
+      document.getElementById('ro').allowOpenEnd = false;
+    });
+    const optDirty = await page.evaluate(() => window.tracker.isDirty());
+    r = await leave(page);
+    check(`${name} v059: options switched from code → not dirty, no dialog`, !optDirty && r.seen.length === 0 && r.left, JSON.stringify({ optDirty, ...r }));
+    await context.close();
+    ({ page, context } = await freshPage(browser, V059_PAGE));
+    await page.evaluate(() => { document.getElementById('dc').clearable = true; });
+    await page.click('#dc .td-dtp__clear');
+    const cleared = await page.evaluate(() => window.tracker.isDirty());
+    check(`${name} v059: the date clear button is dirty`, cleared, String(cleared));
+    r = await leave(page, { dismiss: true });
+    soft(`${name} v059 clear dirty: dialog shown`, r.seen.includes('beforeunload'), JSON.stringify(r));
+    await context.close();
+    ({ page, context } = await freshPage(browser, V059_PAGE));
+    await page.evaluate(() => { document.getElementById('sg').signed = true; });
+    await page.click('#sg .td-number__control');
+    await page.keyboard.press('End');
+    await page.keyboard.type('1');
+    const sgTyped = await page.evaluate(() => [window.tracker.isDirty(), document.querySelector('#sg .td-number__control').value]);
+    await page.keyboard.press('Backspace');
+    const sgReverted = await page.evaluate(() => window.tracker.isDirty());
+    check(`${name} v059: signed typing is dirty, deleting back is clean`, sgTyped[0] && sgTyped[1] === '+51' && !sgReverted, JSON.stringify({ sgTyped, sgReverted }));
+    await context.close();
+    ({ page, context } = await freshPage(browser, V059_PAGE));
+    await page.evaluate(() => { document.getElementById('ro').allowOpenEnd = true; });
+    await page.click('#ro .td-dtr__trigger');
+    await page.waitForSelector('.td-dtr-panel__open-end', { timeout: 4000 }).catch(() => {});
+    await page.click('.td-dtr-panel__open-end').catch(() => {});
+    await page.click('.td-modal__footer .td-btn--primary').catch(() => {});
+    await page.waitForTimeout(200);
+    const openEnd = await page.evaluate(() => [window.tracker.isDirty(), new FormData(document.getElementById('f')).get('ro[end]')]);
+    check(`${name} v059: "Không hạn" + "Chọn" is dirty (end submitted empty)`, openEnd[0] === true && openEnd[1] === '', JSON.stringify(openEnd));
     await context.close();
 
     // v0.56.0 repeater: code changes never count; disabled after a user edit does (fields leave FormData)

@@ -365,3 +365,86 @@ describe('number-format — v0.55.0 QĐ 9: `decimals` is a MAXIMUM — never pad
     assert.deepEqual(edit('6,', 2, o), { display: '6,', caret: 2, value: '6', bad: false });
   });
 });
+
+// v0.59.0 (plan v0.59.0-dsuite-small QĐ C2 / C3, Codex plan r1 #1) — `signed`: a positive non-zero value is SHOWN with a
+// leading `+`; canonical values never carry it. ONE leading `+` is an editing-only sign token; every other `+` is dropped
+// before the caret is mapped; a zero value drops the `+`.
+describe('number-format — signed (v0.59.0)', () => {
+  const S = vi({ signed: true, negative: true });
+  const S1 = vi({ signed: true, negative: true, decimals: 1 });
+
+  it('format: + for > 0 only; 0 / -0 unsigned; negatives keep the ASCII -; without `signed` nothing changes', () => {
+    assert.equal(format('300000', S), '+300.000');
+    assert.equal(format('-300000', S), '-300.000');
+    assert.equal(format('0', S), '0');
+    assert.equal(format('0.0', S1), '0,0');
+    assert.equal(format('0.5', S1), '+0,5');
+    assert.equal(format('', S), '');
+    assert.equal(format('300000', vi({ negative: true })), '300.000');
+  });
+
+  it('edit: the QĐ C2 / C3 table (display, caret, value, bad)', () => {
+    const t = (raw, caret, o = S1) => edit(raw, caret, o);
+    assert.deepEqual(t('+', 1), { display: '+', caret: 1, value: '', bad: true }); // lone + kept (like a lone -)
+    assert.deepEqual(t('5', 1), { display: '+5', caret: 2, value: '5', bad: false }); // synthetic + before the caret
+    assert.deepEqual(t('+5', 2), { display: '+5', caret: 2, value: '5', bad: false });
+    assert.deepEqual(t('+50', 3), { display: '+50', caret: 3, value: '50', bad: false });
+    assert.deepEqual(t('+0', 2), { display: '0', caret: 1, value: '0', bad: false }); // zero drops the + before the caret map
+    assert.deepEqual(t('+0,', 3), { display: '0,', caret: 2, value: '0', bad: false });
+    assert.deepEqual(t('+0,5', 4), { display: '+0,5', caret: 4, value: '0.5', bad: false });
+    assert.deepEqual(t('+12,', 4), { display: '+12,', caret: 4, value: '12', bad: false });
+    assert.deepEqual(t('+,', 2), { display: '+,', caret: 2, value: '', bad: true });
+    assert.deepEqual(t('', 0), { display: '', caret: 0, value: '', bad: false });
+  });
+
+  it('edit: non-leading / duplicate / after-minus + are dropped at tokenising (never counted for the caret)', () => {
+    assert.deepEqual(edit('++5', 3, S), { display: '+5', caret: 2, value: '5', bad: false });
+    assert.deepEqual(edit('5+', 2, S), { display: '+5', caret: 2, value: '5', bad: false });
+    assert.deepEqual(edit('-+5', 3, S), { display: '-5', caret: 2, value: '-5', bad: false });
+    assert.deepEqual(edit('1+2', 3, S), { display: '+12', caret: 3, value: '12', bad: false });
+    // a caret before every token stays before the synthetic +
+    assert.deepEqual(edit('5', 0, S), { display: '+5', caret: 0, value: '5', bad: false });
+  });
+
+  it('edit: grouping with the + (caret after the typed digit in a group)', () => {
+    assert.deepEqual(edit('300000', 6, S), { display: '+300.000', caret: 8, value: '300000', bad: false });
+    assert.deepEqual(edit('+19234', 3, S), { display: '+19.234', caret: 3, value: '19234', bad: false });
+  });
+
+  it('edit: without `signed` a + is foreign (dropped), display unchanged', () => {
+    assert.deepEqual(edit('+5', 2, vi()), { display: '5', caret: 1, value: '5', bad: false });
+    assert.deepEqual(edit('+', 1, vi()), { display: '', caret: 0, value: '', bad: false });
+  });
+
+  it('parseLoose: one leading + (before / after a unit prefix) with `signed`; +-3, ++3, -+3, lone + → null', () => {
+    const o = { ...S, suffix: '₫' };
+    assert.equal(parseLoose('+300.000', o), '300000');
+    assert.equal(parseLoose('+300.000 ₫', o), '300000');
+    assert.equal(parseLoose('₫+300', o), '300');
+    assert.equal(parseLoose('-300', o), '-300');
+    for (const bad of ['+-3', '++3', '-+3', '+', '3+']) assert.equal(parseLoose(bad, o), null, bad);
+  });
+
+  it('parseLoose: without `signed` a + is still refused (v0.58.0)', () => {
+    assert.equal(parseLoose('+300', vi({ negative: true })), null);
+  });
+
+  it('round trip: parseLoose(format(v)) === v and edit(format(v)).value === v (seeded random, all separator pairs)', () => {
+    let seed = 59;
+    const rnd = (n) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+    const pairs = [['.', ','], [',', '.'], [' ', ','], ['', ',']];
+    for (let i = 0; i < 400; i += 1) {
+      const [group, decimal] = pairs[rnd(pairs.length)];
+      const decimals = rnd(4);
+      const negative = rnd(2) === 1;
+      const o = { group, decimal, decimals, negative, signed: true };
+      const int = String(rnd(10 ** (1 + rnd(9))));
+      const frac = decimals ? String(rnd(10 ** decimals)).padStart(decimals, '0').replace(/0+$/, '') : '';
+      let v = int + (frac ? `.${frac}` : '');
+      if (negative && rnd(2) && v !== '0') v = `-${v}`;
+      const shown = format(v, o);
+      assert.equal(parseLoose(shown, o), v, `${JSON.stringify(o)} ${v} → ${shown}`);
+      assert.equal(edit(shown, shown.length, o).value, v, `${JSON.stringify(o)} ${v} → ${shown}`);
+    }
+  });
+});
