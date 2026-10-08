@@ -98,7 +98,7 @@
       "--_td-toast-seq": ""
     },
     ".td-field__box": {
-      "min-height": "auto",
+      "min-height": "56px",
       "max-height": "none",
       "padding-top": "22px",
       "padding-bottom": "6px",
