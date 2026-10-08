@@ -930,9 +930,11 @@
         "width",
         "margin-left",
         "line-height",
-        "max-width"
+        "max-width",
+        "left",
+        "right"
       ],
-      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
+      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front, + left / right (the absolutely positioned label: the side opposite its inset = container − inset − its text width) (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
     },
     {
       "state": "floating-focus",
@@ -951,9 +953,11 @@
         "width",
         "margin-left",
         "line-height",
-        "max-width"
+        "max-width",
+        "left",
+        "right"
       ],
-      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
+      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front, + left / right (the absolutely positioned label: the side opposite its inset = container − inset − its text width) (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
     },
     {
       "state": "floating-filled",
@@ -970,9 +974,11 @@
         "width",
         "margin-left",
         "line-height",
-        "max-width"
+        "max-width",
+        "left",
+        "right"
       ],
-      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
+      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front, + left / right (the absolutely positioned label: the side opposite its inset = container − inset − its text width) (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
     },
     {
       "state": "floating-placeholder-focus",
@@ -991,9 +997,11 @@
         "width",
         "margin-left",
         "line-height",
-        "max-width"
+        "max-width",
+        "left",
+        "right"
       ],
-      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
+      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front, + left / right (the absolutely positioned label: the side opposite its inset = container − inset − its text width) (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
     },
     {
       "state": "floating-error",
@@ -1010,9 +1018,11 @@
         "width",
         "margin-left",
         "line-height",
-        "max-width"
+        "max-width",
+        "left",
+        "right"
       ],
-      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
+      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front, + left / right (the absolutely positioned label: the side opposite its inset = container − inset − its text width) (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
     },
     {
       "state": "floating-disabled",
@@ -1029,9 +1039,11 @@
         "width",
         "margin-left",
         "line-height",
-        "max-width"
+        "max-width",
+        "left",
+        "right"
       ],
-      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
+      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front, + left / right (the absolutely positioned label: the side opposite its inset = container − inset − its text width) (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
     },
     {
       "state": "floating-readonly",
@@ -1048,9 +1060,11 @@
         "width",
         "margin-left",
         "line-height",
-        "max-width"
+        "max-width",
+        "left",
+        "right"
       ],
-      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
+      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front, + left / right (the absolutely positioned label: the side opposite its inset = container − inset − its text width) (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
     },
     {
       "state": "floating-prefix",
@@ -1067,9 +1081,11 @@
         "width",
         "margin-left",
         "line-height",
-        "max-width"
+        "max-width",
+        "left",
+        "right"
       ],
-      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
+      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front, + left / right (the absolutely positioned label: the side opposite its inset = container − inset − its text width) (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
     },
     {
       "state": "floating-date",
@@ -1086,9 +1102,11 @@
         "width",
         "margin-left",
         "line-height",
-        "max-width"
+        "max-width",
+        "left",
+        "right"
       ],
-      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
+      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front, + left / right (the absolutely positioned label: the side opposite its inset = container − inset − its text width) (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
     },
     {
       "state": "floating-textarea",
@@ -1105,9 +1123,11 @@
         "width",
         "margin-left",
         "line-height",
-        "max-width"
+        "max-width",
+        "left",
+        "right"
       ],
-      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
+      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front, + left / right (the absolutely positioned label: the side opposite its inset = container − inset − its text width) (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
     },
     {
       "state": "floating-sm",
@@ -1124,9 +1144,11 @@
         "width",
         "margin-left",
         "line-height",
-        "max-width"
+        "max-width",
+        "left",
+        "right"
       ],
-      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
+      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front, + left / right (the absolutely positioned label: the side opposite its inset = container − inset − its text width) (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
     },
     {
       "state": "floating-lg",
@@ -1143,9 +1165,11 @@
         "width",
         "margin-left",
         "line-height",
-        "max-width"
+        "max-width",
+        "left",
+        "right"
       ],
-      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
+      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front, + left / right (the absolutely positioned label: the side opposite its inset = container − inset − its text width) (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
     },
     {
       "state": "floating-rtl",
@@ -1162,9 +1186,11 @@
         "width",
         "margin-left",
         "line-height",
-        "max-width"
+        "max-width",
+        "left",
+        "right"
       ],
-      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
+      "selectorNote": "v0.58.0 (plan v0.58.0-floating-label Gate): the label / field boxes follow the platform font metrics — grid-template-columns / height / width / margin-left / line-height / max-width excluded up front, + left / right (the absolutely positioned label: the side opposite its inset = container − inset − its text width) (Linux CI lesson daf820c); the label geometry (hit box above the value line) is gated by the engines tests and test:responsive. transform is kept (fixed px matrix — M0.4)."
     }
   ],
   "td-dropdown": [
