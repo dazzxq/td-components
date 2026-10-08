@@ -2,6 +2,27 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.57.2
+
+**Câu đếm phân trang của bảng cây: "Hiển thị 1-3 / 3 nhóm · 6 dòng"** (dsuite: bảng cây phân trang theo nhánh gốc nên câu
+"1-3 / 3 mục" lệch với 6 dòng đang hiện). Codex impl-review APPROVE 2 vòng + security-review APPROVE. Bảng phẳng giữ nguyên
+từng byte — `docs/upgrading/breaking-changes.md#0572`.
+
+### Added
+
+- Bảng cây: câu đếm mặc định đếm nhóm gốc **và** số dòng đang hiện (gốc + nhánh đang mở; không tính dòng "Đang tải…" / lỗi);
+  cập nhật khi mở / đóng nhánh, tải con, `moveRow`, `data` mới. Nhãn `TdTable.labels.treeItemLabel` ('nhóm'),
+  `treePageInfo` ('{info} · {rows} dòng').
+- Hook theo từng bảng `formatPageInfo(ctx)` (`ctx`: `from` / `to` / `total` / `item` / `rows` / `totalRows` / `tree` / `page` /
+  `perPage` / `text`) và `td-pagination` `formatInfo(ctx)` — kết quả là **chữ** (không bao giờ HTML); lỗi / không phải chuỗi →
+  câu mặc định + một cảnh báo; hai thanh phân trang luôn cùng một câu.
+- Attribute `total-rows` (chế độ server, tuỳ chọn) — chỉ để điền `ctx.totalRows`.
+
+### Docs
+
+- Hợp đồng chế độ server của bảng cây: **một trang = danh sách gốc kèm trọn con cháu**, không cắt theo dòng phẳng;
+  `total-items` = số gốc.
+
 ## 0.57.1
 
 **Chữ lỗi to theo chữ gợi ý (`--td-field-error-size`) + `TdModal` focus ban đầu theo `[autofocus]`** (dsuite: nâng gợi ý lên

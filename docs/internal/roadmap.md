@@ -65,14 +65,20 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.56.0: `td-repeater` `value` / `disabled` / `readonly`, 6 icon + 3 preset nút thao tác, PHP `td_date()` ([ADR 0029](decisions/0029-repeater-field-values-and-lock.md)) — plan [v0.56.0-repeater-icons-date](plans/v0.56.0-repeater-icons-date.md)
 - `done` v0.57.0: bảng cây `<td-table tree>` + `moveRow` / `canDrop` / `max-depth` ([ADR 0030](decisions/0030-tree-table-treegrid.md)) — plan [v0.57.0-tree-table](plans/v0.57.0-tree-table.md)
 - `done` v0.57.1: `--td-field-error-size` + `TdModal` focus ban đầu theo `[autofocus]` (dsuite)
-- `todo`: WebKit — test `:focus-visible` nút đóng toast (v0.21 P4) hỏng cả trên main (phát hiện ở v0.57.1)
-- `todo` v0.57.2 (dsuite 2026-10-08, chờ owner): câu đếm phân trang của bảng cây — hook per-instance `formatPageInfo(ctx)` trên `td-table` (ctx: `from` / `to` / `total` / `item` + `rows` = số dòng đang hiện, `totalRows` khi biết) thay cho chỉ `TdPagination.labels.info` toàn site; docs chế độ server: "một trang = danh sách gốc kèm **trọn** con cháu" (đừng cắt theo dòng phẳng)
-- `todo` v0.58.0: kéo thả đổi cha / thứ tự cho bảng cây (`reorderable`, event `move`, `rowDraggable` — tên đã giữ chỗ trong plan v0.57.0)
-- `todo`: RTL — phím ← ở hai đầu `td-choice-group` quay vòng ngược chiều radio native (có từ v0.49, phát hiện ở v0.53.1)
+- `done` v0.57.2: câu đếm phân trang bảng cây "Hiển thị 1-3 / 3 nhóm · 6 dòng" + hook `formatPageInfo` (`td-table`) / `formatInfo` (`td-pagination`), `total-rows`, docs hợp đồng trang ở chế độ server (dsuite)
+- `wip` v0.58.0: floating label — biến thể `label-mode="floating"` của `td-input-field` (port thiết kế dwp `label_mode`) — plan [v0.58.0-floating-label](plans/v0.58.0-floating-label.md)
 - `todo` kiểm tay VoiceOver / NVDA: toggle `locked` (0.52) + menu panel (0.53) — owner: phát hành trước, kiểm sau
 - Ngày từ v0.33 trở đi: **rebaseline từ ngày v0.31 xong thực tế** (không nén test / acceptance để giữ lịch cũ ~11/11 –
   25/11)
 - B (sau B0 ~01/2027): choice-group + number stepper làm sớm ở v0.49.0 (dsuite); rating chỉ đọc + carousel không autoplay làm ở v0.50.0
+
+## Chờ nhu cầu (owner 2026-10-08: chỉ làm khi có site cần)
+
+- Test WebKit `:focus-visible` nút đóng toast (v0.21 P4) hỏng cả trên main; test tương phản scan-input lúc qua lúc hỏng — sửa khi làm đỏ CI
+- Kéo thả đổi cha / thứ tự cho bảng cây (`reorderable`, event `move`, `rowDraggable` — tên đã giữ chỗ trong plan v0.57.0); hiện dùng `moveRow` từ nút / menu
+- RTL — phím ← ở hai đầu `td-choice-group` quay vòng ngược chiều radio native (có từ v0.49); chưa site nào viết từ phải sang trái
+- Đổi theme lúc chạy (`TdTheme.apply`, theming R3) — light / dark / auto + bộ sinh màu + theme theo vùng đã xong ở v0.41 / v0.42
+- HTML server in sẵn cho dropzone; component dwp/135 chưa quyết; Trusted Types; khúc xạ SVG; nâng `@web/test-runner` / Storybook 9 (xem mục Later bên dưới)
 
 ## Done — v0.4.1 bugfix (2026-09-27, xem CHANGELOG)
 
