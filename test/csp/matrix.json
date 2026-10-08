@@ -1563,6 +1563,41 @@
         ".td-pagination__nav--prev"
       ],
       "settle": 300
+    },
+    {
+      "state": "single-page",
+      "markup": "<td-pagination total-items=\"4\" items-per-page=\"10\" hide-single-page></td-pagination>",
+      "selectors": [
+        ".td-pagination",
+        ".td-pagination__info",
+        ".td-pagination__controls"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "single-page-narrow",
+      "setup": "const d=document.createElement('div'); d.style.setProperty('width','300px'); d.innerHTML='<td-pagination total-items=\"4\" items-per-page=\"10\" hide-single-page></td-pagination>'; window.__mount.appendChild(d);",
+      "selectors": [
+        ".td-pagination",
+        ".td-pagination__info"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
     }
   ],
   "td-empty-state": [
@@ -1916,6 +1951,25 @@
         "line-height"
       ],
       "selectorNote": "v0.57.0: text-sized cells / rows size with the platform font metrics (Linux CI ≠ macOS, lesson of v0.54 daf820c) — grid-template-columns / height / width / margin-left / line-height excluded up front; the tree indent (padding-inline-start, from tokens) stays in the snapshot; the card indent (margin) is gated by test:responsive."
+    },
+    {
+      "state": "single-page",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('hide-single-page',''); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên'},{key:'age',label:'Tuổi'}]; t.data=[{name:'An',age:30},{name:'Bình',age:25}]; ",
+      "selectors": [
+        ".td-table__header",
+        ".td-table__footer",
+        ".td-table__footer .td-pagination__info",
+        ".td-table__footer .td-pagination__controls"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
     }
   ],
   "td-modal": [
@@ -2057,6 +2111,50 @@
         "margin-left"
       ],
       "selectorNote": "v0.44.0 typeToConfirm: field reuses field.css, phrase + error are text, gate is aria-disabled — 0 violations, no style attribute; height / width / margin-left excluded up front (text line boxes, font metrics)."
+    },
+    {
+      "state": "confirm-paragraphs",
+      "setup": "TdModal.confirm({ title:'Xoá?', message:['Ba sản phẩm sẽ bị xoá.','Không thể hoàn tác.'] });",
+      "selectors": [
+        ".td-modal__text",
+        ".td-modal__text > p:first-child",
+        ".td-modal__text > p:last-child"
+      ],
+      "portal": [
+        ".td-modal__text",
+        ".td-modal__text > p:first-child",
+        ".td-modal__text > p:last-child"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "confirm-node",
+      "setup": "const u=document.createElement('ul'); for (const n of ['Áo','Quần']) { const li=document.createElement('li'); li.textContent=n; u.appendChild(li); } TdModal.confirm({ title:'Xoá?', message:['Xoá các mục:', u] });",
+      "selectors": [
+        ".td-modal__text",
+        ".td-modal__text > ul"
+      ],
+      "portal": [
+        ".td-modal__text",
+        ".td-modal__text > ul"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
     }
   ],
   "td-toast": [
@@ -2404,6 +2502,93 @@
         "grid-template-columns"
       ],
       "selectorNote": "v0.56.0: the same php markup adopted in place under the strict CSP (native input removed, trigger shown); text-sized boxes (label, the browser's date text inside the native input) follow the platform font metrics (Linux CI ≠ macOS): width / height / margin-left / grid-template-columns / line-height excluded up front"
+    },
+    {
+      "state": "clearable-filled",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Hạn'); p.setAttribute('mode','date'); p.setAttribute('clearable',''); p.setAttribute('value','15/06/2026'); window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp",
+        ".td-dtp__trigger",
+        ".td-dtp__clear"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "clearable-empty",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Hạn'); p.setAttribute('mode','date'); p.setAttribute('clearable','');  window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp",
+        ".td-dtp__trigger"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "clearable-focus",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Hạn'); p.setAttribute('mode','date'); p.setAttribute('clearable',''); p.setAttribute('value','15/06/2026'); window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp__clear"
+      ],
+      "pseudo": "focus",
+      "focusSelector": ".td-dtp__clear",
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "clearable-required",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Hạn'); p.setAttribute('mode','date'); p.setAttribute('clearable',''); p.setAttribute('value','15/06/2026'); p.setAttribute('required',''); window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp",
+        ".td-dtp__trigger"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "clearable-disabled",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Hạn'); p.setAttribute('mode','date'); p.setAttribute('clearable',''); p.setAttribute('value','15/06/2026'); p.setAttribute('disabled',''); window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp",
+        ".td-dtp__trigger"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
     }
   ],
   "td-tooltip": [
@@ -3662,6 +3847,24 @@
         "margin-left"
       ],
       "selectorNote": "v0.55.0 (plan v0.55.0-affix-number Gate): text-sized affix / box tracks follow the platform font metrics — grid-template-columns / height / width / margin-left excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "signed",
+      "markup": "<td-number-input name=\"delta\" label=\"Điều chỉnh\" signed min=\"-1000000\" value=\"300000\"></td-number-input>",
+      "selectors": [
+        ".td-number",
+        ".td-number__box",
+        ".td-number__control"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
     }
   ],
   "td-repeater": [
@@ -4825,6 +5028,24 @@
         ".td-btn__icon svg"
       ],
       "selectorNote": "v0.56.0 (plan A2): the kit presets archive / discontinue (warning) + restore (standard) — existing tone tokens, new icons"
+    },
+    {
+      "state": "icon-price",
+      "markup": "<td-action-button action=\"edit\" icon=\"price\" label=\"Sửa giá\"></td-action-button>",
+      "selectors": [
+        ".td-btn",
+        ".td-btn__icon",
+        ".td-btn__icon svg"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
     }
   ],
   "td-scan-input": [
@@ -5043,6 +5264,43 @@
         "margin-left"
       ],
       "selectorNote": "v0.40.0: height / margin-left excluded up front — chip rows, legends and the side blocks are text line boxes (font metrics differ on Linux CI, like td-table selection-cards); the dialog size budgets are gated by test:responsive + the engines test. Many presets wrap onto several rows ≥ 480 (the < 480 one-row scroller: engines + responsive gates)."
+    },
+    {
+      "state": "open-end",
+      "markup": "<td-datetime-range name=\"r\" label=\"Hiệu lực\" start=\"01/10/2026\" allow-open-end></td-datetime-range>",
+      "selectors": [
+        ".td-dtr",
+        ".td-dtr__trigger",
+        ".td-dtr__value"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "open-end-panel",
+      "setup": "const C=customElements.get('td-datetime-range'); C.now=()=>new Date(2026,9,5,9,30); const p=document.createElement('td-datetime-range'); p.id='probe'; p.setAttribute('name','r'); p.setAttribute('start','01/10/2026'); p.setAttribute('allow-open-end',''); window.__mount.appendChild(p); p.querySelector('.td-dtr__trigger').click();",
+      "selectors": [
+        ".td-dtr-panel__open-end"
+      ],
+      "portal": [
+        ".td-dtr-panel__open-end"
+      ],
+      "settle": 500,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
     }
   ],
   "td-theme-scope": [
