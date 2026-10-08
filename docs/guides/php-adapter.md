@@ -124,7 +124,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.59.1/
+public/assets/vendor/td-components/0.59.2/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -132,7 +132,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.59.1';
+const TD_VERSION = '0.59.2';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -697,7 +697,7 @@ native** cộng hai thứ:
 | `aria_label` | tên truy cập khi không có `$label` |
 | `class`, `attrs` | trên `<label>` bao ngoài |
 | `input_attrs` | attribute thêm trên `<input>` |
-| `label_position` | **0.59.1** `'start'` \| `'end'` (mặc định `'end'`): `'start'` = nhãn đứng **trước** control — [chi tiết](#nhãn-đứng-trước-label_position-0591) |
+| `label_position` | **0.59.2** `'start'` \| `'end'` (mặc định `'end'`): `'start'` = nhãn đứng **trước** control — [chi tiết](#nhãn-đứng-trước-label_position-0591) |
 
 `$name = ''` → không có `name` (checkbox chỉ dùng cho JS, như ô chọn khung của 135).
 
@@ -1665,7 +1665,7 @@ của kit (dd/mm/yyyy, hộp thoại, nhãn tiếng Việt, `min` / `max` của 
     <input class="td-dtp__native" type="date|datetime-local" id="{id}-native" name value min max [step] [required]
            [disabled] [aria-label] [aria-invalid aria-describedby="{id}-error" | aria-describedby="{id}-note"]>
     <button type="button" class="td-dtp__trigger" id="{id}-trigger" role="combobox" …>…</button>   ← ẩn khi chưa có JS
-    [<button type="button" class="td-dtp__clear" aria-label="Xoá ngày" [hidden]>…</button>]   ← 0.59.1 clearable (gốc + td-dtp--clearable)
+    [<button type="button" class="td-dtp__clear" aria-label="Xoá ngày" [hidden]>…</button>]   ← 0.59.2 clearable (gốc + td-dtp--clearable)
   </div>
   [<div class="td-field__note" id="{id}-note">gợi ý</div>] [<span class="td-field-error" id="{id}-error" data-for="{id}">lỗi</span>]
 </td-datetime-picker>

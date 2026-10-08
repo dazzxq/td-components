@@ -73,6 +73,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - B (sau B0 ~01/2027): choice-group + number stepper làm sớm ở v0.49.0 (dsuite); rating chỉ đọc + carousel không autoplay làm ở v0.50.0
 - `done` v0.59.0: dsuite — `hide-single-page`, `TdModal` message Node / mảng, number `signed`, cảnh báo icon lạ + icon `price`, datetime `clearable` / range `allow-open-end` — plan [v0.59.0-dsuite-small](plans/v0.59.0-dsuite-small.md)
 - `done` v0.59.1: `label-position="start"` cho `td-toggle` / `td-checkbox` (dsuite) — plan [v0.59.1-label-position](plans/v0.59.1-label-position.md)
+- `done` v0.59.2: vá khoảng cách hàng chip sắp xếp ở dạng thẻ khi `hide-single-page` ẩn thanh trên (135)
 - `wip` v0.60.0: date picker dạng lịch — thiết kế lại hộp chọn của `td-datetime-picker` tại chỗ (đồng thuận Claude × Codex 2026-10-09) — plan [v0.60.0-calendar-picker](plans/v0.60.0-calendar-picker.md)
 - `todo` v0.61.0: `td-datetime-range` dùng lịch mới (chọn Từ → Đến trên lưới)
 
