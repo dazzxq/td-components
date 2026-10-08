@@ -730,7 +730,7 @@ khi `td.css` nạp xong — trước cả khi module tới, không xê dịch l�
 | element | attribute trên host (cũng là attribute của component) | `<td-toggle data-td-ssr="toggle@1" … size="md" label-position="start">` |
 
 - Chỉ đúng chuỗi `'start'` mới có tác dụng. `'end'`, giá trị khác, sai hoa thường, không phải chuỗi → mặc định: **không in
-  gì thêm**, không warning, output giống từng byte bản 0.59.1.
+  gì thêm**, không warning, output giống từng byte bản 0.59.0.
 - Không ép chế độ element (khác `tone` / `helper_text`): native vẫn là native.
 - Chế độ element: `label-position` là attribute của kit — `attrs` không đặt / ghi đè được nó.
 - Hợp đồng SSR `toggle@1` / `checkbox@1` không đổi (thêm một attribute trên host, markup bên trong y nguyên).
@@ -792,7 +792,7 @@ native** (`checked` / `value` PHP in ra). `indeterminate` của input được g
 - Hình lấy **đầy đủ** từ `src/icons/icons.json` — cùng markup với `tdIcon()` của JS (không phải slot rỗng
   `data-td-icon`). Vì thế icon trong markup SSR **không** bị `fillIconSlots()` ghi đè.
 - Tên cũ của kit 135 được map khi tên đó không tồn tại: `x`→`close`, `chevron-left/right/up/down`→`prev/next/up/down`,
-  `ellipsis`→`more`, `external-link`→`external`, `expand`→`fullscreen`, `pen`→`pencil` (0.56.0 / 0.59.1 thêm alias Lucide
+  `ellipsis`→`more`, `external-link`→`external`, `expand`→`fullscreen`, `pen`→`pencil` (0.56.0 / 0.59.0 thêm alias Lucide
   của icon core mới: `tag`→`brand`, `banknote`→`price`…). Bảng alias nằm trong object
   `aliases` của `src/icons/icons.json` (0.18.0 — JS `tdIcon()` đọc cùng bảng); icons.json cũ chưa có `aliases` thì
   adapter dùng bảng dự phòng trong `td.php`. `Td::iconAliases()` trả bảng đang dùng.
