@@ -1439,7 +1439,9 @@
 		padding-block: var(--_td-field-pad-top) var(--_td-field-pad-bottom);
 	}
 
+	/* the control fills the box's content height (a press anywhere on the value line places the caret) and sizes it */
 	.td-field--floating > .td-field__box > .td-field__control {
+		align-self: stretch;
 		height: auto;
 	}
 
