@@ -16,6 +16,9 @@
  *   the 280 px column (a very long prefix: ellipsis, the control keeps ≥ 4ch, the box never overflows the column).
  * v0.58.0: section `floating` — td-input-field label-mode="floating" (empty, value, real placeholder, prefix + suffix,
  *   textarea, a very long label, date; again in the 280 px column) + `.rsp-big-text` (text tokens × 2: the value line grows).
+ * v0.59.0: section `v059` — td-table `hide-single-page` (3 orders: one count line; again in the 280 px column),
+ *   td-datetime-picker `clearable` with a long value, td-datetime-range `allow-open-end`, td-number-input `signed` (280 px
+ *   column); opener `modalList` (confirm with a paragraph array + a list Node).
  * v0.40.0: td-datetime-range (form grid + 280 px column via controls(); a 160 px datetime host; opener `#g-dtr`).
  * v0.45.0: section `steps-timeline` — td-steps (6 steps horizontal, vertical, clickable in a 280 px column) and
  * td-timeline (40 items, details open, fixed `now`; again in the 280 px column).
@@ -237,6 +240,15 @@ export function mountResponsiveFixture(root) {
     <div class="rsp-big-text"><td-input-field id="rsp-fl-big" name="fl9" label="Họ tên" label-mode="floating" value="Nguyễn An"></td-input-field>
       <td-input-field id="rsp-fl-big-affix" name="fl10" label="Website" label-mode="floating" prefix="https://" suffix=".vn" value="congty"></td-input-field></div>
   </section>
+  <section class="rsp-section" data-section="v059"><h2>Một trang, xoá ngày, không hạn, số có dấu (v0.59)</h2>
+    <td-table id="rsp-table-single" title="Đơn hàng (một trang)" hide-single-page></td-table>
+    <div class="rsp-narrow">
+      <td-table id="rsp-table-single-n" title="Đơn hàng (hẹp)" hide-single-page></td-table>
+      <td-datetime-picker id="rsp-dtp-clear" name="han" label="Hạn thanh toán của đơn hàng" value="15/06/2026 - 10:30" clearable></td-datetime-picker>
+      <td-datetime-range id="rsp-dtr-open" name="hl" label="Hiệu lực" start="01/10/2026" allow-open-end></td-datetime-range>
+      <td-number-input id="rsp-num-signed" name="delta" label="Điều chỉnh tồn kho" signed min="-100000000" value="12990000" suffix="₫"></td-number-input>
+    </div>
+  </section>
   <section class="rsp-section" data-section="hints"><h2>Gợi ý (v0.54)</h2>
     <td-dropdown id="rsp-hint-dd" name="ship" label="Kho xuất hàng" helper-text="Phí vận chuyển được tính theo khu vực của kho xuất hàng — chọn kho gần người nhận nhất để giao nhanh hơn"></td-dropdown>
     <td-toggle id="rsp-hint-toggle" name="notify" size="lg" label="Nhận email thông báo về đơn hàng và khuyến mãi" helper-text="Tối đa một email mỗi tuần; bạn có thể tắt bất cứ lúc nào trong phần cài đặt tài khoản"></td-toggle>
@@ -377,6 +389,11 @@ export function mountResponsiveFixture(root) {
   root.querySelector('#rsp-tabs').tabs = tabs;
   root.querySelector('#rsp-tabs-narrow').tabs = tabs.slice(0, 4);
   root.querySelector('#rsp-tabs-mixed').tabs = [{ id: 'a', label: 'Tất cả đơn hàng đang chờ xác nhận thanh toán' }, ...['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((l) => ({ id: l, label: l }))];
+  for (const id of ['rsp-table-single', 'rsp-table-single-n']) { // v0.59.0: one page
+    const t = root.querySelector(`#${id}`);
+    t.columns = orderColumns();
+    t.data = ORDERS.slice(0, 3).map((o) => ({ ...o }));
+  }
   for (const id of ['rsp-table', 'rsp-table-scroll', 'rsp-table-narrow']) {
     const t = root.querySelector(`#${id}`);
     t.columns = orderColumns();
@@ -524,6 +541,16 @@ export function mountResponsiveFixture(root) {
       TdToast.warning('Dữ liệu chưa lưu, rời trang sẽ mất thay đổi!', 0);
     },
     modalConfirm: () => { TdModal.confirm({ title: 'Xác nhận xoá đơn hàng', message: 'Bạn có chắc muốn xoá đơn hàng DH10240 không? Thao tác không hoàn tác.' }); },
+    // v0.59.0: message as an array (paragraphs) + a list Node
+    modalList: () => {
+      const ul = document.createElement('ul');
+      for (const n of ['iPhone 16 Pro Max 256GB chính hãng VN/A', 'Ốp lưng silicon MagSafe', 'Cường lực full màn hình']) {
+        const li = document.createElement('li');
+        li.textContent = n;
+        ul.appendChild(li);
+      }
+      TdModal.confirm({ title: 'Xoá 3 sản phẩm?', message: ['Các sản phẩm sau sẽ bị xoá khỏi đơn hàng DH10240:', ul, 'Thao tác không hoàn tác.'], confirmVariant: 'danger' });
+    },
     modalLong: () => {
       TdModal.show({
         title: 'Chỉnh sửa sản phẩm iPhone 16 Pro Max 256GB',

@@ -8224,14 +8224,15 @@
 		justify-self: end;
 		width: var(--_td-dtp-clear-w);
 		padding: 0;
-		margin: 1px;
+		margin: 0;
 		font: inherit;
 		color: var(--td-color-text-muted);
 		cursor: pointer;
 		background: transparent;
-		border: 0;
-		border-start-end-radius: calc(var(--td-field-radius-md) - 1px);
-		border-end-end-radius: calc(var(--td-field-radius-md) - 1px);
+		background-clip: padding-box; /* the hover / pressed wash stays inside the field border */
+		border: 1px solid transparent; /* full-height target (44 px on touch) over the trigger's own 1 px border */
+		border-start-end-radius: var(--td-field-radius-md);
+		border-end-end-radius: var(--td-field-radius-md);
 		outline: 2px solid transparent;
 		outline-offset: -3px;
 		-webkit-tap-highlight-color: transparent;
@@ -8550,6 +8551,7 @@
 
 		.td-dtp__clear {
 			color: ButtonText;
+			border-color: transparent;
 		}
 
 		.td-dtp__clear:focus-visible,
