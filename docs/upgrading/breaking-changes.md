@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.59.1)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.59.2)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.59.2](#0592) | Sửa lỗi giao diện (`td-table` dạng thẻ + `hide-single-page`) | Không. Thanh chip sắp xếp cách mép trên như khi còn thanh trên; markup không đổi. |
 | [0.59.1](#0591) | Thêm tính năng (opt-in: `label-position="start"` cho `td-toggle` / `td-checkbox`, PHP `label_position`) | Không bắt buộc. Không dùng → `render()`, PHP và giao diện giống từng byte 0.59.0. |
 | [0.59.0](#0590) | Thêm tính năng (opt-in: `hide-single-page`, `message` mảng / Node, `signed`, `clearable`, `allow-open-end`, icon `price`) + cảnh báo mới (icon lạ của `td-action-button`) | Không bắt buộc. Không dùng option mới → `render()` / PHP giống từng byte 0.58. Console / log PHP có thể xuất hiện **cảnh báo mới** khi `td-action-button` / `td_action_button` dùng `icon` không có trong registry (trước: im lặng) — sửa tên icon. Kiểm tra `registerIcons()` của site: tên **`price`** giờ là icon core (alias `banknote`). |
 | [0.58.0](#0580) | Thêm tính năng (nhãn nổi `label-mode="floating"` cho `td-input-field`, PHP `label_mode`) | Không bắt buộc. Opt-in: không dùng `label-mode` → `render()` và PHP giống từng byte 0.57. Ô floating cao hơn (48 / 56 / 64 px) và control đứng **trước** nhãn trong DOM — CSS / script của site kiểu `.td-field__label + .td-field__control` không khớp ô floating. |
@@ -85,6 +86,17 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.59.2
+
+**Mức: sửa lỗi giao diện, không breaking.** Markup JS / PHP không đổi.
+
+- **`td-table` dạng thẻ (`layout="cards"` hoặc `auto` dưới ngưỡng `card-below`) khi thanh trên bị ẩn** (`hide-single-page`
+  với một trang, không có `title` / menu cột; hoặc chưa có phân trang — bảng rỗng, server chưa có `total-items`): từ
+  0.59.0 thanh chip sắp xếp nằm sát mép trên (~5 px). Giờ chip đầu tiên (kể cả chip "Chọn tất cả") cách mép như nội dung
+  đầu của thanh trên (~17 px, `--td-space-md`); khoảng dưới thanh chip giữ nguyên. Thẻ không có cột sắp xếp / chọn
+  không có dải trống. Có `title` thì thanh trên vẫn hiện, không đổi gì. Dạng bảng không đổi.
+- Site đã tự bù khoảng cách này bằng CSS riêng: bỏ phần bù đó.
 
 ## 0.59.1
 
