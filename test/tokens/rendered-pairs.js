@@ -157,6 +157,12 @@ export function renderedPairs() {
   add('floating label focused on the field fill', '--td-accent', ['--td-control-bg'], 4.7, { gateLight: true });
   add('floating label focused on the read-only fill', '--td-accent', ['--td-color-surface-muted'], 4.7, { gateLight: true });
   add('floating label on the disabled fill', '--td-color-text-muted', ['--td-color-fill'], 2.2, { gateLight: true });
+  // v0.59.0 clear button of td-datetime-picker `clearable` (datetime-picker.css: × = --td-color-text-muted on the field
+  // fill; hover / pressed = --td-field-fg (= --td-color-text) on the --td-color-hover / --td-color-pressed wash) — an icon
+  // (non-text, ≥ 3:1). The "Không hạn" toggle of td-datetime-range is a preset chip (its pairs unchanged).
+  add('date clear icon on the field fill', '--td-color-text-muted', ['--td-control-bg'], 3, { gateLight: true });
+  add('date clear icon hover', '--td-color-text', ['--td-color-hover', '--td-control-bg'], 3, { gateLight: true });
+  add('date clear icon pressed', '--td-color-text', ['--td-color-pressed', '--td-control-bg'], 3, { gateLight: true });
   return P;
 }
 

@@ -72,6 +72,22 @@ for (const [src, other] of [[top, bottom], [bottom, top]]) {
   `aria-live`).
 - Mỗi thanh cần một `aria-label` khác nhau vì mỗi thanh là một landmark `<nav>`.
 
+### 2b. Danh sách ngắn — chỉ một trang (`hide-single-page`, 0.59.0)
+
+Khi chỉ có **một** trang, nút trước / sau và số "1" không giúp gì. `hide-single-page` ẩn phần nút khi tổng số trang ≤ 1 và
+giữ lại **dòng đếm** ("Hiển thị 1-4 / 4 mục"):
+
+```html
+<td-pagination total-items="4" items-per-page="10" hide-single-page></td-pagination>
+```
+
+- Nhiều trang → như cũ. Đổi `total-items` / `items-per-page` qua lại → bật / tắt tại chỗ (cùng `<nav>`, cùng dòng đếm).
+- Dòng đếm vẫn là vùng `aria-live` (trừ khi `quiet`) và **luôn hiện**, kể cả khung < 360 px (dạng "‹ 1 / 1 ›" không dùng).
+- Focus đang ở một nút bị ẩn (vd. server trả tổng nhỏ đi) → chuyển sang dòng đếm (`tabindex="-1"` tạm thời, gỡ khi
+  rời) — không rơi về `<body>`; trình đọc màn hình đọc câu đếm mới.
+- Không bật mặc định: tắt-mở thanh ở mọi site là thay đổi giao diện. Muốn ẩn **cả** dòng đếm thì không render pagination.
+- `td-table` có cùng attribute (một dòng đếm duy nhất ở dưới) — xem [Table](table.md).
+
 ### 3. Đổi trang bằng code
 
 ```js
@@ -160,6 +176,7 @@ thanh**, không theo viewport — đặt trong cột 360px của trang desktop c
 | `max-pages` | number | `5` | Kích thước cửa sổ số trang liên tiếp, kẹp 1–25. |
 | `aria-label` | string | `Phân trang` | Tên landmark `<nav>`. |
 | `quiet` | boolean | vắng | Dòng thông tin không phải vùng `aria-live` (dùng cho thanh thứ hai của cùng danh sách). |
+| `hide-single-page` | boolean | vắng | 0.59.0: tổng số trang ≤ 1 → ẩn phần nút, chỉ còn dòng đếm. Property `hideSinglePage`. Xem [2b](#2b-danh-sách-ngắn--chỉ-một-trang-hide-single-page-0590). |
 
 Số nguyên được đọc bằng `parseInt` (`"20abc"` → 20) và kẹp trong khoảng số nguyên an toàn. Mọi thay đổi attribute
 (trừ `active-color`, chỉ đổi màu) dựng lại phần nút nhưng **giữ** `<nav>` và dòng thông tin, nên focus và vùng live được
@@ -254,6 +271,8 @@ chỉ `active-color` mới tự tính màu chữ.
 - Trang hiện tại: `.td-pagination__page[aria-current="page"]` (in đậm; 0.36.0: `::after { content: attr(data-page) }` ẩn giữ
   chỗ bề rộng chữ đậm nên nút trang không rộng ra / các nút bên cạnh không xê dịch khi đổi trang — đo trước khi sửa: lệch tới 2.3 px).
 - Nút trước/sau ở đầu/cuối: `[aria-disabled="true"]` (vẫn focus được, click bị chặn).
+- 0.59.0 `hide-single-page` + một trang: `nav.td-pagination.td-pagination--single`, `.td-pagination__controls[hidden]`
+  (phần nút vẫn được dựng — chỉ ẩn).
 - `data-rel` trên mỗi `<li>` (v0.34.0) — xem [Responsive](#responsive-v0340). Markup render sẵn từ server nên có luôn
   `data-rel` + các `<li data-rel="gap">` (thiếu thì dạng gọn trước khi JS chạy sẽ hiện đủ trang) và
   `span.td-pagination__status` (thiếu thì dạng trạng thái trước khi JS chạy chỉ còn hai nút).
@@ -270,6 +289,7 @@ chỉ `active-color` mới tự tính màu chữ.
   `aria-disabled` (tới trang cuối) thì focus chuyển sang nút trang hiện tại; nếu bạn bấm một số trang thì focus ở số đó.
 - Nút trước/sau dùng `aria-disabled` thay vì `disabled` để không mất focus khi tới đầu/cuối.
 - Dòng thông tin là `aria-live="polite"` (trừ khi `quiet`) → trình đọc màn hình đọc "Hiển thị 11-20 / 240 mục".
+- 0.59.0 `hide-single-page`: khi phần nút bị ẩn lúc đang có focus, focus chuyển sang dòng thông tin (không mất focus).
 - Nút ≥ 32 px (con trỏ chuột), ≥ `--td-touch-min` trên cảm ứng. Trang hiện tại mặc định ≥ 4.5:1 ở cả sáng và tối.
 - Forced colors: trang hiện tại dùng `Highlight`/`HighlightText`.
 

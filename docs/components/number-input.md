@@ -81,6 +81,30 @@ phân chuẩn**: `-?(0|[1-9][0-9]*)(\.[0-9]+)?` — dấu thập phân là `.`, 
 - Rời ô: `12,` → `12`; chỉ `-` → rỗng.
 - **Hoàn tác:** sau khi ô tự định dạng lại, Ctrl+Z không có lịch sử đầy đủ (giá trị được ghi bằng JS) — giới hạn đã biết.
 
+### 2b. Hiện dấu `+` cho số dương (`signed`, 0.59.0)
+
+Cho các ô "điều chỉnh" / "chênh lệch", nơi dấu là thông tin: `signed` hiện `+` trước số **dương khác 0**.
+
+```html
+<td-number-input name="delta" label="Điều chỉnh tồn kho" signed min="-1000000" value="300000"></td-number-input>
+```
+
+| Giá trị | Không `signed` | `signed` |
+|---|---|---|
+| `300000` | `300.000` | `+300.000` |
+| `-300000` | `-300.000` | `-300.000` (dấu `-` ASCII như cũ) |
+| `0` / rỗng | `0` / `` | `0` / `` (không dấu) |
+
+- **Chỉ là hiển thị**: `value`, FormData, `input` / `change` luôn là số chuẩn (`300000`, không `+`).
+- Gõ: `+` tự hiện khi giá trị > 0 (gõ `5` → `+5`); gõ `+` một mình được (như `-` một mình: chưa có giá trị, rời ô → rỗng).
+  Gõ `-` / `+` ngay trước / sau dấu đầu ô (hoặc chọn dấu đó) → **đổi dấu** (`+300` ⇄ `-300`). Backspace ngay sau `+` /
+  Delete ngay trước `+` không làm gì (dấu đi theo giá trị). `+` thứ hai / giữa số bị bỏ.
+- Dán: nhận **một** `+` ở đầu (`+300.000 ₫`); `+-3`, `++3` bị từ chối. Copy rồi dán lại chính ô cho ra đúng giá trị.
+- `min` vắng = sàn 0 (không âm) như cũ — ô ± cần `min` âm.
+- Thông báo (`clamp`, min / max) dùng cùng định dạng: "Đã chỉnh về +5".
+- PHP: `td_number_input(…, ['element' => true, 'signed' => true])` in host `signed`; chế độ native bỏ qua (input
+  `type=number` không hiện được `+` — trước nâng cấp ô hiện `300000`, sau là `+300.000`, cùng hộp).
+
 ### 3. Dán (và tự điền)
 
 Dán **chỉ chữ số** → chèn tại vùng chọn (từ chối nếu kết quả vượt 30 chữ số hoặc chữ số lẻ vượt `decimals`). Dán thứ khác
@@ -257,6 +281,7 @@ Chữ `prefix` / `suffix` có từ 0.30. Từ 0.55.0 thêm **icon** và **phần
 | `validate-on` | `blur` \| `change` \| `input` | — | Tự hiện thông báo ràng buộc thành lỗi. |
 | `aria-label` | string | — | Tên truy cập khi không có `label`. |
 | `stepper` | boolean | — | 0.49.0: nút − / + quanh ô ([mục 8](#8-stepper)). Thuộc tính cấu trúc: bật / tắt lúc chạy → vẽ lại, giữ giá trị + focus. |
+| `signed` | boolean | — | 0.59.0: hiện `+` trước số dương ([mục 2b](#2b-hiện-dấu--cho-số-dương-signed-0590)); chỉ hiển thị, giá trị gửi đi không đổi. Đổi lúc chạy: tại chỗ. Property `signed`. |
 
 Dấu phân cách là attribute — kit **không đọc** cài đặt tiền tệ nào của site (đó là logic của app).
 
@@ -364,6 +389,8 @@ Số căn **trái** (như mọi ô nhập — không đổi thói quen gõ), ch�
 - 0.55.0 (schema **vẫn** `@1`, chỉ thêm): `prefix_icon` / `suffix_icon` in ô icon kèm SVG inline trong span affix (so theo
   attribute, vẽ lại cùng hộp); `locale` in thành `group-separator` / `decimal-separator` → nhận tại chỗ. Không dùng option mới:
   markup giống từng byte 0.54.
+- 0.59.0 (schema **vẫn** `@1`): `signed` chỉ là attribute host (không vào cây) — giá trị trong control vẫn là số chuẩn, sau khi
+  nhận tại chỗ ô hiện `+300.000`.
 
 ## Bàn phím & trợ năng
 

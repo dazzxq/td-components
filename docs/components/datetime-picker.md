@@ -207,6 +207,27 @@ thì mở tại giá trị.
 <td-datetime-picker name="year" mode="year" min="1900" max="2026" open-at="max"></td-datetime-picker>
 ```
 
+### 9. Nút xoá ngày (`clearable`, 0.59.0)
+
+Ô không bắt buộc có thể cần **bỏ** ngày đã chọn (hạn thanh toán, ngày hết hiệu lực…). `clearable` thêm nút × ngay
+trong ô:
+
+```html
+<td-datetime-picker name="han" mode="date" label="Hạn thanh toán" value="15/06/2026" clearable></td-datetime-picker>
+```
+
+- Nút hiện khi ô **có giá trị** (kể cả giá trị sai — xoá là cách sửa) và **không** `required` / `disabled` (kể cả
+  `<fieldset disabled>`); cập nhật tại chỗ khi giá trị / `required` / `disabled` đổi.
+- Bấm (chuột, chạm, Enter, Space): giá trị rỗng (FormData không có mục — như ô trống), phát **một** `change`
+  `{ value: '', dbValue: '' }` (không phát `input` — picker chỉ phát `change`), focus về trigger, **không** mở hộp thoại.
+  `trackFormDirty` coi đó là thay đổi của người dùng. `form.reset()` đưa giá trị mặc định (và nút) trở lại.
+- Tên truy cập theo mode: "Xoá ngày" (datetime / date), "Xoá tháng", "Xoá năm" — `TdDatetimePicker.labels.clear`,
+  `clearDate`, `clearMonth`, `clearYear`.
+- Nút là **anh em** của trigger (không lồng trong nút), đứng ở mép cuối ô sau icon lịch; ô luôn dành chỗ cho nút (chữ dài
+  bị cắt `…` không nhảy khi nút hiện / ẩn). Tab: trigger → nút xoá. Cảm ứng: ≥ 44 px.
+- Opt-in: không đặt → giống hệt trước 0.59.0. PHP: `td_date(…, ['clearable' => true])` / `td_datetime_picker` in host
+  `clearable` + cùng nút (ẩn tới khi module chạy — không có nút "chết" khi không có JS; trước / sau nâng cấp cùng hộp).
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -225,6 +246,7 @@ thì mở tại giá trị.
 | `required` | boolean | `false` | Bắt buộc: `valueMissing` khi trống, `aria-required`, dấu `*` trang trí. |
 | `disabled` | boolean | `false` | Vô hiệu hoá (cũng qua `<fieldset disabled>`); đang mở mà bị disable → đóng hộp thoại. |
 | `error-text` | string | — | Thông báo lỗi hiển thị (error contract). |
+| `clearable` | boolean | `false` | **0.59.0** Nút xoá ngày trong ô khi có giá trị và không `required` / `disabled` ([mục 9](#9-nút-xoá-ngày-clearable-0590)). Bật / tắt lúc chạy → render lại. Property `clearable`. |
 | `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
 Mọi attribute trừ `label` được cập nhật tại chỗ (giữ nguyên nút trigger và focus). Đổi `min`/`max`/`form-value-format`
@@ -253,7 +275,7 @@ Không có method `open()` công khai. Muốn mở bằng code, bấm nút trigg
 
 | Event | detail | Khi nào | bubbles? |
 |---|---|---|---|
-| `change` | `{ value, dbValue }` — `value` dạng display, `dbValue` dạng db, theo mode (datetime: `yyyy-mm-dd hh:mm:00`) | Người dùng bấm "Chọn" với giá trị hợp lệ. Một event mỗi lần xác nhận. Đóng bằng Escape / X / "Đóng", `setValue()`, `setDBValue()`, reset **không** phát. | có (`composed: true`) |
+| `change` | `{ value, dbValue }` — `value` dạng display, `dbValue` dạng db, theo mode (datetime: `yyyy-mm-dd hh:mm:00`) | Người dùng bấm "Chọn" với giá trị hợp lệ. Một event mỗi lần xác nhận. 0.59.0: bấm nút xoá (`clearable`) → `{ value: '', dbValue: '' }`. Đóng bằng Escape / X / "Đóng", `setValue()`, `setDBValue()`, reset **không** phát. | có (`composed: true`) |
 
 ## Hook & tuỳ chọn
 
@@ -363,6 +385,8 @@ giữ 5 dòng: đặt `--td-dtp-visible: 5` trong `@media (max-width: 719.98px)`
       <span class="td-dtp__value" [data-placeholder]>15/06/2026 - 10:30</span>
       <span class="td-dtp__icon" data-td-icon="calendar" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg></span>
     </button>
+    <!-- 0.59.0, chỉ khi clearable (gốc thêm class td-dtp--clearable): -->
+    [<button type="button" class="td-dtp__clear" aria-label="Xoá ngày" [hidden]><span class="td-dtp__clear-icon" data-td-icon="close" data-td-icon-size="s" aria-hidden="true">svg</span></button>]
   </div>
   <span class="td-field-error" id="{host}-error" data-for="{host}">…</span>   <!-- chỉ khi có lỗi -->
 </td-datetime-picker>
@@ -436,6 +460,9 @@ JS không ghi style nào; bánh xe cuộn bằng `scrollTo`, dùng CSS scroll-sn
 | Nút "Bây giờ" | | Đặt về thời điểm hiện tại (phút làm tròn xuống), hộp thoại vẫn mở |
 | Nút "Chọn" | | Có lỗi → giữ mở, hiện dòng lỗi và focus ô gây lỗi (nếu lỗi thuộc một ô cụ thể). Hợp lệ → ghi giá trị, phát 1 `change`, đóng, focus về trigger |
 | `Escape` / nút X / "Đóng" | | Huỷ thay đổi (hộp thoại làm việc trên bản sao), focus về trigger |
+
+**Nút xoá** (0.59.0 `clearable`): một điểm Tab sau trigger; `Enter` / `Space` / bấm → xoá giá trị, focus về trigger
+(nút ẩn đi). Tên "Xoá ngày" / "Xoá tháng" / "Xoá năm".
 
 Trợ năng:
 

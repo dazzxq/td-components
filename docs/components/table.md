@@ -108,6 +108,22 @@ Khác biệt so với chế độ client:
   một cảnh báo `td-table: server-mode needs \`total-items\`…`.
 - `onSort` và `onPageChange` chỉ được gọi trong chế độ server (xem [Hook & tuỳ chọn](#hook--tuỳ-chọn)).
 
+### 2b. Bảng ngắn — một dòng đếm thay vì hai thanh (`hide-single-page`, 0.59.0)
+
+Bảng chỉ có **một** trang vẫn hiện hai thanh "Hiển thị 1-4 / 4 mục" (trên + dưới). Bật `hide-single-page`:
+
+```html
+<td-table title="Kho" hide-single-page></td-table>
+```
+
+- Một trang → **ẩn thanh trên**; thanh dưới chỉ còn **dòng đếm** (không nút) — vẫn là vùng `aria-live`, cùng node khi
+  số trang đổi qua lại. Nhiều trang → hai thanh như cũ. Header ẩn luôn nếu không có `title` / nút cột.
+- Client: số trang = `ceil(data / per-page)`; server: `ceil(total-items / per-page)` (thiếu `total-items` / tổng 0 → như
+  cũ: ẩn cả hai).
+- Bảng cây: dòng còn lại vẫn là câu đếm cây 0.57.2 ("Hiển thị 1-3 / 3 nhóm · 6 dòng") và `formatPageInfo`.
+- Focus đang ở một nút của thanh bị ẩn → chuyển sang dòng đếm của thanh dưới (không rơi về `<body>`).
+- Opt-in (không đổi mặc định — mọi site đang có hai thanh). Property `hideSinglePage`.
+
 ### 3. Ô tuỳ biến bằng `render` (nút, badge, link)
 
 ```js
@@ -847,6 +863,7 @@ mỗi dòng → [`td-tree`](tree.md) / [`td-tree-select`](tree-select.md). Danh 
 | `empty-text` | string | `TdTable.labels.emptyText` | Nội dung trạng thái rỗng. |
 | `server-mode` | boolean | vắng | Chế độ server: không sort/cắt trang ở client, `data` giữ trang. |
 | `total-items` | number | — | Tổng số mục phía server. **Bắt buộc** khi `server-mode`. Bảng cây: số **gốc**. |
+| `hide-single-page` | boolean | vắng | 0.59.0: một trang → ẩn thanh trên, thanh dưới chỉ còn dòng đếm (mục 2b). Property `hideSinglePage`. |
 | `total-rows` | number | — | Server mode, tuỳ chọn: tổng số dòng dữ liệu (bảng cây: gốc + mọi con cháu) → `ctx.totalRows` của `formatPageInfo`; không phân trang theo nó. Client mode bỏ qua. Từ 0.57.2. |
 | `layout` | `auto` \| `table` \| `cards` | `auto` | Dạng hiển thị (xem [Responsive](#9-responsive-bảng-thành-card-khi-chỗ-đặt-hẹp)). Từ 0.34.0. |
 | `card-below` | `sm` \| `md` \| `lg` | `md` | Ngưỡng bề rộng bảng (480 / 720 / 1024px) dưới đó `auto` thành card. Từ 0.34.0. |
@@ -1157,7 +1174,8 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
       </table>
     </div>
     <div class="td-table__footer" [hidden]>
-      <div class="td-table__pagination td-table__pagination--bottom"><td-pagination aria-label="Phân trang (dưới)"></td-pagination></div>
+      <!-- 0.59.0 hide-single-page: thanh dưới nhận [hide-single-page]; một trang → thanh trên [hidden] -->
+      <div class="td-table__pagination td-table__pagination--bottom"><td-pagination aria-label="Phân trang (dưới)" [hide-single-page]></td-pagination></div>
     </div>
     <p class="td-sr-only" role="status"></p>
   </div>
@@ -1199,6 +1217,7 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
 - Đổi trang cũng giữ focus trên nút trang; nếu phân trang bị ẩn tạm (loading) rồi hiện lại, focus trả về nút trang
   hiện tại.
 - Chỉ phân trang **dưới** có vùng `aria-live`; phân trang trên là `quiet`, nên mỗi lần đổi trang chỉ được đọc một lần.
+  0.59.0 `hide-single-page`: thanh dưới (live region) không bao giờ bị ẩn hẳn — một trang chỉ ẩn phần nút của nó.
 - Khi bảng rộng/cao hơn khung, `.td-table__scroll` thành `role="region"` có tên và `tabindex="0"` để người dùng bàn
   phím cuộn được (WCAG 2.1.1); hết tràn thì bỏ các attribute đó. Theo dõi bằng `ResizeObserver`.
 - Tên bảng: `title` → `aria-labelledby`; không có thì `aria-label` của host; không có nữa thì `TdTable.labels.table`.

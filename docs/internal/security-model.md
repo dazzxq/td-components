@@ -24,6 +24,7 @@ Mặc định mọi chuỗi đều được escape; raw HTML chỉ có khi opt-i
 Không bao giờ đưa input của người dùng cuối qua các đường này:
 
 - `TdModal.show({ body })`: `body` dạng chuỗi là HTML thô (ưu tiên truyền Node). `confirm/success/error/info`: `message` là text; `messageHtml` là HTML tin cậy (0.9.0).
+  0.59.0: `message` còn nhận Node (DOM tin cậy của dev, chèn nguyên trạng) hoặc mảng (chuỗi = text trong `<p>`, Node = nguyên trạng) — không bao giờ HTML; không phải hatch mới.
 - `td-table` column `render(row, rowIdxInPage[, ctx])` (`ctx` ở bảng cây, 0.57.0): trả về **Node** (khuyên dùng) hoặc chuỗi HTML thô (trusted, chỉ markup của dev — không bao giờ nhúng dữ liệu hàng chưa escape). Ô không có `render` hiển thị giá trị dạng text.
 - `td-empty-state` `icon`: ~~chuỗi `<svg` chèn nguyên văn~~ — **đã đóng (0.8.0)**: chuỗi SVG (deprecated) chỉ được render sau khi qua allowlist hình học dùng chung (`svgStringToDefinition`, parse `image/svg+xml`, dựng lại bằng `createElementNS`; `script`/`foreignObject`/`use`/`on*`/`style`/`url()` → từ chối, về `inbox`). Hatch được hỗ trợ: property `iconNode` (SVGElement tin cậy).
 

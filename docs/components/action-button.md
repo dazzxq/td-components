@@ -98,7 +98,7 @@ trong preset — xác nhận là việc của app (`TdModal.confirm`), như `del
 |---|---|---|---|
 | `action` | string | — | Khoá preset (kebab-case; alias camelCase dcms). Tra `Object.hasOwn` — không đi prototype. |
 | `label` | string | nhãn preset | Ghi đè nhãn (tên truy cập + tooltip). |
-| `icon` | string | icon preset | Ghi đè icon (tên registry / alias). Tên lạ → dùng icon preset. |
+| `icon` | string | icon preset | Ghi đè icon (tên registry / alias). Tên lạ → dùng icon preset (không có preset → không render) **+ một cảnh báo** (0.59.0, [dưới](#icon-lạ--cảnh-báo-0590)). Giá / tag: `price`, `tag` ([Icons](icons.md)). |
 | `tone` | `standard` \| `warning` \| `danger` | tone preset | Giá trị khác → tone preset (`standard` nếu không có). |
 | `size` | `sm` \| `md` \| `lg` | `md` | 32 / 36 / 40 px vuông; icon 16 / 18 / 20. |
 | `disabled`, `loading` | boolean | | Như `td-button` (disabled native → **không có tooltip**: trình duyệt không phát sự kiện chuột trên nút disabled). |
@@ -110,6 +110,27 @@ trong preset — xác nhận là việc của app (`TdModal.confirm`), như `del
 Bỏ qua: `variant`, `color`, `text-color`, `icon-position`, `full-width` (control luôn trong suốt, vuông, chỉ icon).
 Property `action` / `tone` / `size` / `label` / `icon` phản chiếu thuộc tính. Đổi `action` / `tone` / `size` / `icon` =
 render lại; đổi `label` / `aria-label` = **tại chỗ** (cùng node, focus giữ; tooltip đang hiện thì ẩn).
+
+### Icon lạ → cảnh báo (0.59.0)
+
+Trước 0.59.0, `icon` gõ sai **im lặng** dùng icon preset (hoặc không render gì, kèm câu "unknown action" sai nguyên nhân).
+Giờ mỗi nguyên nhân có **một** `console.warn` cho mỗi tên (không throw, không đổi markup):
+
+| Trường hợp | Kết quả | Cảnh báo |
+|---|---|---|
+| `icon` lạ, preset có icon | icon preset | `td-action-button: unknown icon "x" — using the preset icon "pencil"` |
+| `icon` lạ, không có icon preset | không render | `td-action-button: unknown icon "x" — nothing rendered` |
+| preset (sửa `presets` trực tiếp) trỏ icon lạ | không render | `td-action-button: preset "k" has an unknown icon "x"` |
+| action lạ, thiếu `icon` hoặc `label` | không render | `td-action-button: unknown action "k" (no preset; give icon + label)` (như 0.36) |
+
+PHP `td_action_button`: `icon` lạ → một `E_USER_WARNING` `td_action_button: unknown icon "x" (N bytes) — preset icon used`
+/ `— nothing rendered` (tên đã khử như cảnh báo action: chỉ ASCII in được, ≤ 64 ký tự, kèm số byte).
+
+```html
+<!-- icon cho thao tác "sửa giá" / "gắn nhãn": dùng icon core -->
+<td-action-button action="edit" icon="price" label="Sửa giá"></td-action-button>
+<td-action-button action="edit" icon="tag" label="Gắn nhãn"></td-action-button>
+```
 
 ## Static API
 
@@ -159,7 +180,7 @@ bản JS sẽ bị render lại (an toàn) bằng dữ liệu JS — không nhá
   `onclick` / `formaction`, có `td-btn__label`, sai thẻ so với `href`) → render lại an toàn.
 - **Native mode**: chỉ control `button.td-btn.td-btn--action…` (chạy không cần JS; tooltip khi trang có `td-tooltip`).
 - Tên = `aria_label` > `label` > preset (cùng luật JS). Action lạ không có `icon` + `label` → `''` + một
-  `E_USER_WARNING`.
+  `E_USER_WARNING`. 0.59.0: `icon` lạ → một `E_USER_WARNING` nêu tên icon (dùng icon preset, hoặc `''` khi không có).
 
 ## Tuỳ biến giao diện
 

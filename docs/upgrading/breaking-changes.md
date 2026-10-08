@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.59.0](#0590) | Thêm tính năng (opt-in: `hide-single-page`, `message` mảng / Node, `signed`, `clearable`, `allow-open-end`, icon `price`) + cảnh báo mới (icon lạ của `td-action-button`) | Không bắt buộc. Không dùng option mới → `render()` / PHP giống từng byte 0.58. Console / log PHP có thể xuất hiện **cảnh báo mới** khi `td-action-button` / `td_action_button` dùng `icon` không có trong registry (trước: im lặng) — sửa tên icon. Kiểm tra `registerIcons()` của site: tên **`price`** giờ là icon core (alias `banknote`). |
 | [0.58.0](#0580) | Thêm tính năng (nhãn nổi `label-mode="floating"` cho `td-input-field`, PHP `label_mode`) | Không bắt buộc. Opt-in: không dùng `label-mode` → `render()` và PHP giống từng byte 0.57. Ô floating cao hơn (48 / 56 / 64 px) và control đứng **trước** nhãn trong DOM — CSS / script của site kiểu `.td-field__label + .td-field__control` không khớp ô floating. |
 | [0.57.2](#0572) | Đổi giao diện nhỏ (**chỉ bảng cây**: chữ thông tin phân trang) + thêm hook (`td-table` `formatPageInfo`, attribute `total-rows`; `td-pagination` `formatInfo`) | Không bắt buộc. Bảng cây (`tree` + `row-key`): "Hiển thị 1-3 / 3 mục" → "Hiển thị 1-3 / 3 nhóm · 6 dòng" (đổi qua `TdTable.labels.treeItemLabel` / `treePageInfo` hoặc `formatPageInfo`). Test / script đọc chữ này cần cập nhật. Bảng phẳng giữ nguyên. Server mode bảng cây: xem lại hợp đồng trang (một trang = gốc + toàn bộ con cháu; `total-items` = số gốc). |
 | [0.57.1](#0571) | Đổi hành vi nhỏ (`TdModal` focus ban đầu theo `autofocus`) + đổi giao diện **chỉ khi site đặt `--td-field-note-size`** + thêm token `--td-field-error-size` | Không bắt buộc. Modal có phần tử `autofocus` trong body / footer: focus ban đầu giờ vào đó (trước: field đầu tiên) — `focusTarget` / `autoFocus: false` / `confirm` không đổi. Site đã đặt `--td-field-note-size`: chữ lỗi giờ to theo; muốn giữ lỗi 12 px → `--td-field-error-size: var(--td-text-xs)`. |
@@ -83,6 +84,24 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.59.0
+
+**Mức: thêm tính năng (opt-in), không breaking.** Không đặt option mới thì markup JS / PHP giống từng byte 0.58.0
+(baseline CSP cũ không đổi).
+
+- **Phân trang một trang:** `hide-single-page` trên `td-pagination` / `td-table` ([pagination § 2b](../components/pagination.md),
+  [table § 2b](../components/table.md)) — không bật mặc định: hai thanh của site vẫn y như cũ.
+- **Hộp thoại nhiều dòng:** `TdModal.confirm/success/error/info({ message: [...] | Node })` ([modal § 3a](../components/modal.md)).
+  `message` chuỗi và `messageHtml` không đổi.
+- **Số có dấu:** `<td-number-input signed>` / `td_number_input(…, ['signed' => true])` — chỉ hiển thị
+  ([number-input § 2b](../components/number-input.md)).
+- **Ngày:** `<td-datetime-picker clearable>` / `td_date(…, ['clearable' => true])` (nút xoá); `<td-datetime-range
+  allow-open-end>` / `'allow_open_end' => true` ("Không hạn").
+- **Cảnh báo mới (đổi hành vi dev):** `td-action-button` với `icon` không có trong registry giờ in **một** `console.warn` mỗi
+  tên (vẫn dùng icon preset nếu có); PHP `td_action_button` in `E_USER_WARNING`. Trước đây im lặng. Không đổi markup.
+- **Icon core mới `price`** (Lucide banknote, alias `banknote`): `registerIcons({ price: … })` / `Td::registerIcons` của site
+  với đúng tên này giờ **ném lỗi** — đổi tên icon site (vd. `site-price`).
 
 ## 0.58.0
 

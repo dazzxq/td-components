@@ -112,6 +112,32 @@ const deleted = await TdModal.confirm({
 });
 ```
 
+### 3a. Nội dung nhiều dòng (`message` là mảng hoặc Node, 0.59.0)
+
+`message` của `confirm` / `success` / `error` / `info` nhận thêm **mảng** (mỗi chuỗi là một đoạn `<p>`, luôn là **text**)
+hoặc một **Node** (Element / DocumentFragment do bạn dựng — gắn nguyên trạng). Danh sách: đưa một `<ul>` vào mảng.
+
+```js
+const ul = document.createElement('ul');
+for (const p of selected) {
+  const li = document.createElement('li');
+  li.textContent = p.name;            // dữ liệu → textContent, không bao giờ innerHTML
+  ul.appendChild(li);
+}
+await TdModal.confirm({
+  title: 'Xoá sản phẩm?',
+  message: [`${selected.length} sản phẩm sau sẽ bị xoá:`, ul, 'Không thể hoàn tác.'],
+  confirmVariant: 'danger',
+});
+```
+
+- Chuỗi (trong mảng hay đứng riêng) **không bao giờ** được hiểu là HTML: `'<b>x</b>'` hiện đúng chữ `<b>x</b>`.
+- Phần tử mảng: chuỗi / số → một `<p>`; Node → gắn nguyên; `null` / `undefined` → bỏ qua.
+- Node bị **di chuyển** vào hộp thoại (không clone): mỗi lần gọi tạo node mới. Nội dung chỉ để đọc — cần form thì dùng
+  `TdModal.show({ body })`. Node của bạn phải sạch CSP (không `style="…"`).
+- `message` là chuỗi → y hệt trước 0.59.0. `messageHtml` vẫn thắng `message` và giữ nguyên giao diện.
+- Toàn bộ khối được đọc làm mô tả của hộp thoại (`aria-describedby`); `typeToConfirm` vẫn chạy bình thường.
+
 ### 3b. Xác nhận bằng cách gõ (`typeToConfirm`, 0.44.0)
 
 Cho thao tác **không hoàn tác được** (xoá vĩnh viễn, purge media…): người dùng phải gõ đúng một chuỗi thì nút xác nhận
@@ -371,7 +397,7 @@ Trong lúc bận, bấm lại nút đó hay nút khác đều bị bỏ qua, và
 | Tuỳ chọn | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
 | `title` | `string` | `TdModal.labels.confirmTitle` (`'Xác nhận'`) | Tiêu đề (text). |
-| `message` | `string` | `TdModal.labels.confirmMessage` (`'Bạn có chắc chắn?'`) | Nội dung (text). |
+| `message` | `string \| Node \| Array<string \| Node>` | `TdModal.labels.confirmMessage` (`'Bạn có chắc chắn?'`) | Nội dung (text). 0.59.0: mảng (mỗi chuỗi một đoạn, text) hoặc Node — [3a](#3a-nội-dung-nhiều-dòng-message-là-mảng-hoặc-node-0590). |
 | `messageHtml` | `string` | — | Nội dung HTML **tin cậy** (chỉ markup của developer); thắng `message`. |
 | `confirmText` | `string` | `TdModal.labels.confirm` (`'Xác nhận'`) | Nhãn nút xác nhận. |
 | `cancelText` | `string` | `TdModal.labels.cancel` (`'Hủy'`) | Nhãn nút huỷ. |
@@ -388,7 +414,7 @@ Focus ban đầu của `confirm` nằm ở nút **Hủy** (an toàn cho thao tá
 | Tuỳ chọn | Mặc định (`success` / `error` / `info`) | Mô tả |
 |---|---|---|
 | `title` | `TdModal.labels.successTitle` / `errorTitle` / `infoTitle` (`'Thành công'` / `'Lỗi'` / `'Thông tin'`) | Tiêu đề (text). |
-| `message` | `'Thao tác đã hoàn tất'` / `'Đã xảy ra lỗi'` / `''` | Nội dung (text). |
+| `message` | `'Thao tác đã hoàn tất'` / `'Đã xảy ra lỗi'` / `''` | Nội dung (text); 0.59.0: mảng / Node như `confirm()`. |
 | `messageHtml` | — | HTML **tin cậy**; thắng `message`. |
 | `okText` | `TdModal.labels.ok` (`'OK'`) | Nhãn nút OK. |
 
@@ -523,6 +549,7 @@ Mỗi modal đang mở là một phần tử gắn thẳng vào `<body>`:
 | `.td-modal__header[hidden]`, `.td-modal__close[hidden]`, `.td-modal__footer[hidden]` | Ẩn theo `showHeader`, `closable`, footer rỗng. |
 | `role="alertdialog"` + `aria-describedby="{id}-message"` | Trên các hộp thoại Promise (`confirm`, `success`, `error`, `info`). |
 | `.td-modal__message`, `.td-modal__message--{success\|error\|info}`, `.td-modal__icon`, `.td-modal__text` | Khối nội dung của hộp thoại Promise. |
+| `.td-modal__text--blocks` | 0.59.0: `message` là mảng / Node — `div.td-modal__text.td-modal__text--blocks` > `p` / node của bạn (bỏ margin mặc định, cách nhau `--td-space-sm`). |
 | `.td-modal__confirm-field.td-field` > `label.td-field__label[for]` (+ `strong.td-modal__phrase`) + `input.td-field__control` + `span.td-field-error[hidden]` + `span.td-modal__confirm-status.td-sr-only[role=status]` | 0.44.0 `typeToConfirm`: ô gõ dưới nội dung (dùng lại field.css). Nút xác nhận `[aria-disabled="true"]` khi chưa khớp; ô `[aria-invalid="true"]` + `aria-errormessage` khi bấm lúc chưa khớp. |
 
 Chỉ `.td-modal__body` cuộn; header và footer luôn đứng yên. Trên màn hình < 720px (0.34.0; trước đó ≤ 640px) modal thường thành bottom sheet — `fullViewport` thì luôn phủ kín (không có cử
@@ -581,6 +608,8 @@ nút footer, hoặc `close` / `closeById` / `closeAll`. `escapeCloses` là ngo�
 | Nơi nhận nội dung | Cách render | Được đưa dữ liệu người dùng? |
 |---|---|---|
 | `title`, `message`, `label` của action, `confirmText`, `cancelText`, `okText` | text (`textContent`) | Có |
+| `message` dạng mảng (0.59.0) | chuỗi → `<p>` + `textContent`; Node → gắn nguyên | Có (chuỗi; Node thì như `body` dạng Node) |
+| `message` dạng `Node` (0.59.0) | gắn nguyên node | Có (miễn là bạn tự tạo node bằng DOM API / `textContent`) |
 | `body` dạng `Node` | gắn nguyên node | Có (miễn là bạn tự tạo node bằng DOM API / `textContent`) |
 | `body` dạng `string` | `innerHTML` | **Không** — cửa HTML tin cậy |
 | `messageHtml` | `innerHTML` | **Không** — cửa HTML tin cậy |
