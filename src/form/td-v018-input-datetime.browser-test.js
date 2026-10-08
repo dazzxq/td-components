@@ -274,9 +274,13 @@ describe('v0.18.0 F3 — td-datetime-picker modes: value contract', () => {
     expect(d.validationMessage).to.equal('Không được sau 15/06/2026');
   });
 
-  it('without min/max the default year range 2000–2099 still applies (every mode)', () => {
+  it('v0.60.0: without min/max every year 1–9999 is valid (the 2000–2099 default is gone; every mode)', () => {
     const y = mount('<td-datetime-picker id="y" mode="year" value="1985"></td-datetime-picker>');
+    expect(y.checkValidity()).to.equal(true);
+    expect(y.getValue()).to.equal('1985');
+    y.setValue('0000');
     expect(y.validity.badInput).to.equal(true);
+    expect(y.validationMessage).to.equal('Năm phải từ 1 đến 9999');
     y.setValue('2026');
     expect(y.checkValidity()).to.equal(true);
   });

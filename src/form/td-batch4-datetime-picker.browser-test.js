@@ -290,7 +290,7 @@ describe('batch 4 — td-datetime-picker date fields (D9, bug 1.8.4)', () => {
   it('labelled number fields with inputmode=numeric and min/max', async () => {
     const el = pick('id="f1" value="15/06/2026 - 10:30"');
     await open(el);
-    for (const [part, label, lo, hi, v] of [['day', 'Ngày', '1', '31', '15'], ['month', 'Tháng', '1', '12', '6'], ['year', 'Năm', '2000', '2099', '2026']]) {
+    for (const [part, label, lo, hi, v] of [['day', 'Ngày', '1', '31', '15'], ['month', 'Tháng', '1', '12', '6'], ['year', 'Năm', '1', '9999', '2026']]) { // v0.60.0: no 2000–2099 window
       const f = field(part);
       expect(f.type).to.equal('number');
       expect(f.getAttribute('inputmode')).to.equal('numeric');
@@ -306,18 +306,22 @@ describe('batch 4 — td-datetime-picker date fields (D9, bug 1.8.4)', () => {
     const el = pick('id="f2" value="15/06/2026 - 10:30"');
     await open(el);
     const y = field('year');
-    await typeInto(y, '2');
-    expect(y.value).to.equal('2'); // not 2000
+    // v0.60.0 (plan v0.60.0-calendar-picker B1): the implicit 2000–2099 window is gone — the year domain is 1–9999
+    await typeInto(y, '0');
+    expect(y.value).to.equal('0'); // not clamped to 1 while typing
     expect(y.getAttribute('aria-invalid')).to.equal('true');
     expect(errorLine().hidden).to.equal(false);
-    expect(errorLine().textContent).to.equal('Năm phải từ 2000 đến 2099');
+    expect(errorLine().textContent).to.equal('Năm phải từ 1 đến 9999');
+    await typeInto(y, '2');
+    expect(y.value).to.equal('2'); // year 2 is a real year now (not "outside 2000–2099")
+    expect(y.hasAttribute('aria-invalid')).to.equal(false);
+    expect(errorLine().hidden).to.equal(true);
     await sendKeys({ type: '027' });
     expect(y.value).to.equal('2027');
     expect(y.hasAttribute('aria-invalid')).to.equal(false);
-    expect(errorLine().hidden).to.equal(true);
-    await typeInto(y, '3000');
+    await typeInto(y, '30000');
     await sendKeys({ press: 'Tab' }); // change → clamp
-    expect(y.value).to.equal('2099');
+    expect(y.value).to.equal('9999');
     const d = field('day');
     await typeInto(d, '0');
     expect(d.value).to.equal('0'); // "05" can be typed
@@ -543,9 +547,11 @@ describe('batch 4 — td-datetime-picker values + validity', () => {
     expect(el.validationMessage).to.equal('Ngày không hợp lệ');
     el.setValue('29/02/2024 - 10:00');
     expect(el.checkValidity()).to.equal(true);
-    el.setValue('01/01/1999 - 10:00');
+    el.setValue('01/01/1999 - 10:00'); // v0.60.0: no 2000–2099 window
+    expect(el.checkValidity()).to.equal(true);
+    el.setValue('01/01/0000 - 10:00');
     expect(el.validity.badInput).to.equal(true);
-    expect(el.validationMessage).to.equal('Năm phải từ 2000 đến 2099');
+    expect(el.validationMessage).to.equal('Năm phải từ 1 đến 9999');
   });
 
   it('form-value-format switches in place (display / db / iso)', () => {

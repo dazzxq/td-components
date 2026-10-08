@@ -44,9 +44,13 @@ describe('ISSUE-2 one-sided bound outside 2000–2099', () => {
     expect(Number(y.min) <= Number(y.max)).to.equal(true);
     expect(Number(y.max)).to.equal(1990);
   });
-  it('no bounds: the 2000–2099 default still applies', () => {
+  it('v0.60.0: no bounds = every year 1–9999 (the 2000–2099 default is gone); the year field spans 1–9999', async () => {
     const el = pick('value="15/06/1985 - 10:30"');
-    expect(el.getValue()).to.equal('');
+    expect(el.getValue()).to.equal('15/06/1985 - 10:30');
+    expect(el.checkValidity()).to.equal(true);
+    await open(el);
+    const y = field('year');
+    expect([y.min, y.max, y.value]).to.deep.equal(['1', '9999', '1985']);
   });
 });
 
