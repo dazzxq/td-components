@@ -44,6 +44,9 @@
  *   too), td-datetime-picker clearable (the clear button inside the trigger box, never over the value text; ≥ 44 coarse),
  *   td-datetime-range allow-open-end ("… – Không hạn" cut with an ellipsis, never overflowing), td-number-input signed (the
  *   "+" value fits); overlay `modal-list` (confirm with a paragraph array + a list).
+ * v0.59.1: the `v0591` section — td-toggle / td-checkbox label-position="start": the label before the control (after it
+ *   in RTL), long labels wrap inside the section / the 280 px column, the note starts on the label's start edge, the
+ *   state text after the track, the label + control box ≥ 44 px on a coarse pointer.
  * v0.50.0: td-carousel + td-rating — the `carousel` section of the page (controls inside the section, no overlap, ratings
  *   on one line) and, on their own pages, the PHP markup of test/ssr/fixtures/carousel.html (3 / 8 / 12 / 13 pages,
  *   per-view attribute) BEFORE → AFTER the module loads (C21): CLS 0 (controls + host heights equal; Chromium:
@@ -811,6 +814,43 @@ async function runConfig(browser, c) {
       return errs;
     });
     check(tag, 'single page / date clear / open end / signed (v0.59.0)', v059Err);
+    // v0.59.1: label-position="start" — label before the control, nothing overflows, notes on the label's start edge
+    const v0591Err = await page.evaluate(() => {
+      const errs = [];
+      const coarse = matchMedia('(pointer: coarse)').matches;
+      const sec = document.querySelector('[data-section="v0591"]');
+      const s = sec.getBoundingClientRect();
+      if (sec.scrollWidth > sec.clientWidth + 1) errs.push(`section overflows ${sec.scrollWidth} > ${sec.clientWidth}`);
+      for (const el of sec.querySelectorAll('td-toggle, td-checkbox')) {
+        const id = el.id;
+        const toggle = el.localName === 'td-toggle';
+        const rtl = getComputedStyle(el).direction === 'rtl';
+        const box = el.querySelector(toggle ? '.td-switch' : '.td-checkbox').getBoundingClientRect();
+        const c = el.querySelector(toggle ? '.td-switch__track' : '.td-checkbox__mark').getBoundingClientRect();
+        const l = el.querySelector(toggle ? '.td-switch__label' : '.td-checkbox__label').getBoundingClientRect();
+        const wrap = (el.closest('.rsp-narrow') || sec).getBoundingClientRect();
+        if (rtl ? l.left < c.right - 0.5 : l.right > c.left + 0.5) errs.push(`#${id}: label not before the control (label ${l.left.toFixed(1)}–${l.right.toFixed(1)}, control ${c.left.toFixed(1)}–${c.right.toFixed(1)})`);
+        if (Math.abs((l.top + l.bottom) / 2 - (c.top + c.bottom) / 2) > 1.5) errs.push(`#${id}: control not centred on the label`);
+        const hr = el.getBoundingClientRect();
+        if (hr.left < wrap.left - 0.5 || hr.right > wrap.right + 0.5) errs.push(`#${id}: outside its column (${hr.left.toFixed(1)}–${hr.right.toFixed(1)} vs ${wrap.left.toFixed(1)}–${wrap.right.toFixed(1)})`);
+        if (c.left < hr.left - 0.5 || c.right > hr.right + 0.5) errs.push(`#${id}: control outside the host`);
+        if (l.width < 40) errs.push(`#${id}: label squeezed to ${l.width.toFixed(1)} px`);
+        if (coarse && (box.width < 43.5 || box.height < 43.5)) errs.push(`#${id}: hit box ${box.width.toFixed(1)}×${box.height.toFixed(1)} < 44 on touch`);
+        const st = el.querySelector('.td-switch__state');
+        if (st) {
+          const r = st.getBoundingClientRect();
+          if (r.left < c.right - 0.5) errs.push(`#${id}: state text not after the track`);
+          if (r.right > hr.right + 0.5) errs.push(`#${id}: state text outside the host`);
+        }
+        for (const n of el.querySelectorAll(':scope > .td-field__note:not([hidden]), :scope > .td-field-error')) {
+          const r = n.getBoundingClientRect();
+          if (Math.abs(r.left - l.left) > 0.6) errs.push(`#${id}: note ${r.left.toFixed(1)} not on the label's start edge ${l.left.toFixed(1)}`);
+          if (r.right > wrap.right + 0.5) errs.push(`#${id}: note outside its column`);
+        }
+      }
+      return errs;
+    });
+    check(tag, 'label-position start (v0.59.1)', v0591Err);
     if (errors.length) check(tag, 'page errors', errors);
 
     if (!c.fallback) await runOverlays(page, c, tag, shot);

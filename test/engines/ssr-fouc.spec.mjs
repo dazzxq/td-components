@@ -28,6 +28,8 @@
  *             pre-upgrade rules never match a defined host).
  *   v0.56.0   dtp-* (td_datetime_picker / td_date): the native input styled like the trigger (kind (a), unconditional) —
  *             parity in every run, ≥ 16 px on touch, focus ring / disabled surface = the trigger's, no-JS submit.
+ *   v0.59.1   lp-* (td_toggle / td_checkbox label_position=start): the label is before the control with td.css alone
+ *             (after it in RTL), label / control / note / state text boxes do not move on upgrade; also touch + rtl runs.
  *   nojs      javaScriptEnabled false (scripting: none): multiple lists keep their rows, datetime keeps the two-row
  *             native block, no reserved strips (scan / check-matrix / copy), Tab focus ring, a real form submit and
  *             `required` blocking it.
@@ -68,6 +70,9 @@ const DTP = ['dtp-date', 'dtp-datetime', 'dtp-dis', 'dtp-empty', 'dtp-help', 'dt
   // v0.59.0 clearable (plan v0.59.0-dsuite-small QĐ E1d)
   'dtp-clear-filled', 'dtp-clear-empty', 'dtp-clear-required', 'dtp-clear-narrow'];
 const FIELDS = [...SELECTS, 'ts-n-multi', 'ts-e-multi', 'dtr-date', 'dtr-dis', 'dtr-empty', 'dtr-open-end', ...DTP];
+
+// v0.59.1: td_toggle / td_checkbox label_position=start (also run on touch and in RTL)
+const LP = ALL.filter((id) => id.startsWith('lp-'));
 
 const failures = [];
 const notes = [];
@@ -171,6 +176,12 @@ function measureAll(control) {
     }
     const label = [...host.querySelectorAll('.td-field__label, .td-dtr__label, .td-scan__label')]
       .find((el) => el.getBoundingClientRect().height > 0);
+    // v0.59.1: td-toggle / td-checkbox — the label text, the control (track / mark) and the first shown note
+    const lpPart = (sel) => rel(host.querySelector(sel));
+    const lp = host.localName === 'td-toggle' || host.localName === 'td-checkbox'
+      ? { label: lpPart('.td-switch__label, .td-checkbox__label'), ctl: lpPart('.td-switch__track, .td-checkbox__mark'),
+        note: lpPart(':scope > .td-field__note:not([hidden])'), state: lpPart('.td-switch__state'), rtl: getComputedStyle(host).direction === 'rtl' }
+      : null;
     const dtp = host.querySelector('.td-dtp__native');
     const chev = host.querySelector(':scope > select, :scope > .td-tree-select__native');
     const cs = chev ? getComputedStyle(chev) : null;
@@ -178,6 +189,7 @@ function measureAll(control) {
       box: s.getBoundingClientRect().height, host: rel(host), ctl: rel(ctl), ctlTag: ctl ? `${ctl.localName}.${ctl.classList[0] || ''}` : null,
       label: rel(label), chips: host.querySelectorAll('.td-chip-input__chip').length,
       dtpFont: dtp ? parseFloat(getComputedStyle(dtp).fontSize) : null,
+      lp,
       select: cs ? { appearance: cs.appearance || cs.webkitAppearance, bg: cs.backgroundImage, fontSize: parseFloat(cs.fontSize), posX: cs.backgroundPositionX } : null,
     };
   }
@@ -233,6 +245,19 @@ function assertParity(run, ids, before, after, { width, chevron = true } = {}) {
     }
     check(`${L}: case height (content below does not move)`, near(b.box, a.box), `${fmt(b.box)} → ${fmt(a.box)}`);
     check(`${L}: host box`, near(b.host.h, a.host.h) && near(b.host.w, a.host.w), d('host'));
+    if (id.startsWith('lp-')) {
+      // v0.59.1 label_position=start: the label is before the control with td.css alone, and no part moves on upgrade
+      const p = b.lp;
+      const q = a.lp;
+      const first = (m) => !!m && !!m.label && !!m.ctl && (m.rtl ? m.label.x >= m.ctl.x + m.ctl.w - 0.5 : m.label.x + m.label.w <= m.ctl.x + 0.5);
+      check(`${L}: label before the control pre-upgrade`, first(p), JSON.stringify(p));
+      check(`${L}: label before the control after the upgrade`, first(q), JSON.stringify(q));
+      for (const k of ['label', 'ctl', 'note', 'state']) {
+        const same = (!p?.[k] && !q?.[k]) || (p?.[k] && q?.[k] && near(p[k].x, q[k].x) && near(p[k].y, q[k].y) && near(p[k].w, q[k].w) && near(p[k].h, q[k].h));
+        check(`${L}: ${k} box does not move`, !!same, `${JSON.stringify(p?.[k])} → ${JSON.stringify(q?.[k])}`);
+      }
+      if (p?.note) check(`${L}: note on the label's start edge`, p.rtl ? near(p.note.x + p.note.w, p.label.x + p.label.w) : near(p.note.x, p.label.x), `${JSON.stringify(p.note)} / ${JSON.stringify(p.label)}`);
+    }
     if (c.kind === 'guard') continue;
     if (CONTROL[c.tag]) {
       // check-matrix: the narrow mode hides the other columns (the grid changes width by design) — vertical only
@@ -501,8 +526,8 @@ for (const name of ENGINES) {
     if (name === 'chromium') {
       for (const width of [390, 1280]) await runMain(browser, name, width, { theme: 'dark', ids: AFFECTED });
       for (const width of [390, 1280]) await runMain(browser, name, width, { forced: true, ids: FIELDS });
-      await runMain(browser, name, 390, { touch: true, ids: FIELDS });
-      await runMain(browser, name, 1280, { dir: 'rtl', ids: SELECTS });
+      await runMain(browser, name, 390, { touch: true, ids: [...FIELDS, ...LP] });
+      await runMain(browser, name, 1280, { dir: 'rtl', ids: [...SELECTS, ...LP] });
       if (existsSync(TAILWIND)) await runMain(browser, name, 1280, { legacy: true, ids: FIELDS });
       else notes.push('legacy+td: test/csp/fixture/tailwind.css missing — skipped');
       await runFocus(browser, name, { forced: true });

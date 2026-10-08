@@ -123,6 +123,24 @@ const CASES = [
     check(el) { expect(el.textContent.includes('Sự kiện A')).to.equal(true); },
   },
   { tag: 'td-checkbox', attrs: { label: 'Ô' }, props: () => ({ indeterminate: true }) },
+  // v0.59.1 (plan v0.59.1-label-position): labelPosition is a class accessor of the shared checkable base (the attribute
+  // is a CSS hook only, not observed) — assigned before the upgrade it must still reach the host attribute
+  {
+    tag: 'td-toggle', attrs: { label: 'Hiển thị' }, props: () => ({ labelPosition: 'start' }),
+    check(el) {
+      expect(el.getAttribute('label-position')).to.equal('start');
+      const l = el.querySelector('.td-switch__label').getBoundingClientRect();
+      expect(l.right <= el.querySelector('.td-switch__track').getBoundingClientRect().left + 0.5, 'label before the track').to.equal(true);
+    },
+  },
+  {
+    tag: 'td-checkbox', attrs: { label: 'Đồng ý' }, props: () => ({ labelPosition: 'start' }),
+    check(el) {
+      expect(el.getAttribute('label-position')).to.equal('start');
+      const l = el.querySelector('.td-checkbox__label').getBoundingClientRect();
+      expect(l.right <= el.querySelector('.td-checkbox__mark').getBoundingClientRect().left + 0.5, 'label before the mark').to.equal(true);
+    },
+  },
   { tag: 'td-input-field', attrs: { label: 'Tên' }, props: () => ({ value: 'xin chào' }) },
   { tag: 'td-number-input', attrs: { label: 'Số' }, props: () => ({ value: '12' }) },
   // v0.58.0: labelMode (attribute-backed accessor of `label-mode`) assigned before the upgrade → floating render

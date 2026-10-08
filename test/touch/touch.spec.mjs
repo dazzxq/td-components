@@ -15,7 +15,8 @@
  *     v0.58.0: floating fields ≥ 44 px / value ≥ 16 px, a tap on the resting and on the raised label focuses the control,
  *     the raised label's hit box stays above the value line. v0.59.0: the date clear button ≥ 44 × 44, pressed while the
  *     finger is down, a tap clears (one change, focus on the trigger, no dialog); the "Không hạn" toggle of the range
- *     dialog ≥ 44 px tall and a tap empties the end.
+ *     dialog ≥ 44 px tall and a tap empties the end. v0.59.1: label-position="start" — the label + control box ≥ 44 px, a
+ *     tap on the label (now on the start side) flips the toggle / ticks the checkbox once, pressed while the finger is down.
  * (b) Chromium CDP Input.dispatchTouchEvent — continuous swipes and two-finger pinches: lightbox swipe-follow
  *     (commit / spring / flick / RTL / one item rubber band / edge / zoomed / cancel / reduced motion / settle races),
  *     cropper pinch + touchcancel.
@@ -711,6 +712,35 @@ async function chromiumSemantics(browser) {
         dialog: !!document.querySelector('body > .td-modal:not([data-state="closing"])') }));
       expect(st.changes === 1 && st.value === '' && st.focus && !st.dialog, `clear tap: ${JSON.stringify(st)}`);
     });
+    // v0.59.1 label-position="start": one hit box (label + control), a tap on the label changes it once
+    await it(tag, 'label-position start: hit box ≥ 44 px, pressed while down on the label, a tap on the label = one change', async () => {
+      await load(page);
+      for (const [host, part, track] of [['#rsp-lp-head', '.td-switch__label', '.td-switch__track'], ['#rsp-lp-checkbox', '.td-checkbox__label', '.td-checkbox__mark']]) {
+        const info = await page.evaluate(([h, p]) => {
+          const el = document.querySelector(h);
+          el.scrollIntoView({ block: 'center' });
+          window.__lp = [];
+          el.addEventListener('change', (e) => window.__lp.push(e.detail.checked));
+          const box = el.querySelector('label').getBoundingClientRect();
+          const l = el.querySelector(p).getBoundingClientRect();
+          return { w: box.width, h: box.height, before: el.checked, labelLeft: l.left, boxLeft: box.left };
+        }, [host, part]);
+        expect(info.w >= 43.5 && info.h >= 43.5, `${host}: hit box ${info.w}×${info.h}`);
+        expect(Math.abs(info.labelLeft - info.boxLeft) <= 0.6, `${host}: the label is not on the start edge of the hit box`);
+        const pt = await centre(page, `${host} ${part}`);
+        await touchDown(cdp, pt);
+        await frames(page, 2);
+        const pressed = await page.evaluate(([h, t]) => {
+          const el = document.querySelector(h);
+          return el.querySelector('label').matches(':active, [data-td-pressed]') && getComputedStyle(el.querySelector(t)).backgroundImage.includes('gradient');
+        }, [host, track]);
+        await touchUp(cdp);
+        expect(pressed, `${host}: no pressed look on the control while the finger is on the label`);
+        await page.waitForFunction(() => window.__lp.length === 1, null, { timeout: 3000 }).catch(() => {});
+        const st = await page.evaluate((h) => ({ changes: window.__lp, checked: document.querySelector(h).checked }), host);
+        expect(st.changes.length === 1 && st.checked === !info.before, `${host}: label tap ${JSON.stringify(st)} (was ${info.before})`);
+      }
+    });
     await it(tag, 'range "Không hạn": ≥ 44 px tall in the dialog, a tap empties the end (aria-pressed)', async () => {
       await load(page);
       await page.evaluate(() => document.querySelector('#rsp-dtr-open').setAttribute('end', '05/10/2026'));
@@ -1377,6 +1407,24 @@ async function webkitSmoke(browser) {
       await tap('#rsp-hint-checkbox td-hint a');
       await page.waitForTimeout(50);
       expect(!(await page.evaluate(() => document.getElementById('rsp-hint-checkbox').checked)), 'the hint link ticked the checkbox');
+    });
+
+    // v0.59.1: a tap on the start-side label flips the toggle (WebKit)
+    await it(tag, 'label-position start: a tap on the label flips the toggle, the box is ≥ 44 px', async () => {
+      await load(page);
+      await page.locator('#rsp-lp-head').scrollIntoViewIfNeeded();
+      const m = await page.evaluate(() => {
+        const el = document.getElementById('rsp-lp-head');
+        const box = el.querySelector('label').getBoundingClientRect();
+        const l = el.querySelector('.td-switch__label').getBoundingClientRect();
+        const c = el.querySelector('.td-switch__track').getBoundingClientRect();
+        return { w: box.width, h: box.height, first: l.right <= c.left + 0.5, before: el.checked };
+      });
+      expect(m.w >= 43.5 && m.h >= 43.5, `hit box ${m.w}×${m.h}`);
+      expect(m.first, 'label not before the track');
+      await tap('#rsp-lp-head .td-switch__label');
+      await page.waitForTimeout(50);
+      expect((await page.evaluate(() => document.getElementById('rsp-lp-head').checked)) === !m.before, 'tap on the label did not flip the toggle');
     });
 
     await it(tag, 'carousel: next / prev by tap (v0.50.0)', async () => {

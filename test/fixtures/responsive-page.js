@@ -19,6 +19,8 @@
  * v0.59.0: section `v059` — td-table `hide-single-page` (3 orders: one count line; again in the 280 px column),
  *   td-datetime-picker `clearable` with a long value, td-datetime-range `allow-open-end`, td-number-input `signed` (280 px
  *   column); opener `modalList` (confirm with a paragraph array + a list Node).
+ * v0.59.1: section `v0591` — td-toggle / td-checkbox `label-position="start"` (label before the control): a page-header
+ *   toggle, long labels with a helper note, state text, RTL, again in the 280 px column.
  * v0.40.0: td-datetime-range (form grid + 280 px column via controls(); a 160 px datetime host; opener `#g-dtr`).
  * v0.45.0: section `steps-timeline` — td-steps (6 steps horizontal, vertical, clickable in a 280 px column) and
  * td-timeline (40 items, details open, fixed `now`; again in the 280 px column).
@@ -247,6 +249,17 @@ export function mountResponsiveFixture(root) {
       <td-datetime-picker id="rsp-dtp-clear" name="han" label="Hạn thanh toán của đơn hàng" value="15/06/2026 - 10:30" clearable></td-datetime-picker>
       <td-datetime-range id="rsp-dtr-open" name="hl" label="Hiệu lực" start="01/10/2026" allow-open-end></td-datetime-range>
       <td-number-input id="rsp-num-signed" name="delta" label="Điều chỉnh tồn kho" signed min="-100000000" value="12990000" suffix="₫"></td-number-input>
+    </div>
+  </section>
+  <section class="rsp-section" data-section="v0591"><h2>Nhãn trước control (v0.59.1)</h2>
+    <td-toggle id="rsp-lp-head" name="show" label="Hiển thị" label-position="start" checked></td-toggle>
+    <td-toggle id="rsp-lp-toggle" name="lp1" size="lg" label="Hiển thị sản phẩm này trên trang chủ và trong kết quả tìm kiếm của khách hàng" label-position="start" helper-text="Sản phẩm ẩn vẫn mở được bằng đường dẫn trực tiếp; bạn có thể bật lại bất cứ lúc nào"></td-toggle>
+    <td-toggle id="rsp-lp-state" name="lp2" label="Trạng thái kinh doanh" label-position="start" on-text="Đang bán" off-text="Ngừng bán"></td-toggle>
+    <td-checkbox id="rsp-lp-checkbox" name="lp3" label="Tôi đồng ý với điều khoản sử dụng và chính sách quyền riêng tư của cửa hàng" label-position="start" helper-text="Bắt buộc để tiếp tục thanh toán đơn hàng"></td-checkbox>
+    <div dir="rtl"><td-toggle id="rsp-lp-rtl" name="lp4" label="Hiển thị" label-position="start"></td-toggle></div>
+    <div class="rsp-narrow">
+      <td-toggle id="rsp-lp-toggle-n" name="lp5" label="Hiển thị sản phẩm này trên trang chủ của cửa hàng" label-position="start" on-text="Đang hiện" off-text="Đang ẩn" helper-text="Sản phẩm ẩn vẫn mở được bằng đường dẫn"></td-toggle>
+      <td-checkbox id="rsp-lp-checkbox-n" name="lp6" label="Nhận thông báo khuyến mãi qua email mỗi tuần" label-position="start" error-text="Vui lòng chọn ô này để tiếp tục"></td-checkbox>
     </div>
   </section>
   <section class="rsp-section" data-section="hints"><h2>Gợi ý (v0.54)</h2>
