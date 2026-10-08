@@ -1434,7 +1434,13 @@
 
 	/* the affix box: value + affixes on the lower row, under the raised label */
 	.td-field--floating > .td-field__box {
+		height: auto; /* grows with its value line (large text) — never below the field height */
+		min-height: var(--_td-field-h);
 		padding-block: var(--_td-field-pad-top) var(--_td-field-pad-bottom);
+	}
+
+	.td-field--floating > .td-field__box > .td-field__control {
+		height: auto;
 	}
 
 	.td-field--floating > .td-field__label {

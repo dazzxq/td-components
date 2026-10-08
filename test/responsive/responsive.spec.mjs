@@ -39,7 +39,7 @@
  *   the 280 px column): box inside the host, the control ≥ 4ch, no affix over the control, a long affix ends in an ellipsis;
  *   the input of a .td-field__box is probed through its box (the box forwards the press).
  * v0.58.0: the `floating` section — td-input-field label-mode="floating": the label inside its host on one line (ellipsis), the
- *   raised label's hit box above the value line, value-line points hit the control; large text (`.rsp-big-text`) never clips.
+ *   raised label's hit box above the value line, value-line points hit the control; large text (`.rsp-big-text`, also with affixes) never clips.
  * v0.50.0: td-carousel + td-rating — the `carousel` section of the page (controls inside the section, no overlap, ratings
  *   on one line) and, on their own pages, the PHP markup of test/ssr/fixtures/carousel.html (3 / 8 / 12 / 13 pages,
  *   per-view attribute) BEFORE → AFTER the module loads (C21): CLS 0 (controls + host heights equal; Chromium:
@@ -747,6 +747,13 @@ async function runConfig(browser, c) {
         const lineH = parseFloat(getComputedStyle(label).lineHeight);
         if (l.height > lineH * 1.05 + 1) errs.push(`#${el.id}: label wraps (${l.height.toFixed(1)} px)`);
         if (ctl.localName === 'input' && ctl.scrollHeight > ctl.clientHeight + 1) errs.push(`#${el.id}: value clipped`);
+        // v0.58.0 Codex impl r1 #1: an affixed field grows too (the box holds the value line)
+        if (field !== ctl && ctl.getBoundingClientRect().bottom > f.bottom + 0.5) errs.push(`#${el.id}: value overflows the box`);
+        if (field !== ctl) {
+          const fcs = getComputedStyle(field);
+          const inner = f.height - parseFloat(fcs.paddingTop) - parseFloat(fcs.paddingBottom) - parseFloat(fcs.borderTopWidth) - parseFloat(fcs.borderBottomWidth);
+          if (ctl.getBoundingClientRect().height < parseFloat(getComputedStyle(ctl).lineHeight) - 1 || inner + 1 < parseFloat(getComputedStyle(ctl).lineHeight)) errs.push(`#${el.id}: value line clipped in the box`);
+        }
         if (el.closest('.rsp-big-text')) continue; // px geometry (dwp): large text grows the field, the label keeps its px offsets
         if (getComputedStyle(label).transform === 'none') continue;
         const cs = getComputedStyle(field);

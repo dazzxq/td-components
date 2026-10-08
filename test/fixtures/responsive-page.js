@@ -234,7 +234,8 @@ export function mountResponsiveFixture(root) {
       <td-input-field id="rsp-fl-long-empty" name="fl7" label="Địa chỉ nhận hàng đầy đủ gồm số nhà, tên đường, phường, quận và thành phố" label-mode="floating"></td-input-field>
       <td-input-field id="rsp-fl-date" name="fl8" label="Ngày giao" label-mode="floating" type="date" size="sm"></td-input-field>
     </div>
-    <div class="rsp-big-text"><td-input-field id="rsp-fl-big" name="fl9" label="Họ tên" label-mode="floating" value="Nguyễn An"></td-input-field></div>
+    <div class="rsp-big-text"><td-input-field id="rsp-fl-big" name="fl9" label="Họ tên" label-mode="floating" value="Nguyễn An"></td-input-field>
+      <td-input-field id="rsp-fl-big-affix" name="fl10" label="Website" label-mode="floating" prefix="https://" suffix=".vn" value="congty"></td-input-field></div>
   </section>
   <section class="rsp-section" data-section="hints"><h2>Gợi ý (v0.54)</h2>
     <td-dropdown id="rsp-hint-dd" name="ship" label="Kho xuất hàng" helper-text="Phí vận chuyển được tính theo khu vực của kho xuất hàng — chọn kho gần người nhận nhất để giao nhanh hơn"></td-dropdown>
