@@ -2,6 +2,7 @@ import { TdButton } from './td-button.js';
 import { hasIcon } from '../icons/td-icon.js';
 import { tdTooltip } from '../feedback/td-tooltip.js'; // self-initialising: the label is shown as a tooltip
 import { sameControlStructure, contentNodes, safeDownloadName, PART_ATTRS } from './button-structure.js';
+import { logSafe, logLength } from '../utils/log-safe.js';
 
 const TONES = ['standard', 'warning', 'danger'];
 const SIZES = ['sm', 'md', 'lg'];
@@ -20,14 +21,20 @@ const IGNORED = new Set(['variant', 'color', 'text-color', 'icon-position', 'ful
 const _warned = new Set();
 /** v0.59.0: icon warnings already printed (one per message: an unknown host icon / a preset's unknown icon). */
 const _warnedIcons = new Set();
+const WARN_ICON_CAP = 200;
 
-/** @param {string} msg console.warn once per message (bounded like `_warned`) */
+/**
+ * @param {string} msg console.warn once per message; the message is built from BOUNDED values (logSafe), and after
+ *   WARN_ICON_CAP distinct messages warning stops (Codex security r1: never clear-and-repeat on attacker-chosen names)
+ */
 function warnIcon(msg) {
-  if (_warnedIcons.has(msg)) return;
-  if (_warnedIcons.size > 200) _warnedIcons.clear();
+  if (_warnedIcons.has(msg) || _warnedIcons.size >= WARN_ICON_CAP) return;
   _warnedIcons.add(msg);
   console.warn(msg);
 }
+
+/** @param {string} name a site / API supplied icon name → `"shown" (N chars)` for a console warning (CWE-117) */
+const shownName = (name) => `"${logSafe(name)}" (${logLength(name)} chars)`;
 
 /**
  * The 23 dcms2 `ActionButtonConfigs` presets (resources/js/components/dcms-action-buttons.js) — the ONE inventory of
@@ -160,11 +167,11 @@ export class TdActionButton extends TdButton {
     // v0.59.0 (plan v0.59.0-dsuite-small QĐ D1): the real cause of a missing icon, once per message
     if (ownIcon && !hasIcon(ownIcon)) {
       warnIcon(presetIcon
-        ? `td-action-button: unknown icon "${ownIcon}" — using the preset icon "${presetIcon}"`
-        : `td-action-button: unknown icon "${ownIcon}" — nothing rendered`);
+        ? `td-action-button: unknown icon ${shownName(ownIcon)} — using the preset icon "${presetIcon}"`
+        : `td-action-button: unknown icon ${shownName(ownIcon)} — nothing rendered`);
       if (!presetIcon) return null;
     } else if (!ownIcon && preset && typeof preset.icon === 'string' && !presetIcon) {
-      warnIcon(`td-action-button: preset "${key}" has an unknown icon "${preset.icon}"`);
+      warnIcon(`td-action-button: preset "${key}" has an unknown icon ${shownName(preset.icon)}`);
       return null;
     }
     if (!icon || !label) {

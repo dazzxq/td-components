@@ -118,10 +118,14 @@ Giờ mỗi nguyên nhân có **một** `console.warn` cho mỗi tên (không th
 
 | Trường hợp | Kết quả | Cảnh báo |
 |---|---|---|
-| `icon` lạ, preset có icon | icon preset | `td-action-button: unknown icon "x" — using the preset icon "pencil"` |
-| `icon` lạ, không có icon preset | không render | `td-action-button: unknown icon "x" — nothing rendered` |
-| preset (sửa `presets` trực tiếp) trỏ icon lạ | không render | `td-action-button: preset "k" has an unknown icon "x"` |
+| `icon` lạ, preset có icon | icon preset | `td-action-button: unknown icon "x" (1 chars) — using the preset icon "pencil"` |
+| `icon` lạ, không có icon preset | không render | `td-action-button: unknown icon "x" (1 chars) — nothing rendered` |
+| preset (sửa `presets` trực tiếp) trỏ icon lạ | không render | `td-action-button: preset "k" has an unknown icon "x" (1 chars)` |
 | action lạ, thiếu `icon` hoặc `label` | không render | `td-action-button: unknown action "k" (no preset; give icon + label)` (như 0.36) |
+
+Tên icon trong cảnh báo được khử (CWE-117, `src/utils/log-safe.js` dùng chung với `td-repeater`): ký tự điều khiển, DEL /
+C1, U+2028 / U+2029 → `\uXXXX`; `"` và `\` được escape; cắt còn 64 ký tự + độ dài gốc; sau 200 thông điệp khác nhau thì
+ngừng cảnh báo.
 
 PHP `td_action_button`: `icon` lạ → một `E_USER_WARNING` `td_action_button: unknown icon "x" (N bytes) — preset icon used`
 / `— nothing rendered` (tên đã khử như cảnh báo action: chỉ ASCII in được, ≤ 64 ký tự, kèm số byte).
