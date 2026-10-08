@@ -748,6 +748,55 @@ gốc mỗi trang, gốc đi cùng mọi con cháu đang mở (mở nhánh khôn
 `getState().totalItems` = số gốc. Server mode: `data` = một trang gốc (con lồng sẵn hoặc tải chậm), `total-items` = tổng
 số gốc. Nhược: một gốc có 500 con đang mở = trang dài — dùng `max-height`.
 
+**Dòng thông tin phân trang (từ 0.57.2).** Vì trang tính theo **gốc**, bảng cây gọi gốc là "nhóm" và thêm số dòng đang
+hiện trên trang (gốc + con cháu đang mở; **không** tính dòng "Đang tải…" / lỗi):
+
+```text
+Hiển thị 1-3 / 3 nhóm · 6 dòng
+```
+
+Chữ tự cập nhật khi số dòng trên trang đổi mà trang không đổi: mở / đóng nhánh, con tải chậm về, `moveRow`, `data` mới.
+Hai thanh phân trang luôn cùng chữ; thanh dưới là live region (đọc một lần, kể cả khi chỉ số dòng đổi), thanh trên `quiet`.
+Đổi chữ cho cả site: `TdTable.labels.treeItemLabel` (danh từ của gốc, mặc định `nhóm`) và `TdTable.labels.treePageInfo`
+(mặc định `{info} · {rows} dòng` — `{info}` = chữ của `td-pagination` theo `TdPagination.labels.info`). Bảng phẳng
+**không đổi** ("Hiển thị 1-10 / 47 mục").
+
+Đổi chữ cho **một bảng** — hook `formatPageInfo(ctx) => string` (chạy cả với bảng phẳng):
+
+```js
+cats.formatPageInfo = ({ total, rows, totalRows }) =>
+  `${total} nhóm · ${rows} dòng` + (totalRows !== null ? ` (tổng ${totalRows} dòng)` : '');
+// → "3 nhóm · 6 dòng (tổng 7 dòng)"
+```
+
+| `ctx` | Nghĩa |
+|---|---|
+| `from`, `to`, `total` | Khoảng + tổng **mục của phân trang** (bảng cây: **gốc**) |
+| `item` | Danh từ (`treeItemLabel` ở bảng cây, `itemLabel` ở bảng phẳng) |
+| `rows` | Số dòng dữ liệu đang hiện trên trang (bảng cây: gốc + con cháu đang mở; không tính dòng trạng thái) |
+| `totalRows` | Tổng số dòng dữ liệu khi biết: client = toàn bộ dòng của cây (đã tải) / `data.length`; server = attribute `total-rows`, không có → `null` |
+| `tree` | `true` khi là bảng cây (`tree` + `row-key`) |
+| `page`, `perPage` | Trang hiện tại, số mục (gốc) mỗi trang |
+| `text` | Chữ mặc định (để nối thêm) |
+
+Giá trị trả về là **TEXT** (không bao giờ thành HTML — có thể đưa dữ liệu vào an toàn). Trả không phải chuỗi / ném lỗi →
+dùng chữ mặc định + **một** cảnh báo console. `null` → bỏ hook.
+
+**Hợp đồng server mode cho bảng cây** (bắt buộc — sai là trang lệch):
+
+- Một trang = **danh sách gốc kèm TOÀN BỘ con cháu của chúng** (lồng sẵn trong `children`, hoặc tải chậm qua
+  `loadChildren`). `per-page` / `perPage` của request = số **gốc**.
+- **Không bao giờ cắt trang theo dòng phẳng** (ví dụ `LIMIT 10` trên bảng đã nối cha-con): một nhánh bị cắt đôi sẽ mất
+  con ở trang sau, và gốc ở trang sau thành "mồ côi".
+- `total-items` = **số gốc** (đếm `WHERE parent_id IS NULL`, áp cùng bộ lọc), không phải số dòng.
+- Tuỳ chọn `total-rows` = tổng số dòng (gốc + mọi con cháu) nếu server biết rẻ → `ctx.totalRows` của `formatPageInfo`.
+  Bảng không dùng nó để phân trang.
+
+```js
+cats.setState({ data: page.roots, totalItems: page.rootCount });   // roots kèm children
+cats.setAttribute('total-rows', String(page.rowCount));            // tuỳ chọn
+```
+
 **Cột cây.** Mặc định là cột `primary` (cột đầu, hoặc cột `card: 'primary'`); đổi bằng `tree-column="key"`. Cột cây
 **không ẩn được** (`hideable` / `hidden` bị bỏ + cảnh báo); cột `actions` không làm cột cây được. `ellipsis` trên cột cây:
 nút + thụt lề nằm ngoài phần bị cắt.
@@ -797,7 +846,8 @@ mỗi dòng → [`td-tree`](tree.md) / [`td-tree-select`](tree-select.md). Danh 
 | `empty-title` | string | `TdTable.labels.emptyTitle` | Tiêu đề trạng thái rỗng. |
 | `empty-text` | string | `TdTable.labels.emptyText` | Nội dung trạng thái rỗng. |
 | `server-mode` | boolean | vắng | Chế độ server: không sort/cắt trang ở client, `data` giữ trang. |
-| `total-items` | number | — | Tổng số mục phía server. **Bắt buộc** khi `server-mode`. |
+| `total-items` | number | — | Tổng số mục phía server. **Bắt buộc** khi `server-mode`. Bảng cây: số **gốc**. |
+| `total-rows` | number | — | Server mode, tuỳ chọn: tổng số dòng dữ liệu (bảng cây: gốc + mọi con cháu) → `ctx.totalRows` của `formatPageInfo`; không phân trang theo nó. Client mode bỏ qua. Từ 0.57.2. |
 | `layout` | `auto` \| `table` \| `cards` | `auto` | Dạng hiển thị (xem [Responsive](#9-responsive-bảng-thành-card-khi-chỗ-đặt-hẹp)). Từ 0.34.0. |
 | `card-below` | `sm` \| `md` \| `lg` | `md` | Ngưỡng bề rộng bảng (480 / 720 / 1024px) dưới đó `auto` thành card. Từ 0.34.0. |
 | `selectable` | `multiple` \| `single` | vắng (tắt) | Chọn dòng (mục 10). Có attribute mà rỗng / giá trị lạ = `multiple`; `none` / `false` / `0` / `off` = tắt. Cần `row-key` / `rowKey`. Từ 0.37.0. |
@@ -854,6 +904,7 @@ Các attribute `title`, `heading-level`, `zebra`, `max-height`, `selectable`, `r
 | `loadChildren` | `(row, { signal }) => Promise<Array> \| Array` | Con của nhánh tải chậm (mục 13). Từ 0.57.0. |
 | `rowHasChildren` | `(row) => boolean` | Dòng chưa có con trong dữ liệu mà tải được (mặc định `row.hasChildren === true`). Từ 0.57.0. |
 | `canDrop` | `({ key, row, parentKey, parentRow, index, level }) => boolean` | `moveRow` có được đặt dòng vào đó không; `false` / ném → từ chối. Từ 0.57.0. |
+| `formatPageInfo` | `(ctx) => string` | Chữ thông tin phân trang của bảng này (hai thanh), `ctx = { from, to, total, item, rows, totalRows, tree, page, perPage, text }` (mục 13). Kết quả là text; không phải chuỗi / ném → chữ mặc định + một cảnh báo. Gán trước khi upgrade được. Từ 0.57.2. |
 | `moveRow(key, parentKey, index)` | `(key, key \| null, number) => boolean` | Chuyển dòng (cùng nhánh con) sang cha mới ở vị trí cuối `index` (mục 13). Im lặng. Từ 0.57.0. |
 | `getTree()` | `() => Array<{ key, row, children: Array \| null }>` | Ảnh chụp cây theo thứ tự của bảng (`null` = nhánh tải chậm chưa tải). Từ 0.57.0. |
 | `TdTable.labels` | static object | Chuỗi hiển thị, site ghi đè được (xem dưới). |
@@ -913,6 +964,8 @@ Object.assign(TdTable.labels, {
   treeLoaded: 'Loaded {n} child rows of {label}',
   treeLoadErrorRow: 'Could not load the child rows of {label}',
   treeRetrying: 'Loading again…',
+  treeItemLabel: 'groups',
+  treePageInfo: '{info} · {rows} rows',
 });
 ```
 
@@ -940,6 +993,8 @@ Object.assign(TdTable.labels, {
 | `treeLoading` | `Đang tải…` | Dòng trạng thái khi nhánh tải chậm > 400 ms (0.57.0) |
 | `treeLoadError` / `treeRetry` | `Không tải được các dòng con` / `Thử lại` | Dòng lỗi + nút thử lại (0.57.0) |
 | `treeLoadingRow` / `treeLoaded` / `treeLoadErrorRow` / `treeRetrying` | `Đang tải các dòng con của {label}…` / `Đã tải {n} dòng con của {label}` / `Không tải được các dòng con của {label}` / `Đang tải lại…` | Thông báo `role="status"` của tải chậm (0.57.0) |
+| `treeItemLabel` | `nhóm` | `item-label` của hai phân trang ở bảng cây (danh từ của **gốc**) (0.57.2) |
+| `treePageInfo` | `{info} · {rows} dòng` | Chữ thông tin phân trang của bảng cây: `{info}` = chữ của `td-pagination`, `{rows}` = số dòng đang hiện trên trang (0.57.2) |
 
 Đổi `labels` trước khi bảng render (ngay sau import). Các nhãn bên trong `td-pagination` ("Trang trước", "Trang N",
 "Hiển thị …") đổi qua `TdPagination.labels`, xem [pagination.md](pagination.md#tdpaginationlabels).
@@ -970,6 +1025,7 @@ table.addEventListener('page-change', (e) => console.log(e.detail.page));
 | `onSort` | `({ key, direction }) => void` | **Chỉ trong `server-mode`**, sau mỗi lần đổi sort (sau event `sort-change`). Ở chế độ client bảng tự sort và **không** gọi `onSort`; muốn biết sort đổi thì nghe `sort-change`. |
 | `onPageChange` | `(page) => void` | **Chỉ trong `server-mode`**, khi người dùng đổi trang. Bảng đồng bộ số trang cho thanh còn lại rồi chờ bạn gán `data` mới. Ở chế độ client, nghe event `page-change`. |
 | `onRowAction` | `({ id, row, rowIndex }) => void` | Mọi chế độ, sau event `row-action`. |
+| `formatPageInfo` | `(ctx) => string` | Mỗi lần chữ thông tin phân trang được dựng (đổi trang, `data`, mở / đóng nhánh…). **Khác các hook trên:** giá trị trả về được dùng (làm text); không phải chuỗi / ném → chữ mặc định + một `console.warn`. Xem mục 13. Từ 0.57.2. |
 
 Gán giá trị không phải function → hook bị xoá (`null`). Giá trị trả về bị bỏ qua. Hook ném lỗi → lỗi được ghi
 `console.error`, bảng vẫn giữ trạng thái đúng (sort đã đổi, hai thanh phân trang đồng bộ) (từ 0.16.0). Cũng có thể đặt

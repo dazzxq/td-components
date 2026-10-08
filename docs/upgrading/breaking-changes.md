@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.57.1)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.57.2)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.57.2](#0572) | Đổi giao diện nhỏ (**chỉ bảng cây**: chữ thông tin phân trang) + thêm hook (`td-table` `formatPageInfo`, attribute `total-rows`; `td-pagination` `formatInfo`) | Không bắt buộc. Bảng cây (`tree` + `row-key`): "Hiển thị 1-3 / 3 mục" → "Hiển thị 1-3 / 3 nhóm · 6 dòng" (đổi qua `TdTable.labels.treeItemLabel` / `treePageInfo` hoặc `formatPageInfo`). Test / script đọc chữ này cần cập nhật. Bảng phẳng giữ nguyên. Server mode bảng cây: xem lại hợp đồng trang (một trang = gốc + toàn bộ con cháu; `total-items` = số gốc). |
 | [0.57.1](#0571) | Đổi hành vi nhỏ (`TdModal` focus ban đầu theo `autofocus`) + đổi giao diện **chỉ khi site đặt `--td-field-note-size`** + thêm token `--td-field-error-size` | Không bắt buộc. Modal có phần tử `autofocus` trong body / footer: focus ban đầu giờ vào đó (trước: field đầu tiên) — `focusTarget` / `autoFocus: false` / `confirm` không đổi. Site đã đặt `--td-field-note-size`: chữ lỗi giờ to theo; muốn giữ lỗi 12 px → `--td-field-error-size: var(--td-text-xs)`. |
 | [0.57.0](#0570) | Thêm tính năng (bảng cây `td-table tree`) + đổi hành vi nhỏ (menu "Thao tác" của card) | Không bắt buộc. Bảng cây là opt-in (`tree` + `row-key`); bảng không `tree` giống từng byte. Menu "Thao tác" (dạng card, > 2 action) giờ đọc dòng **lúc mở** và kiểm lại **lúc chọn**: dòng đã rời bảng trong lúc menu mở (đổi trang, `data` mới) → không phát `row-action` (trước: phát cho dòng **đang** ở chỉ số cũ — có thể là dòng khác). `getState()` thêm `expandedKeys`. |
 | [0.56.0](#0560) | Thêm tính năng (`td-repeater` `value` / `disabled` / `readonly`, 6 icon + 3 preset nút thao tác, PHP `td_datetime_picker` / `td_date`, `Td::registerActionPresets`) + đổi hành vi nhỏ | Kiểm tra `registerIcons()` của site: tên **`archive`, `restore`, `category`, `brand`, `product`, `ban`** giờ là icon core → đăng ký trùng tên **ném lỗi** (đổi tên icon site, vd. `site-archive`). Alias mới `archive-restore`, `folder-tree`, `tag`, `trademark`, `package` (icon site cùng tên vẫn thắng). App xử lý `rows-change` bằng `switch (reason)` không có nhánh mặc định: thêm `'set'`. |
@@ -81,6 +82,25 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.57.2
+
+**Mức: đổi giao diện nhỏ (chỉ bảng cây) + thêm hook.**
+
+- **Chữ thông tin phân trang của bảng cây:** trang tính theo gốc, nên chữ cũ "Hiển thị 1-3 / 3 mục" trong khi 6 dòng đang
+  hiện gây hiểu nhầm. Giờ: "Hiển thị 1-3 / 3 **nhóm** · **6 dòng**" (số dòng đang hiện trên trang — gốc + con cháu đang mở,
+  không tính dòng "Đang tải…" / lỗi; tự cập nhật khi mở / đóng, tải con, `moveRow`, `data` mới). `item-label` của hai thanh
+  phân trang trong bảng cây giờ là `TdTable.labels.treeItemLabel`. Muốn chữ cũ cho cả site:
+  `Object.assign(TdTable.labels, { treeItemLabel: 'mục', treePageInfo: '{info}' })`; cho một bảng:
+  `table.formatPageInfo = ({ from, to, total }) => 'Hiển thị ' + from + '-' + to + ' / ' + total + ' mục'` (`ctx.text`
+  của bảng cây đã có số dòng).
+  Bảng **phẳng không đổi** (snapshot giống từng byte).
+- **Mới:** `td-table` `formatPageInfo(ctx)` (mọi bảng), attribute `total-rows` (server mode, tuỳ chọn), nhãn
+  `treeItemLabel` / `treePageInfo`; `td-pagination` `formatInfo(ctx)`. Kết quả hook là text; không phải chuỗi / ném → chữ
+  mặc định + một cảnh báo ([table § 13](../components/table.md#13-bảng-cây--dòng-lồng-nhau-tree--từ-0570),
+  [pagination § 6](../components/pagination.md#6-chữ-thông-tin-riêng-cho-một-thanh-formatinfo--từ-0572)).
+- **Hợp đồng server mode của bảng cây (giờ viết rõ):** một trang = danh sách gốc **kèm toàn bộ con cháu**; không bao giờ
+  cắt trang theo dòng phẳng; `total-items` = số gốc; `total-rows` (tuỳ chọn) = tổng số dòng.
 
 ## 0.57.1
 

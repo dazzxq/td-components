@@ -2,6 +2,7 @@ import { TdBaseElement } from '../base/td-base-element.js';
 import { TdButton } from '../form/td-button.js';
 import { pickPole } from '../theme/color.js';
 import { fillIconSlots } from '../icons/td-icon.js';
+import { pageRange, hookText } from '../utils/page-info.js';
 
 /** `{name}` placeholders from `vars`; unknown ones are kept as written. */
 const format = (tpl, vars = {}) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
@@ -41,6 +42,11 @@ const format = (tpl, vars = {}) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k
  *
  * Texts: `TdPagination.labels` — `prev`, `next`, `page` (`{n}`), `info` (`{from}`, `{to}`, `{total}`, `{item}`),
  * `item`, `status` (`{current}`, `{total}` pages; v0.34.0). Override per site; they apply on the next render.
+ *
+ * @property {Function|null} formatInfo - v0.57.2 per-instance info text: `(ctx) => string` with ctx = `{ from, to,
+ *   total, item, page, perPage, totalPages, text }` (`text` = the default text). The result is TEXT (never HTML); a
+ *   non-string / a throw → the default text + one console warning per instance. Assigning it (even the same function
+ *   again) refreshes the info text in place (the controls are not rebuilt); `null` = the default text.
  */
 export class TdPagination extends TdBaseElement {
   /** Default texts (Vietnamese); override per site: `TdPagination.labels.info = 'Showing {from}-{to} of {total}'`. */
@@ -63,6 +69,9 @@ export class TdPagination extends TdBaseElement {
     super();
     /** @private custom properties THIS component set on the host (a site's own inline vars are never removed) */
     this._ownVars = new Set();
+    /** v0.57.2 per-instance info text hook; warned once. */
+    this._formatInfo = null;
+    this._infoWarned = false;
     // One delegated listener on the host for the element's lifetime (no per-render listeners to leak,
     // survives disconnect/reconnect).
     this.addEventListener('click', (e) => this._onClick(e));
@@ -94,9 +103,32 @@ export class TdPagination extends TdBaseElement {
     const total = this._getTotalItems();
     const per = this._getItemsPerPage();
     const page = this._getCurrentPage();
-    const start = total === 0 ? 0 : (page - 1) * per + 1;
-    const end = Math.min(page * per, total);
-    return format(TdPagination.labels.info, { from: start, to: end, total, item: this._getItemLabel() });
+    const { from, to } = pageRange(total, per, page);
+    const item = this._getItemLabel();
+    const text = format(TdPagination.labels.info, { from, to, total, item });
+    if (!this._formatInfo) return text;
+    const ctx = { from, to, total, item, page, perPage: per, totalPages: this._getTotalPages(), text };
+    const warn = (msg) => {
+      if (this._infoWarned) return;
+      this._infoWarned = true;
+      console.warn(msg);
+    };
+    return hookText(this._formatInfo, ctx, warn, 'td-pagination: formatInfo') ?? text;
+  }
+
+  /** v0.57.2: `(ctx) => string` per-instance info text (see the class doc); a non-function = null. */
+  get formatInfo() { return this._formatInfo; }
+  set formatInfo(fn) {
+    this._formatInfo = typeof fn === 'function' ? fn : null;
+    if (this._initialized) this._syncInfo();
+  }
+
+  /** @private Rewrite the info text only (same live region; written only when it changed). */
+  _syncInfo() {
+    const info = this.querySelector(':scope > .td-pagination > .td-pagination__info');
+    if (!info) return;
+    const text = this._infoText();
+    if (info.textContent !== text) info.textContent = text;
   }
 
   // --- Rendering ---
