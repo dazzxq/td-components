@@ -38,6 +38,9 @@ const format = (tpl, vars = {}) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k
  *   a distinct label.
  * @attr {boolean} quiet - Info text is not a live region (a second pagination for the same list, e.g. td-table's
  *   top one, so a page change is announced once).
+ * @attr {boolean} hide-single-page - v0.59.0: with ONE page (total pages ≤ 1) the controls are hidden
+ *   (`.td-pagination__controls[hidden]`, `nav.td-pagination--single`); the info line stays (still the live region, shown
+ *   at every container width). A focused control that goes → the info line takes the focus (`tabindex="-1"` until blur).
  * @fires page-change - When page changes, detail: { page }
  *
  * Texts: `TdPagination.labels` — `prev`, `next`, `page` (`{n}`), `info` (`{from}`, `{to}`, `{total}`, `{item}`),
@@ -59,10 +62,11 @@ export class TdPagination extends TdBaseElement {
     status: '{current} / {total}',
   };
 
-  static get booleanAttributes() { return ['quiet']; }
+  static get booleanAttributes() { return ['quiet', 'hide-single-page']; }
 
   static get observedAttributes() {
-    return ['total-items', 'items-per-page', 'current-page', 'active-color', 'item-label', 'max-pages', 'aria-label', 'quiet'];
+    return ['total-items', 'items-per-page', 'current-page', 'active-color', 'item-label', 'max-pages', 'aria-label', 'quiet',
+      'hide-single-page'];
   }
 
   constructor() {
@@ -131,12 +135,16 @@ export class TdPagination extends TdBaseElement {
     if (info.textContent !== text) info.textContent = text;
   }
 
+  /** @private v0.59.0 `hide-single-page` and one page: only the info line is shown */
+  _single() { return this.hasAttribute('hide-single-page') && this._getTotalPages() <= 1; }
+
   // --- Rendering ---
 
   render() {
-    return `<nav class="td-pagination" aria-label="${this.escapeHtml(this._getNavLabel())}">`
+    const single = this._single();
+    return `<nav class="td-pagination${single ? ' td-pagination--single' : ''}" aria-label="${this.escapeHtml(this._getNavLabel())}">`
       + `<p class="td-pagination__info"${this.hasAttribute('quiet') ? '' : ' aria-live="polite"'}>${this.escapeHtml(this._infoText())}</p>`
-      + `<div class="td-pagination__controls">${this._controlsHtml()}</div>`
+      + `<div class="td-pagination__controls"${single ? ' hidden' : ''}>${this._controlsHtml()}</div>`
       + '</nav>';
   }
 
@@ -189,9 +197,28 @@ export class TdPagination extends TdBaseElement {
     const text = this._infoText();
     if (info && info.textContent !== text) info.textContent = text;
     const controls = nav.querySelector('.td-pagination__controls');
-    if (controls) controls.innerHTML = this._controlsHtml();
+    // v0.59.0 `hide-single-page`: one page → controls hidden, the info line keeps the focus that was in them
+    const single = this._single();
+    nav.classList.toggle('td-pagination--single', single);
+    if (controls) {
+      controls.innerHTML = this._controlsHtml();
+      controls.hidden = single;
+    }
     this.afterRender();
-    if (focusKey) this._restoreFocus(focusKey);
+    if (focusKey && single) this._focusInfo();
+    else if (focusKey) this._restoreFocus(focusKey);
+  }
+
+  /**
+   * @private v0.59.0: the info line takes the focus of a control that went (`tabindex="-1"` until it loses it) — a screen
+   * reader reads the new count; the focus never falls back to <body>.
+   */
+  _focusInfo() {
+    const info = this.querySelector(':scope > .td-pagination > .td-pagination__info');
+    if (!info) return;
+    info.setAttribute('tabindex', '-1');
+    info.addEventListener('blur', () => info.removeAttribute('tabindex'), { once: true });
+    info.focus({ preventScroll: true });
   }
 
   afterRender() {
