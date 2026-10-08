@@ -34,14 +34,14 @@ describe('v0.59.0 td-action-button — icon warnings', () => {
     mount('<td-action-button action="edit" icon="khong-co-v059a"></td-action-button>');
     a.setAttribute('size', 'sm');
     expect(icon(a)).to.equal('pencil');
-    expect(count('td-action-button: unknown icon "khong-co-v059a" (14 chars) — using the preset icon "pencil"')).to.equal(1);
+    expect(count('td-action-button: unknown icon "khong-co-v059a" (14 UTF-16 units) — using the preset icon "pencil"')).to.equal(1);
     expect(warns.some((w) => w.includes('unknown action'))).to.equal(false);
   });
 
   it('unknown host icon, no preset (icon + label given) → nothing rendered, the icon warning (not "unknown action")', () => {
     const a = mount('<td-action-button action="gia-v059" icon="khong-co-v059b" label="Sửa giá"></td-action-button>');
     expect(a.children.length).to.equal(0);
-    expect(count('td-action-button: unknown icon "khong-co-v059b" (14 chars) — nothing rendered')).to.equal(1);
+    expect(count('td-action-button: unknown icon "khong-co-v059b" (14 UTF-16 units) — nothing rendered')).to.equal(1);
     expect(warns.some((w) => w.includes('unknown action'))).to.equal(false);
     a.setAttribute('icon', 'price');
     expect(icon(a)).to.equal('price');
@@ -53,7 +53,7 @@ describe('v0.59.0 td-action-button — icon warnings', () => {
       const a = mount('<td-action-button action="v059-broken"></td-action-button>');
       mount('<td-action-button action="v059-broken"></td-action-button>');
       expect(a.children.length).to.equal(0);
-      expect(count('td-action-button: preset "v059-broken" has an unknown icon "khong-co-v059c" (14 chars)')).to.equal(1);
+      expect(count('td-action-button: preset "v059-broken" has an unknown icon "khong-co-v059c" (14 UTF-16 units)')).to.equal(1);
     } finally { delete TdActionButton.presets['v059-broken']; }
   });
 
@@ -71,12 +71,14 @@ describe('v0.59.0 td-action-button — icon warnings', () => {
 
 describe('v0.59.0 td-action-button — warnings are log-safe (Codex security r1, CWE-117)', () => {
   const cases = [
-    ['newline', 'a\nforged: line', '"a\\u000aforged: line" (14 chars)'],
-    ['U+2028 / U+2029', 'b\u2028c\u2029d', '"b\\u2028c\\u2029d" (5 chars)'],
-    ['quote', 'q"x', '"q\\"x" (3 chars)'],
-    ['backslash', 'b\\x', '"b\\\\x" (3 chars)'],
-    ['non-ASCII', 'giá-đỏ', '"giá-đỏ" (6 chars)'],
-    ['DEL + C1', 'z\u007f\u0085', '"z\\u007f\\u0085" (3 chars)'],
+    ['newline', 'a\nforged: line', '"a\\u000aforged: line" (14 UTF-16 units)'],
+    ['U+2028 / U+2029', 'b\u2028c\u2029d', '"b\\u2028c\\u2029d" (5 UTF-16 units)'],
+    ['quote', 'q"x', '"q\\"x" (3 UTF-16 units)'],
+    ['backslash', 'b\\x', '"b\\\\x" (3 UTF-16 units)'],
+    ['non-ASCII', 'giá-đỏ', '"giá-đỏ" (6 UTF-16 units)'],
+    ['DEL + C1', 'z\u007f\u0085', '"z\\u007f\\u0085" (3 UTF-16 units)'],
+    ['bidi controls', 'r\u202eg\u2066h\u200f\u061c', '"r\\u202eg\\u2066h\\u200f\\u061c" (7 UTF-16 units)'],
+    ['astral', 'x\u{1F600}', '"x\u{1F600}" (3 UTF-16 units)'],
   ];
   for (const [what, name, shown] of cases) {
     it(`${what}: one warning, escaped`, () => {
@@ -90,7 +92,7 @@ describe('v0.59.0 td-action-button — warnings are log-safe (Codex security r1,
       extra.push(() => again.remove());
       const mine = warns.filter((w) => w.startsWith('td-action-button: unknown icon '));
       expect(mine).to.deep.equal([`td-action-button: unknown icon ${shown} — using the preset icon "pencil"`]);
-      expect(/[\n\r\u2028\u2029\u007f\u0085]/.test(mine[0])).to.equal(false);
+      expect(/[\n\r\u2028\u2029\u007f\u0085\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/.test(mine[0])).to.equal(false);
     });
   }
 
@@ -104,7 +106,7 @@ describe('v0.59.0 td-action-button — warnings are log-safe (Codex security r1,
       extra.push(() => el.remove());
     }
     const mine = warns.filter((w) => w.startsWith('td-action-button: unknown icon '));
-    expect(mine).to.deep.equal([`td-action-button: unknown icon "${'x'.repeat(64)}" (75 chars) — using the preset icon "pencil"`]);
+    expect(mine).to.deep.equal([`td-action-button: unknown icon "${'x'.repeat(64)}" (75 UTF-16 units) — using the preset icon "pencil"`]);
   });
 });
 
