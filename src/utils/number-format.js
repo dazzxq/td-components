@@ -6,8 +6,9 @@
  * unit, at most MAX_DIGITS digits — and every computation is BigInt on a 10^scale grid: a value never goes through
  * `Number` (exact at any size up to 30 digits).
  *
- * Shared `opts`: `{ group = '.', decimal = ',', decimals = 0, negative = false, prefix?, suffix? }` (Vietnamese
- * convention by default; the separators are attributes — the kit reads no site setting).
+ * Shared `opts`: `{ group = '.', decimal = ',', decimals = 0, negative = false, signed = false, prefix?, suffix? }`
+ * (Vietnamese convention by default; the separators are attributes — the kit reads no site setting). v0.59.0 `signed`:
+ * DISPLAY only — a positive non-zero value shows a leading `+`; canonical values never carry it.
  */
 
 /** Hard limit of digits (integer + fraction) a value may have. */
@@ -36,6 +37,9 @@ function dec(d) {
   const n = Number(d);
   return Number.isInteger(n) && n >= 0 ? Math.min(n, 10) : 0;
 }
+
+/** @param {string} v canonical @returns {boolean} > 0 (v0.59.0 `signed`: the values shown with a `+`) */
+const positive = (v) => !!v && v[0] !== '-' && /[1-9]/.test(v);
 
 /** @param {string} v canonical @returns {string} without the sign of a zero */
 function noNegZero(v) {
@@ -68,10 +72,11 @@ export function parseCanonical(str, decimals) {
  */
 export function format(canonical, opts = {}) {
   if (!canonical) return '';
-  const { group = '.', decimal = ',' } = opts;
+  const { group = '.', decimal = ',', signed = false } = opts;
   const neg = canonical.startsWith('-');
   const [int, frac] = (neg ? canonical.slice(1) : canonical).split('.');
-  return (neg ? '-' : '') + groupInt(int, group) + (frac != null ? decimal + frac : '');
+  const sign = neg ? '-' : signed && positive(canonical) ? '+' : '';
+  return sign + groupInt(int, group) + (frac != null ? decimal + frac : '');
 }
 
 /** @param {string} int @param {string} group */
@@ -95,13 +100,18 @@ function groupInt(int, group) {
  * 3. Cut the fraction past `decimals` and the digits past MAX_DIGITS.
  * 4. display = formatted (a trailing decimal kept while typing: `12,`); caret right after the k-th meaningful
  *    character. value: canonical (`12,` → `12`); only `-` and / or the decimal → `''` + bad.
+ * v0.59.0 `signed` (plan v0.59.0-dsuite-small QĐ C3, Codex plan r1 #1): ONE leading `+` (no token before it) is an
+ * editing-only sign token; every other `+` (not leading, a second one, after `-`, or any `+` without `signed`) is dropped
+ * at step 1 like any foreign character. A lone `+` (and / or the decimal) stays shown: `+`, value `''`, bad — like a
+ * lone `-`. With digits: a value > 0 shows a `+` (a synthetic one when the input had none, counted before the caret
+ * once the caret is past a token); a zero value (`+0`, `+0,`) drops the `+` BEFORE the caret is mapped.
  * @param {string} raw
  * @param {number} caret
- * @param {{ group?: string, decimal?: string, decimals?: number, negative?: boolean }} [opts]
+ * @param {{ group?: string, decimal?: string, decimals?: number, negative?: boolean, signed?: boolean }} [opts]
  * @returns {{ display: string, caret: number, value: string, bad: boolean }}
  */
 export function edit(raw, caret, opts = {}) {
-  const { group = '.', decimal = ',', negative = false } = opts;
+  const { group = '.', decimal = ',', negative = false, signed = false } = opts;
   const decimals = dec(opts.decimals);
   const str = String(raw ?? '');
   /** @type {Array<{ ch: string, pos: number, kind: 'sign'|'int'|'dec'|'frac' }>} */
@@ -115,6 +125,7 @@ export function edit(raw, caret, opts = {}) {
     if (d != null) toks.push({ ch: d, pos, kind: seenDec ? 'frac' : 'int' });
     else if (ch === decimal && decimals > 0 && !seenDec) { seenDec = true; toks.push({ ch: decimal, pos, kind: 'dec' }); }
     else if ((ch === '-' || ch === '−') && negative && toks.length === 0) toks.push({ ch: '-', pos, kind: 'sign' });
+    else if (ch === '+' && signed && toks.length === 0) toks.push({ ch: '+', pos, kind: 'plus' });
   }
   // 2. leading zeros
   const ints = toks.filter((t) => t.kind === 'int');
@@ -138,15 +149,25 @@ export function edit(raw, caret, opts = {}) {
     toks.splice(last, 1);
     digits -= 1;
   }
-  const k = toks.filter((t) => t.pos < caret).length;
-  // 4. display + caret map
+  // v0.59.0 `signed`: the `+` follows the value (dropped for a zero, synthetic for a positive typed without one)
   const sign = toks.some((t) => t.kind === 'sign');
   const int = toks.filter((t) => t.kind === 'int').map((t) => t.ch).join('');
   const frac = toks.filter((t) => t.kind === 'frac').map((t) => t.ch).join('');
+  const value = int || frac ? noNegZero((sign ? '-' : '') + (int || '0') + (frac ? `.${frac}` : '')) : '';
+  const plusAt = toks.findIndex((t) => t.kind === 'plus');
+  if (plusAt >= 0 && (int || frac) && !positive(value)) toks.splice(plusAt, 1);
+  else if (plusAt < 0 && signed && positive(value)) {
+    const real = toks.some((t) => t.pos < caret);
+    toks.unshift({ ch: '+', pos: real ? -1 : Infinity, kind: 'plus' });
+  }
+  const k = toks.filter((t) => t.pos < caret).length;
+  // 4. display + caret map
+  const plus = toks.some((t) => t.kind === 'plus');
   const hasDec = toks.some((t) => t.kind === 'dec');
   let display = '';
   const after = []; // display index right after each meaningful token, in order
   if (sign) { display += '-'; after.push(display.length); }
+  if (plus) { display += '+'; after.push(display.length); }
   const head = int.length % 3 || 3;
   for (let j = 0; j < int.length; j += 1) {
     if (group && j >= head && (j - head) % 3 === 0) display += group;
@@ -157,7 +178,6 @@ export function edit(raw, caret, opts = {}) {
   for (const ch of frac) { display += ch; after.push(display.length); }
   const outCaret = k <= 0 ? 0 : after[Math.min(k, after.length) - 1];
   const bad = toks.length > 0 && !int && !frac;
-  const value = int || frac ? noNegZero((sign ? '-' : '') + (int || '0') + (frac ? `.${frac}` : '')) : '';
   return { display, caret: outCaret, value, bad };
 }
 
@@ -171,9 +191,10 @@ export function edit(raw, caret, opts = {}) {
  *   component decimal → decimal, otherwise group);
  * - one kind, once, otherwise: decimal.
  * Groups must be valid (first 1–3 digits, then exactly 3). More fraction digits than `decimals`, a negative when not
- * `negative`, more than MAX_DIGITS digits → null.
+ * `negative`, more than MAX_DIGITS digits → null. v0.59.0 `signed`: ONE leading `+` (before or after a unit prefix) is
+ * accepted and means positive (`+300.000 ₫`); `+-3`, `++3`, `-+3` → null. Without `signed` a `+` is refused as before.
  * @param {string} text
- * @param {{ decimal?: string, decimals?: number, negative?: boolean, prefix?: string, suffix?: string }} [opts]
+ * @param {{ decimal?: string, decimals?: number, negative?: boolean, signed?: boolean, prefix?: string, suffix?: string }} [opts]
  * @returns {string|null} canonical value
  */
 export function parseLoose(text, opts = {}) {
@@ -189,9 +210,14 @@ export function parseLoose(text, opts = {}) {
   const units = [...UNITS, opts.prefix, opts.suffix].filter((u) => typeof u === 'string' && u.trim())
     .map((u) => u.replace(/\s+/g, '').toLowerCase()).sort((a, b) => b.length - a.length);
   const lower = () => s.toLowerCase();
+  let plus = false;
+  const takePlus = () => { if (opts.signed && !plus && s.startsWith('+')) { plus = true; s = s.slice(1); } };
+  takePlus();
   for (const u of units) if (lower().startsWith(u)) { s = s.slice(u.length); break; }
+  takePlus();
   for (const u of units) if (lower().endsWith(u)) { s = s.slice(0, s.length - u.length); break; }
   if (!/^-?[0-9.,]+$/.test(s)) return null;
+  if (plus && s.startsWith('-')) return null;
   const neg = s.startsWith('-');
   if (neg) s = s.slice(1);
   if (!/[0-9]/.test(s)) return null;

@@ -112,10 +112,10 @@ export class TdNumberInput extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'value', 'label', 'placeholder', 'error-text', 'size', 'readonly',
       'min', 'max', 'step', 'decimals', 'group-separator', 'decimal-separator', 'prefix', 'suffix', 'unit-label', 'clamp',
-      'inputmode', 'enterkeyhint', 'validate-on', 'aria-label', 'stepper', 'prefix-icon', 'suffix-icon', 'locale'];
+      'inputmode', 'enterkeyhint', 'validate-on', 'aria-label', 'stepper', 'prefix-icon', 'suffix-icon', 'locale', 'signed'];
   }
 
-  static get booleanAttributes() { return [...super.booleanAttributes, 'readonly', 'clamp', 'stepper']; }
+  static get booleanAttributes() { return [...super.booleanAttributes, 'readonly', 'clamp', 'stepper', 'signed']; }
 
   static get errorContract() { return true; }
 
@@ -229,6 +229,7 @@ export class TdNumberInput extends TdFormElement {
   _opts() {
     return {
       group: this._group(), decimal: this._decimalSep(), decimals: this._decimals(), negative: this._negative(),
+      signed: this.hasAttribute('signed'), // v0.59.0: display only
       prefix: this.getAttribute('prefix') || '', suffix: this.getAttribute('suffix') || '',
     };
   }
@@ -408,6 +409,7 @@ export class TdNumberInput extends TdFormElement {
       case 'group-separator':
       case 'decimal-separator':
       case 'locale': // v0.55.0: the separators re-format in place (same control, caret kept by the caller's next edit)
+      case 'signed': // v0.59.0: the `+` of a positive value, in place
         if (name === 'decimals') { this._minAttr(); this._max(); this._stepAttr(); } // re-checked now (warn once)
         this._bad = false;
         this._paintValue();
@@ -610,6 +612,8 @@ export class TdNumberInput extends TdFormElement {
         seenDec = true;
       } else if ((ch === '-' || ch === '−') && o.negative && i === 0) {
         // leading minus
+      } else if (ch === '+' && o.signed && i === 0) {
+        // v0.59.0: leading plus (display sign of `signed`)
       } else {
         return false;
       }
@@ -635,10 +639,23 @@ export class TdNumberInput extends TdFormElement {
         this._insertText(dec);
         return;
       }
+      // v0.59.0 (QĐ C4): `signed` — a sign typed at / over the leading sign REPLACES it (`+300` → `-300` and back)
+      if (this.hasAttribute('signed') && (e.data === '+' || e.data === '-' || e.data === '−') && /^[+-]/.test(c.value) && end <= 1) {
+        e.preventDefault();
+        if (e.data !== '+' && !this._negative()) return;
+        this._applyEdit((e.data === '+' ? '+' : '-') + c.value.slice(1), 1);
+        return;
+      }
       if (!this._structureOk(c.value, s, end, e.data)) e.preventDefault();
       return;
     }
     if (t === 'insertFromDrop') { e.preventDefault(); return; }
+    // v0.59.0: the `+` of `signed` follows the value — deleting it alone changes nothing (caret stays, like a group)
+    if (this.hasAttribute('signed') && s === end && c.value[0] === '+' && /[0-9]/.test(c.value)
+      && ((t === 'deleteContentBackward' && s === 1) || (t === 'deleteContentForward' && s === 0))) {
+      e.preventDefault();
+      return;
+    }
     const group = this._group();
     if (!group || s !== end) return;
     if (t === 'deleteContentBackward' && s >= 2 && c.value[s - 1] === group) {

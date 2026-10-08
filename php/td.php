@@ -2316,6 +2316,8 @@ namespace {
      * group_separator / decimal_separator and element mode prints them as `group-separator` / `decimal-separator` (never
      * `locale`: the hydrated markup never depends on the browser's ICU); a tag outside the table → default + one
      * E_USER_WARNING. The value stays canonical (never pre-formatted).
+     * v0.59.0 `signed` (bool, element mode only): host `signed` — the element SHOWS a `+` before a positive value; native
+     * mode ignores it (a type=number input cannot show a `+`). The value stays canonical.
      */
     function td_number_input(string $name, mixed $value = null, array $o = []): string
     {
@@ -2468,6 +2470,7 @@ namespace {
             'clamp' => !empty($o['clamp']),
             'aria-label' => $aria,
             'stepper' => $stepper,
+            'signed' => !empty($o['signed']),
         ], $hostTaken) . '>' . $inner . '</td-number-input>';
     }
 
