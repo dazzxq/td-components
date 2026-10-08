@@ -123,7 +123,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.57.2/
+public/assets/vendor/td-components/0.58.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -131,7 +131,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.57.2';
+const TD_VERSION = '0.58.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -478,6 +478,7 @@ tách khỏi trang (cấu trúc hoặc attribute ngoài allowlist) → render l�
 | `prefix`, `suffix` | 0.55.0: chữ trang trí trước / sau giá trị (`https://`, `mAh`, `đ`) — escape. Control vào `div.td-field__box`, wrapper thêm `td-field--affix`, mỗi bên một `span.td-field__affix--{prefix\|suffix}[aria-hidden]` |
 | `prefix_icon`, `suffix_icon` | 0.55.0: tên icon registry (`Td::icon`; tên lạ → ô rỗng), ở mép ngoài của bên đó, SVG inline sẵn |
 | `unit_label` | 0.55.0: chữ đơn vị đọc to (mặc định `suffix`, rồi `prefix`), in `span#{id}-unit[hidden]` và đứng **đầu** `aria-describedby` |
+| `label_mode` | 0.58.0: `'top'` (mặc định) \| `'floating'` — [nhãn nổi](../components/input-field.md#nhãn-nổi--label-modefloating-0580). Cần `label` (không có → như `top`); giá trị khác → `top`, im lặng. In control (hoặc `div.td-field__box`) **trước** `<label>`, wrapper thêm `td-field--floating` [+ `td-field--always-float` cho `date` / `month` / `datetime-local` / `time` hoặc có affix] [+ `td-field--ph-label` khi không có `placeholder`]; `placeholder` của control = `placeholder` thật, không có thì chữ nhãn (luôn ẩn bằng `td.css`). Chế độ element: host thêm `label-mode="floating"` |
 
 Affix (0.55.0) chỉ cho `type` `text` `search` `email` `url` `tel` `password` `number`; type khác → bỏ + một `E_USER_WARNING`
 (chỉ tên option). Không dùng option affix → markup giống từng byte 0.54. Phần tử giàu (nút hiện mật khẩu…) **không** đi
@@ -487,6 +488,14 @@ qua PHP: viết `<button slot="suffix">` trong `<td-input-field>` (JS / markup t
 <?= td_field('site', '', ['label' => 'Website', 'prefix' => 'https://', 'suffix' => '.vn']) ?>
 <?= td_field('q', '', ['label' => 'Tìm sản phẩm', 'type' => 'search', 'prefix_icon' => 'search', 'element' => true]) ?>
 <?= td_field('price', $price, ['label' => 'Giá', 'suffix' => 'đ', 'unit_label' => 'đồng']) ?>
+```
+
+Nhãn nổi (0.58.0): trạng thái nổi / nằm là CSS thuần nên chạy khi chưa có JS và giống hệt sau khi module nạp. Không dùng
+`label_mode` (hoặc `'top'`) → markup giống từng byte 0.57.
+
+```php
+<?= td_field('full_name', '', ['label' => 'Họ tên', 'label_mode' => 'floating', 'required' => true]) ?>
+<?= td_field('phone', '', ['label' => 'Điện thoại', 'label_mode' => 'floating', 'type' => 'tel', 'placeholder' => 'vd: 0901 234 567', 'element' => true]) ?>
 ```
 
 Sáu thuộc tính `autocomplete` … `autofocus` truyền qua `attrs` (kiểu 135: `'attrs' => ['inputmode' => 'numeric']`)

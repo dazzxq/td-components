@@ -101,6 +101,16 @@ const CASES = [
   { tag: 'td-checkbox', attrs: { label: 'Ô' }, props: () => ({ indeterminate: true }) },
   { tag: 'td-input-field', attrs: { label: 'Tên' }, props: () => ({ value: 'xin chào' }) },
   { tag: 'td-number-input', attrs: { label: 'Số' }, props: () => ({ value: '12' }) },
+  // v0.58.0: labelMode (attribute-backed accessor of `label-mode`) assigned before the upgrade → floating render
+  {
+    tag: 'td-input-field', attrs: { label: 'Họ tên' }, props: () => ({ labelMode: 'floating', value: 'An' }),
+    check(el) {
+      const root = el.querySelector('.td-field');
+      expect(root.classList.contains('td-field--floating'), 'floating root').to.equal(true);
+      expect(root.firstElementChild.classList.contains('td-field__control'), 'control before the label').to.equal(true);
+      expect(el.getAttribute('label-mode')).to.equal('floating');
+    },
+  },
   // v0.55.0 affix / locale (attribute-backed accessors, replayed by the base). `prefix` is attribute-only:
   // Element.prototype.prefix is the DOM's read-only namespace prefix (assigning it throws in module code) → in `attrs`.
   {

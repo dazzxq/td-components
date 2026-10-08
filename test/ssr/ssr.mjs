@@ -240,3 +240,12 @@ export const AFFIX_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'affix.html');
 export function renderAffixFixture() {
   return renderPhp('affix-fixture.php');
 }
+
+// v0.58.0: label_mode=floating on td_field (contract input-field@1, additive).
+export const FLOATING_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'floating.fixtures.json'), 'utf8'));
+export const FLOATING_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'floating.html');
+
+/** Render test/ssr/floating-fixture.php (the HTML loaded by the v0.58.0 floating SSR browser test). */
+export function renderFloatingFixture() {
+  return renderPhp('floating-fixture.php');
+}

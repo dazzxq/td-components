@@ -14,7 +14,7 @@ chữ số) → dùng [number input](number-input.md); `type="number"` ở đây
 | Import | `import '@dazzxq/td-components/input-field';` (class: `import { TdInputField } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + BEM `.td-field` từ 0.8.0, `autoresize` từ 0.13.0, hydrate SSR tại chỗ từ 0.26.0, tiền tố / hậu tố từ 0.55.0) |
+| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + BEM `.td-field` từ 0.8.0, `autoresize` từ 0.13.0, hydrate SSR tại chỗ từ 0.26.0, tiền tố / hậu tố từ 0.55.0, nhãn nổi `label-mode` từ 0.58.0) |
 
 Cần `td.css` trên trang (xem [Cài đặt](../getting-started/installation.md)).
 
@@ -85,6 +85,38 @@ Không muốn nhãn hiện ra? Dùng `aria-label`, hoặc một `<label for>` �
 
 <td-input-field type="search" aria-label="Tìm sản phẩm"></td-input-field>
 ```
+
+### Nhãn nổi — `label-mode="floating"` (0.58.0)
+
+Nhãn nằm **trong** ô như một chữ gợi ý; khi ô được focus hoặc có giá trị, nhãn nổi lên mép trên và thu nhỏ (12 px). Thiết
+kế lấy từ ô nhập "label_mode floating" của dwp.
+
+```html
+<td-input-field label="Họ tên" label-mode="floating" required helper-text="Như trên CCCD"></td-input-field>
+<td-input-field label="Điện thoại" label-mode="floating" type="tel" placeholder="vd: 0901 234 567"></td-input-field>
+<td-input-field label="Website" label-mode="floating" prefix="https://" suffix=".vn"></td-input-field>
+<td-input-field label="Ghi chú" label-mode="floating" type="textarea" max-length="200"></td-input-field>
+```
+
+- **Cần `label`.** Không có `label` → ô như kiểu thường (`top`). `type="contenteditable"` không hỗ trợ (giữ nhãn trên +
+  một cảnh báo). Property: `el.labelMode = 'floating'` / `'top'` (đổi lúc chạy giữ focus, con trỏ, giá trị).
+- **Nhãn nổi khi:** ô đang focus; ô có giá trị — **bất kể giá trị đến từ đâu** (người dùng gõ, `value` từ server, `setValue()`
+  / `el.value =`, trình duyệt khôi phục form khi Back, tự điền / autofill); và **luôn nổi** với `date` / `month` /
+  `datetime-local` / `time` (trình duyệt luôn hiện `dd/mm/yyyy`) hoặc khi ô có tiền tố / hậu tố. Toàn bộ là CSS: chạy cả
+  khi chưa có JS và giống hệt trước / sau khi module nạp.
+- **`placeholder`** chỉ hiện khi nhãn đã nổi: thường là lúc focus; ô **luôn nổi** (có tiền tố / hậu tố) thì hiện bình thường
+  mỗi khi ô rỗng (với `date` / `month` / `datetime-local` / `time` trình duyệt tự bỏ `placeholder`). Dùng làm ví dụ định
+  dạng, đừng lặp lại nhãn. Không có
+  `placeholder`: kit đặt chữ của nhãn làm placeholder (luôn ẩn) để CSS biết ô rỗng; trình đọc màn hình không đọc thêm gì.
+- **Cỡ:** `sm` / `md` / `lg` cao 48 / 56 / 64 px (cao hơn kiểu thường 32 / 40 / 48 — chỗ cho nhãn nổi); textarea tối thiểu
+  84 / 96 / 108 px.
+- **Nhãn dài** chỉ một dòng, cắt bằng `…` (tên truy cập vẫn đủ). Viết nhãn ngắn, phần giải thích để ở `helper-text`.
+- **Textarea:** chữ cuộn sau nhãn nổi (nhãn có nền của ô).
+- Gợi ý / lỗi / bộ đếm / `<td-hint>` / dấu `*` như kiểu thường. Lỗi: viền đỏ + dòng lỗi, nhãn **không** đổi màu.
+- Bấm / chạm vào nhãn (nằm nghỉ hay đã nổi) focus ô như mọi `<label>`; bấm vào chữ giá trị đặt con trỏ đúng chỗ (nhãn nổi
+  nằm hẳn trên dòng giá trị).
+- PHP: `td_field('name', '', ['label' => 'Họ tên', 'label_mode' => 'floating'])` (native và `element`) — xem
+  [adapter PHP](../guides/php-adapter.md#td_field).
 
 ### Giới hạn ký tự hoặc số từ (bộ đếm)
 
@@ -313,6 +345,7 @@ document.getElementById('fs').disabled = true;          // field bị disabled, 
 | `value` | string | `''` | Giá trị ban đầu (property `value` là giá trị sống). Đổi attribute cập nhật tại chỗ (giữ focus, con trỏ). Giá trị lúc gắn vào là mặc định khi reset. |
 | `placeholder` | string | — | Chữ gợi ý trong ô. Với `contenteditable` hiện bằng CSS (`data-placeholder`), không bao giờ nằm trong giá trị. |
 | `label` | string | — | Nhãn hiển thị. |
+| `label-mode` | string | `top` | `top` \| `floating` — [nhãn nổi](#nhãn-nổi--label-modefloating-0580) trong ô (cần `label`; không cho `contenteditable`). Giá trị khác → `top`. Đổi = render lại (giữ focus, con trỏ). 0.58.0. |
 | `helper-text` | string | — | Dòng gợi ý dưới ô (0.54.0: ẩn khi có lỗi). Nội dung giàu: `<td-hint>` con — [Hint](hint.md). |
 | `error-text` | string | — | Dòng lỗi (error contract). |
 | `required` | boolean | không | Bắt buộc: dấu `*`, `aria-required`, `valueMissing` khi rỗng. |
@@ -406,6 +439,10 @@ cũng được cập nhật (thay đổi bằng code không bị tính là ngư�
 | `--td-field-affix-icon` | `1.125em` | Cỡ icon affix (theo cỡ chữ ô). 0.55.0. |
 | `--td-field-note-size` | `var(--td-text-xs)` (cảm ứng `var(--td-text-sm)`) | Cỡ chữ gợi ý — xem [Hint](hint.md#tuỳ-biến-giao-diện). 0.55.0. 0.57.1: chữ lỗi cũng theo nó (khi chưa đặt `--td-field-error-size`). |
 | `--td-field-error-size` | không khai báo → `var(--td-field-note-size)` | Cỡ chữ lỗi (`.td-field-error`, mọi control). Đặt khi muốn lỗi khác cỡ gợi ý. 0.57.1. |
+| `--td-field-float-h-sm` / `-md` / `-lg` | `48px` / `56px` / `64px` | Chiều cao ô nhãn nổi theo size. 0.58.0. |
+| `--td-field-float-scale` | `0.857` | Tỉ lệ nhãn khi nổi (14 px → 12 px; lg 16 → 13.7 px). 0.58.0. |
+| `--td-field-float-label` | `var(--td-field-placeholder)` | Màu nhãn nổi lúc nghỉ và lúc đã nổi (không focus). 0.58.0. |
+| `--td-field-float-label-focus` | `var(--td-accent)` | Màu nhãn nổi khi focus (chữ ≥ 4.7:1 — gate; viền focus `--td-field-focus` chỉ ≥ 3:1 nên không dùng cho chữ). 0.58.0. |
 
 Theme tối đổi `--td-field-bg-disabled`, `--td-field-bg-readonly` (surface-muted) và quầng focus (22 % accent, vì 12 %
 không thấy trên nền tối); placeholder / nhãn / viền theo token chung (`--td-color-text-muted` `#acacb4`,
@@ -479,6 +516,9 @@ Input field là tầng nội dung: luôn nền đặc, không bao giờ là kín
 | `.td-field__affix.td-field__affix--{prefix\|suffix}` (0.55.0) | Chữ / icon trang trí, `aria-hidden="true"`; `hidden` khi bên đó có slot. Icon: `span.td-field__affix-icon[data-td-icon]` > `svg.td-field__affix-svg`. |
 | `.td-field__affix--slot` (0.55.0) | Vỏ chứa phần tử `[slot]` của trang (không `aria-hidden`). |
 | `span#{host-id}-unit[hidden]` (0.55.0) | Chữ đơn vị cho mô tả (`unit-label` → `suffix` → `prefix`). |
+| `.td-field--floating` (0.58.0) | Nhãn nổi: control (hoặc `.td-field__box`) đứng **trước** `<label>`; trạng thái nổi bằng CSS (`:focus`, `:placeholder-shown`, `:autofill`). |
+| `.td-field--always-float` (0.58.0) | Nhãn luôn nổi (`date` / `month` / `datetime-local` / `time`, có affix). |
+| `.td-field--ph-label` (0.58.0) | Không có `placeholder` thật: placeholder của control = chữ nhãn, luôn ẩn. |
 | Trên control: `[aria-invalid="true"]`, `:disabled` / `[aria-disabled]`, `[readonly]` / `[aria-readonly]`, `:focus-visible` | Trạng thái. |
 
 - Id đều sinh từ id của host: `{host}-label`, `{host}-control` (hoặc `field-id`), `{host}-note`, `{host}-counter`,
@@ -497,6 +537,15 @@ Input field là tầng nội dung: luôn nền đặc, không bao giờ là kín
             data-td-icon="link" data-td-icon-class="td-field__affix-svg"><svg …></svg></span></span>
       <span id="site-unit" hidden>.vn</span>
     </div>
+    <div class="td-field__footer" hidden>…</div>
+  </div>
+  ```
+- Nhãn nổi (0.58.0) — control trước nhãn:
+
+  ```html
+  <div class="td-field td-field--md td-field--floating td-field--ph-label">
+    <input type="text" class="td-field__control" id="name-control" placeholder="Họ tên" value="">
+    <label class="td-field__label" id="name-label" for="name-control">Họ tên</label>
     <div class="td-field__footer" hidden>…</div>
   </div>
   ```
@@ -560,6 +609,10 @@ Khi module nạp, `td-input-field` **nhận** markup đó (`canHydrate()`):
   option affix → markup giống từng byte 0.54. Phần tử `[slot]` không bao giờ đến từ PHP; markup viết tay có `data-td-ssr` +
   con `[slot]`: con được lấy ra trước khi so, hộp của `render()` khác markup → render an toàn + khôi phục.
 
+- **Nhãn nổi (0.58.0, `@1` chỉ thêm):** `td_field` `label_mode => 'floating'` in host `label-mode="floating"` + cây floating
+  (control trước nhãn, class `td-field--floating` …, `placeholder` = placeholder thật hoặc chữ nhãn) → nhận tại chỗ. Trạng
+  thái nổi là CSS nên trước / sau nâng cấp giống nhau (≤ 1 px, gate). Không dùng option → markup giống từng byte 0.57.
+
 `data-td-ssr` bị gỡ sau lần kết nối đầu. Hợp đồng `@1` là phiên bản **cấu trúc markup**, không phải phiên bản gói.
 
 ## Bàn phím & trợ năng
@@ -578,6 +631,9 @@ Khi module nạp, `td-input-field` **nhận** markup đó (`canHydrate()`):
   con trỏ).
 - Tiền tố / hậu tố (0.55.0): trang trí cho mắt, đơn vị đọc qua mô tả (xem
   [Tiền tố / hậu tố](#tiền-tố--hậu-tố-chữ-icon-phần-tử-của-trang-0550)); phần tử `[slot]` giữ nguyên ngữ nghĩa của trang.
+- Nhãn nổi (0.58.0): nhãn vẫn là `<label for>` thật, tên / mô tả **giống hệt** kiểu thường (gate 3 trình duyệt). Trong
+  DOM nhãn đứng **sau** ô: đọc bằng con trỏ ảo sẽ nghe "ô nhập Họ tên" rồi chữ "Họ tên" (kiểu thường: ngược lại) — giống
+  `.form-floating` của Bootstrap. Chuyển động nổi tắt khi `prefers-reduced-motion`.
 - Trên màn cảm ứng: ô cao tối thiểu 44 px và chữ ≥ 16 px (iOS không tự zoom khi focus).
 - Chế độ tương phản cưỡng bức (`forced-colors`): viền lỗi thành nét đứt 2 px.
 
@@ -606,6 +662,11 @@ Khi module nạp, `td-input-field` **nhận** markup đó (`canHydrate()`):
 - **Nút trong `slot` submit form** (0.55.0): `<button>` mặc định là `type="submit"` — đặt `type="button"`.
 - **Thêm con `[slot]` sau khi field đã hiện** không có tác dụng (0.55.0) — chỉ đọc ở lần render đầu.
 - **`prefix="https://"` nhưng giá trị gửi đi thiếu `https://`**: affix không bao giờ nằm trong giá trị; ghép ở server nếu cần.
+- **Nhãn nổi nhưng nhãn vẫn nằm trên ô** (0.58.0): thiếu `label` hoặc `type="contenteditable"` — xem cảnh báo console.
+- **CSS của site kiểu `label + input` / `.td-field__label + .td-field__control` không ăn với nhãn nổi** (0.58.0): ở chế độ
+  floating control đứng **trước** nhãn (`.td-field__control + .td-field__label`).
+- **Thấy chữ nhãn trong `placeholder` của control** (0.58.0): đúng thiết kế khi không có `placeholder` thật (luôn ẩn) — đừng
+  đọc `placeholder` của control để lấy dữ liệu.
 
 ## Xem thêm
 

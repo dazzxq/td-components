@@ -10,6 +10,8 @@
  *   submit     a native submit of the dirty form navigates without a dialog.
  *   affix      v0.55.0: td-input-field / td-number-input with prefix / suffix / icons / a [slot] button — pressing the slot
  *              button and changing affix attributes / locale at run time is never dirty (no dialog); typing is.
+ *   floating   v0.58.0: td-input-field label-mode="floating" — a click on the label (focus via <label for>), blur and
+ *              switching label-mode at run time are never dirty; typing then deleting back is clean, typing is dirty.
  *   repeater   v0.56.0 (plan v0.56.0-repeater-icons-date R5): td-repeater `value =` / `readonly` / `disabled` from code
  *              after a click → no dialog; the user typed, then `disabled` from code took the fields out → dialog.
  *
@@ -40,6 +42,7 @@ const AFFIX_PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><
 <form id="f" action="${ORIGIN}/other" method="get">
   <td-input-field id="site" name="site" label="Website" prefix="https://" value="congty"><button type="button" slot="suffix" id="sb">x</button></td-input-field>
   <td-number-input id="price" name="price" label="Giá" suffix="₫" suffix-icon="lock" value="1000"></td-number-input>
+  <td-input-field id="fl" name="fl" label="Họ tên" label-mode="floating"></td-input-field>
 </form>
 </body></html>`;
 
@@ -155,6 +158,28 @@ async function runEngine(name, launcher) {
     check(`${name} affix: typing in the boxed control is dirty`, typed, String(typed));
     r = await leave(page, { dismiss: true });
     soft(`${name} affix dirty: dialog shown`, r.seen.includes('beforeunload'), JSON.stringify(r));
+    await context.close();
+
+    // v0.58.0 floating label: label click / blur / label-mode switch are not edits; typing is, reverting is clean
+    ({ page, context } = await freshPage(browser, AFFIX_PAGE));
+    await page.click('#fl .td-field__label');
+    const flFocused = await page.evaluate(() => document.activeElement === document.querySelector('#fl .td-field__control'));
+    await page.evaluate(() => {
+      document.querySelector('#fl .td-field__control').blur();
+      document.getElementById('fl').labelMode = 'top';
+      document.getElementById('fl').labelMode = 'floating';
+    });
+    const flDirty = await page.evaluate(() => window.tracker.isDirty());
+    r = await leave(page);
+    check(`${name} floating: label click focuses, label / blur / mode switch → not dirty, no dialog`, flFocused && !flDirty && r.seen.length === 0 && r.left, JSON.stringify({ flFocused, flDirty, ...r }));
+    await context.close();
+    ({ page, context } = await freshPage(browser, AFFIX_PAGE));
+    await page.click('#fl .td-field__label');
+    await page.keyboard.type('Z');
+    const flTyped = await page.evaluate(() => window.tracker.isDirty());
+    await page.keyboard.press('Backspace');
+    const flReverted = await page.evaluate(() => window.tracker.isDirty());
+    check(`${name} floating: typing is dirty, deleting back is clean`, flTyped && !flReverted, JSON.stringify({ flTyped, flReverted }));
     await context.close();
 
     // v0.56.0 repeater: code changes never count; disabled after a user edit does (fields leave FormData)

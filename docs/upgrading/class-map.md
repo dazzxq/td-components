@@ -362,6 +362,14 @@ Không có class legacy để đổi, nhưng phần tử bên trong đổi — C
   hovercard dwp; không có bảng đổi class vì kit chưa từng ship bản cũ.
 - **Icon** (0.6.0): `svg.td-icon.td-icon--{s|m|l}` từ registry.
 
+## Class mới không thay class cũ (0.58.0)
+
+| Class | Ý nghĩa |
+|---|---|
+| `.td-field--floating` | `td-input-field label-mode="floating"`: control (hoặc `.td-field__box`) đứng **trước** `.td-field__label`, nhãn nằm trong ô và nổi lên bằng CSS |
+| `.td-field--always-float` | Nhãn luôn nổi (`date` / `month` / `datetime-local` / `time`, có affix) |
+| `.td-field--ph-label` | Không có `placeholder` thật: placeholder của control = chữ nhãn, luôn ẩn |
+
 ## Class mới không thay class cũ (0.55.0)
 
 | Class | Ý nghĩa |

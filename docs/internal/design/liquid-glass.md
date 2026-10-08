@@ -79,7 +79,9 @@ Cài đặt: [`src/styles/glass.css`](../../../src/styles/glass.css) (recipe + f
    `cubic-bezier(0.34, 1.56, 0.64, 1)` (vượt nhẹ) + fade 200ms, ra `scale(0.95)` 200ms / fade 150ms
    `cubic-bezier(0.4, 0, 0.2, 1)` (0.22.1, mang từ dcms-modal; token `--td-modal-*`; reduced motion → chỉ fade). Wheel datetime cuộn mượt tới giá trị khi mở là chuyển động chức năng. Giữ transform **chức năng**:
    vị trí thumb slider, trượt thumb switch, zoom / kéo lightbox, xoay mũi tên dropdown, sheet modal trượt lên trên
-   điện thoại, slide nhẹ của toast / scroll-top.
+   điện thoại, slide nhẹ của toast / scroll-top, **nhãn nổi của `td-input-field` thu nhỏ + dịch lên khi focus / có giá trị
+   (0.58.0, `--td-field-float-scale`, [ADR 0031](../decisions/0031-floating-label-variant.md))** — vị trí + cỡ là trạng thái
+   "đã có giá trị", không phải trang trí; reduced motion → nhảy thẳng tới trạng thái cuối.
 5. **Một shadow.** Mỗi bề mặt một token `box-shadow` (0.21.0: hai lớp — tiếp xúc + toả — vẫn tính là một token; nút:
    `--td-btn-lift`).
 6. **Hover = nền đặc khác** (0.36.2: chỉ trong `@media (hover: hover) and (pointer: fine)`; **nhấn** = nền đặc thêm một bậc `--td-btn-{v}-pressed`, chỉ đổi màu — [touch.md](touch.md)). Mỗi variant có nền đọc `--td-btn-{v}-hover` (0.21.0; primary đen thì hover sáng lên);

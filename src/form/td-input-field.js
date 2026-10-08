@@ -40,7 +40,8 @@ const SSR_ONLY = ['name', 'autofocus'];
  * keep their type (native picker); the form value of those is the control's own normalised `.value` (v0.18.0).
  *
  * DOM contract (class map: docs/upgrading/class-map.md):
- *   <div class="td-field td-field--{sm|md|lg}[ td-field--textarea| td-field--editable][ td-field--affix]">
+ *   <div class="td-field td-field--{sm|md|lg}[ td-field--textarea| td-field--editable][ td-field--affix]
+ *        [ td-field--floating[ td-field--always-float][ td-field--ph-label]]">
  *     [<label class="td-field__label" id="{host}-label" for="{controlId}">…[<span class="td-field__required" aria-hidden="true"> *</span>]</label>]
  *     <input|textarea class="td-field__control" id="{controlId}" [aria-required] [aria-describedby] [aria-invalid aria-errormessage]>
  *       — v0.55.0 with an affix (types text|search|email|url|tel|password|number), the input sits in a box:
@@ -72,6 +73,11 @@ const SSR_ONLY = ['name', 'autofocus'];
  *   value. A press on the box / an affix focuses the control (not on interactive slot content). Other types: ignored + one
  *   warning. The helper contract (helper-text,
  *   setHelper, a rich <td-hint> child in the footer) lives in TdFormElement.
+ * - v0.58.0 (plan v0.58.0-floating-label, ADR 0031): `label-mode="floating"` (with a `label`; not contenteditable — one
+ *   warning) → the control (or the affix box) comes BEFORE the label (`td-field--floating`); the raised / resting state is
+ *   pure CSS (td.css). Always raised for date / month / datetime-local / time and with an affix (`td-field--always-float`).
+ *   No real placeholder → the control's placeholder is the label text, never shown (`td-field--ph-label`; it equals the
+ *   accessible name — plan M0 F1). The label stays the real `<label for>`; the name / description do not change.
  * - value/placeholder/helper/error/disabled/readonly/required update IN PLACE (focus + caret kept).
  * - Exactly one `input` and one `change` per user action (native ones stopped at the host); `change` only when
  *   the value changed since focus (D8).
@@ -102,6 +108,7 @@ const SSR_ONLY = ['name', 'autofocus'];
  * @attr {string} step - Step (number/month/datetime-local/time — native units: months, seconds; `step="1"` allows
  *   seconds, `step="0.001"` fractions)
  * @attr {string} label - Label text
+ * @attr {string} label-mode - top|floating (default: top) — floating: the label inside the field, raised on focus / value, v0.58.0
  * @attr {string} helper-text - Helper text below the input (hidden while an error shows — v0.54.0)
  * @attr {string} error-text - Error text below the input (see setError())
  * @attr {string} field-id - id of the inner control (default `{host-id}-control`)
@@ -136,7 +143,7 @@ export class TdInputField extends TdFormElement {
       'max-length', 'limit-type', 'min', 'max', 'step',
       'label', 'error-text',
       'field-id', 'rows', 'validate-on', 'aria-label', 'autoresize', 'minlength', 'pattern',
-      ...TdInputField._nativeAttrs, ...TdInputField._affixAttrs,
+      ...TdInputField._nativeAttrs, ...TdInputField._affixAttrs, 'label-mode',
     ];
   }
 
@@ -219,7 +226,7 @@ export class TdInputField extends TdFormElement {
 
   /** @private Attributes that change the DOM structure → full re-render. Everything else updates in place. */
   static _structural = new Set(['type', 'size', 'label', 'max-length', 'limit-type', 'rows', 'field-id', 'autoresize',
-    ...TdInputField._affixAttrs]);
+    ...TdInputField._affixAttrs, 'label-mode']);
 
   /** @private Known public types. */
   static _types = [
@@ -277,6 +284,23 @@ export class TdInputField extends TdFormElement {
       }
     }
     return { prefix, suffix, unit: this.getAttribute('unit-label') || suffix.text || prefix.text };
+  }
+
+  /**
+   * @private v0.58.0 (plan v0.58.0-floating-label QĐ 2): the floating label applies with `label-mode="floating"` AND a label;
+   * `contenteditable` keeps the top label (one warning).
+   * @returns {boolean}
+   */
+  _floating() {
+    if (this.getAttribute('label-mode') !== 'floating' || !this.getAttribute('label')) return false;
+    if (this._type() === 'contenteditable') {
+      if (!this._floatTypeWarned) {
+        this._floatTypeWarned = true;
+        console.warn('<td-input-field>: label-mode="floating" is not supported for type="contenteditable" — the label stays on top');
+      }
+      return false;
+    }
+    return true;
   }
 
   /** @private @returns {string} public type (unknown → text) */
@@ -378,7 +402,14 @@ export class TdInputField extends TdFormElement {
       counter = `<div class="td-field__counter" id="${esc(this.id)}-counter">${this._counterText(value)}</div>`;
     }
 
-    return `<div class="td-field td-field--${this._size()}${mod}${aff ? ' td-field--affix' : ''}">${labelHtml}${control}`
+    // v0.58.0 (QĐ 3, 5 + M0 F1): floating → the control (or box) BEFORE the label; always raised for the date family / an
+    // affix; no real placeholder → the label text is the (hidden) placeholder (`td-field--ph-label`)
+    const floating = labelHtml && this._floating();
+    const float = floating
+      ? ` td-field--floating${TdInputField._dateTypes.includes(type) || aff ? ' td-field--always-float' : ''}${this.getAttribute('placeholder') ? '' : ' td-field--ph-label'}`
+      : '';
+    return `<div class="td-field td-field--${this._size()}${mod}${aff ? ' td-field--affix' : ''}${float}">`
+      + (floating ? `${control}${labelHtml}` : `${labelHtml}${control}`)
       + `<div class="td-field__footer"><div class="td-field__note" id="${esc(this.id)}-note" hidden></div>${counter}</div>`
       + '</div>';
   }
@@ -514,7 +545,7 @@ export class TdInputField extends TdFormElement {
       // v0.55.0 (Codex plan r1 #3): an affix change re-renders the box — a focused control gets the focus, the caret and
       // its focus baseline back (the live value is rendered); the replaced control's blur is not a user blur
       const field = this._getFieldElement();
-      const keep = TdInputField._affixAttrs.includes(name) && field === this.ownerDocument.activeElement;
+      const keep = (TdInputField._affixAttrs.includes(name) || name === 'label-mode') && field === this.ownerDocument.activeElement;
       const atFocus = this._valueAtFocus;
       let sel = null;
       if (keep) {
@@ -602,8 +633,16 @@ export class TdInputField extends TdFormElement {
         field.removeAttribute('data-placeholder');
         field.removeAttribute('aria-placeholder');
       }
-    } else if (ph) field.setAttribute('placeholder', ph);
-    else field.removeAttribute('placeholder');
+    } else {
+      // v0.58.0 (M0 → F1): a floating field without a real placeholder carries the label text (hidden by td.css — it equals
+      // the accessible name, so it is never exposed apart); the root class follows in place
+      const root = this.querySelector(':scope > .td-field');
+      const floating = !!root?.classList.contains('td-field--floating');
+      root?.classList.toggle('td-field--ph-label', floating && !ph);
+      const text = ph || (floating ? this.getAttribute('label') || '' : '');
+      if (text) field.setAttribute('placeholder', text);
+      else field.removeAttribute('placeholder');
+    }
   }
 
   /** @private disabled / readonly on the control (native props, or aria-* + contenteditable for the div). */
@@ -950,29 +989,35 @@ export class TdInputField extends TdFormElement {
   /**
    * @protected Review round 2: the known skeleton — one `div.td-field` > [optional label (text + at most the required
    * star), THIS control (v0.55.0: or the box holding it among at most 3 spans), footer of text-only error note / helper
-   * note / counter, each at most once].
+   * note / counter, each at most once]. v0.58.0: floating → control (or box), label, footer.
    */
   _ssrSkeletonOk() {
     const kids = ssrContentNodes(this);
     if (kids.length !== 1 || kids[0].nodeType !== 1 || kids[0].localName !== 'div' || !kids[0].classList.contains('td-field')) return false;
     const parts = ssrContentNodes(kids[0]);
     if (parts.some((n) => n.nodeType !== 1)) return false;
-    let i = 0;
-    if (parts[0]?.localName === 'label') {
-      const nodes = ssrContentNodes(parts[0]);
+    // v0.58.0 (plan v0.58.0-floating-label QĐ 11): floating → [control | box], label, footer (the label after the control)
+    const floating = this._floating();
+    const li = floating ? 1 : 0;
+    let label = false;
+    if (parts[li]?.localName === 'label') {
+      const nodes = ssrContentNodes(parts[li]);
       const els = nodes.filter((n) => n.nodeType === 1);
       if (els.length > 1 || (els[0] && (els[0] !== nodes[nodes.length - 1] || !els[0].classList.contains('td-field__required')
         || els[0].localName !== 'span' || els[0].children.length))) return false;
-      i = 1;
+      label = true;
     }
-    if (parts.length !== i + 2) return false;
+    if (floating && !label) return false;
+    if (parts.length !== (label ? 3 : 2)) return false;
+    const i = label && !floating ? 1 : 0; // the control / box slot
+    const fi = label ? 2 : 1; // the footer slot
     if (parts[i] !== this._ssrControl) {
       const box = parts[i];
       if (box.localName !== 'div' || !box.classList.contains('td-field__box') || this._ssrControl?.parentElement !== box) return false;
       const kids = ssrContentNodes(box);
       if (kids.length > 4 || kids.some((n) => n.nodeType !== 1 || (n !== this._ssrControl && n.localName !== 'span'))) return false;
     }
-    const footer = parts[i + 1];
+    const footer = parts[fi];
     if (footer.localName !== 'div' || !footer.classList.contains('td-field__footer')) return false;
     const seen = new Set();
     return ssrContentNodes(footer).every((n) => {

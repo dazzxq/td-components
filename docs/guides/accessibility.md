@@ -90,6 +90,11 @@ mô tả riêng của component, trước lỗi); lỗi hiện thì gợi ý r�
 thì tự in `aria-describedby` trong markup. Chữ trạng thái nhìn thấy của `td-toggle` (`on-text` / `off-text`) là mô tả của
 trạng thái **hiện tại**, không bao giờ là tên. Xem [Hint](../components/hint.md).
 
+**Nhãn nổi (0.58.0).** `td-input-field label-mode="floating"` giữ `<label for>` thật — tên và mô tả của ô **giống hệt**
+kiểu nhãn trên (gate 3 trình duyệt). Trong DOM nhãn đứng sau ô nên con trỏ ảo đọc "ô nhập Họ tên" rồi chữ "Họ tên" (như
+Bootstrap `.form-floating`). Không có `placeholder` thật thì placeholder của ô là chữ nhãn (trùng tên, không đọc thêm); nhãn
+nổi 12 px, màu focus đạt 4.7:1; chuyển động tắt khi `prefers-reduced-motion`.
+
 **Đơn vị = mô tả, không phải tên (0.55.0).** Tiền tố / hậu tố của `td-input-field` / `td-number-input` (`https://`, `mAh`,
 `₫`, icon) là trang trí (`aria-hidden`); đơn vị được đọc qua `span#{id}-unit[hidden]` đứng **đầu** mô tả (`unit-label` →
 `suffix` → `prefix`), vẫn còn khi có lỗi. Không chèn chữ ẩn vào nhãn: tên giữ đúng chữ nhìn thấy (WCAG 2.5.3 — người

@@ -2,6 +2,25 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.58.0
+
+**Nhãn nổi (floating label) cho `td-input-field`: `label-mode="floating"`** (owner: biến thể của input-field, dùng lại thiết kế
+`label_mode=floating` của dwp). Plan `docs/internal/plans/v0.58.0-floating-label.md`, Codex plan-review APPROVE 3 vòng,
+impl-review APPROVE 2 vòng + security-review APPROVE; [ADR 0031](docs/internal/decisions/0031-floating-label-variant.md).
+Opt-in, không breaking — `docs/upgrading/breaking-changes.md#0580`.
+
+### Added
+
+- `<td-input-field label-mode="floating">` (property `labelMode`; PHP `td_field` option `label_mode`): nhãn nằm trong ô, nổi lên
+  và thu nhỏ (12 px) khi focus / có giá trị / trình duyệt tự điền; luôn nổi với ô ngày tháng và ô có `prefix` / `suffix`.
+  Thuần CSS (`:placeholder-shown` / `:focus` / `:autofill`) nên đúng cả khi chưa có JS và không xê dịch lúc nâng cấp.
+- Ô cao 48 / 56 / 64 px theo `size` (≥ 44 px cảm ứng); `textarea` có nhãn bám trên + nền đặc sau nhãn nổi. Nhãn vẫn là
+  `<label for>` thật (tên truy cập không đổi, bấm nhãn focus ô); vùng bấm của nhãn nổi không đè dòng giá trị.
+- Placeholder thật vẫn dùng được: ô thường hiện khi focus, ô luôn-nổi hiện khi trống. Không có placeholder → placeholder của
+  control = chữ nhãn, luôn ẩn (cây truy cập giống hệt kiểu nhãn thường).
+- RTL, dark + palette, `forced-colors`, giảm chuyển động, nhãn dài cắt `…`, chữ phóng to (ô lớn theo dòng giá trị, kể cả ô
+  có prefix / suffix). Token `--td-field-float-*`.
+
 ## 0.57.2
 
 **Câu đếm phân trang của bảng cây: "Hiển thị 1-3 / 3 nhóm · 6 dòng"** (dsuite: bảng cây phân trang theo nhánh gốc nên câu

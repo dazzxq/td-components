@@ -2073,6 +2073,36 @@
       "light": "1.5rem",
       "dark": "1.5rem",
       "why": "v0.57.0 tree table: tree toggle / spacer size (44px on coarse pointers)"
+    },
+    "--td-field-float-h-sm": {
+      "light": "48px",
+      "dark": "48px",
+      "why": "v0.58.0 floating label: field height, size sm (≥ 44 px touch target)"
+    },
+    "--td-field-float-h-md": {
+      "light": "56px",
+      "dark": "56px",
+      "why": "v0.58.0 floating label: field height, size md (dwp 56 px)"
+    },
+    "--td-field-float-h-lg": {
+      "light": "64px",
+      "dark": "64px",
+      "why": "v0.58.0 floating label: field height, size lg"
+    },
+    "--td-field-float-scale": {
+      "light": "0.857",
+      "dark": "0.857",
+      "why": "v0.58.0 floating label: scale of the raised label (0.857 × 14 px = 12 px; dwp 0.78)"
+    },
+    "--td-field-float-label": {
+      "light": "rgb(107, 107, 115)",
+      "dark": "rgb(172, 172, 180)",
+      "why": "v0.58.0 floating label: resting / raised label colour (= --td-field-placeholder)"
+    },
+    "--td-field-float-label-focus": {
+      "light": "rgb(37, 99, 235)",
+      "dark": "rgb(75, 141, 248)",
+      "why": "v0.58.0 floating label: focused label colour (= --td-accent — text ≥ 4.7:1; the focus border colour is only ≥ 3:1)"
     }
   },
   "lightDeltas": {

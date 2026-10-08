@@ -14,6 +14,8 @@
  * (server-mode controlled, column-menu, the "Số điện thoại" column hidden).
  * v0.55.0: section `affix` — td-input-field / td-number-input with prefix / suffix / icons / a page [slot] button, again in
  *   the 280 px column (a very long prefix: ellipsis, the control keeps ≥ 4ch, the box never overflows the column).
+ * v0.58.0: section `floating` — td-input-field label-mode="floating" (empty, value, real placeholder, prefix + suffix,
+ *   textarea, a very long label, date; again in the 280 px column) + `.rsp-big-text` (text tokens × 2: the value line grows).
  * v0.40.0: td-datetime-range (form grid + 280 px column via controls(); a 160 px datetime host; opener `#g-dtr`).
  * v0.45.0: section `steps-timeline` — td-steps (6 steps horizontal, vertical, clickable in a 280 px column) and
  * td-timeline (40 items, details open, fixed `now`; again in the 280 px column).
@@ -220,6 +222,20 @@ export function mountResponsiveFixture(root) {
       <td-input-field id="rsp-affix-pw-n" name="pw2" type="password" label="Mật khẩu" prefix-icon="lock" suffix="8+ ký tự"><button type="button" slot="suffix" class="rsp-affix-btn" aria-label="Hiện mật khẩu">👁</button></td-input-field>
       <td-number-input id="rsp-affix-num-n" name="price-n" label="Giá bán" prefix-icon="search" suffix="₫" suffix-icon="lock" value="32990000"></td-number-input>
     </div>
+  </section>
+  <section class="rsp-section" data-section="floating"><h2>Nhãn nổi (v0.58)</h2>
+    <td-input-field id="rsp-fl-empty" name="fl1" label="Họ tên" label-mode="floating" helper-text="Như trên CCCD"></td-input-field>
+    <td-input-field id="rsp-fl-value" name="fl2" label="Email" label-mode="floating" type="email" value="an.nguyen@congty.vn" required></td-input-field>
+    <td-input-field id="rsp-fl-ph" name="fl3" label="Điện thoại" label-mode="floating" type="tel" placeholder="vd: 0901 234 567"></td-input-field>
+    <td-input-field id="rsp-fl-prefix" name="fl4" label="Website" label-mode="floating" prefix="https://" suffix=".vn" value="congty"></td-input-field>
+    <td-input-field id="rsp-fl-ta" name="fl5" label="Ghi chú" label-mode="floating" type="textarea" value="Giao giờ hành chính" max-length="200"></td-input-field>
+    <div class="rsp-narrow">
+      <td-input-field id="rsp-fl-long" name="fl6" label="Địa chỉ nhận hàng đầy đủ gồm số nhà, tên đường, phường, quận và thành phố" label-mode="floating" value="12 Lê Lợi"></td-input-field>
+      <td-input-field id="rsp-fl-long-empty" name="fl7" label="Địa chỉ nhận hàng đầy đủ gồm số nhà, tên đường, phường, quận và thành phố" label-mode="floating"></td-input-field>
+      <td-input-field id="rsp-fl-date" name="fl8" label="Ngày giao" label-mode="floating" type="date" size="sm"></td-input-field>
+    </div>
+    <div class="rsp-big-text"><td-input-field id="rsp-fl-big" name="fl9" label="Họ tên" label-mode="floating" value="Nguyễn An"></td-input-field>
+      <td-input-field id="rsp-fl-big-affix" name="fl10" label="Website" label-mode="floating" prefix="https://" suffix=".vn" value="congty"></td-input-field></div>
   </section>
   <section class="rsp-section" data-section="hints"><h2>Gợi ý (v0.54)</h2>
     <td-dropdown id="rsp-hint-dd" name="ship" label="Kho xuất hàng" helper-text="Phí vận chuyển được tính theo khu vực của kho xuất hàng — chọn kho gần người nhận nhất để giao nhanh hơn"></td-dropdown>
