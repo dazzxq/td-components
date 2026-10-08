@@ -109,7 +109,8 @@ async function live(engine, browser) {
     }), [t, f]);
     check(`${engine} ${id}: description text = top mode`, desc[0] === desc[1], JSON.stringify(desc));
     if (cdp) {
-      const [at, af] = [await axOf(t), await axOf(f)];
+      // the component-owned ids differ by host id only (t-… / f-…)
+      const [at, af] = [(await axOf(t)).replaceAll(`t-${id}-`, 'X-'), (await axOf(f)).replaceAll(`f-${id}-`, 'X-')];
       check(`chromium AX ${id}: node = top mode`, at === af, `top ${at} floating ${af}`);
     }
   }
