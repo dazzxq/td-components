@@ -396,7 +396,8 @@ giữ 5 dòng: đặt `--td-dtp-visible: 5` trong `@media (max-width: 719.98px)`
 </td-datetime-picker>
 ```
 
-Markup PHP (0.56.0, `data-td-ssr="datetime-picker@1"`) có thêm `input.td-dtp__native` (ô ngày native, `id="{host}-native"`)
+Markup PHP (0.56.0; từ 0.60.0 là `data-td-ssr="datetime-picker@2"` — JS vẫn nhận `@1` của markup in trước 0.60 trong lúc
+nâng cấp dần, `@2` không có `min` / `max` ngầm 2000–2099, chỉ `max="9999-12-31"` khi site không đặt `max`) có thêm `input.td-dtp__native` (ô ngày native, `id="{host}-native"`)
 giữa nhãn và trigger, nhãn `for="{host}-native"`; trước khi nâng cấp ô native mang hộp của trigger và trigger bị ẩn
 (`td-datetime-picker:not(:defined)`); khi nâng cấp component gỡ ô native và trỏ nhãn sang trigger.
 
