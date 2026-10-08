@@ -268,3 +268,38 @@ export const AffixSlot = {
     });
   },
 };
+
+/**
+ * v0.58.0 `label-mode="floating"` (plan v0.58.0-floating-label, ADR 0031; design from dwp): the label sits inside the field
+ * and rises (12 px) on focus / value — pure CSS, identical before and after the upgrade. Every state side by side, light +
+ * dark (`data-td-theme="dark"` scope) + RTL, for the release screenshot.
+ */
+const floatingSet = (p) => `
+    <td-input-field name="${p}-empty" label="Họ tên" label-mode="floating" helper-text="Như trên CCCD"></td-input-field>
+    <td-input-field name="${p}-focus" label="Email" label-mode="floating" type="email" data-sb-focus></td-input-field>
+    <td-input-field name="${p}-value" label="Email" label-mode="floating" type="email" value="an.nguyen@congty.vn" required></td-input-field>
+    <td-input-field name="${p}-ph" label="Điện thoại" label-mode="floating" type="tel" placeholder="vd: 0901 234 567"></td-input-field>
+    <td-input-field name="${p}-err" label="Mã số thuế" label-mode="floating" value="12" helper-text="10 hoặc 13 chữ số" error-text="Mã số thuế phải có 10 hoặc 13 chữ số"></td-input-field>
+    <td-input-field name="${p}-dis" label="Mã khách hàng" label-mode="floating" value="KH-0042" disabled></td-input-field>
+    <td-input-field name="${p}-ro" label="Ngày tạo" label-mode="floating" value="08/10/2026" readonly></td-input-field>
+    <td-input-field name="${p}-prefix" label="Website" label-mode="floating" prefix="https://" suffix=".vn" value="congty"></td-input-field>
+    <td-input-field name="${p}-date" label="Ngày giao" label-mode="floating" type="date"></td-input-field>
+    <td-input-field name="${p}-ta" label="Ghi chú" label-mode="floating" type="textarea" max-length="200" value="Giao giờ hành chính"></td-input-field>
+    <td-input-field name="${p}-long" label="Địa chỉ nhận hàng đầy đủ gồm số nhà, tên đường, phường, quận và thành phố" label-mode="floating"></td-input-field>
+    <td-input-field name="${p}-sm" label="Mã (sm)" label-mode="floating" size="sm"></td-input-field>
+    <td-input-field name="${p}-lg" label="Thành phố (lg)" label-mode="floating" size="lg" value="Huế"></td-input-field>`;
+
+export const FloatingLabel = {
+  args: { label: 'Họ tên', 'label-mode': 'floating', placeholder: '', value: '' },
+  argTypes: { 'label-mode': { control: 'select', options: ['top', 'floating'] } },
+  render: (args) => `<div class="sb-stack">
+    <td-input-field name="live"${opt('label', args.label)}${opt('label-mode', args['label-mode'])}${opt('placeholder', args.placeholder)}${opt('value', args.value)}></td-input-field>
+    <h3>Sáng</h3>${floatingSet('l')}
+    <h3>Tối</h3><div data-td-theme="dark" class="sb-stack sb-dark">${floatingSet('d')}</div>
+    <h3>RTL</h3><div dir="rtl" class="sb-stack"><td-input-field name="rtl" label="الاسم الكامل" label-mode="floating"></td-input-field>
+      <td-input-field name="rtl-v" label="الاسم الكامل" label-mode="floating" value="سلام"></td-input-field></div>
+    <p class="sb-note">Nhãn nổi khi focus / có giá trị / tự điền; luôn nổi với date và khi có tiền tố / hậu tố. placeholder chỉ hiện khi focus.</p></div>`,
+  play: ({ canvasElement }) => {
+    canvasElement.querySelector('td-input-field[data-sb-focus] .td-field__control')?.focus(); // the light "focused" field
+  },
+};

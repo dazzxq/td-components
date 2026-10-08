@@ -7,6 +7,7 @@
 .sb-stack > td-chip-input { width: min(100%, 28rem); }
 .sb-stack > td-tree, .sb-stack > td-tree-select, .sb-stack > form > td-tree-select { width: min(100%, 28rem); }
 .sb-stack > td-repeater, .sb-stack > form > td-repeater { width: min(100%, 40rem); }
+.sb-stack > td-input-field[label-mode="floating"], .sb-stack > div > td-input-field[label-mode="floating"] { width: min(100%, 22rem); } /* v0.58.0 story */
 .sb-rep-row > td-input-field, .sb-rep-row > td-number-input { flex: 1 1 12rem; min-width: 0; }
 .sb-rep-row > td-input-field[type="textarea"] { flex-basis: 100%; }
 .sb-rep-pre { margin: 0; font: 12px/1.5 var(--td-font-mono); color: var(--td-color-text-muted); white-space: pre-wrap; }

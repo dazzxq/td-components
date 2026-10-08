@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.58.0](#0580) | Thêm tính năng (nhãn nổi `label-mode="floating"` cho `td-input-field`, PHP `label_mode`) | Không bắt buộc. Opt-in: không dùng `label-mode` → `render()` và PHP giống từng byte 0.57. Ô floating cao hơn (48 / 56 / 64 px) và control đứng **trước** nhãn trong DOM — CSS / script của site kiểu `.td-field__label + .td-field__control` không khớp ô floating. |
 | [0.57.2](#0572) | Đổi giao diện nhỏ (**chỉ bảng cây**: chữ thông tin phân trang) + thêm hook (`td-table` `formatPageInfo`, attribute `total-rows`; `td-pagination` `formatInfo`) | Không bắt buộc. Bảng cây (`tree` + `row-key`): "Hiển thị 1-3 / 3 mục" → "Hiển thị 1-3 / 3 nhóm · 6 dòng" (đổi qua `TdTable.labels.treeItemLabel` / `treePageInfo` hoặc `formatPageInfo`). Test / script đọc chữ này cần cập nhật. Bảng phẳng giữ nguyên. Server mode bảng cây: xem lại hợp đồng trang (một trang = gốc + toàn bộ con cháu; `total-items` = số gốc). |
 | [0.57.1](#0571) | Đổi hành vi nhỏ (`TdModal` focus ban đầu theo `autofocus`) + đổi giao diện **chỉ khi site đặt `--td-field-note-size`** + thêm token `--td-field-error-size` | Không bắt buộc. Modal có phần tử `autofocus` trong body / footer: focus ban đầu giờ vào đó (trước: field đầu tiên) — `focusTarget` / `autoFocus: false` / `confirm` không đổi. Site đã đặt `--td-field-note-size`: chữ lỗi giờ to theo; muốn giữ lỗi 12 px → `--td-field-error-size: var(--td-text-xs)`. |
 | [0.57.0](#0570) | Thêm tính năng (bảng cây `td-table tree`) + đổi hành vi nhỏ (menu "Thao tác" của card) | Không bắt buộc. Bảng cây là opt-in (`tree` + `row-key`); bảng không `tree` giống từng byte. Menu "Thao tác" (dạng card, > 2 action) giờ đọc dòng **lúc mở** và kiểm lại **lúc chọn**: dòng đã rời bảng trong lúc menu mở (đổi trang, `data` mới) → không phát `row-action` (trước: phát cho dòng **đang** ở chỉ số cũ — có thể là dòng khác). `getState()` thêm `expandedKeys`. |
@@ -82,6 +83,19 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.58.0
+
+**Mức: thêm tính năng (opt-in), không breaking.**
+
+- **Nhãn nổi:** `<td-input-field label-mode="floating">` / `td_field(…, ['label_mode' => 'floating'])`
+  ([input-field § Nhãn nổi](../components/input-field.md#nhãn-nổi--label-modefloating-0580)). Ô không dùng không đổi gì
+  (`render()` / PHP giống từng byte, baseline CSP cũ không đổi).
+- **Khác kiểu thường khi bật:** ô cao 48 / 56 / 64 px theo `size` (kiểu thường 32 / 40 / 48); trong `.td-field`, control
+  (hoặc `.td-field__box`) đứng **trước** `<label>`; class mới `td-field--floating`, `td-field--always-float`,
+  `td-field--ph-label`; không có `placeholder` thì placeholder của control = chữ nhãn (luôn ẩn). Token mới
+  `--td-field-float-*` ([theming](../customization/theming.md)). Palette `td-theme`: không đổi (algorithm 4).
+- `number-input`, `dropdown` và các control khác chưa có nhãn nổi.
 
 ## 0.57.2
 
