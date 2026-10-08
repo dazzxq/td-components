@@ -213,7 +213,7 @@ namespace TdComponents {
             'placeholder' => 'dd/mm/yyyy – dd/mm/yyyy', 'placeholderDatetime' => 'dd/mm/yyyy hh:mm – dd/mm/yyyy hh:mm',
             'openEnd' => 'Không hạn'];
         /** v0.56.0: td_datetime_picker / td_date (always the element <td-datetime-picker> + one native date / datetime-local input). */
-        public const SSR_DATETIME_PICKER = 'datetime-picker@1';
+        public const SSR_DATETIME_PICKER = 'datetime-picker@2';
         /** v0.56.0: trigger placeholders of td_datetime_picker = TdDatetimePicker.labels (parity: test/php/td-v056-php.test.js). */
         public const DTP_LABELS = ['placeholder' => 'dd/mm/yyyy - hh:mm', 'placeholderDate' => 'dd/mm/yyyy', 'clear' => 'Xoá ngày'];
         /** v0.38.0: texts of td_scan_input = TdScanInput.labels (a site overriding the JS labels gets a safe re-render). */
@@ -3786,14 +3786,17 @@ namespace {
 
     /**
      * v0.56.0 (plan v0.56.0-repeater-icons-date D1–D9) — ONE date (or date-time) field: always the element
-     * `<td-datetime-picker data-td-ssr="datetime-picker@1">` (like td_datetime_range). Without JS it is a native
+     * `<td-datetime-picker data-td-ssr="datetime-picker@2">` (like td_datetime_range). Without JS it is a native
      * `<input type="date|datetime-local">` named `$name` (min / max / step / required / disabled checked by the browser,
      * styled like the trigger); with JS the element adopts the markup in place (its own gate), takes the LIVE native value
      * and removes the native input (FormData keeps one entry — the host's). Default mode `datetime` = the element's;
      * `td_date()` forces `date`. Values / bounds: `dd/mm/yyyy[ - hh:mm]`, `yyyy-mm-dd`, `yyyy-mm-ddThh:mm[:ss]`, DB
-     * `yyyy-mm-dd hh:mm[:ss]` (td__dtr_parts); an invalid value / bound is dropped. Without min / max the picker's own year
-     * domain applies (2000–2099): printed as the native input's implicit min / max only, and a server value outside it is
-     * dropped with one E_USER_WARNING (the element would call it badInput). Options: label, mode (date | datetime; month /
+     * `yyyy-mm-dd hh:mm[:ss]` (td__dtr_parts); an invalid value / bound is dropped.
+     * v0.60.0 (contract `datetime-picker@2`, plan v0.60.0-calendar-picker B3 / B5): the implicit 2000–2099 year window of
+     * v0.56–v0.59 is GONE — every representable date (years 1–9999, td__dtr_parts) is printed, nothing is dropped for its
+     * year and no warning is raised. The native input gets no implicit `min`; its `max` is the site's, else `9999-12-31`
+     * (`T23:59` in datetime mode): the limit of what the kit represents — a native date input without `max` accepts a
+     * 6-digit year, which the element could not read. That implicit max is never printed on the host. Options: label, mode (date | datetime; month /
      * year → date + warning), min, max, required, disabled, placeholder, minute_step, form_value_format (iso | display |
      * db), open_at, helper_text (alias hint), error, aria_label, id, class, attrs (host; owned names reserved).
      * No JS the browser submits its own format: date `yyyy-mm-dd` (= iso), datetime `yyyy-mm-ddThh:mm`.
@@ -3822,11 +3825,6 @@ namespace {
         $min = isset($o['min']) && is_string($o['min']) ? td__dtr_parts($o['min'], $mode, 'start') : null;
         $max = isset($o['max']) && is_string($o['max']) ? td__dtr_parts($o['max'], $mode, 'end') : null;
         $v = $value !== null ? td__dtr_parts($value, $mode, 'start') : null;
-        // D3b: the picker's own domain — no bound → years 2000–2099 (else badInput); a bound replaces it (1 / 9999 the other side)
-        if ($v !== null && $min === null && $max === null && ($v[0] < 2000 || $v[0] > 2099)) {
-            trigger_error('td_datetime_picker: value outside the default years 2000-2099 dropped (set min / max to allow it)', E_USER_WARNING);
-            $v = null;
-        }
         $step = null;
         $rawStep = $o['minute_step'] ?? null;
         if (is_int($rawStep) || (is_string($rawStep) && preg_match('/^\s*[0-9]{1,2}\s*$/', $rawStep))) {
@@ -3848,14 +3846,10 @@ namespace {
             : sprintf('%02d/%02d/%04d', $p[2], $p[1], $p[0]) . ($mode === 'datetime' ? sprintf(' - %02d:%02d', $p[3], $p[4]) : '');
         $native = static fn (?array $p): ?string => $p === null ? null
             : sprintf('%04d-%02d-%02d', $p[0], $p[1], $p[2]) . ($mode === 'datetime' ? sprintf('T%02d:%02d', $p[3], $p[4]) : '');
-        // the native input's domain: the bounds, else the picker's default years (never printed on the host)
-        if ($min === null && $max === null) {
-            $nmin = $mode === 'datetime' ? '2000-01-01T00:00' : '2000-01-01';
-            $nmax = $mode === 'datetime' ? '2099-12-31T23:59' : '2099-12-31';
-        } else {
-            $nmin = $native($min);
-            $nmax = $native($max);
-        }
+        // v0.60.0 (datetime-picker@2): the native input's domain = the site bounds; without a max, the last date the kit can
+        // represent (never printed on the host) — no implicit min, no 2000–2099 window
+        $nmin = $native($min);
+        $nmax = $native($max) ?? ($mode === 'datetime' ? '9999-12-31T23:59' : '9999-12-31');
 
         $taken = [];
         $html = '<td-datetime-picker' . Td::ownAttrs([

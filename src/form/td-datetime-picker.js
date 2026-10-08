@@ -10,8 +10,14 @@ import {
   compareModeParts, MODE_PARTS, toNativeValue, fromNativeValue,
 } from '../utils/datetime.js';
 
-const DEFAULT_MIN_YEAR = 2000; // dcms parity (D5): the range used when `min` / `max` are not set
-const DEFAULT_MAX_YEAR = 2099;
+// v0.60.0 (plan v0.60.0-calendar-picker B1 / B6): the implicit 2000–2099 year window is GONE from validation — without
+// `min` / `max` every representable date (years 1–9999) is valid. These two numbers only survive as the implicit native
+// min / max php/td.php v0.56–v0.59 printed (SSR contract `datetime-picker@1`): the hydration gate must still recognise that
+// markup during a rolling upgrade. Remove them together with the @1 branch of _nativeTemplate().
+const SSR1_MIN_YEAR = 2000;
+const SSR1_MAX_YEAR = 2099;
+/** SSR contracts this element adopts in place: @1 (php ≤ 0.59) and @2 (php ≥ 0.60). */
+const SSR_SCHEMAS = [1, 2];
 const MODE_SUFFIX = { datetime: '', date: 'Date', month: 'Month', year: 'Year' };
 /** Every form-associated element (v0.56.0 SSR gate: exactly the native input + the trigger). */
 const FORM_ASSOCIATED = 'input, textarea, select, button, fieldset, output, object';
@@ -61,13 +67,18 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
  *
  * **Form-associated:** submits ISO-local `YYYY-MM-DDTHH:mm:00` by default, `form-value-format="display"`
  * (dd/mm/yyyy - hh:mm) or `"db"` (yyyy-mm-dd hh:mm:ss) — other modes: `YYYY-MM-DD` | `YYYY-MM` | `YYYY` (iso = db).
- * A malformed or impossible value (e.g. 31/02, 25:99, a year
- * outside the default 2000–2099) sets `badInput` and submits the raw string; `min` / `max` set `rangeUnderflow` /
- * `rangeOverflow`; `required` + empty → `valueMissing`. Error contract: `error-text`, `setError()`, `clearError()`.
+ * A malformed or impossible value (e.g. 31/02, 25:99, year 0000) sets `badInput` and submits the raw string; `min` / `max`
+ * set `rangeUnderflow` / `rangeOverflow`; `required` + empty → `valueMissing`. Without `min` / `max` every representable
+ * date is valid: years 1–9999 (v0.60.0 — the implicit 2000–2099 window of v0.10–v0.59 is gone).
+ * Error contract: `error-text`, `setError()`, `clearError()`.
  *
- * **SSR (v0.56.0, contract `datetime-picker@1`, plan v0.56.0-repeater-icons-date D4–D7):** php td_datetime_picker() /
- * td_date() print the host + `div.td-dtp` > [label for={id}-native] + `input.td-dtp__native` (type date | datetime-local:
- * the no-JS field, styled like the trigger before define) + the trigger. The element adopts EXACTLY that markup in place
+ * **SSR (v0.56.0, plan v0.56.0-repeater-icons-date D4–D7; contracts `datetime-picker@1` AND `datetime-picker@2`, v0.60.0
+ * plan v0.60.0-calendar-picker B6):** php td_datetime_picker() / td_date() print the host + `div.td-dtp` > [label
+ * for={id}-native] + `input.td-dtp__native` (type date | datetime-local: the no-JS field, styled like the trigger before
+ * define) + the trigger. The two contracts differ ONLY in the native input's implicit domain when the site sets no bound:
+ * @1 (php ≤ 0.59) `min` 2000-01-01 + `max` 2099-12-31; @2 (php ≥ 0.60) no implicit `min`, `max` 9999-12-31 unless the site
+ * sets one. The schema of the marker selects the expected native input — each contract adopts its own markup only.
+ * The element adopts EXACTLY that markup in place
  * (its own gate — the shared TdFormElement one allows a single control): state = early property > the LIVE native value
  * > attribute, the host's FormData first, then the native input loses its form attributes and goes, its focus moves to
  * the trigger, the label points at the trigger. Anything else → safe render + the live value of the one native candidate.
@@ -164,12 +175,12 @@ export class TdDatetimePicker extends TdFormElement {
     return { min: parseBound(this.getAttribute('min'), 'min'), max: parseBound(this.getAttribute('max'), 'max') };
   }
 
-  /** @private year range for the year field and the default-range check */
+  /**
+   * @private year range of the year field + the `{min}` / `{max}` of `messages.year`: the bound's year, else the limit of
+   * the parts helpers (1 / 9999). v0.60.0: no implicit 2000–2099 default any more.
+   */
   _yearRange() {
     const { min, max } = this._bounds();
-    if (!min && !max) return { min: DEFAULT_MIN_YEAR, max: DEFAULT_MAX_YEAR };
-    // An explicit bound replaces the whole default range: the other side is the helpers' valid year limit, so a
-    // one-sided bound outside 2000–2099 never yields an impossible range (review ISSUE-2).
     return { min: min ? min.year : 1, max: max ? max.year : 9999 };
   }
 
@@ -193,9 +204,6 @@ export class TdDatetimePicker extends TdFormElement {
       const message = reason === 'year' ? fill(M.year, years)
         : reason === 'incomplete' ? this._text(M, 'incomplete') : M[reason];
       return { flag: 'badInput', message, field };
-    }
-    if (!min && !max && (p.year < DEFAULT_MIN_YEAR || p.year > DEFAULT_MAX_YEAR)) {
-      return { flag: 'badInput', message: fill(M.year, years), field: 'year' };
     }
     if (min && compareModeParts(p, min, mode) < 0) {
       return { flag: 'rangeUnderflow', message: fill(M.min, { min: formatModeDisplay(min, mode) }), field: null };
@@ -537,11 +545,13 @@ export class TdDatetimePicker extends TdFormElement {
     return this._trigger();
   }
 
-  // --- SSR (contract datetime-picker@1, v0.56.0 D5) ---
+  // --- SSR (contracts datetime-picker@1 + @2; v0.56.0 D5, v0.60.0 B6) ---
 
   /**
-   * Marker `datetime-picker@1` + EXACTLY the skeleton php td_datetime_picker() prints → adopt in place; anything else →
-   * safe render now + the live native value (only from exactly one native candidate) + the focus on the trigger.
+   * Marker `datetime-picker@1` or `@2` + EXACTLY the skeleton php td_datetime_picker() prints FOR THAT SCHEMA → adopt in
+   * place; anything else (another schema number, markup of the other schema) → safe render now + the live native value
+   * (only from exactly one native candidate) + the focus on the trigger. The schema is read BEFORE the marker is
+   * consumed and handed to the gate (it selects the expected native input — _nativeTemplate()).
    * @returns {boolean}
    */
   canHydrate() {
@@ -549,7 +559,8 @@ export class TdDatetimePicker extends TdFormElement {
     if (!m || m.name !== 'datetime-picker') return false;
     this.removeAttribute('data-td-ssr'); // consumed (not `hydratable`: a re-connect renders again)
     this._ssrDefault = { value: this.getAttribute('value') };
-    const gate = m.schema === 1 ? this._ssrGate() : null;
+    const schema = m.schema;
+    const gate = SSR_SCHEMAS.includes(schema) ? this._ssrGate(schema) : null;
     if (gate) {
       this._ssrAdopt = gate;
       return true;
@@ -585,7 +596,7 @@ export class TdDatetimePicker extends TdFormElement {
       if (v === '') this.removeAttribute('value');
       else {
         const p = fromNativeValue(v, mode);
-        if (p) this.setAttribute('value', formatModeDisplay(p, mode)); // out of the year domain → badInput, kept as typed
+        if (p) this.setAttribute('value', formatModeDisplay(p, mode)); // a value the parts helpers cannot read (a 5-digit year) → the attribute stays
       }
     }
     if (g.label) g.label.setAttribute('for', `${this.id}-trigger`);
@@ -613,9 +624,11 @@ export class TdDatetimePicker extends TdFormElement {
 
   /**
    * @private The strict gate. Returns the parts to adopt, or null.
+   * @param {number} schema the marker's schema (1 | 2) — REQUIRED: it decides the native input the markup must carry
    * @returns {{ input: HTMLInputElement, trigger: HTMLElement, label: HTMLElement|null, note: HTMLElement|null }|null}
    */
-  _ssrGate() {
+  _ssrGate(schema) {
+    if (!SSR_SCHEMAS.includes(schema)) return null;
     const mode = this._mode();
     if (mode !== 'date' && mode !== 'datetime') return null;
     const nodes = this._ssrWithoutHelperNote(ssrContentNodes(this)); // v0.54.0: minus the PHP helper note
@@ -661,7 +674,7 @@ export class TdDatetimePicker extends TdFormElement {
     const trigger = /** @type {HTMLElement} */ (have[have.length - 1]);
     const wt = want[want.length - 1];
     if (required) wt.setAttribute('aria-required', 'true');
-    if (!this._ssrTriggerOk(trigger, wt) || !this._ssrNativeOk(input, mode)) return null;
+    if (!this._ssrTriggerOk(trigger, wt) || !this._ssrNativeOk(input, mode, schema)) return null;
     const controls = [...this.querySelectorAll(FORM_ASSOCIATED)];
     const wantControls = clear ? [input, trigger, clear] : [input, trigger];
     if (controls.length !== wantControls.length || controls.some((c, i) => c !== wantControls[i])) return null;
@@ -690,9 +703,13 @@ export class TdDatetimePicker extends TdFormElement {
     return ssrSameAttrs(icon, want.children[1]) && icon.localName === 'span' && ssrContentNodes(icon).length === 0;
   }
 
-  /** @private the no-JS input = php's exactly (its `value` may be any valid native value of the mode) */
-  _ssrNativeOk(live, mode) {
-    const want = this._nativeTemplate(mode);
+  /**
+   * @private the no-JS input = php's exactly FOR THIS SCHEMA (its `value` may be any valid native value of the mode)
+   * @param {Element} live @param {'date'|'datetime'} mode @param {number} schema 1 | 2 (required)
+   */
+  _ssrNativeOk(live, mode, schema) {
+    const want = this._nativeTemplate(mode, schema);
+    if (!want) return false;
     if (live.localName !== 'input' || live.namespaceURI !== want.namespaceURI || live.childNodes.length) return false;
     const attrs = [...live.attributes].filter((a) => a.name !== 'value');
     if (attrs.length !== want.attributes.length) return false;
@@ -703,10 +720,16 @@ export class TdDatetimePicker extends TdFormElement {
   }
 
   /**
-   * @private the expected no-JS input (php td_datetime_picker), without `value`. Without min / max it carries the
-   * picker's default year domain (2000–2099) — on the native input only (D3b).
+   * @private the expected no-JS input (php td_datetime_picker), without `value`, for one SSR schema (v0.60.0 B6):
+   *   @1 (php ≤ 0.59): without min / max the implicit domain 2000-01-01 … 2099-12-31 (D3b); with a bound only the bounds;
+   *   @2 (php ≥ 0.60): no implicit `min`; `max` = the site's, else 9999-12-31[T23:59] — the limit of what the parts
+   *       helpers represent (a native date input without `max` takes a 6-digit year in Chromium).
+   * The implicit values exist on the native input only, never on the host. An unknown schema → null (never adopted).
+   * @param {'date'|'datetime'} mode @param {number} schema 1 | 2 (required — no default: a caller that forgets it adopts nothing)
+   * @returns {HTMLInputElement|null}
    */
-  _nativeTemplate(mode) {
+  _nativeTemplate(mode, schema) {
+    if (!SSR_SCHEMAS.includes(schema)) return null;
     const id = this.id;
     const input = document.createElement('input');
     input.className = 'td-dtp__native';
@@ -715,12 +738,17 @@ export class TdDatetimePicker extends TdFormElement {
     const name = this.getAttribute('name');
     if (name) input.setAttribute('name', name);
     const { min, max } = this._bounds();
-    if (!min && !max) {
-      input.setAttribute('min', mode === 'datetime' ? `${DEFAULT_MIN_YEAR}-01-01T00:00` : `${DEFAULT_MIN_YEAR}-01-01`);
-      input.setAttribute('max', mode === 'datetime' ? `${DEFAULT_MAX_YEAR}-12-31T23:59` : `${DEFAULT_MAX_YEAR}-12-31`);
+    if (schema === 1) {
+      if (!min && !max) {
+        input.setAttribute('min', mode === 'datetime' ? `${SSR1_MIN_YEAR}-01-01T00:00` : `${SSR1_MIN_YEAR}-01-01`);
+        input.setAttribute('max', mode === 'datetime' ? `${SSR1_MAX_YEAR}-12-31T23:59` : `${SSR1_MAX_YEAR}-12-31`);
+      } else {
+        if (min) input.setAttribute('min', toNativeValue(min, mode));
+        if (max) input.setAttribute('max', toNativeValue(max, mode));
+      }
     } else {
       if (min) input.setAttribute('min', toNativeValue(min, mode));
-      if (max) input.setAttribute('max', toNativeValue(max, mode));
+      input.setAttribute('max', max ? toNativeValue(max, mode) : (mode === 'datetime' ? '9999-12-31T23:59' : '9999-12-31'));
     }
     if (mode === 'datetime' && this.getAttribute('minute-step') != null) input.setAttribute('step', String(this._minuteStep() * 60));
     if (this.hasAttribute('required')) input.setAttribute('required', '');

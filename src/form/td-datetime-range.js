@@ -14,8 +14,6 @@ import {
   spanDays,
 } from '../utils/date-presets.js';
 
-const DEFAULT_MIN_YEAR = 2000; // same default range as td-datetime-picker (dcms parity D5)
-const DEFAULT_MAX_YEAR = 2099;
 const SIDES = /** @type {const} */ (['start', 'end']);
 /** Every form-associated element (the SSR gate counts them: exactly the two natives + the trigger). */
 const FORM_ASSOCIATED = 'input, textarea, select, button, fieldset, output, object';
@@ -179,10 +177,12 @@ export class TdDatetimeRange extends TdFormElement {
     return { min: parseBound(this.getAttribute('min'), 'min'), max: parseBound(this.getAttribute('max'), 'max') };
   }
 
-  /** @private */
+  /**
+   * @private year range of the year fields + `messages.year`: the bound's year, else 1 / 9999 (v0.60.0, plan
+   * v0.60.0-calendar-picker B4: like td-datetime-picker, no implicit 2000–2099 window any more)
+   */
   _yearRange() {
     const { min, max } = this._bounds();
-    if (!min && !max) return { min: DEFAULT_MIN_YEAR, max: DEFAULT_MAX_YEAR };
     return { min: min ? min.year : 1, max: max ? max.year : 9999 };
   }
 
@@ -216,9 +216,6 @@ export class TdDatetimeRange extends TdFormElement {
         : reason === 'date' ? 'day' : reason;
       const message = reason === 'year' ? fill(M.year, years) : M[reason];
       return { flag: 'badInput', message, field };
-    }
-    if (!min && !max && (p.year < DEFAULT_MIN_YEAR || p.year > DEFAULT_MAX_YEAR)) {
-      return { flag: 'badInput', message: fill(M.year, years), field: 'year' };
     }
     if (min && compareModeParts(p, min, mode) < 0) {
       return { flag: 'rangeUnderflow', message: fill(M.min, { min: formatModeDisplay(min, mode) }), field: null };
