@@ -174,3 +174,27 @@ export const Dark = {
     });
   },
 };
+
+/** v0.59.0: `message` as an array (one paragraph per string, always TEXT) + a list Node. */
+export const ConfirmMultiline = {
+  name: 'Confirm nhiều dòng (mảng / Node)',
+  render: () => `<div class="sb-stack">${trigger('m-multi', 'Xoá 3 sản phẩm', 'danger')}<p class="sb-note" id="m-multi-out"></p></div>`,
+  play: ({ canvasElement }) => {
+    const out = canvasElement.querySelector('#m-multi-out');
+    bind(canvasElement, 'm-multi', async () => {
+      const ul = document.createElement('ul');
+      for (const name of ['Áo thun <cổ tròn>', 'Quần jeans', 'Mũ & nón']) {
+        const li = document.createElement('li');
+        li.textContent = name; // data of the page → text
+        ul.appendChild(li);
+      }
+      const ok = await TdModal.confirm({
+        title: 'Xoá sản phẩm?',
+        message: ['Ba sản phẩm sau sẽ bị xoá:', ul, 'Không thể hoàn tác.'],
+        confirmVariant: 'danger',
+        confirmText: 'Xoá',
+      });
+      out.textContent = ok ? 'Đã xoá.' : 'Đã hủy.';
+    });
+  },
+};

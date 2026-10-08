@@ -40,3 +40,13 @@ export const MaxDays = {
     <td-datetime-range start-name="date_from" end-name="date_to" name="report" label="${esc(a.label)}" max-days="92" required></td-datetime-range>
   </div>`,
 };
+
+/** v0.59.0 `allow-open-end`: a validity window that may have no end ("Không hạn"). */
+export const OpenEnd = {
+  args: { label: 'Hiệu lực' },
+  render: (a) => `<div class="sb-stack">
+    <td-datetime-range name="hl" label="${esc(a.label)}" start="01/10/2026" required allow-open-end></td-datetime-range>
+    <p class="sb-note">Ngày kết thúc có thể để trống: ô ghi "01/10/2026 – Không hạn"; trong hộp thoại bên "Đến" có nút
+      "Không hạn". Gửi form: hl[end] = "".</p>
+  </div>`,
+};

@@ -474,3 +474,18 @@ export const TreeCategories = {
     el.expandedKeys = [1, 2];
   },
 };
+
+/** v0.59.0 `hide-single-page`: a short table shows ONE count line (bottom); more data → both bars again. */
+export const SinglePage = {
+  render: () => `<div class="sb-stack">
+      <td-table title="Kho (một trang)" hide-single-page></td-table>
+      <button type="button" class="td-btn td-btn--secondary" id="tb-more"><span class="td-btn__label">Thêm 20 dòng</span></button>
+      <p class="sb-note">4 dòng → không còn thanh trên, thanh dưới chỉ còn "Hiển thị 1-4 / 4 mục". Bấm nút → nhiều trang, hai thanh như cũ.</p>
+    </div>`,
+  play: async ({ canvasElement }) => {
+    const el = canvasElement.querySelector('td-table');
+    el.columns = sampleColumns;
+    el.data = sampleData.slice(0, 4);
+    canvasElement.querySelector('#tb-more').addEventListener('click', () => { el.data = sampleData.slice(0, 24); });
+  },
+};

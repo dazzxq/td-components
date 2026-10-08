@@ -121,3 +121,12 @@ export const NarrowContainer = {
     canvasElement.querySelector('[data-sb-frame]')?.style.setProperty('width', 'min(100%, 360px)');
   },
 };
+
+/** v0.59.0 `hide-single-page`: one page → no controls, the count line alone (still the live region). */
+export const SinglePage = {
+  render: () => `<div class="sb-stack">
+    <td-pagination total-items="4" items-per-page="10" hide-single-page aria-label="Phân trang (một trang)"></td-pagination>
+    <td-pagination total-items="47" items-per-page="10" hide-single-page aria-label="Phân trang (nhiều trang)"></td-pagination>
+    <p class="sb-note">Trên: 4 mục / 10 mỗi trang → chỉ còn dòng "Hiển thị 1-4 / 4 mục". Dưới: nhiều trang → như cũ.</p>
+  </div>`,
+};
