@@ -6148,6 +6148,22 @@
 		color: inherit;
 	}
 
+	/*
+	 * v0.59.0 message as an array / a Node (plan v0.59.0-dsuite-small QĐ B2): one block per item, no UA margins, a small
+	 * gap between blocks. Only this modifier — a `messageHtml` container (no modifier) keeps its look.
+	 */
+	.td-modal__text--blocks > * {
+		margin: 0;
+	}
+
+	.td-modal__text--blocks > * + * {
+		margin-block-start: var(--td-space-sm);
+	}
+
+	.td-modal__text--blocks > :is(ul, ol) {
+		padding-inline-start: var(--td-space-lg);
+	}
+
 	/* v0.44.0 TdModal.confirm({ typeToConfirm }): a .td-field under the message (field.css does the control) */
 	.td-modal__confirm-field {
 		margin-block-start: var(--td-space-md);

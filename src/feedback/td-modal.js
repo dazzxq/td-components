@@ -33,7 +33,8 @@
  * - z-index: `var(--td-z-modal)` for every dialog; DOM order stacks. Covered dialogs `[data-covered]` go solid.
  *
  * Trusted-HTML hatches (developer content ONLY, never user input): `show({ body: '<html string>' })` and
- * `messageHtml` on the Promise dialogs. `title`, `message`, button labels are always text.
+ * `messageHtml` on the Promise dialogs. `title`, `message`, button labels are always text — v0.59.0: `message` may also be
+ * a Node (developer DOM, inserted as is) or an array (strings → one <p> each as TEXT, Nodes as is); never parsed HTML.
  *
  * @example
  * const id = TdModal.show({ title: 'Xin chào', body: formElement, actions: [
@@ -552,9 +553,12 @@ export class TdModal {
 
   /**
    * Promise-dialog message block (role=alertdialog + aria-describedby → the text).
+   * v0.59.0 (plan v0.59.0-dsuite-small QĐ B1): `message` = a string (unchanged: `<p>` + textContent), a Node (Element /
+   * DocumentFragment: moved in as is) or an array (string / number → one `<p>` each as TEXT, Node → as is, null /
+   * undefined → skipped, anything else → `<p>` String(x)) — both in `div.td-modal__text.td-modal__text--blocks`.
    * @private
    * @param {'confirm'|'success'|'error'|'info'} kind
-   * @param {string} message text
+   * @param {string|Node|Array<string|number|Node|null|undefined>} message text / developer DOM
    * @param {string} [messageHtml] TRUSTED HTML (developer content only)
    */
   static _messageBlock(kind, message, messageHtml) {
@@ -569,10 +573,20 @@ export class TdModal {
       wrap.appendChild(icon);
       fillIconSlots(wrap);
     }
-    const p = document.createElement(typeof messageHtml === 'string' ? 'div' : 'p');
-    p.className = 'td-modal__text';
-    if (typeof messageHtml === 'string') p.innerHTML = messageHtml; // trusted hatch (D8)
-    else p.textContent = message == null ? '' : String(message);
+    const html = typeof messageHtml === 'string';
+    const blocks = !html && (Array.isArray(message) || message instanceof Node);
+    const p = document.createElement(html || blocks ? 'div' : 'p');
+    p.className = blocks ? 'td-modal__text td-modal__text--blocks' : 'td-modal__text';
+    if (html) p.innerHTML = messageHtml; // trusted hatch (D8)
+    else if (blocks) {
+      for (const item of Array.isArray(message) ? message : [message]) {
+        if (item == null) continue;
+        if (item instanceof Node) { p.appendChild(item); continue; }
+        const para = document.createElement('p');
+        para.textContent = String(item); // TEXT, never HTML
+        p.appendChild(para);
+      }
+    } else p.textContent = message == null ? '' : String(message);
     wrap.appendChild(p);
     return { wrap, text: p };
   }
@@ -585,7 +599,8 @@ export class TdModal {
    * anything else resolves true and closes.
    * @param {Object} options
    * @param {string} [options.title=TdModal.labels.confirmTitle]
-   * @param {string} [options.message=TdModal.labels.confirmMessage] - Text.
+   * @param {string|Node|Array<string|Node>} [options.message=TdModal.labels.confirmMessage] - Text; v0.59.0: a Node
+   *   (developer DOM, moved in as is) or an array (each string → its own paragraph, as TEXT; Nodes as is).
    * @param {string} [options.messageHtml] - TRUSTED HTML message (developer content only); wins over `message`.
    * @param {string} [options.confirmText='Xác nhận']
    * @param {string} [options.cancelText='Hủy']
@@ -875,7 +890,7 @@ export class TdModal {
 
   /**
    * Success dialog — OK → true, dismiss → false.
-   * @param {{ title?: string, message?: string, messageHtml?: string, okText?: string, themeRoot?: Element|null }} [options]
+   * @param {{ title?: string, message?: string|Node|Array<string|Node>, messageHtml?: string, okText?: string, themeRoot?: Element|null }} [options]
    *   `messageHtml` is TRUSTED HTML (developer content only).
    * @returns {Promise<boolean>}
    */
@@ -885,7 +900,7 @@ export class TdModal {
 
   /**
    * Error dialog — OK → true, dismiss → false.
-   * @param {{ title?: string, message?: string, messageHtml?: string, okText?: string, themeRoot?: Element|null }} [options]
+   * @param {{ title?: string, message?: string|Node|Array<string|Node>, messageHtml?: string, okText?: string, themeRoot?: Element|null }} [options]
    *   `messageHtml` is TRUSTED HTML (developer content only).
    * @returns {Promise<boolean>}
    */
@@ -895,7 +910,7 @@ export class TdModal {
 
   /**
    * Info dialog — OK → true, dismiss → false.
-   * @param {{ title?: string, message?: string, messageHtml?: string, okText?: string, themeRoot?: Element|null }} [options]
+   * @param {{ title?: string, message?: string|Node|Array<string|Node>, messageHtml?: string, okText?: string, themeRoot?: Element|null }} [options]
    *   `messageHtml` is TRUSTED HTML (developer content only).
    * @returns {Promise<boolean>}
    */
