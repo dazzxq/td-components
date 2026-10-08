@@ -174,7 +174,7 @@ async function trigger(page, state) {
   } else if (state === 'dtp') {
     const t = page.locator('.td-dtp__trigger').first();
     await t.scrollIntoViewIfNeeded(); await t.click();
-    await page.locator('.td-dtp-panel').first().waitFor({ state: 'visible' });
+    await page.locator('.td-dtp-pop').first().waitFor({ state: 'visible' }); // v0.60.0: the calendar popover
   } else if (state === 'keyboard-focus') {
     return; // measured case by case in focusCases()
   } else if (state === 'focus') {

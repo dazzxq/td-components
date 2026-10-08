@@ -741,6 +741,37 @@ async function chromiumSemantics(browser) {
         expect(st.changes.length === 1 && st.checked === !info.before, `${host}: label tap ${JSON.stringify(st)} (was ${info.before})`);
       }
     });
+    // v0.60.0 the calendar bottom sheet (< 720: this lane is 390 wide)
+    await it(tag, 'calendar sheet: day cells ≥ 44 × 44, ‹ › press without zoom, a day tap commits ONE change and closes, focus back on the trigger', async () => {
+      await load(page);
+      await page.evaluate(() => {
+        const host = document.querySelector('#rsp-dtp-date') || document.querySelector('[id$="-dtp-date"]');
+        window.__calHost = host;
+        host.scrollIntoView({ block: 'center' });
+        window.__cc = [];
+        host.addEventListener('change', (e) => window.__cc.push(e.detail));
+      });
+      const t = await centre(page, '[id$="-dtp-date"] .td-dtp__trigger');
+      await page.touchscreen.tap(t.x, t.y);
+      await page.waitForSelector('.td-modal[data-state="open"] .td-cal', { timeout: 4000 });
+      await page.evaluate(() => new Promise((r) => setTimeout(r, 450)));
+      const sizes = await page.evaluate(() => [...document.querySelectorAll('.td-modal[data-state="open"] .td-cal__day[data-date]')].slice(0, 14).map((c) => { const r = c.getBoundingClientRect(); return [r.width, r.height]; }));
+      expect(sizes.every(([w, h]) => w >= 43.5 && h >= 43.5), `day cells ${JSON.stringify(sizes.slice(0, 3))}…`);
+      const nav = await page.evaluate(() => { const n = document.querySelector('.td-modal[data-state="open"] .td-cal__nav'); const r = n.getBoundingClientRect(); return { w: r.width, h: r.height, ta: getComputedStyle(n).touchAction }; });
+      expect(nav.w >= 43.5 && nav.h >= 43.5 && nav.ta === 'manipulation', `nav ${JSON.stringify(nav)}`);
+      const next = await centre(page, '.td-modal[data-state="open"] .td-cal__nav[data-dir="next"]');
+      await touchDown(cdp, next);
+      await frames(page, 2);
+      const pressed = await has('.td-modal[data-state="open"] .td-cal__nav[data-dir="next"]');
+      await touchUp(cdp);
+      expect(pressed, 'no pressed state on ‹ › while the finger is down');
+      const day = await centre(page, '.td-modal[data-state="open"] .td-cal__day[data-date$="-20"]:not([data-outside])');
+      await page.touchscreen.tap(day.x, day.y);
+      await page.waitForFunction(() => !document.querySelector('.td-modal[data-state="open"]'), null, { timeout: 4000 }).catch(() => {});
+      const st = await page.evaluate(() => ({ changes: window.__cc.length, focus: document.activeElement === window.__calHost.querySelector('.td-dtp__trigger'),
+        dialog: !!document.querySelector('.td-modal[data-state="open"], .td-dtp-pop') }));
+      expect(st.changes === 1 && st.focus && !st.dialog, `day tap: ${JSON.stringify(st)}`);
+    });
     await it(tag, 'range "Không hạn": ≥ 44 px tall in the dialog, a tap empties the end (aria-pressed)', async () => {
       await load(page);
       await page.evaluate(() => document.querySelector('#rsp-dtr-open').setAttribute('end', '05/10/2026'));

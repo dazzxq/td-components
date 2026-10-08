@@ -58,6 +58,8 @@ const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta n
 <td-datetime-picker id="p" name="p" mode="date" label="Perf" value="15/06/2026"></td-datetime-picker>
 </main><script type="module">
   import '/src/form/td-datetime-picker.js';
+  import { TdModal } from '/src/feedback/td-modal.js';
+  window.TdModal = TdModal;
   await customElements.whenDefined('td-datetime-picker');
   await new Promise((r) => setTimeout(r, 50));
   window.__ready = true;
@@ -233,6 +235,92 @@ async function perf(engine, browser) {
   await context.close();
 }
 
+/**
+ * Popover geometry (plan A5, Codex plan r1 #3): date and datetime popovers at widths ≥ 720 and short viewport heights, the
+ * trigger near the top / centre / bottom, fine and coarse (44 px cells) — the popover is whole inside the viewport, its action
+ * row is in view, the scroll region reaches the last week and the wheels; also over a TdModal (135's case).
+ */
+async function geometry(engine, browser) {
+  const E = (s) => `${engine}: ${s}`;
+  const bad = [];
+  let cases = 0;
+  for (const w of [720, 844, 1280]) {
+    for (const h of [400, 480, 600]) {
+      const { page, context } = await open(browser, { viewport: { width: w, height: h } });
+      for (const coarse of [false, true]) {
+        for (const id of ['d', 'dt']) {
+          for (const pos of ['top', 'centre', 'bottom']) {
+            await page.evaluate(([coarse, id, pos]) => {
+              document.documentElement.style.setProperty('--td-cal-cell', coarse ? '44px' : '36px');
+              document.documentElement.style.setProperty('--td-dtp-option-h', coarse ? '44px' : '40px');
+              for (const other of ['d', 'dt', 'm', 'y', 'p']) if (other !== id) document.getElementById(other).style.display = 'none'; // never under the tested host
+              const host = document.getElementById(id);
+              host.style.cssText = 'position: fixed; left: 24px; width: 240px; top: 0px;';
+              const t = host.querySelector('.td-dtp__trigger').getBoundingClientRect();
+              const want = pos === 'top' ? 8 : pos === 'centre' ? Math.round((innerHeight - t.height) / 2) : innerHeight - 8 - t.height; // the trigger itself, whole in view
+              host.style.top = `${want - t.top}px`;
+            }, [coarse, id, pos]);
+            await page.click(`#${id} .td-dtp__trigger`);
+            await page.waitForSelector('.td-dtp-pop .td-cal');
+            await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+            const r = await page.evaluate(() => {
+              const pop = document.querySelector('.td-dtp-pop');
+              const p = pop.getBoundingClientRect();
+              const act = pop.querySelector('.td-dtp-pop__actions button').getBoundingClientRect();
+              const scroll = pop.querySelector('.td-dtp-pop__scroll');
+              const overflow = scroll.scrollHeight > scroll.clientHeight + 1;
+              scroll.scrollTop = scroll.scrollHeight;
+              const last = [...pop.querySelectorAll('.td-cal__day[data-date]')].pop().getBoundingClientRect();
+              const wheel = pop.querySelector('.td-dtp-wheel__list');
+              let wheelOk = true;
+              if (wheel) { const wr = wheel.getBoundingClientRect(); const s = scroll.getBoundingClientRect(); wheelOk = wr.bottom <= s.bottom + 1 && wr.top >= s.top - 1; }
+              const sr = scroll.getBoundingClientRect();
+              return {
+                vw: innerWidth, vh: innerHeight, top: p.top, bottom: p.bottom, left: p.left, right: p.right,
+                actTop: act.top, actBottom: act.bottom, overflow, lastInScroll: last.bottom <= sr.bottom + 1 && last.top >= sr.top - 1, wheelOk,
+                scrollOverflowY: getComputedStyle(scroll).overflowY,
+              };
+            });
+            cases += 1;
+            const tag = `${w}x${h} ${coarse ? 'coarse' : 'fine'} ${id} ${pos}`;
+            if (r.top < 7.5 || r.bottom > r.vh - 7.5 || r.left < 7.5 || r.right > r.vw - 7.5) bad.push(`${tag}: popover outside the viewport ${Math.round(r.top)}…${Math.round(r.bottom)} of ${r.vh}`);
+            if (r.actTop < 0 || r.actBottom > r.vh) bad.push(`${tag}: actions out of view`);
+            if (!r.lastInScroll) bad.push(`${tag}: the last week is not reachable by scrolling the region`);
+            if (!r.wheelOk) bad.push(`${tag}: the wheels are not reachable`);
+            if (r.overflow && r.scrollOverflowY !== 'auto') bad.push(`${tag}: overflowing but overflow-y ${r.scrollOverflowY}`);
+            await closePicker(page);
+          }
+        }
+      }
+      await context.close();
+    }
+  }
+  check(E(`popover geometry: ${cases} cases (720/844/1280 × 400/480/600 × fine+coarse × date+datetime × top/centre/bottom) all inside the viewport`), bad.length === 0, bad.slice(0, 6).join(' ; '));
+
+  // over a TdModal (135's case): the popover floats above the modal, whole in the viewport, Esc closes only it
+  const { page, context } = await open(browser, { viewport: { width: 1024, height: 520 } });
+  await page.evaluate(() => {
+    const body = document.createElement('div');
+    body.innerHTML = '<p>Nội dung</p><td-datetime-picker id="in" name="in" label="Trong hộp thoại" value="15/06/2026 - 10:30"></td-datetime-picker>';
+    window.TdModal.show({ title: 'Hộp thoại', body, escapeCloses: true, actions: [{ label: 'Đóng', value: 'x' }] });
+  });
+  await page.waitForSelector('.td-modal[data-state="open"] td-datetime-picker');
+  await page.evaluate(() => new Promise((r) => setTimeout(r, 450)));
+  await page.click('#in .td-dtp__trigger');
+  await page.waitForSelector('body > .td-dtp-pop .td-cal');
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const m = await dom(page, () => {
+    const pop = document.querySelector('body > .td-dtp-pop'); const p = pop.getBoundingClientRect();
+    const hit = document.elementFromPoint(p.left + p.width / 2, p.top + 20);
+    return { inside: p.top >= 7.5 && p.bottom <= innerHeight - 7.5, above: pop.contains(hit), popInert: !!pop.closest('[inert]'), modalInert: !!document.querySelector('.td-modal__dialog').closest('[inert]') };
+  });
+  check(E('over a TdModal: the popover is inside the viewport, above the modal, not inert'), m.inside && m.above && !m.popInert, JSON.stringify(m));
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.td-dtp-pop'));
+  check(E('over a TdModal: Esc closed only the popover (the modal is still open)'), await dom(page, () => !!document.querySelector('.td-modal[data-state="open"]')));
+  await context.close();
+}
+
 async function sheet(engine, browser) {
   const { page, context } = await open(browser, { viewport: { width: 390, height: 844 }, hasTouch: true });
   const E = (s) => `${engine}: ${s}`;
@@ -262,8 +350,9 @@ async function runEngine(name, launcher) {
     await otherModes(name, browser);
     await perf(name, browser);
     await sheet(name, browser);
+    await geometry(name, browser);
   } catch (e) {
-    failures.push(`${name}: ${e.message.split('\n')[0]}`);
+    failures.push(`${name}: ${e.message.split('\n').slice(0, 24).join(' | ')}`);
   } finally {
     await browser.close();
   }

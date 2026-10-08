@@ -163,6 +163,19 @@ export function renderedPairs() {
   add('date clear icon on the field fill', '--td-color-text-muted', ['--td-control-bg'], 3, { gateLight: true });
   add('date clear icon hover', '--td-color-text', ['--td-color-hover', '--td-control-bg'], 3, { gateLight: true });
   add('date clear icon pressed', '--td-color-text', ['--td-color-pressed', '--td-control-bg'], 3, { gateLight: true });
+  // v0.60.0 calendar of td-datetime-picker (calendar.css; --td-cal-* are plain var() aliases of the theme tokens named below — no new theme token):
+  // day ink on the popover (--td-glass-bg-strong over the page); outside-month / weekday / unavailable ink = muted; the today
+  // ring (non-text, ≥ 3:1); the selected ink on the selected fill (--td-btn-primary-*; the fill vs the popup is not a pair the
+  // generator guarantees — like every primary button; the selected day is also bold and aria-selected); hover (--td-color-hover) and pressed
+  // (--td-option-pressed-bg) wash under the FULL text colour (a muted day takes --td-cal-fg while hovered / pressed).
+  for (const s of PAGE) {
+    add(`calendar day on ${s}`, '--td-color-text', POPUP(s));
+    add(`calendar muted day on ${s}`, '--td-color-text-muted', POPUP(s), 4.7, { gateLight: true });
+    add(`calendar today ring on ${s}`, '--td-color-text-muted', POPUP(s), 3, { gateLight: true });
+    add(`calendar day hover on ${s}`, '--td-color-text', ['--td-color-hover', ...POPUP(s)]);
+    add(`calendar day pressed on ${s}`, '--td-color-text', ['--td-color-pressed', ...POPUP(s)]);
+  }
+  add('calendar selected day ink', '--td-btn-primary-fg', ['--td-btn-primary-bg']);
   return P;
 }
 

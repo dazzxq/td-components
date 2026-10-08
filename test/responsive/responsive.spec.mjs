@@ -95,7 +95,10 @@ const tagOf = (c) => `${c.engine}-${c.w}x${c.h}-${c.touch ? 'touch' : 'mouse'}${
 
 const SCENARIOS = [
   { name: 'dropdown', act: (p) => p.click('#g-dd .td-dropdown__trigger'), panel: '.td-dropdown__menu[data-state="open"]' },
-  { name: 'datetime', act: (p) => p.click('#g-dtp .td-dtp__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child'] },
+  // v0.60.0: the calendar — a bottom sheet below 720 (TdModal, actions pinned in the body), a popover from 720
+  { name: 'datetime', when: (c) => c.w < 720, act: (p) => p.click('#g-dtp .td-dtp__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__dialog [data-action="confirm"]'] },
+  { name: 'datetime-date', when: (c) => c.w < 720, act: (p) => p.click('#g-dtp-date .td-dtp__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__dialog [data-action="today"]'] },
+  { name: 'datetime-popover', when: (c) => c.w >= 720, act: (p) => p.click('#g-dtp .td-dtp__trigger'), panel: '.td-dtp-pop', see: ['.td-dtp-pop [data-action="confirm"]'] },
   { name: 'datetime-range', act: (p) => p.click('#g-dtr .td-dtr__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child'] }, // v0.40.0
   { name: 'color-picker', act: (p) => p.click('#g-color .td-color__trigger'), panel: '.td-color-panel' }, // v0.48.0
   { name: 'tree-select', act: (p) => p.click('#g-ts .td-tree-select__trigger'), panel: '.td-tree-select__menu[data-state="open"]' },
@@ -927,6 +930,7 @@ async function runOverlays(page, c, tag, shot) {
     for (const s of SCENARIOS) {
       if (s.mouseOnly && c.touch) continue;
       if (s.touchOnly && !c.touch) continue;
+      if (s.when && !s.when(c)) continue;
       await load(page);
       try {
         await s.act(page, c);
@@ -1028,7 +1032,12 @@ async function runOverlays(page, c, tag, shot) {
         check(tag, `${s.name}: compact chrome budget`, err);
       }
       if (s.name === 'datetime' && vp.w < 720 && vp.h > 500) {
-        // v0.36.0 (plan QĐ 61): the datetime sheet takes ≤ 70 % of the viewport height
+        // v0.60.0 (plan A5 / M0): a month grid of seven ≥ 44 px rows + the wheels + the actions cannot fit the v0.36 budget of 70 %
+        // (measured 665 px = 78–85 % at 360–393 wide); the sheet stays inside the modal's own cap (90 %), the actions pinned
+        check(tag, `${s.name}: sheet height budget`, m.height <= vp.h * 0.9 + 0.5 ? [] : [`sheet ${Math.round(m.height)} > 90 % of ${vp.h}`]);
+      }
+      if (s.name === 'datetime-date' && vp.w < 720 && vp.h >= 700) {
+        // v0.36.0 QĐ 61 budget (70 %) kept for the date-only calendar sheet (measured 521 px = 61–67 % at ≥ 360×780)
         check(tag, `${s.name}: sheet height budget`, m.height <= vp.h * 0.7 + 0.5 ? [] : [`sheet ${Math.round(m.height)} > 70 % of ${vp.h}`]);
       }
       if (s.name === 'datetime-range') {

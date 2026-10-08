@@ -25,6 +25,7 @@ import '/src/form/td-color-picker.js'; // v0.48.0
 import '/src/display/td-filter-chips.js';
 import '/src/display/td-diff.js';
 import '/src/form/td-datetime-range.js';
+import '/src/form/td-datetime-picker.js'; // v0.60.0 calendar
 import '/src/display/td-steps.js';
 import '/src/display/td-timeline.js';
 import '/src/form/td-choice-group.js';
@@ -191,6 +192,10 @@ for (const state of ['field', 'placeholder', 'clear-pressed', 'popup']) CASES.pu
 // (aria-pressed) text ≥ 4.7 on the primary fill, also on its touch-pressed fill; the switch tab label / value ≥ 4.7 on the
 // switch track (off) and on the white "on" tab; the pair error line ≥ 4.7 on the dialog surface — computed colours.
 for (const state of ['preset', 'preset-on', 'preset-on-pressed', 'tab-off', 'tab-on', 'pair-error']) CASES.push({ kind: 'dtr', v: 'datetime-range', state, pageOnly: true });
+// v0.60.0 td-datetime-picker calendar (popover on --td-glass-bg-strong → page only): day ink ≥ 4.7 on the popover, outside-month
+// ink ≥ 4.7, the today ring ≥ 3 (non-text), the selected day ink ≥ 4.7 on its fill, hover / pressed (a muted day takes the full text
+// colour) ≥ 4.7 on their wash, an unavailable (struck-through) day ≥ 2.2 — computed colours, light + dark.
+for (const state of ['day', 'outside', 'ring', 'selected', 'hover', 'pressed', 'pressed-outside', 'disabled']) CASES.push({ kind: 'cal', v: 'datetime-picker', state, pageOnly: true });
 // v0.47.0 td-check-matrix (content layer → page only, QĐ 31): header label / description ≥ 4.7 on the head fill, row label /
 // description ≥ 4.7 on the crosshair row (focus), group label / count ≥ 4.7 on the group fill, the note line ≥ 4.7 on the
 // page; the changed triangle and the note dot ≥ 3 on the cell (graphics); a locked-ticked mark (50 %) ≥ 2.2 on the cell.
@@ -1074,6 +1079,58 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     const b = target.getBoundingClientRect();
     TdModal.closeAll();
     return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `dtr:${c.v}:${c.state}`, pairs };
+  } else if (c.kind === 'cal') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const over = overRgb;
+    TdModal.closeAll();
+    const t = new Date();
+    const iso = (y, m, d) => `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const pick = t.getDate() === 15 ? 16 : 15; // a selected day that is not today (so the today ring shows)
+    const host = document.createElement('td-datetime-picker');
+    host.setAttribute('mode', 'date');
+    host.setAttribute('value', `${String(pick).padStart(2, '0')}/${String(t.getMonth() + 1).padStart(2, '0')}/${t.getFullYear()}`);
+    if (c.state === 'disabled') {
+      host.setAttribute('min', iso(t.getFullYear(), t.getMonth() + 1, 3));
+      host.setAttribute('max', iso(t.getFullYear(), t.getMonth() + 1, 27));
+    }
+    stage.appendChild(host);
+    host.querySelector('.td-dtp__trigger').click();
+    await new Promise((r) => setTimeout(r, 450));
+    const pop = document.querySelector('.td-dtp-pop');
+    const surface = over(getComputedStyle(pop).backgroundColor, page);
+    const cell = (sel) => pop.querySelector(sel);
+    const plain = '.td-cal__day:not([aria-selected="true"]):not([data-outside]):not([aria-current]):not([aria-disabled])';
+    let target; let pairs;
+    if (c.state === 'day') {
+      target = cell(plain);
+      pairs = [{ what: 'day ink vs popover', fg: getComputedStyle(target).color, bg: surface, min: 4.7 }];
+    } else if (c.state === 'outside') {
+      target = cell('.td-cal__day[data-outside]');
+      pairs = [{ what: 'outside-month ink vs popover', fg: getComputedStyle(target).color, bg: surface, min: 4.7 }];
+    } else if (c.state === 'ring') {
+      target = cell('.td-cal__day[aria-current="date"]');
+      const ring = getComputedStyle(target).boxShadow.match(/rgba?\([^)]*\)/)[0];
+      pairs = [{ what: 'today ring vs popover', fg: ring, bg: surface, min: 3 }];
+    } else if (c.state === 'selected') {
+      target = cell('.td-cal__day[aria-selected="true"]');
+      const cs = getComputedStyle(target);
+      pairs = [{ what: 'selected day ink vs its fill', fg: cs.color, bg: over(cs.backgroundColor, surface), min: 4.7 }];
+    } else if (c.state === 'hover') {
+      target = cell(plain);
+      const wash = over(getComputedStyle(pop).getPropertyValue('--td-cal-hover-bg').trim(), surface);
+      pairs = [{ what: 'hovered day ink vs hover wash', fg: getComputedStyle(pop).getPropertyValue('--td-cal-fg').trim(), bg: wash, min: 4.7 }];
+    } else if (c.state === 'pressed' || c.state === 'pressed-outside') {
+      target = cell(c.state === 'pressed' ? plain : '.td-cal__day[data-outside]');
+      target.setAttribute('data-td-pressed', '');
+      const cs = getComputedStyle(target);
+      pairs = [{ what: `${c.state} day ink vs its wash`, fg: cs.color, bg: over(cs.backgroundColor, surface), min: 4.7 }];
+    } else {
+      target = cell('.td-cal__day[aria-disabled="true"]:not([data-outside])');
+      pairs = [{ what: 'unavailable day ink vs popover', fg: getComputedStyle(target).color, bg: surface, min: 2.2 }];
+    }
+    const b = target.getBoundingClientRect();
+    host.remove();
+    return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `cal:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'matrix') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     const over = overRgb;
