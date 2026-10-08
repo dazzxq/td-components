@@ -74,9 +74,10 @@ dáng như trigger), JS nhận **tại chỗ** không nháy ([PHP adapter § td_
 <?= td_date('ngay_giao', $order['ship_date'], ['label' => 'Ngày giao', 'min' => date('Y-m-d'), 'required' => true]) ?>
 ```
 
-Không có `min` / `max`, giá trị server ngoài năm 2000–2099 bị bỏ (một cảnh báo PHP) — như picker coi năm đó là không hợp
-lệ; ngày sinh / ngày cũ thì đặt `min` (vd. `'min' => '1900-01-01'`). Không JS, ô native gửi định dạng của trình duyệt:
-`yyyy-mm-dd` (mode date — trùng iso) / `yyyy-mm-ddThh:mm` (mode datetime).
+**0.60.0:** không có `min` / `max` thì **mọi ngày có thật đều hợp lệ** (năm 1–9999) — ngày sinh, dữ liệu cũ in thẳng,
+không cần đặt `min` nữa. (0.56–0.59: giá trị server ngoài năm 2000–2099 bị bỏ kèm một cảnh báo PHP.) Muốn giới hạn thì đặt
+`min` / `max` tường minh. Không JS, ô native gửi định dạng của trình duyệt: `yyyy-mm-dd` (mode date — trùng iso) /
+`yyyy-mm-ddThh:mm` (mode datetime).
 
 In tay (không dùng helper): attribute `value` nhận định dạng display, hoặc ISO của mode (từ 0.18.0: `2026-06-15T10:30` ở
 mode datetime). Chuỗi **DB** (`2026-06-15 10:30:00`, có dấu cách) thì không — đổi trước khi in, hoặc gán bằng JS:
@@ -117,8 +118,11 @@ PHP: `$_POST['b']` dùng thẳng được cho cột `DATETIME`; với ISO có th
 - Từ 0.18.0 còn nhận tháng (`mm/yyyy`, `yyyy-mm`: `min` = ngày 1, `max` = ngày cuối tháng) và năm (`yyyy`: `min` = 01/01,
   `max` = 31/12). So sánh theo **độ chi tiết của mode**: mode `month` chỉ so tháng (min `2024-03-15` vẫn cho chọn
   `03/2024`), mode `year` chỉ so năm, mode `date` bỏ giờ.
-- Không có `min` và `max`: năm phải trong **2000–2099** (ngoài khoảng → `badInput`). Có ít nhất một bound: ô năm dùng
-  năm của bound (kể cả trước 2000), phía còn lại mở tới 1 hoặc 9999.
+- **Không có `min` và `max` (0.60.0): mọi ngày biểu diễn được đều hợp lệ — năm 1 tới 9999.** Chỉ có một bound: phía còn
+  lại mở tới 1 hoặc 9999. Năm luôn là **4 chữ số** trong mọi định dạng (`15/03/0999`, `0999-03-15`); năm `0000`, năm 3 hoặc
+  5 chữ số → `badInput`. Lịch là Gregory ngoại suy (không có lịch Julius / ngày bị bỏ năm 1582).
+  > **Đổi hành vi ở 0.60.0:** 0.10–0.59 coi năm ngoài **2000–2099** là `badInput` khi không có bound. Site dựa vào cửa sổ
+  > ngầm đó để chặn dữ liệu → đặt `min="2000-01-01" max="2099-12-31"` tường minh. Server luôn phải tự kiểm.
 
 Đặt `min` động bằng JS (ví dụ không cho chọn quá khứ):
 
@@ -323,8 +327,8 @@ trang. Hướng dẫn đổi ngôn ngữ: [Extending](../customization/extending
 ## Form
 
 - **Giá trị gửi** theo `form-value-format`. Trống → không có entry trong `FormData`.
-- **Giá trị sai** (sai cú pháp, 31/02, 25:99, năm ngoài 2000–2099 khi không có bound): `validity.badInput`, gửi **chuỗi
-  thô** (không cố đổi định dạng).
+- **Giá trị sai** (sai cú pháp, 31/02, 25:99, năm `0000`): `validity.badInput`, gửi **chuỗi thô** (không cố đổi định
+  dạng). 0.60.0: năm ngoài 2000–2099 **không còn** là giá trị sai.
 - **Ngoài `min`/`max`**: `rangeUnderflow` / `rangeOverflow`, vẫn gửi giá trị đã định dạng.
 - **`required`** + trống → `valueMissing` (`Vui lòng chọn ngày giờ`).
 - **Reset**: khôi phục attribute `value` lúc kết nối DOM (không có → xoá), xoá lỗi `setError`.
@@ -494,8 +498,8 @@ Trợ năng:
   hiển thị và sau khi nhận.
 - **`getValue()` trả `''`** không có nghĩa là trống: có thể giá trị sai hoặc ngoài `min`/`max`. Kiểm tra `picker.validity`
   hoặc `picker.value` (chuỗi thô) để phân biệt.
-- **Năm ngoài 2000–2099 bị từ chối** khi không đặt `min`/`max`. Nhập ngày sinh / dữ liệu cũ → đặt `min` (ví dụ
-  `min="1900-01-01"`). Hộp thoại vẫn mở tại hôm nay; muốn mở ngay ở `min` thì thêm `open-at="min"` (0.19.0).
+- **Ngày sinh / dữ liệu cũ** (0.60.0): không cần `min` nữa — không có bound thì năm 1–9999 đều hợp lệ (trước 0.60.0 năm
+  ngoài 2000–2099 bị từ chối). Hộp thoại vẫn mở tại hôm nay; muốn mở ở một ngày khác thì đặt `open-at` (0.19.0).
 - **Xoá giá trị từ dữ liệu server rỗng**: `setDBValue(row.date ?? '')` xoá picker khi DB trả rỗng / `null` (0.19.0);
   trước 0.19.0 lệnh này bị bỏ qua và giá trị cũ còn lại.
 - **`setValue()` im lặng**: không phát `change`. Nếu code khác phụ thuộc `change`, tự dispatch hoặc gọi hàm xử lý.

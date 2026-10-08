@@ -75,7 +75,7 @@ Giữ tên field cũ của dcms2 (`date_from` / `date_to`):
 
 | Lỗi | Khi nào | Ở đâu |
 |---|---|---|
-| Từng mốc | ngày không có (31/02), thiếu ô, năm ngoài 2000–2099 khi không có `min` / `max`, ngoài `min` / `max` | dòng lỗi của mốc đó (như picker đơn) |
+| Từng mốc | ngày không có (31/02), thiếu ô, năm `0000` (0.60.0: không có `min` / `max` thì năm 1–9999 đều hợp lệ — hết cửa sổ ngầm 2000–2099; ô số "Năm" nhận 1–9999), ngoài `min` / `max` | dòng lỗi của mốc đó (như picker đơn) |
 | Thứ tự | Từ > Đến (bằng nhau được; so ở độ chi tiết của `mode`) — "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc" | dòng `role="alert"` của hộp; gắn `aria-describedby` + `aria-invalid` vào ô ngày "Đến" |
 | `max-days` | khoảng dài hơn n ngày lịch (tính cả hai đầu: 29/09 – 05/10 = 7) — "Khoảng tối đa {n} ngày" | như trên |
 | `required` | bấm "Chọn" khi mốc bắt buộc còn trống — "Vui lòng chọn ngày bắt đầu" / "… kết thúc" / "Vui lòng chọn khoảng ngày" | như trên, trên ô ngày của mốc thiếu |
