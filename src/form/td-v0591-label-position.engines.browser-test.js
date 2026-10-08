@@ -69,9 +69,17 @@ describe('v0.59.1 label-position — geometry', () => {
           expect(gap(b[i]) > 2, `${L}: a real gap (${gap(b[i])})`).to.equal(true);
           const ra = a[i].getBoundingClientRect();
           const rb = b[i].getBoundingClientRect();
-          expect(near(ra.width, rb.width, 0.5) && near(ra.height, rb.height, 0.5), `${L}: host ${rb.width}×${rb.height} vs ${ra.width}×${ra.height}`).to.equal(true);
+          // The hit box (the <label>) is the exact one. td-toggle: host box = switch box (inline-flex, v0.53.2) → the host
+          // is compared too. td-checkbox: the host is an inline-block LINE box (pre-existing; v0.53.2 left it), whose
+          // height follows the baseline of the first item of the row — Firefox lg: 26.4 px with the mark first, 25 px
+          // with the label text first — so only its width is compared.
+          const ia = rect(a[i], `.${k.block}`);
+          const ib = rect(b[i], `.${k.block}`);
+          expect(near(ia.width, ib.width, 0.5) && near(ia.height, ib.height, 0.1), `${L}: hit box ${ib.width}×${ib.height} vs ${ia.width}×${ia.height}`).to.equal(true);
+          expect(near(ra.width, rb.width, 0.5), `${L}: host width ${rb.width} vs ${ra.width}`).to.equal(true);
+          if (k.tag === 'td-toggle') expect(near(ra.height, rb.height, 0.5), `${L}: host height ${rb.height} vs ${ra.height}`).to.equal(true);
           expect(near(mid(ctlRect(b[i])), mid(labelRect(b[i])), 1), `${L}: label centred on the control`).to.equal(true);
-          expect(near(mid(ctlRect(b[i])) - rb.top, mid(ctlRect(a[i])) - ra.top, 0.5), `${L}: control at the same height`).to.equal(true);
+          expect(near(mid(ctlRect(b[i])) - ib.top, mid(ctlRect(a[i])) - ia.top, 0.5), `${L}: control at the same height in the hit box`).to.equal(true);
           // the control sits on the inline-end edge of the hit box, the label on its inline-start edge
           const box = rect(b[i], `.${k.block}`);
           const c = ctlRect(b[i]);
