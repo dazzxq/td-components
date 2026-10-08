@@ -116,7 +116,10 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
  * @attr {boolean} required - A valid date must be present for the form to be valid
  * @attr {string} name - Form field name (submitted via the host)
  * @attr {string} error-text - Error message (aria-invalid + note)
- * @fires change - When a date is confirmed ("Chọn"), detail: { value, dbValue }
+ * @fires change - When a value is WRITTEN by the user (detail: { value, dbValue }; ONE event per write): date / month / year —
+ *   activating a day / month / year cell or "Hôm nay" / "Tháng này" / "Năm nay" (the same value again closes without one);
+ *   datetime — "Chọn"; the clear button (`clearable`, also while the popover is open) — { value: '', dbValue: '' }.
+ *   Esc, an outside click, the trigger toggle, setValue() / setDBValue() and reset never fire it.
  */
 export class TdDatetimePicker extends TdFormElement {
   static get observedAttributes() {
@@ -904,6 +907,7 @@ export class TdDatetimePicker extends TdFormElement {
     this._modalId = null;
     this._pop = null;
     this._popScroll = null;
+    this._inset = null;
     if (this._layer) { this._layer.release(); this._layer = null; }
     if (this._unbridge) { this._unbridge(); this._unbridge = null; }
     if (this._unwatchRef) { this._unwatchRef(); this._unwatchRef = null; }
@@ -1094,13 +1098,14 @@ export class TdDatetimePicker extends TdFormElement {
     this._commit({ year: t.year, month: t.month, day: t.day, hour: 0, minute: 0 });
   }
 
-  /** @private datetime: "Bây giờ" — the draft becomes now (date clamped into min–max, minute snapped down); no commit */
+  /** @private datetime: "Bây giờ" — the draft becomes the real now (minute snapped down; outside min–max the range error shows); no commit */
   _setNow() {
     if (!this._draft || !this._cal) return;
-    const { min, max } = this._bounds();
     const now = partsFromDate(new Date());
-    const d = clampDate({ year: now.year, month: now.month, day: now.day }, min, max);
+    const d = { year: now.year, month: now.month, day: now.day };
     const minute = snapMinuteDown(now.minute, this._minuteStep());
+    // the REAL now goes into the draft (Codex r1 #4): outside min / max "Chọn" is refused with the range error; only the
+    // calendar's navigation focus is clamped (reveal), so the view lands on the nearest allowed month
     this._draft = { date: d, hour: now.hour, minute };
     this._cal.setSelected(d, { reveal: true });
     this._wheels.setTime(now.hour, minute);
@@ -1183,27 +1188,52 @@ export class TdDatetimePicker extends TdFormElement {
 
   // --- popover geometry (plan A5: scroll region + pinned actions, flip, clamp) ---
 
-  /** @private place the popover against the trigger: the side with room, the scroll region shrinks, else clamp */
+  /**
+   * @private the safe-area insets (a notch / home bar in landscape) as numbers: a zero-size hidden probe in the popover whose
+   * padding is `env(safe-area-inset-*)` (calendar.css) — the computed padding resolves env(), CSP-safe (no style markup).
+   * @returns {{ top: number, right: number, bottom: number, left: number }}
+   */
+  _insets() {
+    if (!this._inset) {
+      const probe = document.createElement('span');
+      probe.className = 'td-dtp-pop__inset';
+      probe.setAttribute('aria-hidden', 'true');
+      this._pop.appendChild(probe);
+      this._inset = probe;
+    }
+    const cs = getComputedStyle(this._inset);
+    const n = (v) => Math.max(0, parseFloat(v) || 0);
+    return { top: n(cs.paddingTop), right: n(cs.paddingRight), bottom: n(cs.paddingBottom), left: n(cs.paddingLeft) };
+  }
+
+  /**
+   * @private place the popover against the trigger: the side with room, the scroll region shrinks, else clamp. The height
+   * budget and the clamp bounds are the visual viewport MINUS the safe-area insets (Codex r1 #5).
+   */
   _placePop() {
     const pop = this._pop;
     const trigger = this._trigger();
     const scroll = this._popScroll;
     if (!pop || !trigger || !scroll) return;
     const box = viewportBox();
-    pop.style.setProperty('max-height', `${Math.max(0, box.bottom - box.top - 2 * POP_MARGIN)}px`);
+    const ins = this._insets();
+    const top = box.top + ins.top;
+    const bottom = box.bottom - ins.bottom;
+    pop.style.setProperty('max-height', `${Math.max(0, bottom - top - 2 * POP_MARGIN)}px`);
     scroll.style.removeProperty('max-height');
-    const { side, top } = placeFloating(trigger, pop, { width: 'auto', align: 'start', list: scroll });
-    pop.setAttribute('data-placement', side);
+    // placeFloating has one margin for every edge: the widest inset keeps it inside the safe rectangle on all four
+    const edge = POP_MARGIN + Math.max(ins.top, ins.right, ins.bottom, ins.left);
+    const placed = placeFloating(trigger, pop, { width: 'auto', align: 'start', list: scroll, margin: edge });
+    pop.setAttribute('data-placement', placed.side);
     // neither side has room (a short viewport, the trigger in the middle): drop the per-side cap and keep the whole
-    // popover inside the viewport — it may cover the trigger (like td-color-picker)
+    // popover inside the safe rectangle — it may cover the trigger (like td-color-picker)
     if (scroll.clientHeight < Math.min(POP_MIN_SCROLL, scroll.scrollHeight)) {
       scroll.style.removeProperty('max-height');
       const h = pop.offsetHeight;
       const rect = trigger.getBoundingClientRect();
-      const want = side === 'bottom' ? rect.bottom + 8 : rect.top - 8 - h;
-      const clamped = Math.max(box.top + POP_MARGIN, Math.min(want, box.bottom - h - POP_MARGIN));
-      if (clamped !== top) pop.style.setProperty('top', `${clamped}px`);
-      else pop.style.setProperty('top', `${top}px`);
+      const want = placed.side === 'bottom' ? rect.bottom + 8 : rect.top - 8 - h;
+      const clamped = Math.max(top + POP_MARGIN, Math.min(want, bottom - h - POP_MARGIN));
+      pop.style.setProperty('top', `${clamped}px`);
     }
   }
 

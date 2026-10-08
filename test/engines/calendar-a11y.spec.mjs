@@ -281,8 +281,24 @@ async function geometry(engine, browser) {
                 scrollOverflowY: getComputedStyle(scroll).overflowY,
               };
             });
+            // Codex r1 #2: keyboard navigation must keep the active cell inside the visible part of the scroll region
+            const kb = await (async () => {
+              await page.evaluate(() => { document.querySelector('.td-dtp-pop__scroll').scrollTop = 0; });
+              const seen = [];
+              for (const key of ['ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowUp', 'Home']) {
+                await page.keyboard.press(key);
+                seen.push(await page.evaluate(() => {
+                  const a = document.activeElement;
+                  const sr = document.querySelector('.td-dtp-pop__scroll').getBoundingClientRect();
+                  const ar = a.getBoundingClientRect();
+                  return { ok: ar.top >= sr.top - 1 && ar.bottom <= sr.bottom + 1, d: a.getAttribute('data-date') };
+                }));
+              }
+              return seen.filter((x) => !x.ok).map((x) => x.d);
+            })();
             cases += 1;
             const tag = `${w}x${h} ${coarse ? 'coarse' : 'fine'} ${id} ${pos}`;
+            if (kb.length) bad.push(`${tag}: keyboard focus left the visible scroll region at ${kb.join(',')}`);
             if (r.top < 7.5 || r.bottom > r.vh - 7.5 || r.left < 7.5 || r.right > r.vw - 7.5) bad.push(`${tag}: popover outside the viewport ${Math.round(r.top)}…${Math.round(r.bottom)} of ${r.vh}`);
             if (r.actTop < 0 || r.actBottom > r.vh) bad.push(`${tag}: actions out of view`);
             if (!r.lastInScroll) bad.push(`${tag}: the last week is not reachable by scrolling the region`);
@@ -296,6 +312,38 @@ async function geometry(engine, browser) {
     }
   }
   check(E(`popover geometry: ${cases} cases (720/844/1280 × 400/480/600 × fine+coarse × date+datetime × top/centre/bottom) all inside the viewport`), bad.length === 0, bad.slice(0, 6).join(' ; '));
+
+  // Codex r1 #5: safe-area insets (a notch in landscape): the popover stays inside the SAFE rectangle. env() cannot be faked in
+  // a test, so the probe's computed padding — what the picker reads — is overridden by a page rule.
+  {
+    const ib = [];
+    let icases = 0;
+    for (const [w, h] of [[844, 390], [720, 400]]) {
+      const { page, context } = await open(browser, { viewport: { width: w, height: h } });
+      await page.addStyleTag({ content: '.td-dtp-pop__inset { padding: 24px 44px 20px 44px !important; }' });
+      for (const id of ['d', 'dt']) {
+        for (const pos of ['top', 'centre', 'bottom']) {
+          await page.evaluate(([id, pos]) => {
+            for (const other of ['d', 'dt', 'm', 'y', 'p']) if (other !== id) document.getElementById(other).style.display = 'none';
+            const host = document.getElementById(id);
+            host.style.cssText = 'position: fixed; left: 60px; width: 240px; top: 0px;';
+            const t = host.querySelector('.td-dtp__trigger').getBoundingClientRect();
+            const want = pos === 'top' ? 30 : pos === 'centre' ? Math.round((innerHeight - t.height) / 2) : innerHeight - 26 - t.height;
+            host.style.top = `${want - t.top}px`;
+          }, [id, pos]);
+          await page.click(`#${id} .td-dtp__trigger`);
+          await page.waitForSelector('.td-dtp-pop .td-cal');
+          await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+          const r = await page.evaluate(() => { const p = document.querySelector('.td-dtp-pop').getBoundingClientRect(); return { t: p.top, b: p.bottom, l: p.left, r: p.right, vw: innerWidth, vh: innerHeight }; });
+          icases += 1;
+          if (r.t < 24 + 7.5 || r.b > r.vh - 20 - 7.5 || r.l < 44 + 7.5 || r.r > r.vw - 44 - 7.5) ib.push(`${w}x${h} ${id} ${pos}: popover ${Math.round(r.l)},${Math.round(r.t)}…${Math.round(r.r)},${Math.round(r.b)} outside the safe rectangle`);
+          await closePicker(page);
+        }
+      }
+      await context.close();
+    }
+    check(E(`safe-area insets: ${icases} cases (landscape 844×390, 720×400; insets 24/44/20/44) stay inside the safe rectangle`), ib.length === 0, ib.slice(0, 4).join(' ; '));
+  }
 
   // over a TdModal (135's case): the popover floats above the modal, whole in the viewport, Esc closes only it
   const { page, context } = await open(browser, { viewport: { width: 1024, height: 520 } });

@@ -45,7 +45,11 @@
 		flex-direction: column;
 		gap: var(--td-space-xs);
 		inline-size: calc(7 * var(--td-cal-cell) + 2 * var(--td-cal-pad) + 2px);
-		max-inline-size: calc(100vw - 16px);
+		/* a static backstop for the first frame (the JS sets the exact max-height from the visual viewport): the viewport
+		   minus the margins and the safe-area insets (a notch / home bar in landscape) */
+		max-inline-size: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+		max-block-size: calc(100vh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+		max-block-size: calc(100dvh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
 		padding: var(--td-cal-pad);
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
@@ -84,6 +88,19 @@
 	/* the sheet's side padding shrinks just enough for seven ≥ 44 px cells on a 320 px phone (M0: 4 px at 320, 24 px from 360) */
 	.td-modal__body:has(> .td-dtp-pop--sheet) {
 		padding-inline: clamp(4px, calc((100vw - 7 * var(--td-touch-min) - 2px) / 2), var(--td-modal-pad-x));
+	}
+
+	/* probe: its computed padding is the safe-area inset (read by the picker to keep the popover in the safe rectangle) */
+	.td-dtp-pop__inset {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 0;
+		height: 0;
+		padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+		margin: 0;
+		pointer-events: none;
+		visibility: hidden;
 	}
 
 	/* the ONLY scrolling part (a short viewport): the actions below stay in view */

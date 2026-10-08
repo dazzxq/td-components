@@ -69,6 +69,9 @@ export class CalendarGrid {
     this.root = o.root;
     this.view = o.root;
     this.returnTo = 'days';
+    /** @private the focus date a view had when it was LEFT for a deeper grid (days → months → years): restored when the pressed
+     *  title toggles back; arrows / paging / ‹ › in the deeper grid only navigate (Codex r1 #3) */
+    this._snaps = { days: null, months: null };
     this.focus = copy(o.focus);
     this.selected = o.selected ? copy(o.selected) : null;
     this.min = o.min || null;
@@ -295,13 +298,24 @@ export class CalendarGrid {
     if (domFocus) this.focusActive();
   }
 
-  /** @private change the view; `focusCell` puts the DOM focus on the active cell of the new view */
-  _show(view, returnTo) {
+  /**
+   * @private change the view and put the DOM focus on the active cell of the new view.
+   * `returnTo`: where the year grid goes back to. `back`: a pressed title toggled the deeper grid away — the focus date goes
+   * back to the one the returning view was left on (a cell ACTIVATION never passes `back`: it keeps the navigated date).
+   */
+  _show(view, { returnTo = null, back = false } = {}) {
     if (returnTo) this.returnTo = returnTo;
+    if (back && this._snaps[view]) this.focus = copy(clampDate(this._snaps[view], this.min, this.max));
+    if (back || !(view === 'months' || view === 'years')) this._snaps[view] = null;
     this.view = view;
     this._paint();
     this.focusActive();
     if (this.o.onView) this.o.onView(view);
+  }
+
+  /** @private remember the focus date of the view we are leaving for a deeper grid */
+  _leave(toView) {
+    if (toView === 'months' || toView === 'years') this._snaps[this.view] = copy(this.focus);
   }
 
   /** Put the DOM focus on the active cell of the current view (the roving tab stop). */
@@ -309,7 +323,31 @@ export class CalendarGrid {
     if (this._dead) return;
     const sel = this.view === 'days' ? '.td-cal__day[tabindex="0"]' : `.td-cal__cells[data-kind="${this.view}"] .td-cal__cell[tabindex="0"]`;
     const cell = this.el.querySelector(sel);
-    if (cell) cell.focus({ preventScroll: true });
+    if (!cell) return;
+    cell.focus({ preventScroll: true });
+    this._reveal(cell);
+  }
+
+  /**
+   * @private `focus({ preventScroll })` scrolls nothing: when the popover's region is short (or the sheet body scrolls) bring
+   * the cell into the visible part of the nearest scrolling ancestor, by just enough (no scrollIntoView — ADR 0019 rule 12).
+   * The sticky action row of the sheet covers the bottom of its scroller, so it bounds the visible part.
+   */
+  _reveal(cell) {
+    let sc = cell.parentElement;
+    while (sc && sc !== this.el.ownerDocument.body) {
+      const oy = getComputedStyle(sc).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && sc.scrollHeight > sc.clientHeight + 1) break;
+      sc = sc.parentElement;
+    }
+    if (!sc || sc === this.el.ownerDocument.body) return;
+    const c = cell.getBoundingClientRect();
+    const r = sc.getBoundingClientRect();
+    let bottom = r.bottom;
+    const act = sc.querySelector(':scope .td-dtp-pop__actions') || (sc.closest('.td-dtp-pop') && sc.closest('.td-dtp-pop').querySelector('.td-dtp-pop__actions'));
+    if (act && getComputedStyle(act).position === 'sticky') bottom = Math.min(bottom, act.getBoundingClientRect().top);
+    if (c.top < r.top) sc.scrollTop -= r.top - c.top;
+    else if (c.bottom > bottom) sc.scrollTop += c.bottom - bottom;
   }
 
   /**
@@ -327,10 +365,14 @@ export class CalendarGrid {
 
   /** New bounds (the `min` / `max` attributes changed while open); the focus is kept inside them. */
   setBounds(min, max) {
+    const hadFocus = this.el.contains(this.el.ownerDocument.activeElement);
     this.min = min || null;
     this.max = max || null;
     this.focus = copy(clampDate(this.focus, this.min, this.max));
+    for (const k of Object.keys(this._snaps)) if (this._snaps[k]) this._snaps[k] = copy(clampDate(this._snaps[k], this.min, this.max));
     this._paint();
+    // the roving stop moved to an enabled cell: a focus that was inside the grid follows it (never left on a disabled cell)
+    if (hadFocus && this.el.ownerDocument.activeElement.closest('.td-cal__day, .td-cal__cell')) this.focusActive();
   }
 
   /** @returns {'days'|'months'|'years'} */
@@ -362,6 +404,7 @@ export class CalendarGrid {
       return;
     }
     this.focus = copy(clampDate({ year: f.year, month, day: Math.min(f.day, daysInMonth(f.year, month)) }, this.min, this.max));
+    this._snaps = { days: null, months: null }; // an activation keeps the navigated date
     this._show('days');
   }
 
@@ -378,6 +421,7 @@ export class CalendarGrid {
       return;
     }
     this.focus = copy(clampDate({ year, month: f.month, day: Math.min(f.day, daysInMonth(year, f.month)) }, this.min, this.max));
+    this._snaps = { days: null, months: null }; // an activation keeps the navigated date (and ends the way back)
     this._show(this.returnTo);
   }
 
@@ -397,10 +441,11 @@ export class CalendarGrid {
   /** @private header buttons: toggle the month / year grid, ‹ › */
   _onHeader(btn) {
     if (btn === this.monthBtn) {
-      this._show(this.view === 'months' ? 'days' : 'months');
+      if (this.view === 'months') this._show('days', { back: true });
+      else { this._leave('months'); this._show('months'); }
     } else if (btn === this.yearBtn) {
-      if (this.view === 'years') this._show(this.returnTo);
-      else this._show('years', this.view);
+      if (this.view === 'years') this._show(this.returnTo, { back: true });
+      else { const from = this.view; this._leave('years'); this._show('years', { returnTo: from }); }
     } else if (btn.getAttribute('aria-disabled') !== 'true') {
       const dir = btn === this.prev ? -1 : 1;
       const f = this.focus;
