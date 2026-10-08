@@ -2512,76 +2512,147 @@
       "state": "open",
       "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
       "selectors": [
-        ".td-dtp-panel__input",
+        ".td-dtp-pop",
+        ".td-cal__title[data-pick=\"month\"]",
+        ".td-cal__nav[data-dir=\"next\"]",
+        ".td-cal__weekday",
+        ".td-cal__day[aria-selected=\"true\"]",
+        ".td-cal__day:not([aria-selected=\"true\"]):not([data-outside])",
+        ".td-cal__day[data-outside]",
         ".td-dtp-wheel",
         ".td-dtp-wheel__option[aria-selected=\"true\"]",
-        ".td-modal__footer .td-btn--primary"
+        ".td-dtp-pop__actions .td-btn--primary"
       ],
       "portal": [
-        ".td-dtp-panel__input",
+        ".td-dtp-pop",
+        ".td-cal__title[data-pick=\"month\"]",
+        ".td-cal__nav[data-dir=\"next\"]",
+        ".td-cal__weekday",
+        ".td-cal__day[aria-selected=\"true\"]",
+        ".td-cal__day:not([aria-selected=\"true\"]):not([data-outside])",
+        ".td-cal__day[data-outside]",
         ".td-dtp-wheel",
         ".td-dtp-wheel__option[aria-selected=\"true\"]",
-        ".td-modal__footer .td-btn--primary"
+        ".td-dtp-pop__actions .td-btn--primary"
       ],
-      "settle": 450
+      "settle": 450,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns",
+        "top",
+        "left",
+        "max-height"
+      ],
+      "selectorNote": "v0.60.0 calendar dialog. v0.60.0 (plan v0.60.0-calendar-picker G1): the calendar popover on <body>; line-height / margin-left / width / height / grid-template-columns are excluded up front (sub-pixel table and grid sizing differ by engine / run), top / left / max-height too (geometry written through CSSOM by placeFloating)."
     },
     {
       "state": "open-invalid",
-      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','31/02/2026 - 09:30'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30'); p.setAttribute('min','2026-06-15T10:07'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
       "selectors": [
-        ".td-dtp-panel__error",
-        ".td-dtp-panel__input[aria-invalid]"
+        ".td-dtp-pop__error",
+        ".td-cal__day[aria-disabled=\"true\"]"
       ],
       "portal": [
-        ".td-dtp-panel__error",
-        ".td-dtp-panel__input[aria-invalid]"
+        ".td-dtp-pop__error",
+        ".td-cal__day[aria-disabled=\"true\"]"
       ],
-      "settle": 450
+      "settle": 450,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns",
+        "top",
+        "left",
+        "max-height"
+      ],
+      "selectorNote": "v0.60.0 calendar dialog. v0.60.0 (plan v0.60.0-calendar-picker G1): the calendar popover on <body>; line-height / margin-left / width / height / grid-template-columns are excluded up front (sub-pixel table and grid sizing differ by engine / run), top / left / max-height too (geometry written through CSSOM by placeFloating)."
     },
     {
       "state": "open-date",
       "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Ngày'); p.setAttribute('mode','date'); p.setAttribute('value','15/06/2026'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
       "selectors": [
-        ".td-dtp-panel__fields",
-        ".td-dtp-panel__input",
-        ".td-dtp-panel__preview"
+        ".td-dtp-pop",
+        ".td-cal__day[aria-selected=\"true\"]",
+        ".td-dtp-pop__actions .td-btn"
       ],
       "portal": [
-        ".td-dtp-panel__fields",
-        ".td-dtp-panel__input",
-        ".td-dtp-panel__preview"
+        ".td-dtp-pop",
+        ".td-cal__day[aria-selected=\"true\"]",
+        ".td-dtp-pop__actions .td-btn"
       ],
-      "settle": 450
+      "settle": 450,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns",
+        "top",
+        "left",
+        "max-height"
+      ],
+      "selectorNote": "v0.60.0 calendar dialog. v0.60.0 (plan v0.60.0-calendar-picker G1): the calendar popover on <body>; line-height / margin-left / width / height / grid-template-columns are excluded up front (sub-pixel table and grid sizing differ by engine / run), top / left / max-height too (geometry written through CSSOM by placeFloating)."
     },
     {
       "state": "open-month",
       "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Tháng'); p.setAttribute('mode','month'); p.setAttribute('value','06/2026'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
       "selectors": [
-        ".td-dtp-panel__fields",
-        ".td-dtp-panel__input",
-        ".td-dtp-panel__preview"
+        ".td-dtp-pop",
+        ".td-cal__cell[aria-selected=\"true\"]",
+        ".td-cal__cell:not([aria-selected=\"true\"])",
+        ".td-cal__title[data-pick=\"year\"]"
       ],
       "portal": [
-        ".td-dtp-panel__fields",
-        ".td-dtp-panel__input",
-        ".td-dtp-panel__preview"
+        ".td-dtp-pop",
+        ".td-cal__cell[aria-selected=\"true\"]",
+        ".td-cal__cell:not([aria-selected=\"true\"])",
+        ".td-cal__title[data-pick=\"year\"]"
       ],
-      "settle": 450
+      "settle": 450,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns",
+        "top",
+        "left",
+        "max-height"
+      ],
+      "selectorNote": "v0.60.0 calendar dialog. v0.60.0 (plan v0.60.0-calendar-picker G1): the calendar popover on <body>; line-height / margin-left / width / height / grid-template-columns are excluded up front (sub-pixel table and grid sizing differ by engine / run), top / left / max-height too (geometry written through CSSOM by placeFloating)."
     },
     {
       "state": "open-year",
-      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Năm'); p.setAttribute('mode','year'); p.setAttribute('min','1950'); p.setAttribute('max','2026'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Năm'); p.setAttribute('mode','year'); p.setAttribute('min','1950'); p.setAttribute('max','2026'); p.setAttribute('value','2020'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
       "selectors": [
-        ".td-dtp-panel__fields",
-        ".td-dtp-panel__input",
-        ".td-dtp-panel__preview"
+        ".td-dtp-pop",
+        ".td-cal__cell[aria-selected=\"true\"]",
+        ".td-cal__cell[aria-disabled=\"true\"]",
+        ".td-cal__heading"
       ],
       "portal": [
-        ".td-dtp-panel__fields",
-        ".td-dtp-panel__input",
-        ".td-dtp-panel__preview"
+        ".td-dtp-pop",
+        ".td-cal__cell[aria-selected=\"true\"]",
+        ".td-cal__cell[aria-disabled=\"true\"]",
+        ".td-cal__heading"
       ],
-      "settle": 450
+      "settle": 450,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns",
+        "top",
+        "left",
+        "max-height"
+      ],
+      "selectorNote": "v0.60.0 calendar dialog. v0.60.0 (plan v0.60.0-calendar-picker G1): the calendar popover on <body>; line-height / margin-left / width / height / grid-template-columns are excluded up front (sub-pixel table and grid sizing differ by engine / run), top / left / max-height too (geometry written through CSSOM by placeFloating)."
     },
     {
       "state": "wheel-active",
@@ -2597,6 +2668,82 @@
       "settle": 450,
       "pseudo": "focus",
       "focusSelector": ".td-dtp-wheel__list"
+    },
+    {
+      "state": "open-months-view",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Ngày'); p.setAttribute('mode','date'); p.setAttribute('value','15/06/2026'); p.setAttribute('min','2026-03-01'); p.setAttribute('max','2026-09-30'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click(); p._pop.querySelector('[data-pick=\"month\"]').click();",
+      "selectors": [
+        ".td-cal__title[aria-pressed=\"true\"]",
+        ".td-cal__cell[aria-selected=\"true\"]",
+        ".td-cal__cell[aria-disabled=\"true\"]"
+      ],
+      "portal": [
+        ".td-cal__title[aria-pressed=\"true\"]",
+        ".td-cal__cell[aria-selected=\"true\"]",
+        ".td-cal__cell[aria-disabled=\"true\"]"
+      ],
+      "settle": 450,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns",
+        "top",
+        "left",
+        "max-height"
+      ],
+      "selectorNote": "v0.60.0 calendar dialog. v0.60.0 (plan v0.60.0-calendar-picker G1): the calendar popover on <body>; line-height / margin-left / width / height / grid-template-columns are excluded up front (sub-pixel table and grid sizing differ by engine / run), top / left / max-height too (geometry written through CSSOM by placeFloating)."
+    },
+    {
+      "state": "open-bounds",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Ngày'); p.setAttribute('mode','date'); p.setAttribute('value','15/06/2026'); p.setAttribute('min','2026-06-10'); p.setAttribute('max','2026-06-20'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "selectors": [
+        ".td-cal__day[aria-disabled=\"true\"]",
+        ".td-cal__day[data-outside]",
+        ".td-cal__nav[aria-disabled=\"true\"]"
+      ],
+      "portal": [
+        ".td-cal__day[aria-disabled=\"true\"]",
+        ".td-cal__day[data-outside]",
+        ".td-cal__nav[aria-disabled=\"true\"]"
+      ],
+      "settle": 450,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns",
+        "top",
+        "left",
+        "max-height"
+      ],
+      "selectorNote": "v0.60.0 calendar dialog. v0.60.0 (plan v0.60.0-calendar-picker G1): the calendar popover on <body>; line-height / margin-left / width / height / grid-template-columns are excluded up front (sub-pixel table and grid sizing differ by engine / run), top / left / max-height too (geometry written through CSSOM by placeFloating)."
+    },
+    {
+      "state": "open-day-focus",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Ngày'); p.setAttribute('mode','date'); p.setAttribute('value','15/06/2026'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "selectors": [
+        ".td-cal__day[tabindex=\"0\"]"
+      ],
+      "portal": [
+        ".td-cal__day[tabindex=\"0\"]"
+      ],
+      "settle": 450,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns",
+        "top",
+        "left",
+        "max-height"
+      ],
+      "selectorNote": "v0.60.0 calendar dialog. v0.60.0 (plan v0.60.0-calendar-picker G1): the calendar popover on <body>; line-height / margin-left / width / height / grid-template-columns are excluded up front (sub-pixel table and grid sizing differ by engine / run), top / left / max-height too (geometry written through CSSOM by placeFloating).",
+      "pseudo": "focus",
+      "focusSelector": ".td-cal__day[tabindex=\"0\"]"
     },
     {
       "state": "ssr-pre-date",

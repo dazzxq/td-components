@@ -179,6 +179,13 @@ its parity is deferred to the Task-1 adopted-sheet check; this baseline locks th
 container + selected-option rules.
 States: `open`. (1)
 
+**v0.60.0 (historic text above; current selectors live in `matrix.json`):** the dialog is the calendar popover on `<body>`
+(`.td-dtp-pop`, `.td-cal*`; no injected `<style>`, geometry only through CSSOM). Open states: `open` (datetime), `open-invalid`
+(draft before `min` → the error line), `open-date`, `open-month`, `open-year`, `wheel-active`, `open-months-view`,
+`open-bounds`, `open-day-focus`; SSR: `ssr-pre-date(-v2)`, `ssr-adopted(-v2)`. `line-height`, `margin-left`, `width`, `height`,
+`grid-template-columns` are excluded up front (plan G1), plus `top`, `left`, `max-height` (placement geometry). The
+open-state baselines were recaptured for the new UI (the closed / SSR / clearable baselines are byte-identical to v0.59.0).
+
 ## EXCLUDED components (no blocking construct → not in matrix)
 
 | Component | Why excluded |
