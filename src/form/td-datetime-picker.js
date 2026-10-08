@@ -284,20 +284,27 @@ export class TdDatetimePicker extends TdFormElement {
     const b = this.querySelector('.td-dtp__clear');
     if (!b) return;
     const hide = this._clearHidden();
-    if (hide && b === this.ownerDocument.activeElement) this._trigger()?.focus({ preventScroll: true });
+    if (hide && !this._clearing && b === this.ownerDocument.activeElement) this._trigger()?.focus({ preventScroll: true });
     b.hidden = hide;
   }
 
   /** @private v0.59.0 the user cleared the value: like "Chọn" with nothing — one `change`, the focus on the trigger */
   _clearByUser() {
     if (this._clearHidden()) return;
-    this.removeAttribute('value');
-    this._updateValueText();
-    this._syncForm();
-    this._applyErrorState();
+    this._clearing = true; // the focus moves AFTER the change event (below)
+    try {
+      this.removeAttribute('value');
+      this._updateValueText();
+      this._syncForm();
+      this._applyErrorState();
+    } finally {
+      this._clearing = false;
+    }
+    // `change` first: trackFormDirty re-takes its baseline on a focusin before the user's first change — a focus move
+    // ahead of the event would make the clear look like no change at all
+    this.emit('change', { value: '', dbValue: '' });
     this._trigger()?.focus({ preventScroll: true });
     this._syncClear();
-    this.emit('change', { value: '', dbValue: '' });
   }
 
   afterRender() {
