@@ -409,13 +409,19 @@ export class TdNumberInput extends TdFormElement {
       case 'group-separator':
       case 'decimal-separator':
       case 'locale': // v0.55.0: the separators re-format in place (same control, caret kept by the caller's next edit)
-      case 'signed': // v0.59.0: the `+` of a positive value, in place
+      case 'signed': { // v0.59.0: the `+` of a positive value, in place
         if (name === 'decimals') { this._minAttr(); this._max(); this._stepAttr(); } // re-checked now (warn once)
+        // Codex impl r1 #1: a focused field keeps its caret / selection through a `signed` switch (mapped like typing)
+        const c = this._focusTarget();
+        const sel = name === 'signed' && c && c.ownerDocument.activeElement === c && c.selectionStart != null
+          ? { old: c.value, s: c.selectionStart, e: c.selectionEnd, dir: c.selectionDirection || 'none' } : null;
         this._bad = false;
         this._paintValue();
+        if (sel && c.value !== sel.old) this._remapSelection(c, sel);
         this._applyInputMode();
         this._syncForm();
         return;
+      }
       default: // name, clamp, validate-on: read on demand
     }
   }
@@ -428,6 +434,22 @@ export class TdNumberInput extends TdFormElement {
       this._applyInteractivity();
       this._syncForm();
     }
+  }
+
+  /**
+   * @private v0.59.0 (Codex impl r1 #1): map a selection of the previous display onto the new one with the caret map of
+   * typing — each endpoint through edit(old display, endpoint, the NEW options); a display edit() would not produce
+   * (e.g. a trailing decimal dropped by the repaint) clamps to the new length. Direction kept.
+   * @param {HTMLInputElement} c
+   * @param {{ old: string, s: number, e: number, dir: string }} sel
+   */
+  _remapSelection(c, sel) {
+    const o = this._opts();
+    const map = (pos) => {
+      const r = edit(sel.old, pos, o);
+      return r.display === c.value ? r.caret : Math.min(pos, c.value.length);
+    };
+    try { c.setSelectionRange(map(sel.s), map(sel.e), /** @type {'forward'|'backward'|'none'} */ (sel.dir)); } catch { /* ignore */ }
   }
 
   /** @private display = formatted canonical value */

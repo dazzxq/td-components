@@ -67,6 +67,23 @@ describe('v0.59.0 td-number-input signed — display + value', () => {
     expect(ctl(el).value).to.equal('300.000');
   });
 
+  it('Codex impl r1 #1: toggling signed while focused keeps the caret / selection at the same digits (and back)', async () => {
+    const el = num('value="300000"');
+    await wait();
+    const c = ctl(el);
+    await at(el, 3);
+    expect(st(el)).to.equal('300.000|3');
+    el.signed = true;
+    expect(st(el)).to.equal('+300.000|4');
+    el.signed = false;
+    expect(st(el)).to.equal('300.000|3');
+    c.setSelectionRange(1, 5, 'backward');
+    el.signed = true;
+    expect([c.value, c.selectionStart, c.selectionEnd, c.selectionDirection]).to.deep.equal(['+300.000', 2, 6, 'backward']);
+    el.signed = false;
+    expect([c.value, c.selectionStart, c.selectionEnd, c.selectionDirection]).to.deep.equal(['300.000', 1, 5, 'backward']);
+  });
+
   it('runtime toggle re-formats in place, keeps focus + the same control', async () => {
     const el = num('value="1500"');
     await wait();
