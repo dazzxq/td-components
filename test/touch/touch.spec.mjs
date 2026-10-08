@@ -769,7 +769,7 @@ async function chromiumSemantics(browser) {
       await page.touchscreen.tap(day.x, day.y);
       await page.waitForFunction(() => !document.querySelector('.td-modal[data-state="open"]'), null, { timeout: 4000 }).catch(() => {});
       const st = await page.evaluate(() => ({ changes: window.__cc.length, focus: document.activeElement === window.__calHost.querySelector('.td-dtp__trigger'),
-        dialog: !!document.querySelector('.td-modal[data-state="open"], .td-dtp-pop') }));
+        dialog: !!document.querySelector('.td-modal[data-state="open"]') })); // (a sheet fading out still holds its tree)
       expect(st.changes === 1 && st.focus && !st.dialog, `day tap: ${JSON.stringify(st)}`);
     });
     await it(tag, 'range "Không hạn": ≥ 44 px tall in the dialog, a tap empties the end (aria-pressed)', async () => {
