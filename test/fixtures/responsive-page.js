@@ -246,6 +246,7 @@ export function mountResponsiveFixture(root) {
     <td-table id="rsp-table-single" title="Đơn hàng (một trang)" hide-single-page></td-table>
     <div class="rsp-narrow">
       <td-table id="rsp-table-single-n" title="Đơn hàng (hẹp)" hide-single-page></td-table>
+      <td-table id="rsp-table-single-bare" hide-single-page></td-table>
       <td-datetime-picker id="rsp-dtp-clear" name="han" label="Hạn thanh toán của đơn hàng" value="15/06/2026 - 10:30" clearable></td-datetime-picker>
       <td-datetime-range id="rsp-dtr-open" name="hl" label="Hiệu lực" start="01/10/2026" allow-open-end></td-datetime-range>
       <td-number-input id="rsp-num-signed" name="delta" label="Điều chỉnh tồn kho" signed min="-100000000" value="12990000" suffix="₫"></td-number-input>
@@ -402,7 +403,7 @@ export function mountResponsiveFixture(root) {
   root.querySelector('#rsp-tabs').tabs = tabs;
   root.querySelector('#rsp-tabs-narrow').tabs = tabs.slice(0, 4);
   root.querySelector('#rsp-tabs-mixed').tabs = [{ id: 'a', label: 'Tất cả đơn hàng đang chờ xác nhận thanh toán' }, ...['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((l) => ({ id: l, label: l }))];
-  for (const id of ['rsp-table-single', 'rsp-table-single-n']) { // v0.59.0: one page
+  for (const id of ['rsp-table-single', 'rsp-table-single-n', 'rsp-table-single-bare']) { // v0.59.0: one page (v0.59.2: + no title)
     const t = root.querySelector(`#${id}`);
     t.columns = orderColumns();
     t.data = ORDERS.slice(0, 3).map((o) => ({ ...o }));

@@ -41,7 +41,7 @@
  * v0.58.0: the `floating` section — td-input-field label-mode="floating": the label inside its host on one line (ellipsis), the
  *   raised label's hit box above the value line, value-line points hit the control; large text (`.rsp-big-text`, also with affixes) never clips.
  * v0.59.0: the `v059` section — td-table hide-single-page (one visible count line, no top bar, no overflow; 280 px column
- *   too), td-datetime-picker clearable (the clear button inside the trigger box, never over the value text; ≥ 44 coarse),
+ *   too; v0.59.2: a title-less one in cards keeps its first sort chip ≥ 14 px below the top edge), td-datetime-picker clearable (the clear button inside the trigger box, never over the value text; ≥ 44 coarse),
  *   td-datetime-range allow-open-end ("… – Không hạn" cut with an ellipsis, never overflowing), td-number-input signed (the
  *   "+" value fits); overlay `modal-list` (confirm with a paragraph array + a list).
  * v0.59.1: the `v0591` section — td-toggle / td-checkbox label-position="start": the label before the control (after it
@@ -784,13 +784,23 @@ async function runConfig(browser, c) {
     const v059Err = await page.evaluate(() => {
       const errs = [];
       const coarse = matchMedia('(pointer: coarse)').matches;
-      for (const id of ['rsp-table-single', 'rsp-table-single-n']) {
+      for (const id of ['rsp-table-single', 'rsp-table-single-n', 'rsp-table-single-bare']) {
         const t = document.getElementById(id);
         const infos = [...t.querySelectorAll('.td-pagination__info')].filter((n) => n.getClientRects().length && n.getBoundingClientRect().height > 2);
         if (infos.length !== 1) errs.push(`#${id}: ${infos.length} visible count lines (want 1)`);
         if (t.querySelector('.td-table__header > .td-table__pagination:not([hidden])')) errs.push(`#${id}: top pagination shown`);
         if (t.querySelector('.td-table__footer .td-pagination__controls:not([hidden])')) errs.push(`#${id}: page controls shown`);
         if (t.scrollWidth > t.clientWidth + 1) errs.push(`#${id} overflows: ${t.scrollWidth} > ${t.clientWidth}`);
+      }
+      { // v0.59.2: no title + one page → no top bar; in cards the first chip keeps the bar's inset (not 5 px under the edge)
+        const t = document.getElementById('rsp-table-single-bare');
+        if (!t.querySelector('.td-table__header').hidden) errs.push('#rsp-table-single-bare: top bar shown');
+        const chip = t.querySelector('.td-table__th--sortable');
+        const card = getComputedStyle(t.querySelector('.td-table__body > tr')).display !== 'table-row';
+        if (card && chip) {
+          const off = chip.getBoundingClientRect().top - t.querySelector('.td-table').getBoundingClientRect().top;
+          if (off < 14) errs.push(`#rsp-table-single-bare: first sort chip ${off.toFixed(1)} px from the top edge (want ≥ 14)`);
+        }
       }
       const dtp = document.getElementById('rsp-dtp-clear');
       const trig = dtp.querySelector('.td-dtp__trigger').getBoundingClientRect();
