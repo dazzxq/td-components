@@ -51,9 +51,12 @@ const PKG = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 const FIXTURE = readFileSync(join(ROOT, 'test/ssr/fixtures/fouc.html'), 'utf8');
 const TAILWIND = join(ROOT, 'test/csp/fixture/tailwind.css');
 
-/** id → { id, kind, module, width, tag, html } (one section per fixture line). */
+/**
+ * id → { id, kind, module, width, tag, html } (one section per fixture case). v0.58.0: a case may span several lines (a
+ * textarea value starts with the newline the HTML parser drops) — split on the section starts, not on every line.
+ */
 const CASES = new Map();
-for (const line of FIXTURE.split('\n')) {
+for (const line of FIXTURE.split(/\n(?=<section class="fouc-case")/).map((x) => x.replace(/\n+$/, ''))) {
   const m = line.match(/^<section class="fouc-case" data-case="([^"]+)" data-kind="([a-z]+)" data-module="([a-z-]+)" data-width="(\d+)" data-tag="([a-z-]+)">/);
   if (m) CASES.set(m[1], { id: m[1], kind: m[2], module: m[3], width: Number(m[4]), tag: m[5], html: line });
 }
