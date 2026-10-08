@@ -2,6 +2,18 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.59.2
+
+**Vá: bảng dạng thẻ với `hide-single-page` khi chỉ có một trang — hàng nút sắp xếp dính sát mép trên** (135: thanh trên ẩn
+thì chip sắp xếp chỉ còn cách mép 5 px, trước đó ~17 px). Codex impl-review APPROVE. Chỉ CSS, chỉ dạng thẻ —
+`docs/upgrading/breaking-changes.md#0592`.
+
+### Fixed
+
+- Dạng thẻ (`layout="cards"` hoặc `auto` dưới `card-below`): khi thanh trên của bảng bị ẩn (một trang + `hide-single-page`,
+  không `title` / menu cột), chip sắp xếp và chip "chọn tất cả" giữ khoảng cách bằng thanh trên trước đó (5 → 17 px). Bảng
+  không có chip thì không chừa dải trống; dạng bảng không đổi; bảng cây dạng thẻ như nhau.
+
 ## 0.59.1
 
 **Nhãn bên trái công tắc: `label-position="start"` cho `td-toggle` và `td-checkbox`** (owner, qua dsuite: nút gạt ở đầu trang

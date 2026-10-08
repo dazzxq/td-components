@@ -653,6 +653,14 @@
 		background: transparent;
 	}
 
+	/* v0.59.2: top bar hidden (hide-single-page with one page, no pagination, no title / column menu) → the chips keep
+	   the inset the bar gave the first content (border + --td-space-md, like .td-table__header's padding). A margin on the
+	   chips, not padding on the row: a bar with no chip stays a thin band (no :has(), Chrome 102). Bottom inset unchanged. */
+	:where(td-table[layout="cards"]) .td-table__header[hidden] + .td-table__scroll .td-table__th--sortable,
+	:where(td-table[layout="cards"]) .td-table__header[hidden] + .td-table__scroll .td-table__th--select-all {
+		margin-block-start: calc(var(--td-space-md) - var(--td-space-2xs));
+	}
+
 	:where(td-table[layout="cards"]) .td-table__th--sortable > .td-table__sort {
 		min-height: 2rem;
 		padding: 0 var(--td-space-sm);
