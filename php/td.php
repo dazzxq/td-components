@@ -214,7 +214,7 @@ namespace TdComponents {
         /** v0.56.0: td_datetime_picker / td_date (always the element <td-datetime-picker> + one native date / datetime-local input). */
         public const SSR_DATETIME_PICKER = 'datetime-picker@1';
         /** v0.56.0: trigger placeholders of td_datetime_picker = TdDatetimePicker.labels (parity: test/php/td-v056-php.test.js). */
-        public const DTP_LABELS = ['placeholder' => 'dd/mm/yyyy - hh:mm', 'placeholderDate' => 'dd/mm/yyyy'];
+        public const DTP_LABELS = ['placeholder' => 'dd/mm/yyyy - hh:mm', 'placeholderDate' => 'dd/mm/yyyy', 'clear' => 'Xoá ngày'];
         /** v0.38.0: texts of td_scan_input = TdScanInput.labels (a site overriding the JS labels gets a safe re-render). */
         public const SCAN_LABELS = ['input' => 'Mã quét', 'list' => 'Mã đã quét', 'fallback' => 'Nhập tay, mỗi dòng một mã'];
         /** v0.39.0: td_filter_chips (always the element <td-filter-chips> + the chips; × links work without JS). */
@@ -3781,6 +3781,8 @@ namespace {
      * year → date + warning), min, max, required, disabled, placeholder, minute_step, form_value_format (iso | display |
      * db), open_at, helper_text (alias hint), error, aria_label, id, class, attrs (host; owned names reserved).
      * No JS the browser submits its own format: date `yyyy-mm-dd` (= iso), datetime `yyyy-mm-ddThh:mm`.
+     * v0.59.0 `clearable` (bool): host `clearable` + `div.td-dtp--clearable` + the clear button after the trigger
+     * (`hidden` without a value / when required / disabled; invisible until the element is defined — no dead control).
      */
     function td_datetime_picker(string $name, ?string $value = null, array $o = []): string
     {
@@ -3800,6 +3802,7 @@ namespace {
         $aria = td__str($o['aria_label'] ?? null);
         $disabled = !empty($o['disabled']);
         $required = !empty($o['required']);
+        $clearable = !empty($o['clearable']); // v0.59.0
         $min = isset($o['min']) && is_string($o['min']) ? td__dtr_parts($o['min'], $mode, 'start') : null;
         $max = isset($o['max']) && is_string($o['max']) ? td__dtr_parts($o['max'], $mode, 'end') : null;
         $v = $value !== null ? td__dtr_parts($value, $mode, 'start') : null;
@@ -3858,14 +3861,15 @@ namespace {
             'helper-text' => $help,
             'error-text' => $error,
             'aria-label' => $aria,
+            'clearable' => $clearable,
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['id', 'class', 'name', 'mode', 'value', 'label', 'placeholder', 'min', 'max', 'minute-step',
-            'form-value-format', 'open-at', 'required', 'disabled', 'helper-text', 'error-text', 'aria-label'], $extra, $taken);
+            'form-value-format', 'open-at', 'required', 'disabled', 'helper-text', 'error-text', 'aria-label', 'clearable'], $extra, $taken);
         $html .= Td::attrs($extra, $taken) . '>';
 
         $text = $display($v) ?? ($placeholder ?? ($mode === 'datetime' ? Td::DTP_LABELS['placeholder'] : Td::DTP_LABELS['placeholderDate']));
-        return $html . '<div class="td-dtp" data-state="closed">'
+        return $html . '<div class="td-dtp' . ($clearable ? ' td-dtp--clearable' : '') . '" data-state="closed">'
             . ($label !== '' ? '<label class="td-field__label" id="' . $hid . '-label" for="' . $hid . '-native">' . Td::e($label)
                 . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</label>' : '')
             . '<input class="td-dtp__native" type="' . ($mode === 'datetime' ? 'datetime-local' : 'date') . '" id="' . $hid . '-native"'
@@ -3882,7 +3886,11 @@ namespace {
             . '<button type="button" class="td-dtp__trigger" id="' . $hid . '-trigger" role="combobox" aria-haspopup="dialog" aria-expanded="false"'
             . ($required ? ' aria-required="true"' : '') . ($disabled ? ' disabled' : '') . '>'
             . '<span class="td-dtp__value"' . ($v === null ? ' data-placeholder' : '') . '>' . Td::e($text) . '</span>'
-            . '<span class="td-dtp__icon" data-td-icon="calendar" aria-hidden="true"></span></button></div>'
+            . '<span class="td-dtp__icon" data-td-icon="calendar" aria-hidden="true"></span></button>'
+            . ($clearable ? '<button type="button" class="td-dtp__clear" aria-label="' . Td::e(Td::DTP_LABELS['clear']) . '"'
+                . ($v === null || $required || $disabled ? ' hidden' : '') . '><span class="td-dtp__clear-icon" data-td-icon="close"'
+                . ' data-td-icon-size="s" aria-hidden="true"></span></button>' : '')
+            . '</div>'
             . td__helper_note($help, $hid, $error !== null)
             . ($error !== null ? '<span class="td-field-error" id="' . $hid . '-error" data-for="' . $hid . '">' . Td::e($error) . '</span>' : '')
             . '</td-datetime-picker>';

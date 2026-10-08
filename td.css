@@ -8187,6 +8187,85 @@
 		color: var(--td-field-placeholder);
 	}
 
+	/*
+	 * v0.59.0 `clearable` (plan v0.59.0-dsuite-small QĐ E1): the clear button is a SIBLING of the trigger (no button in a
+	 * button). One grid cell holds the trigger (or the pre-upgrade native input) and the button on top of its inline end;
+	 * the field always reserves the button's width (the value never jumps when it shows / hides). Before the upgrade the
+	 * button keeps its place but is invisible (no dead control without JS — like the number stepper).
+	 */
+	.td-dtp--clearable {
+		--_td-dtp-clear-w: 2.25rem;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-areas: "label" "control";
+	}
+
+	.td-dtp--clearable > .td-field__label {
+		grid-area: label;
+	}
+
+	.td-dtp--clearable > .td-dtp__trigger,
+	.td-dtp--clearable > .td-dtp__native,
+	.td-dtp--clearable > .td-dtp__clear {
+		grid-area: control;
+	}
+
+	.td-dtp--clearable > .td-dtp__trigger,
+	td-datetime-picker:not(:defined) .td-dtp--clearable > .td-dtp__native {
+		padding-inline-end: calc(var(--_td-dtp-clear-w) + 1px);
+	}
+
+	.td-dtp__clear {
+		z-index: 1; /* above the trigger it overlaps */
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		align-self: stretch;
+		justify-self: end;
+		width: var(--_td-dtp-clear-w);
+		padding: 0;
+		margin: 1px;
+		font: inherit;
+		color: var(--td-color-text-muted);
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-start-end-radius: calc(var(--td-field-radius-md) - 1px);
+		border-end-end-radius: calc(var(--td-field-radius-md) - 1px);
+		outline: 2px solid transparent;
+		outline-offset: -3px;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-dtp__clear[hidden] {
+		display: none;
+	}
+
+	td-datetime-picker:not(:defined) .td-dtp__clear {
+		visibility: hidden;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-dtp__clear:hover {
+			color: var(--td-field-fg);
+			background: var(--td-color-hover);
+		}
+	}
+
+	.td-dtp__clear:is(:active, [data-td-pressed]) {
+		color: var(--td-field-fg);
+		background: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-dtp__clear:focus-visible {
+		outline-color: var(--td-focus);
+	}
+
+	.td-dtp__clear-icon {
+		display: inline-flex;
+	}
+
 	/* ---- Dialog body ---- */
 	.td-dtp-panel {
 		box-sizing: border-box;
@@ -8398,6 +8477,11 @@
 			min-height: var(--td-touch-min);
 		}
 
+		/* v0.59.0: the clear button is a ≥ 44 px target */
+		.td-dtp--clearable {
+			--_td-dtp-clear-w: var(--td-touch-min);
+		}
+
 		/* v0.56.0: the pre-upgrade native input ≥ 16px (iOS does not zoom on focus); 16 → 14 on upgrade, same box (ADR 0025 §5) */
 		td-datetime-picker:not(:defined) .td-dtp__native {
 			font-size: max(1rem, 1em);
@@ -8461,6 +8545,15 @@
 		.td-dtp__trigger:focus-visible,
 		.td-dtp-panel__input:focus-visible,
 		.td-dtp-wheel:has(.td-dtp-wheel__list:focus-visible) {
+			outline: 2px solid Highlight;
+		}
+
+		.td-dtp__clear {
+			color: ButtonText;
+		}
+
+		.td-dtp__clear:focus-visible,
+		.td-dtp__clear:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
 		}
 

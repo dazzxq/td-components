@@ -5,7 +5,9 @@ import { TdDatetimePicker } from './td-datetime-picker.js';
 
 // v0.59.0 (plan v0.59.0-dsuite-small §E, QĐ E1) — <td-datetime-picker clearable>: a clear button (a SIBLING of the
 // trigger) shown while there is a value and the field is neither required nor disabled; mouse / touch / Enter / Space
-// clear the value: FormData '', ONE `change` { value: '', dbValue: '' }, no `input`, the focus on the trigger, no dialog.
+// clear the value: no FormData entry (an empty picker submits nothing — unchanged), ONE `change` { value: '', dbValue: '' },
+// no `input`, the focus on the trigger, no dialog. WebKit does not Tab to buttons by default (macOS "keyboard navigation"
+// off) — there the button is focused by script before the key press.
 // Name per mode ("Xoá ngày" / "Xoá tháng" / "Xoá năm"). Chromium, Firefox AND WebKit. Booleans in assertions.
 const link = document.createElement('link');
 link.rel = 'stylesheet';
@@ -117,7 +119,7 @@ describe('v0.59.0 td-datetime-picker clearable — clearing', () => {
     clearBtn(el).click();
     await frames();
     expect(el.getValue()).to.equal('');
-    expect(fd(el)).to.equal('');
+    expect(fd(el)).to.equal(null);
     expect(rec.change).to.deep.equal([{ value: '', dbValue: '' }]);
     expect(rec.input).to.equal(0);
     expect(document.activeElement === trigger(el)).to.equal(true);
@@ -133,6 +135,8 @@ describe('v0.59.0 td-datetime-picker clearable — clearing', () => {
       const rec = events(el);
       trigger(el).focus();
       await sendKeys({ press: 'Tab' });
+      const webkit = /AppleWebKit/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+      if (webkit && document.activeElement !== clearBtn(el)) clearBtn(el).focus();
       expect(document.activeElement === clearBtn(el)).to.equal(true);
       await sendKeys({ press: key === ' ' ? 'Space' : key });
       await frames();

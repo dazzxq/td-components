@@ -95,10 +95,10 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 export class TdDatetimePicker extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'value', 'placeholder', 'label', 'minute-step', 'form-value-format',
-      'min', 'max', 'error-text', 'aria-label', 'mode', 'open-at'];
+      'min', 'max', 'error-text', 'aria-label', 'mode', 'open-at', 'clearable'];
   }
 
-  static get booleanAttributes() { return [...super.booleanAttributes]; }
+  static get booleanAttributes() { return [...super.booleanAttributes, 'clearable']; }
 
   static get errorContract() { return true; }
 
@@ -111,6 +111,8 @@ export class TdDatetimePicker extends TdFormElement {
     placeholderDate: 'dd/mm/yyyy', placeholderMonth: 'mm/yyyy', placeholderYear: 'yyyy',
     nowDate: 'Hôm nay', nowMonth: 'Tháng này', nowYear: 'Năm nay',
     dateMonth: 'Tháng', dateYear: 'Năm', // legend of the fields group
+    // v0.59.0 `clearable`: the name of the clear button (per mode, like the others)
+    clear: 'Xoá ngày', clearDate: 'Xoá ngày', clearMonth: 'Xoá tháng', clearYear: 'Xoá năm',
   };
 
   /** Validation messages (`{min}` / `{max}` are filled in); override per site like `labels`. */
@@ -255,13 +257,47 @@ export class TdDatetimePicker extends TdFormElement {
     const id = esc(this.id);
     const label = this.getAttribute('label') || '';
     const { text, placeholder } = this._triggerText();
-    return `<div class="td-dtp" data-state="${this._isOpen ? 'open' : 'closed'}">`
+    const clearable = this.hasAttribute('clearable');
+    return `<div class="td-dtp${clearable ? ' td-dtp--clearable' : ''}" data-state="${this._isOpen ? 'open' : 'closed'}">`
       + (label ? `<label class="td-field__label" id="${id}-label" for="${id}-trigger">${esc(label)}</label>` : '')
       + `<button type="button" class="td-dtp__trigger" id="${id}-trigger" role="combobox" aria-haspopup="dialog"`
       + ` aria-expanded="${this._isOpen}"${this._effectiveDisabled ? ' disabled' : ''}>`
       + `<span class="td-dtp__value"${placeholder ? ' data-placeholder' : ''}>${esc(text)}</span>`
       + '<span class="td-dtp__icon" data-td-icon="calendar" aria-hidden="true"></span>'
-      + '</button></div>';
+      + '</button>'
+      + (clearable ? `<button type="button" class="td-dtp__clear" aria-label="${esc(this._text(TdDatetimePicker.labels, 'clear'))}"`
+        + `${this._clearHidden() ? ' hidden' : ''}><span class="td-dtp__clear-icon" data-td-icon="close" data-td-icon-size="s"`
+        + ' aria-hidden="true"></span></button>' : '')
+      + '</div>';
+  }
+
+  /**
+   * @private v0.59.0 (plan v0.59.0-dsuite-small QĐ E1b): the clear button shows while there is a value (a malformed one
+   * too — clearing it is the fix) and the field is neither required nor disabled (`<fieldset disabled>` included).
+   */
+  _clearHidden() {
+    return !this.getAttribute('value') || this.hasAttribute('required') || !!this._effectiveDisabled;
+  }
+
+  /** @private the clear button follows value / required / disabled IN PLACE (no re-render) */
+  _syncClear() {
+    const b = this.querySelector('.td-dtp__clear');
+    if (!b) return;
+    const hide = this._clearHidden();
+    if (hide && b === this.ownerDocument.activeElement) this._trigger()?.focus({ preventScroll: true });
+    b.hidden = hide;
+  }
+
+  /** @private v0.59.0 the user cleared the value: like "Chọn" with nothing — one `change`, the focus on the trigger */
+  _clearByUser() {
+    if (this._clearHidden()) return;
+    this.removeAttribute('value');
+    this._updateValueText();
+    this._syncForm();
+    this._applyErrorState();
+    this._trigger()?.focus({ preventScroll: true });
+    this._syncClear();
+    this.emit('change', { value: '', dbValue: '' });
   }
 
   afterRender() {
@@ -277,6 +313,9 @@ export class TdDatetimePicker extends TdFormElement {
         }
       });
     }
+    const clear = this.querySelector('.td-dtp__clear');
+    if (clear) this.listen(clear, 'click', () => this._clearByUser());
+    this._syncClear();
     this._applyName();
     this._applyRequired();
     this._syncForm();
@@ -333,6 +372,7 @@ export class TdDatetimePicker extends TdFormElement {
     if (placeholder) span.setAttribute('data-placeholder', '');
     else span.removeAttribute('data-placeholder');
     this._scheduleValueTitle();
+    this._syncClear();
   }
 
   /** In place: everything except `label` (structure). */
@@ -371,6 +411,8 @@ export class TdDatetimePicker extends TdFormElement {
         this._convertValueMode(normalizeMode(oldVal));
         this._updateValueText();
         this._syncForm();
+        const clear = this.querySelector('.td-dtp__clear'); // v0.59.0: its name follows the mode
+        if (clear) clear.setAttribute('aria-label', this._text(TdDatetimePicker.labels, 'clear'));
         if (hadFocus && this._trigger()) this._trigger().focus();
         return;
       }
@@ -380,6 +422,7 @@ export class TdDatetimePicker extends TdFormElement {
       case 'required':
         this._applyRequired();
         this._syncForm();
+        this._syncClear();
         return;
       case 'aria-label':
         this._applyName();
@@ -411,6 +454,7 @@ export class TdDatetimePicker extends TdFormElement {
     const trigger = this._trigger();
     if (trigger) trigger.disabled = this._effectiveDisabled;
     if (this._effectiveDisabled && this._isOpen) this._close();
+    this._syncClear();
   }
 
   /** @private `aria-required` on the combobox + decorative asterisk in the label. */
@@ -583,6 +627,14 @@ export class TdDatetimePicker extends TdFormElement {
     const want = [...wantBox.children];
     if (have.some((n) => n.nodeType !== 1) || have.length !== want.length + 1) return null;
     const required = this.hasAttribute('required');
+    // v0.59.0 `clearable`: the clear button closes the box (its `hidden` follows the LIVE value — synced after adoption)
+    const clearable = this.hasAttribute('clearable');
+    let clear = null;
+    if (clearable) {
+      clear = /** @type {HTMLElement} */ (have.pop());
+      const wc = want.pop();
+      if (!this._ssrClearOk(clear, wc)) return null;
+    }
     let label = null;
     if (want.length === 2) {
       // php points the label at the native input (no JS) and prints the required star (JS adds it after render)
@@ -604,8 +656,19 @@ export class TdDatetimePicker extends TdFormElement {
     if (required) wt.setAttribute('aria-required', 'true');
     if (!this._ssrTriggerOk(trigger, wt) || !this._ssrNativeOk(input, mode)) return null;
     const controls = [...this.querySelectorAll(FORM_ASSOCIATED)];
-    if (controls.length !== 2 || controls[0] !== input || controls[1] !== trigger) return null;
+    const wantControls = clear ? [input, trigger, clear] : [input, trigger];
+    if (controls.length !== wantControls.length || controls.some((c, i) => c !== wantControls[i])) return null;
     return { input, trigger, label, note: /** @type {HTMLElement|null} */ (note) };
+  }
+
+  /** @private v0.59.0 the clear button = render()'s (attributes except `hidden`; one EMPTY icon slot) */
+  _ssrClearOk(live, want) {
+    if (!want || live.localName !== 'button' || want.localName !== 'button') return false;
+    const strip = (el) => { const c = el.cloneNode(true); c.removeAttribute('hidden'); return c; };
+    if (!ssrSameAttrs(strip(live), strip(want))) return false;
+    const kids = ssrContentNodes(live);
+    return kids.length === 1 && kids[0].nodeType === 1 && ssrSameAttrs(kids[0], want.children[0])
+      && kids[0].localName === 'span' && ssrContentNodes(kids[0]).length === 0;
   }
 
   /** @private the trigger = render()'s attributes (+ aria-required); value span (class + data-placeholder, text only) + the empty icon slot */

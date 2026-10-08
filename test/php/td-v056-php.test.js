@@ -49,7 +49,7 @@ describe('php/td.php — td_datetime_picker / td_date (v0.56.0, contract datetim
     for (const [k, v] of Object.entries(labels.html)) {
       assert.ok(new RegExp(`\\b${k}: '${v.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}'`).test(src), `${k} = ${v} in TdDatetimePicker.labels`);
     }
-    assert.deepEqual(Object.keys(labels.html), ['placeholder', 'placeholderDate']);
+    assert.deepEqual(Object.keys(labels.html), ['placeholder', 'placeholderDate', 'clear']); // v0.59.0: + the clear button name
   });
 
   test('td_date: the exact markup (label, value, min / max, required, helper_text)', () => {
