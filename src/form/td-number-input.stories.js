@@ -101,3 +101,18 @@ export const Locale = {
     <td-number-input name="d" locale="de" group-separator="," label="de + group ," decimals="2" value="1234567.5"></td-number-input>
     <p class="sb-note">Gõ "." hoặc "," khi decimals &gt; 0 → dấu thập phân của ô (bàn phím ảo theo máy).</p></div>`,
 };
+
+/** v0.59.0 `signed`: "+300.000" / "-300.000" / "0" on screen, the clean number submitted. */
+export const Signed = {
+  render: () => `<form class="sb-stack" id="ni-signed">
+    <td-number-input name="delta" label="Điều chỉnh tồn kho" signed min="-1000000" value="300000"></td-number-input>
+    <td-number-input name="delta2" label="Chênh lệch giá" signed min="-1000000000" suffix="₫" value="-150000"></td-number-input>
+    <p class="sb-note" id="ni-signed-out">FormData: delta = 300000</p></form>`,
+  play: ({ canvasElement }) => {
+    const form = canvasElement.querySelector('#ni-signed');
+    const out = canvasElement.querySelector('#ni-signed-out');
+    form.addEventListener('input', () => {
+      out.textContent = `FormData: delta = ${new FormData(form).get('delta') || '(rỗng)'}, delta2 = ${new FormData(form).get('delta2') || '(rỗng)'}`;
+    });
+  },
+};

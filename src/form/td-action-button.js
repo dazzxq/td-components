@@ -2,6 +2,7 @@ import { TdButton } from './td-button.js';
 import { hasIcon } from '../icons/td-icon.js';
 import { tdTooltip } from '../feedback/td-tooltip.js'; // self-initialising: the label is shown as a tooltip
 import { sameControlStructure, contentNodes, safeDownloadName, PART_ATTRS } from './button-structure.js';
+import { logSafe, logLength } from '../utils/log-safe.js';
 
 const TONES = ['standard', 'warning', 'danger'];
 const SIZES = ['sm', 'md', 'lg'];
@@ -18,6 +19,25 @@ const ACTION_PARTS = { 'td-btn__icon': PART_ATTRS['td-btn__icon'], 'td-btn__spin
 const IGNORED = new Set(['variant', 'color', 'text-color', 'icon-position', 'full-width']);
 /** Action names already warned about (unresolvable: no preset and no icon + label override) — once per name. */
 const _warned = new Set();
+/** v0.59.0: icon warnings already printed (one per message: an unknown host icon / a preset's unknown icon). */
+const _warnedIcons = new Set();
+const WARN_ICON_CAP = 200;
+
+/**
+ * @param {() => string} build the message (built from BOUNDED values — logSafe) — called only below the cap: after
+ *   WARN_ICON_CAP distinct messages warning stops and nothing is built (Codex security r1 / r2: never clear-and-repeat on
+ *   attacker-chosen names, no work per name past the cap)
+ */
+function warnIcon(build) {
+  if (_warnedIcons.size >= WARN_ICON_CAP) return;
+  const msg = build();
+  if (_warnedIcons.has(msg)) return;
+  _warnedIcons.add(msg);
+  console.warn(msg);
+}
+
+/** @param {string} name a site / API supplied icon name → `"shown" (N UTF-16 units)` for a console warning (CWE-117) */
+const shownName = (name) => `"${logSafe(name)}" (${logLength(name)} UTF-16 units)`;
 
 /**
  * The 23 dcms2 `ActionButtonConfigs` presets (resources/js/components/dcms-action-buttons.js) — the ONE inventory of
@@ -90,6 +110,8 @@ export function canonAction(action) {
  *   is `aria-label` + `data-tooltip` (td-tooltip skips a description equal to the name — read once).
  * Name precedence (one function, _name()): host `aria-label` > `label` > preset label. `aria-labelledby` is not
  * forwarded. Unresolvable (unknown action without `icon` + `label`) → nothing rendered + one console warning per name.
+ * v0.59.0: an icon name the registry does not know never fails silently — one warning per name naming the cause: a host
+ * `icon` (the preset icon is used instead, or nothing is rendered without one) or a preset's own `icon`.
  * SSR: `data-td-ssr="action-button@1"` (PHP td_action_button element mode) adopted in place when the control has
  * exactly render()'s structure AND its aria-label / data-tooltip equal _name(); else a normal render.
  *
@@ -142,8 +164,19 @@ export class TdActionButton extends TdButton {
     const presets = TdActionButton.presets;
     const preset = key !== null && Object.hasOwn(presets, key) ? presets[key] : null;
     const ownIcon = (this.getAttribute('icon') || '').trim();
-    const icon = ownIcon && hasIcon(ownIcon) ? ownIcon : (preset?.icon && hasIcon(preset.icon) ? preset.icon : '');
+    const presetIcon = preset?.icon && hasIcon(preset.icon) ? preset.icon : '';
+    const icon = ownIcon && hasIcon(ownIcon) ? ownIcon : presetIcon;
     const label = (this.getAttribute('label') || '').trim() || (typeof preset?.label === 'string' ? preset.label.trim() : '');
+    // v0.59.0 (plan v0.59.0-dsuite-small QĐ D1): the real cause of a missing icon, once per message
+    if (ownIcon && !hasIcon(ownIcon)) {
+      warnIcon(() => (presetIcon
+        ? `td-action-button: unknown icon ${shownName(ownIcon)} — using the preset icon "${presetIcon}"`
+        : `td-action-button: unknown icon ${shownName(ownIcon)} — nothing rendered`));
+      if (!presetIcon) return null;
+    } else if (!ownIcon && preset && typeof preset.icon === 'string' && !presetIcon) {
+      warnIcon(() => `td-action-button: preset "${key}" has an unknown icon ${shownName(preset.icon)}`);
+      return null;
+    }
     if (!icon || !label) {
       const name = String(action ?? '');
       if (!_warned.has(name)) {

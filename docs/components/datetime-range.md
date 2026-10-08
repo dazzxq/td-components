@@ -82,6 +82,24 @@ Giữ tên field cũ của dcms2 (`date_from` / `date_to`):
 
 Còn lỗi → "Chọn" **không đóng**, focus về ô lỗi (trên điện thoại chuyển sang nhóm chứa lỗi trước).
 
+### Không hạn (`allow-open-end`, 0.59.0)
+
+Hiệu lực khuyến mãi, hợp đồng, bảo hành… thường "từ ngày X, **không hạn**". Bật `allow-open-end`:
+
+```html
+<td-datetime-range name="hl" label="Hiệu lực" start="01/10/2026" required allow-open-end></td-datetime-range>
+```
+
+- Ngày kết thúc trống hiện là **"Không hạn"**: trigger "01/10/2026 – Không hạn", tab "Đến" (sheet < 720) ghi "Không hạn".
+- Trong nhóm "Đến" có nút **"Không hạn"** (kiểu nút preset, `aria-pressed`): đang nhấn khi ngày kết thúc đang sửa trống.
+  Bấm → xoá ngày kết thúc; đang nhấn mà bấm → focus ô ngày "Đến" để gõ. Gõ ngày "Đến" / chọn preset → tự bỏ nhấn.
+- **Ngày kết thúc không bao giờ bắt buộc**: `required` / `both` → chỉ bắt buộc Từ (im lặng); `required="end"` mâu thuẫn →
+  một cảnh báo, không mốc nào bắt buộc.
+- Giá trị, FormData, `change` **không đổi**: end trống gửi `hl[end]=` (chuỗi rỗng) như trước; server hiểu rỗng = không hạn.
+- Bật / tắt lúc chạy: tại chỗ (chữ trigger, `aria-required` / dấu `*`, validity — không phát `change`). Hộp thoại đang mở:
+  nút được thêm / gỡ tại chỗ; gỡ nút đang có focus → focus vào ô ngày "Đến"; ngày đang sửa giữ nguyên.
+- Nhãn: `TdDatetimeRange.labels.openEnd` (`'Không hạn'`; PHP `Td::RANGE_LABELS['openEnd']` phải đổi cùng).
+
 ## Preset (callback) và múi giờ
 
 ```js
@@ -130,6 +148,7 @@ el.presets = [TdDatetimeRange.presets[0], TdDatetimeRange.presets[1]];
 | `open-at` | — | Mốc trống mở ở đâu: `today` \| `min` \| `max` \| một ngày |
 | `required` | — | Bảng dưới |
 | `disabled` | tắt | Khoá (cả qua `<fieldset disabled>`) |
+| `allow-open-end` | tắt | **0.59.0** Ngày kết thúc có thể trống = "Không hạn" (không bao giờ bắt buộc) — [Không hạn](#không-hạn-allow-open-end-0590). Property `allowOpenEnd`. |
 | `error-text` | — | Lỗi của app (hợp đồng lỗi chung; `setError()` / `clearError()`) |
 | `helper-text` | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
@@ -142,6 +161,8 @@ el.presets = [TdDatetimeRange.presets[0], TdDatetimeRange.presets[1]];
 | `required="start"` | chỉ Từ |
 | `required="end"` | chỉ Đến |
 | giá trị khác | cả hai (an toàn hơn) + một cảnh báo |
+
+Có `allow-open-end` (0.59.0): bỏ "Đến" khỏi bảng trên (cả hai → chỉ Từ; `"end"` → không mốc nào + một cảnh báo).
 
 ## Property, method, sự kiện
 
@@ -215,7 +236,10 @@ Kiểm tra trong trình duyệt **không phải lớp bảo mật**: server luô
     'label' => 'Thời gian', 'max_days' => 92,
 ]) ?>
 <?= td_datetime_range('promo', $promo->starts_at, $promo->ends_at, ['mode' => 'datetime', 'minute_step' => 15, 'required' => true]) ?>
+<?= td_datetime_range('hl', $contract->starts_on, $contract->ends_on, ['label' => 'Hiệu lực', 'required' => true, 'allow_open_end' => true]) ?>
 ```
+
+0.59.0 `allow_open_end`: host `allow-open-end`, ô native "Đến" không bao giờ `required`, chỉ có Từ → trigger "{Từ} – Không hạn".
 
 **Không JS:** hai `<input type="date">` (hoặc `datetime-local`) native tên `{name}[start]` / `{name}[end]`, nhãn "Từ" /
 "Đến", `min` / `max`, `required` **theo từng mốc** (`'start'` → chỉ input Từ…) — form chạy được, trình duyệt kiểm `required`
@@ -265,7 +289,7 @@ công tắc / dòng lỗi qua gate `test:contrast` ≥ 4.7. Host co tới 160px:
     <span class="td-field__label td-dtr__label" id="{id}-label">{label}[<span class="td-field__required" aria-hidden="true"> *</span>]</span>
     <button type="button" class="td-dtr__trigger" id="{id}-trigger" role="combobox" aria-haspopup="dialog"
             aria-expanded="false" aria-labelledby="{id}-label" [aria-required="true"]>
-      <span class="td-dtr__value" [data-placeholder]>29/09/2026 – 05/10/2026 | Từ … | Đến … | placeholder</span>
+      <span class="td-dtr__value" [data-placeholder]>29/09/2026 – 05/10/2026 | Từ … | Đến … | … – Không hạn (0.59.0) | placeholder</span>
       <span class="td-dtr__icon" data-td-icon="calendar" aria-hidden="true"></span>
     </button>
   </div>
@@ -276,7 +300,8 @@ công tắc / dòng lỗi qua gate `test:contrast` ≥ 4.7. Host co tới 160px:
 Hộp thoại (thân TdModal): `div.td-dtr-panel[data-mode][data-side]` > `div.td-dtr-panel__presets[role=group]` >
 `button.td-dtr-panel__preset[aria-pressed][data-id]` · `div.td-dtr-panel__switch` > `button.td-dtr-panel__tab[aria-pressed]`
 × 2 · `div.td-dtr-panel__sides` > `fieldset.td-dtr-panel__side[data-side]` (legend + bộ sửa `.td-dtp-panel` của picker
-đơn) × 2 · `p.td-dtr-panel__error[role=alert]` · `p.td-sr-only[role=status]`.
+đơn) × 2 · `p.td-dtr-panel__error[role=alert]` · `p.td-sr-only[role=status]`. 0.59.0 `allow-open-end`: ngay sau legend của
+nhóm "Đến" — `button.td-dtr-panel__preset.td-dtr-panel__open-end[aria-pressed]` "Không hạn".
 
 ## Bảo mật
 

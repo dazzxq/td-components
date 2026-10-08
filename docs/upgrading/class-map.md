@@ -362,6 +362,15 @@ Không có class legacy để đổi, nhưng phần tử bên trong đổi — C
   hovercard dwp; không có bảng đổi class vì kit chưa từng ship bản cũ.
 - **Icon** (0.6.0): `svg.td-icon.td-icon--{s|m|l}` từ registry.
 
+## Class mới không thay class cũ (0.59.0)
+
+| Class | Ý nghĩa |
+|---|---|
+| `.td-pagination--single` (+ `.td-pagination__controls[hidden]`) | `hide-single-page` và chỉ một trang: phần nút ẩn, chỉ còn dòng đếm |
+| `.td-modal__text--blocks` | `message` của hộp thoại Promise là mảng / Node: `div.td-modal__text` chứa các `<p>` / node |
+| `.td-dtp--clearable`, `.td-dtp__clear`, `.td-dtp__clear-icon` | `td-datetime-picker clearable`: gốc dạng lưới, nút xoá là anh em của trigger |
+| `.td-dtr-panel__open-end` | Nút "Không hạn" (cùng `.td-dtr-panel__preset`) trong nhóm "Đến" của `td-datetime-range allow-open-end` |
+
 ## Class mới không thay class cũ (0.58.0)
 
 | Class | Ý nghĩa |

@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.58.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.58.0', __DIR__ . '/public/assets/vendor/td-components/0.58.0');
+ *   require_once '/path/to/vendor/td-components/0.59.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.59.0', __DIR__ . '/public/assets/vendor/td-components/0.59.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -210,11 +210,12 @@ namespace TdComponents {
         public const SSR_DATETIME_RANGE = 'datetime-range@1';
         /** v0.40.0: texts of td_datetime_range = TdDatetimeRange.labels (a site overriding the JS labels gets a safe re-render). */
         public const RANGE_LABELS = ['start' => 'Từ', 'end' => 'Đến', 'fromPrefix' => 'Từ', 'toPrefix' => 'Đến',
-            'placeholder' => 'dd/mm/yyyy – dd/mm/yyyy', 'placeholderDatetime' => 'dd/mm/yyyy hh:mm – dd/mm/yyyy hh:mm'];
+            'placeholder' => 'dd/mm/yyyy – dd/mm/yyyy', 'placeholderDatetime' => 'dd/mm/yyyy hh:mm – dd/mm/yyyy hh:mm',
+            'openEnd' => 'Không hạn'];
         /** v0.56.0: td_datetime_picker / td_date (always the element <td-datetime-picker> + one native date / datetime-local input). */
         public const SSR_DATETIME_PICKER = 'datetime-picker@1';
         /** v0.56.0: trigger placeholders of td_datetime_picker = TdDatetimePicker.labels (parity: test/php/td-v056-php.test.js). */
-        public const DTP_LABELS = ['placeholder' => 'dd/mm/yyyy - hh:mm', 'placeholderDate' => 'dd/mm/yyyy'];
+        public const DTP_LABELS = ['placeholder' => 'dd/mm/yyyy - hh:mm', 'placeholderDate' => 'dd/mm/yyyy', 'clear' => 'Xoá ngày'];
         /** v0.38.0: texts of td_scan_input = TdScanInput.labels (a site overriding the JS labels gets a safe re-render). */
         public const SCAN_LABELS = ['input' => 'Mã quét', 'list' => 'Mã đã quét', 'fallback' => 'Nhập tay, mỗi dòng một mã'];
         /** v0.39.0: td_filter_chips (always the element <td-filter-chips> + the chips; × links work without JS). */
@@ -440,7 +441,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.58.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.59.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -1270,7 +1271,8 @@ namespace {
      * (default Td::configure ssr_elements): the `<td-action-button data-td-ssr="action-button@1">` host + the exact
      * control <td-action-button> renders (hydrated in place). An action that is neither a preset nor given icon + label
      * → '' + one E_USER_WARNING. A site preset registered only in JS must pass icon + label here (or be registered
-     * with Td::registerActionPresets() too — v0.56.0).
+     * with Td::registerActionPresets() too — v0.56.0). v0.59.0: an `icon` the registry does not know → one
+     * E_USER_WARNING naming it (sanitised like the action) — the preset icon is used, or '' without one.
      */
     function td_action_button(string $action, array $o = []): string
     {
@@ -1279,8 +1281,18 @@ namespace {
         $key = strtolower((string) preg_replace('/([a-z0-9])([A-Z])/', '$1-$2', $action));
         $preset = preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $key) ? Td::actionPreset($key) : null; // v0.56.0: site presets first
         $ownIcon = isset($o['icon']) && is_string($o['icon']) ? $trim($o['icon']) : '';
-        $ownIcon = $ownIcon !== '' && Td::hasIcon($ownIcon) ? $ownIcon : '';
-        $icon = $ownIcon !== '' ? $ownIcon : ($preset !== null && Td::hasIcon($preset[0]) ? $preset[0] : '');
+        $presetIcon = $preset !== null && Td::hasIcon($preset[0]) ? $preset[0] : '';
+        if ($ownIcon !== '' && !Td::hasIcon($ownIcon)) {
+            // v0.59.0 (QĐ D2): name the unknown icon — sanitised like the action below (SEC-02)
+            $shownIcon = addcslashes(substr((string) preg_replace('/[^\x20-\x7E]/', '', $ownIcon), 0, 64), '\\"');
+            trigger_error('td_action_button: unknown icon "' . $shownIcon . '" (' . strlen($ownIcon) . ' bytes) — '
+                . ($presetIcon !== '' ? 'preset icon used' : 'nothing rendered'), E_USER_WARNING);
+            if ($presetIcon === '') {
+                return '';
+            }
+            $ownIcon = '';
+        }
+        $icon = $ownIcon !== '' ? $ownIcon : $presetIcon;
         $ownLabel = isset($o['label']) && is_scalar($o['label']) && !is_bool($o['label']) ? $trim((string) $o['label']) : '';
         $label = $ownLabel !== '' ? $ownLabel : ($preset[1] ?? '');
         if ($icon === '' || $label === '') {
@@ -2316,6 +2328,8 @@ namespace {
      * group_separator / decimal_separator and element mode prints them as `group-separator` / `decimal-separator` (never
      * `locale`: the hydrated markup never depends on the browser's ICU); a tag outside the table → default + one
      * E_USER_WARNING. The value stays canonical (never pre-formatted).
+     * v0.59.0 `signed` (bool, element mode only): host `signed` — the element SHOWS a `+` before a positive value; native
+     * mode ignores it (a type=number input cannot show a `+`). The value stays canonical.
      */
     function td_number_input(string $name, mixed $value = null, array $o = []): string
     {
@@ -2468,6 +2482,7 @@ namespace {
             'clamp' => !empty($o['clamp']),
             'aria-label' => $aria,
             'stepper' => $stepper,
+            'signed' => !empty($o['signed']),
         ], $hostTaken) . '>' . $inner . '</td-number-input>';
     }
 
@@ -3649,7 +3664,8 @@ namespace {
      * Values: `dd/mm/yyyy[ - hh:mm]`, `yyyy-mm-dd`, `yyyy-mm-ddThh:mm[:ss]` or the DB `yyyy-mm-dd hh:mm[:ss]`; an invalid
      * value / bound is dropped. Options: label, mode (date | datetime), min, max, required, disabled, max_days,
      * minute_step, form_value_format (iso | display | db), start_name, end_name, placeholder, error, attrs (host),
-     * class, id.
+     * class, id. v0.59.0 `allow_open_end` (bool): host `allow-open-end`; the end is never required (required / both →
+     * the start native only; 'end' → none); start without end → trigger "{start} – Không hạn".
      */
     function td_datetime_range(string $name, ?string $start = null, ?string $end = null, array $o = []): string
     {
@@ -3663,6 +3679,8 @@ namespace {
         $help = td__helper_opt($o); // v0.54.0
         $disabled = !empty($o['disabled']);
         $req = td__dtr_required($o['required'] ?? null);
+        $openEnd = !empty($o['allow_open_end']); // v0.59.0
+        $reqParts = $openEnd ? array_values(array_diff($req['parts'], ['end'])) : $req['parts'];
         $s = $start !== null ? td__dtr_parts($start, $mode, 'start') : null;
         $e = $end !== null ? td__dtr_parts($end, $mode, 'end') : null;
         $min = isset($o['min']) && is_string($o['min']) ? td__dtr_parts($o['min'], $mode, 'start') : null;
@@ -3693,10 +3711,12 @@ namespace {
             $text = $placeholder ?? ($mode === 'datetime' ? $L['placeholderDatetime'] : $L['placeholder']);
         } elseif ($a !== null && $b !== null) {
             $text = $a . ' – ' . $b;
+        } elseif ($a !== null && $openEnd) {
+            $text = $a . ' – ' . $L['openEnd'];
         } else {
             $text = $a !== null ? $L['fromPrefix'] . ' ' . $a : $L['toPrefix'] . ' ' . $b;
         }
-        $required = $req['parts'] !== [];
+        $required = $reqParts !== [];
 
         $taken = [];
         $html = '<td-datetime-range' . Td::ownAttrs([
@@ -3720,11 +3740,12 @@ namespace {
             'disabled' => $disabled,
             'helper-text' => $help,
             'error-text' => $error,
+            'allow-open-end' => $openEnd,
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['id', 'class', 'name', 'mode', 'start', 'end', 'start-name', 'end-name', 'label', 'placeholder', 'min',
-            'max', 'max-days', 'minute-step', 'form-value-format', 'open-at', 'required', 'disabled', 'helper-text', 'error-text', 'value'],
-            $extra, $taken);
+            'max', 'max-days', 'minute-step', 'form-value-format', 'open-at', 'required', 'disabled', 'helper-text', 'error-text', 'value',
+            'allow-open-end'], $extra, $taken);
         $html .= Td::attrs($extra, $taken) . '>';
 
         $natives = '';
@@ -3736,7 +3757,7 @@ namespace {
                 . ($p !== null ? ' value="' . Td::e($native($p)) . '"' : '')
                 . ($min !== null ? ' min="' . Td::e($native($min)) . '"' : '')
                 . ($max !== null ? ' max="' . Td::e($native($max)) . '"' : '')
-                . (in_array($k, $req['parts'], true) ? ' required' : '')
+                . (in_array($k, $reqParts, true) ? ' required' : '')
                 . ($disabled ? ' disabled' : '')
                 . ($error !== null ? ' aria-invalid="true" aria-describedby="' . $hid . '-error"' : '')
                 . ($help !== null && $error === null ? ' aria-describedby="' . $hid . '-note"' : '') . '>';
@@ -3767,6 +3788,8 @@ namespace {
      * year → date + warning), min, max, required, disabled, placeholder, minute_step, form_value_format (iso | display |
      * db), open_at, helper_text (alias hint), error, aria_label, id, class, attrs (host; owned names reserved).
      * No JS the browser submits its own format: date `yyyy-mm-dd` (= iso), datetime `yyyy-mm-ddThh:mm`.
+     * v0.59.0 `clearable` (bool): host `clearable` + `div.td-dtp--clearable` + the clear button after the trigger
+     * (`hidden` without a value / when required / disabled; invisible until the element is defined — no dead control).
      */
     function td_datetime_picker(string $name, ?string $value = null, array $o = []): string
     {
@@ -3786,6 +3809,7 @@ namespace {
         $aria = td__str($o['aria_label'] ?? null);
         $disabled = !empty($o['disabled']);
         $required = !empty($o['required']);
+        $clearable = !empty($o['clearable']); // v0.59.0
         $min = isset($o['min']) && is_string($o['min']) ? td__dtr_parts($o['min'], $mode, 'start') : null;
         $max = isset($o['max']) && is_string($o['max']) ? td__dtr_parts($o['max'], $mode, 'end') : null;
         $v = $value !== null ? td__dtr_parts($value, $mode, 'start') : null;
@@ -3844,14 +3868,15 @@ namespace {
             'helper-text' => $help,
             'error-text' => $error,
             'aria-label' => $aria,
+            'clearable' => $clearable,
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['id', 'class', 'name', 'mode', 'value', 'label', 'placeholder', 'min', 'max', 'minute-step',
-            'form-value-format', 'open-at', 'required', 'disabled', 'helper-text', 'error-text', 'aria-label'], $extra, $taken);
+            'form-value-format', 'open-at', 'required', 'disabled', 'helper-text', 'error-text', 'aria-label', 'clearable'], $extra, $taken);
         $html .= Td::attrs($extra, $taken) . '>';
 
         $text = $display($v) ?? ($placeholder ?? ($mode === 'datetime' ? Td::DTP_LABELS['placeholder'] : Td::DTP_LABELS['placeholderDate']));
-        return $html . '<div class="td-dtp" data-state="closed">'
+        return $html . '<div class="td-dtp' . ($clearable ? ' td-dtp--clearable' : '') . '" data-state="closed">'
             . ($label !== '' ? '<label class="td-field__label" id="' . $hid . '-label" for="' . $hid . '-native">' . Td::e($label)
                 . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</label>' : '')
             . '<input class="td-dtp__native" type="' . ($mode === 'datetime' ? 'datetime-local' : 'date') . '" id="' . $hid . '-native"'
@@ -3868,7 +3893,11 @@ namespace {
             . '<button type="button" class="td-dtp__trigger" id="' . $hid . '-trigger" role="combobox" aria-haspopup="dialog" aria-expanded="false"'
             . ($required ? ' aria-required="true"' : '') . ($disabled ? ' disabled' : '') . '>'
             . '<span class="td-dtp__value"' . ($v === null ? ' data-placeholder' : '') . '>' . Td::e($text) . '</span>'
-            . '<span class="td-dtp__icon" data-td-icon="calendar" aria-hidden="true"></span></button></div>'
+            . '<span class="td-dtp__icon" data-td-icon="calendar" aria-hidden="true"></span></button>'
+            . ($clearable ? '<button type="button" class="td-dtp__clear" aria-label="' . Td::e(Td::DTP_LABELS['clear']) . '"'
+                . ($v === null || $required || $disabled ? ' hidden' : '') . '><span class="td-dtp__clear-icon" data-td-icon="close"'
+                . ' data-td-icon-size="s" aria-hidden="true"></span></button>' : '')
+            . '</div>'
             . td__helper_note($help, $hid, $error !== null)
             . ($error !== null ? '<span class="td-field-error" id="' . $hid . '-error" data-for="' . $hid . '">' . Td::e($error) . '</span>' : '')
             . '</td-datetime-picker>';

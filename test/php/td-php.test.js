@@ -325,6 +325,7 @@ describe('php/td.php', opts, () => {
       ellipsis: 'more', 'external-link': 'external', expand: 'fullscreen', pen: 'pencil',
       // v0.56.0 (plan A1)
       'archive-restore': 'restore', 'folder-tree': 'category', tag: 'brand', trademark: 'brand', package: 'product',
+      banknote: 'price', // v0.59.0
     });
     const names = Object.keys(json.aliases);
     const res = runPhp([...names.map((n) => ({ fn: 'td_icon', args: [n] })), { fn: 'Td::iconAliases', args: [] }]);

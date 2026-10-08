@@ -13,7 +13,9 @@
  *     options scrolls; five quick taps on the stepper + = +5, no zoom. v0.55.0: affix boxes ≥ 44 px / text ≥ 16 px, a tap on
  *     an affix focuses the control, a tap on a page [slot] button does not (it gets its click), number inputmode.
  *     v0.58.0: floating fields ≥ 44 px / value ≥ 16 px, a tap on the resting and on the raised label focuses the control,
- *     the raised label's hit box stays above the value line.
+ *     the raised label's hit box stays above the value line. v0.59.0: the date clear button ≥ 44 × 44, pressed while the
+ *     finger is down, a tap clears (one change, focus on the trigger, no dialog); the "Không hạn" toggle of the range
+ *     dialog ≥ 44 px tall and a tap empties the end.
  * (b) Chromium CDP Input.dispatchTouchEvent — continuous swipes and two-finger pinches: lightbox swipe-follow
  *     (commit / spring / flick / RTL / one item rubber band / edge / zoomed / cancel / reduced motion / settle races),
  *     cropper pinch + touchcancel.
@@ -684,6 +686,53 @@ async function chromiumSemantics(browser) {
         return [0.2, 0.5, 0.8].every((fx) => document.elementFromPoint(r.left + r.width * fx, y) === ctl);
       });
       expect(hit, 'value-line points do not hit the control on touch');
+    });
+
+    // v0.59.0 the date clear button + the "Không hạn" toggle
+    await it(tag, 'date clear: ≥ 44 × 44, pressed while down, a tap clears (one change, focus on the trigger, no dialog)', async () => {
+      await load(page);
+      const sel = '#rsp-dtp-clear .td-dtp__clear';
+      await page.evaluate((s) => {
+        document.querySelector(s).scrollIntoView({ block: 'center' });
+        window.__dc = 0;
+        document.querySelector('#rsp-dtp-clear').addEventListener('change', () => { window.__dc += 1; });
+      }, sel);
+      const size = await page.evaluate((s) => { const r = document.querySelector(s).getBoundingClientRect(); return [r.width, r.height]; }, sel);
+      expect(size[0] >= 43.5 && size[1] >= 43.5, `clear button ${size.join('×')}`);
+      const pt = await centre(page, sel);
+      await touchDown(cdp, pt);
+      await frames(page, 2);
+      const pressed = await has(sel);
+      await touchUp(cdp);
+      expect(pressed, 'no pressed state while the finger is down');
+      await page.waitForFunction(() => window.__dc === 1, null, { timeout: 3000 }).catch(() => {});
+      const st = await page.evaluate(() => ({ changes: window.__dc, value: document.querySelector('#rsp-dtp-clear').getValue(),
+        focus: document.activeElement === document.querySelector('#rsp-dtp-clear .td-dtp__trigger'),
+        dialog: !!document.querySelector('body > .td-modal:not([data-state="closing"])') }));
+      expect(st.changes === 1 && st.value === '' && st.focus && !st.dialog, `clear tap: ${JSON.stringify(st)}`);
+    });
+    await it(tag, 'range "Không hạn": ≥ 44 px tall in the dialog, a tap empties the end (aria-pressed)', async () => {
+      await load(page);
+      await page.evaluate(() => document.querySelector('#rsp-dtr-open').setAttribute('end', '05/10/2026'));
+      const t = await centre(page, '#rsp-dtr-open .td-dtr__trigger');
+      await page.touchscreen.tap(t.x, t.y);
+      await page.waitForSelector('.td-dtr-panel__open-end', { state: 'attached', timeout: 4000 });
+      await page.evaluate(() => {
+        const m = document.querySelector('body > .td-modal:not([data-state="closing"])');
+        const tab = m.querySelector('.td-dtr-panel__tab[data-side="end"]');
+        if (tab && tab.getClientRects().length) tab.click(); // the sheet shows one side at a time
+      });
+      await page.waitForFunction(() => document.querySelector('.td-dtr-panel__open-end')?.getClientRects().length > 0, null, { timeout: 3000 }).catch(() => {});
+      const sel = '.td-dtr-panel__open-end';
+      const h = await page.evaluate((s) => document.querySelector(s).getBoundingClientRect().height, sel);
+      expect(h >= 43.5, `"Không hạn" ${h} px tall`);
+      const pt = await centre(page, sel);
+      await page.touchscreen.tap(pt.x, pt.y);
+      await page.waitForFunction((s) => document.querySelector(s).getAttribute('aria-pressed') === 'true', sel, { timeout: 3000 }).catch(() => {});
+      const st = await page.evaluate((s) => ({ pressed: document.querySelector(s).getAttribute('aria-pressed'),
+        day: document.querySelector('.td-dtr-panel__side[data-side="end"] .td-dtp-panel__input[data-part="day"]').value }), sel);
+      expect(st.pressed === 'true' && st.day === '', `"Không hạn" tap: ${JSON.stringify(st)}`);
+      await page.evaluate(async () => { (await import('/src/feedback/td-modal.js')).TdModal.closeAll(); });
     });
 
     // v0.52.0 segmented (size sm, icon-only) + locked switch

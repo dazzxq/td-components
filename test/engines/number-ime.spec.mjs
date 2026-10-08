@@ -7,6 +7,7 @@
  *   - while composing: the field is never re-formatted (the IME owns the text) and the host fires no `input`;
  *   - on commit: the value is normalised ONCE (full-width / Arabic-Indic digits → ASCII, grouped), the caret sits right
  *     after the composed digit, exactly one host `input` with the canonical value.
+ *   - v0.59.0 `signed`: the same with the display `+` in front (caret after the composed digit, value without `+`).
  *
  * Run: npm run test:engines (or node test/engines/number-ime.spec.mjs)
  */
@@ -21,11 +22,12 @@ const ORIGIN = 'http://engines.local';
 const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><link rel="stylesheet" href="/td.css"></head><body>
   <td-number-input id="n1" label="Giá" value="1000"></td-number-input>
   <td-number-input id="n2" label="Tỉ lệ" decimals="2" value="12"></td-number-input>
+  <td-number-input id="n3" label="Chênh" signed min="-100000" value="1000"></td-number-input>
 <script type="module">
   import '/src/form/td-number-input.js';
   await customElements.whenDefined('td-number-input');
-  window.__inputs = { n1: [], n2: [] };
-  for (const id of ['n1', 'n2']) document.getElementById(id).addEventListener('input', (e) => { if (e instanceof CustomEvent) window.__inputs[id].push(e.detail.value); });
+  window.__inputs = { n1: [], n2: [], n3: [] };
+  for (const id of ['n1', 'n2', 'n3']) document.getElementById(id).addEventListener('input', (e) => { if (e instanceof CustomEvent) window.__inputs[id].push(e.detail.value); });
   window.__ready = true;
 </script></body></html>`;
 
@@ -77,6 +79,16 @@ try {
   await cdp.send('Input.insertText', { text: '٣٤' });
   s = await state('n2');
   check('multi-step commit: ASCII digits, one input', s.value === '1.234' && s.host === '1234' && JSON.stringify(s.inputs) === '["1234"]', JSON.stringify(s));
+
+  // 3. v0.59.0 signed: +1|.000 → +12.000 (the display + is not part of the composition)
+  await page.evaluate(() => { const c = document.querySelector('#n3 input'); c.focus(); c.setSelectionRange(2, 2); });
+  await cdp.send('Input.imeSetComposition', { text: '２', selectionStart: 1, selectionEnd: 1 });
+  s = await state('n3');
+  check('signed composing: untouched, no host input', s.value === '+1２.000' && s.inputs.length === 0, JSON.stringify(s));
+  await cdp.send('Input.insertText', { text: '２' });
+  s = await state('n3');
+  check('signed commit: "+12.000", caret after the digit, one input "12000"', s.value === '+12.000' && s.caret === 3
+    && s.host === '12000' && JSON.stringify(s.inputs) === '["12000"]', JSON.stringify(s));
   await cdp.detach();
 } catch (e) {
   failures.push(`chromium: ${e.message.split('\n')[0]}`);

@@ -56,6 +56,30 @@ const CASES = [
     props: () => ({ formatInfo: () => 'Trang có 23 mục' }),
     check(el) { expect(el.querySelector('.td-pagination__info').textContent).to.equal('Trang có 23 mục'); },
   },
+  // v0.59.0 (plan v0.59.0-dsuite-small §F): the new attribute-backed setters, assigned before the upgrade
+  {
+    tag: 'td-pagination', attrs: { 'total-items': '4' }, props: () => ({ hideSinglePage: true }),
+    check(el) { expect(el.querySelector('.td-pagination__controls').hidden).to.equal(true); },
+  },
+  {
+    tag: 'td-table', props: () => ({ columns: [{ key: 'a', label: 'A' }], data: [{ a: 1 }], hideSinglePage: true }),
+    check(el) {
+      expect(el.querySelector('.td-table__header > .td-table__pagination').hidden).to.equal(true);
+      expect(el.querySelector('.td-table__footer td-pagination').hasAttribute('hide-single-page')).to.equal(true);
+    },
+  },
+  {
+    tag: 'td-number-input', attrs: { label: 'Chênh' }, props: () => ({ signed: true, value: '300' }),
+    check(el) { expect(el.querySelector('.td-number__control').value).to.equal('+300'); },
+  },
+  {
+    tag: 'td-datetime-picker', attrs: { mode: 'date', value: '15/06/2026' }, props: () => ({ clearable: true }),
+    check(el) { expect(el.querySelector('.td-dtp__clear')?.hidden).to.equal(false); },
+  },
+  {
+    tag: 'td-datetime-range', attrs: { start: '01/10/2026' }, props: () => ({ allowOpenEnd: true }),
+    check(el) { expect(el.querySelector('.td-dtr__value').textContent).to.equal('01/10/2026 – Không hạn'); },
+  },
   {
     tag: 'td-tabs',
     props: () => ({ tabs: [{ id: 'a', label: 'Một' }, { id: 'b', label: 'Hai' }], onChange: fn() }),

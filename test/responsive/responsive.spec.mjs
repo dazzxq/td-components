@@ -40,6 +40,10 @@
  *   the input of a .td-field__box is probed through its box (the box forwards the press).
  * v0.58.0: the `floating` section — td-input-field label-mode="floating": the label inside its host on one line (ellipsis), the
  *   raised label's hit box above the value line, value-line points hit the control; large text (`.rsp-big-text`, also with affixes) never clips.
+ * v0.59.0: the `v059` section — td-table hide-single-page (one visible count line, no top bar, no overflow; 280 px column
+ *   too), td-datetime-picker clearable (the clear button inside the trigger box, never over the value text; ≥ 44 coarse),
+ *   td-datetime-range allow-open-end ("… – Không hạn" cut with an ellipsis, never overflowing), td-number-input signed (the
+ *   "+" value fits); overlay `modal-list` (confirm with a paragraph array + a list).
  * v0.50.0: td-carousel + td-rating — the `carousel` section of the page (controls inside the section, no overlap, ratings
  *   on one line) and, on their own pages, the PHP markup of test/ssr/fixtures/carousel.html (3 / 8 / 12 / 13 pages,
  *   per-view attribute) BEFORE → AFTER the module loads (C21): CLS 0 (controls + host heights equal; Chromium:
@@ -115,6 +119,8 @@ const SCENARIOS = [
     for (const placement of ['top-start', 'top-center', 'top-end', 'bottom-start']) TdToast.info(`Thông báo ${placement}`, { placement, duration: 0 });
   }), panel: '.td-toast:not([data-td-toast-older])', toastLanes: true, see: ['.td-toast:not([data-td-toast-older])'] },
   { name: 'modal-confirm', act: (p) => p.evaluate(() => window.__openers.modalConfirm()), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child'] },
+  // v0.59.0: confirm message as paragraphs + a list Node
+  { name: 'modal-list', act: (p) => p.evaluate(() => window.__openers.modalList()), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child', '.td-modal__text--blocks > ul'] },
   { name: 'modal-long', act: (p) => p.evaluate(() => window.__openers.modalLong()), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child'] },
   { name: 'drawer', act: (p) => p.evaluate(() => window.__openers.drawer()), panel: '.td-drawer__panel', see: ['.td-drawer__close', '.td-drawer__footer .td-btn'] },
   { name: 'lightbox', act: (p) => p.evaluate(() => window.__openers.lightbox()), panel: '.td-lightbox', see: ['.td-lightbox__close'] },
@@ -771,6 +777,40 @@ async function runConfig(browser, c) {
       return errs;
     });
     check(tag, 'floating labels (v0.58.0)', v058Err);
+    // v0.59.0: one-page tables, the date clear button, the open end text, the signed number
+    const v059Err = await page.evaluate(() => {
+      const errs = [];
+      const coarse = matchMedia('(pointer: coarse)').matches;
+      for (const id of ['rsp-table-single', 'rsp-table-single-n']) {
+        const t = document.getElementById(id);
+        const infos = [...t.querySelectorAll('.td-pagination__info')].filter((n) => n.getClientRects().length && n.getBoundingClientRect().height > 2);
+        if (infos.length !== 1) errs.push(`#${id}: ${infos.length} visible count lines (want 1)`);
+        if (t.querySelector('.td-table__header > .td-table__pagination:not([hidden])')) errs.push(`#${id}: top pagination shown`);
+        if (t.querySelector('.td-table__footer .td-pagination__controls:not([hidden])')) errs.push(`#${id}: page controls shown`);
+        if (t.scrollWidth > t.clientWidth + 1) errs.push(`#${id} overflows: ${t.scrollWidth} > ${t.clientWidth}`);
+      }
+      const dtp = document.getElementById('rsp-dtp-clear');
+      const trig = dtp.querySelector('.td-dtp__trigger').getBoundingClientRect();
+      const clear = dtp.querySelector('.td-dtp__clear');
+      const cb = clear.getBoundingClientRect();
+      const val = dtp.querySelector('.td-dtp__value').getBoundingClientRect();
+      if (clear.hidden || !cb.width) errs.push('#rsp-dtp-clear: clear button not shown');
+      if (cb.left < trig.left - 0.5 || cb.right > trig.right + 0.5 || cb.top < trig.top - 0.5 || cb.bottom > trig.bottom + 0.5) errs.push('#rsp-dtp-clear: clear button outside the trigger box');
+      if (val.right > cb.left + 0.5) errs.push(`#rsp-dtp-clear: value text (right ${val.right.toFixed(1)}) under the clear button (${cb.left.toFixed(1)})`);
+      if (coarse && (cb.width < 43.5 || cb.height < 43.5)) errs.push(`#rsp-dtp-clear: clear button ${cb.width}×${cb.height} < 44 on touch`);
+      if (dtp.scrollWidth > dtp.clientWidth + 1) errs.push('#rsp-dtp-clear overflows');
+      const dtr = document.getElementById('rsp-dtr-open');
+      const dv = dtr.querySelector('.td-dtr__value');
+      if (!dv.textContent.endsWith('– Không hạn')) errs.push(`#rsp-dtr-open: text "${dv.textContent}"`);
+      if (dv.scrollWidth > dv.clientWidth + 1 && getComputedStyle(dv).textOverflow !== 'ellipsis') errs.push('#rsp-dtr-open: long text not cut');
+      if (dtr.scrollWidth > dtr.clientWidth + 1) errs.push('#rsp-dtr-open overflows');
+      const num = document.getElementById('rsp-num-signed');
+      const nc = num.querySelector('.td-number__control');
+      if (nc.value !== '+12.990.000') errs.push(`#rsp-num-signed: "${nc.value}"`);
+      if (num.scrollWidth > num.clientWidth + 1) errs.push('#rsp-num-signed overflows');
+      return errs;
+    });
+    check(tag, 'single page / date clear / open end / signed (v0.59.0)', v059Err);
     if (errors.length) check(tag, 'page errors', errors);
 
     if (!c.fallback) await runOverlays(page, c, tag, shot);

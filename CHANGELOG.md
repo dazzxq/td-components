@@ -2,6 +2,34 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.59.0
+
+**Năm việc nhỏ từ dsuite (owner duyệt, đều opt-in): phân trang một trang, hộp thoại nhiều dòng, số có dấu `+`, cảnh báo icon
+lạ + icon giá, nút xoá ngày / "Không hạn"**. Plan `docs/internal/plans/v0.59.0-dsuite-small.md`, Codex plan-review APPROVE
+2 vòng, impl-review APPROVE 2 vòng + security-review APPROVE 3 vòng. Không breaking — `docs/upgrading/breaking-changes.md#0590`.
+
+### Added
+
+- `hide-single-page` (`td-pagination`, `td-table`): khi chỉ có một trang, ẩn thanh trên và các nút trang, giữ **một** dòng
+  đếm (vẫn là live region cho trình đọc màn hình).
+- `TdModal.confirm` / `success` / `error` / `info`: `message` nhận `Node` hoặc mảng (chuỗi → mỗi mục một đoạn, chữ thuần;
+  danh sách = truyền `<ul>`). Không bao giờ nhận chuỗi HTML.
+- `<td-number-input signed>` (PHP `signed`): hiển thị `+300.000` / `-300.000`; giá trị gửi đi không có `+`; gõ / dán `+` / `−`
+  được xử lý, con trỏ giữ đúng chỗ (kể cả khi đổi `signed` lúc đang gõ).
+- Icon core `price` (Lucide `banknote`, alias `banknote`).
+- `<td-datetime-picker clearable>` (PHP `clearable`): nút "Xoá ngày" (≥ 44 px cảm ứng, bắn `change`, form "bẩn", focus về ô);
+  `<td-datetime-range allow-open-end>` (PHP `allow_open_end`): nút "Không hạn", ô cuối không còn bắt buộc, chữ
+  "01/10/2026 – Không hạn".
+
+### Changed
+
+- `td-action-button` với `icon` không có trong registry: một `console.warn` mỗi tên (PHP `E_USER_WARNING`), trước đây im lặng.
+
+### Security
+
+- Tiện ích dùng chung `src/utils/log-safe.js` cho cảnh báo console (escape ký tự điều khiển, U+2028 / U+2029, ký tự đảo chiều
+  bidi, `"` / `\`; chỉ đọc 64 ký tự đầu; dừng sau 200 cảnh báo) — dùng cho `td-action-button` và `td-repeater`.
+
 ## 0.58.0
 
 **Nhãn nổi (floating label) cho `td-input-field`: `label-mode="floating"`** (owner: biến thể của input-field, dùng lại thiết kế

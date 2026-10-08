@@ -13,6 +13,7 @@ stroked `r=".5"` circle — the registry has no per-node `fill`).
 Icons added in 0.56.0 (`archive`, `restore` ← archive-restore, `category` ← folder-tree, `brand` ← tag, `product` ←
 package, `ban`) were checked against lucide-static 1.52.0 and follow the same rules (`tag`'s filled dot is a stroked
 `r=".5"` circle).
+The icon added in 0.59.0 (`price` ← banknote) was checked against lucide-static 1.53.0 and follows the same rules.
 
 ISC License
 

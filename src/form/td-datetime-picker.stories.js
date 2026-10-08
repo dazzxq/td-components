@@ -87,3 +87,12 @@ export const InAForm = {
       + '<pre id="dtp-story-out" class="sb-note"></pre></form>';
   },
 };
+
+/** v0.59.0 `clearable`: a clear button while there is a value (not when required / disabled). */
+export const Clearable = {
+  render: () => '<div class="sb-stack">'
+    + '<td-datetime-picker mode="date" label="Hạn thanh toán" value="15/06/2026" clearable></td-datetime-picker>'
+    + '<td-datetime-picker label="Giờ hẹn (bắt buộc — không có nút xoá)" value="15/06/2026 - 10:30" required clearable></td-datetime-picker>'
+    + '<td-datetime-picker mode="month" label="Tháng báo cáo" value="06/2026" clearable></td-datetime-picker>'
+    + '<p class="sb-note">Nút × (Xoá ngày / Xoá tháng) đứng sau icon lịch; Tab từ ô tới nút; xoá xong focus về ô.</p></div>',
+};

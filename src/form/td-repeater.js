@@ -1,3 +1,4 @@
+import { logSafe } from '../utils/log-safe.js';
 import { TdBaseElement } from '../base/td-base-element.js';
 import { tdIcon } from '../icons/td-icon.js';
 import { OrderedCollectionModel } from '../utils/ordered-collection.js';
@@ -14,12 +15,8 @@ const FOCUSABLE = 'input:not([type="hidden"]):not([disabled]), select:not([disab
 
 /** v0.56.0 (plan v0.56.0-repeater-icons-date R1): the field key of a row (never derived from `name`). */
 const FIELD = 'data-td-field';
-/** Longest key / tag text a warning repeats (app data — console only, never markup). */
-const WARN_TEXT_MAX = 64;
-/** Codex security r1 (CWE-117): a site/API-supplied text in a console warning — C0 / DEL / C1 controls and U+2028 / U+2029
- * escaped as \uXXXX (no forged log lines), then capped. */
-const logSafe = (v) => String(v).slice(0, WARN_TEXT_MAX)
-  .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+// Codex security r1 (CWE-117): site/API-supplied text in a console warning — src/utils/log-safe.js (v0.59.0: shared with
+// td-action-button; also escapes `\` / `"`).
 
 /** v0.56.0 (R8): input types whose value is text the user types → `readonly` applies (HTML: readonly is honoured). */
 const READONLY_TYPES = new Set(['text', 'search', 'url', 'tel', 'email', 'password', 'number', 'date', 'month', 'week',

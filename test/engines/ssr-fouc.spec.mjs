@@ -64,8 +64,10 @@ const ALL = [...CASES.keys()];
 const AFFECTED = ALL.filter((id) => !CASES.get(id).kind.startsWith('guard'));
 const SELECTS = ['dd-n', 'dd-n-ph', 'dd-n-nolabel', 'dd-n-req', 'dd-n-dis', 'dd-n-search', 'dd-n-long', 'dd-e', 'dd-e-ph', 'dd-e-dis', 'ts-n', 'ts-e'];
 // v0.56.0: td_datetime_picker / td_date (the native input styled like the trigger, ADR 0025 kind (a))
-const DTP = ['dtp-date', 'dtp-datetime', 'dtp-dis', 'dtp-empty', 'dtp-help', 'dtp-err', 'dtp-narrow'];
-const FIELDS = [...SELECTS, 'ts-n-multi', 'ts-e-multi', 'dtr-date', 'dtr-dis', 'dtr-empty', ...DTP];
+const DTP = ['dtp-date', 'dtp-datetime', 'dtp-dis', 'dtp-empty', 'dtp-help', 'dtp-err', 'dtp-narrow',
+  // v0.59.0 clearable (plan v0.59.0-dsuite-small QĐ E1d)
+  'dtp-clear-filled', 'dtp-clear-empty', 'dtp-clear-required', 'dtp-clear-narrow'];
+const FIELDS = [...SELECTS, 'ts-n-multi', 'ts-e-multi', 'dtr-date', 'dtr-dis', 'dtr-empty', 'dtr-open-end', ...DTP];
 
 const failures = [];
 const notes = [];

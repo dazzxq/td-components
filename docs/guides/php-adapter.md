@@ -123,7 +123,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.58.0/
+public/assets/vendor/td-components/0.59.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -131,7 +131,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.58.0';
+const TD_VERSION = '0.59.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -767,7 +767,8 @@ native** (`checked` / `value` PHP in ra). `indeterminate` của input được g
 - Hình lấy **đầy đủ** từ `src/icons/icons.json` — cùng markup với `tdIcon()` của JS (không phải slot rỗng
   `data-td-icon`). Vì thế icon trong markup SSR **không** bị `fillIconSlots()` ghi đè.
 - Tên cũ của kit 135 được map khi tên đó không tồn tại: `x`→`close`, `chevron-left/right/up/down`→`prev/next/up/down`,
-  `ellipsis`→`more`, `external-link`→`external`, `expand`→`fullscreen`, `pen`→`pencil`. Bảng alias nằm trong object
+  `ellipsis`→`more`, `external-link`→`external`, `expand`→`fullscreen`, `pen`→`pencil` (0.56.0 / 0.59.0 thêm alias Lucide
+  của icon core mới: `tag`→`brand`, `banknote`→`price`…). Bảng alias nằm trong object
   `aliases` của `src/icons/icons.json` (0.18.0 — JS `tdIcon()` đọc cùng bảng); icons.json cũ chưa có `aliases` thì
   adapter dùng bảng dự phòng trong `td.php`. `Td::iconAliases()` trả bảng đang dùng.
 
@@ -1199,6 +1200,7 @@ Không có helper cho `<td-tree>` dạng cây luôn hiện (cây quyền là tra
 | `class` | native → wrapper `div.td-field`; element → host |
 | `attrs` | attribute thêm trên **input** (allowlist). Giữ chỗ (bị bỏ, không phân biệt hoa thường): `type` `class` `id` `inputmode` `autocomplete` `spellcheck` `name` `value` `min` `max` `step` `placeholder` `required` `aria-required` `disabled` `readonly` `aria-label` `aria-labelledby` `aria-describedby` `aria-invalid` `aria-errormessage` `pattern` `maxlength` `minlength` `list` + mọi `data-td-*` |
 | `stepper` | 0.49.0, **chỉ chế độ element**: host `stepper` + `td-number--stepper` + hai `button.td-number__step` (`type=button`, `tabindex=-1`, `aria-controls`, icon `minus` / `plus`) ở hai đầu hộp — `td.css` ẩn chúng (vẫn giữ chỗ) tới khi module định nghĩa element; tên nút ("Giảm / Tăng {label}") do component đặt. Chế độ native bỏ qua (`type=number` có nút xoay của trình duyệt) |
+| `signed` | 0.59.0, **chỉ chế độ element**: host `signed` — sau khi JS chạy, số dương hiện `+` (`+300.000`); giá trị in và gửi vẫn là số chuẩn (`300000`). Chế độ native bỏ qua im lặng (`type=number` không hiện được `+`) |
 
 ```html
 <!-- td_number_input('price', '12990000', ['label' => 'Giá bán', 'suffix' => '₫', 'required' => true, 'element' => true]) -->
@@ -1607,13 +1609,14 @@ foreach ((array) ($_GET['tag'] ?? []) as $t) {               // nhiều giá tr�
 | `label`, `placeholder` | nhãn / chữ khi trống |
 | `min`, `max` | cùng định dạng; in ra dạng native (`yyyy-mm-dd` / `yyyy-mm-ddThh:mm`; `max` chỉ ngày = 23:59) trên host **và** hai ô; sai → bỏ |
 | `required` | `true` / `'both'` → cả hai (`required` trần); `'start'` / `'end'` → một mốc (`required="start"`); `false` / không có → không |
+| `allow_open_end` | 0.59.0: host `allow-open-end` — ngày kết thúc trống = "Không hạn" (trigger `01/10/2026 – Không hạn`) và **không bao giờ** bắt buộc: ô native "Đến" không `required` (`true` / `'both'` → chỉ "Từ"; `'end'` → không mốc nào) |
 | `disabled`, `max_days` (≥ 1), `minute_step` (1–30, chia hết 60), `form_value_format` (`iso` / `display` / `db`) | attribute của host; giá trị sai → bỏ |
 | `start_name`, `end_name` | ghi đè tên hai mục (dcms2: `date_from` / `date_to`) |
 | `error` | `error-text` trên host + dòng lỗi + `aria-invalid` / `aria-describedby` trên hai ô native |
 | `id`, `class` | id / class của **host** (ô native: `{id}-start` / `{id}-end`, trigger `{id}-trigger`) |
-| `attrs` | attribute thêm trên **host** (allowlist). Giữ chỗ: `id` `class` `name` `mode` `start` `end` `start-name` `end-name` `label` `placeholder` `min` `max` `max-days` `minute-step` `form-value-format` `open-at` `required` `disabled` `error-text` `value` + mọi `data-td-*` |
+| `attrs` | attribute thêm trên **host** (allowlist). Giữ chỗ: `id` `class` `name` `mode` `start` `end` `start-name` `end-name` `label` `placeholder` `min` `max` `max-days` `minute-step` `form-value-format` `open-at` `required` `disabled` `error-text` `value` `allow-open-end` + mọi `data-td-*` |
 
-Chữ "Từ" / "Đến" / placeholder = `Td::RANGE_LABELS` (= `TdDatetimeRange.labels`); site đổi chữ phía JS thì markup PHP bị
+Chữ "Từ" / "Đến" / placeholder / "Không hạn" (0.59.0) = `Td::RANGE_LABELS` (= `TdDatetimeRange.labels`); site đổi chữ phía JS thì markup PHP bị
 coi là lệch → render an toàn (vẫn đúng giá trị).
 
 ## td_datetime_picker / td_date (0.56.0)
@@ -1637,6 +1640,7 @@ của kit (dd/mm/yyyy, hộp thoại, nhãn tiếng Việt, `min` / `max` của 
     <input class="td-dtp__native" type="date|datetime-local" id="{id}-native" name value min max [step] [required]
            [disabled] [aria-label] [aria-invalid aria-describedby="{id}-error" | aria-describedby="{id}-note"]>
     <button type="button" class="td-dtp__trigger" id="{id}-trigger" role="combobox" …>…</button>   ← ẩn khi chưa có JS
+    [<button type="button" class="td-dtp__clear" aria-label="Xoá ngày" [hidden]>…</button>]   ← 0.59.0 clearable (gốc + td-dtp--clearable)
   </div>
   [<div class="td-field__note" id="{id}-note">gợi ý</div>] [<span class="td-field-error" id="{id}-error" data-for="{id}">lỗi</span>]
 </td-datetime-picker>
@@ -1673,7 +1677,8 @@ giới hạn như `td_datetime_range`.
 | `minute_step` (1–30, chia hết 60), `form_value_format` (`iso` / `display` / `db`), `open_at` (`today` / `min` / `max` / một ngày) | attribute của host (`minute-step` → ô native `step` = phút × 60, chỉ `datetime`); sai → bỏ |
 | `helper_text` (alias `hint`), `error` | gợi ý / lỗi ([ADR 0027](../internal/decisions/0027-shared-helper-contract.md)): ghi chú + `aria-describedby` trên ô native; có lỗi thì gợi ý ẩn |
 | `id`, `class` | id / class của **host** (ô native `{id}-native`, trigger `{id}-trigger`) |
-| `attrs` | attribute thêm trên **host** (allowlist). Giữ chỗ: `id` `class` `name` `mode` `value` `label` `placeholder` `min` `max` `minute-step` `form-value-format` `open-at` `required` `disabled` `helper-text` `error-text` `aria-label` + mọi `data-td-*` |
+| `clearable` | 0.59.0: host `clearable` + `div.td-dtp--clearable` + nút xoá sau trigger (`hidden` khi chưa có giá trị / `required` / `disabled`; vô hình tới khi module chạy — giữ chỗ, không có nút "chết" khi không JS). Tên nút `Td::DTP_LABELS['clear']` |
+| `attrs` | attribute thêm trên **host** (allowlist). Giữ chỗ: `id` `class` `name` `mode` `value` `label` `placeholder` `min` `max` `minute-step` `form-value-format` `open-at` `required` `disabled` `helper-text` `error-text` `aria-label` `clearable` + mọi `data-td-*` |
 
 ## td_steps (0.45.0)
 

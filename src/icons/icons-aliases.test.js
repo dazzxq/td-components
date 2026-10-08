@@ -26,6 +26,8 @@ const EXPECTED = {
   tag: 'brand',
   trademark: 'brand',
   package: 'product',
+  // v0.59.0 (plan QĐ D3): the Lucide name of the new core icon `price`
+  banknote: 'price',
 };
 
 // v0.56.0 (plan A1): core icons for archive / restore / category tree / brand / product / ban (Lucide 1.52.0 geometry)
@@ -40,7 +42,7 @@ test('v0.56.0: the 6 new core icons exist with their Lucide source name; no alia
     assert.ok(listIcons().includes(name), name);
   }
   assert.equal(hasIcon('box'), false);
-  assert.equal(Object.keys(json.icons).length, 70);
+  assert.equal(Object.keys(json.icons).length, 71); // v0.59.0: + price
 });
 
 test('icons.json aliases: the F6 table, every target a core icon, no alias shadows a core name', () => {

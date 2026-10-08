@@ -71,6 +71,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - Ngày từ v0.33 trở đi: **rebaseline từ ngày v0.31 xong thực tế** (không nén test / acceptance để giữ lịch cũ ~11/11 –
   25/11)
 - B (sau B0 ~01/2027): choice-group + number stepper làm sớm ở v0.49.0 (dsuite); rating chỉ đọc + carousel không autoplay làm ở v0.50.0
+- `done` v0.59.0: dsuite — `hide-single-page`, `TdModal` message Node / mảng, number `signed`, cảnh báo icon lạ + icon `price`, datetime `clearable` / range `allow-open-end` — plan [v0.59.0-dsuite-small](plans/v0.59.0-dsuite-small.md)
 
 ## Chờ nhu cầu (owner 2026-10-08: chỉ làm khi có site cần)
 
@@ -78,6 +79,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - Kéo thả đổi cha / thứ tự cho bảng cây (`reorderable`, event `move`, `rowDraggable` — tên đã giữ chỗ trong plan v0.57.0); hiện dùng `moveRow` từ nút / menu
 - RTL — phím ← ở hai đầu `td-choice-group` quay vòng ngược chiều radio native (có từ v0.49); chưa site nào viết từ phải sang trái
 - Nhãn nổi cho `td-number-input` / `td-dropdown` / control khác (v0.58.0 chỉ `td-input-field`); kiểm tay VoiceOver / NVDA nhãn nổi
+- dsuite 2026-10-08 (owner không làm): chuyển `data-*` của toggle xuống input trong (host là control); `td-dropdown` `locked`; component gập / mở (dùng `<details>` gốc); `choice-group` chỉ đọc; thanh hành động nổi kiểu kính (`aehh-mobile-nav`)
 - Đổi theme lúc chạy (`TdTheme.apply`, theming R3) — light / dark / auto + bộ sinh màu + theme theo vùng đã xong ở v0.41 / v0.42
 - HTML server in sẵn cho dropzone; component dwp/135 chưa quyết; Trusted Types; khúc xạ SVG; nâng `@web/test-runner` / Storybook 9 (xem mục Later bên dưới)
 

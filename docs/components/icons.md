@@ -42,7 +42,7 @@ note.prepend(tdIcon('info', { size: 'l', label: 'Thông tin' })); // icon có ng
 
 ## Danh sách icon core
 
-70 icon (0.56.0). Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide. Bảng dưới là nhóm nền; các nhóm
+71 icon (0.59.0: + `price`). Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide. Bảng dưới là nhóm nền; các nhóm
 thêm sau (nút thao tác, toggle, theme, kho / danh mục) liệt kê ở các đoạn tiếp theo — danh sách đầy đủ: `listIcons()`.
 
 | Tên td | Lucide | | Tên td | Lucide |
@@ -99,6 +99,10 @@ Lucide `lucide-static` 1.52.0):
 | `brand` | tag | nhãn hiệu / hãng | `tag`, `trademark` |
 | `product` | package | sản phẩm / hộp | `package` |
 | `ban` | ban | ngừng / chặn (nút `discontinue`) | — |
+| `price` (0.59.0) | banknote | giá / tiền (tờ tiền, không ký hiệu `$` — hợp VNĐ) | `banknote` |
+
+Gắn **nhãn / tag**: dùng `tag` (alias của `brand` từ 0.56.0) — không có icon riêng thứ hai. Không alias `badge-dollar-sign` /
+`circle-dollar-sign` (hình khác).
 
 Không có alias `box`: Lucide có icon `box` **khác hình** (khối lập phương). Logo hãng thật (brand icon) không vào core
 ([ADR 0010](../internal/decisions/0010-icon-registry.md)) — site đăng ký bằng `registerIcons()`. **Lưu ý nâng cấp:** tên
@@ -132,6 +136,7 @@ Một số tên quen thuộc (tên Lucide / Font Awesome) được nhận như *
 | `folder-tree` (0.56.0) | `category` |
 | `tag` / `trademark` (0.56.0) | `brand` |
 | `package` (0.56.0) | `product` |
+| `banknote` (0.59.0) | `price` |
 
 - SVG vẽ ra giống hệt icon đích, và `data-icon` là **tên core** (`tdIcon('x')` → `data-icon="close"`).
 - Alias chỉ áp khi tên đó **không** phải icon core và chưa được site đăng ký: site `registerIcons({ pen: … })` thì

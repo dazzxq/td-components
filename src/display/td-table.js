@@ -126,6 +126,8 @@ function safeMaxHeight(value) {
  * @attr {boolean} server-mode - Rows are one server page: no client sort/slice; `data` keeps the current page
  * @attr {number} total-items - Server mode total (REQUIRED in server mode — without it the rows render, both
  *   paginations stay hidden and one console warning is printed)
+ * @attr {boolean} hide-single-page - v0.59.0: with ONE page the top pagination is hidden and the bottom one shows its info
+ *   line only (td-pagination `hide-single-page`: still the live region); more pages → both bars as before
  * @attr {number} total-rows - v0.57.2, server mode, optional: the number of ALL data rows (a tree: roots + all their
  *   descendants) → `formatPageInfo` ctx `totalRows` (else null). Client mode ignores it (the model size is used).
  * @attr {string} max-height - Any CSS `max-height` (e.g. `320px`, `50vh`): the table scrolls inside and the header is
@@ -269,12 +271,12 @@ export class TdTable extends TdBaseElement {
     return ['per-page', 'active-color', 'zebra', 'loading', 'loading-rows', 'title', 'heading-level', 'aria-label',
       'empty-title', 'empty-text', 'server-mode', 'total-items', 'max-height',
       'selectable', 'row-key', 'max-selected', 'name', 'disabled', 'controlled', 'column-menu', 'min-visible',
-      'tree', 'children-key', 'parent-key', 'tree-column', 'max-depth', 'total-rows'];
+      'tree', 'children-key', 'parent-key', 'tree-column', 'max-depth', 'total-rows', 'hide-single-page'];
   }
 
   // `zebra` is tri-state (default ON), so it is NOT a boolean attribute — see the `zebra` accessor.
   static get booleanAttributes() {
-    return ['loading', 'server-mode', 'disabled', 'controlled', 'column-menu', 'tree'];
+    return ['loading', 'server-mode', 'disabled', 'controlled', 'column-menu', 'tree', 'hide-single-page'];
   }
 
   constructor() {
@@ -993,7 +995,10 @@ export class TdTable extends TdBaseElement {
       const which = this._refocusPagination;
       this._refocusPagination = null;
       const a = document.activeElement;
-      if (!a || a === document.body || !a.isConnected) {
+      if (which === 'info' || this._pagTop.parentElement.hidden) {
+        // v0.59.0: the top bar went (one page) → the bottom bar's info line (td-pagination's own focus target)
+        if (!a || a === document.body || !a.isConnected || this._pagTop.contains(a)) this._pagBottom._focusInfo();
+      } else if (!a || a === document.body || !a.isConnected) {
         const p = which === 'top' ? this._pagTop : this._pagBottom;
         p.querySelector('.td-pagination__page[aria-current="page"]')?.focus();
       }
@@ -1031,9 +1036,16 @@ export class TdTable extends TdBaseElement {
       }
       this._syncPagInfo();
     }
-    this._pagTop.parentElement.hidden = !showPag;
+    // v0.59.0 `hide-single-page`: one page → no top bar, the bottom bar keeps its info line (td-pagination hides its controls)
+    const hideSingle = this.hasAttribute('hide-single-page');
+    const single = hideSingle && showPag && Math.ceil(count / this._getPerPage()) <= 1;
+    if (hideSingle !== this._pagBottom.hasAttribute('hide-single-page')) this._pagBottom.toggleAttribute('hide-single-page', hideSingle);
+    const topShown = showPag && !single;
+    const top = this._pagTop.parentElement;
+    if (!topShown && !top.hidden && top.contains(document.activeElement)) this._refocusPagination = 'info';
+    top.hidden = !topShown;
     this._footer.hidden = !showPag;
-    this._header.hidden = !showPag && !this._getTitle() && !this._colMenuOn();
+    this._header.hidden = !topShown && !this._getTitle() && !this._colMenuOn();
     return showPag;
   }
 
