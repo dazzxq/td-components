@@ -104,7 +104,9 @@ kế lấy từ ô nhập "label_mode floating" của dwp.
   / `el.value =`, trình duyệt khôi phục form khi Back, tự điền / autofill); và **luôn nổi** với `date` / `month` /
   `datetime-local` / `time` (trình duyệt luôn hiện `dd/mm/yyyy`) hoặc khi ô có tiền tố / hậu tố. Toàn bộ là CSS: chạy cả
   khi chưa có JS và giống hệt trước / sau khi module nạp.
-- **`placeholder`** chỉ hiện khi nhãn đã nổi (lúc focus) — dùng làm ví dụ định dạng, đừng lặp lại nhãn. Không có
+- **`placeholder`** chỉ hiện khi nhãn đã nổi: thường là lúc focus; ô **luôn nổi** (có tiền tố / hậu tố) thì hiện bình thường
+  mỗi khi ô rỗng (với `date` / `month` / `datetime-local` / `time` trình duyệt tự bỏ `placeholder`). Dùng làm ví dụ định
+  dạng, đừng lặp lại nhãn. Không có
   `placeholder`: kit đặt chữ của nhãn làm placeholder (luôn ẩn) để CSS biết ô rỗng; trình đọc màn hình không đọc thêm gì.
 - **Cỡ:** `sm` / `md` / `lg` cao 48 / 56 / 64 px (cao hơn kiểu thường 32 / 40 / 48 — chỗ cho nhãn nổi); textarea tối thiểu
   84 / 96 / 108 px.

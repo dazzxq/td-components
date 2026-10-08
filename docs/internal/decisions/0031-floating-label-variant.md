@@ -28,7 +28,8 @@ phản, nhãn dài, cỡ, SSR parity, forced colors, reduced motion.
 4. **Placeholder (spike a11y M0 → nhánh F1):** `placeholder=" "` của dwp bị lộ thành placeholder riêng trong mô hình ARIA ở cả
    3 engine (khác ô kiểu thường) ⇒ kit đặt **chữ nhãn** làm placeholder khi không có placeholder thật (trùng tên truy cập ⇒
    không lộ thêm gì; cây trợ năng giống hệt kiểu thường — gate `floating-a11y`), luôn ẩn bằng `opacity: 0`
-   (`td-field--ph-label`). Placeholder thật giữ, chỉ hiện khi nhãn đã nổi (focus); ẩn bằng `opacity` vì forced colors ép `color`.
+   (`td-field--ph-label`). Placeholder thật giữ, chỉ hiện khi nhãn đã nổi: lúc focus, hoặc mỗi khi ô rỗng nếu ô luôn nổi (affix; date-family
+   không dùng placeholder); ẩn bằng `opacity` vì forced colors ép `color`.
 5. **Hình học (port dwp md, suy ra sm / lg):** cao 48 / 56 / 64 px (token `--td-field-float-h-*`), nhãn nổi
    `scale(0.857)` = 12 px (dwp 0.78 = 10.9 px < chữ nhỏ nhất của kit). Nhãn **luôn một dòng** (`line-height` 1.5,
    `nowrap`, ellipsis), căn giữa khi nghỉ bằng `inset-block-start`, nổi **chỉ** bằng `transform` ⇒ hộp sau transform (= vùng

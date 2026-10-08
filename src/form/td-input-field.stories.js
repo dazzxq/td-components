@@ -298,7 +298,7 @@ export const FloatingLabel = {
     <h3>Tối</h3><div data-td-theme="dark" class="sb-stack sb-dark">${floatingSet('d')}</div>
     <h3>RTL</h3><div dir="rtl" class="sb-stack"><td-input-field name="rtl" label="الاسم الكامل" label-mode="floating"></td-input-field>
       <td-input-field name="rtl-v" label="الاسم الكامل" label-mode="floating" value="سلام"></td-input-field></div>
-    <p class="sb-note">Nhãn nổi khi focus / có giá trị / tự điền; luôn nổi với date và khi có tiền tố / hậu tố. placeholder chỉ hiện khi focus.</p></div>`,
+    <p class="sb-note">Nhãn nổi khi focus / có giá trị / tự điền; luôn nổi với date và khi có tiền tố / hậu tố. placeholder hiện khi nhãn đã nổi: lúc focus, hoặc mỗi khi ô rỗng nếu ô luôn nổi (có tiền tố / hậu tố).</p></div>`,
   play: ({ canvasElement }) => {
     canvasElement.querySelector('td-input-field[data-sb-focus] .td-field__control')?.focus(); // the light "focused" field
   },
