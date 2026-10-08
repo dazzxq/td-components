@@ -17471,6 +17471,11 @@
 		background: var(--td-field-bg-disabled);
 	}
 
+	/* v0.59.0 `allow-open-end`: the "Không hạn" toggle of the "Đến" side — a preset chip (same look / pressed state) */
+	.td-dtr-panel__open-end {
+		margin-block-end: var(--td-space-sm);
+	}
+
 	/* "Từ | Đến" switch: only in the sheet (< 720) */
 	.td-dtr-panel__switch {
 		display: none;

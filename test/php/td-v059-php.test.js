@@ -127,7 +127,7 @@ describe('php/td.php — v0.59.0 td_datetime_picker clearable', opts, () => {
 
 describe('php/td.php — v0.59.0 td_datetime_range allow_open_end', opts, () => {
   test('host `allow-open-end`; trigger "01/10/2026 – Không hạn"; required → the start native only', () => {
-    const r = one('td_datetime_range', 'hl', '2026-10-01', null, { allow_open_end: true, required: true });
+    const r = one('td_datetime_range', 'hl', '2026-10-01', null, { allow_open_end: true, required: true, label: 'Hiệu lực' });
     assert.match(r.html, /^<td-datetime-range [^>]*\ballow-open-end[ >]/);
     assert.match(r.html, /<span class="td-dtr__value">01\/10\/2026 – Không hạn<\/span>/);
     assert.match(r.html, /data-part="start" name="hl\[start\]" value="2026-10-01" required/);

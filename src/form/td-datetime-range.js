@@ -81,17 +81,20 @@ export { toNativeValue, fromNativeValue };
  * @attr {string} open-at - today | min | max | a date: where an EMPTY side opens (without it an empty side opens empty)
  * @attr {string} required - '' / both (both sides) | start | end (see requiredParts)
  * @attr {boolean} disabled
+ * @attr {boolean} allow-open-end - v0.59.0: the end may stay empty ("Không hạn"): never required (required / both → start
+ *   only; required="end" → one warning), trigger "{start} – Không hạn", a "Không hạn" toggle in the "Đến" side (pressed =
+ *   the end being edited is empty). Value / FormData / events unchanged (end ''). In place, also while the dialog is open.
  * @attr {string} error-text - error message (error contract)
  * @fires change - "Chọn" committed: detail { value: { start, end }, dbValue: { start, end }, preset: id | null }
  */
 export class TdDatetimeRange extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'mode', 'start', 'end', 'start-name', 'end-name', 'label', 'placeholder', 'min', 'max',
-      'max-days', 'minute-step', 'form-value-format', 'open-at', 'error-text', 'aria-label'];
+      'max-days', 'minute-step', 'form-value-format', 'open-at', 'error-text', 'aria-label', 'allow-open-end'];
   }
 
   /** `required` carries a value (start | end | both), so it is not a boolean attribute here. */
-  static get booleanAttributes() { return ['disabled']; }
+  static get booleanAttributes() { return ['disabled', 'allow-open-end']; }
 
   static get errorContract() { return true; }
 
@@ -102,6 +105,7 @@ export class TdDatetimeRange extends TdFormElement {
     start: 'Từ', end: 'Đến', fromPrefix: 'Từ', toPrefix: 'Đến', presets: 'Chọn nhanh', switcher: 'Mốc đang sửa',
     next: 'Tiếp: Đến', emptySide: '—', date: 'Ngày', day: 'Ngày', month: 'Tháng', year: 'Năm', time: 'Giờ',
     hour: 'Giờ', minute: 'Phút', close: 'Đóng', clear: 'Xoá', confirm: 'Chọn', presetChosen: 'Đã chọn {label}: {range}',
+    openEnd: 'Không hạn', // v0.59.0 `allow-open-end`
   };
 
   /** Validation messages (`{min}` / `{max}` / `{n}` filled in). */
@@ -162,7 +166,12 @@ export class TdDatetimeRange extends TdFormElement {
   _required() {
     const r = requiredParts(this.getAttribute('required'));
     if (r.unknown) this._warnOnce('required', `td-datetime-range: required="${this.getAttribute('required')}" is unknown — both sides are required.`);
-    return r.parts;
+    if (!this.hasAttribute('allow-open-end')) return r.parts;
+    // v0.59.0 (plan QĐ E2): an open end is never required; required="end" contradicts it (one warning)
+    if (r.parts.length === 1 && r.parts[0] === 'end') {
+      this._warnOnce('open-end', 'td-datetime-range: required="end" conflicts with allow-open-end — the end stays optional.');
+    }
+    return r.parts.filter((k) => k !== 'end');
   }
 
   /** @private */
@@ -340,6 +349,7 @@ export class TdDatetimeRange extends TdFormElement {
     const b = this._sideText('end');
     if (!a && !b) return { text: this.getAttribute('placeholder') || this._text(L, 'placeholder'), placeholder: true };
     if (a && b) return { text: `${a} – ${b}`, placeholder: false };
+    if (a && this.hasAttribute('allow-open-end')) return { text: `${a} – ${L.openEnd}`, placeholder: false }; // v0.59.0
     return { text: a ? `${L.fromPrefix} ${a}` : `${L.toPrefix} ${b}`, placeholder: false };
   }
 
@@ -383,6 +393,16 @@ export class TdDatetimeRange extends TdFormElement {
       case 'required':
         this._applyRequired();
         this._syncForm();
+        return;
+      case 'allow-open-end': // v0.59.0 (plan QĐ E2b): in place — required / validity / trigger, the open dialog's button
+        this._applyRequired();
+        this._updateValueText();
+        this._syncForm();
+        this._applyErrorState();
+        if (this._panel) {
+          this._syncOpenEnd(this._panel);
+          this._refreshPair();
+        }
         return;
       case 'disabled':
         this._applyDisabled();
@@ -695,6 +715,7 @@ export class TdDatetimeRange extends TdFormElement {
     for (const k of SIDES) {
       const fs = make('fieldset', 'td-dtr-panel__side', { 'data-side': k });
       fs.appendChild(make('legend', 'td-dtr-panel__legend', {}, L[k]));
+      if (k === 'end') this._syncOpenEnd(fs);
       const ed = new DatetimeEditor({
         mode, prefix: `${prefix}-${k}`, pending: this._initialSide(k), years: this._yearRange(), minuteStep: this._minuteStep(),
         labels: L, legend: L.date, preview: false,
@@ -803,12 +824,51 @@ export class TdDatetimeRange extends TdFormElement {
       const t = this._pendingText(tab.getAttribute('data-side'));
       if (v && v.textContent !== t) v.textContent = t;
     }
+    // v0.59.0: the "Không hạn" toggle is pressed while the end being edited is empty
+    const open = panel.querySelector('.td-dtr-panel__open-end');
+    if (open) open.setAttribute('aria-pressed', isEmptyParts(this._dps.end.pending) ? 'true' : 'false');
     return err;
   }
 
-  /** @private one pending side as display text ('—' when empty / not valid yet) */
+  /**
+   * @private v0.59.0 (plan QĐ E2 / E2b): the "Không hạn" toggle of the "Đến" side — created right after its legend when
+   * `allow-open-end` is set, removed otherwise (a focused button hands the focus to the end day field first). Its
+   * `aria-pressed` is DERIVED from the pending end (empty = pressed) in _refreshPair(). `root` = the panel or the end
+   * fieldset being built.
+   */
+  _syncOpenEnd(root) {
+    const fs = root.matches('.td-dtr-panel__side') ? root : root.querySelector('.td-dtr-panel__side[data-side="end"]');
+    if (!fs) return;
+    let btn = fs.querySelector(':scope > .td-dtr-panel__open-end');
+    if (!this.hasAttribute('allow-open-end')) {
+      if (!btn) return;
+      if (btn === document.activeElement) this._dps?.end?.focusPart('day');
+      btn.remove();
+      return;
+    }
+    if (btn) return;
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'td-dtr-panel__preset td-dtr-panel__open-end';
+    btn.setAttribute('aria-pressed', 'false');
+    btn.textContent = TdDatetimeRange.labels.openEnd;
+    btn.addEventListener('click', () => this._toggleOpenEnd());
+    fs.querySelector(':scope > .td-dtr-panel__legend').after(btn);
+  }
+
+  /** @private "Không hạn": empty the end being edited; already empty → the end day field (to type a date) */
+  _toggleOpenEnd() {
+    const ed = this._dps && this._dps.end;
+    if (!ed) return;
+    if (isEmptyParts(ed.pending)) { ed.focusPart('day'); return; }
+    ed.setParts(emptyParts('end', this._minuteStep()));
+    this._refreshPair();
+  }
+
+  /** @private one pending side as display text ('—' when empty / not valid yet; v0.59.0 "Không hạn" for an open end) */
   _pendingText(side) {
     const p = this._dps && this._dps[side] ? this._dps[side].pending : null;
+    if (side === 'end' && this.hasAttribute('allow-open-end') && (!p || isEmptyParts(p))) return TdDatetimeRange.labels.openEnd;
     if (!p || isEmptyParts(p) || invalidReason(p)) return TdDatetimeRange.labels.emptySide;
     return formatModeDisplay(toModeParts(p, this._mode()), this._mode());
   }

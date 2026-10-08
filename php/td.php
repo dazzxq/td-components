@@ -210,7 +210,8 @@ namespace TdComponents {
         public const SSR_DATETIME_RANGE = 'datetime-range@1';
         /** v0.40.0: texts of td_datetime_range = TdDatetimeRange.labels (a site overriding the JS labels gets a safe re-render). */
         public const RANGE_LABELS = ['start' => 'Từ', 'end' => 'Đến', 'fromPrefix' => 'Từ', 'toPrefix' => 'Đến',
-            'placeholder' => 'dd/mm/yyyy – dd/mm/yyyy', 'placeholderDatetime' => 'dd/mm/yyyy hh:mm – dd/mm/yyyy hh:mm'];
+            'placeholder' => 'dd/mm/yyyy – dd/mm/yyyy', 'placeholderDatetime' => 'dd/mm/yyyy hh:mm – dd/mm/yyyy hh:mm',
+            'openEnd' => 'Không hạn'];
         /** v0.56.0: td_datetime_picker / td_date (always the element <td-datetime-picker> + one native date / datetime-local input). */
         public const SSR_DATETIME_PICKER = 'datetime-picker@1';
         /** v0.56.0: trigger placeholders of td_datetime_picker = TdDatetimePicker.labels (parity: test/php/td-v056-php.test.js). */
@@ -3663,7 +3664,8 @@ namespace {
      * Values: `dd/mm/yyyy[ - hh:mm]`, `yyyy-mm-dd`, `yyyy-mm-ddThh:mm[:ss]` or the DB `yyyy-mm-dd hh:mm[:ss]`; an invalid
      * value / bound is dropped. Options: label, mode (date | datetime), min, max, required, disabled, max_days,
      * minute_step, form_value_format (iso | display | db), start_name, end_name, placeholder, error, attrs (host),
-     * class, id.
+     * class, id. v0.59.0 `allow_open_end` (bool): host `allow-open-end`; the end is never required (required / both →
+     * the start native only; 'end' → none); start without end → trigger "{start} – Không hạn".
      */
     function td_datetime_range(string $name, ?string $start = null, ?string $end = null, array $o = []): string
     {
@@ -3677,6 +3679,8 @@ namespace {
         $help = td__helper_opt($o); // v0.54.0
         $disabled = !empty($o['disabled']);
         $req = td__dtr_required($o['required'] ?? null);
+        $openEnd = !empty($o['allow_open_end']); // v0.59.0
+        $reqParts = $openEnd ? array_values(array_diff($req['parts'], ['end'])) : $req['parts'];
         $s = $start !== null ? td__dtr_parts($start, $mode, 'start') : null;
         $e = $end !== null ? td__dtr_parts($end, $mode, 'end') : null;
         $min = isset($o['min']) && is_string($o['min']) ? td__dtr_parts($o['min'], $mode, 'start') : null;
@@ -3707,10 +3711,12 @@ namespace {
             $text = $placeholder ?? ($mode === 'datetime' ? $L['placeholderDatetime'] : $L['placeholder']);
         } elseif ($a !== null && $b !== null) {
             $text = $a . ' – ' . $b;
+        } elseif ($a !== null && $openEnd) {
+            $text = $a . ' – ' . $L['openEnd'];
         } else {
             $text = $a !== null ? $L['fromPrefix'] . ' ' . $a : $L['toPrefix'] . ' ' . $b;
         }
-        $required = $req['parts'] !== [];
+        $required = $reqParts !== [];
 
         $taken = [];
         $html = '<td-datetime-range' . Td::ownAttrs([
@@ -3734,11 +3740,12 @@ namespace {
             'disabled' => $disabled,
             'helper-text' => $help,
             'error-text' => $error,
+            'allow-open-end' => $openEnd,
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['id', 'class', 'name', 'mode', 'start', 'end', 'start-name', 'end-name', 'label', 'placeholder', 'min',
-            'max', 'max-days', 'minute-step', 'form-value-format', 'open-at', 'required', 'disabled', 'helper-text', 'error-text', 'value'],
-            $extra, $taken);
+            'max', 'max-days', 'minute-step', 'form-value-format', 'open-at', 'required', 'disabled', 'helper-text', 'error-text', 'value',
+            'allow-open-end'], $extra, $taken);
         $html .= Td::attrs($extra, $taken) . '>';
 
         $natives = '';
@@ -3750,7 +3757,7 @@ namespace {
                 . ($p !== null ? ' value="' . Td::e($native($p)) . '"' : '')
                 . ($min !== null ? ' min="' . Td::e($native($min)) . '"' : '')
                 . ($max !== null ? ' max="' . Td::e($native($max)) . '"' : '')
-                . (in_array($k, $req['parts'], true) ? ' required' : '')
+                . (in_array($k, $reqParts, true) ? ' required' : '')
                 . ($disabled ? ' disabled' : '')
                 . ($error !== null ? ' aria-invalid="true" aria-describedby="' . $hid . '-error"' : '')
                 . ($help !== null && $error === null ? ' aria-describedby="' . $hid . '-note"' : '') . '>';
