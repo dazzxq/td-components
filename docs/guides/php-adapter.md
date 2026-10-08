@@ -124,7 +124,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.59.0/
+public/assets/vendor/td-components/0.59.1/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -132,7 +132,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.59.0';
+const TD_VERSION = '0.59.1';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -730,7 +730,7 @@ khi `td.css` nạp xong — trước cả khi module tới, không xê dịch l�
 | element | attribute trên host (cũng là attribute của component) | `<td-toggle data-td-ssr="toggle@1" … size="md" label-position="start">` |
 
 - Chỉ đúng chuỗi `'start'` mới có tác dụng. `'end'`, giá trị khác, sai hoa thường, không phải chuỗi → mặc định: **không in
-  gì thêm**, không warning, output giống từng byte bản 0.59.0.
+  gì thêm**, không warning, output giống từng byte bản 0.59.1.
 - Không ép chế độ element (khác `tone` / `helper_text`): native vẫn là native.
 - Chế độ element: `label-position` là attribute của kit — `attrs` không đặt / ghi đè được nó.
 - Hợp đồng SSR `toggle@1` / `checkbox@1` không đổi (thêm một attribute trên host, markup bên trong y nguyên).
@@ -792,7 +792,7 @@ native** (`checked` / `value` PHP in ra). `indeterminate` của input được g
 - Hình lấy **đầy đủ** từ `src/icons/icons.json` — cùng markup với `tdIcon()` của JS (không phải slot rỗng
   `data-td-icon`). Vì thế icon trong markup SSR **không** bị `fillIconSlots()` ghi đè.
 - Tên cũ của kit 135 được map khi tên đó không tồn tại: `x`→`close`, `chevron-left/right/up/down`→`prev/next/up/down`,
-  `ellipsis`→`more`, `external-link`→`external`, `expand`→`fullscreen`, `pen`→`pencil` (0.56.0 / 0.59.0 thêm alias Lucide
+  `ellipsis`→`more`, `external-link`→`external`, `expand`→`fullscreen`, `pen`→`pencil` (0.56.0 / 0.59.1 thêm alias Lucide
   của icon core mới: `tag`→`brand`, `banknote`→`price`…). Bảng alias nằm trong object
   `aliases` của `src/icons/icons.json` (0.18.0 — JS `tdIcon()` đọc cùng bảng); icons.json cũ chưa có `aliases` thì
   adapter dùng bảng dự phòng trong `td.php`. `Td::iconAliases()` trả bảng đang dùng.
@@ -1665,7 +1665,7 @@ của kit (dd/mm/yyyy, hộp thoại, nhãn tiếng Việt, `min` / `max` của 
     <input class="td-dtp__native" type="date|datetime-local" id="{id}-native" name value min max [step] [required]
            [disabled] [aria-label] [aria-invalid aria-describedby="{id}-error" | aria-describedby="{id}-note"]>
     <button type="button" class="td-dtp__trigger" id="{id}-trigger" role="combobox" …>…</button>   ← ẩn khi chưa có JS
-    [<button type="button" class="td-dtp__clear" aria-label="Xoá ngày" [hidden]>…</button>]   ← 0.59.0 clearable (gốc + td-dtp--clearable)
+    [<button type="button" class="td-dtp__clear" aria-label="Xoá ngày" [hidden]>…</button>]   ← 0.59.1 clearable (gốc + td-dtp--clearable)
   </div>
   [<div class="td-field__note" id="{id}-note">gợi ý</div>] [<span class="td-field-error" id="{id}-error" data-for="{id}">lỗi</span>]
 </td-datetime-picker>
