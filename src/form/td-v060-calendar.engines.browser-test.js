@@ -15,13 +15,20 @@ document.head.appendChild(link);
 await new Promise((r) => { link.onload = r; link.onerror = r; });
 
 const raf = () => new Promise((r) => requestAnimationFrame(r));
+/** set the viewport and wait until the page really has it (matchMedia is what the picker reads) */
+const vp = async (size) => {
+  await setViewport(size);
+  for (let i = 0; i < 120 && window.innerWidth !== size.width; i++) await new Promise((r) => requestAnimationFrame(r));
+  await new Promise((r) => requestAnimationFrame(r));
+};
 const until = async (cond, n = 240) => { for (let i = 0; i < n && !cond(); i++) await raf(); return !!cond(); };
 const settle = async () => { await raf(); await raf(); };
 const host = document.createElement('div');
 host.style.cssText = 'width: 480px; padding: 120px 0 0 40px;';
 document.body.appendChild(host);
 
-const pop = () => document.querySelector('.td-dtp-pop');
+/** the live dialog (a sheet that is fading out after TdModal.closeAll is not it) */
+const pop = () => [...document.querySelectorAll('.td-dtp-pop')].find((p) => !p.closest('.td-modal[data-state="closing"]')) || null;
 const cal = () => (pop() ? pop().querySelector('.td-cal') : null);
 const visible = (el) => !!el && !el.closest('[hidden]') && getComputedStyle(el).display !== 'none';
 /** The visible match of `sel` inside the calendar (the three views share one container, hidden ones stay in the DOM). */
@@ -51,7 +58,7 @@ async function open(attrs, wrap) {
   await settle();
   return m;
 }
-const closed = async () => { await settle(); return !pop() && !document.querySelector('.td-modal'); };
+const closed = async () => { await settle(); return !pop() && !document.querySelector('.td-modal:not([data-state="closing"])'); };
 /** activate `el` the way a user does: pointer click, Enter or Space on the focused element */
 async function act(el, how) {
   if (how === 'click') { el.click(); } else {
@@ -61,14 +68,14 @@ async function act(el, how) {
   await settle();
 }
 
-beforeEach(async () => { await setViewport({ width: 1280, height: 800 }); });
+beforeEach(async () => { await vp({ width: 1280, height: 800 }); });
 afterEach(async () => {
   TdModal.closeAll();
   await settle();
   host.innerHTML = '';
   document.querySelectorAll('.td-dtp-pop, body > .td-modal').forEach((n) => n.remove());
 });
-after(async () => { await setViewport({ width: 800, height: 600 }); });
+after(async () => { await vp({ width: 800, height: 600 }); });
 
 describe('v0.60.0 calendar — shells (A5)', () => {
   it('≥ 720: a popover dialog on <body>, no modal, the same tree; the page stays interactive (not inert)', async () => {
@@ -86,7 +93,7 @@ describe('v0.60.0 calendar — shells (A5)', () => {
   });
 
   it('< 720: the bottom sheet (TdModal) holds the same calendar; no footer; X present', async () => {
-    await setViewport({ width: 390, height: 844 });
+    await vp({ width: 390, height: 844 });
     const { trigger } = await open('mode="date" value="15/06/2026"');
     const m = document.querySelector('.td-modal');
     expect(!!m && m.contains(pop()) && m.contains(cal())).to.equal(true);
@@ -98,7 +105,7 @@ describe('v0.60.0 calendar — shells (A5)', () => {
   });
 
   it('a click on the sheet backdrop does not close it (ADR 0006); outside pointerdown does close the popover only', async () => {
-    await setViewport({ width: 390, height: 844 });
+    await vp({ width: 390, height: 844 });
     const a = await open('mode="date" value="15/06/2026"');
     document.querySelector('.td-modal__backdrop').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
@@ -107,7 +114,7 @@ describe('v0.60.0 calendar — shells (A5)', () => {
     expect(a.rec.change.length).to.equal(0);
     TdModal.closeAll();
     await settle();
-    await setViewport({ width: 1280, height: 800 });
+    await vp({ width: 1280, height: 800 });
     await open('mode="date" value="15/06/2026"');
     document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     expect(await closed()).to.equal(true);
@@ -403,7 +410,7 @@ describe('v0.60.0 calendar — clear while the popover is open (C4, Codex plan r
   });
 
   it('the sheet is modal: the clear button is inert and a click at its coordinates does nothing', async () => {
-    await setViewport({ width: 390, height: 844 });
+    await vp({ width: 390, height: 844 });
     const { el, rec } = await open('mode="date" value="15/06/2026" clearable');
     const btn = el.querySelector('.td-dtp__clear');
     expect(!!btn.closest('[inert]')).to.equal(true);
@@ -710,7 +717,8 @@ describe('v0.60.0 calendar — bounds and the year domain (D6, B1)', () => {
     expect(active() === day('2026-06-20')).to.equal(true);
     await sendKeys({ press: 'ArrowLeft' });
     await sendKeys({ press: 'Home' });
-    await sendKeys({ press: 'ArrowLeft' });
+    expect(active() === day('2026-06-15')).to.equal(true);
+    for (let i = 0; i < 6; i++) await sendKeys({ press: 'ArrowLeft' }); // 5 steps reach the bound, the 6th stops there
     expect(active() === day('2026-06-10')).to.equal(true);
     await sendKeys({ press: 'PageDown' });
     expect(active() === day('2026-06-20')).to.equal(true);

@@ -29,30 +29,39 @@ const nativeValue = (type, value, attrs = {}) => {
 };
 
 const trig = (el) => el.querySelector('.td-dtp__trigger');
-const openModal = () => [...document.querySelectorAll('.td-modal')].find((m) => m.getAttribute('data-state') !== 'closing') || null;
-const panel = () => { const m = openModal(); return m ? m.querySelector('.td-dtp-panel') : null; };
-const field = (part) => panel().querySelector(`.td-dtp-panel__input[data-part="${part}"]`);
-const parts = () => [...panel().querySelectorAll('.td-dtp-panel__input')].map((i) => i.getAttribute('data-part'));
+// v0.60.0: the dialog is the calendar (src/form/calendar-grid.js). `field(part).value` is where the picker "opened": the
+// cell that holds the roving tab stop of the view it opens on (days for date / datetime, months for month, years for year).
+const panel = () => [...document.querySelectorAll('.td-dtp-pop')].find((p) => !p.closest('.td-modal[data-state="closing"]')) || null;
+const openModal = panel;
+const view = () => panel().querySelector('.td-cal').getAttribute('data-view');
+const focusDate = () => {
+  const c = panel().querySelector('.td-cal');
+  const v = c.getAttribute('data-view');
+  if (v === 'days') {
+    const [y, m, d] = c.querySelector('.td-cal__day[tabindex="0"]').getAttribute('data-date').split('-').map(Number);
+    return { y, m, d };
+  }
+  if (v === 'months') {
+    return { y: Number(c.querySelector('[aria-live]').textContent.replace(/\D/g, '')), m: Number(c.querySelector('.td-cal__cells[data-kind="months"] [tabindex="0"]').getAttribute('data-month')) };
+  }
+  return { y: Number(c.querySelector('.td-cal__cells[data-kind="years"] [tabindex="0"]').getAttribute('data-year')) };
+};
+const field = (part) => ({ get value() { return String(focusDate()[{ year: 'y', month: 'm', day: 'd' }[part]]); } });
 const wheels = () => panel().querySelectorAll('.td-dtp-wheel__list').length;
-const button = (label) => [...openModal().querySelectorAll('.td-modal__footer .td-btn')].find((b) => b.textContent.trim() === label);
+const button = (label) => [...panel().querySelectorAll('.td-dtp-pop__actions .td-btn')].find((b) => b.textContent.trim() === label);
+/** choose the active day (what a click / Enter on it does) */
+const chooseActive = () => panel().querySelector('.td-cal__day[tabindex="0"]').click();
 async function open(el) {
   trig(el).click();
   await settle();
   return panel();
-}
-/** set a panel number field as a user would (input + change) */
-function setField(part, v) {
-  const i = field(part);
-  i.value = String(v);
-  i.dispatchEvent(new Event('input', { bubbles: true }));
-  i.dispatchEvent(new Event('change', { bubbles: true }));
 }
 const pad2 = (n) => String(n).padStart(2, '0');
 
 afterEach(async () => {
   TdModal.closeAll();
   host.innerHTML = '';
-  document.querySelectorAll('body > .td-modal').forEach((m) => m.remove());
+  document.querySelectorAll('body > .td-modal, body > .td-dtp-pop').forEach((m) => m.remove());
   await wait(0);
 });
 
@@ -326,39 +335,39 @@ describe('v0.18.0 F3 — td-datetime-picker modes: value contract', () => {
   });
 });
 
-describe('v0.18.0 F3 — td-datetime-picker modes: dialog', () => {
-  it('each mode renders only its fields / wheels, and the preview in the mode format', async () => {
-    const expectParts = { datetime: ['day', 'month', 'year'], date: ['day', 'month', 'year'], month: ['month', 'year'], year: ['year'] };
+describe('v0.18.0 F3 — td-datetime-picker modes: dialog (the calendar since v0.60.0)', () => {
+  it('each mode opens on its own grid; only datetime has the wheels; the dialog is named per mode', async () => {
+    const root = { datetime: 'days', date: 'days', month: 'months', year: 'years' };
     for (const mode of ['datetime', 'date', 'month', 'year']) {
       host.innerHTML = '';
       const p = mount(`<td-datetime-picker id="p" mode="${mode}" value="${{ datetime: '15/06/2026 - 09:30', date: '15/06/2026', month: '06/2026', year: '2026' }[mode]}"></td-datetime-picker>`);
       await open(p);
-      expect(parts()).to.deep.equal(expectParts[mode]);
+      expect(view()).to.equal(root[mode]);
       expect(wheels()).to.equal(mode === 'datetime' ? 2 : 0);
       expect(panel().getAttribute('data-mode')).to.equal(mode);
-      const preview = panel().querySelector('.td-dtp-panel__preview').textContent;
-      expect(preview).to.equal({ datetime: '15/06/2026 - 09:30', date: '15/06/2026', month: '06/2026', year: '2026' }[mode]);
-      expect(openModal().querySelector('.td-modal__title, h2')?.textContent.trim())
+      expect(panel().querySelector('.td-dtp-panel__input, .td-dtp-panel__preview')).to.equal(null);
+      expect(panel().getAttribute('aria-label'))
         .to.equal({ datetime: 'Chọn ngày giờ', date: 'Chọn ngày', month: 'Chọn tháng', year: 'Chọn năm' }[mode]);
       TdModal.closeAll();
       await wait(0);
+      host.innerHTML = '';
     }
   });
 
-  for (const [mode, set, display, db, iso] of [
-    ['date', { day: 3, month: 2, year: 2027 }, '03/02/2027', '2027-02-03', '2027-02-03'],
-    ['month', { month: 11, year: 2027 }, '11/2027', '2027-11', '2027-11'],
-    ['year', { year: 2031 }, '2031', '2031', '2031'],
+  for (const [mode, openAt, pickSel, display, db, iso] of [
+    ['date', '2027-02-03', '.td-cal__day[data-date="2027-02-03"]', '03/02/2027', '2027-02-03', '2027-02-03'],
+    ['month', '2027-11-01', '.td-cal__cell[data-month="11"]', '11/2027', '2027-11', '2027-11'],
+    ['year', '2031-01-01', '.td-cal__cell[data-year="2031"]', '2031', '2031', '2031'],
   ]) {
-    it(`mode="${mode}": choosing commits ${display}; change detail { value, dbValue } in the mode format; FormData ${iso}`, async () => {
-      const form = inForm(`<td-datetime-picker id="p" name="v" mode="${mode}"></td-datetime-picker>`);
+    it(`mode="${mode}": choosing ${display} commits at once; change detail { value, dbValue } in the mode format; FormData ${iso}`, async () => {
+      const form = inForm(`<td-datetime-picker id="p" name="v" mode="${mode}" open-at="${openAt}"></td-datetime-picker>`);
       const p = form.querySelector('td-datetime-picker');
       const details = [];
       p.addEventListener('change', (e) => details.push(e.detail));
       await open(p);
-      for (const [k, v] of Object.entries(set)) setField(k, v);
-      button('Chọn').click();
+      panel().querySelector(pickSel).click();
       await settle();
+      expect(panel()).to.equal(null);
       expect(details.length).to.equal(1);
       expect(details[0].value).to.equal(display);
       expect(details[0].dbValue).to.equal(db);
@@ -367,32 +376,35 @@ describe('v0.18.0 F3 — td-datetime-picker modes: dialog', () => {
     });
   }
 
-  it('"Hôm nay" / "Tháng này" / "Năm nay" set the pending value to now (mode components only)', async () => {
+  it('"Hôm nay" / "Tháng này" / "Năm nay" commit the current day / month / year at once', async () => {
     const now = new Date();
     const p = mount('<td-datetime-picker id="p" mode="month"></td-datetime-picker>');
     await open(p);
     button('Tháng này').click();
-    expect(field('month').value).to.equal(String(now.getMonth() + 1));
-    expect(field('year').value).to.equal(String(now.getFullYear()));
-    button('Chọn').click();
     await settle();
+    expect(panel()).to.equal(null);
     expect(p.getValue()).to.equal(`${pad2(now.getMonth() + 1)}/${now.getFullYear()}`);
+    host.innerHTML = '';
+    const y = mount('<td-datetime-picker id="y" mode="year"></td-datetime-picker>');
+    await open(y);
+    button('Năm nay').click();
+    await settle();
+    expect(y.getValue()).to.equal(String(now.getFullYear()));
   });
 
-  it('month: an empty month field → incomplete message on that field; out of range refuses "Chọn"', async () => {
-    const p = mount('<td-datetime-picker id="p" mode="month" min="2024-03" max="2024-09"></td-datetime-picker>');
+  it('month mode with min / max: months outside are disabled and cannot be chosen; "Tháng này" follows the bounds', async () => {
+    const p = mount('<td-datetime-picker id="p" mode="month" min="2024-03" max="2024-09" value="06/2024"></td-datetime-picker>');
     await open(p);
-    setField('month', '');
-    const err = panel().querySelector('.td-dtp-panel__error');
-    expect(err.hidden).to.equal(false);
-    expect(err.textContent).to.equal('Vui lòng nhập đầy đủ tháng, năm');
-    expect(field('month').getAttribute('aria-invalid')).to.equal('true');
-    setField('month', 2);
-    expect(err.textContent).to.equal('Không được trước 03/2024');
-    button('Chọn').click();
+    const cell = (m) => panel().querySelector(`.td-cal__cell[data-month="${m}"]`);
+    expect(cell(2).getAttribute('aria-disabled')).to.equal('true');
+    expect(cell(3).hasAttribute('aria-disabled')).to.equal(false);
+    expect(cell(9).hasAttribute('aria-disabled')).to.equal(false);
+    expect(cell(10).getAttribute('aria-disabled')).to.equal('true');
+    cell(2).click();
     await settle();
     expect(panel()).to.not.equal(null);
-    expect(p.getValue()).to.equal('');
+    expect(p.getValue()).to.equal('06/2024');
+    expect(button('Tháng này').getAttribute('aria-disabled')).to.equal('true'); // this month is outside 2024-03…09
   });
 });
 
@@ -452,7 +464,7 @@ describe('v0.18.0 F3 — changing mode with a value', () => {
     await settle();
     expect(panel()).to.equal(null);
     await open(p);
-    expect(parts()).to.deep.equal(['day', 'month', 'year']);
+    expect(view()).to.equal('days');
     expect(wheels()).to.equal(0);
   });
 });
@@ -468,8 +480,7 @@ describe('v0.18.0 F3 — open-at + year range', () => {
     expect(field('year').value).to.equal('1950');
     expect(field('month').value).to.equal('1');
     expect(field('day').value).to.equal('1');
-    expect(field('year').min).to.equal('1950'); // year field covers the range below 2000
-    button('Chọn').click();
+    chooseActive(); // a date-mode pick commits at once (v0.60.0)
     await settle();
     expect(p.getValue()).to.equal('01/01/1950');
   });
@@ -512,15 +523,11 @@ describe('v0.18.0 F3 — open-at + year range', () => {
     const p = mount('<td-datetime-picker id="p" mode="year" min="1920" max="1980" open-at="max" value="1955"></td-datetime-picker>');
     await open(p);
     expect(field('year').value).to.equal('1955');
-    expect(field('year').min).to.equal('1920');
-    expect(field('year').max).to.equal('1980');
-    TdModal.closeAll();
-    await wait(0);
+    trig(p).click(); // the trigger closes the popover (TdModal.closeAll() is for sheets only)
+    await settle();
     p.setValue('');
     await open(p);
     expect(field('year').value).to.equal('1980');
-    TdModal.closeAll();
-    await wait(0);
     host.innerHTML = '';
     const m = mount('<td-datetime-picker id="m" mode="month" min="1930-04" open-at="min"></td-datetime-picker>');
     await open(m);

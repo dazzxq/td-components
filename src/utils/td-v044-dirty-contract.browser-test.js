@@ -67,12 +67,14 @@ const FIXTURES = {
   'td-datetime-picker': {
     html: '<td-datetime-picker name="x" label="X" value="15/06/2026 - 10:30"></td-datetime-picker>',
     act: async (el) => {
+      // v0.60.0: the calendar popover (800 px viewport): hour wheel → "Chọn" in its own action row
+      const pop = () => [...document.querySelectorAll('.td-dtp-pop')].find((p) => !p.closest('.td-modal[data-state="closing"]'));
       el.querySelector('.td-dtp__trigger').click();
-      await until(() => openModal() && openModal().querySelector('.td-dtp-wheel__list[data-part="hour"]'));
-      openModal().querySelector('.td-dtp-wheel__list[data-part="hour"]').focus();
+      await until(() => pop() && pop().querySelector('.td-dtp-wheel__list[data-part="hour"]'));
+      pop().querySelector('.td-dtp-wheel__list[data-part="hour"]').focus();
       await sendKeys({ press: 'ArrowDown' });
-      footerBtn('Chọn').click();
-      await until(() => !openModal());
+      pop().querySelector('[data-action="confirm"]').click();
+      await until(() => !pop());
     },
   },
   'td-datetime-range': {

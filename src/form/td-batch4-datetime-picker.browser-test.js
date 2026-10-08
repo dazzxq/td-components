@@ -4,6 +4,12 @@ import { TdDatetimePicker } from './td-datetime-picker.js';
 import { TdModal } from '../feedback/td-modal.js';
 
 // Batch 4 — td-datetime-picker token-native (plan docs/internal/plans/v0.10.0-batch4.md item 1: D1–D10). td.css only.
+// v0.60.0 (plan v0.60.0-calendar-picker M1b classification): the model / form / validity / lifecycle cases are KEPT; the
+// dialog is the calendar now, so the cases that drove the three typed number fields were removed — each is covered by
+//   typed day / month / year fields, clamp on change, per-field errors  →  td-v060-calendar (bounds D6, keyboard D3, the
+//   D2 transition table) + td-v060-bounds (the year domain 1–9999);
+//   golden contract of the OPEN dialog  →  test/engines/calendar-a11y.spec.mjs (ariaSnapshot of the dialog);
+//   "Đóng" / X in the date dialog  →  the popover has neither (Esc / outside / trigger toggle, td-v060-calendar).
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';
@@ -26,37 +32,25 @@ const once = (target, type, ms = 1500) => new Promise((resolve) => {
 
 const pick = (attrs = '', parent = host) => mount(`<td-datetime-picker ${attrs}></td-datetime-picker>`, parent);
 const trig = (el) => el.querySelector('.td-dtp__trigger');
-const openModal = () => [...document.querySelectorAll('.td-modal')].find((m) => m.getAttribute('data-state') !== 'closing') || null;
-const panel = () => { const m = openModal(); return m ? m.querySelector('.td-dtp-panel') : null; };
-const field = (part) => panel().querySelector(`.td-dtp-panel__input[data-part="${part}"]`);
+/** the open dialog (the popover at the default 800 px viewport); a sheet fading out is not it */
+const openModal = () => [...document.querySelectorAll('.td-dtp-pop')].find((p) => !p.closest('.td-modal[data-state="closing"]')) || null;
+const panel = openModal;
+const dayCell = (iso) => panel().querySelector(`.td-cal__day[data-date="${iso}"]`);
 const wheel = (part) => panel().querySelector(`.td-dtp-wheel__list[data-part="${part}"]`);
 const selected = (list) => list.querySelector('[aria-selected="true"]');
 const selectedValue = (list) => Number(selected(list).getAttribute('data-value'));
-const button = (label) => [...openModal().querySelectorAll('.td-modal__footer .td-btn')].find((b) => b.textContent.trim() === label);
-const errorLine = () => panel().querySelector('.td-dtp-panel__error');
+const button = (label) => [...openModal().querySelectorAll('.td-dtp-pop__actions .td-btn')].find((b) => b.textContent.trim() === label);
+const errorLine = () => panel().querySelector('.td-dtp-pop__error');
 async function open(el) {
   trig(el).click();
   await settle();
   return panel();
 }
-/** v0.21.0: the opening wheel scroll (modal entry + one smooth scroll) has finished */
-async function introDone(el, ms = 3000) {
-  const end = Date.now() + ms;
-  while (el._intro && Date.now() < end) await wait(20);
-  await wait(30);
-}
-/** type into a panel number field (clears it first) */
-async function typeInto(input, text) {
-  input.focus();
-  input.value = '';
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  await sendKeys({ type: text });
-}
 
 afterEach(async () => {
   TdModal.closeAll();
   host.innerHTML = '';
-  document.querySelectorAll('body > .td-modal').forEach((m) => m.remove());
+  document.querySelectorAll('body > .td-modal, body > .td-dtp-pop').forEach((m) => m.remove());
   TdDatetimePicker.labels.title = 'Chọn ngày giờ';
   await emulateMedia({ reducedMotion: 'no-preference' });
   await wait(0);
@@ -75,11 +69,11 @@ function shape(el) {
 }
 
 describe('batch 4 — td-datetime-picker structure', () => {
-  it('matches the golden contract (host trees + open panel)', async () => {
+  it('matches the golden contract (host trees)', async () => {
     const html = await (await fetch('/test/contracts/datetime-picker.html')).text();
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const ts = [...doc.querySelectorAll('template')];
-    expect(ts.length).to.equal(4);
+    expect(ts.length).to.equal(3); // v0.60.0: the open-dialog template went (calendar-a11y.spec.mjs covers the dialog)
     for (const t of ts) {
       host.innerHTML = t.getAttribute('data-markup');
       const el = host.firstElementChild;
@@ -109,10 +103,13 @@ describe('batch 4 — td-datetime-picker structure', () => {
     expect(cs.borderTopLeftRadius).to.equal('12px');
     await open(el);
     const roots = [el, openModal()];
+    expect(el.querySelector('.td-dtp__trigger').getAttribute('aria-expanded')).to.equal('true');
     const classes = roots.flatMap((r) => [...r.querySelectorAll('[class]')].flatMap((n) => [...n.classList]));
     classes.forEach((c) => expect(/^td-/.test(c), c).to.equal(true));
-    expect(el.querySelector('[style]')).to.equal(null);
-    expect(panel().querySelector('[style]')).to.equal(null);
+    expect(el.querySelector('[style]') === null, 'no inline style in the host').to.equal(true);
+    // v0.60.0: the only inline style in the dialog is GEOMETRY written through CSSOM by placeFloating (the scroll region's max-height)
+    const styled = [...panel().querySelectorAll('[style]')];
+    expect(styled.every((n) => n.classList.contains('td-dtp-pop__scroll') && /^max-height: [\d.]+px;?$/.test(n.getAttribute('style').trim())), `inline styles: ${styled.map((n) => n.className + '|' + n.getAttribute('style')).join(' ; ')}`).to.equal(true);
     expect(document.adoptedStyleSheets.length).to.equal(0);
     // the wheel is laid out by td.css alone (was Tailwind-only: cross-cutting finding 1)
     const list = wheel('hour');
@@ -167,7 +164,7 @@ describe('batch 4 — td-datetime-picker structure', () => {
 
 describe('batch 4 — td-datetime-picker keyboard open / commit / cancel', () => {
   for (const key of ['Enter', ' ', 'ArrowDown', 'Alt+ArrowDown']) {
-    it(`"${key}" on the trigger opens the dialog (focus → day field, aria-expanded, aria-controls)`, async () => {
+    it(`"${key}" on the trigger opens the dialog (focus → the active day, aria-expanded, aria-controls)`, async () => {
       const el = pick('id="k1" value="15/06/2026 - 10:30"');
       trig(el).focus();
       await sendKeys({ press: key === ' ' ? 'Space' : key });
@@ -177,8 +174,8 @@ describe('batch 4 — td-datetime-picker keyboard open / commit / cancel', () =>
       expect(trig(el).getAttribute('aria-expanded')).to.equal('true');
       expect(trig(el).getAttribute('aria-controls')).to.equal(m.id);
       expect(el.querySelector('.td-dtp').getAttribute('data-state')).to.equal('open');
-      expect(same(document.activeElement, field('day'))).to.equal(true);
-      expect(m.querySelector('.td-modal__title').textContent).to.equal('Chọn ngày giờ');
+      expect(same(document.activeElement, dayCell('2026-06-15'))).to.equal(true);
+      expect(m.getAttribute('aria-label')).to.equal('Chọn ngày giờ');
     });
   }
 
@@ -189,7 +186,7 @@ describe('batch 4 — td-datetime-picker keyboard open / commit / cancel', () =>
     trig(form.querySelector('td-datetime-picker')).focus();
     await sendKeys({ press: 'Enter' });
     await settle();
-    expect(openModal()).to.not.equal(null);
+    expect(openModal() !== null).to.equal(true);
     expect(submitted).to.equal(0);
   });
 
@@ -202,13 +199,13 @@ describe('batch 4 — td-datetime-picker keyboard open / commit / cancel', () =>
     t.focus();
     await sendKeys({ press: 'Enter' });
     await settle();
-    await typeInto(field('day'), '20');
+    dayCell('2026-06-20').click();
     wheel('hour').focus();
     await sendKeys({ press: 'ArrowDown' });
     expect(el.getAttribute('value')).to.equal('15/06/2026 - 10:30'); // pending only
     button('Chọn').click();
     await settle();
-    expect(openModal()).to.equal(null);
+    expect(openModal() === null).to.equal(true);
     expect(events.length).to.equal(1);
     expect(events[0].value).to.equal('20/06/2026 - 11:30');
     expect(events[0].dbValue).to.equal('2026-06-20 11:30:00');
@@ -236,42 +233,36 @@ describe('batch 4 — td-datetime-picker keyboard open / commit / cancel', () =>
     expect(same(document.activeElement, trig(el))).to.equal(true);
   });
 
-  for (const how of ['Escape', 'Đóng', 'X']) {
-    it(`${how} discards the pending state, no change, focus back on the trigger`, async () => {
-      const el = pick('id="x1" value="15/06/2026 - 10:30"');
-      let n = 0;
-      el.addEventListener('change', () => n++);
-      trig(el).focus();
-      await sendKeys({ press: 'Enter' });
-      await settle();
-      await typeInto(field('day'), '3');
-      wheel('hour').focus();
-      await sendKeys({ press: 'End' });
-      if (how === 'Escape') await sendKeys({ press: 'Escape' });
-      else if (how === 'Đóng') button('Đóng').click();
-      else openModal().querySelector('.td-modal__close').click();
-      await settle();
-      expect(openModal()).to.equal(null);
-      expect(n).to.equal(0);
-      expect(el.getAttribute('value')).to.equal('15/06/2026 - 10:30');
-      expect(same(document.activeElement, trig(el))).to.equal(true);
-      expect(trig(el).getAttribute('aria-expanded')).to.equal('false');
-      // reopening starts from the committed value again
-      await open(el);
-      expect(field('day').value).to.equal('15');
-      expect(selectedValue(wheel('hour'))).to.equal(10);
-    });
-  }
+  it('Escape discards the pending state, no change, focus back on the trigger; reopening starts from the committed value', async () => {
+    const el = pick('id="x1" value="15/06/2026 - 10:30"');
+    let n = 0;
+    el.addEventListener('change', () => n++);
+    trig(el).focus();
+    await sendKeys({ press: 'Enter' });
+    await settle();
+    dayCell('2026-06-03').click();
+    wheel('hour').focus();
+    await sendKeys({ press: 'End' });
+    await sendKeys({ press: 'Escape' });
+    await settle();
+    expect(openModal() === null).to.equal(true);
+    expect(n).to.equal(0);
+    expect(el.getAttribute('value')).to.equal('15/06/2026 - 10:30');
+    expect(same(document.activeElement, trig(el))).to.equal(true);
+    expect(trig(el).getAttribute('aria-expanded')).to.equal('false');
+    await open(el);
+    expect(panel().querySelector('.td-cal__day[aria-selected="true"]').getAttribute('data-date')).to.equal('2026-06-15');
+    expect(selectedValue(wheel('hour'))).to.equal(10);
+  });
 
   it('"Bây giờ" sets the pending state to now (minute snapped DOWN), keeps the dialog open', async () => {
     const el = pick('id="now1" minute-step="15" value="01/01/2001 - 00:00"');
     await open(el);
     const before = new Date();
     button('Bây giờ').click();
-    expect(openModal()).to.not.equal(null);
-    expect(Number(field('year').value)).to.equal(before.getFullYear());
-    expect(Number(field('month').value)).to.equal(before.getMonth() + 1);
-    expect(Number(field('day').value)).to.equal(before.getDate());
+    expect(openModal() !== null).to.equal(true);
+    const p2 = (n) => String(n).padStart(2, '0');
+    expect(panel().querySelector('.td-cal__day[aria-selected="true"]').getAttribute('data-date')).to.equal(`${before.getFullYear()}-${p2(before.getMonth() + 1)}-${p2(before.getDate())}`);
     expect(selectedValue(wheel('hour'))).to.equal(before.getHours());
     expect(selectedValue(wheel('minute'))).to.equal(Math.floor(before.getMinutes() / 15) * 15);
     expect(errorLine().hidden).to.equal(true);
@@ -283,85 +274,6 @@ describe('batch 4 — td-datetime-picker keyboard open / commit / cancel', () =>
     el.setAttribute('label', 'B');
     expect(same(document.activeElement, trig(el))).to.equal(true);
     expect(el.querySelector('.td-field__label').textContent).to.equal('B');
-  });
-});
-
-describe('batch 4 — td-datetime-picker date fields (D9, bug 1.8.4)', () => {
-  it('labelled number fields with inputmode=numeric and min/max', async () => {
-    const el = pick('id="f1" value="15/06/2026 - 10:30"');
-    await open(el);
-    for (const [part, label, lo, hi, v] of [['day', 'Ngày', '1', '31', '15'], ['month', 'Tháng', '1', '12', '6'], ['year', 'Năm', '1', '9999', '2026']]) { // v0.60.0: no 2000–2099 window
-      const f = field(part);
-      expect(f.type).to.equal('number');
-      expect(f.getAttribute('inputmode')).to.equal('numeric');
-      expect(f.labels[0].textContent).to.equal(label);
-      expect(f.min).to.equal(lo);
-      expect(f.max).to.equal(hi);
-      expect(f.value).to.equal(v);
-    }
-    expect(panel().querySelector('fieldset > legend').textContent).to.equal('Ngày');
-  });
-
-  it('typing a year is not clamped while typing; clamp happens on change', async () => {
-    const el = pick('id="f2" value="15/06/2026 - 10:30"');
-    await open(el);
-    const y = field('year');
-    // v0.60.0 (plan v0.60.0-calendar-picker B1): the implicit 2000–2099 window is gone — the year domain is 1–9999
-    await typeInto(y, '0');
-    expect(y.value).to.equal('0'); // not clamped to 1 while typing
-    expect(y.getAttribute('aria-invalid')).to.equal('true');
-    expect(errorLine().hidden).to.equal(false);
-    expect(errorLine().textContent).to.equal('Năm phải từ 1 đến 9999');
-    await typeInto(y, '2');
-    expect(y.value).to.equal('2'); // year 2 is a real year now (not "outside 2000–2099")
-    expect(y.hasAttribute('aria-invalid')).to.equal(false);
-    expect(errorLine().hidden).to.equal(true);
-    await sendKeys({ type: '027' });
-    expect(y.value).to.equal('2027');
-    expect(y.hasAttribute('aria-invalid')).to.equal(false);
-    await typeInto(y, '30000');
-    await sendKeys({ press: 'Tab' }); // change → clamp
-    expect(y.value).to.equal('9999');
-    const d = field('day');
-    await typeInto(d, '0');
-    expect(d.value).to.equal('0'); // "05" can be typed
-    await sendKeys({ type: '5' });
-    expect(d.value).to.equal('05');
-    expect(d.hasAttribute('aria-invalid')).to.equal(false);
-  });
-
-  it('31/02 → error + aria-invalid on the day field + describedby; "Chọn" keeps the dialog open and focuses it', async () => {
-    const el = pick('id="f3" value="15/06/2026 - 10:30"');
-    let n = 0;
-    el.addEventListener('change', () => n++);
-    await open(el);
-    await typeInto(field('day'), '31');
-    await typeInto(field('month'), '2');
-    const err = errorLine();
-    expect(err.getAttribute('role')).to.equal('alert');
-    expect(err.hidden).to.equal(false);
-    expect(err.textContent).to.equal('Ngày không hợp lệ');
-    expect(field('day').getAttribute('aria-invalid')).to.equal('true');
-    expect(field('day').getAttribute('aria-describedby')).to.equal(err.id);
-    button('Chọn').click();
-    await settle();
-    expect(openModal()).to.not.equal(null);
-    expect(n).to.equal(0);
-    expect(same(document.activeElement, field('day'))).to.equal(true);
-    await typeInto(field('day'), '28');
-    expect(err.hidden).to.equal(true);
-    expect(field('day').hasAttribute('aria-describedby')).to.equal(false);
-    button('Chọn').click();
-    expect(n).to.equal(1);
-    expect(el.getAttribute('value')).to.equal('28/02/2026 - 10:30');
-  });
-
-  it('an empty field → "Vui lòng nhập đầy đủ…" on that field', async () => {
-    const el = pick('id="f4" value="15/06/2026 - 10:30"');
-    await open(el);
-    await typeInto(field('month'), '');
-    expect(errorLine().textContent).to.equal('Vui lòng nhập đầy đủ ngày, tháng, năm');
-    expect(field('month').getAttribute('aria-invalid')).to.equal('true');
   });
 });
 
@@ -387,8 +299,8 @@ describe('batch 4 — td-datetime-picker wheels (listbox model)', () => {
     expect(panel().querySelector('.td-dtp-wheel__sep').getAttribute('aria-hidden')).to.equal('true');
     const group = panel().querySelector('[role="group"]');
     expect(document.getElementById(group.getAttribute('aria-labelledby')).textContent).to.equal('Giờ');
-    // Tab order: day → month → year → hour → minute
-    field('year').focus();
+    // Tab order inside the dialog: … grid (one stop) → hour → minute → "Bây giờ" → "Chọn"
+    dayCell('2026-06-15').focus();
     await sendKeys({ press: 'Tab' });
     expect(same(document.activeElement, wheel('hour'))).to.equal(true);
     await sendKeys({ press: 'Tab' });
@@ -404,7 +316,6 @@ describe('batch 4 — td-datetime-picker wheels (listbox model)', () => {
       expect(selectedValue(h)).to.equal(v);
       expect(h.querySelectorAll('[aria-selected="true"]').length).to.equal(1);
       expect(h.getAttribute('aria-activedescendant')).to.equal(selected(h).id);
-      expect(panel().querySelector('.td-dtp-panel__preview').textContent).to.equal(`15/06/2026 - ${String(v).padStart(2, '0')}:30`);
     };
     await sendKeys({ press: 'ArrowDown' }); check(11);
     await sendKeys({ press: 'ArrowUp' }); check(10);
@@ -441,7 +352,7 @@ describe('batch 4 — td-datetime-picker wheels (listbox model)', () => {
   it('the selected option is centred in the band; scrolling selects the option that settles there', async () => {
     const el = pick('id="w5" value="15/06/2026 - 10:30"');
     await open(el);
-    await introDone(el); // v0.21.0: the wheels scroll in from the top once the dialog has entered
+    // v0.60.0: no opening animation — the wheels are centred at once
     const h = wheel('hour');
     const centreOf = (o) => o.offsetTop + o.offsetHeight / 2 - h.scrollTop;
     expect(Math.abs(centreOf(selected(h)) - h.clientHeight / 2)).to.be.below(2);
@@ -472,7 +383,6 @@ describe('batch 4 — td-datetime-picker wheels (listbox model)', () => {
     const el = pick('id="w7" minute-step="5" value="15/06/2026 - 10:02"');
     await open(el);
     expect(selectedValue(wheel('minute'))).to.equal(0);
-    expect(panel().querySelector('.td-dtp-panel__preview').textContent).to.equal('15/06/2026 - 10:00');
     button('Chọn').click();
     expect(el.getAttribute('value')).to.equal('15/06/2026 - 10:00');
     await settle();
@@ -598,18 +508,20 @@ describe('batch 4 — td-datetime-picker values + validity', () => {
     expect(el.checkValidity()).to.equal(true);
   });
 
-  it('min/max in the dialog: year field range derived, "Chọn" refuses an out-of-range value', async () => {
-    const el = pick('id="mm1" min="2026-06-15" max="2027-12-31" value="15/06/2026 - 10:30"');
+  it('min/max in the dialog: days outside are disabled; "Chọn" refuses a time before min and keeps the dialog open', async () => {
+    const el = pick('id="mm1" min="2026-06-15T10:07" max="2027-12-31" value="15/06/2026 - 10:30"');
     let n = 0;
     el.addEventListener('change', () => n++);
     await open(el);
-    expect(field('year').min).to.equal('2026');
-    expect(field('year').max).to.equal('2027');
-    await typeInto(field('day'), '14');
-    expect(errorLine().textContent).to.equal('Không được trước 15/06/2026 - 00:00');
+    expect(dayCell('2026-06-14').getAttribute('aria-disabled')).to.equal('true');
+    expect(dayCell('2026-06-15').hasAttribute('aria-disabled')).to.equal(false);
+    wheel('hour').focus();
+    await sendKeys({ press: 'ArrowUp' });
+    expect(errorLine().hidden).to.equal(false);
+    expect(errorLine().textContent).to.equal('Không được trước 15/06/2026 - 10:07');
     button('Chọn').click();
     await settle();
-    expect(openModal()).to.not.equal(null);
+    expect(openModal() !== null).to.equal(true);
     expect(n).to.equal(0);
   });
 
@@ -674,13 +586,13 @@ describe('batch 4 — td-datetime-picker in place + error contract + lifecycle',
     expect(trig(el).disabled).to.equal(true);
     trig(el).click();
     await settle();
-    expect(openModal()).to.equal(null);
+    expect(openModal() === null).to.equal(true);
     el.removeAttribute('disabled');
     await open(el);
-    expect(openModal()).to.not.equal(null);
+    expect(openModal() !== null).to.equal(true);
     el.setAttribute('disabled', '');
     await settle();
-    expect(openModal()).to.equal(null);
+    expect(openModal() === null).to.equal(true);
     expect(trig(el).getAttribute('aria-expanded')).to.equal('false');
 
     const fs = mount('<form><fieldset><td-datetime-picker id="d2"></td-datetime-picker></fieldset></form>').querySelector('fieldset');
@@ -700,10 +612,10 @@ describe('batch 4 — td-datetime-picker in place + error contract + lifecycle',
     await open(el);
     el.remove();
     await settle();
-    expect(openModal()).to.equal(null);
+    expect(openModal() === null).to.equal(true);
     host.appendChild(el);
     await open(el);
-    expect(openModal()).to.not.equal(null);
+    expect(openModal() !== null).to.equal(true);
   });
 
   it('XSS: label / placeholder / value / labels.* render as text', async () => {
@@ -719,7 +631,7 @@ describe('batch 4 — td-datetime-picker in place + error contract + lifecycle',
     TdDatetimePicker.labels.title = x;
     await open(el);
     expect(openModal().querySelector('img')).to.equal(null);
-    expect(openModal().querySelector('.td-modal__title').textContent).to.equal(x);
+    expect(openModal().getAttribute('aria-label')).to.equal(x);
     expect(window.__dtpXss).to.equal(undefined);
   });
 

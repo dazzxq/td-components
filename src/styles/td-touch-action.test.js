@@ -24,6 +24,7 @@ const TABLE = {
   '.td-color-panel__hue': 'none',
   // v0.49.0 number stepper − / +: repeated taps are the main use — no double-tap zoom on iOS
   '.td-number__step': 'manipulation',
+  '.td-cal__nav, .td-cal__title': 'manipulation',
 };
 
 test('touch-action declarations = the reviewed table (no new none, nothing on html / body)', async () => {

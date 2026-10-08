@@ -3,7 +3,12 @@ import { ssrMarker } from '../base/td-base-element.js';
 import { ValueTitleWatcher, displayedValueText } from '../utils/value-title.js';
 import { TdModal } from '../feedback/td-modal.js';
 import { fillIconSlots } from '../icons/td-icon.js';
-import { DatetimeEditor } from './datetime-panel.js';
+import { placeFloating, viewportBox, isReferenceHidden, watchReference } from '../utils/floating.js';
+import { LAYERS, register as registerLayer, bridgeTheme, focusablesIn } from '../utils/layers.js';
+import { matchesBelow } from '../utils/breakpoints-internal.js';
+import { clampDate, isDateOutOfRange, monthOutOfRange, yearOutOfRange } from '../utils/calendar-model.js';
+import { CalendarGrid } from './calendar-grid.js';
+import { TimeWheels } from './time-wheels.js';
 import {
   parseBound, invalidReason, normalizeMinuteStep, snapMinuteDown, partsFromDate, compareParts,
   normalizeMode, toModeParts, parseModeValue, parseModeDb, formatModeDisplay, formatModeDb, formatModeIso,
@@ -22,14 +27,23 @@ const MODE_SUFFIX = { datetime: '', date: 'Date', month: 'Month', year: 'Year' }
 /** Every form-associated element (v0.56.0 SSR gate: exactly the native input + the trigger). */
 const FORM_ASSOCIATED = 'input, textarea, select, button, fieldset, output, object';
 
+/** popover geometry (plan v0.60.0 A5): the margin to the viewport, and the scroll-region height under which the popover clamps instead */
+const POP_MARGIN = 8;
+const POP_MIN_SCROLL = 220;
+/** the calendar label keys a site may override; a bad shape falls back to these */
+const CAL_DEFAULTS = {
+  weekdaysShort: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+  weekdaysLong: ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'],
+};
+
 const fill = (template, vars) => String(template).replace(/\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : ''));
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 
 /**
- * Date-time picker: a field-look trigger that opens a dialog with three date fields and hour/minute wheels.
- * Token-native since 0.10.0 (plan v0.10.0-batch4 item 1, D1–D10): styles come from td.css
- * (`components/datetime-picker.css`, blocks `.td-dtp`, `.td-dtp-panel`, `.td-dtp-wheel`); state lives in `aria-*`,
- * `[hidden]`, `data-state`, `data-placeholder` — no Tailwind, no adopted stylesheet, no inline style markup.
+ * Date-time picker: a field-look trigger that opens a calendar. Token-native since 0.10.0 (plan v0.10.0-batch4 item 1):
+ * styles come from td.css (`components/datetime-picker.css`: `.td-dtp` + `.td-dtp-wheel`; `components/calendar.css`:
+ * `.td-dtp-pop`, `.td-cal`); state lives in `aria-*`, `[hidden]`, `data-state`, `data-placeholder` — no Tailwind, no adopted
+ * stylesheet, no inline style markup.
  *
  * Rendered DOM (the trigger is updated IN PLACE by value / placeholder / error / disabled / required / min / max /
  * minute-step / form-value-format changes; only `label` re-renders):
@@ -37,7 +51,7 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
  *     <div class="td-dtp" data-state="closed|open">
  *       [<label class="td-field__label" id="{host}-label" for="{host}-trigger">{label}[<span class="td-field__required"> *</span>]</label>]
  *       <button type="button" class="td-dtp__trigger" id="{host}-trigger" role="combobox" aria-haspopup="dialog"
- *               aria-expanded [aria-controls="{modal id}" while open] [aria-required] [aria-invalid] …>
+ *               aria-expanded [aria-controls="{dialog id}" while open] [aria-required] [aria-invalid] …>
  *         <span class="td-dtp__value" [data-placeholder]>{dd/mm/yyyy - hh:mm | raw | placeholder}</span>
  *         <span class="td-dtp__icon" data-td-icon="calendar" aria-hidden="true"></span>
  *       </button>
@@ -45,19 +59,20 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
  *     [<span class="td-field-error" id="{host}-error" data-for="{host}">…</span>]
  *   </td-datetime-picker>
  *
- * Panel (a Node body inside TdModal `escapeCloses: true`; `{p}` = `{host}-dtp{n}`, n unique per open): `fieldset.td-dtp-panel__group`
- * with three labelled `input.td-dtp-panel__input[type=number][inputmode=numeric]` (`{p}-day|month|year`), a
- * `[role=group]` with two wheels `.td-dtp-wheel > .td-dtp-wheel__list[role=listbox][tabindex=0]` named "Giờ" / "Phút"
- * (`{p}-hour|minute`) whose `.td-dtp-wheel__option[role=option]` children are never focusable, a preview and a
- * `p.td-dtp-panel__error[role=alert]`. Footer = TdModal actions "Đóng" / "Bây giờ" / "Chọn" (primary).
+ * **Calendar (v0.60.0, plan v0.60.0-calendar-picker, ADR 0032):** one Monday-first month grid (src/form/calendar-grid.js)
+ * with ‹ › (±1 month) and separate month / year header buttons that open a 12-month grid and a paged 12-year grid.
+ * ≥ 720 px an anchored popover (`div.td-dtp-pop[role=dialog]` on <body>, the kit's floating layer — not inert, outside
+ * pointer closes it); below 720 px the bottom sheet (TdModal, the backdrop never closes it). Same tree in both.
+ * `date`: a day commits at once (ONE `change`), closes, focus back on the trigger; "Hôm nay" the same. `month` / `year`:
+ * opens on the months / years grid, a pick commits. `datetime`: a day changes the draft, the hour / minute wheels
+ * (src/form/time-wheels.js, `minute-step`) too, "Chọn" commits ("Bây giờ" only moves the draft); a draft outside
+ * min / max is refused. Choosing a month / year in the date grid is only navigation (no `change`). Esc / X discard.
  *
- * Keyboard: on the trigger Enter, Space, ArrowDown (incl. Alt+ArrowDown) open (never submits a form). In the dialog:
- * focus starts in the day field; date fields validate on `input` and clamp on `change` (D9); each wheel is ONE tab
- * stop — ArrowUp/ArrowDown ±1, PageUp/PageDown ±6 h / ±15 min, Home/End; the active option IS the selection
- * (`aria-activedescendant` + `aria-selected` in sync); click and scroll (CSS scroll-snap) select too. "Chọn" commits
- * the pending state (one `change`), focus returns to the trigger; Escape / X / "Đóng" discard it.
- * Opening (v0.21.0, like dcms): the wheels start at the top of their lists and smoothly scroll to the selected value
- * once the dialog has finished entering (reduced motion → centred instantly); the selection never changes on the way.
+ * Keyboard: on the trigger Enter, Space (the button's own click) and ArrowDown open it; a click on the trigger while it is
+ * open closes it. In the day grid (APG date picker dialog): arrows ±1 day / ±1 week, Home / End Monday / Sunday, PageUp /
+ * PageDown ±1 month, Shift+PageUp / PageDown ±1 year, Enter / Space pick; one tab stop; the month / year are announced
+ * through a polite live region. The clear button (`clearable`) stays usable while the popover is open: it drops the draft,
+ * clears the value (one `change`) and closes. No presets, no typing (plan non-goals).
  *
  * **Modes (v0.18.0):** `mode="datetime"` (default, above) | `date` (day/month/year fields only) | `month` (month + year)
  * | `year` (year only). Each mode has its own display / DB / ISO format (table in docs/components/datetime-picker.md);
@@ -124,6 +139,12 @@ export class TdDatetimePicker extends TdFormElement {
     dateMonth: 'Tháng', dateYear: 'Năm', // legend of the fields group
     // v0.59.0 `clearable`: the name of the clear button (per mode, like the others)
     clear: 'Xoá ngày', clearDate: 'Xoá ngày', clearMonth: 'Xoá tháng', clearYear: 'Xoá năm',
+    // v0.60.0 calendar (plan v0.60.0-calendar-picker E1). `{…}` are filled in; the two weekday arrays have 7 entries (Monday first)
+    prevMonth: 'Tháng trước', nextMonth: 'Tháng sau', prevYear: 'Năm trước', nextYear: 'Năm sau',
+    prevYears: '12 năm trước', nextYears: '12 năm sau', pickMonth: 'chọn tháng', pickYear: 'chọn năm',
+    weekdaysShort: CAL_DEFAULTS.weekdaysShort, weekdaysLong: CAL_DEFAULTS.weekdaysLong,
+    monthName: 'Tháng {n}', heading: 'Tháng {month} năm {year}', headingMonths: 'Năm {year}', headingYears: '{from} – {to}',
+    dayLabel: '{weekday}, {day} tháng {month} năm {year}', yearLabel: 'Năm {year}', todaySuffix: 'hôm nay',
   };
 
   /** Validation messages (`{min}` / `{max}` are filled in); override per site like `labels`. */
@@ -153,11 +174,15 @@ export class TdDatetimePicker extends TdFormElement {
     super();
     this._isOpen = false;
     this._modalId = null;
-    /** @private the open panel element */
-    this._panel = null;
-    /** @private the open one-moment editor (src/form/datetime-panel.js: pending parts, wheels, intro, scroll timers —
-     *  all stopped on close, bug 1.8.6); null when closed */
-    this._dp = null;
+    /** @private the open dialog element (`.td-dtp-pop`: the popover itself, or the body of the sheet); null when closed */
+    this._pop = null;
+    /** @private true while the dialog is the bottom sheet (TdModal), decided when it opened */
+    this._sheet = false;
+    /** @private the open calendar (src/form/calendar-grid.js) / the datetime wheels (time-wheels.js); null when closed */
+    this._cal = null;
+    this._wheels = null;
+    /** @private datetime: the draft { date, hour, minute }, committed by "Chọn" only; null when closed */
+    this._draft = null;
   }
 
   // --- Value model (derived from the `value` attribute on demand: nothing to go stale) ---
@@ -298,8 +323,14 @@ export class TdDatetimePicker extends TdFormElement {
 
   /** @private v0.59.0 the user cleared the value: like "Chọn" with nothing — one `change`, the focus on the trigger */
   _clearByUser() {
-    if (this._clearHidden()) return;
+    if (this._clearHidden()) { // nothing to clear (or not clearable now): an open dialog just closes (v0.60.0 C4), no change
+      if (this._isOpen) this._closeDialog({ focus: true });
+      return;
+    }
     this._clearing = true; // the focus moves AFTER the change event (below)
+    // v0.60.0 (plan C4): the button stays clickable while the popover is open — the draft is dropped and the dialog closes
+    // WITHOUT a focus move (same end state as clearing while closed: one change, then the focus on the trigger)
+    if (this._isOpen) this._closeDialog({ focus: false });
     try {
       this.removeAttribute('value');
       this._updateValueText();
@@ -319,12 +350,13 @@ export class TdDatetimePicker extends TdFormElement {
     fillIconSlots(this);
     const trigger = this._trigger();
     if (trigger) {
+      // Enter / Space are the button's own click; v0.60.0: a click while the dialog is open closes it (toggle, no change)
       this.listen(trigger, 'click', () => this._open());
       this.listen(trigger, 'keydown', (e) => {
-        // APG combobox with a dialog popup. preventDefault: no implicit form submission, no page scroll.
-        if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+        // APG combobox with a dialog popup: ArrowDown opens it (or moves into it); no page scroll
+        if (e.key === 'ArrowDown') {
           e.preventDefault();
-          this._open();
+          if (this._isOpen) { if (this._cal) this._cal.focusActive(); } else this._open();
         }
       });
     }
@@ -409,10 +441,7 @@ export class TdDatetimePicker extends TdFormElement {
       case 'max':
         this._updateValueText();
         this._syncForm();
-        if (this._panel) { // open dialog: the year field's native bounds + the pending validation follow
-          this._dp.setYearRange(this._yearRange());
-          this._refresh();
-        }
+        if (this._isOpen) this._applyBoundsToDialog(); // open dialog: the cells re-evaluate in place, the draft is re-checked
         return;
       case 'minute-step': // read on the next open
       case 'open-at':
@@ -420,8 +449,7 @@ export class TdDatetimePicker extends TdFormElement {
         return;
       case 'mode': { // other fields / formats: close an open dialog, convert the value, redraw the trigger
         const active = document.activeElement;
-        const modalRoot = this._modalId ? document.getElementById(this._modalId) : null;
-        const hadFocus = this.contains(active) || !!(modalRoot && modalRoot.contains(active));
+        const hadFocus = this.contains(active) || !!(this._pop && this._pop.contains(active));
         if (this._isOpen) this._close();
         this._convertValueMode(normalizeMode(oldVal));
         this._updateValueText();
@@ -447,8 +475,7 @@ export class TdDatetimePicker extends TdFormElement {
         return;
       default: { // label
         const active = document.activeElement;
-        const modalRoot = this._modalId ? document.getElementById(this._modalId) : null;
-        const hadFocus = this.contains(active) || !!(modalRoot && modalRoot.contains(active));
+        const hadFocus = this.contains(active) || !!(this._pop && this._pop.contains(active));
         if (this._isOpen) this._close();
         this._doRender();
         if (hadFocus && this._trigger()) this._trigger().focus();
@@ -770,57 +797,125 @@ export class TdDatetimePicker extends TdFormElement {
     super.disconnectedCallback();
   }
 
-  // --- Dialog ---
+  // --- Dialog (v0.60.0: the calendar; plan v0.60.0-calendar-picker A5, C2–C4, D) ---
 
-  /** Open the picker dialog (no-op when disabled, detached or already open). */
+  /**
+   * Open the calendar dialog (no-op when disabled or detached); a second call while it is open closes it (the trigger toggles:
+   * the draft is dropped, no `change`). ≥ 720 px a popover on <body>, below the bottom sheet (TdModal) — decided at open.
+   */
   _open() {
-    if (this._isOpen || this._effectiveDisabled || !this.isConnected) return;
+    if (this._isOpen) {
+      this._closeDialog({ focus: true });
+      return;
+    }
+    if (this._effectiveDisabled || !this.isConnected) return;
     const trigger = this._trigger();
     if (!trigger) return;
     // The dialog restores focus to whatever was focused when it opened (a mouse click does not focus a button in
     // every engine) → make that the trigger.
     if (document.activeElement !== trigger) trigger.focus({ preventScroll: true });
     const L = TdDatetimePicker.labels;
+    const mode = this._mode();
+    const sheet = matchesBelow('md');
     this._isOpen = true;
-    const panel = this._buildPanel();
-    this._panel = panel;
-    this._modalId = TdModal.show({
-      themeRoot: this, // v0.42.0 (ADR 0020): the picker dialog follows the host's theme scope
-      title: this._text(L, 'title'),
-      body: panel,
-      size: 'sm',
-      escapeCloses: true, // D4: closing loses nothing (pending copy)
-      focusTarget: panel.querySelector('.td-dtp-panel__input'),
-      actions: [
-        { label: L.close, variant: 'secondary', value: 'close' },
-        { label: this._text(L, 'now'), variant: 'secondary', close: false, onClick: () => { this._setNow(); } },
-        { label: L.confirm, variant: 'primary', value: 'confirm', onClick: () => this._confirm() },
-      ],
-      onClose: () => this._onDialogClosed(panel),
-    });
+    this._sheet = sheet;
+    const pop = this._buildPop(sheet);
+    this._pop = pop;
+    if (sheet) {
+      this._modalId = TdModal.show({
+        themeRoot: this, // v0.42.0 (ADR 0020): the dialog follows the host's theme scope
+        title: this._text(L, 'title'),
+        body: pop,
+        size: 'sm',
+        escapeCloses: true, // closing loses nothing (the draft is a copy)
+        focusTarget: pop.querySelector('.td-cal [tabindex="0"]'),
+        actions: [], // the actions live in the body (no footer): a date / month / year pick commits by itself
+        onClose: () => this._onDialogClosed(pop),
+      });
+      trigger.setAttribute('aria-controls', this._modalId);
+    } else {
+      document.body.appendChild(pop);
+      this._unbridge = bridgeTheme(pop, this);
+      trigger.setAttribute('aria-controls', pop.id);
+      this._placePop();
+      pop.setAttribute('data-state', 'open');
+      this._layer = registerLayer({
+        layer: LAYERS.popover,
+        element: pop,
+        keyboard: 'boundary',
+        onEscape: () => { this._closeDialog({ focus: true }); return true; },
+        onTab: (e) => this._onPopTab(e),
+        anchor: this,
+        onCovered: () => this._closeDialog({ focus: false }), // a newer modal / lightbox covers it: no focus into the inert page
+      });
+      this._onDocDown = (e) => {
+        const t = /** @type {Node} */ (e.target);
+        if (this._pop && !this._pop.contains(t) && !this.contains(t)) this._closeDialog({ focus: false });
+      };
+      this._onReposition = () => {
+        if (this._posRaf) return;
+        this._posRaf = requestAnimationFrame(() => { this._posRaf = 0; this._updatePop(); });
+      };
+      document.addEventListener('pointerdown', this._onDocDown, true);
+      window.addEventListener('resize', this._onReposition);
+      window.addEventListener('scroll', this._onReposition, true);
+      this._unwatchRef = watchReference(trigger, () => this._updatePop());
+    }
+    if (this._wheels) this._wheels.centre(); // centred at once — no opening animation (v0.60.0)
     trigger.setAttribute('aria-expanded', 'true');
-    trigger.setAttribute('aria-controls', this._modalId);
     const box = this.querySelector('.td-dtp');
     if (box) box.setAttribute('data-state', 'open');
-    if (this._dp) this._dp.startIntro();
+    if (!sheet) this._cal.focusActive();
+    else if (this._wheels) requestAnimationFrame(() => { if (this._wheels) this._wheels.centre(); }); // after the sheet laid out
+    void mode;
   }
 
-  /** Close the dialog, discarding the pending state. */
-  _close() {
+  /**
+   * Close the dialog, discarding the draft. `focus`: put the focus back on the trigger (Esc, a commit, a toggle) — not for a
+   * click elsewhere or a covering layer.
+   * @private
+   * @param {{ focus?: boolean }} [o]
+   */
+  _closeDialog({ focus = false } = {}) {
     if (!this._isOpen) return;
-    const panel = this._panel;
-    if (this._modalId) TdModal.closeById(this._modalId);
-    this._onDialogClosed(panel); // idempotent (TdModal already called it)
+    const pop = this._pop;
+    if (this._sheet) {
+      if (this._modalId) TdModal.closeById(this._modalId); // TdModal restores the focus to the opener itself
+      this._onDialogClosed(pop);
+    } else {
+      this._onDialogClosed(pop);
+    }
+    const trigger = this._trigger();
+    if (focus && trigger && !trigger.disabled && this.isConnected) trigger.focus({ preventScroll: true });
   }
 
-  /** @private every close path ends here (TdModal onClose) */
-  _onDialogClosed(panel) {
-    if (!this._isOpen || this._panel !== panel) return;
-    if (this._dp) this._dp.destroy();
-    this._dp = null;
+  /** Close the dialog without moving the focus (attribute changes, disconnect). */
+  _close() { this._closeDialog({ focus: false }); }
+
+  /** @private every close path ends here (TdModal onClose, popover teardown): idempotent state reset */
+  _onDialogClosed(pop) {
+    if (!this._isOpen || this._pop !== pop) return;
+    if (this._wheels) this._wheels.destroy();
+    if (this._cal) this._cal.destroy();
+    this._wheels = null;
+    this._cal = null;
+    this._draft = null;
     this._isOpen = false;
     this._modalId = null;
-    this._panel = null;
+    this._pop = null;
+    this._popScroll = null;
+    if (this._layer) { this._layer.release(); this._layer = null; }
+    if (this._unbridge) { this._unbridge(); this._unbridge = null; }
+    if (this._unwatchRef) { this._unwatchRef(); this._unwatchRef = null; }
+    if (this._posRaf) { cancelAnimationFrame(this._posRaf); this._posRaf = 0; }
+    if (this._onDocDown) {
+      document.removeEventListener('pointerdown', this._onDocDown, true);
+      window.removeEventListener('resize', this._onReposition);
+      window.removeEventListener('scroll', this._onReposition, true);
+      this._onDocDown = null;
+      this._onReposition = null;
+    }
+    if (!this._sheet && pop) pop.remove();
     const trigger = this._trigger();
     if (trigger) {
       trigger.setAttribute('aria-expanded', 'false');
@@ -836,10 +931,10 @@ export class TdDatetimePicker extends TdFormElement {
    */
   _initialPending() {
     const s = this._state();
-    const p = s.parts ? { ...s.parts } : this._openAtParts();
+    const p = s.usable ? { ...s.parts } : this._openAtParts();
     p.hour = clamp(p.hour, 0, 23);
     p.minute = snapMinuteDown(clamp(p.minute, 0, 59), this._minuteStep());
-    if (!s.parts && this._mode() === 'datetime') this._snapIntoBounds(p); // only datetime has a minute wheel
+    if (!s.usable && this._mode() === 'datetime') this._snapIntoBounds(p); // only datetime has a minute wheel
     return toModeParts(p, this._mode());
   }
 
@@ -877,63 +972,263 @@ export class TdDatetimePicker extends TdFormElement {
     return this._clampToBounds(p);
   }
 
-  /** @private build the dialog body (v0.40.0: the shared one-moment editor, src/form/datetime-panel.js) */
-  _buildPanel() {
+  /** @private the label table with the calendar keys validated (a site may override them; a bad shape → the defaults, once) */
+  _calLabels() {
     const L = TdDatetimePicker.labels;
+    const D = CAL_DEFAULTS;
+    const out = { ...L };
+    for (const k of ['weekdaysShort', 'weekdaysLong']) {
+      if (!Array.isArray(L[k]) || L[k].length !== 7 || !L[k].every((x) => typeof x === 'string')) {
+        if (!this._warnedLabels) {
+          this._warnedLabels = true;
+          console.warn(`td-datetime-picker: labels.${k} must be an array of 7 strings — the defaults are used.`);
+        }
+        out[k] = D[k];
+      }
+    }
+    return out;
+  }
+
+  /** @private build the dialog tree (DOM API: labels are text) — the same for the popover and the sheet */
+  _buildPop(sheet) {
+    const L = this._calLabels();
+    const mode = this._mode();
     TdDatetimePicker._openSeq = (TdDatetimePicker._openSeq || 0) + 1;
     const prefix = `${this.id}-dtp${TdDatetimePicker._openSeq}`; // unique per open: a closing dialog may linger
-    this._dp = new DatetimeEditor({
-      mode: this._mode(),
-      prefix,
-      pending: this._initialPending(),
-      years: this._yearRange(),
-      minuteStep: this._minuteStep(),
-      labels: L,
-      legend: this._text(L, 'date'),
-      check: (p) => this._check(p),
+    const { min, max } = this._bounds();
+    const pend = this._initialPending();
+    const s = this._state();
+    const date = { year: pend.year, month: pend.month, day: pend.day };
+    const today = partsFromDate(new Date());
+    const committed = s.usable ? date : null;
+    const selected = committed || (mode === 'datetime' ? date : null);
+    const make = (tag, cls, attrs = {}, text) => {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+      if (text != null) n.textContent = String(text);
+      return n;
+    };
+
+    const pop = make('div', sheet ? 'td-dtp-pop td-dtp-pop--sheet' : 'td-dtp-pop td-glass-surface td-glass-surface--strong', {
+      id: `${prefix}-pop`, 'data-mode': mode,
     });
-    return this._dp.el;
+    if (!sheet) {
+      pop.setAttribute('role', 'dialog');
+      pop.setAttribute('aria-label', this._text(L, 'title'));
+      pop.setAttribute('tabindex', '-1');
+      pop.setAttribute('data-state', 'closed');
+    }
+    const scroll = make('div', 'td-dtp-pop__scroll');
+    this._popScroll = scroll;
+    this._draft = { date: selected ? { ...selected } : { ...date }, hour: pend.hour, minute: pend.minute };
+
+    this._cal = new CalendarGrid({
+      prefix,
+      labels: L,
+      root: { datetime: 'days', date: 'days', month: 'months', year: 'years' }[mode],
+      focus: clampDate(date, min, max),
+      selected,
+      min,
+      max,
+      today,
+      onCommit: (level, d) => this._onPick(level, d),
+      onView: () => { if (!this._sheet) this._placePop(); },
+    });
+    scroll.appendChild(this._cal.el);
+
+    let err = null;
+    if (mode === 'datetime') {
+      this._wheels = new TimeWheels({
+        prefix, labels: L, minuteStep: this._minuteStep(), hour: pend.hour, minute: pend.minute,
+        onChange: (t) => { this._draft.hour = t.hour; this._draft.minute = t.minute; this._refreshDraft(); },
+      });
+      scroll.appendChild(this._wheels.el);
+      err = make('p', 'td-dtp-pop__error', { id: `${prefix}-error`, role: 'alert' });
+      err.hidden = true;
+      scroll.appendChild(err);
+    }
+    pop.appendChild(scroll);
+
+    // actions: date / month / year → "Hôm nay" / "Tháng này" / "Năm nay"; datetime → "Bây giờ" + "Chọn"
+    const actions = make('div', 'td-dtp-pop__actions');
+    const button = (cls, action, label, onClick) => {
+      const b = make('button', `td-btn ${cls} td-btn--sm`, { type: 'button', 'data-action': action });
+      b.appendChild(make('span', 'td-btn__label', {}, label));
+      b.addEventListener('click', onClick);
+      return b;
+    };
+    if (mode === 'datetime') {
+      actions.appendChild(button('td-btn--secondary', 'now', this._text(L, 'now'), () => this._setNow()));
+      actions.appendChild(button('td-btn--primary', 'confirm', L.confirm, () => this._confirm()));
+    } else {
+      const todayBtn = button('td-btn--secondary', 'today', this._text(L, 'now'), () => this._pickToday());
+      const out = mode === 'date' ? isDateOutOfRange(today, min, max)
+        : mode === 'month' ? monthOutOfRange(today.year, today.month, min, max) : yearOutOfRange(today.year, min, max);
+      if (out) todayBtn.setAttribute('aria-disabled', 'true');
+      actions.appendChild(todayBtn);
+    }
+    pop.appendChild(actions);
+    this._popErr = err;
+    if (mode === 'datetime') this._refreshDraft();
+    return pop;
   }
 
-  /** @private opening wheel animation of the open editor (v0.21.0); null when idle */
-  get _intro() { return this._dp ? this._dp.intro : null; }
+  /** @private a pick at the root view of the mode (the grid reports it; every other pick only changed the view) */
+  _onPick(level, d) {
+    const mode = this._mode();
+    if (mode === 'datetime') {
+      this._draft.date = { year: d.year, month: d.month, day: d.day };
+      this._refreshDraft();
+      return;
+    }
+    this._commit({ year: d.year, month: d.month, day: d.day, hour: 0, minute: 0 });
+    void level;
+  }
 
-  /** @private pending parts while the dialog is open (committed only by "Chọn"); null when closed */
-  get _pending() { return this._dp ? this._dp.pending : null; }
+  /** @private "Hôm nay" / "Tháng này" / "Năm nay": commit the current day / month / year (disabled outside min–max) */
+  _pickToday() {
+    const btn = this._pop && this._pop.querySelector('[data-action="today"]');
+    if (!btn || btn.getAttribute('aria-disabled') === 'true') return;
+    const t = partsFromDate(new Date());
+    this._commit({ year: t.year, month: t.month, day: t.day, hour: 0, minute: 0 });
+  }
+
+  /** @private datetime: "Bây giờ" — the draft becomes now (date clamped into min–max, minute snapped down); no commit */
+  _setNow() {
+    if (!this._draft || !this._cal) return;
+    const { min, max } = this._bounds();
+    const now = partsFromDate(new Date());
+    const d = clampDate({ year: now.year, month: now.month, day: now.day }, min, max);
+    const minute = snapMinuteDown(now.minute, this._minuteStep());
+    this._draft = { date: d, hour: now.hour, minute };
+    this._cal.setSelected(d, { reveal: true });
+    this._wheels.setTime(now.hour, minute);
+    this._refreshDraft();
+  }
 
   /**
-   * @private validate the pending state, sync field ARIA + the error line + the preview.
+   * @private validate the datetime draft: the error line (role=alert) + aria on the wheels. Returns the error or null.
    * @returns {ReturnType<TdDatetimePicker['_check']>}
    */
-  _refresh() {
-    return this._dp ? this._dp.refresh() : null;
-  }
-
-  /** @private "Bây giờ": pending = now (minute snapped down) */
-  _setNow() {
-    if (!this._dp) return;
-    const now = partsFromDate(new Date());
-    now.minute = snapMinuteDown(now.minute, this._minuteStep());
-    this._dp.setParts(toModeParts(now, this._mode())); // components outside the mode keep their defaults
-  }
-
-  /** @private "Chọn": commit the pending state (false keeps the dialog open) */
-  _confirm() {
-    const panel = this._panel;
-    if (!panel || !this._pending) return false;
-    const err = this._refresh();
+  _refreshDraft() {
+    if (!this._draft || !this._popErr) return null;
+    const d = this._draft;
+    const err = this._check({ ...d.date, hour: d.hour, minute: d.minute });
+    const line = this._popErr;
     if (err) {
-      this._dp.focusPart(err.field);
-      return false;
+      if (line.textContent !== err.message) line.textContent = err.message;
+      line.hidden = false;
+    } else {
+      line.hidden = true;
+      line.textContent = '';
     }
+    if (this._wheels) {
+      for (const list of this._wheels.el.querySelectorAll('.td-dtp-wheel__list')) {
+        if (err) list.setAttribute('aria-describedby', line.id);
+        else list.removeAttribute('aria-describedby');
+      }
+    }
+    return err;
+  }
+
+  /** @private "Chọn" (datetime): commit the draft — refused (dialog stays, focus on the wheel) while it violates min / max */
+  _confirm() {
+    if (!this._draft) return;
+    const err = this._refreshDraft();
+    if (err) {
+      const list = this._wheels && this._wheels.el.querySelector('.td-dtp-wheel__list[data-part="hour"]');
+      if (list) list.focus({ preventScroll: true });
+      return;
+    }
+    const d = this._draft;
+    this._commit({ ...d.date, hour: d.hour, minute: d.minute });
+  }
+
+  /**
+   * @private write the value, emit ONE `change`, close, focus the trigger. The same value as before (date / month / year
+   * mode) closes without a `change`; datetime "Chọn" always emits (the v0.59 contract).
+   */
+  _commit(parts) {
     const mode = this._mode();
-    const p = toModeParts(this._pending, mode);
+    const p = toModeParts(parts, mode);
     const value = formatModeDisplay(p, mode);
-    this.setAttribute('value', value); // in place: the trigger (the dialog's opener) is never replaced (bug 1.8.1)
-    this._updateValueText();
-    this._syncForm();
-    this.emit('change', { value, dbValue: formatModeDb(p, mode) });
-    return true; // TdModal closes → focus returns to the trigger
+    const unchanged = mode !== 'datetime' && this.getAttribute('value') === value;
+    if (!unchanged) {
+      this.setAttribute('value', value); // in place: the trigger (the dialog's opener) is never replaced (bug 1.8.1)
+      this._updateValueText();
+      this._syncForm();
+      this.emit('change', { value, dbValue: formatModeDb(p, mode) }); // `change` first: the focus moves after it
+    }
+    this._closeDialog({ focus: true });
+  }
+
+  /** @private min / max attributes changed while open: the cells re-evaluate in place, the draft is re-checked */
+  _applyBoundsToDialog() {
+    if (!this._cal) return;
+    const { min, max } = this._bounds();
+    this._cal.setBounds(min, max);
+    const today = this._pop.querySelector('[data-action="today"]');
+    if (today) {
+      const t = partsFromDate(new Date());
+      const mode = this._mode();
+      const out = mode === 'date' ? isDateOutOfRange(t, min, max)
+        : mode === 'month' ? monthOutOfRange(t.year, t.month, min, max) : yearOutOfRange(t.year, min, max);
+      if (out) today.setAttribute('aria-disabled', 'true');
+      else today.removeAttribute('aria-disabled');
+    }
+    this._refreshDraft();
+    if (!this._sheet) this._placePop();
+  }
+
+  // --- popover geometry (plan A5: scroll region + pinned actions, flip, clamp) ---
+
+  /** @private place the popover against the trigger: the side with room, the scroll region shrinks, else clamp */
+  _placePop() {
+    const pop = this._pop;
+    const trigger = this._trigger();
+    const scroll = this._popScroll;
+    if (!pop || !trigger || !scroll) return;
+    const box = viewportBox();
+    pop.style.setProperty('max-height', `${Math.max(0, box.bottom - box.top - 2 * POP_MARGIN)}px`);
+    scroll.style.removeProperty('max-height');
+    const { side, top } = placeFloating(trigger, pop, { width: 'auto', align: 'start', list: scroll });
+    pop.setAttribute('data-placement', side);
+    // neither side has room (a short viewport, the trigger in the middle): drop the per-side cap and keep the whole
+    // popover inside the viewport — it may cover the trigger (like td-color-picker)
+    if (scroll.clientHeight < Math.min(POP_MIN_SCROLL, scroll.scrollHeight)) {
+      scroll.style.removeProperty('max-height');
+      const h = pop.offsetHeight;
+      const rect = trigger.getBoundingClientRect();
+      const want = side === 'bottom' ? rect.bottom + 8 : rect.top - 8 - h;
+      const clamped = Math.max(box.top + POP_MARGIN, Math.min(want, box.bottom - h - POP_MARGIN));
+      if (clamped !== top) pop.style.setProperty('top', `${clamped}px`);
+      else pop.style.setProperty('top', `${top}px`);
+    }
+  }
+
+  /** @private scroll / resize / reference change: close once the trigger is hidden, else follow it */
+  _updatePop() {
+    if (!this._pop) return;
+    const trigger = this._trigger();
+    if (!trigger || !trigger.isConnected || isReferenceHidden(trigger.getBoundingClientRect(), trigger)) {
+      this._closeDialog({ focus: false });
+      return;
+    }
+    this._placePop();
+  }
+
+  /** @private Tab / Shift+Tab cycle inside the popover (explicit: WebKit does not Tab to buttons by default) */
+  _onPopTab(e) {
+    const pop = this._pop;
+    if (!pop) return 'pass';
+    const nodes = focusablesIn(pop);
+    if (!nodes.length) { e.preventDefault(); pop.focus({ preventScroll: true }); return 'handled'; }
+    const i = nodes.indexOf(/** @type {HTMLElement} */ (document.activeElement));
+    const next = i < 0 ? 0 : (i + (e.shiftKey ? -1 : 1) + nodes.length) % nodes.length;
+    e.preventDefault();
+    nodes[next].focus({ preventScroll: true });
+    return 'handled';
   }
 
   // --- Public API ---

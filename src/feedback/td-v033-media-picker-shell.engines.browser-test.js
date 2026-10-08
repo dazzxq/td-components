@@ -311,11 +311,12 @@ describe('v0.33 td-media-picker — toolbar (decisions 7-10)', () => {
     click(opener('m60'));
     await until(() => q('.td-media-picker__detail-name')?.textContent === 'anh-60.jpg' && !q('.td-media-picker__detail').hasAttribute('data-loading'), 4000, 'detail');
     const dtp = await until(() => q('.td-media-picker__field[data-key="licenseExpiry"] td-datetime-picker'), 4000, 'dtp');
-    const before = document.querySelectorAll('body > .td-modal:not(.td-media-picker)').length;
+    // v0.60.0: at ≥ 720 px the date picker is a popover (a floating layer), below it a sheet (a modal): either way Esc closes only it
+    const dialogs = () => document.querySelectorAll('body > .td-dtp-pop, body > .td-modal:not(.td-media-picker):not([data-state="closing"]) .td-dtp-pop').length;
     dtp.querySelector('.td-dtp__trigger').click();
-    await until(() => [...document.querySelectorAll('body > .td-modal:not(.td-media-picker)')].filter((m) => m.getAttribute('data-state') === 'open').length > before, 4000, 'date modal');
+    await until(() => dialogs() > 0, 4000, 'date dialog');
     await sendKeys({ press: 'Escape' });
-    await until(() => [...document.querySelectorAll('body > .td-modal:not(.td-media-picker)')].filter((m) => m.getAttribute('data-state') !== 'closing').length === before, 4000, 'date modal closed');
+    await until(() => dialogs() === 0, 4000, 'date dialog closed');
     expect(document.querySelector('td-media-picker').isOpen, 'picker still open').to.equal(true);
   });
 });
