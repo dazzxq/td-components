@@ -36,11 +36,11 @@ const one = (fn, ...args) => run([[fn, args]])[0];
 describe('php/td.php — v0.59.0 options are additive', opts, () => {
   test('false / absent options print the same bytes', () => {
     const pairs = [
-      ['td_number_input', ['n', '300000', { element: true }], { signed: false }],
-      ['td_number_input', ['n', '300000', {}], { signed: true }], // native: ignored
-      ['td_date', ['d', '2026-06-15', { label: 'Ngày' }], { clearable: false }],
-      ['td_datetime_picker', ['d', '15/06/2026 - 09:30', {}], { clearable: false }],
-      ['td_datetime_range', ['r', '2026-10-01', null, { required: true }], { allow_open_end: false }],
+      ['td_number_input', ['n', '300000', { element: true, id: 'n1' }], { signed: false }],
+      ['td_number_input', ['n', '300000', { id: 'n2' }], { signed: true }], // native: ignored
+      ['td_date', ['d', '2026-06-15', { label: 'Ngày', id: 'd1' }], { clearable: false }],
+      ['td_datetime_picker', ['d', '15/06/2026 - 09:30', { id: 'd2' }], { clearable: false }],
+      ['td_datetime_range', ['r', '2026-10-01', null, { required: true, id: 'r1' }], { allow_open_end: false }],
     ];
     const res = run(pairs.flatMap(([fn, args, extra]) => {
       const withOpt = structuredClone(args);
@@ -54,8 +54,8 @@ describe('php/td.php — v0.59.0 options are additive', opts, () => {
 describe('php/td.php — v0.59.0 td_number_input signed', opts, () => {
   test('element mode: host `signed`, the inner tree unchanged (canonical value, never pre-formatted)', () => {
     const [plain, signed] = run([
-      ['td_number_input', ['delta', '300000', { element: true, min: '-1000000' }]],
-      ['td_number_input', ['delta', '300000', { element: true, min: '-1000000', signed: true }]],
+      ['td_number_input', ['delta', '300000', { element: true, min: '-1000000', id: 'n3' }]],
+      ['td_number_input', ['delta', '300000', { element: true, min: '-1000000', signed: true, id: 'n3' }]],
     ]);
     assert.match(signed.html, /^<td-number-input [^>]* signed>/);
     assert.equal(signed.html.replace(' signed>', '>'), plain.html);

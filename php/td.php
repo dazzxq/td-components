@@ -1270,7 +1270,8 @@ namespace {
      * (default Td::configure ssr_elements): the `<td-action-button data-td-ssr="action-button@1">` host + the exact
      * control <td-action-button> renders (hydrated in place). An action that is neither a preset nor given icon + label
      * → '' + one E_USER_WARNING. A site preset registered only in JS must pass icon + label here (or be registered
-     * with Td::registerActionPresets() too — v0.56.0).
+     * with Td::registerActionPresets() too — v0.56.0). v0.59.0: an `icon` the registry does not know → one
+     * E_USER_WARNING naming it (sanitised like the action) — the preset icon is used, or '' without one.
      */
     function td_action_button(string $action, array $o = []): string
     {
@@ -1279,8 +1280,18 @@ namespace {
         $key = strtolower((string) preg_replace('/([a-z0-9])([A-Z])/', '$1-$2', $action));
         $preset = preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $key) ? Td::actionPreset($key) : null; // v0.56.0: site presets first
         $ownIcon = isset($o['icon']) && is_string($o['icon']) ? $trim($o['icon']) : '';
-        $ownIcon = $ownIcon !== '' && Td::hasIcon($ownIcon) ? $ownIcon : '';
-        $icon = $ownIcon !== '' ? $ownIcon : ($preset !== null && Td::hasIcon($preset[0]) ? $preset[0] : '');
+        $presetIcon = $preset !== null && Td::hasIcon($preset[0]) ? $preset[0] : '';
+        if ($ownIcon !== '' && !Td::hasIcon($ownIcon)) {
+            // v0.59.0 (QĐ D2): name the unknown icon — sanitised like the action below (SEC-02)
+            $shownIcon = addcslashes(substr((string) preg_replace('/[^\x20-\x7E]/', '', $ownIcon), 0, 64), '\\"');
+            trigger_error('td_action_button: unknown icon "' . $shownIcon . '" (' . strlen($ownIcon) . ' bytes) — '
+                . ($presetIcon !== '' ? 'preset icon used' : 'nothing rendered'), E_USER_WARNING);
+            if ($presetIcon === '') {
+                return '';
+            }
+            $ownIcon = '';
+        }
+        $icon = $ownIcon !== '' ? $ownIcon : $presetIcon;
         $ownLabel = isset($o['label']) && is_scalar($o['label']) && !is_bool($o['label']) ? $trim((string) $o['label']) : '';
         $label = $ownLabel !== '' ? $ownLabel : ($preset[1] ?? '');
         if ($icon === '' || $label === '') {

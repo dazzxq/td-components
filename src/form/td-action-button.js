@@ -18,6 +18,16 @@ const ACTION_PARTS = { 'td-btn__icon': PART_ATTRS['td-btn__icon'], 'td-btn__spin
 const IGNORED = new Set(['variant', 'color', 'text-color', 'icon-position', 'full-width']);
 /** Action names already warned about (unresolvable: no preset and no icon + label override) — once per name. */
 const _warned = new Set();
+/** v0.59.0: icon warnings already printed (one per message: an unknown host icon / a preset's unknown icon). */
+const _warnedIcons = new Set();
+
+/** @param {string} msg console.warn once per message (bounded like `_warned`) */
+function warnIcon(msg) {
+  if (_warnedIcons.has(msg)) return;
+  if (_warnedIcons.size > 200) _warnedIcons.clear();
+  _warnedIcons.add(msg);
+  console.warn(msg);
+}
 
 /**
  * The 23 dcms2 `ActionButtonConfigs` presets (resources/js/components/dcms-action-buttons.js) — the ONE inventory of
@@ -90,6 +100,8 @@ export function canonAction(action) {
  *   is `aria-label` + `data-tooltip` (td-tooltip skips a description equal to the name — read once).
  * Name precedence (one function, _name()): host `aria-label` > `label` > preset label. `aria-labelledby` is not
  * forwarded. Unresolvable (unknown action without `icon` + `label`) → nothing rendered + one console warning per name.
+ * v0.59.0: an icon name the registry does not know never fails silently — one warning per name naming the cause: a host
+ * `icon` (the preset icon is used instead, or nothing is rendered without one) or a preset's own `icon`.
  * SSR: `data-td-ssr="action-button@1"` (PHP td_action_button element mode) adopted in place when the control has
  * exactly render()'s structure AND its aria-label / data-tooltip equal _name(); else a normal render.
  *
@@ -142,8 +154,19 @@ export class TdActionButton extends TdButton {
     const presets = TdActionButton.presets;
     const preset = key !== null && Object.hasOwn(presets, key) ? presets[key] : null;
     const ownIcon = (this.getAttribute('icon') || '').trim();
-    const icon = ownIcon && hasIcon(ownIcon) ? ownIcon : (preset?.icon && hasIcon(preset.icon) ? preset.icon : '');
+    const presetIcon = preset?.icon && hasIcon(preset.icon) ? preset.icon : '';
+    const icon = ownIcon && hasIcon(ownIcon) ? ownIcon : presetIcon;
     const label = (this.getAttribute('label') || '').trim() || (typeof preset?.label === 'string' ? preset.label.trim() : '');
+    // v0.59.0 (plan v0.59.0-dsuite-small QĐ D1): the real cause of a missing icon, once per message
+    if (ownIcon && !hasIcon(ownIcon)) {
+      warnIcon(presetIcon
+        ? `td-action-button: unknown icon "${ownIcon}" — using the preset icon "${presetIcon}"`
+        : `td-action-button: unknown icon "${ownIcon}" — nothing rendered`);
+      if (!presetIcon) return null;
+    } else if (!ownIcon && preset && typeof preset.icon === 'string' && !presetIcon) {
+      warnIcon(`td-action-button: preset "${key}" has an unknown icon "${preset.icon}"`);
+      return null;
+    }
     if (!icon || !label) {
       const name = String(action ?? '');
       if (!_warned.has(name)) {
