@@ -2,6 +2,7 @@
  * TdHovercard (src/feedback/td-hovercard.js) — plan v0.14.0 G10; 135 kit td-ui.css `.td-hovercard` translated to td
  * tokens. Body-portaled non-modal small popup (v0.20.0 minimal surfaces: .td-glass-surface--strong = 94 % +
  * blur(12px) + thin border + soft shadow — fallbacks come from the recipe), radius --td-glass-radius. Fades in.
+ * v0.62.0: the loading state is a skeleton (avatar + title + 2 lines) with a fixed size budget; no spinner.
  * State: [hidden], data-state="loading|open|error|closed", data-placement="bottom|top". Only geometry (top / left /
  * max-height) is written by JS through CSSOM. Content is free-form: only margins at the edges, links and focus rings
  * are normalised.
@@ -11,6 +12,10 @@
 		--td-hovercard-max-w: 20rem;
 		--td-hovercard-pad-y: 0.75rem;
 		--td-hovercard-pad-x: 0.9rem;
+		/* v0.62.0 loading skeleton: the size budget of the card while it waits (the content that arrives never shrinks it) */
+		--td-hovercard-skeleton-w: 16rem;
+		--td-hovercard-skeleton-h: 5rem;
+		--td-hovercard-skeleton-avatar: 2.5rem;
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
@@ -114,8 +119,39 @@
 		color: var(--td-hovercard-error-fg);
 	}
 
-	.td-hovercard__spinner {
-		--td-spinner-size: 1rem;
+	/* v0.62.0 loading state: skeleton (skeleton.css) instead of a spinner. Fixed width + minimum height = the budget, so the
+	   card does not jump while it loads; the label is screen-reader only (.td-sr-only). */
+	.td-hovercard[data-state="loading"] {
+		width: min(var(--td-hovercard-skeleton-w), calc(100vw - 16px));
+		min-height: var(--td-hovercard-skeleton-h);
+	}
+
+	.td-hovercard__status--skeleton {
+		display: block;
+	}
+
+	.td-hovercard__skeleton {
+		display: flex;
+		gap: var(--td-space-sm);
+		align-items: flex-start;
+	}
+
+	.td-hovercard__sk-avatar {
+		--td-skeleton-size: var(--td-hovercard-skeleton-avatar);
+	}
+
+	.td-hovercard__sk-lines {
+		display: flex;
+		flex: 1 1 auto;
+		flex-direction: column;
+		gap: var(--td-space-xs);
+		min-width: 0;
+	}
+
+	.td-hovercard .td-hovercard__sk-title {
+		--td-skeleton-h: 0.875rem;
+
+		width: 55%;
 	}
 
 	@media (pointer: coarse) {

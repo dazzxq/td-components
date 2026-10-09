@@ -63,7 +63,7 @@ TdHovercard.bind(trigger, { content: (t) => buildCard(t.dataset.userId) });
 | `Node` / `DocumentFragment` | Được **chuyển** (move) vào card. Hãy trả node mới hoặc bản clone, đừng trả node đang nằm trên trang |
 | `string` | Render bằng `innerHTML` — **HTML tin cậy** (xem [Bảo mật](#bảo-mật)) |
 | `TrustedHTML` | Render nguyên trạng (Trusted Types) |
-| `Promise<Node \| string>` | Card hiện trạng thái "Đang tải…" rồi thay bằng kết quả; reject → trạng thái lỗi |
+| `Promise<Node \| string>` | Card hiện **skeleton** (0.62.0; trước đó spinner) rồi thay bằng kết quả; reject → trạng thái lỗi |
 | `null`, `''`, fragment rỗng | Không có gì để hiện: card đóng / không mở |
 | Hàm throw | Trạng thái lỗi |
 
@@ -288,7 +288,10 @@ TdHovercard.sanitize = (html) => policy.createHTML(html);
 | `--td-hovercard-max-w` | `20rem` | Chiều rộng tối đa (luôn ≤ `100vw - 16px`; tối thiểu `10rem`) |
 | `--td-hovercard-pad-y` | `0.75rem` | Padding dọc |
 | `--td-hovercard-pad-x` | `0.9rem` | Padding ngang |
-| `--td-hovercard-status-fg` | `var(--td-color-text-muted)` | Màu dòng "Đang tải…" |
+| `--td-hovercard-skeleton-w` | `16rem` | 0.62.0: chiều rộng card khi đang tải (≤ `100vw - 16px`). Nội dung tới sau đó **không làm card nhỏ đi** (min-size = kích thước lúc tải) |
+| `--td-hovercard-skeleton-h` | `5rem` | 0.62.0: chiều cao tối thiểu card khi đang tải |
+| `--td-hovercard-skeleton-avatar` | `2.5rem` | 0.62.0: đường kính đĩa avatar giả |
+| `--td-hovercard-status-fg` | `var(--td-color-text-muted)` | Màu dòng trạng thái (chữ "Đang tải…" chỉ dành cho trình đọc màn hình từ 0.62.0) |
 | `--td-hovercard-error-fg` | `var(--td-color-error)` (dark: `#fca5a5`) | Màu dòng lỗi |
 | `--td-hovercard-link-fg` | `var(--td-accent)` (dark: `#93c5fd`) | Màu link trong card |
 
@@ -318,11 +321,24 @@ Một card **duy nhất** (singleton) cho cả trang, là con của `<body>`, t�
   … nội dung của bạn …
 </div>
 
-<!-- trạng thái tải / lỗi -->
-<div class="td-hovercard …" data-state="loading">
+<!-- trạng thái tải (0.62.0): skeleton + aria-busy; nhãn chỉ cho trình đọc màn hình -->
+<div class="td-hovercard …" data-state="loading" aria-busy="true">
+  <p class="td-hovercard__status td-hovercard__status--skeleton" role="status">
+    <span class="td-hovercard__skeleton" aria-hidden="true">
+      <span class="td-skeleton td-skeleton--circle td-hovercard__sk-avatar"></span>
+      <span class="td-hovercard__sk-lines">
+        <span class="td-skeleton td-hovercard__sk-title"></span>
+        <span class="td-skeleton td-skeleton--text td-skeleton--lines-2"></span>
+      </span>
+    </span>
+    <span class="td-hovercard__text td-sr-only">Đang tải…</span>
+  </p>
+</div>
+
+<!-- trạng thái lỗi -->
+<div class="td-hovercard …" data-state="error">
   <p class="td-hovercard__status" role="status">
-    <span class="td-hovercard__spinner td-spinner td-spinner--sm" aria-hidden="true"><svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false"><circle class="td-spinner__track" cx="25" cy="25" r="20"></circle><circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg></span>
-    <span class="td-hovercard__text">Đang tải…</span>
+    <span class="td-hovercard__text">Không tải được nội dung.</span>
   </p>
 </div>
 ```

@@ -467,11 +467,15 @@ describe('v0.14 TdHovercard — content sources', () => {
     bind(t2, { content: () => d.promise });
     t2.focus();
     expect(cardEl().getAttribute('data-state')).to.equal('loading');
-    expect(cardEl().querySelector('.td-hovercard__spinner')).to.not.equal(null);
+    // v0.62.0: a skeleton (decorative) instead of a spinner; the card is busy; the label is screen-reader only
+    expect(cardEl().querySelector('.td-hovercard__spinner')).to.equal(null);
+    expect(cardEl().querySelector('.td-hovercard__skeleton .td-skeleton')).to.not.equal(null);
+    expect(cardEl().getAttribute('aria-busy')).to.equal('true');
     expect(cardEl().querySelector('.td-hovercard__text').textContent).to.equal(TdHovercard.labels.loading);
     d.resolve(richCard('p'));
     await flush();
     expect(cardEl().getAttribute('data-state')).to.equal('open');
+    expect(cardEl().hasAttribute('aria-busy')).to.equal(false);
     expect(cardEl().querySelector('#p-1')).to.not.equal(null);
     TdHovercard.close();
 
@@ -483,6 +487,8 @@ describe('v0.14 TdHovercard — content sources', () => {
     expect(cardEl().getAttribute('data-state')).to.equal('error');
     expect(cardEl().querySelector('.td-hovercard__text').textContent).to.equal(TdHovercard.labels.error);
     expect(cardEl().querySelector('.td-hovercard__spinner')).to.equal(null);
+    expect(cardEl().querySelector('.td-skeleton')).to.equal(null);
+    expect(cardEl().hasAttribute('aria-busy')).to.equal(false);
   });
 
   it('empty content (null, "", empty fragment) opens nothing', async () => {
