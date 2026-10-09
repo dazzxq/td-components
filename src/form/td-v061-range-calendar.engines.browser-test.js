@@ -164,6 +164,27 @@ describe('v0.61.0 range calendar — date mode selection', () => {
     expect($$('.td-cal__day[data-preview]').length).to.equal(0);
   });
 
+  it('keyboard preview follows a max clamp that relabels the SAME cell (25/03 → 25/02): the preview is start..the clamped date', async () => {
+    const el = mount('name="r" start="10/02/2026"');
+    await open(el);
+    tab('end').click();
+    await settle();
+    day('2026-02-10').focus();
+    await sendKeys({ press: 'PageDown' }); // 10/03 — Feb and Mar 2026 both start on a Sunday: same grid positions
+    await sendKeys({ press: 'ArrowDown' });
+    await sendKeys({ press: 'ArrowDown' });
+    await sendKeys({ press: 'ArrowRight' });
+    await settle();
+    expect(document.activeElement.getAttribute('data-date')).to.equal('2026-03-25');
+    const cell = document.activeElement;
+    el.setAttribute('max', '2026-02-25');
+    await settle();
+    expect(document.activeElement).to.equal(cell); // relabelled in place: no focusin
+    expect(document.activeElement.getAttribute('data-date')).to.equal('2026-02-25');
+    expect(day('2026-02-25').getAttribute('data-preview')).to.equal('end');
+    expect(day('2026-02-24').getAttribute('data-preview')).to.equal('in');
+  });
+
   it('mouse preview: hover start..d; none for an earlier or an over-limit day; it clears when the pointer leaves', async () => {
     const el = mount('name="r" max-days="5"');
     await open(el);

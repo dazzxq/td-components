@@ -328,8 +328,7 @@ export class CalendarGrid {
     this._paint();
     if (domFocus) {
       this.focusActive();
-      // the roving cell may be the SAME element (a month change relabels it): no focusin fires — report the new date explicitly
-      if (this.o.onFocusDate && this.view === 'days') this._focusKey = this._key(this.focus, this._focusKey, (v) => this.o.onFocusDate(v));
+      this._syncFocusDate();
     }
   }
 
@@ -430,6 +429,11 @@ export class CalendarGrid {
     this._hoverKey = this._key(date, this._hoverKey, (v) => this.o.onHoverDate(v));
   }
 
+  /** @private the roving cell may be the SAME element (a month change or a bound clamp relabels it): no focusin fires — report the new date explicitly */
+  _syncFocusDate() {
+    if (this.o.onFocusDate && this.view === 'days') this._focusKey = this._key(this.focus, this._focusKey, (v) => this.o.onFocusDate(v));
+  }
+
   /** @private call `fn(date)` only when the date changed; returns the new key */
   _key(date, prev, fn) {
     const k = date ? isoDate(date) : '';
@@ -446,7 +450,10 @@ export class CalendarGrid {
     for (const k of Object.keys(this._snaps)) if (this._snaps[k]) this._snaps[k] = copy(clampDate(this._snaps[k], this.min, this.max));
     this._paint();
     // the roving stop moved to an enabled cell: a focus that was inside the grid follows it (never left on a disabled cell)
-    if (hadFocus && this.el.ownerDocument.activeElement.closest('.td-cal__day, .td-cal__cell')) this.focusActive();
+    if (hadFocus && this.el.ownerDocument.activeElement.closest('.td-cal__day, .td-cal__cell')) {
+      this.focusActive();
+      this._syncFocusDate();
+    }
   }
 
   /** @returns {'days'|'months'|'years'} */
