@@ -4,6 +4,7 @@ import { ValueTitleWatcher, displayedValueText } from '../utils/value-title.js';
 import { TdModal } from '../feedback/td-modal.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { CalendarGrid } from './calendar-grid.js';
+import { maskOnInput } from './typed-mask.js';
 import { TimeStep } from './time-step.js';
 import { freshCalendarLabels, normalizeCalendarLabels } from './calendar-labels.js';
 import { clampDate, compareDates, isDateOutOfRange } from '../utils/calendar-model.js';
@@ -458,7 +459,10 @@ export class TdDatetimeRange extends TdFormElement {
   _bindInput(input) {
     const side = input.getAttribute('data-side');
     const stop = (e) => e.stopPropagation();
-    this.listen(input, 'input', stop);
+    this.listen(input, 'input', (e) => { // v0.63.1: the live mask (11122026 → 11/12/2026); never public
+      e.stopPropagation();
+      maskOnInput(/** @type {InputEvent} */ (e), input, this._mode());
+    });
     this.listen(input, 'change', stop);
     this.listen(input, 'focus', () => { this._lastSide = side; }); // the dialog opened from the icon button returns here
     this.listen(input, 'blur', () => {

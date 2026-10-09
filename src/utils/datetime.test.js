@@ -653,3 +653,44 @@ describe('parseTypedValue (v0.63.0 § C — typed dates)', () => {
     assert.deepEqual(T('150319940905', 'week'), P(15, 3, 1994, 9, 5));
   });
 });
+
+describe('maskTypedValue / maskCaret (v0.63.1 — the live mask of an editable input)', () => {
+  const M = dt.maskTypedValue;
+  it('digits flow into the display format; a separator only appears with the next digit', () => {
+    assert.equal(M('11122026', 'date'), '11/12/2026');
+    assert.equal(M('11', 'date'), '11');
+    assert.equal(M('111', 'date'), '11/1');
+    assert.equal(M('11121', 'date'), '11/12/1');
+    assert.equal(M('111220261', 'date'), '11/12/2026'); // past the year: dropped
+    assert.equal(M('111220260930', 'datetime'), '11/12/2026 - 09:30');
+    assert.equal(M('031994', 'month'), '03/1994');
+    assert.equal(M('19945', 'year'), '1994');
+  });
+  it('a separator the user typed ends the segment (single-digit day / month kept as typed)', () => {
+    assert.equal(M('1/3/2026', 'date'), '1/3/2026');
+    assert.equal(M('11/', 'date'), '11/');
+    assert.equal(M('11//', 'date'), '11/');
+    assert.equal(M('15 3 1994', 'date'), '15/3/1994');
+    assert.equal(M('15.3.1994', 'date'), '15/3/1994');
+    assert.equal(M('11/12/2026 ', 'datetime'), '11/12/2026 - ');
+    assert.equal(M('11/12/2026 9h30', 'datetime'), '11/12/2026 - 9:30');
+    assert.equal(M('11/12/2026 - 09:30', 'datetime'), '11/12/2026 - 09:30');
+  });
+  it('year-first (ISO) text and other characters are left as typed', () => {
+    assert.equal(M('2026-12-11', 'date'), '2026-12-11');
+    assert.equal(M('19/94-', 'date'), '1994-'); // ISO typed key by key: the "-" after 4 digits turns the mask back into a year
+    assert.equal(M('1994-0', 'date'), '1994-0');
+    assert.equal(M('15/03-', 'date'), '15/03/'); // "15-03-1994" key by key: a day / month, not a year
+    assert.equal(M('1994-03-15T09:30', 'datetime'), '1994-03-15T09:30');
+    assert.equal(M('abc', 'date'), 'abc');
+    assert.equal(M('15/3/94x', 'date'), '15/3/94x');
+    assert.equal(M(/** @type {any} */ (null), 'date'), '');
+  });
+  it('maskCaret: right after the n-th digit', () => {
+    assert.equal(dt.maskCaret('11/12/2026', 0), 0);
+    assert.equal(dt.maskCaret('11/12/2026', 2), 2);
+    assert.equal(dt.maskCaret('11/12/2026', 3), 4);
+    assert.equal(dt.maskCaret('11/12/2026', 4), 5);
+    assert.equal(dt.maskCaret('11/12/2026', 99), 10);
+  });
+});

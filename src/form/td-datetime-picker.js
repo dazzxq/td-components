@@ -8,6 +8,7 @@ import { LAYERS, register as registerLayer, bridgeTheme, focusablesIn } from '..
 import { matchesBelow, matches, MQ_COARSE } from '../utils/breakpoints-internal.js';
 import { clampDate, isDateOutOfRange, monthOutOfRange, yearOutOfRange } from '../utils/calendar-model.js';
 import { CalendarGrid } from './calendar-grid.js';
+import { maskOnInput } from './typed-mask.js';
 import { TimeStep } from './time-step.js';
 import { freshCalendarLabels, normalizeCalendarLabels } from './calendar-labels.js';
 import {
@@ -457,7 +458,10 @@ export class TdDatetimePicker extends TdFormElement {
    */
   _bindInput(input) {
     const stop = (e) => e.stopPropagation();
-    this.listen(input, 'input', stop);
+    this.listen(input, 'input', (e) => { // v0.63.1: the live mask (11122026 → 11/12/2026); never public
+      e.stopPropagation();
+      maskOnInput(/** @type {InputEvent} */ (e), input, this._mode());
+    });
     this.listen(input, 'change', stop);
     this.listen(input, 'blur', () => {
       if (input === this._input()) this._commitTyped();

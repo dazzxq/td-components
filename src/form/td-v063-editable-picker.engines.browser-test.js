@@ -240,6 +240,64 @@ for (const how of ['enter', 'blur']) {
   });
 }
 
+describe('v0.63.1 editable picker — live mask while typing (owner: 11122026 → 11/12/2026)', () => {
+  it('typing digits shows the display format as you type; the caret stays at the end; no event', async () => {
+    const m = mount('mode="date" editable');
+    await settle();
+    m.input.focus();
+    await sendKeys({ type: '111' });
+    expect(m.input.value).to.equal('11/1');
+    await sendKeys({ type: '22026' });
+    expect(m.input.value).to.equal('11/12/2026');
+    expect(m.input.selectionStart).to.equal(10);
+    await sendKeys({ type: '9' }); // past the year: dropped
+    expect(m.input.value).to.equal('11/12/2026');
+    expect(m.rec.change.length + m.rec.input + m.rec.bare).to.equal(0); // nothing committed / leaked while typing
+    await sendKeys({ press: 'Enter' });
+    expect(m.rec.change).to.deep.equal([{ value: '11/12/2026', dbValue: '2026-12-11' }]);
+  });
+
+  it('Backspace never sticks on a separator; typed separators keep a single-digit day', async () => {
+    const m = mount('mode="date" editable');
+    await settle();
+    m.input.focus();
+    await sendKeys({ type: '11122026' });
+    for (let i = 0; i < 4; i += 1) await sendKeys({ press: 'Backspace' }); // 11/12/
+    expect(m.input.value).to.equal('11/12/');
+    await sendKeys({ press: 'Backspace' }); // the separator goes, it does not come back
+    expect(m.input.value).to.equal('11/12');
+    await sendKeys({ press: 'Backspace' });
+    expect(m.input.value).to.equal('11/1');
+    m.input.select();
+    await sendKeys({ type: '1/3/2026' });
+    expect(m.input.value).to.equal('1/3/2026');
+    await sendKeys({ press: 'Enter' });
+    expect(m.input.value).to.equal('01/03/2026'); // normalised on commit
+  });
+
+  it('datetime and month masks; an edit in the middle keeps the caret after its digit', async () => {
+    const d = mount('mode="datetime" editable');
+    await settle();
+    d.input.focus();
+    await sendKeys({ type: '111220260930' });
+    expect(d.input.value).to.equal('11/12/2026 - 09:30');
+    const mo = mount('mode="month" editable');
+    await settle();
+    mo.input.focus();
+    await sendKeys({ type: '031994' });
+    expect(mo.input.value).to.equal('03/1994');
+    const e = mount('mode="date" editable');
+    await settle();
+    e.input.focus();
+    await sendKeys({ type: '1112026' }); // a digit short: 11/12/026
+    expect(e.input.value).to.equal('11/12/026');
+    e.input.setSelectionRange(6, 6); // before "026"
+    await sendKeys({ type: '2' });
+    expect(e.input.value).to.equal('11/12/2026');
+    expect(e.input.selectionStart).to.equal(7);
+  });
+});
+
 describe('v0.63.0 editable picker — typing never leaks (D2)', () => {
   it('typing fires no input / change on the host; the uncommitted text changes nothing', async () => {
     const m = mount();

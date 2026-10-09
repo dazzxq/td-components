@@ -697,6 +697,69 @@ export function parseTypedValue(str, mode) {
   }
 }
 
+// v0.63.1 (owner: "gõ 11122026 thì phải hiển thị real time thành 11/12/2026"): the live mask of an `editable` input. Segments
+// of the mode's display format; a separator is written only when the NEXT digit arrives (so Backspace never sticks on it), a
+// separator the user typed ends the segment early ("1/3/2026" stays as typed). Year-first text (ISO) and anything with other
+// characters are left alone — the lenient parser (parseTypedValue) still reads them on commit.
+const MASK = {
+  date: { sizes: [2, 2, 4], seps: ['/', '/'] },
+  datetime: { sizes: [2, 2, 4, 2, 2], seps: ['/', '/', ' - ', ':'] },
+  month: { sizes: [2, 4], seps: ['/'] },
+  year: { sizes: [4], seps: [] },
+};
+
+/**
+ * The masked text for what is in an `editable` input (plan v0.63.1): `11122026` → `11/12/2026`, `111` → `11/1`, `11/` → `11/`,
+ * `111220260930` (datetime) → `11/12/2026 - 09:30`. Digits past the last segment are dropped.
+ * @param {string} str
+ * @param {unknown} mode
+ * @returns {string}
+ */
+export function maskTypedValue(str, mode) {
+  if (typeof str !== 'string') return '';
+  const m = MASK[normalizeMode(mode)];
+  // year-first typed key by key: the mask has already made "1994" → "19/94"; a "-" after it says it was a year — but only when
+  // those four digits cannot be a day / month ("15-03-1994" typed key by key is also "15/03" + "-" at that moment)
+  const isoTyping = /^(\d{2})\/(\d{2})-(.*)$/s.exec(str);
+  if (isoTyping && (Number(isoTyping[2]) > 12 || Number(isoTyping[1]) > 31)) return `${isoTyping[1]}${isoTyping[2]}-${isoTyping[3]}`;
+  if (/^\s*\d{3,4}\s*[-/.]/.test(str) || /[^\d/.\-:h\s]/i.test(str)) return str; // ISO / something else: as typed
+  const segs = [''];
+  for (const ch of str) {
+    let k = segs.length - 1;
+    if (ch >= '0' && ch <= '9') {
+      if (segs[k].length >= m.sizes[k]) {
+        if (k + 1 >= m.sizes.length) continue; // past the last segment
+        segs.push('');
+        k += 1;
+      }
+      segs[k] += ch;
+    } else if (segs[k] !== '' && k + 1 < m.sizes.length) {
+      segs.push(''); // a separator the user typed: the segment ends here (a second one in a row is ignored)
+    }
+  }
+  let out = segs[0];
+  for (let i = 1; i < segs.length; i += 1) out += m.seps[i - 1] + segs[i];
+  return out;
+}
+
+/**
+ * Caret position in masked text right after its `digits`-th digit (0 → 0; more digits than the text has → the end).
+ * @param {string} masked
+ * @param {number} digits
+ * @returns {number}
+ */
+export function maskCaret(masked, digits) {
+  if (digits <= 0) return 0;
+  let n = 0;
+  for (let i = 0; i < masked.length; i += 1) {
+    if (masked[i] >= '0' && masked[i] <= '9') {
+      n += 1;
+      if (n === digits) return i + 1;
+    }
+  }
+  return masked.length;
+}
+
 /** Display format of `mode`: `dd/mm/yyyy - hh:mm` | `dd/mm/yyyy` | `mm/yyyy` | `yyyy`. */
 export function formatModeDisplay(p, mode) {
   switch (normalizeMode(mode)) {

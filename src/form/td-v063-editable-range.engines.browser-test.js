@@ -309,6 +309,22 @@ describe('v0.63.0 editable range — never leaks, Escape, dialog', () => {
   });
 });
 
+describe('v0.63.1 editable range — live mask on both sides', () => {
+  it('Từ / Đến show dd/mm/yyyy while typing digits', async () => {
+    const m = mount('mode="date" editable');
+    await settle();
+    m.start.focus();
+    await sendKeys({ type: '01031994' });
+    expect(m.start.value).to.equal('01/03/1994');
+    m.end.focus();
+    await sendKeys({ type: '2503199' });
+    expect(m.end.value).to.equal('25/03/199');
+    await sendKeys({ type: '4' });
+    expect(m.end.value).to.equal('25/03/1994');
+    expect(m.rec.input + m.rec.bare).to.equal(0);
+  });
+});
+
 describe('v0.63.0 editable range — touch (plan E)', () => {
   let real;
   beforeEach(() => {
