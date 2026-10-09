@@ -96,10 +96,13 @@ const tagOf = (c) => `${c.engine}-${c.w}x${c.h}-${c.touch ? 'touch' : 'mouse'}${
 const SCENARIOS = [
   { name: 'dropdown', act: (p) => p.click('#g-dd .td-dropdown__trigger'), panel: '.td-dropdown__menu[data-state="open"]' },
   // v0.60.0: the calendar — a bottom sheet below 720 (TdModal, actions pinned in the body), a popover from 720
-  { name: 'datetime', when: (c) => c.w < 720, act: (p) => p.click('#g-dtp .td-dtp__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__dialog [data-action="confirm"]'] },
+  // v0.61.0: datetime is TWO screens — the date screen offers "Hôm nay", the time screen "Bây giờ" + "Chọn" (the sheet footer)
+  { name: 'datetime', when: (c) => c.w < 720, act: (p) => p.click('#g-dtp .td-dtp__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer [data-action="today"]'] },
+  { name: 'datetime-time', when: (c) => c.w < 720, act: async (p) => { await p.click('#g-dtp .td-dtp__trigger'); await p.waitForSelector('.td-modal .td-cal__day[tabindex="0"]'); await p.click('.td-modal .td-cal__day[tabindex="0"]'); await p.waitForSelector('.td-modal .td-time-step:not([hidden])'); }, panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer [data-action="confirm"]', '.td-modal__footer [data-action="now"]'] },
   { name: 'datetime-date', when: (c) => c.w < 720, act: (p) => p.click('#g-dtp-date .td-dtp__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__dialog [data-action="today"]'] },
-  { name: 'datetime-popover', when: (c) => c.w >= 720, act: (p) => p.click('#g-dtp .td-dtp__trigger'), panel: '.td-dtp-pop', see: ['.td-dtp-pop [data-action="confirm"]'] },
-  { name: 'datetime-range', act: (p) => p.click('#g-dtr .td-dtr__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child'] }, // v0.40.0
+  { name: 'datetime-popover', when: (c) => c.w >= 720, act: (p) => p.click('#g-dtp .td-dtp__trigger'), panel: '.td-dtp-pop', see: ['.td-dtp-pop [data-action="today"]'] },
+  { name: 'datetime-popover-time', when: (c) => c.w >= 720, act: async (p) => { await p.click('#g-dtp .td-dtp__trigger'); await p.waitForSelector('.td-dtp-pop .td-cal__day[tabindex="0"]'); await p.click('.td-dtp-pop .td-cal__day[tabindex="0"]'); await p.waitForSelector('.td-dtp-pop .td-time-step:not([hidden])'); }, panel: '.td-dtp-pop', see: ['.td-dtp-pop [data-action="confirm"]'] },
+  { name: 'datetime-range', act: (p) => p.click('#g-dtr .td-dtr__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer [data-action="clear"]'] }, // v0.40.0 (v0.61.0: the footer actions carry data-action; R-actions = whatever "Chọn" state, every shown action is in view)
   { name: 'color-picker', act: (p) => p.click('#g-color .td-color__trigger'), panel: '.td-color-panel' }, // v0.48.0
   { name: 'tree-select', act: (p) => p.click('#g-ts .td-tree-select__trigger'), panel: '.td-tree-select__menu[data-state="open"]' },
   { name: 'multiselect', act: async (p) => { await p.click('#g-chips .td-chip-input__input'); await p.keyboard.press('ArrowDown'); }, panel: '.td-chip-input__menu[data-state="open"]' },
@@ -1031,10 +1034,17 @@ async function runOverlays(page, c, tag, shot) {
         if (hf.f > 64.5) err.push(`footer ${Math.round(hf.f)} > 64`);
         check(tag, `${s.name}: compact chrome budget`, err);
       }
-      if (s.name === 'datetime' && vp.w < 720 && vp.h > 500) {
-        // v0.60.0 (plan A5 / M0): a month grid of seven ≥ 44 px rows + the wheels + the actions cannot fit the v0.36 budget of 70 %
-        // (measured 665 px = 78–85 % at 360–393 wide); the sheet stays inside the modal's own cap (90 %), the actions pinned
-        check(tag, `${s.name}: sheet height budget`, m.height <= vp.h * 0.9 + 0.5 ? [] : [`sheet ${Math.round(m.height)} > 90 % of ${vp.h}`]);
+      if ((s.name === 'datetime' || s.name === 'datetime-time') && vp.w < 720 && vp.h >= 700) {
+        // v0.61.0: the "datetime sheet capped at 90 %" exception of v0.60 is GONE — each screen has the 70 % budget of the date sheet
+        // (measured: date screen 506 px, time screen 334 px). Also: nothing nested scrolls (exactly one layout scroller: the body)
+        const nest = await page.evaluate(() => {
+          const dlg = document.querySelector('.td-modal__dialog');
+          const sc = [...dlg.querySelectorAll('*')].filter((e) => !e.classList.contains('td-dtp-wheel__list') && ['auto', 'scroll'].includes(getComputedStyle(e).overflowY));
+          const nested = sc.some((a) => sc.some((b) => a !== b && a.contains(b)));
+          return { n: sc.length, nested, over: sc.filter((e) => e.scrollHeight > e.clientHeight + 1).map((e) => e.className) };
+        });
+        check(tag, `${s.name}: sheet height budget`, m.height <= vp.h * 0.7 + 0.5 ? [] : [`sheet ${Math.round(m.height)} > 70 % of ${vp.h}`]);
+        check(tag, `${s.name}: one layout scroller, nothing scrolls`, nest.n <= 1 && !nest.nested && !nest.over.length ? [] : [JSON.stringify(nest)]);
       }
       if (s.name === 'datetime-date' && vp.w < 720 && vp.h >= 700) {
         // v0.36.0 QĐ 61 budget (70 %) kept for the date-only calendar sheet (measured 521 px = 61–67 % at ≥ 360×780)

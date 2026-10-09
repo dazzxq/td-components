@@ -772,6 +772,52 @@ async function chromiumSemantics(browser) {
         dialog: !!document.querySelector('.td-modal[data-state="open"]') })); // (a sheet fading out still holds its tree)
       expect(st.changes === 1 && st.focus && !st.dialog, `day tap: ${JSON.stringify(st)}`);
     });
+    await it(tag, 'datetime in two screens (v0.61.0): a day tap opens the TIME screen; a swipe on the hour wheel keeps momentum + snaps, never scrolls the page / chains, no input to focus; "Chọn" commits ONE change', async () => {
+      await load(page);
+      await page.evaluate(() => {
+        const host = document.querySelector('#rsp-dtp-clear');
+        host.scrollIntoView({ block: 'center' });
+        window.__dtc = [];
+        host.addEventListener('change', (e) => window.__dtc.push(e.detail));
+      });
+      const t = await centre(page, '#rsp-dtp-clear .td-dtp__trigger');
+      await page.touchscreen.tap(t.x, t.y);
+      await page.waitForSelector('.td-modal[data-state="open"] .td-cal', { timeout: 4000 });
+      await page.evaluate(() => new Promise((r) => setTimeout(r, 450)));
+      const day = await centre(page, '.td-modal[data-state="open"] .td-cal__day[tabindex="0"]');
+      await page.touchscreen.tap(day.x, day.y);
+      await page.waitForSelector('.td-modal[data-state="open"] .td-time-step:not([hidden])', { timeout: 3000 });
+      await page.evaluate(() => new Promise((r) => setTimeout(r, 200)));
+      const before = await page.evaluate(() => {
+        const list = document.querySelector('.td-modal[data-state="open"] .td-dtp-wheel__list[data-part="hour"]');
+        const opt = list.querySelector('[aria-selected="true"]');
+        const back = document.querySelector('.td-modal[data-state="open"] [data-action="back"]').getBoundingClientRect();
+        return { hour: Number(opt.dataset.value), optH: opt.getBoundingClientRect().height, ta: getComputedStyle(list).touchAction, oc: getComputedStyle(list).overscrollBehaviorY,
+          back: [back.width, back.height], scrollY: window.scrollY, body: document.querySelector('.td-modal[data-state="open"] .td-modal__body').scrollTop, inputs: document.querySelectorAll('.td-modal[data-state="open"] input, .td-modal[data-state="open"] textarea').length };
+      });
+      expect(before.optH >= 43.5 && before.back[0] >= 43.5 && before.back[1] >= 43.5, `targets: option ${before.optH}, back ${before.back}`);
+      expect(before.ta === 'pan-y' && before.oc === 'contain' && before.inputs === 0, `wheel touch-action ${before.ta}, overscroll ${before.oc}, inputs ${before.inputs}`);
+      const w = await centre(page, '.td-modal[data-state="open"] .td-dtp-wheel__list[data-part="hour"]');
+      await touchDrag(cdp, [{ x: w.x, y: w.y + 70 }, { x: w.x, y: w.y - 70 }], { durationMs: 160 }); // a quick upward flick → momentum
+      await page.waitForFunction((h) => {
+        const list = document.querySelector('.td-modal[data-state="open"] .td-dtp-wheel__list[data-part="hour"]');
+        return Number(list.querySelector('[aria-selected="true"]').dataset.value) !== h;
+      }, before.hour, { timeout: 4000 }).catch(() => {});
+      await page.evaluate(() => new Promise((r) => setTimeout(r, 500)));
+      const after = await page.evaluate(() => {
+        const list = document.querySelector('.td-modal[data-state="open"] .td-dtp-wheel__list[data-part="hour"]');
+        const o = list.querySelector('[aria-selected="true"]');
+        return { hour: Number(o.dataset.value), off: Math.abs(o.offsetTop + o.offsetHeight / 2 - list.scrollTop - list.clientHeight / 2), scrollY: window.scrollY,
+          body: document.querySelector('.td-modal[data-state="open"] .td-modal__body').scrollTop, changes: window.__dtc.length, input: ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) };
+      });
+      expect(after.hour !== before.hour && after.off < 2, `the hour moved ${before.hour} → ${after.hour}, snapped (off ${after.off})`);
+      expect(after.scrollY === before.scrollY && after.body === before.body && after.changes === 0 && !after.input, `no chaining / no change / no keyboard: ${JSON.stringify(after)}`);
+      const ok = await centre(page, '.td-modal[data-state="open"] .td-modal__footer [data-action="confirm"]');
+      await page.touchscreen.tap(ok.x, ok.y);
+      await page.waitForFunction(() => !document.querySelector('.td-modal[data-state="open"]'), null, { timeout: 4000 }).catch(() => {});
+      const fin = await page.evaluate(() => ({ changes: window.__dtc.length, open: !!document.querySelector('.td-modal[data-state="open"]') }));
+      expect(fin.changes === 1 && !fin.open, `"Chọn" ${JSON.stringify(fin)}`);
+    });
     await it(tag, 'range calendar (v0.61.0): day cells ≥ 44 × 44, a tap on Từ then Đến paints the band, "Không hạn" ≥ 44 px tall and a tap empties the end (aria-pressed)', async () => {
       await load(page);
       await page.evaluate(() => document.querySelector('#rsp-dtr-open').setAttribute('end', '05/10/2026'));

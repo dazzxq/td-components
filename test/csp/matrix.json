@@ -2519,9 +2519,7 @@
         ".td-cal__day[aria-selected=\"true\"]",
         ".td-cal__day:not([aria-selected=\"true\"]):not([data-outside])",
         ".td-cal__day[data-outside]",
-        ".td-dtp-wheel",
-        ".td-dtp-wheel__option[aria-selected=\"true\"]",
-        ".td-dtp-pop__actions .td-btn--primary"
+        ".td-dtp-pop__actions .td-btn--secondary"
       ],
       "portal": [
         ".td-dtp-pop",
@@ -2531,6 +2529,38 @@
         ".td-cal__day[aria-selected=\"true\"]",
         ".td-cal__day:not([aria-selected=\"true\"]):not([data-outside])",
         ".td-cal__day[data-outside]",
+        ".td-dtp-pop__actions .td-btn--secondary"
+      ],
+      "settle": 450,
+      "excludeProps": [
+        "line-height",
+        "margin-left",
+        "width",
+        "height",
+        "grid-template-columns",
+        "top",
+        "left",
+        "max-height"
+      ],
+      "selectorNote": "v0.60.0 calendar dialog. v0.60.0 (plan v0.60.0-calendar-picker G1): the calendar popover on <body>; line-height / margin-left / width / height / grid-template-columns are excluded up front (sub-pixel table and grid sizing differ by engine / run), top / left / max-height too (geometry written through CSSOM by placeFloating)."
+    },
+    {
+      "state": "open-time",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click(); document.querySelector('.td-dtp-pop .td-cal__day[tabindex=\"0\"]').click();",
+      "selectors": [
+        ".td-dtp-pop",
+        ".td-time-step",
+        ".td-time-step__back",
+        ".td-time-step__heading",
+        ".td-dtp-wheel",
+        ".td-dtp-wheel__option[aria-selected=\"true\"]",
+        ".td-dtp-pop__actions .td-btn--primary"
+      ],
+      "portal": [
+        ".td-dtp-pop",
+        ".td-time-step",
+        ".td-time-step__back",
+        ".td-time-step__heading",
         ".td-dtp-wheel",
         ".td-dtp-wheel__option[aria-selected=\"true\"]",
         ".td-dtp-pop__actions .td-btn--primary"
@@ -2546,7 +2576,7 @@
         "left",
         "max-height"
       ],
-      "selectorNote": "v0.60.0 calendar dialog. v0.60.0 (plan v0.60.0-calendar-picker G1): the calendar popover on <body>; line-height / margin-left / width / height / grid-template-columns are excluded up front (sub-pixel table and grid sizing differ by engine / run), top / left / max-height too (geometry written through CSSOM by placeFloating)."
+      "selectorNote": "v0.61.0 (two screens): the TIME screen of the datetime picker — heading, back button, wheels, the primary action."
     },
     {
       "state": "open-invalid",
@@ -2656,7 +2686,7 @@
     },
     {
       "state": "wheel-active",
-      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click(); document.querySelector('.td-dtp-pop .td-cal__day[tabindex=\"0\"]').click();",
       "selectors": [
         ".td-dtp-wheel",
         ".td-dtp-wheel__option[aria-selected=\"true\"]"
@@ -5557,11 +5587,9 @@
         ".td-dtr-panel__switch",
         ".td-dtr-panel__tab[aria-pressed=\"true\"]",
         ".td-dtr-panel__tab[aria-pressed=\"false\"]",
-        ".td-dtr-panel__next",
         ".td-cal__day[data-range=\"start\"]",
         ".td-cal__day[data-range=\"in\"]:not([data-outside])",
         ".td-cal__day[data-range=\"end\"]",
-        ".td-dtp-pop__time",
         ".td-modal__footer .td-btn--primary"
       ],
       "portal": [
@@ -5571,11 +5599,9 @@
         ".td-dtr-panel__switch",
         ".td-dtr-panel__tab[aria-pressed=\"true\"]",
         ".td-dtr-panel__tab[aria-pressed=\"false\"]",
-        ".td-dtr-panel__next",
         ".td-cal__day[data-range=\"start\"]",
         ".td-cal__day[data-range=\"in\"]:not([data-outside])",
         ".td-cal__day[data-range=\"end\"]",
-        ".td-dtp-pop__time",
         ".td-modal__footer .td-btn--primary"
       ],
       "settle": 500,
@@ -5587,6 +5613,41 @@
         "line-height"
       ],
       "selectorNote": "v0.61.0 (plan v0.61.0-range-calendar Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests. ≥ 720 (this harness is 1280×720): one calendar + the Từ | Đến switch + the wheels beside the grid; '7 ngày qua' pressed; the band cells."
+    },
+    {
+      "state": "open-range-time",
+      "setup": "const C=customElements.get('td-datetime-range'); C.now=()=>new Date(2026,9,5,9,30); const p=document.createElement('td-datetime-range'); p.id='probe'; p.setAttribute('name','r'); p.setAttribute('label','Khoảng'); p.setAttribute('mode','datetime'); p.setAttribute('start','29/09/2026 - 00:00'); p.setAttribute('end','05/10/2026 - 23:59'); window.__mount.appendChild(p); p.querySelector('.td-dtr__trigger').click(); document.querySelector('.td-cal__day[tabindex=\"0\"]').click();",
+      "selectors": [
+        ".td-dtr-panel__switch",
+        ".td-dtr-panel__tab[aria-pressed=\"true\"]",
+        ".td-time-step",
+        ".td-time-step__back",
+        ".td-time-step__heading",
+        ".td-dtp-wheel",
+        ".td-dtp-wheel__option[aria-selected=\"true\"]",
+        ".td-dtr-panel__next",
+        ".td-modal__footer .td-btn--primary"
+      ],
+      "portal": [
+        ".td-dtr-panel__switch",
+        ".td-dtr-panel__tab[aria-pressed=\"true\"]",
+        ".td-time-step",
+        ".td-time-step__back",
+        ".td-time-step__heading",
+        ".td-dtp-wheel",
+        ".td-dtp-wheel__option[aria-selected=\"true\"]",
+        ".td-dtr-panel__next",
+        ".td-modal__footer .td-btn--primary"
+      ],
+      "settle": 500,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.61.0 (two screens): the TIME screen of a datetime range endpoint — back, heading, wheels, \"Tiếp: Đến\", the confirm action. v0.61.0 (plan v0.61.0-range-calendar Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests. ≥ 720 (this harness is 1280×720): one calendar + the Từ | Đến switch + the wheels beside the grid; '7 ngày qua' pressed; the band cells."
     },
     {
       "state": "open-order",

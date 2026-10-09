@@ -188,8 +188,13 @@ async function otherModes(engine, browser) {
   await closePicker(page);
   await openPicker(page, 'dt');
   const dsnap = await page.locator('.td-dtp-pop').ariaSnapshot();
-  check(E('datetime: the hour / minute listboxes are inside the dialog, named'), dsnap.includes('listbox "Giờ"') && dsnap.includes('listbox "Phút"'), dsnap.slice(-500));
-  check(E('datetime: buttons "Bây giờ" and "Chọn"'), (await page.getByRole('button', { name: 'Bây giờ' }).count()) === 1 && (await page.getByRole('button', { name: 'Chọn', exact: true }).count()) === 1);
+  check(E('datetime (date screen): the calendar only — no listboxes in the accessibility tree, "Hôm nay" offered, "Chọn" / "Bây giờ" not'), !dsnap.includes('listbox') && (await page.getByRole('button', { name: 'Hôm nay' }).count()) === 1 && (await page.getByRole('button', { name: 'Chọn', exact: true }).count()) === 0 && (await page.getByRole('button', { name: 'Bây giờ' }).count()) === 0, dsnap.slice(-300));
+  await page.evaluate(() => { document.querySelector('.td-dtp-pop .td-cal__day[tabindex="0"]').click(); });
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const tsnap = await page.locator('.td-dtp-pop').ariaSnapshot();
+  check(E('datetime (time screen): the hour / minute listboxes are inside the dialog, named; the calendar left the tree'), tsnap.includes('listbox "Giờ"') && tsnap.includes('listbox "Phút"') && !tsnap.includes('grid '), tsnap.slice(-500));
+  check(E('datetime (time screen): "Chọn lại ngày" back button, the dated heading, buttons "Bây giờ" and "Chọn"'), (await page.getByRole('button', { name: 'Chọn lại ngày' }).count()) === 1 && (await page.getByRole('button', { name: 'Bây giờ' }).count()) === 1 && (await page.getByRole('button', { name: 'Chọn', exact: true }).count()) === 1 && tsnap.includes('Thứ Hai, 15/06/2026'), tsnap.slice(0, 400));
+  check(E('datetime: the focus is on the hour wheel; the status announces "Chọn giờ cho 15/06/2026"'), (await dom(page, () => ({ f: document.activeElement.getAttribute('data-part'), s: document.querySelector('.td-dtp-pop [role="status"]').textContent }))).s === 'Chọn giờ cho 15/06/2026');
   await closePicker(page);
   await context.close();
 }
@@ -277,7 +282,7 @@ async function geometry(engine, browser) {
               const last = [...pop.querySelectorAll('.td-cal__day[data-date]')].pop().getBoundingClientRect();
               const wheel = pop.querySelector('.td-dtp-wheel__list');
               let wheelOk = true;
-              if (wheel) { const wr = wheel.getBoundingClientRect(); const s = scroll.getBoundingClientRect(); wheelOk = wr.bottom <= s.bottom + 1 && wr.top >= s.top - 1; }
+              if (wheel && wheel.getClientRects().length) { const wr = wheel.getBoundingClientRect(); const s = scroll.getBoundingClientRect(); wheelOk = wr.bottom <= s.bottom + 1 && wr.top >= s.top - 1; } // v0.61.0: the wheels belong to the TIME screen (hidden here)
               const sr = scroll.getBoundingClientRect();
               return {
                 vw: innerWidth, vh: innerHeight, top: p.top, bottom: p.bottom, left: p.left, right: p.right,
@@ -302,6 +307,24 @@ async function geometry(engine, browser) {
             })();
             cases += 1;
             const tag = `${w}x${h} ${coarse ? 'coarse' : 'fine'} ${id} ${pos}`;
+            if (id === 'dt') {
+              // v0.61.0: the TIME screen (a day activates it): whole in the viewport, its actions in view, the wheels reachable
+              await page.evaluate(() => { document.querySelector('.td-dtp-pop .td-cal__day[tabindex="0"]').click(); });
+              await page.evaluate(() => new Promise((rr) => requestAnimationFrame(() => requestAnimationFrame(rr))));
+              const t2 = await page.evaluate(() => {
+                const pop = document.querySelector('.td-dtp-pop');
+                const p = pop.getBoundingClientRect();
+                const act = pop.querySelector('.td-dtp-pop__actions [data-action="confirm"]').getBoundingClientRect();
+                const scroll = pop.querySelector('.td-dtp-pop__scroll');
+                const wr = pop.querySelector('.td-dtp-wheel__list').getBoundingClientRect();
+                const sr = scroll.getBoundingClientRect();
+                return { step: pop.getAttribute('data-step'), top: p.top, bottom: p.bottom, left: p.left, right: p.right, vw: innerWidth, vh: innerHeight, actTop: act.top, actBottom: act.bottom, wheelOk: wr.bottom <= sr.bottom + 1 && wr.top >= sr.top - 1 };
+              });
+              if (t2.step !== 'time') bad.push(`${tag}: a day did not open the time screen`);
+              if (t2.top < 7.5 || t2.bottom > t2.vh - 7.5 || t2.left < 7.5 || t2.right > t2.vw - 7.5) bad.push(`${tag}: time screen outside the viewport ${Math.round(t2.top)}…${Math.round(t2.bottom)} of ${t2.vh}`);
+              if (t2.actTop < 0 || t2.actBottom > t2.vh) bad.push(`${tag}: time screen actions out of view`);
+              if (!t2.wheelOk) bad.push(`${tag}: the wheels (time screen) are not reachable`);
+            }
             if (kb.length) bad.push(`${tag}: keyboard focus left the visible scroll region at ${kb.join(',')}`);
             if (r.top < 7.5 || r.bottom > r.vh - 7.5 || r.left < 7.5 || r.right > r.vw - 7.5) bad.push(`${tag}: popover outside the viewport ${Math.round(r.top)}…${Math.round(r.bottom)} of ${r.vh}`);
             if (r.actTop < 0 || r.actBottom > r.vh) bad.push(`${tag}: actions out of view`);
@@ -477,20 +500,25 @@ async function rangeDialog(engine, browser) {
     notes.push(`chromium: range dialog open → focused cell median ${runs[2].toFixed(1)} ms (${runs.map((x) => x.toFixed(0)).join('/')})`);
     check('chromium: range dialog opens to a focused cell under the ceiling (median < 400 ms)', runs[2] < 400, runs.join(','));
   }
-  // datetime: the switch swaps the wheels' time, focus follows the grid; a rejected "Chọn" focuses the tab
+  // datetime (0.61.0, two screens): a day → the time screen; the tab keeps the screen kind; a rejected "Chọn" focuses the tab
   await page.click('#rgt .td-dtr__trigger');
-  await page.waitForSelector('.td-dtr-panel .td-dtp-wheel__list');
+  await page.waitForSelector('.td-dtr-panel .td-cal');
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const step = () => dom(page, () => document.querySelector('.td-dtr-panel').getAttribute('data-step'));
+  check(E('datetime: opens on the DATE screen; "Chọn" is hidden there'), (await step()) === 'date' && (await dom(page, () => document.querySelector('.td-modal__footer [data-action="confirm"]').hidden)) === true);
+  await page.click('.td-cal__day[data-date="2026-10-01"]');
+  await page.waitForSelector('.td-dtr-panel .td-dtp-wheel__list');
   const hour = () => dom(page, () => document.querySelector('.td-dtp-wheel__list[data-part="hour"] [aria-selected="true"]').dataset.value);
-  check(E('datetime: the wheels start on the Từ time'), (await hour()) === '8');
+  check(E('datetime: a day opens the TIME screen of Từ (the wheels on its time), the hour wheel focused'), (await step()) === 'time' && (await hour()) === '8' && (await dom(page, () => document.activeElement.getAttribute('data-part'))) === 'hour');
   await page.click('.td-dtr-panel__tab[data-side="end"]');
-  check(E('datetime: switching to Đến shows its time'), (await hour()) === '17');
-  const f = await dom(page, () => document.activeElement.classList.contains('td-cal__day'));
-  check(E('datetime: the tab switch moves the focus into the calendar'), f === true);
-  await page.click('.td-cal__day[data-date="2026-09-30"]'); // the end before the start: the order error
-  await page.click('.td-modal__footer .td-btn--primary');
-  const rej = await dom(page, () => ({ tab: document.activeElement === document.querySelector('.td-dtr-panel__tab[data-side="end"]'), open: !!document.querySelector('.td-modal[data-state="open"]'), by: document.querySelector('.td-dtr-panel__tab[data-side="end"]').getAttribute('aria-describedby'), err: document.querySelector('.td-dtr-panel__error').id }));
-  check(E('a rejected "Chọn" keeps it open and focuses the Đến tab that carries aria-describedby'), rej.tab && rej.open && rej.by === rej.err, JSON.stringify(rej));
+  check(E('datetime: the Đến tab keeps the time screen and shows ITS time'), (await step()) === 'time' && (await hour()) === '17');
+  await page.click('.td-time-step [data-action="back"]');
+  check(E('datetime: "‹" returns to the date screen, the focus on a day cell'), (await step()) === 'date' && (await dom(page, () => document.activeElement.classList.contains('td-cal__day'))) === true);
+  await page.click('.td-cal__day[data-date="2026-09-30"]'); // Đến before Từ: the order error
+  await page.waitForSelector('.td-dtr-panel .td-dtp-wheel__list');
+  await page.click('.td-modal__footer [data-action="confirm"]');
+  const rej = await dom(page, () => ({ tab: document.activeElement === document.querySelector('.td-dtr-panel__tab[data-side="end"]'), open: !!document.querySelector('.td-modal[data-state="open"]'), by: document.querySelector('.td-dtr-panel__tab[data-side="end"]').getAttribute('aria-describedby'), err: document.querySelector('.td-dtr-panel__error').id, step: document.querySelector('.td-dtr-panel').getAttribute('data-step') }));
+  check(E('a rejected "Chọn" keeps it open, goes to the DATE screen of Đến and focuses the Đến tab that carries aria-describedby'), rej.tab && rej.open && rej.by === rej.err && rej.step === 'date', JSON.stringify(rej));
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('.td-modal'));
   await context.close();
