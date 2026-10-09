@@ -55,6 +55,8 @@ async function openSettled(opts = {}, adOpts = {}) {
   const ad = opts.adapter || createMockAdapter(adOpts);
   const promise = TdMediaPicker.open({ ...opts, adapter: ad });
   await until(() => pickerRoot()?.getAttribute('data-state') === 'open', 4000, 'open');
+  // v0.62.0: the dialog enters with scale(0.95) / translateY(100%) — measure only once that motion has finished
+  await until(() => getComputedStyle(pickerRoot().querySelector('.td-media-picker__dialog')).transform === 'none', 4000, 'open motion');
   const dialog = q('.td-media-picker__dialog');
   let done = false;
   Promise.all(dialog.getAnimations().map((a) => a.finished.catch(() => {}))).then(() => { done = true; });

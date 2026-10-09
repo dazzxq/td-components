@@ -58,6 +58,7 @@ describe('drawer + trackFormDirty: the guard is the kit TdModal.confirm, never w
     drawerRoot().querySelector('.td-drawer__close').click();
     await until(() => !!confirmRoot());
     const dlg = confirmRoot();
+    await until(() => dlg.getAttribute('data-state') === 'open'); // `opening` for two frames after it is inserted
     expect(dlg.getAttribute('data-state')).to.equal('open');
     expect(dlg.querySelectorAll('.td-btn--danger').length).to.equal(1);
     // stacked above the drawer: later in the DOM and the dialog layer on top (focus lives in the confirm)
@@ -203,17 +204,18 @@ describe('media-picker dialog motion = modal motion (plan D)', () => {
     expect(cs.transform).to.equal('none');
     expect(cs.transitionProperty).to.equal('opacity');
     await emulateMedia({ reducedMotion: 'no-preference' });
-    expect(getComputedStyle(dialog).transform).to.not.equal('none'); // back to the scale opening: none is not the default
+    expect(getComputedStyle(shell().dialog).transform).to.not.equal('none'); // a fresh dialog: the scale opening, none is not the default
   });
 
   it('the site opt-out tokens are the only other way to a fade-only opening', async () => {
     await setViewport({ width: 1024, height: 800 });
     cleanups.push(() => setViewport({ width: 800, height: 600 }));
-    const { dialog } = shell();
-    expect(getComputedStyle(dialog).transform).to.not.equal('none');
+    expect(getComputedStyle(shell().dialog).transform).to.not.equal('none'); // default: the scale opening
+    // the token is set BEFORE the dialog exists: changing it on a dialog already in `opening` would start a transition from
+    // the old value and a mid-animation read would still show the scale
     document.documentElement.style.setProperty('--td-media-picker-enter-from', 'none');
     cleanups.push(() => document.documentElement.style.removeProperty('--td-media-picker-enter-from'));
-    expect(getComputedStyle(dialog).transform).to.equal('none');
+    expect(getComputedStyle(shell().dialog).transform).to.equal('none');
   });
 });
 

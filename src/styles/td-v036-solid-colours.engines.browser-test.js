@@ -4,8 +4,8 @@ import '../form/td-button.js';
 import '../feedback/td-alert.js';
 
 // v0.36.0 (plan QĐ 18–26, M5) — rendered solid semantic colours in Chromium, Firefox AND WebKit: semantic buttons (rest +
-// real hover), badges (solid fill + 1px edge + soft shadow; outline / stamp = page ink, no shadow), alerts (light body,
-// 4px solid inline-start bar, solid icon). Real signals only (rAF; transitions off through reduced motion).
+// real hover), badges (solid fill + 1px edge + soft shadow; outline / stamp = page ink, no shadow), alerts (light body, solid
+// icon; v0.62.0 supersedes the 4px inline-start bar of QĐ 26 with a 1px hairline on four sides + an icon tile, ADR 0033). Real signals only (rAF; transitions off through reduced motion).
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';
@@ -83,31 +83,25 @@ describe('v0.36.0 badges (QĐ 21–22)', () => {
   });
 });
 
-describe('v0.36.0 alerts (QĐ 26)', () => {
-  const ACCENT = { info: '#2563eb', success: '#15803d', warning: '#d97706', danger: '#dc2626' };
+describe('v0.36.0 alerts (QĐ 26) — v0.62.0: no side stripe (ADR 0033)', () => {
   const ICON = { info: '#2563eb', success: '#15803d', warning: '#b45309', danger: '#dc2626' };
   const BORDER = { info: '#93c5fd', success: '#86efac', warning: '#fcd34d', danger: '#fca5a5' };
   const BG = { info: '#eff6ff', success: '#f0fdf4', warning: '#fffbeb', danger: '#fef2f2' };
-  for (const v of Object.keys(ACCENT)) {
-    it(`${v}: light body, 4px solid inline-start bar, solid icon, ~300 border`, async () => {
+  for (const v of Object.keys(ICON)) {
+    it(`${v}: light body, 1px ~300 hairline on all four sides (no stripe), solid icon on a tinted tile`, async () => {
       host.insertAdjacentHTML('beforeend', `<td-alert variant="${v}" heading="Tiêu đề">Nội dung</td-alert>`);
       await raf();
       const a = host.querySelector('.td-alert');
       const cs = getComputedStyle(a);
       expect(cs.backgroundColor).to.equal(rgb(BG[v]));
-      expect(cs.borderLeftWidth).to.equal('4px');
-      expect(cs.borderLeftColor).to.equal(rgb(ACCENT[v]));
-      expect(cs.borderTopWidth).to.equal('1px');
-      expect(cs.borderTopColor).to.equal(rgb(BORDER[v]));
-      expect(getComputedStyle(a.querySelector('.td-alert__icon')).color).to.equal(rgb(ICON[v]));
+      for (const side of ['Top', 'Right', 'Bottom', 'Left']) {
+        expect(cs[`border${side}Width`], `${v} ${side} width`).to.equal('1px');
+        expect(cs[`border${side}Color`], `${v} ${side} colour`).to.equal(rgb(BORDER[v]));
+      }
+      const icon = getComputedStyle(a.querySelector('.td-alert__icon'));
+      expect(icon.color).to.equal(rgb(ICON[v]));
+      expect(icon.backgroundColor).to.not.equal(cs.backgroundColor); // the tile (icon colour mixed 12 % into the fill)
+      expect(icon.backgroundColor).to.not.equal('rgba(0, 0, 0, 0)');
     });
   }
-
-  it('RTL: the bar follows inline-start (right edge)', async () => {
-    host.insertAdjacentHTML('beforeend', '<div dir="rtl"><td-alert variant="danger">Lỗi</td-alert></div>');
-    await raf();
-    const cs = getComputedStyle(host.querySelector('.td-alert'));
-    expect(cs.borderRightWidth).to.equal('4px');
-    expect(cs.borderLeftWidth).to.equal('1px');
-  });
 });

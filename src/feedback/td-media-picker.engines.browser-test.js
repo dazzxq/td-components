@@ -139,6 +139,8 @@ async function open(opts = {}, adOpts = {}) {
  */
 async function openSettled(root = pickerRoot()) {
   await until(() => root.getAttribute('data-state') === 'open', 3000, 'data-state="open"');
+  // v0.62.0: measure only once the scale / slide-up opening motion has finished
+  await until(() => getComputedStyle(root.querySelector('.td-media-picker__dialog')).transform === 'none', 3000, 'open motion');
   const dialog = root.querySelector('.td-media-picker__dialog');
   let done = false;
   Promise.all(dialog.getAnimations().map((a) => a.finished.catch(() => {}))).then(() => { done = true; });
