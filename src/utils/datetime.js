@@ -650,7 +650,7 @@ function typedDatePrefix(s) {
  *   datetime  the date as above + (a space / ` - `) + `h{1,2}[:h.]mm` or `hhmm` · 12 digits `ddmmyyyyhhmm` · ISO `yyyy-mm-ddThh:mm`
  *   month     `m{1,2} SEP yyyy` · 6 digits `mmyyyy` · ISO `yyyy-mm`
  *   year      `yyyy`
- * Syntactic only: the result may be impossible (31/02, day 00) — `invalidReason` says why. A datetime typed WITHOUT a time
+ * Plus every format of parseModeValue (the `value` attribute's). Syntactic only: the result may be impossible (31/02, day 00) — `invalidReason` says why. A datetime typed WITHOUT a time
  * returns its date with `hour` / `minute` NaN (→ invalidReason 'incomplete'); nothing is added. A 2-digit year, a trailing
  * part that is not a time, anything else → null (a format error).
  * @param {unknown} str
@@ -661,6 +661,10 @@ export function parseTypedValue(str, mode) {
   if (typeof str !== 'string') return null;
   const s = str.trim().replace(/\s+/g, ' ');
   if (!s) return null;
+  // whatever the `value` attribute accepts is accepted when typed (the field shows that format; `15/03/1994 - 9:5` too):
+  // a raw string kept after a failed commit is then never a value the element itself would read as valid
+  const own = parseModeValue(s, mode);
+  if (own) return own;
   switch (normalizeMode(mode)) {
     case 'year': {
       const y = RE_YEAR.exec(s);

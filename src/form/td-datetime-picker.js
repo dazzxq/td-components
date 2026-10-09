@@ -5,7 +5,7 @@ import { TdModal } from '../feedback/td-modal.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { placeFloating, viewportBox, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { LAYERS, register as registerLayer, bridgeTheme, focusablesIn } from '../utils/layers.js';
-import { matchesBelow } from '../utils/breakpoints-internal.js';
+import { matchesBelow, matches, MQ_COARSE } from '../utils/breakpoints-internal.js';
 import { clampDate, isDateOutOfRange, monthOutOfRange, yearOutOfRange } from '../utils/calendar-model.js';
 import { CalendarGrid } from './calendar-grid.js';
 import { TimeStep } from './time-step.js';
@@ -13,7 +13,7 @@ import { freshCalendarLabels, normalizeCalendarLabels } from './calendar-labels.
 import {
   parseBound, invalidReason, normalizeMinuteStep, snapMinuteDown, partsFromDate, compareParts,
   normalizeMode, toModeParts, parseModeValue, parseModeDb, formatModeDisplay, formatModeDb, formatModeIso,
-  compareModeParts, MODE_PARTS, toNativeValue, fromNativeValue,
+  compareModeParts, MODE_PARTS, toNativeValue, fromNativeValue, parseTypedValue,
 } from '../utils/datetime.js';
 
 // v0.60.0 (plan v0.60.0-calendar-picker B1 / B6): the implicit 2000–2099 year window is GONE from validation — without
@@ -67,7 +67,32 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
  * open closes it. In the day grid (APG date picker dialog): arrows ±1 day / ±1 week, Home / End Monday / Sunday, PageUp /
  * PageDown ±1 month, Shift+PageUp / PageDown ±1 year, Enter / Space pick; one tab stop; the month / year are announced
  * through a polite live region. The clear button (`clearable`) stays usable while the popover is open: it drops the draft,
- * clears the value (one `change`) and closes. No presets, no typing (plan non-goals).
+ * clears the value (one `change`) and closes. No presets. Typing: only with `editable` (below).
+ *
+ * **Typed dates — `editable` (v0.63.0, plan v0.63.0-typed-dates):** opt-in; without the attribute nothing above changes. The
+ * field becomes a text input (APG "date picker combobox") + an icon button that opens the same calendar:
+ *   <div class="td-dtp td-dtp--editable" data-state>
+ *     [<label class="td-field__label" id="{host}-label" for="{host}-input">…</label>]
+ *     <input type="text" class="td-dtp__input" id="{host}-input" role="combobox" aria-haspopup="dialog" aria-expanded
+ *            aria-autocomplete="none" autocomplete="off" spellcheck="false" placeholder [readonly inputmode="none" on touch] …>
+ *     <button type="button" class="td-dtp__trigger td-dtp__trigger--icon" id="{host}-trigger" aria-label="{openCalendar}"
+ *             aria-haspopup="dialog" aria-expanded><span class="td-dtp__icon" data-td-icon="calendar" aria-hidden="true"></span></button>
+ *     [button.td-dtp__clear]
+ *   </div>
+ * The input has no `name` (the host submits, as before) and its own `input` / `change` never leave it (stopped at the input:
+ * the only public `change` is the element's, with `detail`). Typed text is read leniently (parseTypedValue: `15031994`,
+ * `15/3/1994`, ISO… — never a 2-digit year) when it is COMMITTED: Enter (no preventDefault — an implicit submit sees the new
+ * value), blur, before the calendar opens; unchanged text commits nothing. Every write (typed, calendar, clear button) goes
+ * through `_write()`. Commit table (plan D): empty → cleared (one `change` when there was a value; `required` → the
+ * "Vui lòng chọn…" typed error, no `change`); valid inside min–max → the display format + ONE `change` when the value differs;
+ * outside min–max → written, range error, no `change` (never clamped); unreadable / impossible → the raw text (badInput), the
+ * error, no `change`. The typed error (`_typedError`) shows through the error contract — a site error (`error-text` /
+ * setError()) wins — with `aria-invalid` on the input; it goes on a valid / empty commit, a calendar write, the clear button,
+ * setValue() / setDBValue() / an outside `value` change, reset, or `editable` going off. Escape (calendar closed) puts the
+ * committed text back. ArrowDown / Alt+ArrowDown and the icon button commit, then open; the calendar opens at the committed
+ * value; closing it puts the focus back on the INPUT; a click into the input while the popover is open closes it (no
+ * `change`). The popover anchors to the whole box. Touch-first devices (`MQ_COARSE`, followed live) get a `readonly`
+ * `inputmode="none"` input: a tap opens the calendar as before — no on-screen keyboard over the sheet.
  *
  * **Modes (v0.18.0):** `mode="datetime"` (default, above) | `date` (day/month/year fields only) | `month` (month + year)
  * | `year` (year only). Each mode has its own display / DB / ISO format (table in docs/components/datetime-picker.md);
@@ -111,18 +136,20 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
  * @attr {boolean} required - A valid date must be present for the form to be valid
  * @attr {string} name - Form field name (submitted via the host)
  * @attr {string} error-text - Error message (aria-invalid + note)
+ * @attr {boolean} editable - v0.63.0: the value can be typed (desktop; touch keeps tap-to-open) — see "Typed dates" above
  * @fires change - When a value is WRITTEN by the user (detail: { value, dbValue }; ONE event per write): date / month / year —
  *   activating a day / month / year cell or "Hôm nay" / "Tháng này" / "Năm nay" (the same value again closes without one);
- *   datetime — "Chọn"; the clear button (`clearable`, also while the popover is open) — { value: '', dbValue: '' }.
+ *   datetime — "Chọn"; the clear button (`clearable`, also while the popover is open) — { value: '', dbValue: '' };
+ *   `editable`: a committed typed value that is valid and differs (or an emptied field that had a value).
  *   Esc, an outside click, the trigger toggle, setValue() / setDBValue() and reset never fire it.
  */
 export class TdDatetimePicker extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'value', 'placeholder', 'label', 'minute-step', 'form-value-format',
-      'min', 'max', 'error-text', 'aria-label', 'mode', 'open-at', 'clearable'];
+      'min', 'max', 'error-text', 'aria-label', 'mode', 'open-at', 'clearable', 'editable'];
   }
 
-  static get booleanAttributes() { return [...super.booleanAttributes, 'clearable']; }
+  static get booleanAttributes() { return [...super.booleanAttributes, 'clearable', 'editable']; }
 
   static get errorContract() { return true; }
 
@@ -137,6 +164,8 @@ export class TdDatetimePicker extends TdFormElement {
     dateMonth: 'Tháng', dateYear: 'Năm', // legend of the fields group
     // v0.59.0 `clearable`: the name of the clear button (per mode, like the others)
     clear: 'Xoá ngày', clearDate: 'Xoá ngày', clearMonth: 'Xoá tháng', clearYear: 'Xoá năm',
+    // v0.63.0 `editable`: the name of the icon button that opens the calendar (per mode)
+    openCalendar: 'Mở lịch', openCalendarDate: 'Chọn ngày', openCalendarMonth: 'Chọn tháng', openCalendarYear: 'Chọn năm',
     // v0.60.0 calendar (plan v0.60.0-calendar-picker E1): the calendar keys come from src/form/calendar-labels.js (fresh weekday arrays)
     ...freshCalendarLabels(),
   };
@@ -184,6 +213,10 @@ export class TdDatetimePicker extends TdFormElement {
     this._status = null;
     /** @private datetime: the draft { date, hour, minute }, committed by "Chọn" only; null when closed */
     this._draft = null;
+    /** @private v0.63.0 `editable`: the error of the last typed commit (shown after a site error); null = none */
+    this._typedError = null;
+    /** @private v0.63.0: the text the element last put into the input (a commit of the same text is a no-op) */
+    this._inputText = '';
   }
 
   // --- Value model (derived from the `value` attribute on demand: nothing to go stale) ---
@@ -287,6 +320,7 @@ export class TdDatetimePicker extends TdFormElement {
   // --- Rendering ---
 
   render() {
+    if (this._editable()) return this._renderEditable();
     const esc = (s) => this.escapeHtml(String(s));
     const id = esc(this.id);
     const label = this.getAttribute('label') || '';
@@ -306,6 +340,213 @@ export class TdDatetimePicker extends TdFormElement {
   }
 
   /**
+   * @private v0.63.0 `editable` (plan B): the text input (the combobox) + the icon button that opens the calendar + the clear
+   * button (as 0.62). The input's text = the committed value (the raw string when unusable), '' when empty (placeholder).
+   */
+  _renderEditable() {
+    const esc = (s) => this.escapeHtml(String(s));
+    const id = esc(this.id);
+    const label = this.getAttribute('label') || '';
+    const clearable = this.hasAttribute('clearable');
+    const L = TdDatetimePicker.labels;
+    const off = this._effectiveDisabled ? ' disabled' : '';
+    const touch = this._coarse() ? ' readonly inputmode="none"' : '';
+    return `<div class="td-dtp td-dtp--editable${clearable ? ' td-dtp--clearable' : ''}" data-state="${this._isOpen ? 'open' : 'closed'}">`
+      + (label ? `<label class="td-field__label" id="${id}-label" for="${id}-input">${esc(label)}</label>` : '')
+      + `<input type="text" class="td-dtp__input" id="${id}-input" role="combobox" aria-haspopup="dialog" aria-expanded="${this._isOpen}"`
+      + ` aria-autocomplete="none" autocomplete="off" spellcheck="false" placeholder="${esc(this._placeholderText())}"`
+      + ` value="${esc(this._fieldText())}"${touch}${off}>`
+      + `<button type="button" class="td-dtp__trigger td-dtp__trigger--icon" id="${id}-trigger" aria-label="${esc(this._text(L, 'openCalendar'))}"`
+      + ` aria-haspopup="dialog" aria-expanded="${this._isOpen}"${off}>`
+      + '<span class="td-dtp__icon" data-td-icon="calendar" aria-hidden="true"></span></button>'
+      + (clearable ? `<button type="button" class="td-dtp__clear" aria-label="${esc(this._text(L, 'clear'))}"`
+        + `${this._clearHidden() ? ' hidden' : ''}><span class="td-dtp__clear-icon" data-td-icon="close" data-td-icon-size="s"`
+        + ' aria-hidden="true"></span></button>' : '')
+      + '</div>';
+  }
+
+  /** @private v0.63.0 */
+  _editable() { return this.hasAttribute('editable'); }
+
+  /** @private v0.63.0: the typing input (only rendered with `editable`) */
+  _input() { return this.querySelector('.td-dtp__input'); }
+
+  /** @private v0.63.0: where the focus goes back to (a commit, Esc, the clear button): the input when editable, else the trigger */
+  _home() { return this._input() || this._trigger(); }
+
+  /** @private v0.63.0: what the popover anchors to — the whole box when editable (input + button), else the trigger */
+  _anchor() { return this._input() ? this.querySelector('.td-dtp') : this._trigger(); }
+
+  /** @private v0.63.0 plan E: a touch-first device (hover: none + pointer: coarse) — the input is read-only there */
+  _coarse() { return matches(MQ_COARSE); }
+
+  /** @private the placeholder text (attribute, else the mode's pattern) */
+  _placeholderText() {
+    return this.getAttribute('placeholder') || this._text(TdDatetimePicker.labels, 'placeholder');
+  }
+
+  /** @private v0.63.0: the input's text for the committed value ('' when empty; the raw string when unusable) */
+  _fieldText() {
+    const s = this._state();
+    if (!s.raw) return '';
+    return s.usable ? formatModeDisplay(s.parts, this._mode()) : s.raw;
+  }
+
+  /**
+   * @private v0.63.0: the input in place — text (the program wins, also while focused: plan D), placeholder, touch mode.
+   */
+  _syncInput() {
+    const input = this._input();
+    if (!input) return;
+    const text = this._fieldText();
+    if (input.value !== text) input.value = text;
+    this._inputText = text;
+    const ph = this._placeholderText();
+    if (input.getAttribute('placeholder') !== ph) input.setAttribute('placeholder', ph);
+  }
+
+  /**
+   * @private v0.63.0 plan E: follow `(hover: none) and (pointer: coarse)` live (a hybrid device). Touch → `readonly` +
+   * `inputmode="none"` (a tap opens the calendar, no on-screen keyboard); a pointer → typing. Pending text is committed first.
+   */
+  _applyTouchMode() {
+    const input = this._input();
+    if (!input) return;
+    const touch = this._coarse();
+    if (touch === input.readOnly) return;
+    if (touch) {
+      this._commitTyped();
+      input.readOnly = true;
+      input.setAttribute('inputmode', 'none');
+    } else {
+      input.readOnly = false;
+      input.removeAttribute('inputmode');
+    }
+  }
+
+  /** @private v0.63.0: one `matchMedia(MQ_COARSE)` change listener per connection (released on disconnect) */
+  _watchTouch() {
+    if (this._touchWatch || typeof window.matchMedia !== 'function') return;
+    let mql = null;
+    try { mql = window.matchMedia(MQ_COARSE); } catch { return; }
+    if (!mql || typeof mql.addEventListener !== 'function') return;
+    const onChange = () => this._applyTouchMode();
+    mql.addEventListener('change', onChange);
+    this._touchWatch = () => mql.removeEventListener('change', onChange);
+    this._cleanups.push(() => {
+      if (this._touchWatch) this._touchWatch();
+      this._touchWatch = null;
+    });
+  }
+
+  /**
+   * @private v0.63.0 plan B / D2 / E / F: the input's listeners. Its native `input` / `change` are stopped AT the input (they
+   * would bubble through the host as detail-less events); Enter / blur commit; Escape puts the committed text back;
+   * ArrowDown / Alt+ArrowDown open the calendar; a click opens it on touch, and closes an open popover otherwise.
+   */
+  _bindInput(input) {
+    const stop = (e) => e.stopPropagation();
+    this.listen(input, 'input', stop);
+    this.listen(input, 'change', stop);
+    this.listen(input, 'blur', () => {
+      if (input === this._input()) this._commitTyped();
+    });
+    this.listen(input, 'pointerdown', () => {
+      // the popover is open and the user clicks back into the field: close it (draft dropped, no change); the focus
+      // lands in the input by itself. (The sheet makes the page inert — no click reaches the input.)
+      if (this._isOpen && !this._sheet) this._closeDialog({ focus: false });
+    });
+    this.listen(input, 'click', () => {
+      if (input.readOnly && !this._isOpen) this._open(); // touch: a tap opens the calendar as before
+    });
+    this.listen(input, 'keydown', (e) => {
+      if (e.isComposing || e.keyCode === 229) return; // IME composition
+      if (e.key === 'Enter') {
+        this._commitTyped(); // no preventDefault: an implicit form submission follows and sees the new value
+      } else if (e.key === 'Escape') {
+        if (!this._isOpen && input.value !== this._inputText) {
+          input.value = this._inputText; // back to the committed text; nothing committed, no event
+          e.preventDefault();
+        }
+      } else if (e.key === 'ArrowDown' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        e.preventDefault();
+        if (this._isOpen) { if (this._cal) this._cal.focusActive(); } else this._open();
+      }
+    });
+  }
+
+  /**
+   * @private v0.63.0 plan D: commit the input's text (Enter / blur / before the calendar opens). Unchanged text → nothing.
+   * The table: empty → cleared (`change` when there was a value; `required` → the required typed error, no `change`);
+   * valid inside min–max → the display format, ONE `change` when it differs; outside min–max → written, range error, no
+   * `change`; unreadable / impossible → the raw text (badInput), the error, no `change`. Everything goes through `_write()`.
+   */
+  _commitTyped() {
+    const input = this._input();
+    if (!input || !input.isConnected || input.readOnly || this._effectiveDisabled) return;
+    const text = input.value;
+    if (text === this._inputText) return;
+    const M = TdDatetimePicker.messages;
+    const mode = this._mode();
+    const prev = this._state();
+    const t = text.trim();
+    if (!t) {
+      if (this.hasAttribute('required')) this._write(null, { typedError: this._text(M, 'required') });
+      else this._write(null, { change: prev.raw ? { value: '', dbValue: '' } : null });
+      return;
+    }
+    const parts = parseTypedValue(t, mode);
+    if (!parts || invalidReason(parts)) {
+      this._write(t, { typedError: parts ? this._check(parts).message : this._text(M, 'format') });
+      return;
+    }
+    const p = toModeParts(parts, mode);
+    const value = formatModeDisplay(p, mode);
+    const err = this._check(p);
+    if (err) {
+      this._write(value, { typedError: err.message }); // never clamped
+      return;
+    }
+    const same = prev.usable && !prev.error && formatModeDisplay(prev.parts, mode) === value;
+    this._write(value, { change: same ? null : { value, dbValue: formatModeDb(p, mode) } });
+  }
+
+  /**
+   * @private v0.63.0 (plan Rủi ro): the ONE write of a user value — a calendar pick / "Chọn" (`_commit`), the typed text
+   * (`_commitTyped`), the clear button (`_clearByUser`): the attribute, the field text, the form value + validity, the typed
+   * error, then at most ONE `change` (callers move the focus after it).
+   * @param {string|null} value the new `value` attribute (null removes it)
+   * @param {{ change?: {value: string, dbValue: string}|null, typedError?: string|null }} [o]
+   */
+  _write(value, { change = null, typedError = null } = {}) {
+    this._writing = true;
+    try {
+      if (value) this.setAttribute('value', value); // in place: the trigger (the dialog's opener) is never replaced (bug 1.8.1)
+      else this.removeAttribute('value');
+    } finally {
+      this._writing = false;
+    }
+    const hadTyped = this._typedError != null;
+    this._typedError = typedError;
+    this._updateValueText();
+    this._syncForm();
+    if (hadTyped || typedError != null) this._applyErrorState();
+    if (change) this.emit('change', change);
+  }
+
+  /** @private v0.63.0 D3: the typed error goes (an outside value change, setValue, reset, `editable` off) */
+  _dropTypedError() {
+    if (this._typedError == null) return;
+    this._typedError = null;
+    this._applyErrorState();
+  }
+
+  /** v0.63.0 D3: the site's error (`setError()` / `error-text`) first, else the error of the last typed commit. */
+  get errorMessage() {
+    return super.errorMessage || (this._typedError != null && this._editable() ? this._typedError : '');
+  }
+
+  /**
    * @private v0.59.0 (plan v0.59.0-dsuite-small QĐ E1b): the clear button shows while there is a value (a malformed one
    * too — clearing it is the fix) and the field is neither required nor disabled (`<fieldset disabled>` included).
    */
@@ -318,7 +559,7 @@ export class TdDatetimePicker extends TdFormElement {
     const b = this.querySelector('.td-dtp__clear');
     if (!b) return;
     const hide = this._clearHidden();
-    if (hide && !this._clearing && b === this.ownerDocument.activeElement) this._trigger()?.focus({ preventScroll: true });
+    if (hide && !this._clearing && b === this.ownerDocument.activeElement) this._home()?.focus({ preventScroll: true });
     b.hidden = hide;
   }
 
@@ -333,9 +574,7 @@ export class TdDatetimePicker extends TdFormElement {
     // WITHOUT a focus move (same end state as clearing while closed: one change, then the focus on the trigger)
     if (this._isOpen) this._closeDialog({ focus: false });
     try {
-      this.removeAttribute('value');
-      this._updateValueText();
-      this._syncForm();
+      this._write(null); // v0.63.0: the one write path (a typed error goes too)
       this._applyErrorState();
     } finally {
       this._clearing = false;
@@ -343,13 +582,20 @@ export class TdDatetimePicker extends TdFormElement {
     // `change` first: trackFormDirty re-takes its baseline on a focusin before the user's first change — a focus move
     // ahead of the event would make the clear look like no change at all
     this.emit('change', { value: '', dbValue: '' });
-    this._trigger()?.focus({ preventScroll: true });
+    this._home()?.focus({ preventScroll: true }); // v0.63.0: the input when editable
     this._syncClear();
   }
 
   afterRender() {
     fillIconSlots(this);
     const trigger = this._trigger();
+    const input = this._input();
+    if (input) { // v0.63.0 `editable`
+      this._bindInput(input);
+      this._watchTouch();
+      this._applyTouchMode();
+      this._inputText = input.value;
+    }
     if (trigger) {
       // Enter / Space are the button's own click; v0.60.0: a click while the dialog is open closes it (toggle, no change)
       this.listen(trigger, 'click', () => this._open());
@@ -413,6 +659,11 @@ export class TdDatetimePicker extends TdFormElement {
 
   /** @private */
   _updateValueText() {
+    if (this._input()) { // v0.63.0 `editable`: the input shows the value
+      this._syncInput();
+      this._syncClear();
+      return;
+    }
     const span = this.querySelector('.td-dtp__value');
     if (!span) return;
     const { text, placeholder } = this._triggerText();
@@ -431,6 +682,7 @@ export class TdDatetimePicker extends TdFormElement {
     if (!this._initialized) return;
     switch (name) {
       case 'value':
+        if (!this._writing) this._dropTypedError(); // v0.63.0 D3: a value from outside replaces what was typed
         this._updateValueText();
         this._syncForm();
         return;
@@ -457,7 +709,8 @@ export class TdDatetimePicker extends TdFormElement {
         this._syncForm();
         const clear = this.querySelector('.td-dtp__clear'); // v0.59.0: its name follows the mode
         if (clear) clear.setAttribute('aria-label', this._text(TdDatetimePicker.labels, 'clear'));
-        if (hadFocus && this._trigger()) this._trigger().focus();
+        if (this._input()) this._trigger()?.setAttribute('aria-label', this._text(TdDatetimePicker.labels, 'openCalendar'));
+        if (hadFocus && this._home()) this._home().focus();
         return;
       }
       case 'disabled':
@@ -474,12 +727,13 @@ export class TdDatetimePicker extends TdFormElement {
       case 'error-text':
         super.attributeChangedCallback(name, oldVal, newVal); // base error contract, no re-render
         return;
-      default: { // label
+      default: { // label; v0.63.0 `editable` (another field: the calendar closes, uncommitted text and the typed error go)
         const active = document.activeElement;
         const hadFocus = this.contains(active) || !!(this._pop && this._pop.contains(active));
         if (this._isOpen) this._close();
+        if (name === 'editable') this._typedError = null;
         this._doRender();
-        if (hadFocus && this._trigger()) this._trigger().focus();
+        if (hadFocus && this._home()) this._home().focus();
       }
     }
   }
@@ -496,13 +750,15 @@ export class TdDatetimePicker extends TdFormElement {
   _applyDisabled() {
     const trigger = this._trigger();
     if (trigger) trigger.disabled = this._effectiveDisabled;
+    const input = this._input();
+    if (input) input.disabled = this._effectiveDisabled; // v0.63.0
     if (this._effectiveDisabled && this._isOpen) this._close();
     this._syncClear();
   }
 
-  /** @private `aria-required` on the combobox + decorative asterisk in the label. */
+  /** @private `aria-required` on the combobox (v0.63.0 `editable`: the input) + decorative asterisk in the label. */
   _applyRequired() {
-    const trigger = this._trigger();
+    const trigger = this._focusTarget();
     const required = this.hasAttribute('required');
     if (trigger) {
       if (required) trigger.setAttribute('aria-required', 'true');
@@ -522,7 +778,7 @@ export class TdDatetimePicker extends TdFormElement {
 
   /** @private naming precedence (TdFormElement helper): internal label → host aria-label → external <label for>. */
   _applyName() {
-    this._applyAccessibleName(this._trigger(), !!this.getAttribute('label'));
+    this._applyAccessibleName(this._focusTarget(), !!this.getAttribute('label')); // the combobox: v0.63.0 `editable` → the input
   }
 
   // --- Form participation ---
@@ -536,13 +792,18 @@ export class TdDatetimePicker extends TdFormElement {
         this._setValidity({ valueMissing: true }, this._text(TdDatetimePicker.messages, 'required'), this._focusTarget());
       } else {
         this._setValidity({});
+        this._dropTypedError(); // v0.63.0: nothing is wrong any more (e.g. `required` went) — a stale typed error goes
       }
       return;
     }
     // Never derive a formatted value from an unusable string: submit it raw (paired with badInput).
     this._setFormValue(s.usable ? this._formatForForm(s.parts) : s.raw, s.raw);
-    if (s.error) this._setValidity({ [s.error.flag]: true }, s.error.message, this._focusTarget());
-    else this._setValidity({});
+    // v0.63.0: the typed error is the more precise message of the same failure (31021994 → "Ngày không hợp lệ")
+    if (s.error) this._setValidity({ [s.error.flag]: true }, this._typedError ?? s.error.message, this._focusTarget());
+    else {
+      this._setValidity({});
+      this._dropTypedError();
+    }
   }
 
   _captureDefaults() {
@@ -570,7 +831,7 @@ export class TdDatetimePicker extends TdFormElement {
   }
 
   _focusTarget() {
-    return this._trigger();
+    return this._input() || this._trigger(); // v0.63.0 `editable`: the input (label click, validity bubble, aria-invalid)
   }
 
   // --- SSR (contracts datetime-picker@1 + @2; v0.56.0 D5, v0.60.0 B6) ---
@@ -647,7 +908,7 @@ export class TdDatetimePicker extends TdFormElement {
       this._updateValueText();
       this._syncForm();
     }
-    if (s.refocus) this._trigger()?.focus({ preventScroll: true });
+    if (s.refocus) this._home()?.focus({ preventScroll: true });
   }
 
   /**
@@ -812,9 +1073,15 @@ export class TdDatetimePicker extends TdFormElement {
     if (this._effectiveDisabled || !this.isConnected) return;
     const trigger = this._trigger();
     if (!trigger) return;
+    const input = this._input();
+    if (input) { // v0.63.0 plan F: typed text is committed BEFORE the calendar opens (it opens at that value)
+      this._commitTyped();
+      if (this._effectiveDisabled || !this.isConnected || this._trigger() !== trigger) return; // a `change` listener changed it
+    }
     // The dialog restores focus to whatever was focused when it opened (a mouse click does not focus a button in
-    // every engine) → make that the trigger.
-    if (document.activeElement !== trigger) trigger.focus({ preventScroll: true });
+    // every engine) → make that the trigger (v0.63.0 `editable`: the input — closing returns there).
+    const home = this._home();
+    if (document.activeElement !== home) home.focus({ preventScroll: true });
     const L = TdDatetimePicker.labels;
     const mode = this._mode();
     const sheet = matchesBelow('md');
@@ -836,6 +1103,7 @@ export class TdDatetimePicker extends TdFormElement {
         onClose: () => this._onDialogClosed(pop),
       });
       trigger.setAttribute('aria-controls', this._modalId);
+      if (input) input.setAttribute('aria-controls', this._modalId);
       const modalRoot = document.getElementById(this._modalId);
       if (modalRoot) modalRoot.addEventListener('keydown', (e) => this._onDialogKey(e)); // the footer is outside .td-time-step
     } else {
@@ -843,6 +1111,7 @@ export class TdDatetimePicker extends TdFormElement {
       document.body.appendChild(pop);
       this._unbridge = bridgeTheme(pop, this);
       trigger.setAttribute('aria-controls', pop.id);
+      if (input) input.setAttribute('aria-controls', pop.id);
       this._placePop();
       pop.setAttribute('data-state', 'open');
       this._layer = registerLayer({
@@ -868,9 +1137,10 @@ export class TdDatetimePicker extends TdFormElement {
       document.addEventListener('pointerdown', this._onDocDown, true);
       window.addEventListener('resize', this._onReposition);
       window.addEventListener('scroll', this._onReposition, true);
-      this._unwatchRef = watchReference(trigger, () => this._updatePop());
+      this._unwatchRef = watchReference(this._anchor(), () => this._updatePop());
     }
     trigger.setAttribute('aria-expanded', 'true');
+    if (input) input.setAttribute('aria-expanded', 'true');
     const box = this.querySelector('.td-dtp');
     if (box) box.setAttribute('data-state', 'open');
     if (!sheet) this._cal.focusActive();
@@ -892,8 +1162,8 @@ export class TdDatetimePicker extends TdFormElement {
     } else {
       this._onDialogClosed(pop);
     }
-    const trigger = this._trigger();
-    if (focus && trigger && !trigger.disabled && this.isConnected) trigger.focus({ preventScroll: true });
+    const home = this._home(); // v0.63.0 `editable`: back to the input (plan F)
+    if (focus && home && !home.disabled && this.isConnected) home.focus({ preventScroll: true });
   }
 
   /** Close the dialog without moving the focus (attribute changes, disconnect). */
@@ -928,10 +1198,10 @@ export class TdDatetimePicker extends TdFormElement {
       this._onReposition = null;
     }
     if (!this._sheet && pop) pop.remove();
-    const trigger = this._trigger();
-    if (trigger) {
-      trigger.setAttribute('aria-expanded', 'false');
-      trigger.removeAttribute('aria-controls');
+    for (const el of [this._trigger(), this._input()]) { // v0.63.0: the input is the combobox too
+      if (!el) continue;
+      el.setAttribute('aria-expanded', 'false');
+      el.removeAttribute('aria-controls');
     }
     const box = this.querySelector('.td-dtp');
     if (box) box.setAttribute('data-state', 'closed');
@@ -1246,12 +1516,8 @@ export class TdDatetimePicker extends TdFormElement {
     const p = toModeParts(parts, mode);
     const value = formatModeDisplay(p, mode);
     const unchanged = mode !== 'datetime' && this.getAttribute('value') === value;
-    if (!unchanged) {
-      this.setAttribute('value', value); // in place: the trigger (the dialog's opener) is never replaced (bug 1.8.1)
-      this._updateValueText();
-      this._syncForm();
-      this.emit('change', { value, dbValue: formatModeDb(p, mode) }); // `change` first: the focus moves after it
-    }
+    // `change` first: the focus moves after it. v0.63.0: through the one write path (`editable`: a typed error goes)
+    if (!unchanged) this._write(value, { change: { value, dbValue: formatModeDb(p, mode) } });
     this._closeDialog({ focus: true });
   }
 
@@ -1299,7 +1565,7 @@ export class TdDatetimePicker extends TdFormElement {
    */
   _placePop() {
     const pop = this._pop;
-    const trigger = this._trigger();
+    const trigger = this._anchor(); // v0.63.0 `editable`: the whole box
     const scroll = this._popScroll;
     if (!pop || !trigger || !scroll) return;
     const keep = scroll.scrollTop; // re-measuring drops the region's max-height for a moment: keep where the user is
@@ -1329,7 +1595,7 @@ export class TdDatetimePicker extends TdFormElement {
   /** @private scroll / resize / reference change: close once the trigger is hidden, else follow it */
   _updatePop() {
     if (!this._pop) return;
-    const trigger = this._trigger();
+    const trigger = this._anchor();
     if (!trigger || !trigger.isConnected || isReferenceHidden(trigger.getBoundingClientRect(), trigger)) {
       this._closeDialog({ focus: false });
       return;
@@ -1377,6 +1643,7 @@ export class TdDatetimePicker extends TdFormElement {
   setValue(displayValue) {
     if (displayValue == null || displayValue === '') this.removeAttribute('value');
     else this.setAttribute('value', String(displayValue));
+    this._dropTypedError(); // v0.63.0 D3 (also when the attribute did not change)
     if (this._initialized) {
       this._updateValueText();
       this._syncForm();

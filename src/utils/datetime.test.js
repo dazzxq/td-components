@@ -617,7 +617,7 @@ describe('parseTypedValue (v0.63.0 § C — typed dates)', () => {
     assert.ok(Number.isNaN(p.hour) && Number.isNaN(p.minute));
     assert.equal(dt.invalidReason(p), 'incomplete');
     assert.equal(dt.invalidReason(T('15031994', 'datetime')), 'incomplete');
-    for (const s of ['15/3/94 9:05', '15/03/1994 9:5', '15/03/1994 905', '15/03/1994-09:05', '15/03/1994 09:05:00', '15/03/1994 x',
+    for (const s of ['15/3/94 9:05', '15/03/1994 9:5', '15/03/1994 905', '15/03/1994-0905', '15/03/1994 09:05:00', '15/03/1994 x',
       '1503199409051', '1994-03-15T09:05:60', '15/03/1994 09:05 PM', 'abc']) {
       assert.equal(T(s, 'datetime'), null, s);
     }
@@ -633,6 +633,17 @@ describe('parseTypedValue (v0.63.0 § C — typed dates)', () => {
     assert.deepEqual(T(' 1994 ', 'year'), P(1, 1, 1994, 0, 0));
     for (const s of ['94', '19945', '1994-03', 'abc']) assert.equal(T(s, 'year'), null, s);
     assert.equal(dt.invalidReason(T('0000', 'year')), 'year');
+  });
+  it('every value-attribute format (parseModeValue) is accepted when typed — a kept raw string is never readable by the element', () => {
+    for (const [s, mode] of [['15/03/1994 - 9:5', 'datetime'], ['15/03/1994-09:05', 'datetime'], ['1994-03-15T09:05:00', 'datetime'],
+      ['15/03/1994', 'date'], ['1994-03-15', 'date'], ['03/1994', 'month'], ['1994-03', 'month'], ['1994', 'year']]) {
+      assert.deepEqual(T(s, mode), dt.parseModeValue(s, mode), `${mode} ${s}`);
+    }
+    for (const mode of ['datetime', 'date', 'month', 'year']) {
+      for (const s of ['15/3/94', 'abc', '15/03/1994 9:5', '15031994x', '3/94']) {
+        if (T(s, mode) === null) assert.equal(dt.parseModeValue(s, mode), null, `${mode} ${s}`);
+      }
+    }
   });
   it('the result of a valid typed value formats to the mode display (what the field shows after a commit)', () => {
     assert.equal(dt.formatModeDisplay(T('15031994', 'date'), 'date'), '15/03/1994');
