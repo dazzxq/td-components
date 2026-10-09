@@ -2,6 +2,32 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.60.0
+
+**Date picker dạng lịch: `<td-datetime-picker>` thiết kế lại tại chỗ — bấm chọn trên lịch, không còn gõ ngày / tháng / năm**
+(owner: "cái hiện tại nhập khó quá vì phải type"; phương án chốt sau tranh luận Claude × Codex dựa trên chuẩn ngành —
+MUI / Ant / Polaris / react-aria / USWDS / APG). Plan `docs/internal/plans/v0.60.0-calendar-picker.md`, Codex plan-review
+APPROVE 4 vòng, impl-review APPROVE (mốc M2 + toàn nhánh 2 vòng) + security-review APPROVE;
+[ADR 0032](docs/internal/decisions/0032-calendar-picker.md). Đổi giao diện + hợp đồng SSR — `docs/upgrading/breaking-changes.md#0600`.
+
+### Changed
+
+- Hộp chọn ngày là **lịch**: lưới tháng (thứ Hai đầu tuần, hôm nay có viền, ngày chọn tô + đậm, ngày ngoài `min` / `max`
+  mờ), bấm tiêu đề tháng / năm để nhảy nhanh (lưới 12 tháng, lưới 12 năm theo trang). Máy tính (≥ 720 px): popover bám ô
+  (tự lật lên / xuống, cuộn bên trong khi thấp, tránh safe-area); điện thoại: sheet từ dưới, ô ngày ≥ 44 px tới 320 px.
+- `mode="date"` / `month` / `year`: bấm một lần là chọn xong (một `change`, đóng, focus về ô) + nút "Hôm nay" / "Tháng này"
+  / "Năm nay"; `mode="datetime"`: chọn ngày + bánh xe giờ / phút như cũ, "Chọn" xác nhận, "Bây giờ" đặt thời điểm hiện tại.
+- Bàn phím theo APG: mũi tên ± ngày / tuần, Home / End đầu / cuối tuần, PageUp / PageDown ± tháng, Shift + PageUp / PageDown ±
+  năm, Enter / Space chọn, Esc đóng; một điểm Tab; live region đọc tháng / năm.
+- **Không `min` / `max` = mọi ngày (năm 1–9999)**: bỏ cửa sổ ngầm 2000–2099 ở picker, `td-datetime-range` và PHP.
+- PHP `td_date()` / `td_datetime_picker()` in `data-td-ssr="datetime-picker@2"` (không còn `min` ngầm; `max="9999-12-31"`
+  khi site không đặt); JS vẫn nhận markup `@1` in trước 0.60.
+
+### Removed
+
+- Ba ô gõ ngày / tháng / năm, dòng xem trước trùng lặp, hiệu ứng bánh xe cuộn từ 00 và nút "Chọn" / "Đóng" ở chế độ chỉ ngày /
+  tháng / năm (ở picker; `td-datetime-range` giữ hộp cũ tới 0.61).
+
 ## 0.59.2
 
 **Vá: bảng dạng thẻ với `hide-single-page` khi chỉ có một trang — hàng nút sắp xếp dính sát mép trên** (135: thanh trên ẩn
