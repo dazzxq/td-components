@@ -281,6 +281,34 @@ describe('v0.63.1 editable picker — live mask while typing (owner: 11122026 �
     expect(m.rec.input + m.rec.bare + m.rec.change.length).to.equal(0);
   });
 
+  it('v0.63.2: a whole string inserted at once (Playwright fill, dictation) lands and is cleaned up like a paste', async () => {
+    const m = mount('mode="date" editable');
+    await settle();
+    m.input.focus();
+    const insertWhole = (text) => {
+      m.input.select();
+      const before = new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: text });
+      const refused = !m.input.dispatchEvent(before);
+      if (!refused) {
+        m.input.value = text;
+        m.input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
+      }
+      return refused;
+    };
+    expect(insertWhole('1994-03-15')).to.equal(false);
+    expect(m.input.value).to.equal('15/03/1994');
+    expect(insertWhole('15/03/1994')).to.equal(false);
+    expect(m.input.value).to.equal('15/03/1994');
+    expect(insertWhole('11122026')).to.equal(false);
+    expect(m.input.value).to.equal('11/12/2026');
+    expect(insertWhole('ngày 1/2/2026')).to.equal(false); // unreadable as a whole: digits only
+    expect(m.input.value).to.equal('12/20/26');
+    const one = new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: 'x' });
+    expect(m.input.dispatchEvent(one)).to.equal(false); // a single key is still refused
+    await sendKeys({ press: 'Enter' });
+    expect(m.rec.input + m.rec.bare).to.equal(0);
+  });
+
   it('a separator key after a one-digit day / month zero-pads it: 1/3/1994 → 01/03/1994 (the key itself is not written)', async () => {
     const m = mount('mode="datetime" editable');
     await settle();

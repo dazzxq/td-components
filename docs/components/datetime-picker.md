@@ -305,8 +305,8 @@ hành vi, test của site).
   gõ**: `11122026` → `11/12/2026`, datetime `111220260930` → `11/12/2026 - 09:30`, month `031994` → `03/1994`. Dấu phân cách do mặt
   nạ viết, chỉ khi có chữ số **tiếp theo** (gõ `11` vẫn là `11`, thêm `1` → `11/1`) — Backspace không kẹt ở dấu, xoá không định dạng
   lại. Phím `/ . - :` hoặc cách **không được ghi** nhưng điền số 0 cho ngày / tháng / giờ / phút mới có một chữ số: gõ `1/3/1994` →
-  `01/03/1994`. Chữ số thừa sau năm bị bỏ. **Dán** một ngày đọc được (`15/03/1994`, `1994-03-15`, `15.3.1994`…) → đổi sang định dạng
-  hiển thị; dán thứ khác → chỉ giữ chữ số. IME: làm sạch khi gõ xong (`compositionend`). Con trỏ đứng sau đúng chữ số vừa gõ.
+  `01/03/1994`. Chữ số thừa sau năm bị bỏ. **Dán** (hay chèn cả chuỗi một lần: Playwright `fill()`, đọc chính tả — 0.63.2) một ngày đọc được
+  (`15/03/1994`, `1994-03-15`, `15.3.1994`…) → đổi sang định dạng hiển thị; thứ khác → chỉ giữ chữ số. IME: làm sạch khi gõ xong (`compositionend`). Con trỏ đứng sau đúng chữ số vừa gõ.
 - **Đọc lúc chốt:** như bảng dưới (cũng dùng cho giá trị dán / attribute `value`); gõ thiếu (`15/03/19` — năm 2 chữ số) → lỗi định
   dạng.
 

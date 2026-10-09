@@ -2,6 +2,15 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.63.2
+
+**Vá `editable`: một chuỗi chèn một lần (Playwright `fill()`, đọc chính tả, thay thế chữ) không còn bị chặn thành ô trống.**
+
+### Fixed
+
+- 0.63.1 chặn mọi `insertText` có ký tự không phải số — kể cả cả chuỗi chèn một lần (`fill('15/03/1994')`), làm ô trống. Nay chỉ
+  phím đơn bị chặn; cả chuỗi được xử lý như dán: đọc được (`15/03/1994`, `1994-03-15`) → định dạng hiển thị, không thì chỉ giữ chữ số.
+
 ## 0.63.1
 
 **Chỉ gõ chữ số + mặt nạ khi gõ cho `editable`** (owner 2026-10-10: "gõ 11122026 thì phải hiển thị real time thành 11/12/2026",

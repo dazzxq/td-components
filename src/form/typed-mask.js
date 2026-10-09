@@ -12,6 +12,9 @@ import { maskTypedValue, maskCaret, padTypedSegment, parseTypedValue, invalidRea
 export function refuseNonDigits(e, input, mode) {
   if (e.isComposing) return; // an IME composition: cleaned up on compositionend
   if ((e.inputType !== 'insertText' && e.inputType !== 'insertReplacementText') || typeof e.data !== 'string' || !/\D/.test(e.data)) return;
+  // v0.63.2: a WHOLE string inserted at once (Playwright fill(), dictation, text replacement) is not a key press — it lands and
+  // is cleaned up like a paste by maskOnInput (refusing it would leave the field empty)
+  if ([...e.data].length > 1) return;
   e.preventDefault();
   const atEnd = input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
   if (!atEnd || !/^[/.\-: ]$/.test(e.data)) return;
@@ -24,15 +27,18 @@ export function refuseNonDigits(e, input, mode) {
 /**
  * v0.63.1: re-mask an `editable` date input after the user INSERTED text (typing, paste, drop). Deletions are never re-masked
  * (Backspace over a separator must not bring it back); during an IME composition nothing is rewritten — the mask runs once on
- * `compositionend` instead (maskAfterComposition). A paste / drop of a whole date in any format the field reads (`15/03/1994`,
- * `1994-03-15`…) becomes the display format; anything else keeps its digits only. The caret stays after the same digit.
+ * `compositionend` instead (maskAfterComposition). A paste / drop — or a whole string inserted at once (v0.63.2: fill(), dictation)
+ * — of a date in any format the field reads (`15/03/1994`, `1994-03-15`…) becomes the display format; anything else keeps its
+ * digits only. The caret stays after the same digit.
  * @param {InputEvent} e the `input` event of the field
  * @param {HTMLInputElement} input
  * @param {string} mode
  */
 export function maskOnInput(e, input, mode) {
   if (e.isComposing || !String(e.inputType || '').startsWith('insert')) return;
-  if (e.inputType === 'insertFromPaste' || e.inputType === 'insertFromDrop') {
+  const whole = e.inputType === 'insertFromPaste' || e.inputType === 'insertFromDrop'
+    || ((e.inputType === 'insertText' || e.inputType === 'insertReplacementText') && typeof e.data === 'string' && [...e.data].length > 1);
+  if (whole) {
     const p = parseTypedValue(input.value, mode);
     if (p && !invalidReason(p)) {
       const text = formatModeDisplay(toModeParts(p, mode), mode);
