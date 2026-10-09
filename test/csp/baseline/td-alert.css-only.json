@@ -14,7 +14,7 @@
   "styles": {
     ".td-alert": {
       "width": "1280px",
-      "height": "72px",
+      "height": "75.5px",
       "min-height": "0px",
       "max-height": "none",
       "padding-top": "12px",
@@ -38,11 +38,11 @@
       "border-top-width": "1px",
       "border-right-width": "1px",
       "border-bottom-width": "1px",
-      "border-left-width": "4px",
+      "border-left-width": "1px",
       "border-top-color": "rgb(134, 239, 172)",
       "border-right-color": "rgb(134, 239, 172)",
       "border-bottom-color": "rgb(134, 239, 172)",
-      "border-left-color": "rgb(21, 128, 61)",
+      "border-left-color": "rgb(134, 239, 172)",
       "border-top-left-radius": "14px",
       "border-top-right-radius": "14px",
       "border-bottom-left-radius": "14px",
@@ -97,7 +97,7 @@
       "--_td-toast-seq": ""
     },
     ".td-alert__heading": {
-      "width": "1243px",
+      "width": "1246px",
       "height": "21px",
       "min-height": "0px",
       "max-height": "none",
@@ -181,7 +181,7 @@
       "--_td-toast-seq": ""
     },
     ".td-alert__message": {
-      "width": "1243px",
+      "width": "1246px",
       "height": "21px",
       "min-height": "0px",
       "max-height": "none",
