@@ -177,10 +177,9 @@ export function renderedPairs() {
   }
   add('calendar selected day ink', '--td-btn-primary-fg', ['--td-btn-primary-bg']);
   // v0.61.0 range band of td-datetime-range (--td-cal-range-bg = --td-color-hover-strong, preview = --td-color-hover; plain aliases —
-  // no new theme token): the day ink and the muted (outside-month) ink on the band wash, over the dialog surface (= the popover fill)
+  // no new theme token): the day ink on the band wash, over the dialog surface (= the popover fill); an outside-month day inside the band takes the FULL ink (the muted ink on the wash was 4.41:1 in the built-in light, M0.6)
   for (const s of PAGE) {
     add(`calendar range band day on ${s}`, '--td-color-text', ['--td-color-hover-strong', ...POPUP(s)]);
-    add(`calendar range band muted day on ${s}`, '--td-color-text-muted', ['--td-color-hover-strong', ...POPUP(s)], 4.7, { gateLight: true });
   }
   return P;
 }

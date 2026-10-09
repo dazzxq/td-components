@@ -8882,6 +8882,13 @@
 		color: var(--td-cal-muted-fg);
 	}
 
+	/* an outside-month day INSIDE the band / the preview takes the full ink (the muted ink measured 4.41:1 on the band wash in the
+	   built-in light — M0.6; the same rule as a hovered / pressed muted day) */
+	.td-cal__day[data-range="in"][data-outside],
+	.td-cal__day[data-preview][data-outside] {
+		color: var(--td-cal-fg);
+	}
+
 	.td-cal__nav:focus-visible,
 	.td-cal__title:focus-visible,
 	.td-cal__day:focus-visible,

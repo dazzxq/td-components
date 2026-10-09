@@ -193,7 +193,7 @@ for (const state of ['field', 'placeholder', 'clear-pressed', 'popup']) CASES.pu
 // switch track (off) and on the white "on" tab; the pair error line ≥ 4.7 on the dialog surface — computed colours.
 for (const state of ['preset', 'preset-on', 'preset-on-pressed', 'tab-off', 'tab-on', 'pair-error']) CASES.push({ kind: 'dtr', v: 'datetime-range', state, pageOnly: true });
 // v0.61.0 the range calendar of td-datetime-range (same dialog surface): a day inside the band ≥ 4.7 on the band wash, an
-// outside-month day inside the band (muted ink) ≥ 4.7 on the band wash, a day past max-days (dimmed, still enabled) ≥ 4.7 on the
+// outside-month day inside the band (the FULL ink, M0.6) ≥ 4.7 on the band wash, a day past max-days (dimmed, still enabled) ≥ 4.7 on the
 // dialog, the pointer preview wash under the day ink ≥ 4.7, the endpoint ink on its fill ≥ 4.7 — computed colours.
 for (const state of ['range-in', 'range-in-outside', 'range-dimmed', 'range-preview', 'range-end']) CASES.push({ kind: 'dtr', v: 'datetime-range', state, pageOnly: true });
 // v0.60.0 td-datetime-picker calendar (popover on --td-glass-bg-strong → page only): day ink ≥ 4.7 on the popover, outside-month
