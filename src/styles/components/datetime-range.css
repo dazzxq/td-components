@@ -473,17 +473,32 @@
 			grid-column: 1 / -1;
 		}
 
+		/* rows: 1 the switch · [2 "Không hạn"] · the calendar spans the wheels' and the "Tiếp" rows */
 		.td-dtr-panel[data-mode="datetime"] .td-dtr-panel__main > .td-cal {
 			grid-column: 1;
+			grid-row: 2 / span 2;
+		}
+
+		.td-dtr-panel[data-mode="datetime"] .td-dtr-panel__main:has(> .td-dtr-panel__open-end) > .td-cal {
 			grid-row: 3 / span 2;
 		}
 
 		.td-dtr-panel[data-mode="datetime"] .td-dtr-panel__main > .td-dtp-pop__time {
 			grid-column: 2;
+			grid-row: 2;
+		}
+
+		.td-dtr-panel[data-mode="datetime"] .td-dtr-panel__main:has(> .td-dtr-panel__open-end) > .td-dtp-pop__time {
+			grid-row: 3;
 		}
 
 		.td-dtr-panel[data-mode="datetime"] .td-dtr-panel__main > .td-dtr-panel__next {
 			grid-column: 2;
+			grid-row: 3;
+		}
+
+		.td-dtr-panel[data-mode="datetime"] .td-dtr-panel__main:has(> .td-dtr-panel__open-end) > .td-dtr-panel__next {
+			grid-row: 4;
 		}
 	}
 

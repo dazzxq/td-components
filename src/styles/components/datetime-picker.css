@@ -35,6 +35,340 @@
 		}
 	}
 
+	/* v0.36.0 (plan QĐ 61) sheet (< 720): 3 visible wheel rows — the sheet stays ≤ 70 % of a phone's height */
+	@media (max-width: 719.98px) {
+		:root {
+			--td-dtp-visible: 3;
+		}
+	}
+}
+
+@layer td.component {
+	td-datetime-picker {
+		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
+		font-family: var(--td-font-sans); /* the error-contract note sits outside .td-dtp */
+	}
+
+	/*
+	 * v0.56.0 pre-upgrade parity (ADR 0025 kind (a), plan v0.56.0-repeater-icons-date D7): php td_datetime_picker() /
+	 * td_date() print a native date / datetime-local input (the no-JS field) next to the trigger. Until the element is
+	 * defined (and forever without JS) the native input IS the field — the same box as the closed trigger (height,
+	 * border, radius, padding, font), the browser's own date text and calendar icon inside (accepted, like the range) —
+	 * and the trigger is hidden. The element removes the input when it adopts the markup, so no rule ever matches a
+	 * defined host.
+	 */
+	td-datetime-picker:not(:defined) .td-dtp__trigger {
+		display: none;
+	}
+
+	td-datetime-picker:not(:defined) .td-dtp__native {
+		box-sizing: border-box;
+		display: block;
+		width: 100%;
+		min-width: 0;
+		height: var(--td-field-h-md);
+		padding: 8px 14px;
+		margin: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: var(--td-field-fg);
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+	}
+
+	td-datetime-picker:not(:defined) .td-dtp__native:focus-visible {
+		border-color: var(--td-field-focus);
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	td-datetime-picker:not(:defined) .td-dtp__native:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	td-datetime-picker:not(:defined) .td-dtp__native[aria-invalid="true"] {
+		border-color: var(--td-field-error);
+	}
+
+	/* ---- Host: trigger ---- */
+	.td-dtp {
+		box-sizing: border-box;
+		display: block;
+		width: 100%;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	.td-dtp *,
+	.td-dtp *::before {
+		box-sizing: border-box;
+	}
+
+	.td-dtp__trigger {
+		display: flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		min-width: 0;
+		height: var(--td-field-h-md);
+		padding: 8px 14px;
+		margin: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: var(--td-field-fg);
+		text-align: left;
+		cursor: pointer;
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+		appearance: none;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-dtp__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
+			border-color: var(--td-field-border-hover);
+		}
+	}
+
+	.td-dtp__trigger[aria-expanded="true"] {
+		border-color: var(--td-field-focus);
+	}
+
+	.td-dtp__trigger:focus-visible {
+		border-color: var(--td-field-focus);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-field-focus-ring); /* v0.21.0 P8: same light ring as the other fields */
+	}
+
+	.td-dtp__trigger:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-dtp__trigger[aria-invalid="true"],
+	.td-dtp__trigger[aria-invalid="true"]:focus-visible,
+	.td-dtp__trigger[aria-invalid="true"][aria-expanded="true"] {
+		border-color: var(--td-field-error);
+	}
+
+	.td-dtp__value {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-dtp__value[data-placeholder] {
+		color: var(--td-field-placeholder);
+	}
+
+	.td-dtp__trigger:disabled .td-dtp__value {
+		color: var(--td-field-fg-disabled);
+	}
+
+	.td-dtp__icon {
+		display: inline-flex;
+		flex-shrink: 0;
+		color: var(--td-field-placeholder);
+	}
+
+	/*
+	 * v0.59.0 `clearable` (plan v0.59.0-dsuite-small QĐ E1): the clear button is a SIBLING of the trigger (no button in a
+	 * button). One grid cell holds the trigger (or the pre-upgrade native input) and the button on top of its inline end;
+	 * the field always reserves the button's width (the value never jumps when it shows / hides). Before the upgrade the
+	 * button keeps its place but is invisible (no dead control without JS — like the number stepper).
+	 */
+	.td-dtp--clearable {
+		--_td-dtp-clear-w: 2.25rem;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-areas: "label" "control";
+	}
+
+	.td-dtp--clearable > .td-field__label {
+		grid-area: label;
+	}
+
+	.td-dtp--clearable > .td-dtp__trigger,
+	.td-dtp--clearable > .td-dtp__native,
+	.td-dtp--clearable > .td-dtp__clear {
+		grid-area: control;
+	}
+
+	.td-dtp--clearable > .td-dtp__trigger,
+	td-datetime-picker:not(:defined) .td-dtp--clearable > .td-dtp__native {
+		padding-inline-end: calc(var(--_td-dtp-clear-w) + 1px);
+	}
+
+	.td-dtp__clear {
+		z-index: 1; /* above the trigger it overlaps */
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		align-self: stretch;
+		justify-self: end;
+		width: var(--_td-dtp-clear-w);
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		color: var(--td-color-text-muted);
+		cursor: pointer;
+		background: transparent;
+		background-clip: padding-box; /* the hover / pressed wash stays inside the field border */
+		border: 1px solid transparent; /* full-height target (44 px on touch) over the trigger's own 1 px border */
+		border-start-end-radius: var(--td-field-radius-md);
+		border-end-end-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent;
+		outline-offset: -3px;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-dtp__clear[hidden] {
+		display: none;
+	}
+
+	td-datetime-picker:not(:defined) .td-dtp__clear {
+		visibility: hidden;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-dtp__clear:hover {
+			color: var(--td-field-fg);
+			background: var(--td-color-hover);
+		}
+	}
+
+	.td-dtp__clear:is(:active, [data-td-pressed]) {
+		color: var(--td-field-fg);
+		background: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-dtp__clear:focus-visible {
+		outline-color: var(--td-focus);
+	}
+
+	.td-dtp__clear-icon {
+		display: inline-flex;
+	}
+
+	/* ---- Wheel (listbox) ---- */
+	.td-dtp-wheel {
+		position: relative;
+		flex: none;
+		width: var(--td-dtp-wheel-w);
+		border-radius: var(--td-glass-radius-inner);
+	}
+
+	/* Selection band behind the centred row (the list paints above it: later positioned sibling). */
+	.td-dtp-wheel::before {
+		position: absolute;
+		inset-inline: 0;
+		top: calc(50% - var(--td-dtp-option-h) / 2);
+		height: var(--td-dtp-option-h);
+		pointer-events: none;
+		content: "";
+		background: var(--td-dtp-band-bg);
+		border: 1px solid var(--td-dtp-band-border); /* v0.14.4: all four sides (top/bottom only looked clipped at the rounded ends) */
+		border-radius: var(--td-radius-md);
+	}
+
+	.td-dtp-wheel:has(.td-dtp-wheel__list:focus-visible) {
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-dtp-wheel__list {
+		position: relative; /* options' offsetParent: centring needs no ancestor positioning */
+		height: calc(var(--td-dtp-option-h) * var(--td-dtp-visible));
+		padding-block: calc(var(--td-dtp-option-h) * (var(--td-dtp-visible) - 1) / 2);
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		scroll-behavior: auto; /* programmatic smooth scrolling is chosen per call (never under reduced motion) */
+		scroll-snap-type: y mandatory;
+		scrollbar-width: none;
+		outline: 2px solid transparent; /* focus ring on the wheel (the mask would clip it here) */
+		outline-offset: 2px;
+		mask-image: linear-gradient(to bottom, rgb(0 0 0 / 35%), #000 30%, #000 70%, rgb(0 0 0 / 35%));
+	}
+
+	.td-dtp-wheel__list::-webkit-scrollbar {
+		display: none;
+	}
+
+	.td-dtp-wheel__list:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: none;
+	}
+
+	.td-dtp-wheel__option {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: var(--td-dtp-option-h);
+		font-size: var(--td-text-base);
+		font-variant-numeric: tabular-nums;
+		color: var(--td-dtp-option-fg);
+		cursor: pointer;
+		user-select: none;
+		scroll-snap-align: center;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-dtp-wheel__option:hover {
+			color: var(--td-dtp-option-selected-fg);
+		}
+	}
+
+	.td-dtp-wheel__option[aria-selected="true"] {
+		font-size: var(--td-text-lg);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-dtp-option-selected-fg);
+	}
+
+	.td-dtp-wheel__sep {
+		font-size: var(--td-text-lg);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-color-text);
+	}
+
+	@media (pointer: coarse) {
+		.td-dtp__trigger,
+		td-datetime-picker:not(:defined) .td-dtp__native {
+			height: auto;
+			min-height: var(--td-touch-min);
+		}
+
+		/* v0.59.0: the clear button is a ≥ 44 px target */
+		.td-dtp--clearable {
+			--_td-dtp-clear-w: var(--td-touch-min);
+		}
+
+		/* v0.56.0: the pre-upgrade native input ≥ 16px (iOS does not zoom on focus); 16 → 14 on upgrade, same box (ADR 0025 §5) */
+		td-datetime-picker:not(:defined) .td-dtp__native {
+			font-size: max(1rem, 1em);
+		}
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.td-dtp__trigger {
 			transition: none;
