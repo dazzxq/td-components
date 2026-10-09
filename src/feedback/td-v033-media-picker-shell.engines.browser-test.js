@@ -313,6 +313,8 @@ describe('v0.33 td-media-picker — toolbar (decisions 7-10)', () => {
     const dtp = await until(() => q('.td-media-picker__field[data-key="licenseExpiry"] td-datetime-picker'), 4000, 'dtp');
     // v0.60.0: at ≥ 720 px the date picker is a popover (a floating layer), below it a sheet (a modal): either way Esc closes only it
     const dialogs = () => document.querySelectorAll('body > .td-dtp-pop, body > .td-modal:not(.td-media-picker):not([data-state="closing"]) .td-dtp-pop').length;
+    // the trigger must be on screen: a popover whose reference scrolled out of view closes itself (kit floating layer)
+    dtp.querySelector('.td-dtp__trigger').scrollIntoView({ block: 'center' });
     dtp.querySelector('.td-dtp__trigger').click();
     await until(() => dialogs() > 0, 4000, 'date dialog');
     await sendKeys({ press: 'Escape' });
