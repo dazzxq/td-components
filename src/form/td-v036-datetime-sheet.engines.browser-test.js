@@ -36,6 +36,8 @@ const vp = async (w, h) => {
   await raf();
 };
 
+/** v0.61.0: datetime is two screens — a day activates the time screen (the wheels) */
+const toTime = async () => { pop().querySelector('.td-cal__day[tabindex="0"]').click(); await settle(); };
 async function openPicker(attrs = 'value="04/10/2026 - 23:58"') {
   host.insertAdjacentHTML('beforeend', `<td-datetime-picker label="Ngày đăng" ${attrs}></td-datetime-picker>`);
   const el = host.lastElementChild;
@@ -58,26 +60,35 @@ after(async () => { await setViewport({ width: 800, height: 600 }); });
 describe('v0.60.0 td-datetime-picker — the calendar bottom sheet', () => {
   for (const [w, h] of [[360, 780], [390, 844]]) {
     for (const coarse of [false, true]) {
-      it(`${w}×${h}${coarse ? ' (44 px cells + rows)' : ''}: datetime sheet inside the viewport, 3 wheel rows, actions in view, no horizontal overflow`, async () => {
+      it(`${w}×${h}${coarse ? ' (44 px cells + rows)' : ''}: both datetime screens fit (≤ 70 % — the 90 % exception is gone), 3 wheel rows, the footer actions in view, no horizontal overflow`, async () => {
         await vp(w, h);
         if (coarse) {
           document.documentElement.style.setProperty('--td-dtp-option-h', '44px'); // = the coarse tokens
           document.documentElement.style.setProperty('--td-cal-cell', '44px');
         }
         await openPicker();
-        const sheet = rect(openModal().querySelector('.td-modal__dialog'));
-        expect(sheet.bottom <= innerHeight + 0.5 && sheet.top >= -0.5, `sheet inside: ${sheet.top}…${sheet.bottom} of ${innerHeight}`).to.equal(true);
-        expect(sheet.height <= 0.9 * innerHeight + 1, `sheet ${Math.round(sheet.height)} ≤ 90 % of ${innerHeight}`).to.equal(true);
+        const dialog = () => rect(openModal().querySelector('.td-modal__dialog'));
+        const inside = (label) => {
+          const sheet = dialog();
+          expect(sheet.bottom <= innerHeight + 0.5 && sheet.top >= -0.5, `${label}: sheet ${sheet.top}…${sheet.bottom} of ${innerHeight}`).to.equal(true);
+          expect(sheet.height <= 0.7 * innerHeight + 0.5, `${label}: sheet ${Math.round(sheet.height)} ≤ 70 % of ${innerHeight}`).to.equal(true);
+          const body = openModal().querySelector('.td-modal__body');
+          expect(body.scrollHeight <= body.clientHeight + 1, `${label}: the body does not scroll`).to.equal(true);
+          expect(document.documentElement.scrollWidth <= innerWidth + 1, 'no horizontal page scroll').to.equal(true);
+          expect(body.scrollWidth <= body.clientWidth + 1, 'no horizontal scroll in the sheet').to.equal(true);
+        };
+        inside('date screen');
+        const today = openModal().querySelector('.td-modal__footer [data-action="today"]');
+        expect(rect(today).bottom <= innerHeight + 0.5, '"Hôm nay" in view').to.equal(true);
+        await toTime();
+        inside('time screen');
         const rowH = coarse ? 44 : 40;
         for (const part of ['hour', 'minute']) {
           expect(Math.abs(wheel(part).clientHeight - 3 * rowH) <= 1, `${part} wheel ${wheel(part).clientHeight} = 3 × ${rowH}`).to.equal(true);
         }
-        // the actions are pinned inside the sheet and visible
-        const confirm = rect($('[data-action="confirm"]'));
+        const confirm = rect(openModal().querySelector('.td-modal__footer [data-action="confirm"]'));
         const body = rect(openModal().querySelector('.td-modal__body'));
-        expect(confirm.bottom <= body.bottom + 0.5 && confirm.top >= body.top - 0.5, `"Chọn" ${confirm.top}…${confirm.bottom} in the body ${body.top}…${body.bottom}`).to.equal(true);
-        expect(document.documentElement.scrollWidth <= innerWidth + 1, 'no horizontal page scroll').to.equal(true);
-        expect(openModal().querySelector('.td-modal__body').scrollWidth <= openModal().querySelector('.td-modal__body').clientWidth + 1, 'no horizontal scroll in the sheet').to.equal(true);
+        expect(confirm.top >= body.bottom - 1 && confirm.bottom <= innerHeight + 0.5, `"Chọn" ${confirm.top}…${confirm.bottom} below the body (${body.bottom}), in view`).to.equal(true);
       });
     }
   }
@@ -113,6 +124,7 @@ describe('v0.60.0 td-datetime-picker — the calendar bottom sheet', () => {
   it('360×780: the dialog and the columns keep their names (Giờ / Phút listboxes, the time group, the weekday heads)', async () => {
     await vp(360, 780);
     await openPicker();
+    await toTime();
     expect(wheel('hour').getAttribute('aria-label')).to.equal('Giờ');
     expect(wheel('minute').getAttribute('aria-label')).to.equal('Phút');
     const group = $('[role="group"]');
@@ -120,7 +132,7 @@ describe('v0.60.0 td-datetime-picker — the calendar bottom sheet', () => {
     expect(!!time && time.textContent === 'Giờ', 'time group named').to.equal(true);
     expect([...pop().querySelectorAll('thead th')].map((t) => t.getAttribute('aria-label'))[0]).to.equal('Thứ Hai');
     expect(openModal().querySelector('.td-modal__title').textContent).to.equal('Chọn ngày giờ');
-    expect(pop().querySelector('.td-dtp-panel__input, .td-dtp-panel__preview') === null, 'no number fields / preview').to.equal(true);
+    expect(pop().querySelector('input') === null, 'no <input> at all (no number fields, no virtual keyboard)').to.equal(true);
   });
 
   it('360×780: the keyboard still changes values (wheels + a day), the band stays centred; "Chọn" commits one change', async () => {
@@ -128,6 +140,7 @@ describe('v0.60.0 td-datetime-picker — the calendar bottom sheet', () => {
     const el = await openPicker('value="15/06/2026 - 18:45"');
     let changes = 0;
     el.addEventListener('change', () => { changes += 1; });
+    await toTime();
     const hour = wheel('hour');
     hour.focus();
     await sendKeys({ press: 'ArrowDown' });
@@ -140,9 +153,13 @@ describe('v0.60.0 td-datetime-picker — the calendar bottom sheet', () => {
     minute.focus();
     await sendKeys({ press: 'ArrowUp' });
     expect(await until(() => selectedValue(minute) === 44), 'ArrowUp → 44').to.equal(true);
-    $('.td-cal__day[data-date="2026-06-20"]').click();
+    $('[data-action="back"]').click();
+    await settle();
+    $('.td-cal__day[data-date="2026-06-20"]').click(); // v0.61.0: a day opens the time screen again — the wheels keep the time
+    await settle();
     expect(changes, 'a day does not commit in datetime mode').to.equal(0);
-    $('[data-action="confirm"]').click();
+    expect(selectedValue(wheel('hour')) === 19 && selectedValue(wheel('minute')) === 44, 'the draft time survived the round trip').to.equal(true);
+    openModal().querySelector('.td-modal__footer [data-action="confirm"]').click();
     expect(await until(() => el.value === '20/06/2026 - 19:44'), `value ${el.value}`).to.equal(true);
     expect(changes).to.equal(1);
   });
@@ -154,6 +171,7 @@ describe('v0.60.0 td-datetime-picker — the calendar bottom sheet', () => {
     expect(await until(() => pop()), 'popover open').to.equal(true);
     await settle();
     expect(openModal() === null, 'no sheet at ≥ 720').to.equal(true);
+    await toTime();
     expect(Math.abs(wheel('hour').clientHeight - 5 * 40) <= 1, `wheel ${wheel('hour').clientHeight}`).to.equal(true);
   });
 });

@@ -150,7 +150,7 @@ describe('v0.40.0 td-datetime-range — dialog (the calendar since v0.61.0)', ()
       expect($$('.td-cal').length).to.equal(1);
       expect(shown($('.td-dtr-panel__switch')), `${mode}: switch`).to.equal(true);
       expect(rect($('.td-dtr-panel__presets')).right <= rect($('.td-cal')).left, `${mode}: presets left of the calendar`).to.equal(true);
-      if (mode === 'datetime') expect(rect($('.td-cal')).right <= rect($('.td-dtp-pop__time')).left + 1, 'wheels beside the grid').to.equal(true);
+      if (mode === 'datetime') expect(shown($('.td-time-step')), 'datetime: the time screen is a second screen (hidden on the date screen)').to.equal(false);
       TdModal.closeAll();
       await settle();
       host.innerHTML = '';
@@ -346,7 +346,7 @@ describe('v0.40.0 td-datetime-range — dialog (the calendar since v0.61.0)', ()
 });
 
 describe('v0.40.0 td-datetime-range — sheet < 720 and short landscape (the calendar since v0.61.0)', () => {
-  it('393×852: the switch shows both endpoints; tapping Đến / "Tiếp" changes the endpoint, focuses the calendar, swaps the wheels', async () => {
+  it('393×852: the switch shows both endpoints; a day opens the time screen, "Tiếp: Đến" / the Đến tab move between endpoints (the wheels swap)', async () => {
     await setViewport({ width: 393, height: 852 });
     const el = mount('name="r" mode="datetime" start="01/10/2026 - 08:00" end="05/10/2026 - 17:30"');
     await open(el);
@@ -355,22 +355,25 @@ describe('v0.40.0 td-datetime-range — sheet < 720 and short landscape (the cal
     expect(tabs.map((t) => t.getAttribute('aria-pressed'))).to.deep.equal(['true', 'false']);
     expect(tabs[0].querySelector('.td-dtr-panel__tab-value').textContent).to.equal('01/10/2026 - 08:00');
     expect(tabs[1].querySelector('.td-dtr-panel__tab-value').textContent).to.equal('05/10/2026 - 17:30');
-    expect(shown($('.td-dtr-panel__next')), '"Tiếp: Đến" while editing Từ').to.equal(true);
+    expect(shown($('.td-dtr-panel__next')), '"Tiếp: Đến" belongs to the time screen').to.equal(false);
+    day('2026-10-01').click(); // a day → the TIME screen of Từ
+    await settle();
     const hour = () => $('.td-dtp-wheel__list[data-part="hour"] [aria-selected="true"]').getAttribute('data-value');
     expect(hour()).to.equal('8');
-    tabs[1].click();
+    expect(shown($('.td-dtr-panel__next')), '"Tiếp: Đến" while editing Từ on the time screen').to.equal(true);
+    expect(document.activeElement === $('.td-dtp-wheel__list[data-part="hour"]'), 'focus on the hour wheel').to.equal(true);
+    tabs[1].click(); // Đến has a date → the screen kind (time) is kept
+    await settle();
     expect(tabs.map((t) => t.getAttribute('aria-pressed'))).to.deep.equal(['false', 'true']);
     expect(hour()).to.equal('17');
-    expect(document.activeElement === $('.td-cal__day[tabindex="0"]'), 'focus in the calendar').to.equal(true);
     expect(shown($('.td-dtr-panel__next')), 'hidden while editing Đến').to.equal(false);
     tabs[0].click();
-    $('.td-dtr-panel__next').click();
+    await settle();
+    $('.td-dtr-panel__next').click(); // "Tiếp: Đến" → the DATE screen of Đến
+    await settle();
     expect(tabs.map((t) => t.getAttribute('aria-pressed'))).to.deep.equal(['false', 'true']);
-    // the wheels are centred at once on the endpoint's time
-    const list = $('.td-dtp-wheel__list[data-part="hour"]');
-    const opt = list.querySelector('[aria-selected="true"]');
-    const mid = rect(list).top + rect(list).height / 2;
-    expect(Math.abs(rect(opt).top + rect(opt).height / 2 - mid) < 4, 'selected hour in the band').to.equal(true);
+    expect(shown($('.td-cal')) && !shown($('.td-time-step'))).to.equal(true);
+    expect(document.activeElement.getAttribute('data-date')).to.equal('2026-10-05');
   });
 
   it('393×852: a rejected "Chọn" activates the Đến endpoint and focuses its tab', async () => {

@@ -252,22 +252,29 @@ describe('v0.61.0 range calendar — the grid selection follows the active endpo
 });
 
 describe('v0.61.0 range calendar — datetime: one draft, wheels per endpoint, silent sync (B8 / B9)', () => {
-  it('a day pick edits the active endpoint\'s date and keeps its time; the wheels show that endpoint', async () => {
+  it('a day pick edits the active endpoint\'s date and keeps its time; the time screen shows that endpoint\'s wheels (v0.61.0: two screens)', async () => {
     const el = mount('name="r" mode="datetime" start="01/10/2026 - 08:00" end="05/10/2026 - 17:30"');
     await open(el);
+    day('2026-10-03').click(); // side Từ stays (datetime: no alternation) → the time screen of Từ
+    await settle();
     expect([wheelValue('hour'), wheelValue('minute')]).to.deep.equal([8, 0]);
-    day('2026-10-03').click(); // side Từ stays (datetime: no alternation)
     expect(tabs()).to.deep.equal(['03/10/2026 - 08:00', '05/10/2026 - 17:30']);
     expect(tab('start').getAttribute('aria-pressed')).to.equal('true');
-    tab('end').click();
+    tab('end').click(); // Đến has a date: the time screen is kept
+    await settle();
     expect([wheelValue('hour'), wheelValue('minute')]).to.deep.equal([17, 30]);
+    $('.td-time-step [data-action="back"]').click();
+    await settle();
     day('2026-10-09').click();
+    await settle();
     expect(tabs()).to.deep.equal(['03/10/2026 - 08:00', '09/10/2026 - 17:30']);
   });
 
   it('a USER change of the wheel writes to the active endpoint only; switching sides never writes (silent)', async () => {
     const el = mount('name="r" mode="datetime" start="01/10/2026 - 08:00" end="05/10/2026 - 17:30" minute-step="15"');
     await open(el);
+    $('.td-cal__day[tabindex="0"]').click(); // → the time screen of Từ
+    await settle();
     $('.td-dtp-wheel__list[data-part="hour"]').focus();
     await sendKeys({ press: 'ArrowDown' }); // 09
     await settle();
@@ -398,11 +405,11 @@ describe('v0.61.0 range calendar — lifecycle, labels, performance', () => {
   it('closing destroys the draft, the calendar and the wheels; a re-open starts fresh from the attributes', async () => {
     const el = mount('name="r" mode="datetime" start="01/10/2026 - 08:00"');
     await open(el);
-    day('2026-10-09').click();
-    expect(!!el._grid && !!el._draft && !!el._wheels).to.equal(true);
+    day('2026-10-09').click(); // a day opens the time screen; nothing is committed
+    expect(!!el._grid && !!el._draft && !!el._timeStep).to.equal(true);
     footer('Đóng').click();
     expect(await until(() => !openModal())).to.equal(true);
-    expect(el._grid === null && el._draft === null && el._wheels === null).to.equal(true);
+    expect(el._grid === null && el._draft === null && el._timeStep === null).to.equal(true);
     expect(el.getAttribute('start')).to.equal('01/10/2026 - 08:00'); // nothing was committed
     await settle();
     await open(el);

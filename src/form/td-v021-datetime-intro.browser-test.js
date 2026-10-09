@@ -40,12 +40,14 @@ afterEach(async () => {
 
 describe('v0.60.0 — the picker wheels are centred at once (no opening animation)', () => {
   for (const reduced of [false, true]) {
-    it(`${reduced ? 'reduced motion' : 'default motion'}: right after opening both wheels are centred on the value, nothing is scrolled in`, async () => {
+    it(`${reduced ? 'reduced motion' : 'default motion'}: right after the TIME screen shows both wheels are centred on the value, nothing is scrolled in (0.61.0: two screens)`, async () => {
       if (reduced) await emulateMedia({ reducedMotion: 'reduce' });
       const el = pick('value="15/06/2026 - 18:45"');
       let changes = 0;
       el.addEventListener('change', () => { changes++; });
       el.querySelector('.td-dtp__trigger').click();
+      await frame();
+      livePop().querySelector('.td-cal__day[tabindex="0"]').click(); // the day → the time screen
       await frame();
       const h = livePop().querySelector('.td-dtp-wheel__list[data-part="hour"]');
       const m = livePop().querySelector('.td-dtp-wheel__list[data-part="minute"]');
@@ -64,6 +66,8 @@ describe('v0.60.0 — the picker wheels are centred at once (no opening animatio
     const el = pick('value="15/06/2026 - 18:45"');
     el.querySelector('.td-dtp__trigger').click();
     await settle();
+    livePop().querySelector('.td-cal__day[tabindex="0"]').click(); // the time screen
+    await settle();
     const h = livePop().querySelector('.td-dtp-wheel__list[data-part="hour"]');
     h.focus();
     await sendKeys({ press: 'ArrowDown' });
@@ -80,14 +84,16 @@ describe('v0.61.0 — the RANGE wheels are centred at once (no opening scroll)',
   const wheel = (part) => openModal().querySelector(`.td-dtp-wheel__list[data-part="${part}"]`);
 
   for (const reduced of [false, true]) {
-    it(`${reduced ? 'reduced motion' : 'default motion'}: centred on the start time after opening; switching to Đến centres its time; nothing is committed`, async () => {
+    it(`${reduced ? 'reduced motion' : 'default motion'}: the time screen centres the start time; switching to Đến centres its time at once; nothing is committed`, async () => {
       if (reduced) await emulateMedia({ reducedMotion: 'reduce' });
       const el = range('mode="datetime" start="15/06/2026 - 18:45" end="16/06/2026 - 08:00"');
       let changes = 0;
-      el.addEventListener('change', () => { changes++; });
+      el.addEventListener('change', () => { changes += 1; });
       el.querySelector('.td-dtr__trigger').click();
       await settle();
       await wait(450);
+      openModal().querySelector('.td-cal__day[tabindex="0"]').click(); // a day → the TIME screen (0.61.0: two screens)
+      await settle();
       const h = wheel('hour');
       const m = wheel('minute');
       expect([selectedValue(h), selectedValue(m)]).to.deep.equal([18, 45]);
@@ -102,13 +108,13 @@ describe('v0.61.0 — the RANGE wheels are centred at once (no opening scroll)',
     });
   }
 
-  it('closing right after opening leaves the attributes alone (the wheels\' timers are cancelled)', async () => {
+  it('closing right after opening leaves the attributes alone and releases the wheels', async () => {
     const el = range('mode="datetime" start="15/06/2026 - 18:45" end="16/06/2026 - 08:00"');
     el.querySelector('.td-dtr__trigger').click();
     await settle();
     TdModal.closeAll();
     await wait(300);
     expect(el.getAttribute('start')).to.equal('15/06/2026 - 18:45');
-    expect(el._wheels).to.equal(null);
+    expect(el._timeStep).to.equal(null);
   });
 });
