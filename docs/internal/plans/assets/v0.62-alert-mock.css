@@ -1,0 +1,75 @@
+/*
+ * Mock stylesheet for docs/internal/plans/v0.62.0-polish.md § 1 (td-alert redesign). NOT shipped.
+ * Loaded AFTER td.css (which lives in @layer, so these unlayered rules win). Everything under `.mock` is the proposed
+ * src/styles/components/alert.css, written as an override of the current one; the rest is page chrome for this preview.
+ * No new colour literals for the alert itself: every colour is an existing token (the theme contract is unchanged).
+ */
+
+/* ---- page chrome (preview only) ---- */
+body { margin: 0; font-family: var(--td-font-sans); background: #e4e4e7; color: #18181b; }
+.head { max-width: 72rem; padding: 1.5rem 1rem 0.5rem; margin-inline: auto; }
+.head h1 { margin: 0 0 0.5rem; font-size: 1.25rem; }
+.head p { margin: 0; max-width: 60ch; font-size: 0.875rem; line-height: 1.5; }
+.stage { padding: 1.5rem 1rem; background: var(--td-color-bg); color: var(--td-color-text); }
+.stage[data-td-theme="dark"] { background: var(--td-color-bg); }
+.stage > h2 { max-width: 72rem; margin: 0 auto 1rem; font-size: 1rem; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 1.5rem; max-width: 72rem; margin-inline: auto; }
+.variant { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+.variant > h4 { margin: 0; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.02em; color: var(--td-color-text-muted); }
+.variant.narrow { max-width: 20rem; }
+
+/* ---- proposed td-alert ---- */
+.mock {
+	--td-alert-pad-y: var(--td-space-sm);
+	--td-alert-pad-x: var(--td-space-md);
+	--td-alert-icon-box: 1.75rem;
+	--td-alert-icon-radius: var(--td-radius-md);
+	--td-alert-tile-mix: 12%;
+}
+
+.mock .td-alert {
+	padding: var(--td-alert-pad-y) var(--td-alert-pad-x);
+	border: 1px solid var(--td-alert-info-border);
+}
+
+.mock .td-alert--success { border-color: var(--td-alert-success-border); }
+.mock .td-alert--warning { border-color: var(--td-alert-warning-border); }
+.mock .td-alert--danger { border-color: var(--td-alert-danger-border); }
+
+.mock .td-alert__icon {
+	align-items: center;
+	justify-content: center;
+	width: var(--td-alert-icon-box);
+	height: var(--td-alert-icon-box);
+	background-color: color-mix(in srgb, var(--td-alert-info-icon) var(--td-alert-tile-mix), var(--td-alert-info-bg));
+	border-radius: var(--td-alert-icon-radius);
+}
+
+.mock .td-alert--success .td-alert__icon { background-color: color-mix(in srgb, var(--td-alert-success-icon) var(--td-alert-tile-mix), var(--td-alert-success-bg)); }
+.mock .td-alert--warning .td-alert__icon { background-color: color-mix(in srgb, var(--td-alert-warning-icon) var(--td-alert-tile-mix), var(--td-alert-warning-bg)); }
+.mock .td-alert--danger .td-alert__icon { background-color: color-mix(in srgb, var(--td-alert-danger-icon) var(--td-alert-tile-mix), var(--td-alert-danger-bg)); }
+
+/* first text line centred on the tile */
+.mock .td-alert__body {
+	padding-block-start: calc((var(--td-alert-icon-box) - var(--td-text-sm) * var(--td-leading-normal)) / 2);
+}
+
+.mock .td-alert__close {
+	margin: calc((var(--td-alert-icon-box) - 2rem) / 2) -0.5rem 0 0;
+	margin-inline: 0 -0.5rem;
+}
+
+@media (pointer: coarse) {
+	.mock .td-alert__close {
+		margin-block: calc((var(--td-alert-icon-box) - var(--td-touch-min)) / 2) 0;
+	}
+}
+
+@media (prefers-contrast: more) {
+	.mock .td-alert { border-color: currentcolor; }
+	.mock .td-alert__icon { background-color: transparent; }
+}
+
+@media (forced-colors: active) {
+	.mock .td-alert__icon { background-color: transparent; }
+}
