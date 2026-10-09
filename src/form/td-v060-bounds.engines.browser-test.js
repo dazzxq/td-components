@@ -216,4 +216,3 @@ describe('v0.60.0 range — no min / max = years 1–9999 (B4)', () => {
     expect(flags(el)).to.deep.equal([]);
   });
 });
-});
