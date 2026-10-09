@@ -180,7 +180,8 @@ export class TdDatetimePicker extends TdFormElement {
     formatDate: 'Định dạng ngày không hợp lệ',
     formatMonth: 'Định dạng tháng không hợp lệ',
     formatYear: 'Định dạng năm không hợp lệ',
-    incomplete: 'Vui lòng nhập đầy đủ ngày, tháng, năm',
+    incomplete: 'Vui lòng nhập đầy đủ ngày và giờ', // v0.63.0: datetime (a typed date without the time); date has its own key
+    incompleteDate: 'Vui lòng nhập đầy đủ ngày, tháng, năm',
     incompleteMonth: 'Vui lòng nhập đầy đủ tháng, năm',
     incompleteYear: 'Vui lòng nhập năm',
     day: 'Ngày phải từ 1 đến 31',

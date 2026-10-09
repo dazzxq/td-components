@@ -433,7 +433,7 @@ Không có method `open()` công khai. Muốn mở bằng code, bấm nút trigg
 |---|---|---|
 | `required` | `Vui lòng chọn ngày giờ` | `required` mà trống (`valueMissing`) |
 | `format` | `Định dạng ngày giờ không hợp lệ` | `value` sai cú pháp (`badInput`) |
-| `incomplete` | `Vui lòng nhập đầy đủ ngày, tháng, năm` | Không còn hiện trong picker từ 0.60.0 (range cũng không từ 0.61.0; chỉ còn cho giá trị gán qua attribute) |
+| `incomplete` / `incompleteDate` | `Vui lòng nhập đầy đủ ngày và giờ` (datetime, v0.63.0) / `Vui lòng nhập đầy đủ ngày, tháng, năm` (date) | Hiện khi gõ thiếu phần (`editable`, v0.63.0) hoặc giá trị gán qua attribute thiếu phần; range: `incomplete` / `incompleteDatetime` |
 | `requiredDate` / `requiredMonth` / `requiredYear` | `Vui lòng chọn ngày` / `… tháng` / `… năm` | `required` theo mode (0.18.0) |
 | `formatDate` / `formatMonth` / `formatYear` | `Định dạng ngày không hợp lệ` / `… tháng …` / `… năm …` | Sai cú pháp theo mode |
 | `incompleteMonth` / `incompleteYear` | `Vui lòng nhập đầy đủ tháng, năm` / `Vui lòng nhập năm` | Không còn hiện trong picker từ 0.60.0 |

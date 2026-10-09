@@ -224,7 +224,7 @@ for (const how of ['enter', 'blur']) {
       await typeCommit(d, '15/3/1994 9:05', how);
       expect(d.rec.change).to.deep.equal([{ value: '15/03/1994 - 09:05', dbValue: '1994-03-15 09:05:00' }]);
       await typeCommit(d, '16/03/1994', how);
-      expect(note(d)).to.equal('Vui lòng nhập đầy đủ ngày, tháng, năm');
+      expect(note(d)).to.equal('Vui lòng nhập đầy đủ ngày và giờ');
       expect(d.rec.change.length).to.equal(1);
       const mo = mount('mode="month" editable');
       await settle();

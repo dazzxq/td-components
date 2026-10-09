@@ -165,6 +165,7 @@ export class TdDatetimeRange extends TdFormElement {
     format: 'Định dạng ngày không hợp lệ',
     formatDatetime: 'Định dạng ngày giờ không hợp lệ',
     incomplete: 'Vui lòng nhập đầy đủ ngày, tháng, năm',
+    incompleteDatetime: 'Vui lòng nhập đầy đủ ngày và giờ', // v0.63.0: a typed date without the time
     day: 'Ngày phải từ 1 đến 31',
     month: 'Tháng phải từ 1 đến 12',
     year: 'Năm phải từ {min} đến {max}',
@@ -274,7 +275,7 @@ export class TdDatetimeRange extends TdFormElement {
     if (reason) {
       const field = reason === 'incomplete' ? MODE_PARTS[mode].find((k) => !Number.isInteger(p && p[k])) || null
         : reason === 'date' ? 'day' : reason;
-      const message = reason === 'year' ? fill(M.year, years) : M[reason];
+      const message = reason === 'year' ? fill(M.year, years) : reason === 'incomplete' ? this._text(M, 'incomplete') : M[reason];
       return { flag: 'badInput', message, field };
     }
     if (min && compareModeParts(p, min, mode) < 0) {
