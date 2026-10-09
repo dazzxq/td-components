@@ -326,7 +326,11 @@ export class CalendarGrid {
     if (same(next, this.focus)) { if (domFocus) this.focusActive(); return; }
     this.focus = copy(next);
     this._paint();
-    if (domFocus) this.focusActive();
+    if (domFocus) {
+      this.focusActive();
+      // the roving cell may be the SAME element (a month change relabels it): no focusin fires — report the new date explicitly
+      if (this.o.onFocusDate && this.view === 'days') this._focusKey = this._key(this.focus, this._focusKey, (v) => this.o.onFocusDate(v));
+    }
   }
 
   /**

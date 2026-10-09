@@ -600,8 +600,20 @@ export class TdDatetimeRange extends TdFormElement {
     });
     trigger.setAttribute('aria-expanded', 'true');
     trigger.setAttribute('aria-controls', this._modalId);
+    // Backspace on the TIME screen = back, from ANY control of the dialog (the footer buttons and the endpoint tabs are outside .td-time-step)
+    const modalRoot = document.getElementById(this._modalId);
+    if (modalRoot) modalRoot.addEventListener('keydown', (e) => this._onDialogKey(e));
     const box = this.querySelector('.td-dtr');
     if (box) box.setAttribute('data-state', 'open');
+  }
+
+  /** @private dialog-level Backspace: on the time screen it goes back to the date screen (never inside a text field — there are none, but be safe) */
+  _onDialogKey(e) {
+    if (e.key !== 'Backspace' || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || !this._draft || this._draft.step !== 'time') return;
+    const t = e.target instanceof Element ? e.target : null;
+    if (t && t.closest('input, textarea, select, [contenteditable="true"]')) return;
+    e.preventDefault();
+    this._showSide(this._draft.side, 'date', 'grid');
   }
 
   /** @private Close, discarding the pending pair. */
@@ -853,7 +865,7 @@ export class TdDatetimeRange extends TdFormElement {
     if (mode === 'datetime') {
       // the TIME screen (hidden until a day is activated); the "Tiếp: Đến" button sits under it (only while editing Từ)
       this._timeStep = new TimeStep({
-        prefix, labels: L, minuteStep: step, withNow: true, nowLabel: L.now,
+        prefix, labels, minuteStep: step, withNow: true, nowLabel: L.now, // the NORMALIZED label table (a malformed weekday array must not reach the time screen)
         onBack: () => this._showSide(this._draft.side, 'date', 'grid'),
         onNow: () => this._nowForSide(),
         onChange: (v) => { // a USER change of a wheel: it edits the time of the active endpoint
@@ -1032,7 +1044,11 @@ export class TdDatetimeRange extends TdFormElement {
     let btn = main.querySelector(':scope > .td-dtr-panel__open-end');
     if (!this.hasAttribute('allow-open-end')) {
       if (!btn) return;
-      if (btn === document.activeElement && this._grid) this._grid.focusActive();
+      if (btn === document.activeElement) { // hand the focus to the control that is on screen: the hour wheel (time screen) or the calendar
+        const wheel = this._draft && this._draft.step === 'time' && this._timeStep ? this._timeStep.el.querySelector('.td-dtp-wheel__list[data-part="hour"]') : null;
+        if (wheel) wheel.focus({ preventScroll: true });
+        else if (this._grid) this._grid.focusActive();
+      }
       btn.remove();
       return;
     }

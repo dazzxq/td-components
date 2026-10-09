@@ -836,7 +836,10 @@ export class TdDatetimePicker extends TdFormElement {
         onClose: () => this._onDialogClosed(pop),
       });
       trigger.setAttribute('aria-controls', this._modalId);
+      const modalRoot = document.getElementById(this._modalId);
+      if (modalRoot) modalRoot.addEventListener('keydown', (e) => this._onDialogKey(e)); // the footer is outside .td-time-step
     } else {
+      pop.addEventListener('keydown', (e) => this._onDialogKey(e));
       document.body.appendChild(pop);
       this._unbridge = bridgeTheme(pop, this);
       trigger.setAttribute('aria-controls', pop.id);
@@ -1113,6 +1116,15 @@ export class TdDatetimePicker extends TdFormElement {
       return;
     }
     this._commit({ year: t.year, month: t.month, day: t.day, hour: 0, minute: 0 });
+  }
+
+  /** @private dialog-level Backspace: on the time screen = back to the date screen, from any control (footer buttons included) */
+  _onDialogKey(e) {
+    if (e.key !== 'Backspace' || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || this._step !== 'time' || !this._draft) return;
+    const t = e.target instanceof Element ? e.target : null;
+    if (t && t.closest('input, textarea, select, [contenteditable="true"]')) return;
+    e.preventDefault();
+    this._goDate();
   }
 
   /** @private "dd/mm/yyyy" of a calendar day */
