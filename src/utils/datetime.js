@@ -616,6 +616,83 @@ export function parseModeDb(str, mode) {
   return y ? mkParts(y[1], 1, 1, 0, 0) : null;
 }
 
+// v0.63.0 (plan v0.63.0-typed-dates § C): what a user TYPES into an `editable` picker / range. Lenient on separators, strict
+// on the year (always 4 digits: "15/3/94" is refused, never guessed). No mask while typing — this runs when the text is
+// committed (Enter / blur / before the calendar opens).
+const T_SEP = String.raw`(?:\s*[\/.\-]\s*|\s+)`;
+const T_DMY = new RegExp(String.raw`^(\d{1,2})${T_SEP}(\d{1,2})${T_SEP}(\d{4})`);
+const T_DMY8 = /^(\d{2})(\d{2})(\d{4})/;
+const T_ISO_DATE = /^(\d{4})-(\d{1,2})-(\d{1,2})/;
+const T_TIME = /^(\d{1,2})[:h.](\d{2})$|^(\d{2})(\d{2})$/i;
+const T_DATETIME12 = /^(\d{2})(\d{2})(\d{4})(\d{2})(\d{2})$/;
+const T_ISO_DATETIME = /^(\d{4})-(\d{1,2})-(\d{1,2})T(\d{1,2}):(\d{2})(?::(\d{2}))?$/i;
+const T_MY = new RegExp(String.raw`^(\d{1,2})${T_SEP}(\d{4})$`);
+const T_MY6 = /^(\d{2})(\d{4})$/;
+const T_ISO_MONTH = /^(\d{4})-(\d{1,2})$/;
+
+/**
+ * The date part at the start of `s` → `{ y, m, d, rest }` (rest = what follows), or null.
+ * @param {string} s
+ */
+function typedDatePrefix(s) {
+  const iso = T_ISO_DATE.exec(s);
+  if (iso) return { y: iso[1], m: iso[2], d: iso[3], rest: s.slice(iso[0].length) };
+  const dmy = T_DMY.exec(s);
+  if (dmy) return { y: dmy[3], m: dmy[2], d: dmy[1], rest: s.slice(dmy[0].length) };
+  const n8 = T_DMY8.exec(s);
+  if (n8) return { y: n8[3], m: n8[2], d: n8[1], rest: s.slice(n8[0].length) };
+  return null;
+}
+
+/**
+ * Read a TYPED value of `mode` (plan v0.63.0 § C). Trims and collapses white space; day separators `/ . -` or a space.
+ *   date      `d{1,2} SEP d{1,2} SEP yyyy` · 8 digits `ddmmyyyy` · ISO `yyyy-mm-dd`
+ *   datetime  the date as above + (a space / ` - `) + `h{1,2}[:h.]mm` or `hhmm` · 12 digits `ddmmyyyyhhmm` · ISO `yyyy-mm-ddThh:mm`
+ *   month     `m{1,2} SEP yyyy` · 6 digits `mmyyyy` · ISO `yyyy-mm`
+ *   year      `yyyy`
+ * Syntactic only: the result may be impossible (31/02, day 00) — `invalidReason` says why. A datetime typed WITHOUT a time
+ * returns its date with `hour` / `minute` NaN (→ invalidReason 'incomplete'); nothing is added. A 2-digit year, a trailing
+ * part that is not a time, anything else → null (a format error).
+ * @param {unknown} str
+ * @param {unknown} mode
+ * @returns {DateTimeParts|null}
+ */
+export function parseTypedValue(str, mode) {
+  if (typeof str !== 'string') return null;
+  const s = str.trim().replace(/\s+/g, ' ');
+  if (!s) return null;
+  switch (normalizeMode(mode)) {
+    case 'year': {
+      const y = RE_YEAR.exec(s);
+      return y ? mkParts(y[1], 1, 1, 0, 0) : null;
+    }
+    case 'month': {
+      const m = T_MY.exec(s) || T_MY6.exec(s);
+      if (m) return mkParts(m[2], m[1], 1, 0, 0);
+      const i = T_ISO_MONTH.exec(s);
+      return i ? mkParts(i[1], i[2], 1, 0, 0) : null;
+    }
+    case 'date': {
+      const d = typedDatePrefix(s);
+      return d && d.rest === '' ? mkParts(d.y, d.m, d.d, 0, 0) : null;
+    }
+    default: {
+      const n12 = T_DATETIME12.exec(s);
+      if (n12) return mkParts(n12[3], n12[2], n12[1], n12[4], n12[5]);
+      const iso = T_ISO_DATETIME.exec(s);
+      if (iso) return iso[6] !== undefined && toInt(iso[6]) > 59 ? null : mkParts(iso[1], iso[2], iso[3], iso[4], iso[5]);
+      const d = typedDatePrefix(s);
+      if (!d) return null;
+      if (d.rest === '') return mkParts(d.y, d.m, d.d, NaN, NaN); // no time → 'incomplete' (never 00:00 by itself)
+      const sep = /^(?: - | -|- | )/.exec(d.rest);
+      if (!sep) return null;
+      const t = T_TIME.exec(d.rest.slice(sep[0].length));
+      if (!t) return null;
+      return t[1] !== undefined ? mkParts(d.y, d.m, d.d, t[1], t[2]) : mkParts(d.y, d.m, d.d, t[3], t[4]);
+    }
+  }
+}
+
 /** Display format of `mode`: `dd/mm/yyyy - hh:mm` | `dd/mm/yyyy` | `mm/yyyy` | `yyyy`. */
 export function formatModeDisplay(p, mode) {
   switch (normalizeMode(mode)) {

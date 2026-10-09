@@ -576,3 +576,69 @@ describe('years 1–9999 (v0.60.0 B2)', () => {
     assert.equal(dt.compareModeParts(P(31, 12, 9999, 23, 59), P(1, 1, 9999, 0, 0), 'year'), 0);
   });
 });
+
+describe('parseTypedValue (v0.63.0 § C — typed dates)', () => {
+  const T = dt.parseTypedValue;
+  it('date: separators / . - space, 8 digits, ISO — all read as the same day', () => {
+    for (const s of ['15/3/1994', '15/03/1994', '15-3-1994', '15.3.1994', '15 3 1994', '15031994', '1994-03-15', '1994-3-15',
+      '  15 / 03 / 1994  ', '15  3   1994', '15/3-1994']) {
+      assert.deepEqual(T(s, 'date'), P(15, 3, 1994, 0, 0), s);
+    }
+  });
+  it('date: a 2-digit year, a 5-digit year, garbage, a time, wrong digit counts → null (format error)', () => {
+    for (const s of ['15/3/94', '15/03/94', '150394', '15/3/19945', '150319945', 'abc', '', '   ', '15/3', '1994', '1503199',
+      '15/03/1994 09:05', '1994/03/15', '15//3/1994', '15/3/1994x', 'x15/3/1994', '١٥/٣/١٩٩٤']) {
+      assert.equal(T(s, 'date'), null, s);
+    }
+    for (const v of [null, undefined, 15031994, {}]) assert.equal(T(v, 'date'), null);
+  });
+  it('date: impossible days are READ (invalidReason says why) — 29/02 leap / not leap, 00/.., month 13, year 0000', () => {
+    assert.equal(dt.invalidReason(T('29/02/1996', 'date')), null);
+    assert.equal(dt.invalidReason(T('29/02/2000', 'date')), null);
+    assert.equal(dt.invalidReason(T('29/02/1994', 'date')), 'date');
+    assert.equal(dt.invalidReason(T('29/02/1900', 'date')), 'date');
+    assert.equal(dt.invalidReason(T('31/02/1994', 'date')), 'date');
+    assert.equal(dt.invalidReason(T('00/03/1994', 'date')), 'day');
+    assert.equal(dt.invalidReason(T('15/00/1994', 'date')), 'month');
+    assert.equal(dt.invalidReason(T('15/13/1994', 'date')), 'month');
+    assert.equal(dt.invalidReason(T('15/03/0000', 'date')), 'year');
+    assert.equal(dt.invalidReason(T('32011994', 'date')), 'day');
+  });
+  it('datetime: the date + a space / " - " + h:mm | h.mm | hhmm | 9h05; 12 digits; ISO with T', () => {
+    for (const s of ['15/3/1994 9:05', '15/03/1994 - 09:05', '15/03/1994 -09:05', '15/03/1994- 09:05', '15.3.1994 9.05',
+      '15-3-1994 0905', '15 3 1994 9h05', '15031994 0905', '150319940905', '1994-03-15T09:05', '1994-03-15t09:05',
+      '1994-03-15T09:05:30', '1994-03-15 09:05', '  15/03/1994   -   09:05 ']) {
+      assert.deepEqual(T(s, 'datetime'), P(15, 3, 1994, 9, 5), s);
+    }
+  });
+  it('datetime: no time → the date with NaN hour / minute (incomplete, never 00:00); a bad time / 2-digit year → null', () => {
+    const p = T('15/03/1994', 'datetime');
+    assert.equal(p.day, 15); assert.equal(p.month, 3); assert.equal(p.year, 1994);
+    assert.ok(Number.isNaN(p.hour) && Number.isNaN(p.minute));
+    assert.equal(dt.invalidReason(p), 'incomplete');
+    assert.equal(dt.invalidReason(T('15031994', 'datetime')), 'incomplete');
+    for (const s of ['15/3/94 9:05', '15/03/1994 9:5', '15/03/1994 905', '15/03/1994-09:05', '15/03/1994 09:05:00', '15/03/1994 x',
+      '1503199409051', '1994-03-15T09:05:60', '15/03/1994 09:05 PM', 'abc']) {
+      assert.equal(T(s, 'datetime'), null, s);
+    }
+    assert.equal(dt.invalidReason(T('15/03/1994 25:00', 'datetime')), 'hour');
+    assert.equal(dt.invalidReason(T('15/03/1994 23:60', 'datetime')), 'minute');
+  });
+  it('month: m SEP yyyy, 6 digits, ISO; year: 4 digits only', () => {
+    for (const s of ['3/1994', '03/1994', '3-1994', '3.1994', '3 1994', '031994', '1994-03', '1994-3']) {
+      assert.deepEqual(T(s, 'month'), P(1, 3, 1994, 0, 0), s);
+    }
+    for (const s of ['3/94', '0394', '15/03/1994', '1994', 'abc']) assert.equal(T(s, 'month'), null, s);
+    assert.equal(dt.invalidReason(T('13/1994', 'month')), 'month');
+    assert.deepEqual(T(' 1994 ', 'year'), P(1, 1, 1994, 0, 0));
+    for (const s of ['94', '19945', '1994-03', 'abc']) assert.equal(T(s, 'year'), null, s);
+    assert.equal(dt.invalidReason(T('0000', 'year')), 'year');
+  });
+  it('the result of a valid typed value formats to the mode display (what the field shows after a commit)', () => {
+    assert.equal(dt.formatModeDisplay(T('15031994', 'date'), 'date'), '15/03/1994');
+    assert.equal(dt.formatModeDisplay(T('15/3/1994 9:05', 'datetime'), 'datetime'), '15/03/1994 - 09:05');
+    assert.equal(dt.formatModeDisplay(T('3/1994', 'month'), 'month'), '03/1994');
+    // an unknown mode is datetime
+    assert.deepEqual(T('150319940905', 'week'), P(15, 3, 1994, 9, 5));
+  });
+});

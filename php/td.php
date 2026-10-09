@@ -3675,6 +3675,8 @@ namespace {
      * minute_step, form_value_format (iso | display | db), start_name, end_name, placeholder, error, attrs (host),
      * class, id. v0.59.0 `allow_open_end` (bool): host `allow-open-end`; the end is never required (required / both →
      * the start native only; 'end' → none); start without end → trigger "{start} – Không hạn".
+     * v0.63.0 `editable` (bool): host `editable` only (typed dates on desktop, plan v0.63.0-typed-dates § A) — the SSR markup is
+     * unchanged; the element does not adopt it (another markup) and takes the safe-render path with the live native values.
      */
     function td_datetime_range(string $name, ?string $start = null, ?string $end = null, array $o = []): string
     {
@@ -3689,6 +3691,7 @@ namespace {
         $disabled = !empty($o['disabled']);
         $req = td__dtr_required($o['required'] ?? null);
         $openEnd = !empty($o['allow_open_end']); // v0.59.0
+        $editable = !empty($o['editable']); // v0.63.0
         $reqParts = $openEnd ? array_values(array_diff($req['parts'], ['end'])) : $req['parts'];
         $s = $start !== null ? td__dtr_parts($start, $mode, 'start') : null;
         $e = $end !== null ? td__dtr_parts($end, $mode, 'end') : null;
@@ -3750,11 +3753,12 @@ namespace {
             'helper-text' => $help,
             'error-text' => $error,
             'allow-open-end' => $openEnd,
+            'editable' => $editable,
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['id', 'class', 'name', 'mode', 'start', 'end', 'start-name', 'end-name', 'label', 'placeholder', 'min',
             'max', 'max-days', 'minute-step', 'form-value-format', 'open-at', 'required', 'disabled', 'helper-text', 'error-text', 'value',
-            'allow-open-end'], $extra, $taken);
+            'allow-open-end', 'editable'], $extra, $taken);
         $html .= Td::attrs($extra, $taken) . '>';
 
         $natives = '';
@@ -3802,6 +3806,8 @@ namespace {
      * No JS the browser submits its own format: date `yyyy-mm-dd` (= iso), datetime `yyyy-mm-ddThh:mm`.
      * v0.59.0 `clearable` (bool): host `clearable` + `div.td-dtp--clearable` + the clear button after the trigger
      * (`hidden` without a value / when required / disabled; invisible until the element is defined — no dead control).
+     * v0.63.0 `editable` (bool): host `editable` only (typed dates on desktop, plan v0.63.0-typed-dates § A) — the SSR markup is
+     * unchanged; the element does not adopt it (another markup) and takes the safe-render path with the live native value.
      */
     function td_datetime_picker(string $name, ?string $value = null, array $o = []): string
     {
@@ -3822,6 +3828,7 @@ namespace {
         $disabled = !empty($o['disabled']);
         $required = !empty($o['required']);
         $clearable = !empty($o['clearable']); // v0.59.0
+        $editable = !empty($o['editable']); // v0.63.0
         $min = isset($o['min']) && is_string($o['min']) ? td__dtr_parts($o['min'], $mode, 'start') : null;
         $max = isset($o['max']) && is_string($o['max']) ? td__dtr_parts($o['max'], $mode, 'end') : null;
         $v = $value !== null ? td__dtr_parts($value, $mode, 'start') : null;
@@ -3872,10 +3879,11 @@ namespace {
             'error-text' => $error,
             'aria-label' => $aria,
             'clearable' => $clearable,
+            'editable' => $editable,
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['id', 'class', 'name', 'mode', 'value', 'label', 'placeholder', 'min', 'max', 'minute-step',
-            'form-value-format', 'open-at', 'required', 'disabled', 'helper-text', 'error-text', 'aria-label', 'clearable'], $extra, $taken);
+            'form-value-format', 'open-at', 'required', 'disabled', 'helper-text', 'error-text', 'aria-label', 'clearable', 'editable'], $extra, $taken);
         $html .= Td::attrs($extra, $taken) . '>';
 
         $text = $display($v) ?? ($placeholder ?? ($mode === 'datetime' ? Td::DTP_LABELS['placeholder'] : Td::DTP_LABELS['placeholderDate']));
