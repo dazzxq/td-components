@@ -297,6 +297,7 @@
 	}
 
 	.td-dtp-wheel__list {
+		touch-action: pan-y; /* a vertical swipe scrolls the wheel (native momentum + snap); no horizontal pan, no double-tap zoom */
 		position: relative; /* options' offsetParent: centring needs no ancestor positioning */
 		height: calc(var(--td-dtp-option-h) * var(--td-dtp-visible));
 		padding-block: calc(var(--td-dtp-option-h) * (var(--td-dtp-visible) - 1) / 2);

@@ -8,7 +8,7 @@ import { LAYERS, register as registerLayer, bridgeTheme, focusablesIn } from '..
 import { matchesBelow } from '../utils/breakpoints-internal.js';
 import { clampDate, isDateOutOfRange, monthOutOfRange, yearOutOfRange } from '../utils/calendar-model.js';
 import { CalendarGrid } from './calendar-grid.js';
-import { TimeWheels } from './time-wheels.js';
+import { TimeStep } from './time-step.js';
 import { freshCalendarLabels, normalizeCalendarLabels } from './calendar-labels.js';
 import {
   parseBound, invalidReason, normalizeMinuteStep, snapMinuteDown, partsFromDate, compareParts,
@@ -174,7 +174,14 @@ export class TdDatetimePicker extends TdFormElement {
     this._sheet = false;
     /** @private the open calendar (src/form/calendar-grid.js) / the datetime wheels (time-wheels.js); null when closed */
     this._cal = null;
-    this._wheels = null;
+    /** @private datetime: the TIME screen (src/form/time-step.js — the only owner of the wheels); null when closed */
+    this._timeStep = null;
+    /** @private datetime: 'date' | 'time' — the screen showing (v0.61.0: the dialog is two screens); 'date' otherwise */
+    this._step = 'date';
+    /** @private the action buttons { today, now, confirm } (popover row OR the sheet footer nodes) and the footer nodes for TdModal */
+    this._btn = null;
+    this._footerNodes = null;
+    this._status = null;
     /** @private datetime: the draft { date, hour, minute }, committed by "Chọn" only; null when closed */
     this._draft = null;
   }
@@ -823,7 +830,9 @@ export class TdDatetimePicker extends TdFormElement {
         size: 'sm',
         escapeCloses: true, // closing loses nothing (the draft is a copy)
         focusTarget: pop.querySelector('.td-cal [tabindex="0"]'),
-        actions: [], // the actions live in the body (no footer): a date / month / year pick commits by itself
+        // v0.61.0: the actions are the TdModal FOOTER (not scrolled, never over the content): hand-built nodes carrying `data-action`
+        // (today | now | confirm); the popover keeps its own row. A date / month / year pick still commits by itself.
+        footer: this._footerNodes,
         onClose: () => this._onDialogClosed(pop),
       });
       trigger.setAttribute('aria-controls', this._modalId);
@@ -855,12 +864,10 @@ export class TdDatetimePicker extends TdFormElement {
       window.addEventListener('scroll', this._onReposition, true);
       this._unwatchRef = watchReference(trigger, () => this._updatePop());
     }
-    if (this._wheels) this._wheels.centre(); // centred at once — no opening animation (v0.60.0)
     trigger.setAttribute('aria-expanded', 'true');
     const box = this.querySelector('.td-dtp');
     if (box) box.setAttribute('data-state', 'open');
     if (!sheet) this._cal.focusActive();
-    else if (this._wheels) requestAnimationFrame(() => { if (this._wheels) this._wheels.centre(); }); // after the sheet laid out
     void mode;
   }
 
@@ -889,9 +896,13 @@ export class TdDatetimePicker extends TdFormElement {
   /** @private every close path ends here (TdModal onClose, popover teardown): idempotent state reset */
   _onDialogClosed(pop) {
     if (!this._isOpen || this._pop !== pop) return;
-    if (this._wheels) this._wheels.destroy();
+    if (this._timeStep) this._timeStep.destroy();
     if (this._cal) this._cal.destroy();
-    this._wheels = null;
+    this._timeStep = null;
+    this._btn = null;
+    this._footerNodes = null;
+    this._status = null;
+    this._step = 'date';
     this._cal = null;
     this._draft = null;
     this._isOpen = false;
@@ -1025,37 +1036,51 @@ export class TdDatetimePicker extends TdFormElement {
     scroll.appendChild(this._cal.el);
 
     let err = null;
+    this._step = 'date';
+    pop.setAttribute('data-step', 'date');
     if (mode === 'datetime') {
-      this._wheels = new TimeWheels({
-        prefix, labels: L, minuteStep: this._minuteStep(), hour: pend.hour, minute: pend.minute,
+      this._timeStep = new TimeStep({
+        prefix, labels: L, minuteStep: this._minuteStep(),
+        onBack: () => this._goDate(),
         onChange: (t) => { this._draft.hour = t.hour; this._draft.minute = t.minute; this._refreshDraft(); },
       });
-      scroll.appendChild(this._wheels.el);
+      scroll.appendChild(this._timeStep.el);
       err = make('p', 'td-dtp-pop__error', { id: `${prefix}-error`, role: 'alert' });
       err.hidden = true;
       scroll.appendChild(err);
+      this._status = make('p', 'td-sr-only td-dtp-pop__status', { role: 'status' });
+      pop.appendChild(this._status);
     }
     pop.appendChild(scroll);
 
-    // actions: date / month / year → "Hôm nay" / "Tháng này" / "Năm nay"; datetime → "Bây giờ" + "Chọn"
-    const actions = make('div', 'td-dtp-pop__actions');
-    const button = (cls, action, label, onClick) => {
-      const b = make('button', `td-btn ${cls} td-btn--sm`, { type: 'button', 'data-action': action });
+    // actions: date / month / year → "Hôm nay" / "Tháng này" / "Năm nay"; datetime → date screen "Hôm nay"; time screen "Bây giờ" + "Chọn".
+    // Same `data-action` nodes in the popover row and in the sheet footer (TdModal `footer`, hand-built: no `actions` metadata needed).
+    const button = (variant, action, label, onClick) => {
+      const b = make('button', sheet ? `td-btn td-btn--${variant}` : `td-btn td-btn--${variant} td-btn--sm`, { type: 'button', 'data-action': action });
       b.appendChild(make('span', 'td-btn__label', {}, label));
       b.addEventListener('click', onClick);
       return b;
     };
+    const btns = {};
     if (mode === 'datetime') {
-      actions.appendChild(button('td-btn--secondary', 'now', this._text(L, 'now'), () => this._setNow()));
-      actions.appendChild(button('td-btn--primary', 'confirm', L.confirm, () => this._confirm()));
+      btns.today = button('secondary', 'today', this._text(L, 'now') === L.now ? L.nowDate : this._text(L, 'now'), () => this._pickToday());
+      btns.now = button('secondary', 'now', this._text(L, 'now'), () => this._setNow());
+      btns.confirm = button('primary', 'confirm', L.confirm, () => this._confirm());
+      if (isDateOutOfRange(today, min, max)) btns.today.setAttribute('aria-disabled', 'true');
     } else {
-      const todayBtn = button('td-btn--secondary', 'today', this._text(L, 'now'), () => this._pickToday());
+      btns.today = button('secondary', 'today', this._text(L, 'now'), () => this._pickToday());
       const out = mode === 'date' ? isDateOutOfRange(today, min, max)
         : mode === 'month' ? monthOutOfRange(today.year, today.month, min, max) : yearOutOfRange(today.year, min, max);
-      if (out) todayBtn.setAttribute('aria-disabled', 'true');
-      actions.appendChild(todayBtn);
+      if (out) btns.today.setAttribute('aria-disabled', 'true');
     }
-    pop.appendChild(actions);
+    this._btn = btns;
+    this._footerNodes = Object.values(btns);
+    if (!sheet) {
+      const actions = make('div', 'td-dtp-pop__actions');
+      for (const b of this._footerNodes) actions.appendChild(b);
+      pop.appendChild(actions);
+    }
+    this._syncActions();
     this._popErr = err;
     if (mode === 'datetime') this._refreshDraft();
     return pop;
@@ -1064,21 +1089,85 @@ export class TdDatetimePicker extends TdFormElement {
   /** @private a pick at the root view of the mode (the grid reports it; every other pick only changed the view) */
   _onPick(level, d) {
     const mode = this._mode();
-    if (mode === 'datetime') {
+    if (mode === 'datetime') { // v0.61.0: a day does NOT commit — it opens the time screen
       this._draft.date = { year: d.year, month: d.month, day: d.day };
-      this._refreshDraft();
+      this._goTime('hour');
       return;
     }
     this._commit({ year: d.year, month: d.month, day: d.day, hour: 0, minute: 0 });
     void level;
   }
 
-  /** @private "Hôm nay" / "Tháng này" / "Năm nay": commit the current day / month / year (disabled outside min–max) */
+  /**
+   * @private "Hôm nay" / "Tháng này" / "Năm nay": commit the current day / month / year (disabled outside min–max). datetime
+   * (v0.61.0): the date screen's "Hôm nay" picks today and goes to the TIME screen (like activating that day) — no commit.
+   */
   _pickToday() {
-    const btn = this._pop && this._pop.querySelector('[data-action="today"]');
+    const btn = this._btn && this._btn.today;
     if (!btn || btn.getAttribute('aria-disabled') === 'true') return;
     const t = partsFromDate(new Date());
+    if (this._mode() === 'datetime') {
+      this._draft.date = { year: t.year, month: t.month, day: t.day };
+      this._cal.setSelected(this._draft.date, { reveal: true });
+      this._goTime('hour');
+      return;
+    }
     this._commit({ year: t.year, month: t.month, day: t.day, hour: 0, minute: 0 });
+  }
+
+  /** @private "dd/mm/yyyy" of a calendar day */
+  _dayText(d) {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.day)}/${pad(d.month)}/${d.year}`;
+  }
+
+  /** @private announce through the dialog's own `role=status` (not the grid's live region) */
+  _say(text) {
+    if (this._status && this._status.textContent !== text) this._status.textContent = text;
+  }
+
+  /** @private show / hide the action buttons for the screen (datetime): date → "Hôm nay"; time → "Bây giờ" + "Chọn" */
+  _syncActions() {
+    if (!this._btn || this._mode() !== 'datetime') return;
+    const time = this._step === 'time';
+    this._btn.today.hidden = time;
+    this._btn.now.hidden = !time;
+    this._btn.confirm.hidden = !time;
+  }
+
+  /**
+   * @private datetime: the TIME screen. `focus` is the TimeStep policy ('hour' | 'preserve' | 'none'). Everything that opens the
+   * time screen goes through here → TimeStep.show() (unhide → time → layout → centre → focus).
+   */
+  _goTime(focus) {
+    const d = this._draft;
+    if (!d || !this._timeStep) return;
+    const wasDate = this._step !== 'time';
+    this._step = 'time';
+    this._pop.setAttribute('data-step', 'time');
+    this._cal.el.hidden = true;
+    this._timeStep.show({ dateLabel: this._timeStep.headingFor(d.date), hour: d.hour, minute: d.minute, focus });
+    this._syncActions();
+    this._refreshDraft();
+    if (wasDate) this._say(fill(TdDatetimePicker.labels.timeFor, { date: this._dayText(d.date) }));
+    if (!this._sheet) this._placePop();
+  }
+
+  /**
+   * @private datetime: back to the DATE screen ("‹" / Backspace). The draft (even one outside min–max) and its error stay; the focus
+   * lands on the nearest ENABLED day (the draft date clamped into min–max).
+   */
+  _goDate() {
+    const d = this._draft;
+    if (!d || !this._timeStep) return;
+    this._step = 'date';
+    this._pop.setAttribute('data-step', 'date');
+    this._timeStep.hide();
+    this._cal.el.hidden = false;
+    this._cal.setSelected(d.date, { reveal: true }); // the grid clamps its focus date into min–max
+    this._cal.focusActive();
+    this._syncActions();
+    if (!this._sheet) this._placePop();
   }
 
   /** @private datetime: "Bây giờ" — the draft becomes the real now (minute snapped down; outside min–max the range error shows); no commit */
@@ -1091,8 +1180,9 @@ export class TdDatetimePicker extends TdFormElement {
     // calendar's navigation focus is clamped (reveal), so the view lands on the nearest allowed month
     this._draft = { date: d, hour: now.hour, minute };
     this._cal.setSelected(d, { reveal: true });
-    this._wheels.setTime(now.hour, minute);
+    this._timeStep.show({ dateLabel: this._timeStep.headingFor(d), hour: now.hour, minute, focus: 'preserve' });
     this._refreshDraft();
+    this._say(fill(TdDatetimePicker.labels.timeFor, { date: this._dayText(d) }));
   }
 
   /**
@@ -1111,8 +1201,8 @@ export class TdDatetimePicker extends TdFormElement {
       line.hidden = true;
       line.textContent = '';
     }
-    if (this._wheels) {
-      for (const list of this._wheels.el.querySelectorAll('.td-dtp-wheel__list')) {
+    if (this._timeStep) {
+      for (const list of this._timeStep.el.querySelectorAll('.td-dtp-wheel__list')) {
         if (err) list.setAttribute('aria-describedby', line.id);
         else list.removeAttribute('aria-describedby');
       }
@@ -1124,9 +1214,8 @@ export class TdDatetimePicker extends TdFormElement {
   _confirm() {
     if (!this._draft) return;
     const err = this._refreshDraft();
-    if (err) {
-      const list = this._wheels && this._wheels.el.querySelector('.td-dtp-wheel__list[data-part="hour"]');
-      if (list) list.focus({ preventScroll: true });
+    if (err) { // refused: stay on the time screen, the wheels centred, the focus on the hour wheel (the error is announced)
+      this._timeStep.show({ dateLabel: this._timeStep.headingFor(this._draft.date), hour: this._draft.hour, minute: this._draft.minute, focus: 'hour' });
       return;
     }
     const d = this._draft;
@@ -1156,11 +1245,11 @@ export class TdDatetimePicker extends TdFormElement {
     if (!this._cal) return;
     const { min, max } = this._bounds();
     this._cal.setBounds(min, max);
-    const today = this._pop.querySelector('[data-action="today"]');
+    const today = this._btn && this._btn.today;
     if (today) {
       const t = partsFromDate(new Date());
       const mode = this._mode();
-      const out = mode === 'date' ? isDateOutOfRange(t, min, max)
+      const out = mode === 'date' || mode === 'datetime' ? isDateOutOfRange(t, min, max)
         : mode === 'month' ? monthOutOfRange(t.year, t.month, min, max) : yearOutOfRange(t.year, min, max);
       if (out) today.setAttribute('aria-disabled', 'true');
       else today.removeAttribute('aria-disabled');

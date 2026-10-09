@@ -20,6 +20,8 @@ export function freshCalendarLabels() {
     ...freshWeekdays(),
     monthName: 'Tháng {n}', heading: 'Tháng {month} năm {year}', headingMonths: 'Năm {year}', headingYears: '{from} – {to}',
     dayLabel: '{weekday}, {day} tháng {month} năm {year}', yearLabel: 'Năm {year}', todaySuffix: 'hôm nay',
+    // v0.61.0 datetime in two screens (the time screen of src/form/time-step.js)
+    timeBack: 'Chọn lại ngày', timeHeading: '{weekday}, {day}/{month}/{year}', timeFor: 'Chọn giờ cho {date}',
   };
 }
 

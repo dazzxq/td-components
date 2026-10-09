@@ -8344,6 +8344,7 @@
 	}
 
 	.td-dtp-wheel__list {
+		touch-action: pan-y; /* a vertical swipe scrolls the wheel (native momentum + snap); no horizontal pan, no double-tap zoom */
 		position: relative; /* options' offsetParent: centring needs no ancestor positioning */
 		height: calc(var(--td-dtp-option-h) * var(--td-dtp-visible));
 		padding-block: calc(var(--td-dtp-option-h) * (var(--td-dtp-visible) - 1) / 2);
@@ -8590,6 +8591,46 @@
 		}
 	}
 
+	/* v0.61.0 datetime = two screens (data-step="date" | "time" on the popover / the range panel): the screen not showing is `hidden` */
+	.td-cal[hidden],
+	.td-time-step[hidden] {
+		display: none;
+	}
+
+	.td-time-step {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-xs);
+		min-inline-size: 0;
+	}
+
+	.td-time-step__head {
+		display: flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+	}
+
+	/* "‹" is a `.td-cal__nav` (size, hover gate, press shape, focus ring, forced colours come from it) */
+	.td-time-step__heading {
+		flex: 1 1 auto;
+		min-inline-size: 0;
+		margin: 0;
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-cal-fg);
+		text-align: center;
+	}
+
+	.td-time-step__now {
+		align-self: center;
+	}
+
+	/* the one scroller of the sheet is the modal body (and only when the screen is shorter than the content); the popover's own
+	   scroll region is a last resort of the floating placement */
+	.td-dtp-pop--sheet .td-dtp-pop__scroll {
+		overflow: visible;
+	}
+
 	/* inside the bottom sheet: the same tree, in the flow, no surface of its own (the modal dialog is the surface) */
 	.td-dtp-pop--sheet {
 		position: static;
@@ -8634,14 +8675,6 @@
 		gap: var(--td-space-sm);
 		justify-content: flex-end;
 		padding-block-start: var(--td-space-2xs);
-	}
-
-	/* the modal body is the scroller of the sheet: the actions stay pinned at its bottom edge */
-	.td-dtp-pop--sheet .td-dtp-pop__actions {
-		position: sticky;
-		inset-block-end: 0;
-		padding-block: var(--td-space-sm);
-		background: var(--td-glass-solid);
 	}
 
 	.td-dtp-pop__actions .td-btn[aria-disabled="true"] {
@@ -17941,7 +17974,8 @@
 		align-self: flex-start;
 	}
 
-	.td-dtr-panel[data-side="end"] .td-dtr-panel__next {
+	.td-dtr-panel[data-side="end"] .td-dtr-panel__next,
+	.td-dtr-panel[data-step="date"] .td-dtr-panel__next {
 		display: none;
 	}
 
@@ -17982,47 +18016,9 @@
 			grid-column: 2;
 		}
 
-		.td-dtr-panel .td-cal {
+		.td-dtr-panel .td-cal,
+		.td-dtr-panel .td-time-step {
 			inline-size: calc(7 * var(--td-cal-cell));
-		}
-
-		.td-dtr-panel[data-mode="datetime"] .td-dtr-panel__main {
-			display: grid;
-			grid-template-columns: max-content minmax(0, 1fr);
-			column-gap: var(--td-space-lg);
-			align-items: start;
-		}
-
-		.td-dtr-panel[data-mode="datetime"] .td-dtr-panel__main > :is(.td-dtr-panel__switch, .td-dtr-panel__open-end) {
-			grid-column: 1 / -1;
-		}
-
-		/* rows: 1 the switch · [2 "Không hạn"] · the calendar spans the wheels' and the "Tiếp" rows */
-		.td-dtr-panel[data-mode="datetime"] .td-dtr-panel__main > .td-cal {
-			grid-column: 1;
-			grid-row: 2 / span 2;
-		}
-
-		.td-dtr-panel[data-mode="datetime"] .td-dtr-panel__main:has(> .td-dtr-panel__open-end) > .td-cal {
-			grid-row: 3 / span 2;
-		}
-
-		.td-dtr-panel[data-mode="datetime"] .td-dtr-panel__main > .td-dtp-pop__time {
-			grid-column: 2;
-			grid-row: 2;
-		}
-
-		.td-dtr-panel[data-mode="datetime"] .td-dtr-panel__main:has(> .td-dtr-panel__open-end) > .td-dtp-pop__time {
-			grid-row: 3;
-		}
-
-		.td-dtr-panel[data-mode="datetime"] .td-dtr-panel__main > .td-dtr-panel__next {
-			grid-column: 2;
-			grid-row: 3;
-		}
-
-		.td-dtr-panel[data-mode="datetime"] .td-dtr-panel__main:has(> .td-dtr-panel__open-end) > .td-dtr-panel__next {
-			grid-row: 4;
 		}
 	}
 
@@ -18039,6 +18035,7 @@
 			flex-wrap: nowrap;
 			padding-block: 2px; /* room for the focus ring inside the scroller */
 			overflow-x: auto;
+			overflow-y: hidden; /* a horizontal chip scroller only (v0.61.0: never a vertical layout scroller) */
 			overscroll-behavior-x: contain;
 			scroll-snap-type: x proximity;
 			scrollbar-width: none;

@@ -34,7 +34,7 @@ const $ = (sel) => root().querySelector(sel);
 /** an action button: the popover row OR the sheet / dialog footer (same `data-action`, plan "Tích hợp chân TdModal") */
 const act = (name) => {
   const m = openModal();
-  return (livePop() && livePop().querySelector(`[data-action="${name}"]`)) || (m && m.querySelector(`.td-modal__footer [data-action="${name}"]`)) || null;
+  return (livePop() && livePop().querySelector(`[data-action="${name}"]`)) || (m && m.querySelector(`[data-action="${name}"]`)) || null;
 };
 const shown = (el) => !!el && !el.hidden && !el.closest('[hidden]') && el.getClientRects().length > 0;
 const stepOf = () => (livePop() || openModal().querySelector('.td-dtr-panel')).getAttribute('data-step');
