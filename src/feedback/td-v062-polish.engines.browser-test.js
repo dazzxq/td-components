@@ -194,13 +194,23 @@ describe('media-picker dialog motion = modal motion (plan D)', () => {
     expect(cs.transitionTimingFunction).to.contain('cubic-bezier(0.32, 0.72, 0, 1)');
   });
 
-  it('reduced motion: no transform at any state (opacity only); the site opt-out keeps fade-only', async () => {
+  it('reduced motion is the ONLY default case with transform: none (opacity-only transition)', async () => {
     await setViewport({ width: 1024, height: 800 });
     cleanups.push(() => setViewport({ width: 800, height: 600 }));
     await emulateMedia({ reducedMotion: 'reduce' });
     const { dialog } = shell();
-    expect(getComputedStyle(dialog).transform).to.equal('none');
+    const cs = getComputedStyle(dialog);
+    expect(cs.transform).to.equal('none');
+    expect(cs.transitionProperty).to.equal('opacity');
     await emulateMedia({ reducedMotion: 'no-preference' });
+    expect(getComputedStyle(dialog).transform).to.not.equal('none'); // back to the scale opening: none is not the default
+  });
+
+  it('the site opt-out tokens are the only other way to a fade-only opening', async () => {
+    await setViewport({ width: 1024, height: 800 });
+    cleanups.push(() => setViewport({ width: 800, height: 600 }));
+    const { dialog } = shell();
+    expect(getComputedStyle(dialog).transform).to.not.equal('none');
     document.documentElement.style.setProperty('--td-media-picker-enter-from', 'none');
     cleanups.push(() => document.documentElement.style.removeProperty('--td-media-picker-enter-from'));
     expect(getComputedStyle(dialog).transform).to.equal('none');
