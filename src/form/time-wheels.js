@@ -177,11 +177,15 @@ export class TimeWheels {
   /** The time shown. */
   getTime() { return { ...this.time }; }
 
-  /** Select a time from outside ("Bây giờ"); never reports through `onChange`. */
-  setTime(hour, minute) {
+  /**
+   * Select a time from outside ("Bây giờ"); never reports through `onChange`. `{ smooth: false }` (v0.61.0, the range dialog
+   * switching endpoint) centres at once instead of scrolling.
+   */
+  setTime(hour, minute, { smooth = true } = {}) {
     for (const list of this.el.querySelectorAll('.td-dtp-wheel__list')) {
-      this._select(list, list.getAttribute('data-part') === 'hour' ? hour : minute, true, false);
+      this._select(list, list.getAttribute('data-part') === 'hour' ? hour : minute, smooth, false);
     }
+    if (!smooth) this.centre();
   }
 
   /** Centre both wheels on their selection at once (call once the dialog is in the document and laid out). */

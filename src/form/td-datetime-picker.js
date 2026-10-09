@@ -9,6 +9,7 @@ import { matchesBelow } from '../utils/breakpoints-internal.js';
 import { clampDate, isDateOutOfRange, monthOutOfRange, yearOutOfRange } from '../utils/calendar-model.js';
 import { CalendarGrid } from './calendar-grid.js';
 import { TimeWheels } from './time-wheels.js';
+import { freshCalendarLabels, normalizeCalendarLabels } from './calendar-labels.js';
 import {
   parseBound, invalidReason, normalizeMinuteStep, snapMinuteDown, partsFromDate, compareParts,
   normalizeMode, toModeParts, parseModeValue, parseModeDb, formatModeDisplay, formatModeDb, formatModeIso,
@@ -30,12 +31,6 @@ const FORM_ASSOCIATED = 'input, textarea, select, button, fieldset, output, obje
 /** popover geometry (plan v0.60.0 A5): the margin to the viewport, and the scroll-region height under which the popover clamps instead */
 const POP_MARGIN = 8;
 const POP_MIN_SCROLL = 220;
-/** the calendar label keys a site may override; a bad shape falls back to these */
-const CAL_DEFAULTS = {
-  weekdaysShort: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
-  weekdaysLong: ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'],
-};
-
 const fill = (template, vars) => String(template).replace(/\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : ''));
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 
@@ -142,12 +137,8 @@ export class TdDatetimePicker extends TdFormElement {
     dateMonth: 'Tháng', dateYear: 'Năm', // legend of the fields group
     // v0.59.0 `clearable`: the name of the clear button (per mode, like the others)
     clear: 'Xoá ngày', clearDate: 'Xoá ngày', clearMonth: 'Xoá tháng', clearYear: 'Xoá năm',
-    // v0.60.0 calendar (plan v0.60.0-calendar-picker E1). `{…}` are filled in; the two weekday arrays have 7 entries (Monday first)
-    prevMonth: 'Tháng trước', nextMonth: 'Tháng sau', prevYear: 'Năm trước', nextYear: 'Năm sau',
-    prevYears: '12 năm trước', nextYears: '12 năm sau', pickMonth: 'chọn tháng', pickYear: 'chọn năm',
-    weekdaysShort: CAL_DEFAULTS.weekdaysShort, weekdaysLong: CAL_DEFAULTS.weekdaysLong,
-    monthName: 'Tháng {n}', heading: 'Tháng {month} năm {year}', headingMonths: 'Năm {year}', headingYears: '{from} – {to}',
-    dayLabel: '{weekday}, {day} tháng {month} năm {year}', yearLabel: 'Năm {year}', todaySuffix: 'hôm nay',
+    // v0.60.0 calendar (plan v0.60.0-calendar-picker E1): the calendar keys come from src/form/calendar-labels.js (fresh weekday arrays)
+    ...freshCalendarLabels(),
   };
 
   /** Validation messages (`{min}` / `{max}` are filled in); override per site like `labels`. */
@@ -978,19 +969,11 @@ export class TdDatetimePicker extends TdFormElement {
 
   /** @private the label table with the calendar keys validated (a site may override them; a bad shape → the defaults, once) */
   _calLabels() {
-    const L = TdDatetimePicker.labels;
-    const D = CAL_DEFAULTS;
-    const out = { ...L };
-    for (const k of ['weekdaysShort', 'weekdaysLong']) {
-      if (!Array.isArray(L[k]) || L[k].length !== 7 || !L[k].every((x) => typeof x === 'string')) {
-        if (!this._warnedLabels) {
-          this._warnedLabels = true;
-          console.warn(`td-datetime-picker: labels.${k} must be an array of 7 strings — the defaults are used.`);
-        }
-        out[k] = D[k];
-      }
-    }
-    return out;
+    return normalizeCalendarLabels(TdDatetimePicker.labels, (k) => {
+      if (this._warnedLabels) return;
+      this._warnedLabels = true;
+      console.warn(`td-datetime-picker: labels.${k} must be an array of 7 strings — the defaults are used.`);
+    });
   }
 
   /** @private build the dialog tree (DOM API: labels are text) — the same for the popover and the sheet */

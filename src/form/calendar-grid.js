@@ -60,6 +60,19 @@ const isoDate = (d) => `${String(d.year).padStart(4, '0')}-${String(d.month).pad
  * @property {CalDate} today
  * @property {(level: 'day'|'month'|'year', date: CalDate) => void} onCommit a pick at the root view
  * @property {(view: string) => void} [onView] the view changed (the popover re-places itself)
+ * @property {(date: CalDate) => CellState} [cellState] v0.61.0 (range): what each DAY cell shows, read on every paint (days view
+ *   only; the month / year grids keep reading `selected`). Without it the cells are painted exactly as in 0.60.
+ * @property {boolean} [multiselectable] with `cellState`: `aria-multiselectable="true"` on the day grid (default true)
+ * @property {(date: CalDate|null) => void} [onFocusDate] v0.61.0: the DOM focus is on a day cell (its date) / left the grid (null)
+ * @property {(date: CalDate|null) => void} [onHoverDate] v0.61.0: a MOUSE is over a day cell (its date) / left the day grid (null)
+ *
+ * @typedef {object} CellState
+ * @property {boolean} [selected] aria-selected
+ * @property {'start'|'end'|'single'|'in'|null} [role] -> data-range
+ * @property {'in'|'end'|null} [preview] -> data-preview
+ * @property {boolean} [disabled] -> aria-disabled (min / max)
+ * @property {boolean} [dimmed] -> data-dimmed ONLY (still enabled: max-days)
+ * @property {string} [label] appended to the aria-label
  */
 export class CalendarGrid {
   /** @param {CalendarGridOptions} o */
@@ -106,6 +119,7 @@ export class CalendarGrid {
     // days
     this.days = make('div', 'td-cal__days');
     const table = make('table', 'td-cal__grid', { role: 'grid', 'aria-labelledby': this.live.id });
+    if (this.o.cellState && this.o.multiselectable !== false) table.setAttribute('aria-multiselectable', 'true');
     const hr = make('tr');
     L.weekdaysShort.forEach((short, i) => {
       const th = make('th', 'td-cal__weekday', { scope: 'col', abbr: L.weekdaysLong[i], 'aria-label': L.weekdaysLong[i] }, short);
@@ -153,6 +167,14 @@ export class CalendarGrid {
 
     el.addEventListener('click', (e) => this._onClick(e));
     el.addEventListener('keydown', (e) => this._onKey(e));
+    if (this.o.onFocusDate) {
+      el.addEventListener('focusin', (e) => this._emitFocus(e));
+      el.addEventListener('focusout', (e) => this._emitFocus(e));
+    }
+    if (this.o.onHoverDate) {
+      this.days.addEventListener('pointerover', (e) => this._emitHover(e));
+      this.days.addEventListener('pointerleave', () => this._setHover(null));
+    }
     return el;
   }
 
@@ -162,6 +184,7 @@ export class CalendarGrid {
   _paint() {
     const v = this.view;
     const L = this.L;
+    if (this._hoverKey) this._setHover(null); // the cells under a still mouse are about to be other dates (month / view change)
     setAttr(this.el, 'data-view', v);
     this.days.hidden = v !== 'days';
     this.months.hidden = v !== 'months';
@@ -209,12 +232,13 @@ export class CalendarGrid {
   _paintDays() {
     const L = this.L;
     const matrix = monthMatrix(this.focus.year, this.focus.month).flat();
+    const hook = this.o.cellState || null;
     for (let i = 0; i < 42; i++) {
       const cell = this.dayCells[i];
       const d = matrix[i];
       if (!d) {
         cell.textContent = '';
-        for (const a of ['data-date', 'aria-label', 'aria-selected', 'aria-current', 'aria-disabled', 'data-outside', 'tabindex']) setAttr(cell, a, null);
+        for (const a of ['data-date', 'aria-label', 'aria-selected', 'aria-current', 'aria-disabled', 'data-outside', 'tabindex', 'data-range', 'data-preview', 'data-dimmed']) setAttr(cell, a, null);
         setAttr(cell, 'aria-hidden', 'true');
         continue;
       }
@@ -224,10 +248,17 @@ export class CalendarGrid {
       setAttr(cell, 'data-date', isoDate(d));
       setText(cell, String(d.day));
       const label = fill(L.dayLabel, { weekday, day: d.day, month: d.month, year: d.year });
-      setAttr(cell, 'aria-label', isToday ? `${label}, ${L.todaySuffix}` : label);
-      setAttr(cell, 'aria-selected', same(d, this.selected) ? 'true' : 'false');
+      const st = hook ? hook({ year: d.year, month: d.month, day: d.day }) : null;
+      const text = (isToday ? `${label}, ${L.todaySuffix}` : label) + (st && st.label ? `, ${st.label}` : '');
+      setAttr(cell, 'aria-label', text);
+      setAttr(cell, 'aria-selected', (st ? !!st.selected : same(d, this.selected)) ? 'true' : 'false');
       setAttr(cell, 'aria-current', isToday ? 'date' : null);
-      setAttr(cell, 'aria-disabled', isDateOutOfRange(d, this.min, this.max) ? 'true' : null);
+      setAttr(cell, 'aria-disabled', isDateOutOfRange(d, this.min, this.max) || (st && st.disabled) ? 'true' : null);
+      if (hook) {
+        setAttr(cell, 'data-range', st && st.role ? st.role : null);
+        setAttr(cell, 'data-preview', st && st.preview ? st.preview : null);
+        setAttr(cell, 'data-dimmed', st && st.dimmed ? '' : null);
+      }
       setAttr(cell, 'data-outside', d.outside ? '' : null);
       setAttr(cell, 'tabindex', same(d, this.focus) ? '0' : '-1');
     }
@@ -363,6 +394,45 @@ export class CalendarGrid {
     this._paint();
   }
 
+  /**
+   * v0.61.0: repaint ONLY the attributes of the day cells (the `cellState` hook changed what they show). Idempotent (`setAttr`),
+   * creates no node, never touches the live region or the DOM focus. A no-op outside the days view.
+   */
+  refreshCells() {
+    if (this.view === 'days') this._paintDays();
+  }
+
+  /** @private focusin / focusout of the grid → `onFocusDate` (a day cell's date, null when the focus leaves the grid or sits elsewhere) */
+  _emitFocus(e) {
+    let date = null;
+    if (e.type === 'focusin') {
+      const t = e.target instanceof Element ? e.target.closest('.td-cal__day[data-date]') : null;
+      if (t) { const [y, m, d] = t.getAttribute('data-date').split('-').map(Number); date = { year: y, month: m, day: d }; }
+    }
+    this._focusKey = this._key(date, this._focusKey, (v) => this.o.onFocusDate(v));
+  }
+
+  /** @private pointerover on the day grid (mouse only: touch and pen have no hover) */
+  _emitHover(e) {
+    if (e.pointerType && e.pointerType !== 'mouse') return;
+    const t = e.target instanceof Element ? e.target.closest('.td-cal__day[data-date]') : null;
+    let date = null;
+    if (t && t.getAttribute('aria-hidden') !== 'true') { const [y, m, d] = t.getAttribute('data-date').split('-').map(Number); date = { year: y, month: m, day: d }; }
+    this._setHover(date);
+  }
+
+  /** @private */
+  _setHover(date) {
+    this._hoverKey = this._key(date, this._hoverKey, (v) => this.o.onHoverDate(v));
+  }
+
+  /** @private call `fn(date)` only when the date changed; returns the new key */
+  _key(date, prev, fn) {
+    const k = date ? isoDate(date) : '';
+    if (k !== (prev || '')) fn(date);
+    return k;
+  }
+
   /** New bounds (the `min` / `max` attributes changed while open); the focus is kept inside them. */
   setBounds(min, max) {
     const hadFocus = this.el.contains(this.el.ownerDocument.activeElement);
@@ -384,7 +454,7 @@ export class CalendarGrid {
 
   /** @private a pick at a day / month / year cell (already known to be enabled) */
   _pickDay(d) {
-    this.selected = copy(d);
+    if (!this.o.cellState) this.selected = copy(d); // with a cellState hook the owner decides what a pick means (range)
     this.focus = copy(d);
     this._paint();
     this.focusActive();
