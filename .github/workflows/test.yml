@@ -46,7 +46,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { shard: default, engines: 'chromium firefox webkit' }
+          - { shard: default, engines: chromium }
           - { shard: engines, engines: chromium }
           - { shard: engines, engines: firefox }
           - { shard: engines, engines: webkit }
@@ -82,7 +82,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright-core install --with-deps chromium firefox webkit
+      - run: npx playwright-core install --with-deps chromium
       - run: npm run ${{ matrix.gate }}
 
   # engine specs (test/engines); tokens + theme switch + touch
