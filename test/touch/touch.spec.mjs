@@ -798,7 +798,7 @@ async function chromiumSemantics(browser) {
       expect(before.optH >= 43.5 && before.back[0] >= 43.5 && before.back[1] >= 43.5, `targets: option ${before.optH}, back ${before.back}`);
       expect(before.ta === 'pan-y' && before.oc === 'contain' && before.inputs === 0, `wheel touch-action ${before.ta}, overscroll ${before.oc}, inputs ${before.inputs}`);
       const w = await centre(page, '.td-modal[data-state="open"] .td-dtp-wheel__list[data-part="hour"]');
-      await touchDrag(cdp, [{ x: w.x, y: w.y + 70 }, { x: w.x, y: w.y - 70 }], { durationMs: 160 }); // a quick upward flick → momentum
+      await touchDrag(cdp, [{ x: w.x, y: w.y + 50 }, { x: w.x, y: w.y - 50 }], { durationMs: 200 }); // a quick upward flick INSIDE the 3-row wheel (132 px) → momentum
       await page.waitForFunction((h) => {
         const list = document.querySelector('.td-modal[data-state="open"] .td-dtp-wheel__list[data-part="hour"]');
         return Number(list.querySelector('[aria-selected="true"]').dataset.value) !== h;
