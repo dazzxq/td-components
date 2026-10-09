@@ -10556,6 +10556,8 @@
  * Floating control → OPAQUE surface (v0.20.0 minimal surfaces: glass.css opaque group — --td-glass-solid, thin border,
  * one soft shadow, no blur; contrast / forced-colour fallbacks come from the recipe). Round, fixed to the inline-end
  * bottom corner, safe-area aware, z-index BELOW lightbox / modal / popover / toast.
+ * v0.62.0: --td-scroll-top-bg / -fg / -border / -shadow / -pressed (+ optional -bg-hover) and the `color` / `text-color`
+ * attributes (src/utils/scroll-top-colors.js).
  * State: data-visible="true|false" (hidden = visibility: hidden → out of the Tab order and the a11y tree).
  */
 @layer td.tokens {
@@ -10565,6 +10567,19 @@
 		--td-scroll-top-end: 1.5rem;           /* distance from the inline-end edge (plus the safe area) */
 		--td-scroll-top-z: var(--td-z-sticky); /* below lightbox (350) / modal / popover / toast */
 		--td-scroll-top-offset: 10px;          /* slide distance of the enter/leave transition */
+	}
+
+	/* v0.62.0 colours (plan E). Defaults = the surface recipe, so the resting look is unchanged. A site sets them on :root /
+	   a wrapper; `<td-scroll-top color="…" text-color="…">` sets bg / fg / bg-hover / pressed on the host through CSSOM.
+	   `--td-scroll-top-bg-hover` is deliberately NOT declared: unset, the hover fill is computed at the button (8 % toward
+	   the icon colour), so it follows a --td-scroll-top-bg set on any ancestor. Increased contrast / forced colours /
+	   glass-off still win (they replace --_td-glass-*). */
+	:root, [data-td-theme] {
+		--td-scroll-top-bg: var(--td-glass-solid);
+		--td-scroll-top-fg: var(--td-glass-fg);
+		--td-scroll-top-border: var(--td-glass-border);
+		--td-scroll-top-shadow: var(--td-glass-shadow);
+		--td-scroll-top-pressed: var(--td-color-pressed);
 	}
 }
 
@@ -10612,6 +10627,27 @@
 			visibility 0s;
 	}
 
+	/* v0.62.0: the surface recipe reads the scroll-top tokens (same pattern as the tooltip chip) */
+	.td-scroll-top.td-glass-surface {
+		color: var(--_td-glass-fg, var(--td-scroll-top-fg));
+		background-color: var(--_td-glass-fill, var(--td-scroll-top-bg));
+		border-color: var(--_td-glass-line, var(--td-scroll-top-border));
+		box-shadow: var(--_td-glass-lift, var(--td-scroll-top-shadow));
+	}
+
+	/* hover = a different solid fill (minimal surfaces rule 6), only on a real pointer */
+	@media (hover: hover) and (pointer: fine) {
+		.td-scroll-top:hover {
+			background-color: var(--_td-glass-fill, var(--td-scroll-top-bg-hover, var(--td-scroll-top-bg)));
+		}
+
+		@supports (color: color-mix(in srgb, red 50%, blue)) {
+			.td-scroll-top:hover {
+				background-color: var(--_td-glass-fill, var(--td-scroll-top-bg-hover, color-mix(in srgb, var(--td-scroll-top-bg) 92%, var(--td-scroll-top-fg))));
+			}
+		}
+	}
+
 	.td-scroll-top:focus-visible {
 		box-shadow: var(--td-focus-ring);
 	}
@@ -10637,7 +10673,7 @@
 	}
 
 	.td-scroll-top:is(:active, [data-td-pressed]) {
-		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		background-image: linear-gradient(var(--td-scroll-top-pressed), var(--td-scroll-top-pressed));
 		transition-duration: 0s;
 	}
 

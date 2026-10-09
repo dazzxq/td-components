@@ -73,8 +73,10 @@ home.
 | `threshold` | number | `400` | Khoảng cuộn (px) để nút hiện. Giá trị âm / không phải số → `400`. |
 | `target` | string (CSS selector) | — | Phần tử nhận focus sau khi lên đầu (mặc định `#main` → `main` → `body`). |
 | `label` | string | `TdScrollTop.labels.button` | Tên trợ năng (`aria-label`) của nút. |
+| `color` | màu CSS | — | 0.62.0: màu nền nút của **riêng** thẻ này (hex, 16 tên cơ bản, `rgb()`; phải đục — alpha < 1, `hsl()`, tên khác → bỏ qua + 1 `console.warn`). Ghi qua CSSOM vào host (`--td-scroll-top-bg/-fg/-bg-hover/-pressed`), không `style="…"`. |
+| `text-color` | màu CSS | tự chọn | 0.62.0: màu icon, chỉ khi có `color`. Không đặt → kit chọn đen / trắng theo tương phản (≥ 4.58:1 trên mọi nền). Đặt mà < 3:1 với `color` (hoặc không dùng được) → bỏ qua + warn, dùng màu tự chọn. |
 
-Đổi `threshold` / `label` → cập nhật tại chỗ (không dựng lại nút).
+Đổi `threshold` / `label` / `color` / `text-color` → cập nhật tại chỗ (không dựng lại nút).
 
 ## Property & method
 
@@ -99,11 +101,44 @@ home.
 | `--td-scroll-top-end` | `1.5rem` | Cách mép cuối dòng (+ safe area) |
 | `--td-scroll-top-z` | `var(--td-z-sticky)` (200) | Lớp chồng — **dưới** lightbox (350), modal (400), popover (450), toast |
 | `--td-scroll-top-offset` | `10px` | Quãng trượt khi hiện/ẩn |
+| `--td-scroll-top-bg` | `var(--td-glass-solid)` | 0.62.0: nền nút (đặc) |
+| `--td-scroll-top-fg` | `var(--td-glass-fg)` | 0.62.0: màu icon |
+| `--td-scroll-top-bg-hover` | *(không khai báo)* | 0.62.0: nền khi rê chuột (chỉ chuột thật). Không đặt → trộn 8 % từ nền về phía màu icon (tính tại nút nên theo `--td-scroll-top-bg` đặt ở bất kỳ tổ tiên nào). Muốn tắt hover: `--td-scroll-top-bg-hover: var(--td-scroll-top-bg)` |
+| `--td-scroll-top-border` | `var(--td-glass-border)` | 0.62.0: viền 1px |
+| `--td-scroll-top-shadow` | `var(--td-glass-shadow)` | 0.62.0: một bóng |
+| `--td-scroll-top-pressed` | `var(--td-color-pressed)` | 0.62.0: lớp phủ khi nhấn (chạm / giữ chuột) |
 
 Nút là bề mặt **đặc** (0.20.0 — [minimal surfaces](../internal/design/liquid-glass.md)): `--td-glass-solid` + viền
 mảnh `--td-glass-border` + một bóng mềm `--td-glass-shadow`, không blur, không thu nhỏ khi bấm. Vẫn mang class
 `.td-glass-surface--strong` nên fallback tương phản cao / forced colors tự áp dụng; token bề mặt chung (`--td-glass-*`)
 đổi được như mọi bề mặt khác.
+
+### 4. Màu riêng (0.62.0)
+
+```html
+<!-- một thẻ: nền xanh đậm, icon tự chọn (trắng) -->
+<td-scroll-top color="#1e40af"></td-scroll-top>
+
+<!-- icon chọn tay (vẫn phải ≥ 3:1 với nền) -->
+<td-scroll-top color="#1e40af" text-color="#fde68a"></td-scroll-top>
+```
+
+```css
+/* cả site, theo token (cũng áp được trong một vùng theme tối) */
+:root {
+  --td-scroll-top-bg: var(--td-accent-fill);
+  --td-scroll-top-fg: var(--td-accent-contrast);
+  --td-scroll-top-border: transparent;
+}
+```
+
+**Hướng dẫn tương phản.** Icon là thành phần không phải chữ: cần **≥ 3:1** với nền nút (kit đo ≥ 3.2:1); màu icon tự chọn
+luôn ≥ 4.58:1. Hover (trộn 8 % về phía icon) và nhấn (lớp phủ đen / trắng 14 % ngược cực với icon) được thiết kế để không
+làm tụt tương phản icon dưới 3.2:1. Nút nổi trên nền trang **không biết trước**: nền nút nhạt gần màu trang cần giữ viền /
+bóng mặc định (đừng đặt `--td-scroll-top-border: transparent` và `--td-scroll-top-shadow: none` cùng lúc), nền nút đậm
+thường đủ tách trên trang sáng. Chế độ **tương phản cao** (`prefers-contrast: more`), **forced colors** và
+`<html data-td-glass="off">` bỏ qua màu tuỳ chỉnh (nút về bề mặt chuẩn của trình duyệt) — cố ý, cùng cơ chế với tooltip tuỳ màu.
+Màu lấy từ dữ liệu người dùng vẫn an toàn: giá trị đi qua `safeColor()` + `parseColor()` và chỉ ghi bằng CSSOM.
 
 ## Cấu trúc DOM & class
 

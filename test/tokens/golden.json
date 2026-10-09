@@ -2114,7 +2114,15 @@
     "--td-cal-pad": { "light": "0.75rem", "dark": "0.75rem", "why": "v0.60.0: padding of the calendar popover" },
     "--td-cal-selected-bg": { "light": "rgb(24, 24, 27)", "dark": "rgb(244, 244, 245)", "why": "v0.60.0: selected day fill (= --td-btn-primary-bg, follows the site primary)" },
     "--td-cal-selected-fg": { "light": "rgb(255, 255, 255)", "dark": "rgb(24, 24, 27)", "why": "v0.60.0: selected day ink (= --td-btn-primary-fg, 17.7 light / 16.1 dark)" },
-    "--td-cal-today-ring": { "light": "rgb(107, 107, 115)", "dark": "rgb(172, 172, 180)", "why": "v0.60.0: the ring around today (= --td-color-text-muted, >= 3:1 non-text)" }
+    "--td-cal-today-ring": { "light": "rgb(107, 107, 115)", "dark": "rgb(172, 172, 180)", "why": "v0.60.0: the ring around today (= --td-color-text-muted, >= 3:1 non-text)" },
+    "--td-scroll-top-bg": {"light": "rgb(255, 255, 255)", "dark": "rgb(28, 28, 30)", "why": "v0.62.0: <td-scroll-top> colour token (default = the surface recipe, resting look unchanged) — fill (= --td-glass-solid)"},
+    "--td-scroll-top-fg": {"light": "rgb(24, 24, 27)", "dark": "rgb(245, 245, 247)", "why": "v0.62.0: <td-scroll-top> colour token (default = the surface recipe, resting look unchanged) — icon (= --td-glass-fg)"},
+    "--td-scroll-top-border": {"light": "rgba(0, 0, 0, 0.07)", "dark": "rgba(255, 255, 255, 0.14)", "why": "v0.62.0: <td-scroll-top> colour token (default = the surface recipe, resting look unchanged) — border (= --td-glass-border)"},
+    "--td-scroll-top-shadow": {"light": "rgba(0, 0, 0, 0.06) 0px 2px 6px 0px, rgba(0, 0, 0, 0.12) 0px 8px 24px 0px", "dark": "rgba(0, 0, 0, 0.24) 0px 2px 6px 0px, rgba(0, 0, 0, 0.4) 0px 8px 24px 0px", "why": "v0.62.0: <td-scroll-top> colour token (default = the surface recipe, resting look unchanged) — shadow (= --td-glass-shadow)"},
+    "--td-scroll-top-pressed": {"light": "rgba(0, 0, 0, 0.12)", "dark": "rgba(255, 255, 255, 0.14)", "why": "v0.62.0: <td-scroll-top> colour token (default = the surface recipe, resting look unchanged) — pressed overlay (= --td-color-pressed)"},
+    "--td-hovercard-skeleton-w": {"light": "16rem", "dark": "16rem", "why": "v0.62.0: width of the hovercard while its content loads (skeleton size budget)"},
+    "--td-hovercard-skeleton-h": {"light": "5rem", "dark": "5rem", "why": "v0.62.0: minimum height of the hovercard while its content loads"},
+    "--td-hovercard-skeleton-avatar": {"light": "2.5rem", "dark": "2.5rem", "why": "v0.62.0: diameter of the skeleton avatar disc in the hovercard"}
   },
   "lightDeltas": {
     "--td-table-check-border": {
