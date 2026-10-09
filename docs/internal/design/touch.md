@@ -47,10 +47,11 @@ Khai báo ở `tokens.css` / `theme-dark.css` (chung, nút), `action-button.css`
 
 Nút `--custom` / alias `-tint`: nền tối 16 % (`color-mix`), trình duyệt không có `color-mix()` giữ nền hover / nghỉ.
 
-## Ngoại lệ `active-exempt` đã duyệt (17)
+## Ngoại lệ `active-exempt` đã duyệt (19)
 
 `.td-field__control`, `.td-chip-input__box`, `.td-tree-select__control`, `.td-number__box`, 0.55.0: `.td-field__box` (hộp
-tiền tố / hậu tố của `td-input-field` — ô nhập: focus ring là phản hồi; nút trong `[slot]` là của site)
+tiền tố / hậu tố của `td-input-field` — ô nhập: focus ring là phản hồi; nút trong `[slot]` là của site), 0.63.0:
+`.td-dtp--editable`, `.td-dtr--editable` (hộp ô gõ ngày `editable` — focus ring là phản hồi; nút lịch / nút xoá giữ hình nhấn)
 · `td-dropdown > .td-dropdown__native` (0.51.1: cùng luật với `td-dropdown:not(:defined) > select`), `.td-multiselect__native`, `td-chip-input > .td-chip-input__native`,
 `.td-tree-select__native` (select native, UA tự vẽ) · `.td-slider__input` (range native, thumb theo ngón) · 0.48.0: `.td-color__box` (ô nhập màu: focus ring là phản hồi), `.td-color-panel__hue` (range native sắc độ) ·
 `.td-table .td-table__row` (hàng không kích hoạt được) · `.td-lightbox__grab` (tay nắm sheet, sheet theo ngón) ·

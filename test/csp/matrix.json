@@ -2953,6 +2953,95 @@
         "line-height"
       ],
       "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "editable-filled",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Chụp từ'); p.setAttribute('mode','date'); p.setAttribute('editable',''); p.setAttribute('value','15/03/1994'); window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp",
+        ".td-dtp__input",
+        ".td-dtp__trigger"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.63.0 (plan v0.63.0-typed-dates M3): `editable` — the text input + icon button on the box grid (the field look is the box's ::before, not read here); text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c)."
+    },
+    {
+      "state": "editable-empty-clearable",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Chụp từ'); p.setAttribute('mode','date'); p.setAttribute('editable',''); p.setAttribute('clearable',''); window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp",
+        ".td-dtp__input",
+        ".td-dtp__trigger"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.63.0 (plan v0.63.0-typed-dates M3): `editable` — the text input + icon button on the box grid (the field look is the box's ::before, not read here); text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c)."
+    },
+    {
+      "state": "editable-focus",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Chụp từ'); p.setAttribute('mode','date'); p.setAttribute('editable',''); p.setAttribute('value','15/03/1994'); window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp__input",
+        ".td-dtp__trigger"
+      ],
+      "pseudo": "focus",
+      "focusSelector": ".td-dtp__input",
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.63.0 (plan v0.63.0-typed-dates M3): `editable` — the text input + icon button on the box grid (the field look is the box's ::before, not read here); text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c)."
+    },
+    {
+      "state": "editable-error",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Chụp từ'); p.setAttribute('mode','date'); p.setAttribute('editable',''); p.setAttribute('value','abc'); p.setAttribute('error-text','Định dạng ngày không hợp lệ'); window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp__input[aria-invalid]",
+        ".td-field-error"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.63.0 (plan v0.63.0-typed-dates M3): `editable` — the text input + icon button on the box grid (the field look is the box's ::before, not read here); text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c)."
+    },
+    {
+      "state": "editable-disabled",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Chụp từ'); p.setAttribute('mode','date'); p.setAttribute('editable',''); p.setAttribute('value','15/03/1994'); p.setAttribute('disabled',''); window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp__input",
+        ".td-dtp__trigger"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.63.0 (plan v0.63.0-typed-dates M3): `editable` — the text input + icon button on the box grid (the field look is the box's ::before, not read here); text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c)."
     }
   ],
   "td-tooltip": [
@@ -5755,6 +5844,45 @@
         "line-height"
       ],
       "selectorNote": "v0.61.0 (plan v0.61.0-range-calendar Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests. The pointer preview of start..hovered day (data-preview in / end)."
+    },
+    {
+      "state": "editable-filled",
+      "markup": "<td-datetime-range name=\"r\" label=\"Chụp\" editable start=\"20/03/1994\" end=\"25/03/1994\"></td-datetime-range>",
+      "selectors": [
+        ".td-dtr",
+        ".td-dtr__input[data-side=\"start\"]",
+        ".td-dtr__input[data-side=\"end\"]",
+        ".td-dtr__sep",
+        ".td-dtr__trigger"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.63.0 (plan v0.63.0-typed-dates M3): `editable` range — two text inputs, the separator and the icon button on the box grid (the field look is the box's ::before); text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front."
+    },
+    {
+      "state": "editable-focus",
+      "markup": "<td-datetime-range name=\"r\" label=\"Chụp\" editable allow-open-end start=\"20/03/1994\"></td-datetime-range>",
+      "selectors": [
+        ".td-dtr__input[data-side=\"end\"]",
+        ".td-dtr__trigger"
+      ],
+      "pseudo": "focus",
+      "focusSelector": ".td-dtr__input[data-side=\"end\"]",
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.63.0 (plan v0.63.0-typed-dates M3): `editable` range — two text inputs, the separator and the icon button on the box grid (the field look is the box's ::before); text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front."
     }
   ],
   "td-theme-scope": [

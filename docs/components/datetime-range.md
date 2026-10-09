@@ -115,6 +115,53 @@ Hiệu lực khuyến mãi, hợp đồng, bảo hành… thường "từ ngày 
   nút được thêm / gỡ tại chỗ; gỡ nút đang có focus → focus vào lưới; ngày đang sửa giữ nguyên.
 - Nhãn: `TdDatetimeRange.labels.openEnd` (`'Không hạn'`; PHP `Td::RANGE_LABELS['openEnd']` phải đổi cùng).
 
+## Gõ tay (`editable`, 0.63.0)
+
+Bộ lọc "Chụp từ / Chụp đến" cho cuộn phim thập niên 1990: gõ nhanh hơn đi qua lưới năm. `editable` biến ô thành **hai ô
+gõ (Từ – Đến) + nút lịch**; hộp thoại y như trên. **Opt-in** — không đặt → giống hệt 0.62:
+
+```html
+<td-datetime-range name="chup" mode="date" label="Chụp" editable></td-datetime-range>
+```
+
+- **Chỉ máy tính gõ được**; thiết bị cảm ứng (`(hover: none) and (pointer: coarse)`, theo dõi trực tiếp): hai ô `readonly` +
+  `inputmode="none"`, chạm = mở hộp thoại như 0.62, không bàn phím ảo.
+- **Đọc chữ gõ** như picker đơn ([bảng](datetime-picker.md#11-gõ-tay-editable-0630)): `20031994`, `20/3/1994`, `20.3.1994`,
+  `1994-03-20` → `20/03/1994`; `datetime` thêm giờ `8:30` / `0830` (thiếu giờ → lỗi "Vui lòng nhập đầy đủ…"); năm luôn 4 chữ số.
+- **Mỗi ô chốt bên của nó** — `Enter` (không chặn: form submit ngầm thấy giá trị mới), rời ô, trước khi hộp thoại mở; chữ không
+  đổi → không làm gì. Bên đó được ghi như bảng của picker (rỗng → xoá; hợp lệ → dạng chuẩn; ngoài `min` / `max` → ghi, không
+  kẹp; không đọc được / ngày không có → chữ thô, `badInput`).
+- **`change`** (detail như "Chọn", `preset: null`): **một** event sau mỗi lần chốt mà **cả khoảng** hợp lệ hoàn toàn (validity
+  sạch: `required` theo bảng, thứ tự, `max-days`, `min` / `max`, `badInput`) và **khác** khoảng trước. Không gom hai bên —
+  giống hai ô native:
+
+| Kịch bản (không `required`, đếm `change` trên host) | Sau đó | Đếm |
+|---|---|---|
+| ban đầu `start=""` `end=""` | — | 0 |
+| gõ Từ `20/03/1994`, rời ô | khoảng mở hợp lệ: `{ start: '20/03/1994', end: '' }` | 1 |
+| gõ Đến `10/03/1994`, rời ô | lỗi thứ tự hiện ở **ô Đến** | 1 |
+| sửa Đến `25/03/1994` | `{ start: '20/03/1994', end: '25/03/1994' }` | 2 |
+| cùng kịch bản với `required` (cả hai) | Từ một mình thiếu Đến → chưa hợp lệ | 0, 0, 1 |
+
+  `allow-open-end`: Đến trống là hợp lệ (placeholder ô Đến = "Không hạn"). Vượt `max-days` → "Khoảng tối đa N ngày", 0 `change`.
+- **Lỗi gõ** hiện dưới ô (ghi chú `.td-field-error`), `aria-invalid` chỉ trên **ô đang sai**: lỗi riêng của bên vừa chốt (định
+  dạng / ngày không có / `min` / `max` / bắt buộc của bên đó khi xoá trắng), nếu không thì lỗi thứ tự / `max-days` gắn vào **bên
+  vừa chốt**, nếu không thì lỗi riêng còn lại của bên kia. Lỗi của site (`error-text` / `setError()`) **thắng**. Lỗi gõ mất khi
+  khoảng hợp lệ, "Chọn" trong hộp thoại, `setValue()` / `setDBValue()` / attribute `start` / `end` đổi từ ngoài, reset, tắt
+  `editable`. Message dùng lại `TdDatetimeRange.messages`.
+- `Escape`: trả chữ của ô về giá trị đã chốt. `ArrowDown` / `Alt+ArrowDown` trên ô hoặc nút lịch → chốt rồi mở hộp thoại ở
+  khoảng vừa gõ; đóng hộp → focus về ô đã mở nó (hoặc nút lịch).
+- `input` / `change` gốc của hai ô **không lọt ra** host; ô không có `name` — FormData vẫn hai mục của host như trước.
+- Nhãn mới (đổi được): `TdDatetimeRange.labels.openCalendar` 'Mở lịch' (tên nút), `startInput` / `endInput` 'Từ ngày' / 'Đến
+  ngày' (tên ẩn của hai ô; `datetime`: `startInputDatetime` / `endInputDatetime` 'Từ' / 'Đến'), `sidePlaceholder` 'dd/mm/yyyy'
+  / `sidePlaceholderDatetime` 'dd/mm/yyyy - hh:mm' (placeholder từng ô; attribute `placeholder` của host không dùng ở chế độ này).
+- **PHP**: `td_datetime_range('chup', $from, $to, ['editable' => true])` chỉ in attribute `editable` trên host; markup SSR (hai
+  ô native + trigger) không đổi — element không nhận markup đó (khác cấu trúc) mà render an toàn, **giữ giá trị native** người
+  dùng đã sửa trước khi JS chạy.
+- **Selector cho test**: `.td-dtr--editable`, `.td-dtr__input[data-side="start|end"]`, `.td-dtr__sep`, `.td-dtr__trigger` (mở hộp
+  thoại như 0.62), `.td-dtr__trigger--icon`. Ví dụ: `page.fill('#chup .td-dtr__input[data-side="start"]', '20031994')` rồi
+  `press('Tab')`.
+
 ## Preset (callback) và múi giờ
 
 ```js
@@ -164,6 +211,7 @@ el.presets = [TdDatetimeRange.presets[0], TdDatetimeRange.presets[1]];
 | `required` | — | Bảng dưới |
 | `disabled` | tắt | Khoá (cả qua `<fieldset disabled>`) |
 | `allow-open-end` | tắt | **0.59.0** Ngày kết thúc có thể trống = "Không hạn" (không bao giờ bắt buộc) — [Không hạn](#không-hạn-allow-open-end-0590). Property `allowOpenEnd`. |
+| `editable` | tắt | **0.63.0** Gõ hai mốc bằng tay trên máy tính (cảm ứng vẫn chạm để mở) — [Gõ tay](#gõ-tay-editable-0630). Bật / tắt lúc chạy → render lại phần ô. Property `editable`. |
 | `error-text` | — | Lỗi của app (hợp đồng lỗi chung; `setError()` / `clearError()`) |
 | `helper-text` | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
@@ -195,7 +243,7 @@ Có `allow-open-end` (0.59.0): bỏ "Đến" khỏi bảng trên (cả hai → c
 
 | Sự kiện | `detail` | Khi nào |
 |---|---|---|
-| `change` | `{ value: { start, end }, dbValue: { start, end }, preset: id \| null }` | Bấm "Chọn" (một lần). `preset` = id của preset đang khớp, `null` khi sửa tay |
+| `change` | `{ value: { start, end }, dbValue: { start, end }, preset: id \| null }` | Bấm "Chọn" (một lần). `preset` = id của preset đang khớp, `null` khi sửa tay. 0.63.0 `editable`: chốt một ô gõ khi cả khoảng hợp lệ và khác trước (`preset: null`) |
 
 ### Validity
 
@@ -255,6 +303,8 @@ Kiểm tra trong trình duyệt **không phải lớp bảo mật**: server luô
 ```
 
 0.59.0 `allow_open_end`: host `allow-open-end`, ô native "Đến" không bao giờ `required`, chỉ có Từ → trigger "{Từ} – Không hạn".
+0.63.0 `editable`: host `editable` (gõ tay — [Gõ tay](#gõ-tay-editable-0630)); markup SSR không đổi, element render an toàn
+(giữ giá trị native).
 
 **Không JS:** hai `<input type="date">` (hoặc `datetime-local`) native tên `{name}[start]` / `{name}[end]`, nhãn "Từ" /
 "Đến", `min` / `max`, `required` **theo từng mốc** (`'start'` → chỉ input Từ…) — form chạy được, trình duyệt kiểm `required`
@@ -311,6 +361,25 @@ công tắc / dòng lỗi qua gate `test:contrast` ≥ 4.7. Host co tới 160px:
   [<span class="td-field-error" id="{id}-error" data-for="{id}">…</span>]
 </td-datetime-range>
 ```
+
+0.63.0 `editable` (cảm ứng: hai ô `readonly inputmode="none"`):
+
+```html
+<div class="td-dtr td-dtr--editable" data-state="closed|open">
+  [<span class="td-field__label td-dtr__label" id="{id}-label">…</span>]
+  <span id="{id}-start-name" hidden>Từ ngày</span>
+  <input type="text" class="td-dtr__input" data-side="start" id="{id}-start-input" aria-labelledby="{id}-label {id}-start-name"
+         autocomplete="off" spellcheck="false" placeholder="dd/mm/yyyy" [aria-required] [aria-invalid] [disabled]>
+  <span class="td-dtr__sep" aria-hidden="true">–</span>
+  <span id="{id}-end-name" hidden>Đến ngày</span>
+  <input type="text" class="td-dtr__input" data-side="end" id="{id}-end-input" … placeholder="dd/mm/yyyy | Không hạn">
+  <button type="button" class="td-dtr__trigger td-dtr__trigger--icon" id="{id}-trigger" aria-label="Mở lịch" aria-haspopup="dialog"
+          aria-expanded="false"><span class="td-dtr__icon" data-td-icon="calendar" aria-hidden="true"></span></button>
+</div>
+```
+
+Hộp vẽ bằng `::before` của `.td-dtr--editable` (cùng hình trigger 0.62), trạng thái: `:focus-within` (vòng focus), mở, lỗi trên
+một ô (viền đỏ), disabled; tương phản cao: viền `CanvasText`, focus `Highlight`, lỗi gạch đứt.
 
 Hộp thoại (thân TdModal): `div.td-dtr-panel[data-mode][data-side][data-step=date|time]` > `div.td-dtr-panel__presets[role=group]` >
 `button.td-dtr-panel__preset[aria-pressed][data-id]` · `div.td-dtr-panel__main` > (`div.td-dtr-panel__switch` > `button.td-dtr-panel__tab[aria-pressed][data-side]`

@@ -114,7 +114,8 @@ test('the kit CSS: 0 pressed-state errors; press.js PRESS_TARGETS = the pressed 
   assert.ok(exempt.every(Boolean));
   // ISSUE-1 (v0.36.2 review): the dropzone zone and the toast surface have a pressed look; v0.48.0: + the colour picker
   // field box (focus ring) and its native hue range (thumb follows the finger); v0.55.0: + the td-input-field affix box
-  // (.td-field__box — focus ring, like .td-number__box)
-  assert.equal(exempt.length, 17);
+  // (.td-field__box — focus ring, like .td-number__box); v0.63.0: + the `editable` picker / range boxes (.td-dtp--editable,
+  // .td-dtr--editable — text input boxes, the focus ring is the feedback; their buttons keep their pressed rules)
+  assert.equal(exempt.length, 19);
   for (const base of ['.td-dropzone .td-dropzone__zone', '.td-toast']) assert.ok(PRESS_TARGETS.includes(base), base);
 });

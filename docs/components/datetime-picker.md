@@ -268,8 +268,8 @@ không phải đổi markup hay handler.
 - **Nút xoá (`clearable`) vẫn bấm được khi popover đang mở**: bỏ nháp, xoá giá trị đã ghi, **đúng một** `change`
   `{ value: '', dbValue: '' }`, đóng, focus về ô. Giá trị rỗng thì nút ẩn (`Esc` để huỷ). Ở bottom sheet nút xoá không bấm được
   (sheet là modal).
-- **Không còn gõ ngày** trong picker (mục tiêu của 0.60.0). Ngày xa → bấm nút năm rồi ‹ ›, hoặc đặt `open-at`. Cần gõ tay →
-  `<td-input-field type="date">`.
+- Mặc định **không gõ ngày** trong picker. Ngày xa → bấm nút năm rồi ‹ ›, hoặc đặt `open-at`. Cần gõ tay → attribute
+  `editable` (0.63.0, [mục 11](#11-gõ-tay-editable-0630)).
 - **Bàn phím** (APG date picker dialog): xem [Bàn phím & trợ năng](#bàn-phím--trợ-năng).
 
 **Test tự động (selector ổn định từ 0.60.0)** — mọi thứ khác trong lịch là riêng tư:
@@ -287,6 +287,71 @@ không phải đổi markup hay handler.
 theo đúng bảng chuyển khung: `[data-pick="year"]` → `[data-dir="prev"]` ×2 (trang 1993–2004) → `[data-year="1999"]` (**về
 lưới ngày**, không qua lưới tháng) → `[data-pick="month"]` → `[data-month="3"]` → `[data-date="1999-03-15"]`. Không cần lịch:
 `el.setDBValue('1999-03-15')` rồi `el.dispatchEvent(new Event('change', { bubbles: true }))`.
+
+### 11. Gõ tay (`editable`, 0.63.0)
+
+Nhập ngày cũ (cuộn phim thập niên 1990…) gõ nhanh hơn đi qua lưới năm → lưới tháng. `editable` biến ô thành **ô gõ chữ +
+nút lịch** (APG "Date Picker Combobox"); lịch y như mục 10. **Opt-in**: không đặt attribute → giống hệt 0.62 (markup,
+hành vi, test của site).
+
+```html
+<td-datetime-picker name="chup_tu" mode="date" label="Chụp từ" editable></td-datetime-picker>
+```
+
+- **Chỉ máy tính gõ được.** Thiết bị cảm ứng (`(hover: none) and (pointer: coarse)`, theo dõi trực tiếp — máy lai đổi tại chỗ):
+  ô `readonly` + `inputmode="none"`, chạm = mở lịch như 0.62, không bàn phím ảo che sheet. Máy có chuột nhưng màn hẹp
+  < 720px: gõ được (sheet chỉ khi mở lịch).
+- **Đọc dễ dãi, không mặt nạ:** không tự chèn "/" khi gõ; lúc **chốt** mới đọc. Dấu phân cách `/ . -` hoặc khoảng trắng, khoảng
+  trắng thừa bỏ qua; mọi định dạng mà attribute `value` nhận cũng nhận.
+
+| mode | gõ được | ví dụ (đều thành) |
+|---|---|---|
+| `date` | `d/m/yyyy`, 8 chữ số `ddmmyyyy`, ISO `yyyy-mm-dd` | `15/3/1994`, `15031994`, `15.3.1994`, `1994-03-15` → `15/03/1994` |
+| `datetime` | ngày như trên + (khoảng trắng / ` - `) + `h:mm` / `h.mm` / `9h05` / `hhmm`; 12 chữ số; ISO `yyyy-mm-ddThh:mm` | `15/3/1994 9:05`, `150319940905` → `15/03/1994 - 09:05` |
+| `month` | `m/yyyy`, 6 chữ số `mmyyyy`, ISO `yyyy-mm` | `3/1994`, `031994` → `03/1994` |
+| `year` | 4 chữ số | `1994` |
+
+  **Năm luôn 4 chữ số** — `15/3/94` bị từ chối (lỗi định dạng), không đoán 1994 hay 2094. `datetime` thiếu giờ → lỗi "Vui lòng
+  nhập đầy đủ…" (không tự thêm 00:00). `minute-step` **không** áp lên giờ gõ (nó là bước của bánh xe).
+- **Chốt** khi: `Enter` (không chặn — form submit ngầm chạy SAU và thấy giá trị mới), rời ô (Tab, bấm ra ngoài, bấm nút lịch),
+  và ngay trước khi lịch mở. Chữ không đổi so với lần hiển thị trước → không làm gì. Đang gõ: không kiểm, không đổi lỗi, không
+  đổi `value`.
+
+| Chữ gõ khi chốt | `value` | ô hiển thị | lỗi | `change` |
+|---|---|---|---|---|
+| rỗng, không `required` | xoá | placeholder | xoá | `{ value: '', dbValue: '' }` nếu trước đó có giá trị (như nút xoá) |
+| rỗng, `required` | xoá | placeholder | "Vui lòng chọn…" (`valueMissing`) | **không** |
+| hợp lệ, trong `min`–`max` | dạng hiển thị chuẩn | dạng chuẩn | xoá | **một**, nếu khác giá trị cũ |
+| đọc được, ngoài `min` / `max` | dạng chuẩn (**không** tự kẹp) | dạng chuẩn | "Không được trước / sau …" | **không** |
+| không đọc được / ngày không tồn tại (`31/02/1994`) | chữ thô (`badInput`) | chữ thô | "Định dạng … không hợp lệ" / "Ngày không hợp lệ" | **không** |
+
+- **Lỗi gõ hiện ngay** dưới ô (ghi chú `.td-field-error`, `aria-invalid` + `aria-errormessage` trên **ô gõ**), form invalid nên
+  submit bị chặn. Lỗi của site (`error-text` / `setError()`) **thắng**. Lỗi gõ mất khi: chốt hợp lệ / rỗng (trừ `required`),
+  lịch ghi giá trị, nút xoá, `setValue()` / `setDBValue()` / attribute `value` đổi từ ngoài, reset form, tắt `editable`, hoặc giá
+  trị hết sai (vd. bỏ `required`). Message dùng lại `TdDatetimePicker.messages` (`format*`, `incomplete*`, `date`, `min`, `max`,
+  `required*`) — không có message mới.
+- **`Escape`** (lịch đóng): trả chữ về giá trị đã chốt, không chốt, không event.
+- **Lịch**: nút lịch, `ArrowDown` / `Alt+ArrowDown` trên ô → chốt rồi mở, lịch mở đúng tháng / năm vừa gõ, ngày được chọn
+  (chữ không đọc được → mở như giá trị hỏng: hôm nay / `open-at`). Chọn trên lịch ghi như 0.62 (một `change`), ô hiện giá trị
+  mới, **focus về ô gõ** (không về nút). Bấm vào ô gõ khi popover đang mở → đóng, bỏ nháp, không `change`. Popover neo vào
+  cả hộp (ô + nút).
+- **Sự kiện**: `input` / `change` gốc của ô gõ **không lọt ra** host — công khai chỉ có `change` (CustomEvent có `detail`) của
+  element, như 0.62. Listener `change` của site không bao giờ nhận event thiếu `detail`.
+- `setValue()` / `setDBValue()` / attribute `value` đổi từ ngoài: ô cập nhật ngay (kể cả khi đang focus — chương trình thắng),
+  không `change`. Bật / tắt `editable` lúc chạy: render lại phần ô, giữ giá trị (chữ đang gõ dở và lỗi gõ bỏ), lịch đang mở
+  thì đóng, focus theo sang ô mới.
+- **Form**: ô gõ **không có `name`** — FormData vẫn một mục, của host (ElementInternals), định dạng `form-value-format` như cũ.
+- **PHP**: `td_date('chup_tu', null, ['editable' => true])` / `td_datetime_picker(..., ['editable' => true])` chỉ in thêm
+  attribute `editable` trên host. Markup SSR (native input + trigger) **không đổi**; khi JS chạy, element không nhận markup đó
+  (khác cấu trúc) mà đi đường "safe render" sẵn có — giữ giá trị native người dùng đã gõ trước khi JS chạy. Hạn chế: nếu người
+  dùng đang gõ trong native input đúng lúc JS định nghĩa element thì mất focus (hiếm).
+- **Nhãn** (đổi được như mọi label): tên nút lịch `TdDatetimePicker.labels.openCalendar` 'Mở lịch' (datetime),
+  `openCalendarDate` / `openCalendarMonth` / `openCalendarYear` 'Chọn ngày' / 'Chọn tháng' / 'Chọn năm'. Placeholder của ô
+  = `placeholder` / `labels.placeholder*` như trước.
+
+**Selector cho test (0.63.0):** `.td-dtp--editable` (hộp), `.td-dtp__input` (ô gõ), `.td-dtp__trigger` (vẫn là thứ **mở
+lịch** — test bấm nó vẫn chạy), `.td-dtp__trigger--icon`; `.td-cal [data-date]`, `[data-action="confirm"]` không đổi.
+Ví dụ (Playwright): `await page.fill('#ngay .td-dtp__input', '15031994'); await page.press('#ngay .td-dtp__input', 'Enter');`.
 
 ## Attribute
 
@@ -307,6 +372,7 @@ lưới ngày**, không qua lưới tháng) → `[data-pick="month"]` → `[data
 | `disabled` | boolean | `false` | Vô hiệu hoá (cũng qua `<fieldset disabled>`); đang mở mà bị disable → đóng hộp thoại. |
 | `error-text` | string | — | Thông báo lỗi hiển thị (error contract). |
 | `clearable` | boolean | `false` | **0.59.0** Nút xoá ngày trong ô khi có giá trị và không `required` / `disabled` ([mục 9](#9-nút-xoá-ngày-clearable-0590)). Bật / tắt lúc chạy → render lại. Property `clearable`. |
+| `editable` | boolean | `false` | **0.63.0** Gõ ngày bằng tay trên máy tính (cảm ứng vẫn chạm để mở lịch) — [mục 11](#11-gõ-tay-editable-0630). Bật / tắt lúc chạy → render lại phần ô. Property `editable`. |
 | `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
 Mọi attribute trừ `label` được cập nhật tại chỗ (giữ nguyên nút trigger và focus). Đổi `min`/`max`/`form-value-format`
@@ -335,7 +401,7 @@ Không có method `open()` công khai. Muốn mở bằng code, bấm nút trigg
 
 | Event | detail | Khi nào | bubbles? |
 |---|---|---|---|
-| `change` | `{ value, dbValue }` — `value` dạng display, `dbValue` dạng db, theo mode (datetime: `yyyy-mm-dd hh:mm:00`) | Người dùng **ghi** một giá trị hợp lệ: `date` / `month` / `year` — bấm một ô (0.60.0: không còn "Chọn"); `datetime` — "Chọn". Một event mỗi lần ghi. 0.59.0: bấm nút xoá (`clearable`) → `{ value: '', dbValue: '' }` (cả khi lịch đang mở). Đóng bằng Escape, bấm ra ngoài, chọn lại đúng giá trị cũ ở `date` / `month` / `year`, `setValue()`, `setDBValue()`, reset **không** phát. | có (`composed: true`) |
+| `change` | `{ value, dbValue }` — `value` dạng display, `dbValue` dạng db, theo mode (datetime: `yyyy-mm-dd hh:mm:00`) | Người dùng **ghi** một giá trị hợp lệ: `date` / `month` / `year` — bấm một ô (0.60.0: không còn "Chọn"); `datetime` — "Chọn". Một event mỗi lần ghi. 0.59.0: bấm nút xoá (`clearable`) → `{ value: '', dbValue: '' }` (cả khi lịch đang mở). 0.63.0 `editable`: chốt chữ gõ hợp lệ khác giá trị cũ (hoặc xoá trắng ô có giá trị, không `required`) — chữ sai / ngoài `min`–`max` **không** phát. Đóng bằng Escape, bấm ra ngoài, chọn lại đúng giá trị cũ ở `date` / `month` / `year`, `setValue()`, `setDBValue()`, reset **không** phát. | có (`composed: true`) |
 
 ## Hook & tuỳ chọn
 
@@ -469,6 +535,24 @@ ngày-giờ ≈ 665px (78–85 %, trần của modal là 90 %). (0.36.0: sheet c
   <span class="td-field-error" id="{host}-error" data-for="{host}">…</span>   <!-- chỉ khi có lỗi -->
 </td-datetime-picker>
 ```
+
+0.63.0 `editable` (máy tính; cảm ứng: ô `readonly inputmode="none"`) — trigger thành nút icon, thêm ô gõ:
+
+```html
+<div class="td-dtp td-dtp--editable [td-dtp--clearable]" data-state="closed|open">
+  <label class="td-field__label" id="{host}-label" for="{host}-input">Chụp từ</label>
+  <input type="text" class="td-dtp__input" id="{host}-input" role="combobox" aria-haspopup="dialog" aria-expanded="false"
+         aria-autocomplete="none" autocomplete="off" spellcheck="false" placeholder="dd/mm/yyyy" value="15/03/1994"
+         [aria-controls khi mở] [aria-required] [aria-invalid] [aria-errormessage] [aria-describedby] [disabled]>
+  <button type="button" class="td-dtp__trigger td-dtp__trigger--icon" id="{host}-trigger" aria-label="Chọn ngày"
+          aria-haspopup="dialog" aria-expanded="false" [disabled]><span class="td-dtp__icon" data-td-icon="calendar" aria-hidden="true">svg</span></button>
+  [button.td-dtp__clear …]   <!-- như trên -->
+</div>
+```
+
+Hộp vẽ bằng `::before` của `.td-dtp--editable` (cùng hình trigger 0.62: nền, viền, bo, cao), trạng thái đọc từ các phần:
+`:focus-within` (vòng focus — ô gõ không có vòng riêng), `data-state="open"`, `aria-invalid` trên ô gõ (viền đỏ), ô
+`disabled`. Màu nền / viền theo token field ở trên; chế độ tương phản cao: viền `CanvasText`, focus `Highlight`, lỗi gạch đứt.
 
 Markup PHP (0.56.0; từ 0.60.0 là `data-td-ssr="datetime-picker@2"` — JS vẫn nhận `@1` của markup in trước 0.60 trong lúc
 nâng cấp dần, `@2` không có `min` / `max` ngầm 2000–2099, chỉ `max="9999-12-31"` khi site không đặt `max`) có thêm `input.td-dtp__native` (ô ngày native, `id="{host}-native"`)

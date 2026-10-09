@@ -8318,6 +8318,145 @@
 		display: inline-flex;
 	}
 
+	/*
+	 * v0.63.0 `editable` (plan v0.63.0-typed-dates B): [label] / [input | calendar button | clear button] on one grid. The FIELD
+	 * look of the 0.62 trigger (fill, border, radius, height) is drawn by the box's ::before across the control row, with its
+	 * states read from the parts: :focus-within (ring — no ring of the input's own), open, error, disabled. The input and the
+	 * buttons are transparent on top of it. Tokens only (no new ones).
+	 */
+	.td-dtp--editable {
+		--_td-dtp-icon-w: 2.25rem;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto auto;
+		grid-template-rows: auto var(--td-field-h-md);
+		grid-template-areas: "label label label" "input trigger clear";
+	}
+
+	.td-dtp--editable::before {
+		box-sizing: border-box;
+		grid-row: 2;
+		grid-column: 1 / -1;
+		content: "";
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: text input box (v0.63.0 editable picker) — the focus ring is the feedback; its buttons have their own */
+		.td-dtp--editable:hover:not(:focus-within, [data-state="open"], :has(> .td-dtp__input:disabled))::before {
+			border-color: var(--td-field-border-hover);
+		}
+	}
+
+	.td-dtp--editable[data-state="open"]::before {
+		border-color: var(--td-field-focus);
+	}
+
+	.td-dtp--editable:focus-within::before {
+		background: var(--td-field-bg-focus);
+		border-color: var(--td-field-focus);
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	/* a visible error keeps the red border, focused or open */
+	.td-dtp--editable:has(> .td-dtp__input[aria-invalid="true"])::before {
+		border-color: var(--td-field-error);
+	}
+
+	.td-dtp--editable:has(> .td-dtp__input:disabled)::before {
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-dtp--editable > .td-field__label {
+		grid-area: label;
+	}
+
+	.td-dtp__input {
+		grid-area: input;
+		align-self: stretch;
+		width: 100%;
+		min-width: 0;
+		height: auto;
+		padding: 0 var(--td-space-2xs) 0 15px; /* the trigger's 14px + its 1px border: the text sits where it did in 0.62 */
+		margin: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: var(--td-field-fg);
+		text-overflow: ellipsis;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		outline: none; /* the box draws the focus (:focus-within) */
+		box-shadow: none;
+		appearance: none;
+	}
+
+	.td-dtp__input::placeholder {
+		color: var(--td-field-placeholder);
+		opacity: 1;
+	}
+
+	.td-dtp__input:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		-webkit-text-fill-color: currentColor; /* WebKit greys a disabled input's text on its own */
+	}
+
+	.td-dtp__input[readonly] {
+		cursor: default; /* touch: a tap opens the calendar */
+	}
+
+	/*
+	 * the calendar button: an icon cell inside the box (1px clear of its border: a pressed wash never covers it). Last in the
+	 * box, its icon sits where the 0.62 trigger's did (14px + the border from the edge); before the clear button, centred.
+	 */
+	.td-dtp--editable > .td-dtp__trigger {
+		grid-area: trigger;
+		align-self: stretch;
+		justify-content: center;
+		width: auto;
+		min-width: var(--_td-dtp-icon-w);
+		height: auto;
+		min-height: 0;
+		padding: 0 var(--td-space-xs);
+		margin: 1px 0;
+		color: var(--td-field-placeholder);
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		outline: none; /* :focus-visible below (an idle transparent outline would draw a box in forced colours) */
+	}
+
+	.td-dtp--editable:not(.td-dtp--clearable) > .td-dtp__trigger,
+	.td-dtp--editable > .td-dtp__trigger:has(+ .td-dtp__clear[hidden]) {
+		padding-inline-end: 14px;
+		margin-inline-end: 1px;
+		border-start-end-radius: calc(var(--td-field-radius-md) - 1px);
+		border-end-end-radius: calc(var(--td-field-radius-md) - 1px);
+	}
+
+	.td-dtp--editable > .td-dtp__trigger:focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: -3px;
+		box-shadow: none;
+	}
+
+	.td-dtp--editable > .td-dtp__trigger:disabled {
+		background: transparent; /* the box shows the disabled fill */
+	}
+
+	.td-dtp--editable > .td-dtp__clear {
+		grid-area: clear;
+		justify-self: stretch;
+	}
+
 	/* ---- Wheel (listbox) ---- */
 	.td-dtp-wheel {
 		position: relative;
@@ -8411,6 +8550,16 @@
 			--_td-dtp-clear-w: var(--td-touch-min);
 		}
 
+		/* v0.63.0 `editable` on touch (readonly input, a tap opens): ≥ 44 px row and calendar button, text ≥ 16px (no iOS zoom) */
+		.td-dtp--editable {
+			--_td-dtp-icon-w: var(--td-touch-min);
+			grid-template-rows: auto minmax(var(--td-touch-min), auto);
+		}
+
+		.td-dtp__input {
+			font-size: max(1rem, 1em);
+		}
+
 		/* v0.56.0: the pre-upgrade native input ≥ 16px (iOS does not zoom on focus); 16 → 14 on upgrade, same box (ADR 0025 §5) */
 		td-datetime-picker:not(:defined) .td-dtp__native {
 			font-size: max(1rem, 1em);
@@ -8418,7 +8567,8 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.td-dtp__trigger {
+		.td-dtp__trigger,
+		.td-dtp--editable::before {
 			transition: none;
 		}
 
@@ -8463,6 +8613,32 @@
 		}
 
 		.td-dtp__value[data-placeholder] {
+			color: GrayText;
+		}
+
+		/* v0.63.0 `editable`: the box border is the field; the focus is a Highlight outline around it */
+		.td-dtp--editable::before {
+			border-color: CanvasText;
+		}
+
+		.td-dtp--editable:focus-within::before {
+			outline-color: Highlight;
+		}
+
+		.td-dtp--editable:has(> .td-dtp__input[aria-invalid="true"])::before {
+			border-style: dashed;
+			border-width: 2px;
+		}
+
+		.td-dtp--editable:has(> .td-dtp__input:disabled)::before {
+			border-color: GrayText;
+		}
+
+		.td-dtp__input::placeholder {
+			color: GrayText;
+		}
+
+		.td-dtp__input:disabled {
 			color: GrayText;
 		}
 
@@ -17835,6 +18011,147 @@
 		color: var(--td-field-placeholder);
 	}
 
+	/*
+	 * v0.63.0 `editable` (plan v0.63.0-typed-dates B): [label] / [start input | "–" | end input | calendar button] on one grid;
+	 * the box's ::before draws the 0.62 trigger's field look across the control row (like .td-dtp--editable), its states read
+	 * from the parts: :focus-within (ring), open, an error on either input, disabled. Inputs and button are transparent on top.
+	 */
+	.td-dtr--editable {
+		--_td-dtr-icon-w: 2.25rem;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+		grid-template-rows: auto var(--td-field-h-md);
+		grid-template-areas: "label label label label" "start sep end trigger";
+	}
+
+	.td-dtr--editable::before {
+		box-sizing: border-box;
+		grid-row: 2;
+		grid-column: 1 / -1;
+		content: "";
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: text input box (v0.63.0 editable range) — the focus ring is the feedback; its button has its own */
+		.td-dtr--editable:hover:not(:focus-within, [data-state="open"], :has(> .td-dtr__input:disabled))::before {
+			border-color: var(--td-field-border-hover);
+		}
+	}
+
+	.td-dtr--editable[data-state="open"]::before {
+		border-color: var(--td-field-focus);
+	}
+
+	.td-dtr--editable:focus-within::before {
+		background: var(--td-field-bg-focus);
+		border-color: var(--td-field-focus);
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	.td-dtr--editable:has(> .td-dtr__input[aria-invalid="true"])::before {
+		border-color: var(--td-field-error);
+	}
+
+	.td-dtr--editable:has(> .td-dtr__input:disabled)::before {
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-dtr--editable > .td-dtr__label {
+		grid-area: label;
+	}
+
+	.td-dtr__input {
+		align-self: stretch;
+		width: 100%;
+		min-width: 0;
+		height: auto;
+		padding: 0 var(--td-space-2xs);
+		margin: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: var(--td-field-fg);
+		text-overflow: ellipsis;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		outline: none; /* the box draws the focus (:focus-within) */
+		box-shadow: none;
+		appearance: none;
+	}
+
+	.td-dtr__input[data-side="start"] {
+		grid-area: start;
+		padding-inline-start: 15px; /* the trigger's 14px + its 1px border: the text sits where it did in 0.62 */
+	}
+
+	.td-dtr__input[data-side="end"] {
+		grid-area: end;
+	}
+
+	.td-dtr__input::placeholder {
+		color: var(--td-field-placeholder);
+		opacity: 1;
+	}
+
+	.td-dtr__input:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		-webkit-text-fill-color: currentColor; /* WebKit greys a disabled input's text on its own */
+	}
+
+	.td-dtr__input[readonly] {
+		cursor: default; /* touch: a tap opens the dialog */
+	}
+
+	.td-dtr__sep {
+		grid-area: sep;
+		align-self: center;
+		color: var(--td-field-placeholder);
+		user-select: none;
+	}
+
+	/*
+	 * the calendar button: an icon cell at the end of the box (1px clear of its border: a pressed wash never covers it), its
+	 * icon where the 0.62 trigger's was (14px + the border from the edge)
+	 */
+	.td-dtr--editable > .td-dtr__trigger {
+		grid-area: trigger;
+		align-self: stretch;
+		justify-content: center;
+		width: auto;
+		min-width: var(--_td-dtr-icon-w);
+		height: auto;
+		min-height: 0;
+		padding: 0 14px 0 var(--td-space-xs);
+		margin: 1px 1px 1px 0;
+		color: var(--td-field-placeholder);
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		border-start-end-radius: calc(var(--td-field-radius-md) - 1px);
+		border-end-end-radius: calc(var(--td-field-radius-md) - 1px);
+		outline: none; /* :focus-visible below (an idle transparent outline would draw a box in forced colours) */
+	}
+
+	.td-dtr--editable > .td-dtr__trigger:focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: -3px;
+		box-shadow: none;
+	}
+
+	.td-dtr--editable > .td-dtr__trigger:disabled {
+		background: transparent; /* the box shows the disabled fill */
+	}
+
 	/* ---- No-JS block (php td_datetime_range; removed when the element adopts the markup) ---- */
 	.td-dtr__natives {
 		display: grid;
@@ -18194,6 +18511,16 @@
 			min-height: var(--td-touch-min);
 		}
 
+		/* v0.63.0 `editable` on touch (readonly inputs, a tap opens): ≥ 44 px row and button, text ≥ 16px (no iOS zoom) */
+		.td-dtr--editable {
+			--_td-dtr-icon-w: var(--td-touch-min);
+			grid-template-rows: auto minmax(var(--td-touch-min), auto);
+		}
+
+		.td-dtr__input {
+			font-size: max(1rem, 1em);
+		}
+
 		.td-dtr__native {
 			height: auto;
 			min-height: var(--td-touch-min);
@@ -18214,6 +18541,7 @@
 
 	@media (prefers-reduced-motion: reduce) {
 		.td-dtr__trigger,
+		.td-dtr--editable::before,
 		.td-dtr-panel__preset {
 			transition: none;
 		}
@@ -18238,6 +18566,29 @@
 		}
 
 		.td-dtr__value[data-placeholder] {
+			color: GrayText;
+		}
+
+		/* v0.63.0 `editable`: the box border is the field; the focus is a Highlight outline around it */
+		.td-dtr--editable::before {
+			border-color: CanvasText;
+		}
+
+		.td-dtr--editable:focus-within::before {
+			outline-color: Highlight;
+		}
+
+		.td-dtr--editable:has(> .td-dtr__input[aria-invalid="true"])::before {
+			border-style: dashed;
+			border-width: 2px;
+		}
+
+		.td-dtr--editable:has(> .td-dtr__input:disabled)::before {
+			border-color: GrayText;
+		}
+
+		.td-dtr__input::placeholder,
+		.td-dtr__input:disabled {
 			color: GrayText;
 		}
 

@@ -105,6 +105,21 @@ export const Clearable = {
 };
 
 /**
+ * v0.63.0 `editable` (plan v0.63.0-typed-dates): type the date on desktop — `15031994`, `15/3/1994`, `1994-03-15` all read as
+ * 15/03/1994 on Enter / leaving the field; the calendar button still opens the calendar. Touch devices keep tap-to-open.
+ */
+export const Editable = {
+  args: { label: 'Chụp từ' },
+  render: (a) => '<div class="sb-stack" style="min-height: 26rem">'
+    + `<td-datetime-picker mode="date" name="shot_from"${attr('label', a.label)} editable clearable></td-datetime-picker>`
+    + '<td-datetime-picker mode="date" label="Ngày cuộn phim (trước 2000)" max="31/12/1999" value="15/03/1994" editable></td-datetime-picker>'
+    + '<td-datetime-picker label="Giờ chụp" editable value="15/03/1994 - 09:05"></td-datetime-picker>'
+    + '<td-datetime-picker mode="month" label="Tháng" editable></td-datetime-picker>'
+    + '<p class="sb-note">Gõ rồi Enter / Tab: ô hiện lại đúng dd/mm/yyyy, một sự kiện change. Gõ sai (31/02/1994, 15/3/94, abc) hoặc'
+    + ' ngoài min / max: ghi chú lỗi dưới ô, không change, không tự kẹp. Esc trả lại chữ cũ; ↓ hoặc nút lịch mở lịch đúng ngày vừa gõ.</p></div>',
+};
+
+/**
  * v0.60.0 the calendar (plan v0.60.0-calendar-picker, ADR 0032). Each story opens its picker on load (≥ 720 px a popover next to the
  * field, < 720 px the bottom sheet): date commits on a day, datetime on "Chọn", month / year open on their grid.
  */

@@ -65,3 +65,18 @@ export const OpenEnd = {
       "Không hạn". Gửi form: hl[end] = "".</p>
   </div>`,
 };
+
+/**
+ * v0.63.0 `editable` (plan v0.63.0-typed-dates): both sides typed on desktop (`20031994`, `20/3/1994`…); each side commits on
+ * Enter / leaving it, one `change` whenever the whole range is valid. Touch devices keep tap-to-open.
+ */
+export const Editable = {
+  args: { label: 'Chụp từ – đến' },
+  render: (a) => `<div class="sb-stack">
+    <td-datetime-range name="shot" mode="date" label="${esc(a.label)}" editable></td-datetime-range>
+    <td-datetime-range name="hl" mode="date" label="Hiệu lực" start="01/10/2026" editable allow-open-end required></td-datetime-range>
+    <td-datetime-range name="ca" mode="datetime" label="Ca làm" editable max-days="2"></td-datetime-range>
+    <p class="sb-note">Gõ Từ rồi Tab: một change (khoảng mở hợp lệ); gõ Đến: change thứ hai. Đến trước Từ → lỗi thứ tự hiện ở ô Đến,
+      không change. Nút lịch mở hộp thoại đúng khoảng vừa gõ.</p>
+  </div>`,
+};
