@@ -78,6 +78,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.61.0: `td-datetime-range` dùng lịch mới (chọn Từ → Đến trên lưới) + hộp `datetime` hai bước ngày → giờ cho picker và range — plan [v0.61.0-range-calendar](plans/v0.61.0-range-calendar.md)
 - `done` v0.62.0: đợt chỉnh giao diện — alert bỏ vạch trái (Hallmark), guard drawer dùng TdModal.confirm, hovercard skeleton, media-picker mở như modal, API màu scroll-top — plan [v0.62.0-polish](plans/v0.62.0-polish.md)
 - `done` v0.62.1: vá phím mũi tên trong lịch popover — cú cuộn hiện ô bị việc đặt lại vị trí popover kéo ngược (flake CI `calendar-a11y` WebKit)
+- `done` v0.63.0: gõ ngày bằng tay (`editable`) cho `td-datetime-picker` / `td-datetime-range` — yêu cầu 135 — plan [v0.63.0-typed-dates](plans/v0.63.0-typed-dates.md)
 
 ## Chờ nhu cầu (owner 2026-10-08: chỉ làm khi có site cần)
 

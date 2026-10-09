@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.63.0](#0630) | Không phá vỡ: `editable` là opt-in | Không phải sửa code. Muốn gõ tay: thêm `editable`. `messages.incomplete` (picker datetime) đổi câu; site đã override cho mode `date` → override `incompleteDate`. |
 | [0.62.0](#0620) | Đổi giao diện `td-alert` (bỏ vạch trái, ô icon) + DOM trạng thái tải của `td-hovercard` (skeleton) + `td-media-picker` có chuyển động mở | Không phải sửa code. Test chụp / đo alert (vạch 4px) hoặc bám `.td-hovercard__spinner` phải đổi; test đo picker ngay khi `data-state="open"` nên chờ chuyển động xong. |
 | [0.61.0](#0610) | Đổi giao diện + tương tác `td-datetime-range` (lịch một lưới thay hai bộ ba ô số) + **hộp thoại `datetime` (picker VÀ range) là hai bước: ngày → giờ** + gỡ `.td-dtp-panel*` | Không đổi markup / attribute / form / `change` / PHP. Test tự động bám ô số của range hoặc "bấm ngày rồi Chọn ngay" ở `datetime` phải đổi (xem § 0.61.0). Range `datetime`: "Chọn" chỉ ở màn giờ. |
 | [0.60.0](#0600) | Đổi giao diện + tương tác `td-datetime-picker` (lịch dạng lưới thay ba ô số) + đổi hành vi (hết cửa sổ năm 2000–2099, picker `date`/`month`/`year` chọn là ghi) + SSR `datetime-picker@2` | Không phải sửa code. Test tự động bám `.td-dtp-panel` / `[data-part]` / nút "Chọn" ở `mode="date"` phải đổi selector (có loại xanh giả). Site dựa vào cửa sổ 2000–2099 để chặn dữ liệu → đặt `min` / `max`. Triển khai JS và PHP cùng bản. |
@@ -87,6 +88,20 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.63.0
+
+**Mức: không phá vỡ (thêm tính năng opt-in).**
+
+- Không có `editable`: markup, hành vi, form value, sự kiện như 0.62.
+- `editable` (picker): `input.td-dtp__input[role=combobox]` + `button.td-dtp__trigger.td-dtp__trigger--icon` (vẫn là thứ mở lịch —
+  test bấm `.td-dtp__trigger` chạy như cũ); `aria-invalid` / `aria-required` / mô tả lỗi nằm trên input. Range: `input.td-dtr__input
+  [data-side="start|end"]` + `button.td-dtr__trigger.td-dtr__trigger--icon`. Selector lịch `.td-cal [data-date]`,
+  `[data-action="confirm"]` không đổi.
+- `TdDatetimePicker.messages.incomplete` (datetime) → "Vui lòng nhập đầy đủ ngày và giờ"; mode `date` dùng key mới `incompleteDate`.
+- `td-datetime-range` với một bên không tồn tại (31/02) mở lịch như bên trống.
 
 ---
 

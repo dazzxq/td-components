@@ -2,6 +2,34 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.63.0
+
+**Gõ ngày bằng tay trong `td-datetime-picker` / `td-datetime-range` — attribute `editable` (opt-in)** (yêu cầu của 135, owner duyệt
+2026-10-09). Plan `docs/internal/plans/v0.63.0-typed-dates.md`, Codex plan-review APPROVE r4, impl-review APPROVE r3 (sol / high),
+security-review sạch. Không có thay đổi phá vỡ — `docs/upgrading/breaking-changes.md#0630`.
+
+### Added
+
+- `editable` trên `td-datetime-picker` và `td-datetime-range`: ô nhập chữ + nút mở lịch (`.td-dtp__trigger` / `.td-dtr__trigger`
+  vẫn mở lịch). Gõ dễ dãi: `15031994`, `15/3/1994`, `15-3-1994`, `15.3.1994`, `1994-03-15` → `15/03/1994` (năm luôn 4 chữ số; datetime
+  thêm `9:05` / `0905`). Chốt khi Enter / rời ô / trước khi mở lịch: hợp lệ hoàn toàn → **một** `change` `{ value, dbValue }`; sai /
+  ngoài min–max / sai thứ tự → giữ chữ đã gõ, hiện lỗi dưới ô (`aria-invalid` trên ô sai), **không** `change`, không tự kẹp. Sự kiện
+  `input` / `change` gốc của ô nhập không lọt ra ngoài element. Range: hai ô Từ / Đến (`.td-dtr__input[data-side]`), mỗi lần ghi
+  hợp lệ một `change`.
+- Thiết bị cảm ứng (`(hover: none) and (pointer: coarse)`): ô `readonly`, chạm mở lịch như cũ — không bàn phím ảo.
+- PHP: option `editable` cho `td_datetime_picker()` / `td_date()` / `td_datetime_range()` (in attribute; markup SSR không đổi).
+- Labels `openCalendar*` (picker), `openCalendar`, `startInput*`, `endInput*`, `sidePlaceholder*` (range); messages `incompleteDate`
+  (picker), `incompleteDatetime` (range); `parseTypedValue()` trong `src/utils/datetime.js`.
+
+### Changed
+
+- `messages.incomplete` của picker (datetime) nay là "Vui lòng nhập đầy đủ ngày và giờ"; câu cũ chuyển sang `incompleteDate`.
+
+### Fixed
+
+- `td-datetime-range`: một bên có giá trị không tồn tại (vd `start="31/02/2026"`) mở lịch như bên trống (về bên kia / `open-at` /
+  hôm nay) thay vì một ngày không có thật.
+
 ## 0.62.1
 
 **Vá lỗi: phím mũi tên trong lịch popover không còn làm ô đang chọn trượt khỏi vùng nhìn thấy** (CI `calendar-a11y` đỏ lặp lại
