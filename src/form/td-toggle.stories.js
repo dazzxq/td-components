@@ -136,7 +136,8 @@ export const TwoFactorRecipe = {
         t.commit(save);
         return;
       }
-      if (!window.confirm('Tắt xác thực 2FA cho nguyenvana?')) return;
+      const { TdModal } = await import('../feedback/td-modal.js');
+      if (!(await TdModal.confirm({ title: 'Tắt xác thực 2FA?', message: 'Tắt xác thực 2FA cho nguyenvana?', confirmText: 'Tắt', confirmVariant: 'danger' }))) return;
       t.commit(save);
     });
     t.addEventListener('commit-error', () => { out.textContent = 'Không lưu được — công tắc đã quay lại.'; });

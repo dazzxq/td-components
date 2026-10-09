@@ -52,16 +52,18 @@ tự đặt `checked` nếu chấp nhận.
 ```
 
 ```js
+import { TdModal } from '@dazzxq/td-components/modal';
+
 const t = document.getElementById('beta');
-t.addEventListener('change', (e) => {
-  if (confirm('Bật tính năng beta?')) {
+t.addEventListener('change', async (e) => {
+  if (await TdModal.confirm({ message: 'Bật tính năng beta?' })) {   // hộp thoại của kit, không phải confirm() gốc
     t.checked = e.detail.checked; // chấp nhận
   }
   // không làm gì = từ chối, công tắc giữ nguyên
 });
 ```
 
-Chấp nhận đồng bộ ngay trong handler (như trên) hay sau đó đều được; kit tự đồng bộ lại input bên trong.
+Chấp nhận ngay trong handler hay sau một `await` (như trên) đều được; kit tự đồng bộ lại input bên trong.
 
 ### Lưu lên server ngay: `commit()`
 

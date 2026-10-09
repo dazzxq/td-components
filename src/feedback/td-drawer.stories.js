@@ -51,20 +51,26 @@ export const JsApi = {
   },
 };
 
-/** dismissible="false" + before-close: Escape / backdrop do nothing; the × asks before losing unsaved input. */
+/**
+ * v0.44.0 `beforeClose` + `trackFormDirty().confirmDiscard()`: Escape, a backdrop click and the × ask before losing unsaved
+ * input — with the KIT's danger `TdModal.confirm` ("Bỏ thay đổi?"), stacked above the drawer; "Ở lại" returns the focus to the
+ * field. Never the browser's `window.confirm`. Leaving the PAGE (reload, closing the tab) is the browser's own
+ * `beforeunload` prompt — it cannot be replaced (docs/components/form-validation.md § Rời trang).
+ */
 export const UnsavedGuard = {
   render: () => `<div class="sb-stack">${trigger('dr-guard-open', 'Sửa hồ sơ')}
-    <td-drawer id="dr-guard" title="Hồ sơ" dismissible="false">
-      <label class="td-field__label" for="dr-name">Tên</label><input id="dr-name" class="td-field__control" value="An">
-      <p class="sb-note">Sửa tên rồi bấm × — drawer hỏi lại trước khi đóng.</p>
+    <td-drawer id="dr-guard" title="Hồ sơ">
+      <form id="dr-form" novalidate>
+        <label class="td-field__label" for="dr-name">Tên</label><input id="dr-name" name="name" class="td-field__control" value="An">
+      </form>
+      <p class="sb-note">Sửa tên rồi bấm × / Esc / nền — drawer hỏi lại bằng hộp thoại của kit trước khi đóng.</p>
     </td-drawer></div>`,
-  play: ({ canvasElement }) => {
+  play: async ({ canvasElement }) => {
+    const { trackFormDirty } = await import('../utils/form-dirty.js'); // loaded in the browser only (check:stories has no DOM)
     const drawer = canvasElement.querySelector('#dr-guard');
-    const input = canvasElement.querySelector('#dr-name');
+    const form = canvasElement.querySelector('#dr-form');
+    const tracker = trackFormDirty(form);
+    drawer.beforeClose = () => tracker.confirmDiscard();
     canvasElement.querySelector('#dr-guard-open').addEventListener('click', () => drawer.show());
-    drawer.addEventListener('before-close', (e) => {
-      // eslint-disable-next-line no-alert
-      if (input.value !== input.defaultValue && !window.confirm('Bỏ thay đổi chưa lưu?')) e.preventDefault();
-    });
   },
 };

@@ -548,7 +548,7 @@
         <td-button variant="primary" id="demo-drawer-apply">Áp dụng</td-button>
       </div>
     </td-drawer>
-    <p class="demo-note">Đã gõ từ khoá mà đóng (Esc / nền / ×) → <code>before-close</code> chặn và hỏi bằng TdModal.confirm. Event <code>open</code> / <code>close</code> trong Console.</p>
+    <p class="demo-note">Đã gõ từ khoá mà đóng (Esc / nền / ×) → <code>beforeClose</code> chặn và hỏi bằng TdModal.confirm. Event <code>open</code> / <code>close</code> trong Console.</p>
   </div>
 
   <!-- ═══════════════════ v0.44.0: gõ để xác nhận + thay đổi chưa lưu ═══════════════════ -->
@@ -1557,7 +1557,6 @@
     const drawer = document.querySelector('#demo-drawer');
     const drawerQ = document.querySelector('#demo-drawer-q');
     let applied = '';
-    let discarding = false;
     document.querySelector('#demo-drawer-open').addEventListener('click', () => drawer.show());
     // While open, the footer button lives in the panel under <body> → listen on document.
     document.addEventListener('click', (e) => {
@@ -1567,15 +1566,13 @@
         drawer.close('button');
       }
     });
-    drawer.addEventListener('before-close', async (e) => {
-      if (discarding || drawerQ.value === applied) return;
-      e.preventDefault();
+    // v0.44.0: async close guard — the KIT's danger confirm above the drawer (never the browser's confirm())
+    drawer.beforeClose = async () => {
+      if (drawerQ.value === applied) return true;
       const ok = await TdModal.confirm({ message: 'Bỏ bộ lọc chưa áp dụng?', confirmText: 'Bỏ thay đổi', confirmVariant: 'danger' });
-      if (!ok) return;
-      drawerQ.value = applied;
-      discarding = true;
-      try { await drawer.close(e.detail.reason); } finally { discarding = false; }
-    });
+      if (ok) drawerQ.value = applied;
+      return ok;
+    };
     drawer.addEventListener('open', () => console.log('[td-drawer] open'));
     drawer.addEventListener('close', (e) => console.log('[td-drawer] close:', e.detail.reason));
     document.querySelector('#demo-drawer-js').addEventListener('click', async () => {
