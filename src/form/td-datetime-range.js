@@ -95,7 +95,8 @@ export { toNativeValue, fromNativeValue };
  * wins), `aria-invalid` on the input it is about: that side's own error (format / date / min / max / required of that side),
  * else the order / `max-days` error on the side just committed, else the other side's own error. It goes on "Chọn",
  * setValue() / setDBValue() / an outside start / end change, reset, `editable` off, or once the range is valid. Escape puts
- * the committed text back; ArrowDown / Alt+ArrowDown open the dialog. Touch-first devices (`MQ_COARSE`, followed live):
+ * the committed text back; ArrowDown / Alt+ArrowDown open the dialog; closing it returns to an INPUT (the one it was opened from,
+ * else the last focused side, else the start). A `change` needs the COMPLETE validity (a site's setCustomValidity too). Touch-first devices (`MQ_COARSE`, followed live):
  * `readonly` + `inputmode="none"`, a tap opens the dialog.
  *
  * @element td-datetime-range
@@ -197,6 +198,8 @@ export class TdDatetimeRange extends TdFormElement {
     this._warned = new Set();
     /** @private v0.63.0 `editable` (D3): { own: { start, end } (messages|null), pair: { side, message }|null, last } | null */
     this._typedError = null;
+    /** @private v0.63.0: the sides whose committed value came from typing + the last typed side (null = none typed) */
+    this._typedOrigin = null;
     /** @private v0.63.0: the text the element last put into each input (a commit of the same text is a no-op) */
     this._inputText = { start: '', end: '' };
   }
@@ -456,6 +459,7 @@ export class TdDatetimeRange extends TdFormElement {
     const stop = (e) => e.stopPropagation();
     this.listen(input, 'input', stop);
     this.listen(input, 'change', stop);
+    this.listen(input, 'focus', () => { this._lastSide = side; }); // the dialog opened from the icon button returns here
     this.listen(input, 'blur', () => {
       if (input === this._input(side)) this._commitSide(side);
     });
@@ -490,41 +494,76 @@ export class TdDatetimeRange extends TdFormElement {
     if (!input || !input.isConnected || input.readOnly || this._effectiveDisabled) return;
     const text = input.value;
     if (text === this._inputText[side]) return;
-    const M = TdDatetimeRange.messages;
     const mode = this._mode();
-    const before = this._validity() ? null : this.getValue(); // null = the range before was not valid
+    // the COMPLETE validity (a site's setCustomValidity too — Codex impl r1 #1); null = the range before was not valid
+    const before = this.validity.valid ? this.getValue() : null;
     const t = text.trim();
     let value = null;
-    let own = null;
     if (t) {
       const parts = parseTypedValue(t, mode);
-      if (!parts || invalidReason(parts)) {
-        value = t; // the raw text (badInput, like a malformed attribute)
-        own = parts ? this._checkParts(parts).message : this._text(M, 'format');
-      } else {
-        value = formatModeDisplay(toModeParts(parts, mode), mode);
-      }
+      value = !parts || invalidReason(parts) ? t // the raw text (badInput, like a malformed attribute)
+        : formatModeDisplay(toModeParts(parts, mode), mode);
     }
     this._write({ [side]: value }, {
       typed: () => {
-        const s = this._side(side);
-        if (!own && !s.raw && this._required().includes(side)) own = side === 'start' ? M.requiredStart : M.requiredEnd;
-        if (!own && s.error) own = s.error.message; // min / max
-        const prev = this._typedError;
-        const next = { own: { start: null, end: null, ...(prev ? prev.own : {}), [side]: own }, pair: null, last: side };
-        const a = this._side('start');
-        const b = this._side('end');
-        const pair = a.usable && b.usable ? this._pairCheck(a.parts, b.parts) : null;
-        if (pair) next.pair = { side, message: pair }; // order / max-days: on the side just committed
-        return next.own.start || next.own.end || next.pair ? next : null;
+        this._typedOrigin = { start: false, end: false, ...(this._typedOrigin || {}), [side]: true, last: side };
+        return this._typedErrorNow();
       },
       change: () => {
-        if (this._validity()) return null;
+        if (!this.validity.valid) return null; // read after _syncForm(): custom validity included
         const v = this.getValue();
         if (before && before.start === v.start && before.end === v.end) return null;
         return { value: v, dbValue: this.getDBValue(), preset: null };
       },
     });
+  }
+
+  /**
+   * @private v0.63.0 D3: the own typed error of one side from its committed attribute under the CURRENT mode / bounds —
+   * format / impossible date / min / max; empty + `withRequired` + a required side → its required message. null = fine.
+   * @param {'start'|'end'} side @param {boolean} withRequired
+   */
+  _ownTypedError(side, withRequired) {
+    const M = TdDatetimeRange.messages;
+    const mode = this._mode();
+    const raw = (this.getAttribute(side) || '').trim();
+    if (!raw) return withRequired && this._required().includes(side) ? (side === 'start' ? M.requiredStart : M.requiredEnd) : null;
+    const parts = parseTypedValue(raw, mode);
+    if (!parts) return this._text(M, 'format');
+    const err = this._checkParts(invalidReason(parts) ? parts : toModeParts(parts, mode));
+    return err ? err.message : null;
+  }
+
+  /** @private v0.63.0 D3: the order / max-days message of the committed pair (both sides usable), or null */
+  _pairTypedError() {
+    const a = this._side('start');
+    const b = this._side('end');
+    return a.usable && b.usable ? this._pairCheck(a.parts, b.parts) : null;
+  }
+
+  /**
+   * @private v0.63.0 (Codex impl r1 #5): a validation-driving attribute changed (min / max / max-days / required / mode /
+   * allow-open-end) — each side's typed error and the pair error are recomputed from the committed values (a required-empty
+   * error stays only on a side that had one), or the typed error goes when nothing is wrong now. Before _syncForm().
+   */
+  _recheckTypedError() {
+    if (!this._typedOrigin || !this._editable()) return;
+    this._typedError = this._typedErrorNow();
+    this._applyErrorState();
+  }
+
+  /**
+   * @private v0.63.0 D3: the typed error of the committed pair now — each TYPED side's own error (format / date / min / max /
+   * its required message when it was committed empty), the order / max-days error on the last typed side. null = none.
+   */
+  _typedErrorNow() {
+    const o = this._typedOrigin;
+    if (!o) return null;
+    const own = { start: null, end: null };
+    for (const k of SIDES) if (o[k]) own[k] = this._ownTypedError(k, true);
+    const pair = this._pairTypedError();
+    const next = { own, pair: pair ? { side: o.last, message: pair } : null, last: o.last }; // order / max-days: the last typed side
+    return own.start || own.end || next.pair ? next : null;
   }
 
   /**
@@ -546,6 +585,7 @@ export class TdDatetimeRange extends TdFormElement {
       this._writing = false;
     }
     const hadTyped = this._typedError != null;
+    if (typeof typed !== 'function') this._typedOrigin = null; // "Chọn": nothing typed any more
     this._typedError = typeof typed === 'function' ? typed() : typed;
     this._updateValueText();
     this._syncForm();
@@ -567,6 +607,12 @@ export class TdDatetimeRange extends TdFormElement {
 
   /** @private v0.63.0 D3: the typed error goes (an outside value change, setValue, reset, `editable` off, a valid range) */
   _dropTypedError() {
+    this._typedOrigin = null;
+    this._hideTypedError();
+  }
+
+  /** @private v0.63.0: the range is valid now — the message goes, the typed sides stay (a later bound change re-judges them) */
+  _hideTypedError() {
     if (this._typedError == null) return;
     this._typedError = null;
     this._applyErrorState();
@@ -673,6 +719,8 @@ export class TdDatetimeRange extends TdFormElement {
     if (name === 'disabled') this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
     if (!this._initialized) return;
     if ((name === 'start' || name === 'end') && !this._writing) this._dropTypedError(); // v0.63.0 D3: a value from outside
+    // v0.63.0 (Codex impl r1 #5): validation-driving attributes re-judge the typed error first
+    if (['min', 'max', 'max-days', 'required', 'allow-open-end'].includes(name)) this._recheckTypedError();
     switch (name) {
       case 'start':
       case 'end':
@@ -720,10 +768,12 @@ export class TdDatetimeRange extends TdFormElement {
         return;
       case 'mode':
         this._convertMode(normalizeRangeMode(oldVal).mode);
+        this._recheckTypedError(); // v0.63.0: a raw side kept verbatim is judged by the new mode
         this._rerender();
         return;
       case 'editable': // v0.63.0: another field — uncommitted text and the typed error go
         this._typedError = null;
+        this._typedOrigin = null;
         this._rerender();
         return;
       default: // label
@@ -853,7 +903,7 @@ export class TdDatetimeRange extends TdFormElement {
     if (v) this._setValidity(v.flags, v.message, this._focusTarget());
     else {
       this._setValidity({});
-      this._dropTypedError(); // v0.63.0: the range is valid — a stale typed error goes
+      this._hideTypedError(); // v0.63.0: the range is valid — a stale typed error goes
     }
   }
 
@@ -910,9 +960,12 @@ export class TdDatetimeRange extends TdFormElement {
       for (const k of SIDES) this._commitSide(k);
       if (this._isOpen || this._effectiveDisabled || !this.isConnected || this._trigger() !== trigger) return; // a `change` listener changed it
     }
-    // the dialog gives the focus back to its opener: the trigger, or (v0.63.0) the input it was opened from
-    const opener = inputs.includes(/** @type {any} */ (document.activeElement)) ? document.activeElement : trigger;
-    if (document.activeElement !== opener) trigger.focus({ preventScroll: true });
+    // the dialog gives the focus back to its opener: the trigger; v0.63.0 `editable` (plan F, Codex impl r1 #3): an INPUT —
+    // the one it was opened from (ArrowDown), else the last side input that had the focus, else the start input
+    const active = /** @type {any} */ (document.activeElement);
+    const opener = !inputs.length ? trigger
+      : inputs.includes(active) ? active : (this._input(this._lastSide || 'start') || inputs[0]);
+    if (active !== opener) opener.focus({ preventScroll: true });
     const L = TdDatetimeRange.labels;
     this._isOpen = true;
     const panel = this._buildPanel();
@@ -1028,7 +1081,7 @@ export class TdDatetimeRange extends TdFormElement {
     const step = this._minuteStep();
     const s = this._side(side);
     let p = null;
-    if (s.parts) {
+    if (s.usable) { // v0.63.0 (Codex impl r1 #4): a bad-input side (31/02/1994, 25:99) opens like an empty one
       p = { ...s.parts };
       p.hour = clamp(p.hour, 0, 23);
       p.minute = snapMinuteDown(clamp(p.minute, 0, 59), step);

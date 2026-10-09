@@ -321,14 +321,15 @@ hành vi, test của site).
 |---|---|---|---|---|
 | rỗng, không `required` | xoá | placeholder | xoá | `{ value: '', dbValue: '' }` nếu trước đó có giá trị (như nút xoá) |
 | rỗng, `required` | xoá | placeholder | "Vui lòng chọn…" (`valueMissing`) | **không** |
-| hợp lệ, trong `min`–`max` | dạng hiển thị chuẩn | dạng chuẩn | xoá | **một**, nếu khác giá trị cũ |
+| hợp lệ, trong `min`–`max` | dạng hiển thị chuẩn | dạng chuẩn | xoá | **một**, nếu khác giá trị cũ **và** validity của element sạch hoàn toàn (kể cả `setCustomValidity()` của site) |
 | đọc được, ngoài `min` / `max` | dạng chuẩn (**không** tự kẹp) | dạng chuẩn | "Không được trước / sau …" | **không** |
 | không đọc được / ngày không tồn tại (`31/02/1994`) | chữ thô (`badInput`) | chữ thô | "Định dạng … không hợp lệ" / "Ngày không hợp lệ" | **không** |
 
 - **Lỗi gõ hiện ngay** dưới ô (ghi chú `.td-field-error`, `aria-invalid` + `aria-errormessage` trên **ô gõ**), form invalid nên
   submit bị chặn. Lỗi của site (`error-text` / `setError()`) **thắng**. Lỗi gõ mất khi: chốt hợp lệ / rỗng (trừ `required`),
   lịch ghi giá trị, nút xoá, `setValue()` / `setDBValue()` / attribute `value` đổi từ ngoài, reset form, tắt `editable`, hoặc giá
-  trị hết sai (vd. bỏ `required`). Message dùng lại `TdDatetimePicker.messages` (`format*`, `incomplete*`, `date`, `min`, `max`,
+  trị hết sai (vd. bỏ `required`). Đổi `min` / `max` / `required` / `mode` khi đang có lỗi gõ → lỗi được tính lại theo
+  trạng thái mới (message mới, hoặc mất nếu giá trị giờ hợp lệ). Message dùng lại `TdDatetimePicker.messages` (`format*`, `incomplete*`, `date`, `min`, `max`,
   `required*`) — không có message mới.
 - **`Escape`** (lịch đóng): trả chữ về giá trị đã chốt, không chốt, không event.
 - **Lịch**: nút lịch, `ArrowDown` / `Alt+ArrowDown` trên ô → chốt rồi mở, lịch mở đúng tháng / năm vừa gõ, ngày được chọn

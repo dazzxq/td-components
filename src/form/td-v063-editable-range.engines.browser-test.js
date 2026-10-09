@@ -417,3 +417,79 @@ describe('v0.63.0 editable range — form, programmatic, SSR', () => {
     expect(`${fd.getAll('r[start]')}|${fd.getAll('r[end]')}`).to.equal('1994-03-20|1994-03-30');
   });
 });
+
+describe('v0.63.0 editable range — Codex impl r1 (#1, #3, #4, #5)', () => {
+  for (const how of ['enter', 'blur']) {
+    it(`#1 a site's setCustomValidity blocks the typed change (${how})`, async () => {
+      const m = mount('mode="date" editable');
+      await settle();
+      m.el.setCustomValidity('x');
+      await typeCommit(m.start, '20/03/1994', how);
+      expect(m.el.getAttribute('start')).to.equal('20/03/1994');
+      expect(m.rec.change.length).to.equal(0);
+      m.el.setCustomValidity('');
+      await typeCommit(m.end, '25/03/1994', how);
+      expect(m.rec.change).to.deep.equal([{ value: { start: '20/03/1994', end: '25/03/1994' }, dbValue: { start: '1994-03-20', end: '1994-03-25' }, preset: null }]);
+    });
+  }
+
+  it('#3 opened from the icon button, closing returns to an input: the last focused side, else the start', async () => {
+    const m = mount('mode="date" editable start="20/03/1994"');
+    await settle();
+    m.trigger.focus();
+    m.trigger.click();
+    expect(await until(() => !!panel())).to.equal(true);
+    await settle();
+    await sendKeys({ press: 'Escape' });
+    expect(await until(() => !panel())).to.equal(true);
+    await settle();
+    expect(active() === m.start).to.equal(true); // never focused before: the start input
+    m.end.focus();
+    m.trigger.focus();
+    m.trigger.click();
+    expect(await until(() => !!panel())).to.equal(true);
+    await settle();
+    await sendKeys({ press: 'Escape' });
+    expect(await until(() => !panel())).to.equal(true);
+    await settle();
+    expect(active() === m.end).to.equal(true); // the last focused side
+    expect(m.rec.change.length).to.equal(0);
+  });
+
+  it('#4 a bad-input side opens like an empty one: the dialog falls back to the other valid side', async () => {
+    const m = mount('mode="date" editable end="25/03/1994"');
+    await settle();
+    await typeCommit(m.start, '31/02/1994', 'blur');
+    expect(note(m)).to.equal('Ngày không hợp lệ');
+    m.trigger.click();
+    expect(await until(() => !!panel())).to.equal(true);
+    await settle();
+    const tabs = [...panel().querySelectorAll('.td-dtr-panel__tab-value')].map((t) => t.textContent);
+    expect(tabs).to.deep.equal(['—', '25/03/1994']);
+    expect(!!panel().querySelector('[data-date="1994-03-25"]')).to.equal(true); // the month of the valid side
+    expect(!!panel().querySelector('[data-date="1994-02-28"][data-range]')).to.equal(false);
+  });
+
+  it('#5 min / max / max-days / required changes re-judge the typed error (gone, or the new message)', async () => {
+    const m = mount('mode="date" editable max="31/12/1999"');
+    await settle();
+    await typeCommit(m.end, '01/01/2000', 'blur');
+    expect(note(m)).to.equal('Không được sau 31/12/1999');
+    expect(inv(m.end)).to.equal('true');
+    m.el.setAttribute('max', '31/12/2005');
+    expect(note(m)).to.equal(null);
+    expect(inv(m.end)).to.equal(null);
+    m.el.setAttribute('max', '31/12/1990');
+    expect(note(m)).to.equal('Không được sau 31/12/1990');
+    expect(inv(m.end)).to.equal('true');
+    m.el.removeAttribute('max');
+    await typeCommit(m.start, '01/12/1999', 'blur');
+    expect(note(m)).to.equal(null);
+    m.el.setAttribute('max-days', '10'); // the pair is now too long: on the last typed side (start)
+    expect(note(m)).to.equal('Khoảng tối đa 10 ngày');
+    expect(inv(m.start)).to.equal('true');
+    m.el.setAttribute('max-days', '40');
+    expect(note(m)).to.equal(null);
+    expect(m.rec.change.length).to.equal(1); // only the valid commit of the start (end was already typed: range valid)
+  });
+});

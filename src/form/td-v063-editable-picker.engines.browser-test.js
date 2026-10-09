@@ -574,3 +574,74 @@ describe('v0.63.0 editable picker — SSR (plan A: markup unchanged, safe render
     expect(b.el.hasAttribute('data-td-ssr')).to.equal(false);
   });
 });
+
+describe('v0.63.0 editable picker — Codex impl r1 (#1 custom validity, #5 re-check on attribute changes)', () => {
+  for (const how of ['enter', 'blur']) {
+    it(`#1 a site's setCustomValidity blocks the typed change (${how}); cleared → the next valid commit fires`, async () => {
+      const m = mount('mode="date" editable value="10/03/1994"');
+      await settle();
+      m.el.setCustomValidity('x');
+      await typeCommit(m, '15/03/1994', how);
+      expect(m.el.getAttribute('value')).to.equal('15/03/1994'); // written
+      expect(m.rec.change.length).to.equal(0);
+      await typeCommit(m, '', how); // emptied (not required) — no change either while the custom error stands
+      expect(m.rec.change.length).to.equal(0);
+      m.el.setCustomValidity('');
+      await typeCommit(m, '16/03/1994', how);
+      expect(m.rec.change).to.deep.equal([{ value: '16/03/1994', dbValue: '1994-03-16' }]);
+    });
+  }
+
+  it('#1 the calendar path is unchanged: a pick still fires with a custom validity (0.62 behaviour)', async () => {
+    await vp({ width: 1024, height: 768 });
+    const m = mount('mode="date" value="15/03/1994"');
+    await settle();
+    m.el.setCustomValidity('x');
+    m.trigger.click();
+    expect(await until(() => !!pop())).to.equal(true);
+    await settle();
+    calQ('[data-date="1994-03-16"]').click();
+    expect(await until(() => !pop())).to.equal(true);
+    expect(m.rec.change.length).to.equal(1);
+  });
+
+  it('#5 min / max / required / mode changes re-judge the typed error (gone, or the new message)', async () => {
+    const m = mount('mode="date" editable max="31/12/1999"');
+    await settle();
+    await typeCommit(m, '01/01/2000', 'blur');
+    expect(note(m)).to.equal('Không được sau 31/12/1999');
+    m.el.setAttribute('max', '31/12/2005');
+    expect(note(m)).to.equal(null);
+    expect(invalid(m)).to.equal(null);
+    m.el.setAttribute('max', '31/12/1990');
+    expect(note(m)).to.equal('Không được sau 31/12/1990'); // the value is still the typed one: judged again, new max named
+    expect(invalid(m)).to.equal('true');
+    m.el.setAttribute('min', '01/01/2001'); // min / max: the first failing rule names it
+    m.el.removeAttribute('max');
+    expect(note(m)).to.equal('Không được trước 01/01/2001');
+    m.el.removeAttribute('min');
+    expect(note(m)).to.equal(null);
+    // required: an emptied required field loses its error when `required` goes, gets it back when it returns
+    const r = mount('mode="date" editable required value="15/03/1994"');
+    await settle();
+    await typeCommit(r, '', 'blur');
+    expect(note(r)).to.equal('Vui lòng chọn ngày');
+    r.el.removeAttribute('required');
+    expect(note(r)).to.equal(null);
+    r.el.setAttribute('required', '');
+    expect(note(r)).to.equal('Vui lòng chọn ngày');
+    // mode: a raw value kept verbatim is judged by the new mode
+    const d = mount('mode="date" editable');
+    await settle();
+    await typeCommit(d, '31/02/1994', 'blur');
+    expect(note(d)).to.equal('Ngày không hợp lệ');
+    d.el.setAttribute('mode', 'month');
+    expect(note(d)).to.equal('Định dạng tháng không hợp lệ');
+    // a calendar write / setValue ends the typed state: later bound changes never raise a typed error
+    m.el.setAttribute('max', '31/12/1999');
+    m.el.setValue('01/01/2000');
+    m.el.setAttribute('max', '31/12/1998');
+    expect(note(m)).to.equal(null);
+    expect(m.rec.change.length).to.equal(0);
+  });
+});

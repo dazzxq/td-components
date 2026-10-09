@@ -215,6 +215,8 @@ export class TdDatetimePicker extends TdFormElement {
     this._draft = null;
     /** @private v0.63.0 `editable`: the error of the last typed commit (shown after a site error); null = none */
     this._typedError = null;
+    /** @private v0.63.0: the committed value came from typing (its error follows min / max / required / mode changes) */
+    this._typedOrigin = false;
     /** @private v0.63.0: the text the element last put into the input (a commit of the same text is a no-op) */
     this._inputText = '';
   }
@@ -486,29 +488,56 @@ export class TdDatetimePicker extends TdFormElement {
     if (!input || !input.isConnected || input.readOnly || this._effectiveDisabled) return;
     const text = input.value;
     if (text === this._inputText) return;
-    const M = TdDatetimePicker.messages;
     const mode = this._mode();
     const prev = this._state();
     const t = text.trim();
+    // `change` only once the element's COMPLETE validity is clean (a site's setCustomValidity too — Codex impl r1 #1)
+    const typed = { typedError: this._typedErrorFor(t), typed: true };
     if (!t) {
-      if (this.hasAttribute('required')) this._write(null, { typedError: this._text(M, 'required') });
-      else this._write(null, { change: prev.raw ? { value: '', dbValue: '' } : null });
+      this._write(null, { ...typed, change: prev.raw && !typed.typedError ? { value: '', dbValue: '' } : null });
       return;
     }
     const parts = parseTypedValue(t, mode);
     if (!parts || invalidReason(parts)) {
-      this._write(t, { typedError: parts ? this._check(parts).message : this._text(M, 'format') });
+      this._write(t, typed); // the raw text (badInput)
       return;
     }
     const p = toModeParts(parts, mode);
     const value = formatModeDisplay(p, mode);
-    const err = this._check(p);
-    if (err) {
-      this._write(value, { typedError: err.message }); // never clamped
+    if (typed.typedError) {
+      this._write(value, typed); // outside min / max: written, never clamped
       return;
     }
     const same = prev.usable && !prev.error && formatModeDisplay(prev.parts, mode) === value;
-    this._write(value, { change: same ? null : { value, dbValue: formatModeDb(p, mode) } });
+    this._write(value, { ...typed, change: same ? null : { value, dbValue: formatModeDb(p, mode) } });
+  }
+
+  /**
+   * @private v0.63.0 D3: the typed error of a committed text (`raw`) under the CURRENT mode / bounds / required — the same
+   * table for a commit and for a re-check after `min` / `max` / `required` / `mode` changed. null = nothing wrong.
+   * @param {string} raw
+   */
+  _typedErrorFor(raw) {
+    const M = TdDatetimePicker.messages;
+    const mode = this._mode();
+    const t = raw.trim();
+    if (!t) return this.hasAttribute('required') ? this._text(M, 'required') : null;
+    const parts = parseTypedValue(t, mode);
+    if (!parts) return this._text(M, 'format');
+    const err = this._check(invalidReason(parts) ? parts : toModeParts(parts, mode));
+    return err ? err.message : null;
+  }
+
+  /**
+   * @private v0.63.0 (Codex impl r1 #5): a validation-driving attribute changed (min / max / required / mode) — the typed
+   * error is recomputed from the committed value (another message, or gone when nothing is wrong now). Before _syncForm().
+   */
+  _recheckTypedError() {
+    if (!this._typedOrigin || !this._editable()) return;
+    const next = this._typedErrorFor(this.getAttribute('value') || '');
+    if (next === this._typedError) return;
+    this._typedError = next;
+    this._applyErrorState();
   }
 
   /**
@@ -516,9 +545,11 @@ export class TdDatetimePicker extends TdFormElement {
    * (`_commitTyped`), the clear button (`_clearByUser`): the attribute, the field text, the form value + validity, the typed
    * error, then at most ONE `change` (callers move the focus after it).
    * @param {string|null} value the new `value` attribute (null removes it)
-   * @param {{ change?: {value: string, dbValue: string}|null, typedError?: string|null }} [o]
+   * @param {{ change?: {value: string, dbValue: string}|null, typedError?: string|null, typed?: boolean }} [o]
+   *   `typed` (typed commits): the value is typed (its error is re-judged later); the `change` waits for the element's
+   *   complete validity (a site's setCustomValidity included). Otherwise the typed state goes.
    */
-  _write(value, { change = null, typedError = null } = {}) {
+  _write(value, { change = null, typedError = null, typed = false } = {}) {
     this._writing = true;
     try {
       if (value) this.setAttribute('value', value); // in place: the trigger (the dialog's opener) is never replaced (bug 1.8.1)
@@ -528,14 +559,21 @@ export class TdDatetimePicker extends TdFormElement {
     }
     const hadTyped = this._typedError != null;
     this._typedError = typedError;
+    this._typedOrigin = typed;
     this._updateValueText();
     this._syncForm();
     if (hadTyped || typedError != null) this._applyErrorState();
-    if (change) this.emit('change', change);
+    if (change && (!typed || this.validity.valid)) this.emit('change', change);
   }
 
   /** @private v0.63.0 D3: the typed error goes (an outside value change, setValue, reset, `editable` off) */
   _dropTypedError() {
+    this._typedOrigin = false;
+    this._hideTypedError();
+  }
+
+  /** @private v0.63.0: nothing is wrong now — the message goes, the value stays typed (a later min / max change re-judges it) */
+  _hideTypedError() {
     if (this._typedError == null) return;
     this._typedError = null;
     this._applyErrorState();
@@ -692,6 +730,7 @@ export class TdDatetimePicker extends TdFormElement {
       case 'form-value-format':
       case 'min':
       case 'max':
+        if (name !== 'form-value-format') this._recheckTypedError(); // v0.63.0 (Codex impl r1 #5)
         this._updateValueText();
         this._syncForm();
         if (this._isOpen) this._applyBoundsToDialog(); // open dialog: the cells re-evaluate in place, the draft is re-checked
@@ -705,6 +744,7 @@ export class TdDatetimePicker extends TdFormElement {
         const hadFocus = this.contains(active) || !!(this._pop && this._pop.contains(active));
         if (this._isOpen) this._close();
         this._convertValueMode(normalizeMode(oldVal));
+        this._recheckTypedError(); // v0.63.0: a raw value kept verbatim is judged by the new mode
         this._updateValueText();
         this._syncForm();
         const clear = this.querySelector('.td-dtp__clear'); // v0.59.0: its name follows the mode
@@ -718,6 +758,7 @@ export class TdDatetimePicker extends TdFormElement {
         return;
       case 'required':
         this._applyRequired();
+        this._recheckTypedError(); // v0.63.0
         this._syncForm();
         this._syncClear();
         return;
@@ -731,7 +772,7 @@ export class TdDatetimePicker extends TdFormElement {
         const active = document.activeElement;
         const hadFocus = this.contains(active) || !!(this._pop && this._pop.contains(active));
         if (this._isOpen) this._close();
-        if (name === 'editable') this._typedError = null;
+        if (name === 'editable') { this._typedError = null; this._typedOrigin = false; }
         this._doRender();
         if (hadFocus && this._home()) this._home().focus();
       }
@@ -792,7 +833,7 @@ export class TdDatetimePicker extends TdFormElement {
         this._setValidity({ valueMissing: true }, this._text(TdDatetimePicker.messages, 'required'), this._focusTarget());
       } else {
         this._setValidity({});
-        this._dropTypedError(); // v0.63.0: nothing is wrong any more (e.g. `required` went) — a stale typed error goes
+        this._hideTypedError(); // v0.63.0: nothing is wrong any more (e.g. `required` went) — a stale typed error goes
       }
       return;
     }
@@ -802,7 +843,7 @@ export class TdDatetimePicker extends TdFormElement {
     if (s.error) this._setValidity({ [s.error.flag]: true }, this._typedError ?? s.error.message, this._focusTarget());
     else {
       this._setValidity({});
-      this._dropTypedError();
+      this._hideTypedError();
     }
   }
 

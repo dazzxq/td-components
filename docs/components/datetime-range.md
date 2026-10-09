@@ -132,7 +132,7 @@ gõ (Từ – Đến) + nút lịch**; hộp thoại y như trên. **Opt-in** �
   đổi → không làm gì. Bên đó được ghi như bảng của picker (rỗng → xoá; hợp lệ → dạng chuẩn; ngoài `min` / `max` → ghi, không
   kẹp; không đọc được / ngày không có → chữ thô, `badInput`).
 - **`change`** (detail như "Chọn", `preset: null`): **một** event sau mỗi lần chốt mà **cả khoảng** hợp lệ hoàn toàn (validity
-  sạch: `required` theo bảng, thứ tự, `max-days`, `min` / `max`, `badInput`) và **khác** khoảng trước. Không gom hai bên —
+  sạch: `required` theo bảng, thứ tự, `max-days`, `min` / `max`, `badInput`, cả `setCustomValidity()` của site) và **khác** khoảng trước. Không gom hai bên —
   giống hai ô native:
 
 | Kịch bản (không `required`, đếm `change` trên host) | Sau đó | Đếm |
@@ -148,9 +148,11 @@ gõ (Từ – Đến) + nút lịch**; hộp thoại y như trên. **Opt-in** �
   dạng / ngày không có / `min` / `max` / bắt buộc của bên đó khi xoá trắng), nếu không thì lỗi thứ tự / `max-days` gắn vào **bên
   vừa chốt**, nếu không thì lỗi riêng còn lại của bên kia. Lỗi của site (`error-text` / `setError()`) **thắng**. Lỗi gõ mất khi
   khoảng hợp lệ, "Chọn" trong hộp thoại, `setValue()` / `setDBValue()` / attribute `start` / `end` đổi từ ngoài, reset, tắt
-  `editable`. Message dùng lại `TdDatetimeRange.messages`.
+  `editable`. Đổi `min` / `max` / `max-days` / `required` / `allow-open-end` / `mode` khi đang có lỗi gõ → tính lại (message, ô
+  sai) theo trạng thái mới, hoặc mất. Message dùng lại `TdDatetimeRange.messages`. Hộp thoại mở từ một mốc sai định dạng
+  (`31/02/1994`) coi mốc đó như trống (mở ở mốc kia / `open-at` / hôm nay).
 - `Escape`: trả chữ của ô về giá trị đã chốt. `ArrowDown` / `Alt+ArrowDown` trên ô hoặc nút lịch → chốt rồi mở hộp thoại ở
-  khoảng vừa gõ; đóng hộp → focus về ô đã mở nó (hoặc nút lịch).
+  khoảng vừa gõ; đóng hộp → focus về **ô gõ**: ô đã mở nó (`ArrowDown`), mở từ nút lịch → ô có focus gần nhất (mặc định ô Từ).
 - `input` / `change` gốc của hai ô **không lọt ra** host; ô không có `name` — FormData vẫn hai mục của host như trước.
 - Nhãn mới (đổi được): `TdDatetimeRange.labels.openCalendar` 'Mở lịch' (tên nút), `startInput` / `endInput` 'Từ ngày' / 'Đến
   ngày' (tên ẩn của hai ô; `datetime`: `startInputDatetime` / `endInputDatetime` 'Từ' / 'Đến'), `sidePlaceholder` 'dd/mm/yyyy'
