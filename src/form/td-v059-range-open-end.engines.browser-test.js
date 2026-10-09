@@ -225,6 +225,20 @@ describe('v0.59.0 td-datetime-range allow-open-end — runtime toggle while open
     expect(tab('end').querySelector('.td-dtr-panel__tab-value').textContent).to.equal('05/10/2026');
   });
 
+  it('datetime, TIME screen: removing "Không hạn" while it has the focus hands the focus to the hour wheel (never outside the modal)', async () => {
+    const el = mount('mode="datetime" allow-open-end start="01/10/2026 - 08:00" end="05/10/2026 - 17:30"');
+    await open(el);
+    day('2026-10-02').click(); // → the time screen (the calendar is hidden)
+    await settle();
+    expect($('.td-dtr-panel').getAttribute('data-step')).to.equal('time');
+    openEndBtn()[0].focus();
+    el.allowOpenEnd = false;
+    await settle();
+    expect(openEndBtn().length).to.equal(0);
+    expect(document.activeElement === $('.td-dtp-wheel__list[data-part="hour"]')).to.equal(true);
+    expect(openModal().contains(document.activeElement)).to.equal(true);
+  });
+
   it('enable → disable → enable never duplicates the button', async () => {
     const el = mount('start="01/10/2026"');
     await open(el);

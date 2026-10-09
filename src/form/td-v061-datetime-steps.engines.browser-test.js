@@ -160,6 +160,24 @@ for (const [shell, vw, vh] of [['popover', 1280, 800], ['sheet', 393, 852]]) {
       expect(el.getAttribute('value')).to.equal('15/10/2026 - 09:30');
     });
 
+    it('Backspace from a FOOTER / action button on the time screen also goes back (the buttons are outside .td-time-step)', async () => {
+      const el = mountPicker('value="15/10/2026 - 09:30"');
+      await openPicker(el);
+      day('2026-10-16').click();
+      await settle();
+      expect(stepOf()).to.equal('time');
+      act('now').focus();
+      await sendKeys({ press: 'Backspace' });
+      await settle();
+      expect(stepOf()).to.equal('date');
+      expect(document.activeElement.classList.contains('td-cal__day')).to.equal(true);
+      expect(el.getAttribute('value')).to.equal('15/10/2026 - 09:30');
+      // on the DATE screen Backspace does nothing (no step to go back to)
+      await sendKeys({ press: 'Backspace' });
+      await settle();
+      expect(stepOf()).to.equal('date');
+    });
+
     it('wheels (keys) edit the time; "Chọn" (time screen only) commits ONE change and closes once', async () => {
       const el = mountPicker('value="15/10/2026 - 09:30" minute-step="15"');
       const c = counter(el);
@@ -453,6 +471,54 @@ describe('v0.61.0 range datetime — two screens per endpoint', () => {
     expect(stepOf()).to.equal('time');
     expect(document.activeElement === tab('end')).to.equal(true);
     expect(centred(), 'the wheels are centred on the error route').to.equal(true);
+  });
+
+  it('Backspace from a footer button or an endpoint tab on the time screen goes back to the date screen', async () => {
+    const el = mountRange('start="01/10/2026 - 08:00" end="05/10/2026 - 17:30"');
+    await openRange(el);
+    day('2026-10-02').click();
+    await settle();
+    expect(stepOf()).to.equal('time');
+    act('clear').focus();
+    await sendKeys({ press: 'Backspace' });
+    await settle();
+    expect(stepOf()).to.equal('date');
+    expect(document.activeElement.classList.contains('td-cal__day')).to.equal(true);
+    day('2026-10-02').click();
+    await settle();
+    tab('end').focus();
+    await sendKeys({ press: 'Backspace' });
+    await settle();
+    expect(stepOf()).to.equal('date');
+    expect(tab('end').getAttribute('aria-pressed')).to.equal('false'); // the tab only had the focus; the side did not change
+  });
+
+  it('a malformed weekday table (labels.weekdaysShort / Long) never crashes the time screen: the defaults are used, once', async () => {
+    const R = TdDatetimeRange.labels;
+    const saved = [R.weekdaysShort, R.weekdaysLong];
+    const warns = [];
+    const ow = console.warn;
+    console.warn = (m) => warns.push(String(m));
+    const errs = [];
+    const onErr = (e) => errs.push(e.message);
+    window.addEventListener('error', onErr);
+    R.weekdaysShort = ['a'];
+    R.weekdaysLong = 'x';
+    try {
+      const el = mountRange('start="01/10/2026 - 08:00" end="05/10/2026 - 17:30"');
+      await openRange(el);
+      day('2026-10-02').click(); // → the time screen: its heading needs the weekday names
+      await settle();
+      expect(stepOf()).to.equal('time');
+      expect(heading()).to.equal('Từ · Thứ Sáu, 02/10/2026');
+      expect(warns.filter((w) => w.includes('labels.weekdays')).length).to.equal(2); // one per key, once
+      expect(errs.length).to.equal(0);
+    } finally {
+      window.removeEventListener('error', onErr);
+      console.warn = ow;
+      R.weekdaysShort = saved[0];
+      R.weekdaysLong = saved[1];
+    }
   });
 
   it('"Chọn" closes exactly once; Đóng / Esc close without a change', async () => {

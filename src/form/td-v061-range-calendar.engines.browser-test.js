@@ -146,6 +146,24 @@ describe('v0.61.0 range calendar — date mode selection', () => {
     expect(tabs()).to.deep.equal(['05/10/2026', '08/10/2026']);
   });
 
+  it('keyboard preview follows a PageDown that relabels the SAME cell (Feb → Mar): the preview is start..the new focus date', async () => {
+    const el = mount('name="r" start="10/02/2026"');
+    await open(el);
+    tab('end').click(); // choosing the end after Từ 10/02/2026
+    await settle();
+    day('2026-02-10').focus();
+    await sendKeys({ press: 'PageDown' });
+    await settle();
+    expect(document.activeElement.getAttribute('data-date')).to.equal('2026-03-10');
+    expect($('.td-cal__title[data-pick="month"]').textContent).to.equal('Tháng 3');
+    expect(day('2026-03-10').getAttribute('data-preview')).to.equal('end');
+    expect(day('2026-03-09').getAttribute('data-preview')).to.equal('in');
+    expect(day('2026-03-01').getAttribute('data-preview')).to.equal('in');
+    await sendKeys({ press: 'PageUp' }); // back to Feb: the focus is on 10/02 = the start → no preview
+    await settle();
+    expect($$('.td-cal__day[data-preview]').length).to.equal(0);
+  });
+
   it('mouse preview: hover start..d; none for an earlier or an over-limit day; it clears when the pointer leaves', async () => {
     const el = mount('name="r" max-days="5"');
     await open(el);
