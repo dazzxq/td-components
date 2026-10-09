@@ -288,6 +288,18 @@ describe('v0.63.1 editable picker — live mask while typing (owner: 11122026 �
     expect(m.rec.input + m.rec.bare + m.rec.change.length).to.equal(0);
   });
 
+  it('IME: a cancelled composition does not re-mask a deletion (Codex r2)', async () => {
+    const m = mount('mode="date" editable');
+    await settle();
+    m.input.focus();
+    await sendKeys({ type: '11122026' });
+    for (let i = 0; i < 5; i += 1) await sendKeys({ press: 'Backspace' }); // 11/12 — then "/" deleted: unmasked on purpose
+    m.input.value = '1112'; // what a deletion over the separator leaves (deletions are never re-masked)
+    m.input.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+    m.input.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '' })); // cancelled: nothing inserted
+    expect(m.input.value).to.equal('1112');
+  });
+
   it('datetime and month masks; an edit in the middle keeps the caret after its digit', async () => {
     const d = mount('mode="datetime" editable');
     await settle();

@@ -13,12 +13,27 @@ export function maskOnInput(e, input, mode) {
   applyMask(input, mode);
 }
 
+/** @type {WeakMap<HTMLInputElement, string>} the value when the current composition started */
+const composing = new WeakMap();
+
 /**
- * v0.63.1 (Codex impl r1): the text an IME composition committed is masked when the composition ends.
+ * v0.63.1: remember the value a composition starts from (maskAfterComposition masks only what it changed).
+ * @param {HTMLInputElement} input
+ */
+export function compositionStarted(input) {
+  composing.set(input, input.value);
+}
+
+/**
+ * v0.63.1 (Codex impl r1 / r2): the text an IME composition COMMITTED is masked when the composition ends; a cancelled one (the
+ * value is what it was at compositionstart — e.g. an intentionally unmasked deletion) is left alone.
  * @param {HTMLInputElement} input
  * @param {string} mode
  */
 export function maskAfterComposition(input, mode) {
+  const before = composing.get(input);
+  composing.delete(input);
+  if (before === undefined || before === input.value) return;
   applyMask(input, mode);
 }
 
