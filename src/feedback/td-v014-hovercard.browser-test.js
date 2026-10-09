@@ -1160,3 +1160,56 @@ describe('v0.14 TdHovercard — golden contract', () => {
     }
   });
 });
+
+describe('v0.62 TdHovercard — skeleton loading state keeps its size budget', () => {
+  it('loading has the budget width (16rem or the viewport room); small content arriving never shrinks the card, then it resets on close', async () => {
+    const t = add('<button type="button">Lan size</button>');
+    const d = deferred();
+    bind(t, { content: () => d.promise });
+    t.focus();
+    expect(cardEl().getAttribute('data-state')).to.equal('loading');
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const w = cardEl().getBoundingClientRect().width;
+    const expected = Math.min(16 * rem, window.innerWidth - 16);
+    expect(Math.abs(w - expected) < 1.5, `loading width ${w} vs ${expected}`).to.equal(true);
+    const loadingBox = cardEl().getBoundingClientRect();
+    expect(loadingBox.height >= 5 * rem - 1).to.equal(true);
+    d.resolve(richCard('sz'));
+    await flush();
+    expect(cardEl().getAttribute('data-state')).to.equal('open');
+    const open = cardEl().getBoundingClientRect();
+    expect(open.width >= loadingBox.width - 1, 'did not shrink in width').to.equal(true);
+    expect(open.height >= loadingBox.height - 1, 'did not shrink in height').to.equal(true);
+    TdHovercard.close();
+    expect(cardEl().style.minWidth).to.equal('');
+    expect(cardEl().style.minHeight).to.equal('');
+  });
+
+  it('a template source (no loading phase) is not held to the skeleton size', async () => {
+    const t = add('<button type="button">Lan tpl</button>');
+    bind(t, { content: () => richCard('tp') });
+    t.focus();
+    await flush();
+    expect(cardEl().getAttribute('data-state')).to.equal('open');
+    expect(cardEl().style.minWidth).to.equal('');
+    TdHovercard.close();
+  });
+
+  it('error after loading: no skeleton, not busy, no leftover min-size', async () => {
+    const t = add('<button type="button">Lan err</button>');
+    const d = deferred();
+    bind(t, { content: () => d.promise });
+    const warn = console.warn;
+    console.warn = () => {};
+    try {
+      t.focus();
+      d.reject(new Error('x'));
+      await flush();
+    } finally { console.warn = warn; }
+    expect(cardEl().getAttribute('data-state')).to.equal('error');
+    expect(cardEl().querySelector('.td-skeleton')).to.equal(null);
+    expect(cardEl().hasAttribute('aria-busy')).to.equal(false);
+    expect(cardEl().style.minWidth).to.equal('');
+    TdHovercard.close();
+  });
+});
