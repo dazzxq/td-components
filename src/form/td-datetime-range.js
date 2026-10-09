@@ -3,8 +3,11 @@ import { ssrMarker } from '../base/td-base-element.js';
 import { ValueTitleWatcher, displayedValueText } from '../utils/value-title.js';
 import { TdModal } from '../feedback/td-modal.js';
 import { fillIconSlots } from '../icons/td-icon.js';
-import { matchesBelow } from '../utils/breakpoints-internal.js';
-import { DatetimeEditor } from './datetime-panel.js';
+import { CalendarGrid } from './calendar-grid.js';
+import { TimeWheels } from './time-wheels.js';
+import { freshCalendarLabels, normalizeCalendarLabels } from './calendar-labels.js';
+import { clampDate } from '../utils/calendar-model.js';
+import { pickDay, cellFlags, rangeDays } from '../utils/range-selection.js';
 import {
   parseBound, invalidReason, normalizeMinuteStep, snapMinuteDown, partsFromDate, toModeParts, parseModeValue,
   parseModeDb, formatModeDisplay, formatModeDb, formatModeIso, compareModeParts, MODE_PARTS, toNativeValue, fromNativeValue,
@@ -105,6 +108,15 @@ export class TdDatetimeRange extends TdFormElement {
     next: 'Tiếp: Đến', emptySide: '—', date: 'Ngày', day: 'Ngày', month: 'Tháng', year: 'Năm', time: 'Giờ',
     hour: 'Giờ', minute: 'Phút', close: 'Đóng', clear: 'Xoá', confirm: 'Chọn', presetChosen: 'Đã chọn {label}: {range}',
     openEnd: 'Không hạn', // v0.59.0 `allow-open-end`
+    // v0.61.0 (calendar): cell suffixes, the max-days note, the `role=status` announcements. `date` / `day` / `month` / `year`
+    // above are no longer used by the dialog (kept so a site's override does not break).
+    rangeStart: 'ngày bắt đầu', rangeEnd: 'ngày kết thúc', rangeSingle: 'ngày bắt đầu và kết thúc', rangeIn: 'trong khoảng',
+    overLimit: 'quá {n} ngày — bấm để bắt đầu khoảng mới', maxDaysNote: 'Tối đa {n} ngày',
+    startChosen: 'Đã chọn ngày bắt đầu {date}. Chọn ngày kết thúc.', endChosen: 'Đã chọn ngày kết thúc {date}.',
+    rangeChosen: 'Đã chọn khoảng {range}, {n} ngày.', restarted: 'Bắt đầu khoảng mới từ {date}. Chọn ngày kết thúc.',
+    sideChosen: '{side}: {date}', editing: 'Đang sửa {side}',
+    // the calendar keys (weekday names, month headings…) are shared with td-datetime-picker (src/form/calendar-labels.js)
+    ...freshCalendarLabels(),
   };
 
   /** Validation messages (`{min}` / `{max}` / `{n}` filled in). */
@@ -138,8 +150,10 @@ export class TdDatetimeRange extends TdFormElement {
     this._isOpen = false;
     this._modalId = null;
     this._panel = null;
-    /** @private the two open editors { start, end } (null when closed) */
-    this._dps = null;
+    /** @private the one dialog draft (v0.61.0 B8: two endpoints + side), the calendar and the wheels (null when closed) */
+    this._draft = null;
+    this._grid = null;
+    this._wheels = null;
     /** @private instance presets (null = TdDatetimeRange.presets) */
     this._presets = null;
     this._warned = new Set();
@@ -380,9 +394,10 @@ export class TdDatetimeRange extends TdFormElement {
       case 'end-name':
         this._updateValueText();
         this._syncForm();
-        if (this._dps && (name === 'min' || name === 'max' || name === 'max-days')) {
-          for (const k of SIDES) this._dps[k].setYearRange(this._yearRange());
-          this._refreshAll();
+        if (this._grid && (name === 'min' || name === 'max' || name === 'max-days')) { // B7: the draft stays; bounds / flags / errors recomputed
+          const { min, max } = this._dateBounds();
+          this._grid.setBounds(min, max);
+          this._syncUi();
         }
         return;
       case 'minute-step':
@@ -399,7 +414,7 @@ export class TdDatetimeRange extends TdFormElement {
         this._applyErrorState();
         if (this._panel) {
           this._syncOpenEnd(this._panel);
-          this._refreshPair();
+          this._syncUi();
         }
         return;
       case 'disabled':
@@ -572,7 +587,7 @@ export class TdDatetimeRange extends TdFormElement {
       body: panel,
       size: mode === 'datetime' ? 'lg' : 'md',
       escapeCloses: true,
-      focusTarget: panel.querySelector('.td-dtp-panel__input'),
+      focusTarget: panel.querySelector('.td-cal__day[tabindex="0"]'), // v0.61.0: the active cell of the calendar
       actions: [
         { label: L.close, variant: 'secondary', value: 'close' },
         { label: L.clear, variant: 'secondary', close: false, onClick: () => { this._clearPending(); } },
@@ -584,7 +599,8 @@ export class TdDatetimeRange extends TdFormElement {
     trigger.setAttribute('aria-controls', this._modalId);
     const box = this.querySelector('.td-dtr');
     if (box) box.setAttribute('data-state', 'open');
-    if (this._dps) for (const k of SIDES) this._dps[k].startIntro();
+    // the wheels are centred at once (no opening scroll), after the dialog is laid out
+    if (this._wheels) requestAnimationFrame(() => { if (this._wheels) this._wheels.centre(); });
   }
 
   /** @private Close, discarding the pending pair. */
@@ -595,11 +611,16 @@ export class TdDatetimeRange extends TdFormElement {
     this._onDialogClosed(panel);
   }
 
-  /** @private every close path ends here */
+  /** @private every close path ends here: the draft, the calendar and the wheels go */
   _onDialogClosed(panel) {
     if (!this._isOpen || this._panel !== panel) return;
-    if (this._dps) for (const k of SIDES) this._dps[k].destroy();
-    this._dps = null;
+    if (this._grid) this._grid.destroy();
+    if (this._wheels) this._wheels.destroy();
+    this._grid = null;
+    this._wheels = null;
+    this._draft = null;
+    this._hoverDate = null;
+    this._focusDate = null;
     this._isOpen = false;
     this._modalId = null;
     this._panel = null;
@@ -652,12 +673,53 @@ export class TdDatetimeRange extends TdFormElement {
     return { ...p };
   }
 
-  /** @private build the dialog body with DOM APIs (labels / preset labels are TEXT) */
+  /** @private `min` / `max` at calendar-day granularity for the grid (the time part of a datetime bound is checked by _checkParts) */
+  _dateBounds() {
+    const { min, max } = this._bounds();
+    const d = (p) => (p ? { year: p.year, month: p.month, day: p.day } : null);
+    return { min: d(min), max: d(max) };
+  }
+
+  /** @private the context of the pure range-selection model */
+  _selCtx() {
+    const { min, max } = this._dateBounds();
+    return { mode: this._mode(), maxDays: this._maxDays(), min, max };
+  }
+
+  /** @private the selection model view of the draft */
+  _sel() {
+    const d = this._draft;
+    return { start: d.date.start, end: d.date.end, side: d.side };
+  }
+
+  /** @private default time of an endpoint that has no date (start 00:00, end the last minute slot) */
+  _defaultTime(side) {
+    return { hour: side === 'start' ? 0 : 23, minute: side === 'start' ? 0 : lastMinute(this._minuteStep()) };
+  }
+
+  /** @private full parts of one draft endpoint (NaN date parts when it is empty) */
+  _partsOf(k) {
+    const d = this._draft.date[k];
+    const t = this._draft.time[k];
+    if (!d) return emptyParts(k, this._minuteStep());
+    return { day: d.day, month: d.month, year: d.year, hour: t.hour, minute: t.minute };
+  }
+
+  /** @private "dd/mm/yyyy" of a calendar day */
+  _dayText(d) {
+    return formatModeDisplay({ day: d.day, month: d.month, year: d.year, hour: 0, minute: 0 }, 'date');
+  }
+
+  /**
+   * @private build the dialog body with DOM APIs (labels / preset labels are TEXT). The draft (B8) is the one source of truth;
+   * the calendar, the wheels, the tabs, the presets and the error line are views of it.
+   */
   _buildPanel() {
     const L = TdDatetimeRange.labels;
     TdDatetimeRange._openSeq = (TdDatetimeRange._openSeq || 0) + 1;
     const prefix = `${this.id}-dtr${TdDatetimeRange._openSeq}`;
     const mode = this._mode();
+    const step = this._minuteStep();
     const make = (tag, cls, attrs = {}, text) => {
       const n = document.createElement(tag);
       if (cls) n.className = cls;
@@ -668,10 +730,24 @@ export class TdDatetimeRange extends TdFormElement {
     const panel = make('div', 'td-dtr-panel', { 'data-mode': mode, 'data-side': 'start' });
     this._prefix = prefix;
 
+    // the draft (init): two complete endpoints + the side being edited
+    const init = {};
+    for (const k of SIDES) init[k] = this._initialSide(k);
+    this._draft = {
+      date: {}, time: {}, side: 'start',
+    };
+    for (const k of SIDES) {
+      const p = init[k];
+      this._draft.date[k] = isEmptyParts(p) ? null : { year: p.year, month: p.month, day: p.day };
+      this._draft.time[k] = Number.isInteger(p.hour) && Number.isInteger(p.minute) ? { hour: p.hour, minute: p.minute } : this._defaultTime(k);
+    }
+    this._hoverDate = null;
+    this._focusDate = null;
+
     // Presets (resolved ONCE per open at TdDatetimeRange.now(); matched again on every change)
     const list = Array.isArray(this.presets) ? this.presets : [];
     const now = this._now();
-    const ctx = { mode, minuteStep: this._minuteStep(), ...this._bounds() };
+    const ctx = { mode, minuteStep: step, ...this._bounds() };
     const results = list.map((preset) => {
       const r = resolvePreset(preset, now, ctx);
       if (!r.ok && r.reason !== 'empty') {
@@ -697,45 +773,63 @@ export class TdDatetimeRange extends TdFormElement {
       panel.appendChild(row);
     }
 
-    // Segmented "Từ | Đến" (CSS shows it < 720 only)
+    const main = make('div', 'td-dtr-panel__main');
+    // "Từ | Đến": which endpoint the next pick edits (every width, both modes)
     const sw = make('div', 'td-dtr-panel__switch', { role: 'group', 'aria-label': L.switcher });
     for (const k of SIDES) {
       const tab = make('button', 'td-dtr-panel__tab', { type: 'button', 'data-side': k, 'aria-pressed': k === 'start' ? 'true' : 'false' });
       tab.appendChild(make('span', 'td-dtr-panel__tab-label', {}, L[k]));
       tab.appendChild(make('span', 'td-dtr-panel__tab-value', {}, L.emptySide));
-      tab.addEventListener('click', () => this._showSide(k, true));
+      tab.addEventListener('click', () => this._showSide(k, 'grid'));
       sw.appendChild(tab);
     }
-    panel.appendChild(sw);
+    main.appendChild(sw);
+    this._syncOpenEnd(main);
 
-    const sides = make('div', 'td-dtr-panel__sides');
-    this._dps = {};
-    for (const k of SIDES) {
-      const fs = make('fieldset', 'td-dtr-panel__side', { 'data-side': k });
-      fs.appendChild(make('legend', 'td-dtr-panel__legend', {}, L[k]));
-      if (k === 'end') this._syncOpenEnd(fs);
-      const ed = new DatetimeEditor({
-        mode, prefix: `${prefix}-${k}`, pending: this._initialSide(k), years: this._yearRange(), minuteStep: this._minuteStep(),
-        labels: L, legend: L.date, preview: false,
-        check: (p) => (isEmptyParts(p) ? null : this._checkParts(p)),
-        onRefresh: () => this._refreshPair(),
+    // the calendar (the same grid as the picker; the range reads/paints it through `cellState`)
+    const labels = normalizeCalendarLabels(L, (key) => this._warnOnce(`labels:${key}`, `td-datetime-range: labels.${key} must be an array of 7 strings — the defaults are used.`));
+    const { min, max } = this._dateBounds();
+    const today = partsFromDate(now);
+    const firstDate = this._draft.date.start || this._draft.date.end || (() => {
+      const o = this._openAtParts();
+      return { year: o.year, month: o.month, day: o.day };
+    })();
+    this._grid = new CalendarGrid({
+      prefix, labels, root: 'days',
+      focus: clampDate(firstDate, min, max),
+      selected: this._draft.date.start || this._draft.date.end || null,
+      min, max,
+      today: { year: today.year, month: today.month, day: today.day },
+      cellState: (d) => this._cellState(d),
+      onCommit: (level, d) => { if (level === 'day') this._onPick(d); },
+      onFocusDate: (d) => { this._focusDate = d; this._refreshCells(); },
+      onHoverDate: (d) => { this._hoverDate = d; this._refreshCells(); },
+    });
+    main.appendChild(this._grid.el);
+
+    if (mode === 'datetime') {
+      const t = this._draft.time.start;
+      this._wheels = new TimeWheels({
+        prefix, labels: L, minuteStep: step, hour: t.hour, minute: t.minute,
+        onChange: (v) => { // a USER change of a wheel: it edits the time of the active endpoint
+          if (!this._draft) return;
+          this._draft.time[this._draft.side] = { hour: v.hour, minute: v.minute };
+          this._syncUi();
+        },
       });
-      this._dps[k] = ed;
-      fs.appendChild(ed.el);
-      if (k === 'start') {
-        const next = make('button', 'td-btn td-btn--secondary td-btn--sm td-dtr-panel__next', { type: 'button' }, L.next);
-        next.addEventListener('click', () => this._showSide('end', true));
-        fs.appendChild(next);
-      }
-      sides.appendChild(fs);
+      main.appendChild(this._wheels.el);
+      const next = make('button', 'td-btn td-btn--secondary td-btn--sm td-dtr-panel__next', { type: 'button' }, L.next);
+      next.addEventListener('click', () => this._showSide('end', 'grid'));
+      main.appendChild(next);
     }
-    panel.appendChild(sides);
+    panel.appendChild(main);
+    panel.appendChild(make('p', 'td-dtr-panel__hint', { id: `${prefix}-hint` }));
     const err = make('p', 'td-dtr-panel__error', { id: `${prefix}-pair-error`, role: 'alert' });
     err.hidden = true;
     panel.appendChild(err);
     panel.appendChild(make('p', 'td-sr-only td-dtr-panel__status', { role: 'status' }));
     this._tried = false;
-    this._refreshPair();
+    this._syncUi();
     return panel;
   }
 
@@ -746,27 +840,54 @@ export class TdDatetimeRange extends TdFormElement {
     return d instanceof Date && !Number.isNaN(d.getTime()) ? d : new Date();
   }
 
-  /** @private pending pair */
+  /** @private pending pair (full parts of both endpoints) */
   _pending() {
-    return this._dps ? { start: this._dps.start.pending, end: this._dps.end.pending } : null;
+    return this._draft ? { start: this._partsOf('start'), end: this._partsOf('end') } : null;
+  }
+
+  /** @private the date that drives the interval preview: the mouse, else the keyboard focus */
+  _previewDate() {
+    return this._hoverDate || this._focusDate || null;
+  }
+
+  /** @private what a day cell shows (the grid's `cellState` hook) */
+  _cellState(d) {
+    const L = TdDatetimeRange.labels;
+    const f = cellFlags(this._sel(), d, this._previewDate(), this._selCtx());
+    let label = '';
+    if (f.role === 'start') label = L.rangeStart;
+    else if (f.role === 'end') label = L.rangeEnd;
+    else if (f.role === 'single') label = L.rangeSingle;
+    else if (f.role === 'in') label = L.rangeIn;
+    if (f.dimmed) label = fill(L.overLimit, { n: this._maxDays() });
+    return { selected: f.role === 'start' || f.role === 'end' || f.role === 'single', role: f.role, preview: f.preview, disabled: f.disabled, dimmed: f.dimmed, label };
+  }
+
+  /** @private repaint the cells only (hover / focus preview) */
+  _refreshCells() {
+    if (this._grid) this._grid.refreshCells();
   }
 
   /**
-   * @private The pair error of the pending sides: a required side left empty (only once "Chọn" was tried), the order,
-   * `max-days`. Sides that are themselves invalid are reported by their own editor first.
+   * @private The error line of the pending pair, in this order: an endpoint outside min–max (or unreadable), a required
+   * side left empty (only once "Chọn" was tried), the order and `max-days`.
    * @returns {{ side: 'start'|'end', message: string }|null}
    */
   _pairError() {
-    const P = this._pending();
-    if (!P) return null;
+    if (!this._draft) return null;
     const M = TdDatetimeRange.messages;
+    for (const k of SIDES) {
+      if (!this._draft.date[k]) continue;
+      const e = this._checkParts(this._partsOf(k));
+      if (e) return { side: k, message: e.message };
+    }
+    const P = this._pending();
     if (this._tried) {
       const req = this._required();
-      const miss = SIDES.filter((k) => req.includes(k) && isEmptyParts(P[k]));
+      const miss = SIDES.filter((k) => req.includes(k) && !this._draft.date[k]);
       if (miss.length) return { side: miss[0], message: miss.length === 2 ? M.required : miss[0] === 'start' ? M.requiredStart : M.requiredEnd };
     }
-    const ok = (p) => !isEmptyParts(p) && !this._checkParts(p);
-    if (ok(P.start) && ok(P.end)) {
+    if (this._draft.date.start && this._draft.date.end) {
       const msg = this._pairCheck(P.start, P.end);
       if (msg) return { side: 'end', message: msg };
     }
@@ -774,12 +895,15 @@ export class TdDatetimeRange extends TdFormElement {
   }
 
   /**
-   * @private After any change of either editor: the pair error line (+ aria on the day field it is about), the preset
-   * `aria-pressed`, the segmented summaries.
+   * @private After any change of the draft: the cells, the tabs (values), the pair error line (+ `aria-describedby` of the tab it
+   * is about), the preset `aria-pressed`, the "Không hạn" toggle, the `max-days` hint.
+   * @returns {{ side: 'start'|'end', message: string }|null}
    */
-  _refreshPair() {
-    const panel = this._panel || (this._dps && this._dps.end && this._dps.end.el && this._dps.end.el.closest('.td-dtr-panel'));
-    if (!this._dps || !this._dps.start || !this._dps.end || !panel) return null;
+  _syncUi() {
+    const panel = this._panel || (this._grid && this._grid.el.closest('.td-dtr-panel'));
+    const d = this._draft;
+    if (!d || !panel) return null;
+    if (this._grid) this._grid.refreshCells();
     const err = this._pairError();
     const line = panel.querySelector('.td-dtr-panel__error');
     if (line) {
@@ -791,19 +915,16 @@ export class TdDatetimeRange extends TdFormElement {
         line.textContent = '';
       }
     }
-    for (const k of SIDES) {
-      const ed = this._dps[k];
-      const day = ed.el.querySelector('.td-dtp-panel__input');
-      if (!day) continue;
-      const mine = !!err && err.side === k;
-      const ids = [];
-      if (ed.error) ids.push(ed.el.querySelector('.td-dtp-panel__error').id);
-      if (mine && line) ids.push(line.id);
-      if (ids.length) day.setAttribute('aria-describedby', ids.join(' '));
-      else day.removeAttribute('aria-describedby');
-      if (mine || (ed.error && ed.error.field === day.getAttribute('data-part'))) day.setAttribute('aria-invalid', 'true');
-      else day.removeAttribute('aria-invalid');
+    for (const tab of panel.querySelectorAll('.td-dtr-panel__tab')) {
+      const k = tab.getAttribute('data-side');
+      const v = tab.querySelector('.td-dtr-panel__tab-value');
+      const t = this._pendingText(k);
+      if (v && v.textContent !== t) v.textContent = t;
+      tab.setAttribute('aria-pressed', k === d.side ? 'true' : 'false');
+      if (err && err.side === k && line) tab.setAttribute('aria-describedby', line.id);
+      else tab.removeAttribute('aria-describedby');
     }
+    panel.setAttribute('data-side', d.side);
     // presets: pressed = the pending pair equals its resolved range
     const st = this._presetState;
     if (st) {
@@ -817,30 +938,42 @@ export class TdDatetimeRange extends TdFormElement {
         if (b) b.setAttribute('aria-pressed', on ? 'true' : 'false');
       });
     }
-    for (const tab of panel.querySelectorAll('.td-dtr-panel__tab')) {
-      const v = tab.querySelector('.td-dtr-panel__tab-value');
-      const t = this._pendingText(tab.getAttribute('data-side'));
-      if (v && v.textContent !== t) v.textContent = t;
-    }
     // v0.59.0: the "Không hạn" toggle is pressed while the end being edited is empty
     const open = panel.querySelector('.td-dtr-panel__open-end');
-    if (open) open.setAttribute('aria-pressed', isEmptyParts(this._dps.end.pending) ? 'true' : 'false');
+    if (open) open.setAttribute('aria-pressed', d.date.end ? 'false' : 'true');
+    this._syncHint(panel);
     return err;
   }
 
+  /** @private the visible "Tối đa N ngày" note: date mode, `max-days`, while the end is being chosen after a start */
+  _syncHint(panel) {
+    const hint = (panel || this._panel).querySelector('.td-dtr-panel__hint');
+    if (!hint) return;
+    const n = this._maxDays();
+    const on = !!this._draft && this._mode() === 'date' && n != null && this._draft.side === 'end' && !!this._draft.date.start;
+    hint.hidden = !on;
+    const text = on ? fill(TdDatetimeRange.labels.maxDaysNote, { n }) : '';
+    if (hint.textContent !== text) hint.textContent = text;
+  }
+
+  /** @private announce through the dialog's `role=status` */
+  _announce(text) {
+    const status = this._panel && this._panel.querySelector('.td-dtr-panel__status');
+    if (status) status.textContent = text;
+  }
+
   /**
-   * @private v0.59.0 (plan QĐ E2 / E2b): the "Không hạn" toggle of the "Đến" side — created right after its legend when
-   * `allow-open-end` is set, removed otherwise (a focused button hands the focus to the end day field first). Its
-   * `aria-pressed` is DERIVED from the pending end (empty = pressed) in _refreshPair(). `root` = the panel or the end
-   * fieldset being built.
+   * @private v0.59.0 (plan QĐ E2 / E2b): the "Không hạn" toggle — created next to the "Từ | Đến" switch when `allow-open-end` is
+   * set, removed otherwise (a focused button hands the focus to the calendar first). Its `aria-pressed` is DERIVED from the
+   * pending end (empty = pressed) in _syncUi(). `root` = the panel or its `.td-dtr-panel__main`.
    */
   _syncOpenEnd(root) {
-    const fs = root.matches('.td-dtr-panel__side') ? root : root.querySelector('.td-dtr-panel__side[data-side="end"]');
-    if (!fs) return;
-    let btn = fs.querySelector(':scope > .td-dtr-panel__open-end');
+    const main = root.matches('.td-dtr-panel__main') ? root : root.querySelector('.td-dtr-panel__main');
+    if (!main) return;
+    let btn = main.querySelector(':scope > .td-dtr-panel__open-end');
     if (!this.hasAttribute('allow-open-end')) {
       if (!btn) return;
-      if (btn === document.activeElement) this._dps?.end?.focusPart('day');
+      if (btn === document.activeElement && this._grid) this._grid.focusActive();
       btn.remove();
       return;
     }
@@ -851,46 +984,75 @@ export class TdDatetimeRange extends TdFormElement {
     btn.setAttribute('aria-pressed', 'false');
     btn.textContent = TdDatetimeRange.labels.openEnd;
     btn.addEventListener('click', () => this._toggleOpenEnd());
-    fs.querySelector(':scope > .td-dtr-panel__legend').after(btn);
+    main.querySelector(':scope > .td-dtr-panel__switch').after(btn);
   }
 
-  /** @private "Không hạn": empty the end being edited; already empty → the end day field (to type a date) */
+  /** @private "Không hạn": empty the end being edited and edit it next; already empty → the calendar (to pick a date) */
   _toggleOpenEnd() {
-    const ed = this._dps && this._dps.end;
-    if (!ed) return;
-    if (isEmptyParts(ed.pending)) { ed.focusPart('day'); return; }
-    ed.setParts(emptyParts('end', this._minuteStep()));
-    this._refreshPair();
+    const d = this._draft;
+    if (!d) return;
+    if (!d.date.end) { this._showSide('end', 'grid'); return; }
+    d.date.end = null;
+    d.time.end = this._defaultTime('end');
+    this._showSide('end', 'grid');
   }
 
   /** @private one pending side as display text ('—' when empty / not valid yet; v0.59.0 "Không hạn" for an open end) */
   _pendingText(side) {
-    const p = this._dps && this._dps[side] ? this._dps[side].pending : null;
-    if (side === 'end' && this.hasAttribute('allow-open-end') && (!p || isEmptyParts(p))) return TdDatetimeRange.labels.openEnd;
-    if (!p || isEmptyParts(p) || invalidReason(p)) return TdDatetimeRange.labels.emptySide;
+    const L = TdDatetimeRange.labels;
+    const d = this._draft && this._draft.date[side];
+    if (side === 'end' && this.hasAttribute('allow-open-end') && !d) return L.openEnd;
+    if (!d) return L.emptySide;
+    const p = this._partsOf(side);
+    if (invalidReason(p)) return L.emptySide;
     return formatModeDisplay(toModeParts(p, this._mode()), this._mode());
   }
 
-  /** @private re-validate both editors (bounds changed while open) */
-  _refreshAll() {
-    if (!this._dps) return;
-    for (const k of SIDES) this._dps[k].refresh();
+  /**
+   * @private a pick at the root (days) view of the grid. mode date: the alternating Từ / Đến machine (range-selection); mode
+   * datetime: the date of the active endpoint only (its time is kept).
+   */
+  _onPick(d) {
+    const dr = this._draft;
+    if (!dr) return;
+    const L = TdDatetimeRange.labels;
+    const mode = this._mode();
+    const res = pickDay(this._sel(), d, this._selCtx());
+    if (res.kind === 'ignored') return;
+    dr.date.start = res.state.start;
+    dr.date.end = res.state.end;
+    dr.side = res.state.side;
+    this._grid.setSelected(dr.date[dr.side]); // month / year views read the grid's own selection: follow the active endpoint (no reveal)
+    this._syncUi();
+    const n = this._maxDays();
+    const note = mode === 'date' && n != null ? ` ${fill(L.maxDaysNote, { n })}.` : '';
+    if (mode === 'datetime') {
+      const side = res.kind;
+      this._announce(fill(L.sideChosen, { side: L[side], date: this._dayText(d) }));
+    } else if (res.kind === 'start') this._announce(fill(L.startChosen, { date: this._dayText(d) }) + note);
+    else if (res.kind === 'restart') this._announce(fill(L.restarted, { date: this._dayText(d) }) + note);
+    else if (dr.date.start) this._announce(fill(L.rangeChosen, { range: `${this._dayText(dr.date.start)} – ${this._dayText(d)}`, n: rangeDays(dr.date.start, d) }));
+    else this._announce(fill(L.endChosen, { date: this._dayText(d) }));
   }
 
-  /** @private sheet (< 720): show one side; focus its first field */
+  /**
+   * @private Change the endpoint being edited (tab, "Tiếp: Đến", "Không hạn", a rejected "Chọn"). Never commits, never fires
+   * `change`. `focus`: 'grid' (tab / "Tiếp": the calendar) | 'error' (validation: the tab carrying the error) | false.
+   */
   _showSide(side, focus) {
+    const dr = this._draft;
     const panel = this._panel;
-    if (!panel || !this._dps) return;
-    panel.setAttribute('data-side', side);
-    for (const tab of panel.querySelectorAll('.td-dtr-panel__tab')) {
-      tab.setAttribute('aria-pressed', tab.getAttribute('data-side') === side ? 'true' : 'false');
-    }
-    // a side that was hidden (display: none) could not centre its wheels: do it now, instantly
-    this._dps[side].endIntro();
-    this._dps[side].centreWheels(false);
-    if (focus) {
-      const first = this._dps[side].el.querySelector('.td-dtp-panel__input');
-      if (first) first.focus();
+    if (!dr || !panel || !this._grid) return;
+    dr.side = side;
+    const date = dr.date[side];
+    this._grid.setSelected(date, { reveal: !!date }); // the endpoint's date is shown when it has one; an empty one moves nothing
+    if (this._wheels) this._wheels.setTime(dr.time[side].hour, dr.time[side].minute, { smooth: false });
+    this._syncUi();
+    this._announce(fill(TdDatetimeRange.labels.editing, { side: TdDatetimeRange.labels[side] }));
+    if (focus === 'grid') this._grid.focusActive();
+    else if (focus === 'error') {
+      const tab = panel.querySelector(`.td-dtr-panel__tab[data-side="${side}"]`);
+      if (tab) tab.focus();
     }
   }
 
@@ -898,57 +1060,52 @@ export class TdDatetimeRange extends TdFormElement {
   _applyPreset(i) {
     const st = this._presetState;
     const r = st && st.results[i];
-    if (!r || !r.ok || !this._dps) return;
+    const dr = this._draft;
+    if (!r || !r.ok || !dr) return;
     const mode = this._mode();
     for (const k of SIDES) {
-      const p = { ...r[k] };
-      if (mode !== 'datetime') { p.hour = this._dps[k].pending.hour; p.minute = this._dps[k].pending.minute; }
-      this._dps[k].setParts(p);
+      const p = r[k];
+      dr.date[k] = { year: p.year, month: p.month, day: p.day };
+      if (mode === 'datetime') dr.time[k] = { hour: p.hour, minute: p.minute };
     }
-    const status = this._panel && this._panel.querySelector('.td-dtr-panel__status');
-    if (status) {
-      const range = `${formatModeDisplay(r.start, mode)} – ${formatModeDisplay(r.end, mode)}`;
-      status.textContent = fill(TdDatetimeRange.labels.presetChosen, { label: r.preset.label != null ? String(r.preset.label) : '', range });
-    }
+    dr.side = 'start';
+    this._grid.setSelected(dr.date.start, { reveal: true });
+    if (this._wheels) this._wheels.setTime(dr.time.start.hour, dr.time.start.minute, { smooth: false });
+    this._syncUi();
+    const range = `${formatModeDisplay(r.start, mode)} – ${formatModeDisplay(r.end, mode)}`;
+    this._announce(fill(TdDatetimeRange.labels.presetChosen, { label: r.preset.label != null ? String(r.preset.label) : '', range }));
   }
 
   /** @private "Xoá": both sides empty (stays open) */
   _clearPending() {
-    if (!this._dps) return;
-    const step = this._minuteStep();
-    for (const k of SIDES) this._dps[k].setParts(emptyParts(k, step));
+    const dr = this._draft;
+    if (!dr) return;
+    for (const k of SIDES) { dr.date[k] = null; dr.time[k] = this._defaultTime(k); }
+    dr.side = 'start';
     this._tried = false;
-    this._refreshPair();
+    this._grid.setSelected(null);
+    if (this._wheels) this._wheels.setTime(dr.time.start.hour, dr.time.start.minute, { smooth: false });
+    this._syncUi();
   }
 
   /** @private "Chọn": validate both sides + the pair, then commit (one `change`); false keeps the dialog open */
   _confirm() {
-    if (!this._dps || !this._panel) return false;
+    if (!this._draft || !this._panel) return false;
     this._tried = true;
-    for (const k of SIDES) {
-      const err = this._dps[k].refresh();
-      if (err) {
-        this._revealSide(k);
-        if (!this._dps[k].focusPart(err.field)) this._dps[k].focusPart('day');
-        return false;
-      }
-    }
-    const pair = this._refreshPair();
-    if (pair) {
-      this._revealSide(pair.side);
-      this._dps[pair.side].focusPart('day');
+    const err = this._syncUi();
+    if (err) {
+      this._showSide(err.side, 'error');
       return false;
     }
     const mode = this._mode();
     const preset = this._presetState ? this._presetState.matched : null;
     const out = {};
     for (const k of SIDES) {
-      const p = this._dps[k].pending;
-      if (isEmptyParts(p)) {
+      if (!this._draft.date[k]) {
         this.removeAttribute(k);
         out[k] = null;
       } else {
-        const q = toModeParts(p, mode);
+        const q = toModeParts(this._partsOf(k), mode);
         this.setAttribute(k, formatModeDisplay(q, mode));
         out[k] = q;
       }
@@ -963,11 +1120,6 @@ export class TdDatetimeRange extends TdFormElement {
       preset,
     });
     return true;
-  }
-
-  /** @private sheet: switch to the side that holds the error before focusing it */
-  _revealSide(side) {
-    if (this._panel && this._panel.getAttribute('data-side') !== side && matchesBelow('md')) this._showSide(side, false);
   }
 
   // --- Public API ---
