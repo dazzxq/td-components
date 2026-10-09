@@ -2,6 +2,33 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.61.0
+
+**Lịch cho `<td-datetime-range>` + hộp thoại `datetime` hai bước (ngày → giờ) cho cả picker và range** (owner sau khi xem
+demo 0.60: "date + time đang bị gom cả calendar và chọn giờ vào cùng 1 màn → rối, cao quá phải scroll, scroll còn lỗi"). Plan
+`docs/internal/plans/v0.61.0-range-calendar.md`, Codex plan-review APPROVE (r4 + delta r6), impl-review APPROVE r3,
+security-review sạch; [ADR 0032](docs/internal/decisions/0032-calendar-picker.md) (hệ quả). Đổi giao diện + luồng hộp thoại
+— `docs/upgrading/breaking-changes.md#0610`.
+
+### Changed
+
+- `<td-datetime-range>` dùng **một lưới lịch** cho cả hai mốc: bấm 1 = Từ, bấm 2 = Đến, tô khoảng, xem trước khi di chuột /
+  focus; ngày thứ hai sớm hơn Từ bắt đầu khoảng mới. `max-days`: ô vượt giới hạn mờ nhưng vẫn bấm được + ghi chú "Tối đa N
+  ngày". Preset, `allow-open-end`, tên trường, định dạng giá trị, `change`, PHP và SSR giữ nguyên.
+- `mode="datetime"` (picker và range) là **hai bước**: bước 1 chọn ngày (không ghi giá trị), bước 2 chọn giờ + "Chọn"; "‹" hoặc
+  Backspace quay lại. Range: Từ (ngày → giờ) → "Tiếp: Đến" → Đến (ngày → giờ) → "Chọn"; bản nháp rỗng sau "Xoá" xác nhận được ở
+  bước 1.
+- Bottom sheet: mỗi bước vừa màn hình (picker vừa 320×568 không cuộn; range tối đa một vùng cuộn), hàng nút ở chân TdModal mang
+  `data-action`.
+
+### Fixed
+
+- Lỗi cuộn của bottom sheet 0.60 ở `mode="datetime"` (hai vùng cuộn lồng nhau + hàng nút dính).
+
+### Removed
+
+- Hộp ba ô số cũ của range (`src/form/datetime-panel.js`, CSS `.td-dtp-panel*`).
+
 ## 0.60.0
 
 **Date picker dạng lịch: `<td-datetime-picker>` thiết kế lại tại chỗ — bấm chọn trên lịch, không còn gõ ngày / tháng / năm**
