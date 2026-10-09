@@ -1,6 +1,6 @@
 import { TdBaseElement } from '../base/td-base-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
-import { resolveScrollTopColors } from '../utils/scroll-top-colors.js';
+import { resolveScrollTopColors, syncScrollTopVars } from '../utils/scroll-top-colors.js';
 
 const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex], [contenteditable=""], [contenteditable="true"]';
 
@@ -76,31 +76,22 @@ export class TdScrollTop extends TdBaseElement {
     else if (name === 'color' || name === 'text-color') this._applyColors();
   }
 
-  /** The host custom properties this component sets (so a site's own inline values are never removed). */
-  static _COLOR_VARS = ['--td-scroll-top-bg', '--td-scroll-top-fg', '--td-scroll-top-bg-hover', '--td-scroll-top-pressed'];
-
   /**
-   * v0.62.0: `color` / `text-color` → host custom properties via CSSOM (CSP-safe). Invalid / absent → the ones set here are
-   * removed and the tokens apply. One fixed-text warning per element for an unusable value (never the value itself).
+   * v0.62.0: `color` / `text-color` → host custom properties via CSSOM (CSP-safe). Invalid / absent → the properties go back to
+   * what the site had set before (restored, not blindly removed — see syncScrollTopVars). One fixed-text warning per element
+   * for an unusable value (never the value itself).
    * @private
    */
   _applyColors() {
     const raw = this.getAttribute('color');
     const r = resolveScrollTopColors(raw, this.getAttribute('text-color'));
-    const set = this._colorVars || (this._colorVars = new Set());
+    syncScrollTopVars(this.style, this._colorVars || (this._colorVars = new Map()), r);
     if (!r) {
-      for (const v of set) this.style.removeProperty(v);
-      set.clear();
       if (raw && raw.trim() && !this._warnedColor) {
         this._warnedColor = true;
         console.warn('td-scroll-top: unusable color (use an opaque hex, basic name or rgb()) — the token colours apply');
       }
       return;
-    }
-    const [bg, fg, hover, pressed] = TdScrollTop._COLOR_VARS;
-    for (const [name, value] of [[bg, r.bg], [fg, r.fg], [hover, r.hover], [pressed, r.pressed]]) {
-      this.style.setProperty(name, value);
-      set.add(name);
     }
     if (r.textRejected && !this._warnedText) {
       this._warnedText = true;

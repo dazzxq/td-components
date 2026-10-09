@@ -10,11 +10,11 @@ Liên quan: [ADR 0011](0011-minimal-surfaces.md) (minimal surfaces), [0019](0019
 - **Bối cảnh.** 0.36.0 (plan QĐ 26) nhận diện alert bằng vạch `border-inline-start` 4px. Owner không muốn vạch cạnh; đây cũng là mẫu
   "side-stripe card" mà checklist Hallmark xếp vào dấu hiệu AI.
 - **Quyết định.** Giữ nền nhạt đặc (thân chứa chữ, liên kết, nút `.td-btn`), viền 1px **bốn cạnh**, thêm **ô icon** vuông bo
-  (`--td-alert-icon-box` 1.75rem, `--td-radius-md`) tô bằng `color-mix(icon 12 %, nền)` (`--td-alert-{v}-tile`). Markup byte-identical.
+  (`--td-alert-icon-box` 1.75rem, `--td-radius-md`) tô bằng `color-mix(icon 8 %, nền)` (`--td-alert-{v}-tile`). Markup byte-identical.
 - **Vì sao không đặc cả khối** (đã loại ở 0.36.0): phải đổi màu mọi control con. **Vì sao không icon trần**: gần như bản 0.18–0.35.
   **Vì sao ô vuông bo, không tròn**: icon của registry đã là hình tròn có glyph.
 - **Hệ quả.** Không token mới vào hợp đồng theme (ô chỉ dẫn xuất từ `-icon` / `-bg` đã đăng ký trong palette generator) → không
-  bump `THEME_TOKENS_VERSION` / `ALGORITHM_VERSION`. Fuzz 3000 palette: icon trên ô ≥ 3:1 (`src/theme/alert-tile.test.js`).
+  bump `THEME_TOKENS_VERSION` / `ALGORITHM_VERSION`. Fuzz 5000 palette (kiểm 20 000: tối thiểu 3.32): icon trên ô ≥ 3.2:1 (12 % chỉ đạt 3.13 — Codex impl r1) (`src/theme/alert-tile.test.js`).
   Token `--td-alert-{v}-accent`, `--td-alert-accent-width` giữ khai báo, **không còn tác dụng** (deprecated). Ranh giới ngoài của
   khối (≈ 1.04–1.9:1 với trang trắng) là trang trí; nghĩa nằm ở icon, tiêu đề, nội dung. Alert cao thêm ~5px một dòng.
 

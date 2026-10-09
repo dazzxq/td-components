@@ -51,3 +51,44 @@ export function resolveScrollTopColors(color, textColor) {
     textRejected,
   };
 }
+
+/** The host custom properties `<td-scroll-top>` writes for `color` / `text-color`. */
+export const SCROLL_TOP_COLOR_VARS = Object.freeze({
+  bg: '--td-scroll-top-bg',
+  fg: '--td-scroll-top-fg',
+  hover: '--td-scroll-top-bg-hover',
+  pressed: '--td-scroll-top-pressed',
+});
+
+/**
+ * Write (or give back) the colour custom properties on a CSSOM declaration block (`el.style`) without ever destroying a value
+ * the site put there. Before this module first overwrites a property it saves the site's value + priority; when the colours
+ * go away (`color` removed or unusable) each property is RESTORED to that value, or removed when the site had none. A
+ * property the site rewrote after us (current value !== what we wrote) is left alone. Ownership is per property.
+ *
+ * @param {{ getPropertyValue(n: string): string, getPropertyPriority(n: string): string,
+ *   setProperty(n: string, v: string, p?: string): void, removeProperty(n: string): string }} style
+ * @param {Map<string, { prev: { value: string, priority: string } | null, wrote: string }>} owned per-element state
+ * @param {ReturnType<typeof resolveScrollTopColors>} colors null → give everything back
+ */
+export function syncScrollTopVars(style, owned, colors) {
+  for (const key of Object.keys(SCROLL_TOP_COLOR_VARS)) {
+    const name = SCROLL_TOP_COLOR_VARS[key];
+    const entry = owned.get(name);
+    if (colors) {
+      let rec = entry;
+      if (!rec) {
+        const prev = style.getPropertyValue(name);
+        rec = { prev: prev ? { value: prev, priority: style.getPropertyPriority(name) } : null, wrote: '' };
+        owned.set(name, rec);
+      }
+      style.setProperty(name, colors[key]);
+      rec.wrote = colors[key];
+    } else if (entry) {
+      owned.delete(name);
+      if (style.getPropertyValue(name) !== entry.wrote) continue; // the site rewrote it after us: its newer value stays
+      if (entry.prev) style.setProperty(name, entry.prev.value, entry.prev.priority);
+      else style.removeProperty(name);
+    }
+  }
+}

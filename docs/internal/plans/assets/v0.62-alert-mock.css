@@ -24,7 +24,7 @@ body { margin: 0; font-family: var(--td-font-sans); background: #e4e4e7; color: 
 	--td-alert-pad-x: var(--td-space-md);
 	--td-alert-icon-box: 1.75rem;
 	--td-alert-icon-radius: var(--td-radius-md);
-	--td-alert-tile-mix: 12%;
+	--td-alert-tile-mix: 8%;
 }
 
 .mock .td-alert {

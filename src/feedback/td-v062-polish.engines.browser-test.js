@@ -266,6 +266,19 @@ describe('td-scroll-top color / text-color (plan E)', () => {
     expect(el.style.getPropertyValue('--keep')).to.equal('1'); // the site's own inline value survives
   });
 
+  it('a custom property the site set inline before survives color set -> removed (restored, not deleted)', () => {
+    const el = document.createElement('td-scroll-top');
+    el.style.setProperty('--td-scroll-top-bg', '#ff0000');
+    el.setAttribute('color', '#1e40af');
+    document.body.appendChild(el);
+    cleanups.push(() => el.remove());
+    expect(el.style.getPropertyValue('--td-scroll-top-bg')).to.equal('#1e40af');
+    el.removeAttribute('color');
+    expect(el.style.getPropertyValue('--td-scroll-top-bg')).to.equal('#ff0000');
+    el.setAttribute('color', 'red;}');
+    expect(el.style.getPropertyValue('--td-scroll-top-bg')).to.equal('#ff0000');
+  });
+
   it('hostile / translucent colour values are refused: nothing set, one fixed-text warning, never the value', () => {
     const warn = console.warn;
     const warns = [];

@@ -122,7 +122,7 @@ bề rộng từ cha (`display: block` — mặc định). Không có container 
 | `--td-alert-{…}-heading` | `var(--td-pastel-{v}-fg)` (tông đậm của loại; 0.41.0: trỏ vào token pastel, cùng giá trị) | Màu tiêu đề |
 | `--td-alert-{…}-icon` | `var(--td-solid-{v}-bg)`; warning `var(--td-color-warning)` `#b45309` (0.36.0) | Màu icon (warning dùng sắc đậm hơn để ≥ 3:1 trên nền nhạt) |
 | `--td-alert-{…}-tile` | `color-mix(in srgb, var(--td-alert-{v}-icon) var(--td-alert-tile-mix), var(--td-alert-{v}-bg))` | 0.62.0: nền ô icon (tông đậm hơn nền một bậc). Đặt `transparent` để bỏ ô. Trình duyệt không có `color-mix()`: không ô, icon vẫn trên nền |
-| `--td-alert-tile-mix` | `12%` | 0.62.0: phần màu icon trộn vào nền ô |
+| `--td-alert-tile-mix` | `8%` | 0.62.0: phần màu icon trộn vào nền ô |
 | `--td-alert-icon-box` | `1.75rem` | 0.62.0: cạnh ô icon (dòng chữ đầu và nút đóng căn theo ô này) |
 | `--td-alert-icon-radius` | `var(--td-radius-md)` | 0.62.0: bo góc ô icon |
 | `--td-alert-pad-y`, `--td-alert-pad-x` | `var(--td-space-sm)`, `var(--td-space-md)` | 0.62.0: padding (gọn: `0.5rem` + `--td-alert-icon-box: 1.25rem`) |

@@ -35,7 +35,7 @@ test('icon tile: tokens per variant derived from -icon / -bg inside @supports co
     assert.match(supports, new RegExp(`--td-alert-${v}-tile:\\s*color-mix\\(in srgb,\\s*var\\(--td-alert-${v}-icon\\)\\s+var\\(--td-alert-tile-mix\\),\\s*var\\(--td-alert-${v}-bg\\)\\)`));
     assert.match(component, new RegExp(`var\\(--td-alert-${v}-tile,\\s*transparent\\)`));
   }
-  assert.match(code, /--td-alert-tile-mix:\s*12%/);
+  assert.match(code, /--td-alert-tile-mix:\s*8%/);
   assert.match(code, /--td-alert-icon-box:\s*1\.75rem/);
 });
 

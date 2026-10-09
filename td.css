@@ -11427,7 +11427,7 @@
  * being the only cue. Text ≥ 4.7:1 and icon / close ≥ 3.2:1 on the fill, light + dark (test/tokens/contrast.spec.mjs).
  * v0.36.0 (plan QĐ 26): the body keeps its light fill (paragraphs, links, action buttons stay readable). v0.62.0 (plan A,
  * ADR 0033): NO side stripe — the identity is the status icon in a rounded-square TILE (--td-alert-{v}-tile = the icon colour
- * mixed 12 % into the fill, derived from the theme-contract tokens -icon / -bg, so a generated palette carries it), a
+ * mixed 8 % into the fill, derived from the theme-contract tokens -icon / -bg, so a generated palette carries it), a
  * 1px hairline on all four sides (--td-alert-{v}-border) and the heading colour. Markup unchanged. The v0.36.0 stripe tokens
  * (--td-alert-{v}-accent, --td-alert-accent-width) stay declared for golden / sites but have no effect any more. A site
  * wanting a fully solid alert sets -bg / -border / -heading / -icon (docs/components/alert.md); a denser one sets
@@ -11440,7 +11440,7 @@
 		--td-alert-pad-x: var(--td-space-md);
 		--td-alert-icon-box: 1.75rem;           /* the icon tile; the first text line is centred on it */
 		--td-alert-icon-radius: var(--td-radius-md);
-		--td-alert-tile-mix: 12%;               /* how much of the icon colour the tile takes from the fill */
+		--td-alert-tile-mix: 8%;               /* how much of the icon colour the tile takes from the fill */
 		--td-alert-accent-width: 4px;           /* deprecated 0.62.0: no effect (the side stripe is gone) */
 	}
 

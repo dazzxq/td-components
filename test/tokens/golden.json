@@ -2123,15 +2123,15 @@
     "--td-hovercard-skeleton-w": {"light": "16rem", "dark": "16rem", "why": "v0.62.0: width of the hovercard while its content loads (skeleton size budget)"},
     "--td-hovercard-skeleton-h": {"light": "5rem", "dark": "5rem", "why": "v0.62.0: minimum height of the hovercard while its content loads"},
     "--td-hovercard-skeleton-avatar": {"light": "2.5rem", "dark": "2.5rem", "why": "v0.62.0: diameter of the skeleton avatar disc in the hovercard"},
-    "--td-alert-info-tile": {"light": "rgb(215, 228, 253)", "dark": "rgb(33, 48, 75)", "why": "v0.62.0: fill of the alert icon tile = color-mix(srgb, --td-alert-info-icon 12%, --td-alert-info-bg); derived from the theme-contract tokens, not itself a contract token"},
-    "--td-alert-success-tile": {"light": "rgb(214, 238, 222)", "dark": "rgb(28, 60, 42)", "why": "v0.62.0: fill of the alert icon tile = color-mix(srgb, --td-alert-success-icon 12%, --td-alert-success-bg); derived from the theme-contract tokens, not itself a contract token"},
-    "--td-alert-warning-tile": {"light": "rgb(246, 231, 208)", "dark": "rgb(64, 49, 16)", "why": "v0.62.0: fill of the alert icon tile = color-mix(srgb, --td-alert-warning-icon 12%, --td-alert-warning-bg); derived from the theme-contract tokens, not itself a contract token"},
-    "--td-alert-danger-tile": {"light": "rgb(250, 218, 218)", "dark": "rgb(67, 35, 35)", "why": "v0.62.0: fill of the alert icon tile = color-mix(srgb, --td-alert-danger-icon 12%, --td-alert-danger-bg); derived from the theme-contract tokens, not itself a contract token"},
+    "--td-alert-info-tile": {"light": "rgb(223, 234, 253)", "dark": "rgb(27, 42, 67)", "why": "v0.62.0: fill of the alert icon tile = color-mix(srgb, --td-alert-info-icon 8%, --td-alert-info-bg); derived from the theme-contract tokens, not itself a contract token"},
+    "--td-alert-success-tile": {"light": "rgb(222, 243, 229)", "dark": "rgb(23, 52, 36)", "why": "v0.62.0: fill of the alert icon tile = color-mix(srgb, --td-alert-success-icon 8%, --td-alert-success-bg); derived from the theme-contract tokens, not itself a contract token"},
+    "--td-alert-warning-tile": {"light": "rgb(249, 238, 217)", "dark": "rgb(55, 42, 14)", "why": "v0.62.0: fill of the alert icon tile = color-mix(srgb, --td-alert-warning-icon 8%, --td-alert-warning-bg); derived from the theme-contract tokens, not itself a contract token"},
+    "--td-alert-danger-tile": {"light": "rgb(251, 226, 226)", "dark": "rgb(59, 29, 29)", "why": "v0.62.0: fill of the alert icon tile = color-mix(srgb, --td-alert-danger-icon 8%, --td-alert-danger-bg); derived from the theme-contract tokens, not itself a contract token"},
     "--td-alert-pad-y": {"light": "0.75rem", "dark": "0.75rem", "why": "v0.62.0 (plan A): td-alert density / icon-tile token — vertical padding (= --td-space-sm)"},
     "--td-alert-pad-x": {"light": "1rem", "dark": "1rem", "why": "v0.62.0 (plan A): td-alert density / icon-tile token — horizontal padding (= --td-space-md)"},
     "--td-alert-icon-box": {"light": "1.75rem", "dark": "1.75rem", "why": "v0.62.0 (plan A): td-alert density / icon-tile token — side of the icon tile"},
     "--td-alert-icon-radius": {"light": "8px", "dark": "8px", "why": "v0.62.0 (plan A): td-alert density / icon-tile token — tile radius (= --td-radius-md)"},
-    "--td-alert-tile-mix": {"light": "12%", "dark": "12%", "why": "v0.62.0 (plan A): td-alert density / icon-tile token — share of the icon colour in the tile fill"}
+    "--td-alert-tile-mix": {"light": "8%", "dark": "8%", "why": "v0.62.0 (plan A): td-alert density / icon-tile token — share of the icon colour in the tile fill"}
   },
   "lightDeltas": {
     "--td-table-check-border": {
