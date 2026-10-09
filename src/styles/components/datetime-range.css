@@ -2,8 +2,8 @@
  * td-datetime-range (src/form/td-datetime-range.js) — v0.40.0, plan v0.39.0-filters-range QĐ 17–26.
  * Blocks: .td-dtr (host: label + field-look trigger, like .td-dtp), .td-dtr__natives (the no-JS block of php
  * td_datetime_range: two native date / datetime-local inputs, shown only while the element is not defined),
- * .td-dtr-panel (dialog body: preset chips, the "Từ | Đến" switch < 720, two sides each holding the shared
- * .td-dtp-panel editor of datetime-picker.css, the pair error line).
+ * .td-dtr-panel (dialog body since v0.61.0: preset chips, the "Từ | Đến" switch, ONE calendar (.td-cal of calendar.css, painted
+ * through its cellState hook) + the hour / minute wheels in datetime mode, the max-days hint, the pair error line).
  * State: [aria-expanded] / :disabled / [aria-invalid] on the trigger, [data-placeholder] on the value, data-state on
  * .td-dtr, [aria-pressed] / [aria-disabled] on presets, [aria-pressed] on the switch tabs, data-side on the panel.
  * JS writes no styles here.
@@ -266,12 +266,12 @@
 		}
 	}
 
-	/* ---- Dialog body ---- */
+	/* ---- Dialog body (v0.61.0: one calendar for both endpoints) ---- */
 	.td-dtr-panel {
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
-		gap: var(--td-space-md);
+		gap: var(--td-space-sm);
 		min-width: 0;
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
@@ -282,6 +282,13 @@
 	.td-dtr-panel *,
 	.td-dtr-panel *::before {
 		box-sizing: border-box;
+	}
+
+	.td-dtr-panel__main {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-sm);
+		min-width: 0;
 	}
 
 	.td-dtr-panel__presets {
@@ -335,14 +342,19 @@
 		background: var(--td-field-bg-disabled);
 	}
 
-	/* v0.59.0 `allow-open-end`: the "Không hạn" toggle of the "Đến" side — a preset chip (same look / pressed state) */
+	/* v0.59.0 `allow-open-end`: the "Không hạn" toggle — a preset chip (same look / pressed state), next to the switch */
 	.td-dtr-panel__open-end {
-		margin-block-end: var(--td-space-sm);
+		align-self: flex-start;
 	}
 
-	/* "Từ | Đến" switch: only in the sheet (< 720) */
+	/* "Từ | Đến": which endpoint the next pick edits (every width, both modes) */
 	.td-dtr-panel__switch {
-		display: none;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: 4px;
+		padding: 4px;
+		background: var(--td-dtr-switch-bg);
+		border-radius: var(--td-glass-radius-inner);
 	}
 
 	.td-dtr-panel__tab {
@@ -400,42 +412,20 @@
 		white-space: nowrap;
 	}
 
-	.td-dtr-panel__sides {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-		gap: var(--td-space-lg);
-	}
-
-	.td-dtr-panel__side {
-		min-width: 0;
-		padding: 0;
-		margin: 0;
-		border: 0;
-	}
-
-	.td-dtr-panel__legend {
-		padding: 0;
-		margin: 0 0 var(--td-space-sm);
-		font-size: var(--td-text-base);
-		font-weight: var(--td-fw-semibold);
-		color: var(--td-color-text);
-	}
-
-	/* the editor's own "Ngày" legend repeats the side legend: visually hidden, still names its fieldset */
-	.td-dtr-panel .td-dtp-panel > fieldset.td-dtp-panel__group > .td-dtp-panel__legend {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
-	}
-
+	/* "Tiếp: Đến" — datetime only, while the "Từ" endpoint is being edited */
 	.td-dtr-panel__next {
+		align-self: flex-start;
+	}
+
+	.td-dtr-panel[data-side="end"] .td-dtr-panel__next,
+	.td-dtr-panel[data-step="date"] .td-dtr-panel__next {
 		display: none;
+	}
+
+	.td-dtr-panel__hint {
+		margin: 0;
+		font-size: var(--td-text-xs);
+		color: var(--td-color-text-muted);
 	}
 
 	.td-dtr-panel__error {
@@ -444,46 +434,41 @@
 		color: var(--td-field-error);
 	}
 
+	.td-dtr-panel__hint[hidden],
 	.td-dtr-panel__error[hidden] {
 		display: none;
 	}
 
-	/* sheet (< 720): one side at a time behind the "Từ | Đến" switch (two time wheels stacked are too tall) */
-	@media (max-width: 719.98px) {
-		.td-dtr-panel__switch {
+	/* ≥ 720: the presets become a column beside the calendar (a date range); a datetime range puts the wheels beside the grid */
+	@media (min-width: 720px) {
+		.td-dtr-panel:has(> .td-dtr-panel__presets) {
 			display: grid;
-			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-			gap: 4px;
-			padding: 4px;
-			background: var(--td-dtr-switch-bg);
-			border-radius: var(--td-glass-radius-inner);
+			grid-template-columns: max-content minmax(0, 1fr);
+			column-gap: var(--td-space-lg);
+			align-items: start;
 		}
 
-		.td-dtr-panel__sides {
-			grid-template-columns: minmax(0, 1fr);
+		.td-dtr-panel:has(> .td-dtr-panel__presets) > .td-dtr-panel__presets {
+			grid-row: 1 / span 3;
+			flex-direction: column;
+			flex-wrap: nowrap;
+			align-items: stretch;
 		}
 
-		.td-dtr-panel[data-side="start"] .td-dtr-panel__side[data-side="end"],
-		.td-dtr-panel[data-side="end"] .td-dtr-panel__side[data-side="start"] {
-			display: none;
+		.td-dtr-panel:has(> .td-dtr-panel__presets) > :is(.td-dtr-panel__main, .td-dtr-panel__hint, .td-dtr-panel__error) {
+			grid-column: 2;
 		}
 
-		/* the switch names the shown side: the side legend is visually hidden (still names the fieldset) */
-		.td-dtr-panel__side > .td-dtr-panel__legend {
-			position: absolute;
-			width: 1px;
-			height: 1px;
-			padding: 0;
-			margin: -1px;
-			overflow: hidden;
-			clip: rect(0, 0, 0, 0);
-			white-space: nowrap;
-			border: 0;
+		.td-dtr-panel .td-cal,
+		.td-dtr-panel .td-time-step {
+			inline-size: calc(7 * var(--td-cal-cell));
 		}
+	}
 
-		.td-dtr-panel__next {
-			display: inline-flex;
-			margin-top: var(--td-space-sm);
+	/* sheet (< 720): the calendar fills the width; the side padding shrinks just enough for seven ≥ 44 px cells on a 320 px phone */
+	@media (max-width: 719.98px) {
+		.td-modal__body:has(> .td-dtr-panel) {
+			padding-inline: clamp(4px, calc((100vw - 7 * var(--td-touch-min) - 2px) / 2), var(--td-modal-pad-x));
 		}
 	}
 
@@ -493,6 +478,7 @@
 			flex-wrap: nowrap;
 			padding-block: 2px; /* room for the focus ring inside the scroller */
 			overflow-x: auto;
+			overflow-y: hidden; /* a horizontal chip scroller only (v0.61.0: never a vertical layout scroller) */
 			overscroll-behavior-x: contain;
 			scroll-snap-type: x proximity;
 			scrollbar-width: none;
@@ -508,12 +494,9 @@
 	}
 
 	@media (max-height: 500px) {
-		.td-dtr-panel {
-			gap: var(--td-space-sm);
-		}
-
-		.td-dtr-panel__legend {
-			margin-bottom: var(--td-space-xs);
+		.td-dtr-panel,
+		.td-dtr-panel__main {
+			gap: var(--td-space-xs);
 		}
 	}
 

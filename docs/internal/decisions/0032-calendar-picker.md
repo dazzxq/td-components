@@ -65,6 +65,21 @@ Ba ô số gõ tay; dòng xem trước; hoạt ảnh bánh xe "cuộn từ 00" l
 
 ## Hệ quả
 
+> **Bổ sung v0.61.0 (plan [v0.61.0-range-calendar](../plans/v0.61.0-range-calendar.md); không ADR mới — cùng element, cùng lưới):**
+> - Quyết định 9 **đã hiện thực**: lưới nhận hook `cellState` (`{ selected, role, preview, disabled, dimmed, label }`) + `refreshCells()`,
+>   `onFocusDate`, `onHoverDate`; `<td-datetime-range>` chọn khoảng trên cùng lưới (`src/utils/range-selection.js`). Quyết định 10 **hoàn tất**:
+>   `datetime-panel.js` và `.td-dtp-panel*` đã xoá; chỉ còn một bản bánh xe (`time-wheels.js`).
+> - **Lệch có chủ đích so với đồng thuận 2026-10-09:** `max-days` **làm mờ** (không khoá) ô vượt giới hạn; bấm vào = bắt đầu khoảng mới
+>   — người dùng không bao giờ kẹt (release lead).
+> - **Quyết định 3 sửa (owner 2026-10-09, sau demo Storybook):** `datetime` **không còn "nháp + Chọn" trên một màn** mà là **hai màn**
+>   (`TimeStep`, `src/form/time-step.js`): màn ngày (bấm ngày không ghi) → màn giờ ("‹" / Backspace quay lại, "Bây giờ", "Chọn" chỉ ở
+>   màn giờ); áp dụng cho picker VÀ range. `date` / `month` / `year` giữ nguyên.
+> - **Lỗi cuộn của v0.60 (nguyên nhân):** hai bộ cuộn dọc lồng nhau (thân modal + `.td-dtp-pop__scroll`) và hàng nút `sticky` che nội dung.
+>   Sửa: chân sheet là **chân TdModal** (nút dựng sẵn mang `data-action`, không cuộn), sheet chỉ một bộ cuộn (thân modal, chỉ khi
+>   màn hình thấp hơn nội dung); mỗi màn vừa 320 × 568 không cuộn (picker). **Ngoại lệ "sheet datetime ≤ 90 %" bị bỏ** (số đo
+>   mới: màn ngày picker 506 px = 89 % ở 320 × 568; màn giờ 334 px).
+> - "Một bản (0.60) tồn tại hai bản sao code bánh xe; hết ở 0.61" → **hết**.
+
 - Người dùng không còn gõ ngày trong picker. Rủi ro trợ năng đã biết (USWDS / Shopify khuyên giữ đường gõ); bù bằng lưới
   năm + `open-at`. Ô gõ phân đoạn là việc để dành, cần ADR riêng.
 - Giá trị ngoài 2000–2099 trở thành hợp lệ và được gửi đi: site dựa vào cửa sổ ngầm phải đặt biên tường minh.

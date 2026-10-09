@@ -34,6 +34,8 @@ const focusDate = () => {
   return { y: Number(c.querySelector('.td-cal__cells[data-kind="years"] [tabindex="0"]').getAttribute('data-year')) };
 };
 const field = (part) => ({ get value() { return String(focusDate()[{ year: 'y', month: 'm', day: 'd' }[part]]); } });
+/** v0.61.0: datetime is two screens — activate the focused day to load the wheels (the time screen) */
+const toTime = async () => { panel().querySelector('.td-cal__day[tabindex="0"]').click(); await settle(); };
 async function open(el) {
   trig(el).click();
   await settle();
@@ -146,12 +148,15 @@ describe('v0.19.0 G6 — default open position = today clamped to min–max', ()
     const next = today.getFullYear() + 1;
     const p = mount(`<td-datetime-picker id="p" min="${next}-03-04T10:07" minute-step="5"></td-datetime-picker>`);
     await open(p);
+    await toTime();
     expect({ h: wheel('hour'), mi: wheel('minute') }).to.deep.equal({ h: '10', mi: '10' });
     await close();
     host.innerHTML = '';
     const q = mount(`<td-datetime-picker id="q" min="${next}-03-04T10:58" minute-step="5"></td-datetime-picker>`);
     await open(q);
-    expect({ d: field('day').value, h: wheel('hour'), mi: wheel('minute') }).to.deep.equal({ d: '4', h: '11', mi: '0' });
+    const d = field('day').value;
+    await toTime();
+    expect({ d, h: wheel('hour'), mi: wheel('minute') }).to.deep.equal({ d: '4', h: '11', mi: '0' });
   });
 
   it('date / month modes ignore the minute snap (a bound near midnight / month end stays on its day / month)', async () => {

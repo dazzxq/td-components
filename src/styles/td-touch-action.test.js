@@ -25,6 +25,8 @@ const TABLE = {
   // v0.49.0 number stepper − / +: repeated taps are the main use — no double-tap zoom on iOS
   '.td-number__step': 'manipulation',
   '.td-cal__nav, .td-cal__title': 'manipulation',
+  // v0.61.0 time wheel: a vertical swipe scrolls it (native momentum + CSS snap); no horizontal pan, no double-tap zoom
+  '.td-dtp-wheel__list': 'pan-y',
 };
 
 test('touch-action declarations = the reviewed table (no new none, nothing on html / body)', async () => {

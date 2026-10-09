@@ -34,9 +34,9 @@ export const Default = {
     + `${attr('min', args.min)}${attr('max', args.max)}${attr('minute-step', args['minute-step'])}`
     + `${attr('form-value-format', args['form-value-format'])}${flag('required', args.required)}`
     + `${flag('disabled', args.disabled)}${attr('error-text', args['error-text'])}></td-datetime-picker>`
-    + '<p class="sb-note">Bàn phím (0.60): Enter / Space / ↓ mở lịch; ← → ↑ ↓ ±1 ngày / ±1 tuần, Home / End = Thứ Hai / Chủ Nhật,'
-    + ' PageUp / PageDown ±1 tháng, Shift+PageUp / PageDown ±1 năm, Enter / Space chọn; trên bánh xe giờ/phút: ↑↓ Home End PageUp PageDown;'
-    + ' "Chọn" lưu, Esc huỷ.</p></div>',
+    + '<p class="sb-note">Bàn phím: Enter / Space / ↓ mở lịch; ← → ↑ ↓ ±1 ngày / ±1 tuần, Home / End = Thứ Hai / Chủ Nhật,'
+    + ' PageUp / PageDown ±1 tháng, Shift+PageUp / PageDown ±1 năm, Enter / Space chọn. Ngày-giờ (0.61) là HAI MÀN: bấm ngày → màn giờ'
+    + ' (bánh xe: ↑↓ Home End PageUp PageDown; "‹" hoặc Backspace quay lại màn ngày); "Chọn" lưu ở màn giờ, Esc huỷ.</p></div>',
   args: {
     label: 'Thời gian hẹn', value: '15/06/2026 - 10:30', placeholder: '', min: '', max: '', 'minute-step': 1,
     'form-value-format': 'iso', required: false, disabled: false, 'error-text': '',
@@ -118,7 +118,18 @@ export const CalendarDate = {
 export const CalendarDatetime = {
   render: () => '<div class="sb-stack" style="min-height: 34rem">'
     + '<td-datetime-picker label="Giờ hẹn" value="15/06/2026 - 10:30" minute-step="15"></td-datetime-picker>'
-    + '<p class="sb-note">Bấm ngày chỉ đổi bản nháp; giờ / phút bằng bánh xe; "Chọn" mới ghi, "Bây giờ" đưa bản nháp về hiện tại.</p></div>',
+    + '<p class="sb-note">Hai màn (0.61): MÀN 1 chọn ngày (chỉ lịch, "Hôm nay" ở chân); bấm một ngày → MÀN 2 chọn giờ (tiêu đề ngày + "‹" quay lại,'
+    + ' bánh xe giờ / phút theo <code>minute-step</code>, "Bây giờ" đưa ngày + giờ về hiện tại và ở lại màn giờ, "Chọn" mới ghi một lần). Mỗi màn vừa'
+    + ' màn hình, không cuộn, kể cả điện thoại 320 × 568; bánh xe vuốt có quán tính + khớp giá trị.</p></div>',
+  play: openFirst,
+};
+
+/** v0.61.0: the same two screens on a phone-sized frame (the bottom sheet): the actions live in the sheet footer. */
+export const CalendarDatetimeSheet = {
+  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  render: () => '<div class="sb-stack" style="min-height: 34rem">'
+    + '<td-datetime-picker label="Giờ hẹn" value="15/06/2026 - 10:30" minute-step="5"></td-datetime-picker>'
+    + '<p class="sb-note">Thu hẹp cửa sổ dưới 720 px để thấy bottom sheet: chân sheet có "Hôm nay" (màn ngày) hoặc "Bây giờ" + "Chọn" (màn giờ).</p></div>',
   play: openFirst,
 };
 

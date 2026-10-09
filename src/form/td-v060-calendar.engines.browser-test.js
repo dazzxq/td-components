@@ -92,7 +92,7 @@ describe('v0.60.0 calendar — shells (A5)', () => {
     expect(p.getBoundingClientRect().width).to.be.greaterThan(250);
   });
 
-  it('< 720: the bottom sheet (TdModal) holds the same calendar; no footer; X present', async () => {
+  it('< 720: the bottom sheet (TdModal) holds the same calendar; its footer holds the action (v0.61.0: data-action nodes); X present', async () => {
     await vp({ width: 390, height: 844 });
     const { trigger } = await open('mode="date" value="15/06/2026"');
     const m = document.querySelector('.td-modal');
@@ -100,7 +100,8 @@ describe('v0.60.0 calendar — shells (A5)', () => {
     expect(pop().classList.contains('td-dtp-pop--sheet')).to.equal(true);
     expect(!!m.querySelector('.td-modal__close')).to.equal(true);
     const footer = m.querySelector('.td-modal__footer');
-    expect(!footer || footer.hidden || getComputedStyle(footer).display === 'none').to.equal(true);
+    expect(!!footer && !footer.hidden && [...footer.querySelectorAll('[data-action]')].map((b) => b.dataset.action).join()).to.equal('today'); // 0.61.0: the action row is the TdModal footer
+    expect(!pop().querySelector('.td-dtp-pop__actions')).to.equal(true);
     expect(trigger.getAttribute('aria-expanded')).to.equal('true');
   });
 
@@ -173,11 +174,14 @@ describe('v0.60.0 calendar — the day grid (D1, C2)', () => {
     expect(active() === day('2030-05-01')).to.equal(true);
   });
 
-  it('days outside the month are shown, selectable, and move the view when chosen (datetime keeps the dialog open)', async () => {
+  it('days outside the month are shown, selectable, and move the view when chosen (datetime opens the time screen; going back shows the new month)', async () => {
     const { el, rec } = await open('mode="datetime" value="15/06/2026 - 10:30"');
     const out = day('2026-07-02');
     expect(out.hasAttribute('data-outside')).to.equal(true);
     out.click();
+    await settle();
+    expect(pop().getAttribute('data-step')).to.equal('time'); // v0.61.0: a day opens the time screen
+    pop().querySelector('[data-action="back"]').click();
     await settle();
     expect(live()).to.equal('Tháng 7 năm 2026');
     expect(day('2026-07-02').getAttribute('aria-selected')).to.equal('true');
@@ -256,7 +260,7 @@ describe('v0.60.0 calendar — what commits (C4, D9)', () => {
     expect(!!pop() && b.rec.change.length === 0).to.equal(true);
   });
 
-  it('date / month / year have no confirm / close footer; datetime has "Bây giờ" + "Chọn"', async () => {
+  it('date / month / year have no confirm / close footer; datetime: "Hôm nay" on the date screen, "Bây giờ" + "Chọn" on the time screen (0.61.0)', async () => {
     await open('mode="date" value="15/06/2026"');
     expect(pop().querySelector('[data-action="confirm"]')).to.equal(null);
     expect([...pop().querySelectorAll('.td-dtp-pop__actions button')].map((b) => b.textContent)).to.deep.equal(['Hôm nay']);
@@ -268,7 +272,11 @@ describe('v0.60.0 calendar — what commits (C4, D9)', () => {
     expect([...pop().querySelectorAll('.td-dtp-pop__actions button')].map((b) => b.textContent)).to.deep.equal(['Năm nay']);
     host.innerHTML = ''; pop()?.remove();
     await open('mode="datetime" value="15/06/2026 - 10:30"');
-    expect([...pop().querySelectorAll('.td-dtp-pop__actions button')].map((b) => b.textContent)).to.deep.equal(['Bây giờ', 'Chọn']);
+    const shown = () => [...pop().querySelectorAll('.td-dtp-pop__actions button')].filter((b) => !b.hidden).map((b) => b.textContent);
+    expect(shown()).to.deep.equal(['Hôm nay']);
+    day('2026-06-15').click();
+    await settle();
+    expect(shown()).to.deep.equal(['Bây giờ', 'Chọn']);
   });
 
   it('datetime: a day changes the draft only; the wheels keep the time; "Chọn" commits ONE change', async () => {
@@ -304,11 +312,15 @@ describe('v0.60.0 calendar — what commits (C4, D9)', () => {
 
   it('datetime: "Chọn" with the same draft still emits one change (v0.59 contract); a time outside min / max is refused and the dialog stays', async () => {
     const a = await open('mode="datetime" value="15/06/2026 - 10:30"');
+    day('2026-06-15').click();
+    await settle();
     pop().querySelector('[data-action="confirm"]').click();
     expect(await closed()).to.equal(true);
     expect(a.rec.change.length).to.equal(1);
     host.innerHTML = '';
     const b = await open('mode="datetime" value="15/06/2026 - 10:30" min="2026-06-15T10:07"');
+    day('2026-06-15').click();
+    await settle();
     const hour = pop().querySelector('.td-dtp-wheel__list[data-part="hour"]');
     hour.focus();
     await sendKeys({ press: 'ArrowUp' });
@@ -528,13 +540,15 @@ describe('v0.60.0 calendar — view transitions (D2)', () => {
       expect(!!pop()).to.equal(false);
     });
 
-    it(`datetime: choose a day (${how}) → the draft only, still open, focus on that day`, async () => {
+    it(`datetime: choose a day (${how}) → the time screen: no change, still open, the hour wheel has the focus`, async () => {
       const { rec } = await open('mode="datetime" value="15/06/2026 - 10:30"');
       await act(day('2026-06-18'), how);
+      await settle();
       expect(rec.change.length).to.equal(0);
       expect(!!pop()).to.equal(true);
-      expect(active() === day('2026-06-18')).to.equal(true);
-      expect(day('2026-06-18').getAttribute('aria-selected')).to.equal('true');
+      expect(pop().getAttribute('data-step')).to.equal('time'); // v0.61.0: the day opens the time screen (no commit)
+      expect(active() === pop().querySelector('.td-dtp-wheel__list[data-part="hour"]')).to.equal(true);
+      expect(pop().querySelector('.td-cal__day[data-date="2026-06-18"]').getAttribute('aria-selected')).to.equal('true');
     });
 
     it(`month mode: choose a month (${how}) commits; the year button → years → choose a year → back to MONTHS without a change`, async () => {
@@ -631,9 +645,17 @@ describe('v0.60.0 calendar — keyboard (APG date picker dialog, D3 / D4)', () =
     expect(day('2026-06-16').getAttribute('tabindex')).to.equal('0');
     expect(day('2026-06-15').getAttribute('tabindex')).to.equal('-1');
     await sendKeys({ press: 'Enter' });
+    await settle();
+    expect(pop().getAttribute('data-step')).to.equal('time'); // v0.61.0
+    await sendKeys({ press: 'Backspace' }); // back to the date screen, the day has the focus
+    await settle();
     expect(day('2026-06-16').getAttribute('aria-selected')).to.equal('true');
+    expect(active() === day('2026-06-16')).to.equal(true);
     await sendKeys({ press: 'ArrowRight' });
     await sendKeys({ press: 'Space' });
+    await settle();
+    await sendKeys({ press: 'Backspace' });
+    await settle();
     expect(day('2026-06-17').getAttribute('aria-selected')).to.equal('true');
     expect(rec.change.length).to.equal(0);
   });

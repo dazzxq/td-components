@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.61.0](#0610) | Đổi giao diện + tương tác `td-datetime-range` (lịch một lưới thay hai bộ ba ô số) + **hộp thoại `datetime` (picker VÀ range) là hai bước: ngày → giờ** + gỡ `.td-dtp-panel*` | Không đổi markup / attribute / form / `change` / PHP. Test tự động bám ô số của range hoặc "bấm ngày rồi Chọn ngay" ở `datetime` phải đổi (xem § 0.61.0). Range `datetime`: "Chọn" chỉ ở màn giờ. |
 | [0.60.0](#0600) | Đổi giao diện + tương tác `td-datetime-picker` (lịch dạng lưới thay ba ô số) + đổi hành vi (hết cửa sổ năm 2000–2099, picker `date`/`month`/`year` chọn là ghi) + SSR `datetime-picker@2` | Không phải sửa code. Test tự động bám `.td-dtp-panel` / `[data-part]` / nút "Chọn" ở `mode="date"` phải đổi selector (có loại xanh giả). Site dựa vào cửa sổ 2000–2099 để chặn dữ liệu → đặt `min` / `max`. Triển khai JS và PHP cùng bản. |
 | [0.59.2](#0592) | Sửa lỗi giao diện (`td-table` dạng thẻ + `hide-single-page`) | Không. Thanh chip sắp xếp cách mép trên như khi còn thanh trên; markup không đổi. |
 | [0.59.1](#0591) | Thêm tính năng (opt-in: `label-position="start"` cho `td-toggle` / `td-checkbox`, PHP `label_position`) | Không bắt buộc. Không dùng → `render()`, PHP và giao diện giống từng byte 0.59.0. |
@@ -88,6 +89,35 @@ theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao
 
 ---
 
+## 0.61.0
+
+**Mức: đổi giao diện + tương tác (không cần đổi markup / attribute / handler); hộp thoại `datetime` đổi luồng.** Thẻ,
+attribute, định dạng giá trị, hai mục form `name[start]` / `name[end]`, `change` `{ value, dbValue, preset }`, method, helper PHP
+(`td_datetime_range`, `td_datetime_picker`) và hợp đồng SSR (`datetime-range@1`, `datetime-picker@2`) **giữ nguyên**.
+
+- **`<td-datetime-range>` dùng lịch** ([datetime-range § Hộp thoại](../components/datetime-range.md#hộp-thoại)): MỘT lưới cho cả
+  hai mốc — bấm 1 = Từ, bấm 2 = Đến, tô khoảng, xem trước khi di chuột / focus; ngày thứ hai **sớm hơn** Từ bắt đầu khoảng mới
+  (không còn lỗi thứ tự trong hộp ở `mode="date"`). Không còn ba ô số gõ ngày / tháng / năm; bánh xe không còn cuộn từ 00 khi mở.
+  `max-days` ở `mode="date"`: ô vượt giới hạn **mờ nhưng vẫn bấm được** (bấm = bắt đầu khoảng mới), ghi chú "Tối đa N ngày".
+- **Hộp thoại `datetime` là HAI BƯỚC** (cả `<td-datetime-picker mode="datetime">` và `<td-datetime-range mode="datetime">`):
+  bước 1 chọn **ngày** (bấm ngày **không** ghi giá trị), bước 2 chọn **giờ** rồi bấm **"Chọn"** — "Chọn" chỉ có ở bước 2 (riêng range:
+  khi bản nháp hoàn toàn rỗng sau "Xoá", "Chọn" hiện ở bước 1 và ghi khoảng rỗng — bỏ bộ lọc). "‹" hoặc Backspace quay lại bước 1.
+  Range `datetime`: Từ (ngày → giờ) → "Tiếp: Đến" → Đến (ngày → giờ) → "Chọn". Mỗi bước vừa màn hình, không cuộn (đã sửa lỗi cuộn
+  hai tầng của bottom sheet 0.60). **Test tự động** bấm một ngày rồi bấm "Chọn" ngay ở `datetime` phải thêm một thao tác.
+- **Chân bottom sheet**: nút hành động của picker (`Hôm nay` / `Bây giờ` / `Chọn`) và của range (`Đóng` / `Xoá` / `Chọn`) nằm ở **chân
+  TdModal** (không cuộn, không đè nội dung), mang `data-action`. Popover desktop giữ hàng nút nội bộ cùng `data-action`.
+- **Selector bị gỡ** — test bám chúng hỏng, và `toHaveCount(0)` trên chúng nay luôn đúng (xanh giả): `.td-dtp-panel*`,
+  `.td-dtr-panel__side|sides|legend`, `[data-part="day|month|year"]` trong hộp range. **Selector ổn định** mới: `.td-cal [data-date]`,
+  `data-range="start|end|single|in"`, `.td-dtr-panel[data-step]` / `.td-dtp-pop[data-step]`, `.td-dtr-panel__tab[data-side]`,
+  `[data-action="today|now|confirm|clear|close|back|next"]`; `.td-dtr-panel__preset` / `__open-end` / `__switch` / `__tab` / `__error` /
+  `__status` giữ nguyên. Chọn một khoảng bằng test: bấm hai `[data-date]` rồi `[data-action="confirm"]`.
+- **Nhãn mới** (`TdDatetimeRange.labels`): `rangeStart|rangeEnd|rangeSingle|rangeIn|overLimit|maxDaysNote|startChosen|endChosen|rangeChosen|restarted|sideChosen|editing|now`
+  và các khoá lịch (`prevMonth`, `weekdaysShort`, `timeBack`, `timeHeading`, `timeFor`…, cũng thêm vào `TdDatetimePicker.labels`). Nhãn
+  `date|day|month|year` của range không còn hiện (vẫn khai báo).
+- Không token theme mới; `--td-cal-range-bg` / `--td-cal-preview-bg` là bí danh của token có sẵn.
+
+---
+
 ## 0.60.0
 
 **Mức: đổi giao diện + tương tác (không cần đổi markup / attribute / handler), đổi hành vi (hết cửa sổ năm 2000–2099),
@@ -110,17 +140,16 @@ helper PHP (`td_date`, `td_datetime_picker`) **giữ nguyên**: site không ph�
   thì render lại an toàn (giữ giá trị đang có trong ô native) và vẫn coi năm ngoài 2000–2099 là không hợp lệ cho tới khi cache
   JS hết hạn — triển khai JS và PHP cùng bản. `datetime-range@1` không đổi.
 - **DOM riêng tư của lịch đổi** — test tự động (Playwright, Cypress…) bám selector cũ sẽ hỏng, và có loại **xanh giả**:
-  `.td-dtp-panel`, `.td-dtp-panel__input`, `[data-part="day|month|year"]`, `.td-dtp-panel__preview` không còn trong picker (vẫn còn
-  trong `<td-datetime-range>` tới 0.61); lịch ≥ 720px không còn là `.td-modal`; khẳng định `.td-dtp-panel` `toHaveCount(0)` nay
+  `.td-dtp-panel`, `.td-dtp-panel__input`, `[data-part="day|month|year"]`, `.td-dtp-panel__preview` không còn trong picker (`<td-datetime-range>` cũng đã gỡ ở 0.61); lịch ≥ 720px không còn là `.td-modal`; khẳng định `.td-dtp-panel` `toHaveCount(0)` nay
   luôn đúng. Dùng selector ổn định mới (`[data-date]`, `[data-month]`, `[data-year]`, `[data-pick]`, `[data-dir]`,
   `[data-action]`, hoặc `getByRole('gridcell', …)`) — bảng + công thức chọn 15/03/1999 ở
   [datetime-picker § 10](../components/datetime-picker.md#10-lịch-0600).
-- **Bánh xe giờ / phút** không còn cuộn từ 00 khi mở (căn ngay). Hộp thoại của `<td-datetime-range>` giữ hiệu ứng tới 0.61.
+- **Bánh xe giờ / phút** không còn cuộn từ 00 khi mở (căn ngay). `<td-datetime-range>` cũng căn ngay từ 0.61.
 - **Nhãn**: `labels.day|month|year|date|dateMonth|dateYear|close` và `messages.incomplete*` không còn hiện trong picker (vẫn khai
   báo). Thêm các khoá lịch (`prevMonth`, `weekdaysShort`, `weekdaysLong`, `heading`…). `weekdaysShort` / `weekdaysLong` phải là
   mảng 7 chuỗi (Thứ Hai trước).
 - **Token mới** `--td-cal-*` (trỏ tới token theme có sẵn; `ALGORITHM_VERSION` của bộ sinh palette không đổi).
-- **Báo trước 0.61.0**: `<td-datetime-range>` chuyển sang lịch (bấm 1 = Từ, bấm 2 = Đến) và `.td-dtp-panel*` bị gỡ.
+- **0.61.0**: `<td-datetime-range>` chuyển sang lịch và `.td-dtp-panel*` bị gỡ — xem [§ 0.61.0](#0610).
 
 ## 0.59.2
 

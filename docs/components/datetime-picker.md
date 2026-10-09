@@ -3,7 +3,7 @@
 # Datetime picker — `<td-datetime-picker>`
 
 Ô chọn **ngày + giờ** (đến phút). Bấm vào ô sẽ mở một **lịch**: lưới tháng bắt đầu từ Thứ Hai, bấm tiêu đề tháng / năm để
-nhảy nhanh tới tháng / năm khác, và (mode datetime) 2 bánh xe cuộn giờ / phút. Từ 0.60.0 lịch là một popover neo vào ô
+nhảy nhanh tới tháng / năm khác. Mode **datetime** là **hai màn** (0.61.0): màn ngày (lịch) rồi, sau khi bấm một ngày, màn giờ (2 bánh xe giờ / phút). Từ 0.60.0 lịch là một popover neo vào ô
 (≥ 720px) hoặc bottom sheet ([TdModal](modal.md), < 720px — chọn lúc mở); trước đó là hộp thoại với 3 ô số phải gõ tay. Hiển thị dạng
 `dd/mm/yyyy - hh:mm`, gửi form dạng ISO (mặc định) hoặc dạng DB. Dùng cho hẹn giờ đăng bài, lịch hẹn, hạn chót…
 Xem [mục 10](#10-lịch-0600).
@@ -246,7 +246,7 @@ không phải đổi markup hay handler.
 
 - **Vỏ**: ≥ 720px popover (`div.td-dtp-pop[role=dialog]` gắn ở `<body>`, neo vào ô, lật lên / xuống theo chỗ trống; vùng
   lưới + bánh xe cuộn được, hàng nút luôn thấy; trang bên dưới **không** bị inert, bấm ra ngoài đóng). < 720px bottom sheet
-  (TdModal; bấm nền **không** đóng; hàng nút dính đáy sheet). Chọn vỏ lúc mở. Cùng một cây DOM ở cả hai vỏ.
+  (TdModal; bấm nền **không** đóng; nút hành động ở **chân sheet**, không cuộn — 0.61.0). Chọn vỏ lúc mở. Cùng một cây DOM ở cả hai vỏ.
 - **Lưới ngày** bắt đầu từ Thứ Hai (cố định), 6 tuần, ngày ngoài tháng mờ nhưng bấm được; **hôm nay** có vòng viền, **ngày đã
   chọn** nền đặc + đậm, ngày ngoài `min`–`max` **gạch ngang** và khoá (`aria-disabled`). `‹ ›` đổi một tháng (khoá khi tháng
   bên cạnh nằm ngoài khoảng). Nút tháng và nút năm trên đầu mở lưới 12 tháng / lưới 12 năm (‹ › = ±12 năm); bấm lại nút đang
@@ -258,7 +258,9 @@ không phải đổi markup hay handler.
 | `date` | một ngày; "Hôm nay" | ghi giá trị + **một** `change` + đóng + focus về ô. Chọn lại đúng ngày cũ: đóng, không `change` |
 | `month` | một tháng; "Tháng này" | như trên (mở thẳng ở lưới tháng; nút năm → lưới năm → quay về lưới tháng) |
 | `year` | một năm; "Năm nay" | như trên (mở thẳng ở lưới năm) |
-| `datetime` | một ngày | chỉ đổi **bản nháp**; bánh xe giờ / phút (`minute-step`) cũng đổi nháp; **"Chọn"** mới ghi + một `change`; "Bây giờ" đưa nháp về hiện tại (không ghi); nháp ngoài `min` / `max` → dòng lỗi, "Chọn" từ chối |
+| `datetime` | một ngày; "Hôm nay" | **không ghi** — sang **màn giờ** (0.61.0): tiêu đề ngày + nút "‹" (`aria-label="Chọn lại ngày"`, hoặc phím Backspace) quay lại màn ngày; bánh xe giờ / phút (`minute-step`) đổi nháp; **"Chọn"** (chỉ có ở màn giờ) mới ghi + một `change`; "Bây giờ" đưa nháp (ngày + giờ) về hiện tại và ở lại màn giờ (không ghi); nháp ngoài `min` / `max` → dòng lỗi (cũng hiện ở màn ngày), "Chọn" từ chối |
+
+**Hai màn của `datetime` (0.61.0, `data-step="date" \| "time"` trên hộp):** mở luôn ở **màn ngày** (ngày của giá trị có focus; Enter trên ngày đó = sang màn giờ); bấm ngày / Enter / Space → màn giờ, focus bánh xe giờ, vùng `role=status` đọc "Chọn giờ cho 15/10/2026"; "‹" / Backspace → về màn ngày, focus ô ngày (nháp ngoài `min`–`max` giữ nguyên + dòng lỗi; focus rơi vào ngày bật gần nhất); Esc đóng ở cả hai màn. Mỗi màn vừa khung nhìn, không cuộn (kể cả điện thoại 320 × 568); chạm: bánh xe vuốt có quán tính + khớp giá trị, không dây chuyền cuộn ra trang, mục tiêu ≥ 44px, không bàn phím ảo.
 
 - Chọn **tháng** hay **năm** trong lưới của mode `date` / `datetime` chỉ là điều hướng: không `change`, không đóng. Chọn
   tháng → về lưới ngày; chọn năm → về nơi đã mở lưới năm (lưới ngày hoặc lưới tháng).
@@ -352,7 +354,7 @@ Không có method `open()` công khai. Muốn mở bằng code, bấm nút trigg
 | `weekdaysShort` / `weekdaysLong` | `['T2', … 'CN']` / `['Thứ Hai', … 'Chủ Nhật']` | **Mảng 7 chuỗi**, bắt đầu Thứ Hai (sai dạng → mặc định + một cảnh báo) |
 | `monthName` / `heading` / `headingMonths` / `headingYears` | `Tháng {n}` / `Tháng {month} năm {year}` / `Năm {year}` / `{from} – {to}` | Nút tháng, vùng đọc `aria-live` theo khung |
 | `dayLabel` / `yearLabel` / `todaySuffix` | `{weekday}, {day} tháng {month} năm {year}` / `Năm {year}` / `hôm nay` | Tên truy cập từng ô |
-| `date`, `day` / `month` / `year`, `close` | | **Không còn hiện** trong picker từ 0.60.0 (vẫn khai báo cho site đã ghi đè; range còn dùng ở hộp thoại của nó) |
+| `date`, `day` / `month` / `year`, `close` | | **Không còn hiện** trong picker từ 0.60.0 (vẫn khai báo cho site đã ghi đè; range cũng không còn dùng từ 0.61.0 — ở hộp thoại của nó) |
 | `titleDate` / `titleMonth` / `titleYear` | `Chọn ngày` / `Chọn tháng` / `Chọn năm` | Tiêu đề theo mode (0.18.0) |
 | `placeholderDate` / `placeholderMonth` / `placeholderYear` | `dd/mm/yyyy` / `mm/yyyy` / `yyyy` | Placeholder theo mode |
 | `nowDate` / `nowMonth` / `nowYear` | `Hôm nay` / `Tháng này` / `Năm nay` | Nút "bây giờ" theo mode |
@@ -364,7 +366,7 @@ Không có method `open()` công khai. Muốn mở bằng code, bấm nút trigg
 |---|---|---|
 | `required` | `Vui lòng chọn ngày giờ` | `required` mà trống (`valueMissing`) |
 | `format` | `Định dạng ngày giờ không hợp lệ` | `value` sai cú pháp (`badInput`) |
-| `incomplete` | `Vui lòng nhập đầy đủ ngày, tháng, năm` | Không còn hiện trong picker từ 0.60.0 (range còn dùng) |
+| `incomplete` | `Vui lòng nhập đầy đủ ngày, tháng, năm` | Không còn hiện trong picker từ 0.60.0 (range cũng không từ 0.61.0; chỉ còn cho giá trị gán qua attribute) |
 | `requiredDate` / `requiredMonth` / `requiredYear` | `Vui lòng chọn ngày` / `… tháng` / `… năm` | `required` theo mode (0.18.0) |
 | `formatDate` / `formatMonth` / `formatYear` | `Định dạng ngày không hợp lệ` / `… tháng …` / `… năm …` | Sai cú pháp theo mode |
 | `incompleteMonth` / `incompleteYear` | `Vui lòng nhập đầy đủ tháng, năm` / `Vui lòng nhập năm` | Không còn hiện trong picker từ 0.60.0 |
@@ -506,7 +508,7 @@ Lịch (0.60.0). `{p}` = `{host}-dtp{n}`, `n` tăng mỗi lần mở. Cây này 
         <div class="td-cal__row" role="row"><div class="td-cal__cell" role="gridcell" data-year="2017" …>2017</div> …</div>
       </div>
     </div>
-    <!-- chỉ mode datetime: -->
+    <!-- chỉ mode datetime (0.61.0): màn giờ `div.td-time-step[hidden]` = [button.td-cal__nav.td-time-step__back[data-action=back] + p.td-time-step__heading] + : -->
     <div class="td-dtp-pop__time" role="group" aria-labelledby="{p}-time">
       <p class="td-sr-only" id="{p}-time">Giờ</p>
       <div class="td-dtp-pop__wheels">
@@ -518,9 +520,9 @@ Lịch (0.60.0). `{p}` = `{host}-dtp{n}`, `n` tăng mỗi lần mở. Cây này 
     </div>
     <p class="td-dtp-pop__error" id="{p}-error" role="alert" hidden></p>   <!-- chỉ datetime -->
   </div>
-  <div class="td-dtp-pop__actions">                                    <!-- ghim đáy, ngoài vùng cuộn -->
+  <div class="td-dtp-pop__actions">                                    <!-- popover: hàng nút ngoài vùng cuộn; sheet (0.61.0): CÙNG các nút `data-action` ở chân TdModal -->
     <button type="button" class="td-btn td-btn--secondary td-btn--sm" data-action="today|now">…</button>   <!-- date/month/year: Hôm nay · Tháng này · Năm nay; datetime: Bây giờ -->
-    <button type="button" class="td-btn td-btn--primary td-btn--sm" data-action="confirm">Chọn</button>    <!-- chỉ datetime -->
+    <button type="button" class="td-btn td-btn--primary td-btn--sm" data-action="confirm">Chọn</button>    <!-- chỉ datetime, chỉ hiện ở màn giờ -->
   </div>
 </div>
 ```
@@ -537,7 +539,7 @@ Lịch (0.60.0). `{p}` = `{host}-dtp{n}`, `n` tăng mỗi lần mở. Cây này 
 | `.td-dtp-pop__error` | `[hidden]` khi không có lỗi |
 | `.td-dtp-wheel__option` | `aria-selected="true"` |
 
-Class `.td-dtp-panel*` (hộp thoại ba ô số) **không còn trong picker** — chỉ `<td-datetime-range>` còn dùng cho tới 0.61.0.
+Class `.td-dtp-panel*` (hộp thoại ba ô số) **đã gỡ hẳn** (0.61.0; `<td-datetime-range>` cũng dùng lịch). Selector ổn định cho test: `.td-dtp-pop[data-step]`, `[data-action="today|now|confirm|back"]` (popover VÀ chân sheet), `.td-cal [data-date]`.
 
 JS không ghi style nào; bánh xe cuộn bằng `scrollTo`, dùng CSS scroll-snap.
 
@@ -564,7 +566,8 @@ mở lịch; `Enter` không bao giờ submit form. Bấm chuột cũng mở. **B
 | Mọi lưới | | Đích ngoài `min`–`max` hoặc ngoài năm 1–9999: dừng ở biên gần nhất (không nhảy sang ô bị khoá) |
 | Bánh xe giờ / phút (mỗi bánh xe là **một** điểm Tab) | `ArrowUp` / `ArrowDown`; `PageUp` / `PageDown`; `Home` / `End` | ±1; ±6 giờ / ±15 phút; đầu / cuối (không vòng) |
 | Mọi nơi | `Tab` | Vòng trong lịch (popover: bẫy Tab; WebKit cũng đi qua các nút) |
-| Nút "Chọn" (datetime) | | Có lỗi → giữ mở, hiện dòng lỗi, focus bánh xe giờ. Hợp lệ → ghi, một `change`, đóng, focus về trigger |
+| Màn giờ (datetime) | `Backspace` | Về màn ngày (như nút "‹"); không mất giá trị |
+| Nút "Chọn" (datetime, màn giờ) | | Có lỗi → giữ mở, hiện dòng lỗi, focus bánh xe giờ. Hợp lệ → ghi, một `change`, đóng, focus về trigger |
 | `Escape` | | Đóng cả lịch ở **mọi khung**, bỏ nháp, focus về trigger (nút X của sheet cũng vậy) |
 
 Mỗi lần đổi khung (ngày ↔ tháng ↔ năm) focus chuyển vào ô hoạt động của khung mới; vùng `aria-live="polite"` đọc đúng một lần
@@ -582,8 +585,7 @@ Trợ năng:
   `aria-activedescendant` luôn đồng bộ).
 - Lỗi của bản nháp (datetime) hiện trong `p[role=alert]`; hai bánh xe có `aria-describedby` trỏ tới dòng lỗi chỉ khi lỗi đang hiện.
 - Tên truy cập của trigger: `label` → `aria-label` của host → `<label for="{host-id}">` ngoài.
-- **Không còn hiệu ứng "cuộn từ 00" khi mở** (0.21.0 – 0.59.0): bánh xe căn ngay vào giá trị (hộp thoại của `<td-datetime-range>`
-  vẫn giữ hiệu ứng đó tới 0.61.0). Bấm phím trên bánh xe vẫn cuộn mượt tới dòng mới.
+- **Không còn hiệu ứng "cuộn từ 00" khi mở** (0.21.0 – 0.59.0; cả `<td-datetime-range>` từ 0.61.0): bánh xe căn ngay vào giá trị mỗi lần vào màn giờ. Bấm phím trên bánh xe vẫn cuộn mượt tới dòng mới.
 - `prefers-reduced-motion`: bánh xe nhảy ngay khi bấm phím; popover chỉ mờ dần. `forced-colors`: ngày đã chọn dùng
   `Highlight` / `HighlightText`, hôm nay viền `CanvasText`, ngày khoá `GrayText`, focus `Highlight`.
 - Cảm ứng (ADR 0019): ô ngày / tháng / năm, nút ‹ ›, dòng bánh xe cao ≥ 44px; hover chỉ trong cổng `hover: hover`; ‹ › có
@@ -603,6 +605,7 @@ Trợ năng:
   hiển thị và sau khi nhận.
 - **`getValue()` trả `''`** không có nghĩa là trống: có thể giá trị sai hoặc ngoài `min`/`max`. Kiểm tra `picker.validity`
   hoặc `picker.value` (chuỗi thô) để phân biệt.
+- **Test cũ bấm một ngày rồi bấm "Chọn" ngay ở mode `datetime`** (0.61.0): bấm ngày giờ chuyển sang màn giờ — thêm một thao tác (chờ `[data-step="time"]`, rồi `[data-action="confirm"]`); chọn giờ qua bánh xe (ArrowUp / ArrowDown), không còn ô số.
 - **Test cũ gõ vào `[data-part="day|month|year"]`, bấm "Chọn" ở mode `date`, hoặc khẳng định `.td-dtp-panel` biến mất** (0.60.0):
   ba ô số và nút đó không còn — dùng selector ở [mục 10](#10-lịch-0600). Khẳng định "không có `.td-dtp-panel`" nay **luôn đúng**.
 - **Ngày sinh / dữ liệu cũ** (0.60.0): không cần `min` nữa — không có bound thì năm 1–9999 đều hợp lệ (trước 0.60.0 năm

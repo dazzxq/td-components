@@ -1,5 +1,4 @@
 import { expect } from '@esm-bundle/chai';
-import { sendKeys } from '@web/test-runner-commands';
 import { TdModal } from '../feedback/td-modal.js';
 import { TdDatetimeRange } from './td-datetime-range.js';
 
@@ -7,7 +6,8 @@ import { TdDatetimeRange } from './td-datetime-range.js';
 // reads "Không hạn" (trigger "01/10/2026 – Không hạn", the end tab, a toggle button in the "Đến" side); the end is never
 // required; value / FormData / events unchanged (end ''). Runtime toggles: closed (trigger, aria-required, validity — no
 // change event) and open (the button is inserted / removed in place; focus moves to the end day field when the focused
-// button goes; the end being edited is kept). Chromium, Firefox AND WebKit. Booleans in assertions.
+// button goes; the end being edited is kept). Since v0.61.0 the dialog is the calendar: the toggle sits beside the "Từ | Đến" switch.
+// Chromium, Firefox AND WebKit. Booleans in assertions.
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';
@@ -25,8 +25,9 @@ const settle = async () => {
 const until = async (cond, n = 300) => { for (let i = 0; i < n && !cond(); i++) await raf(); return cond(); };
 const openModal = () => [...document.querySelectorAll('.td-modal')].find((m) => m.getAttribute('data-state') !== 'closing') || null;
 const $ = (sel) => openModal().querySelector(sel);
-const side = (k) => $(`.td-dtr-panel__side[data-side="${k}"]`);
-const field = (k, part) => side(k).querySelector(`.td-dtp-panel__input[data-part="${part}"]`);
+const day = (iso) => $(`.td-cal__day[data-date="${iso}"]`);
+const tab = (k) => $(`.td-dtr-panel__tab[data-side="${k}"]`);
+const cellFocus = () => $('.td-cal__day[tabindex="0"]');
 const footer = (label) => [...openModal().querySelectorAll('.td-modal__footer .td-btn')].find((b) => b.textContent.trim() === label);
 const openEndBtn = () => (openModal() ? openModal().querySelectorAll('.td-dtr-panel__open-end') : []);
 const NOW = new Date(2026, 9, 5, 9, 30);
@@ -43,14 +44,7 @@ const fd = (el) => { const f = new FormData(el.closest('form')); return [f.get('
 async function open(el) {
   el.querySelector('.td-dtr__trigger').click();
   expect(await until(() => openModal() && openModal().getAttribute('data-state') === 'open'), 'modal open').to.equal(true);
-  await until(() => !el._dps || (!el._dps.start.intro && !el._dps.end.intro));
   await settle();
-}
-async function typeInto(input, text) {
-  input.focus();
-  for (let i = 0; i < 6; i++) await sendKeys({ press: 'Backspace' });
-  for (let i = 0; i < 6; i++) await sendKeys({ press: 'Delete' });
-  if (text) await sendKeys({ type: text });
 }
 
 beforeEach(() => {
@@ -120,32 +114,34 @@ describe('v0.59.0 td-datetime-range allow-open-end — closed', () => {
 });
 
 describe('v0.59.0 td-datetime-range allow-open-end — dialog', () => {
-  it('the "Không hạn" button: in the end side only with the attribute, aria-pressed = end empty, tab text', async () => {
+  it('the "Không hạn" button: next to the switch only with the attribute, aria-pressed = end empty, tab text', async () => {
     const el = mount('allow-open-end start="01/10/2026"');
     await open(el);
     const [b] = openEndBtn();
     expect(openEndBtn().length).to.equal(1);
-    expect(side('end').contains(b) && b.getAttribute('type') === 'button').to.equal(true);
+    expect(b.previousElementSibling === $('.td-dtr-panel__switch') && b.getAttribute('type') === 'button').to.equal(true);
     expect(b.textContent).to.equal('Không hạn');
     expect(b.getAttribute('aria-pressed')).to.equal('true');
     expect($('.td-dtr-panel__tab[data-side="end"] .td-dtr-panel__tab-value').textContent).to.equal('Không hạn');
   });
 
-  it('typing an end un-presses it; pressing it empties the end; pressing again focuses the end day field', async () => {
+  it('picking an end un-presses it; pressing it empties the end; pressing again focuses the calendar', async () => {
     const el = mount('allow-open-end start="01/10/2026"');
     await open(el);
     const [b] = openEndBtn();
-    await typeInto(field('end', 'day'), '05');
-    await typeInto(field('end', 'month'), '10');
-    await typeInto(field('end', 'year'), '2026');
+    tab('end').click();
+    day('2026-10-05').click();
     await settle();
     expect(b.getAttribute('aria-pressed')).to.equal('false');
+    expect(tab('end').querySelector('.td-dtr-panel__tab-value').textContent).to.equal('05/10/2026');
     b.click();
     await settle();
     expect(b.getAttribute('aria-pressed')).to.equal('true');
-    expect(field('end', 'day').value).to.equal('');
+    expect(tab('end').querySelector('.td-dtr-panel__tab-value').textContent).to.equal('Không hạn');
+    expect(tab('end').getAttribute('aria-pressed')).to.equal('true');
+    b.focus();
     b.click();
-    expect(document.activeElement === field('end', 'day')).to.equal(true);
+    expect(document.activeElement === cellFocus()).to.equal(true);
     expect(b.getAttribute('aria-pressed')).to.equal('true');
   });
 
@@ -184,30 +180,29 @@ describe('v0.59.0 td-datetime-range allow-open-end — runtime toggle while open
   it('enable: the button appears, aria-pressed matches the end being edited, focus kept', async () => {
     const el = mount('start="01/10/2026"');
     await open(el);
-    field('start', 'day').focus();
+    cellFocus().focus();
     el.allowOpenEnd = true;
     await settle();
     expect(openEndBtn().length).to.equal(1);
     expect(openEndBtn()[0].getAttribute('aria-pressed')).to.equal('true');
-    expect(document.activeElement === field('start', 'day')).to.equal(true);
+    expect(document.activeElement === cellFocus()).to.equal(true);
     expect($('.td-dtr-panel__tab[data-side="end"] .td-dtr-panel__tab-value').textContent).to.equal('Không hạn');
   });
 
-  it('disable while "Không hạn" has the focus: button removed, focus on the end day field, end still empty, no error yet', async () => {
+  it('disable while "Không hạn" has the focus: button removed, focus in the calendar, end still empty, no error yet', async () => {
     const el = mount('allow-open-end required start="01/10/2026"');
     await open(el);
     openEndBtn()[0].focus();
     el.allowOpenEnd = false;
     await settle();
     expect(openEndBtn().length).to.equal(0);
-    expect(document.activeElement === field('end', 'day')).to.equal(true);
-    expect(field('end', 'day').value).to.equal('');
+    expect(document.activeElement === cellFocus()).to.equal(true);
     expect($('.td-dtr-panel__tab[data-side="end"] .td-dtr-panel__tab-value').textContent).to.equal('—');
     expect($('.td-dtr-panel__error').hidden).to.equal(true);
     footer('Chọn').click();
     await settle();
     expect($('.td-dtr-panel__error').textContent).to.equal('Vui lòng chọn ngày kết thúc');
-    expect(document.activeElement === field('end', 'day')).to.equal(true);
+    expect(document.activeElement === tab('end')).to.equal(true);
   });
 
   it('disable without required: "Chọn" commits the empty end; disable with an end date keeps the date', async () => {
@@ -227,7 +222,21 @@ describe('v0.59.0 td-datetime-range allow-open-end — runtime toggle while open
     b.allowOpenEnd = false;
     await settle();
     expect(openEndBtn().length).to.equal(0);
-    expect(field('end', 'day').value).to.equal('5');
+    expect(tab('end').querySelector('.td-dtr-panel__tab-value').textContent).to.equal('05/10/2026');
+  });
+
+  it('datetime, TIME screen: removing "Không hạn" while it has the focus hands the focus to the hour wheel (never outside the modal)', async () => {
+    const el = mount('mode="datetime" allow-open-end start="01/10/2026 - 08:00" end="05/10/2026 - 17:30"');
+    await open(el);
+    day('2026-10-02').click(); // → the time screen (the calendar is hidden)
+    await settle();
+    expect($('.td-dtr-panel').getAttribute('data-step')).to.equal('time');
+    openEndBtn()[0].focus();
+    el.allowOpenEnd = false;
+    await settle();
+    expect(openEndBtn().length).to.equal(0);
+    expect(document.activeElement === $('.td-dtp-wheel__list[data-part="hour"]')).to.equal(true);
+    expect(openModal().contains(document.activeElement)).to.equal(true);
   });
 
   it('enable → disable → enable never duplicates the button', async () => {

@@ -41,6 +41,8 @@ const selected = (list) => list.querySelector('[aria-selected="true"]');
 const selectedValue = (list) => Number(selected(list).getAttribute('data-value'));
 const button = (label) => [...openModal().querySelectorAll('.td-dtp-pop__actions .td-btn')].find((b) => b.textContent.trim() === label);
 const errorLine = () => panel().querySelector('.td-dtp-pop__error');
+/** v0.61.0: datetime is two screens — activate the focused day to reach the time screen (the wheels) */
+const goTime = async () => { panel().querySelector('.td-cal__day[tabindex="0"]').click(); await settle(); };
 async function open(el) {
   trig(el).click();
   await settle();
@@ -111,7 +113,8 @@ describe('batch 4 — td-datetime-picker structure', () => {
     const styled = [...panel().querySelectorAll('[style]')];
     expect(styled.every((n) => n.classList.contains('td-dtp-pop__scroll') && /^max-height: [\d.]+px;?$/.test(n.getAttribute('style').trim())), `inline styles: ${styled.map((n) => n.className + '|' + n.getAttribute('style')).join(' ; ')}`).to.equal(true);
     expect(document.adoptedStyleSheets.length).to.equal(0);
-    // the wheel is laid out by td.css alone (was Tailwind-only: cross-cutting finding 1)
+    // the wheel is laid out by td.css alone (was Tailwind-only: cross-cutting finding 1) — on the TIME screen (v0.61.0)
+    await goTime();
     const list = wheel('hour');
     expect(getComputedStyle(list).overflowY).to.equal('auto');
     expect(getComputedStyle(list).scrollSnapType).to.contain('mandatory');
@@ -226,6 +229,8 @@ describe('batch 4 — td-datetime-picker keyboard open / commit / cancel', () =>
     trig(el).focus();
     await sendKeys({ press: 'Enter' });
     await settle();
+    await sendKeys({ press: 'Enter' }); // the focused day → the time screen (v0.61.0)
+    await settle();
     button('Chọn').focus();
     await sendKeys({ press: 'Enter' });
     await settle();
@@ -252,6 +257,7 @@ describe('batch 4 — td-datetime-picker keyboard open / commit / cancel', () =>
     expect(trig(el).getAttribute('aria-expanded')).to.equal('false');
     await open(el);
     expect(panel().querySelector('.td-cal__day[aria-selected="true"]').getAttribute('data-date')).to.equal('2026-06-15');
+    await goTime();
     expect(selectedValue(wheel('hour'))).to.equal(10);
   });
 
@@ -281,6 +287,7 @@ describe('batch 4 — td-datetime-picker wheels (listbox model)', () => {
   it('one tab stop per wheel: named listbox, non-focusable options, activedescendant = the selected option', async () => {
     const el = pick('id="w1" value="15/06/2026 - 10:30"');
     await open(el);
+    await goTime();
     for (const [part, name, count, value] of [['hour', 'Giờ', 24, 10], ['minute', 'Phút', 60, 30]]) {
       const list = wheel(part);
       expect(list.getAttribute('role')).to.equal('listbox');
@@ -299,8 +306,8 @@ describe('batch 4 — td-datetime-picker wheels (listbox model)', () => {
     expect(panel().querySelector('.td-dtp-wheel__sep').getAttribute('aria-hidden')).to.equal('true');
     const group = panel().querySelector('[role="group"]');
     expect(document.getElementById(group.getAttribute('aria-labelledby')).textContent).to.equal('Giờ');
-    // Tab order inside the dialog: … grid (one stop) → hour → minute → "Bây giờ" → "Chọn"
-    dayCell('2026-06-15').focus();
+    // Tab order on the time screen (v0.61.0): "‹" → hour → minute → "Bây giờ" → "Chọn"
+    panel().querySelector('.td-time-step [data-action="back"]').focus();
     await sendKeys({ press: 'Tab' });
     expect(same(document.activeElement, wheel('hour'))).to.equal(true);
     await sendKeys({ press: 'Tab' });
@@ -310,6 +317,7 @@ describe('batch 4 — td-datetime-picker wheels (listbox model)', () => {
   it('↑ ↓ Home End PageUp PageDown move selection + activedescendant together (no wrap)', async () => {
     const el = pick('id="w2" value="15/06/2026 - 10:30"');
     await open(el);
+    await goTime();
     const h = wheel('hour');
     h.focus();
     const check = (v) => {
@@ -331,6 +339,7 @@ describe('batch 4 — td-datetime-picker wheels (listbox model)', () => {
   it('minute wheel follows minute-step; PageDown = 15 minutes', async () => {
     const el = pick('id="w3" minute-step="5" value="15/06/2026 - 10:30"');
     await open(el);
+    await goTime();
     const m = wheel('minute');
     expect(m.children.length).to.equal(12);
     m.focus();
@@ -343,6 +352,7 @@ describe('batch 4 — td-datetime-picker wheels (listbox model)', () => {
   it('click selects an option', async () => {
     const el = pick('id="w4" value="15/06/2026 - 10:30"');
     await open(el);
+    await goTime();
     const h = wheel('hour');
     h.querySelector('[data-value="7"]').click();
     expect(selectedValue(h)).to.equal(7);
@@ -352,6 +362,7 @@ describe('batch 4 — td-datetime-picker wheels (listbox model)', () => {
   it('the selected option is centred in the band; scrolling selects the option that settles there', async () => {
     const el = pick('id="w5" value="15/06/2026 - 10:30"');
     await open(el);
+    await goTime();
     // v0.60.0: no opening animation — the wheels are centred at once
     const h = wheel('hour');
     const centreOf = (o) => o.offsetTop + o.offsetHeight / 2 - h.scrollTop;
@@ -369,6 +380,7 @@ describe('batch 4 — td-datetime-picker wheels (listbox model)', () => {
     await emulateMedia({ reducedMotion: 'reduce' });
     const el = pick('id="w6" value="15/06/2026 - 10:30"');
     await open(el);
+    await goTime();
     const h = wheel('hour');
     expect(getComputedStyle(h).scrollBehavior).to.equal('auto');
     h.focus();
@@ -382,12 +394,14 @@ describe('batch 4 — td-datetime-picker wheels (listbox model)', () => {
   it('D7: minute-step=5 with 10:02 → wheel AND committed value are 10:00 (bug 1.8.5); 10:58 → 10:55 (no carry)', async () => {
     const el = pick('id="w7" minute-step="5" value="15/06/2026 - 10:02"');
     await open(el);
+    await goTime();
     expect(selectedValue(wheel('minute'))).to.equal(0);
     button('Chọn').click();
     expect(el.getAttribute('value')).to.equal('15/06/2026 - 10:00');
     await settle();
     el.setAttribute('value', '15/06/2026 - 10:58');
     await open(el);
+    await goTime();
     expect(selectedValue(wheel('hour'))).to.equal(10);
     expect(selectedValue(wheel('minute'))).to.equal(55);
   });
@@ -395,6 +409,7 @@ describe('batch 4 — td-datetime-picker wheels (listbox model)', () => {
   it('a scroll settling after the dialog closed never mutates the value (bug 1.8.6)', async () => {
     const el = pick('id="w8" value="15/06/2026 - 10:30"');
     await open(el);
+    await goTime();
     const h = wheel('hour');
     button('Chọn').click();
     h.scrollTop = 0;
@@ -513,6 +528,7 @@ describe('batch 4 — td-datetime-picker values + validity', () => {
     let n = 0;
     el.addEventListener('change', () => n++);
     await open(el);
+    await goTime();
     expect(dayCell('2026-06-14').getAttribute('aria-disabled')).to.equal('true');
     expect(dayCell('2026-06-15').hasAttribute('aria-disabled')).to.equal(false);
     wheel('hour').focus();

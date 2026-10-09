@@ -30,6 +30,10 @@
 		--td-cal-selected-fg: var(--td-btn-primary-fg);
 		--td-cal-today-ring: var(--td-color-text-muted);           /* ≥ 3:1 on the popover surface, both themes */
 		--td-cal-focus: var(--td-field-focus);
+		/* v0.61.0 range (td-datetime-range): the band between the endpoints = the strong hover wash; the pointer / focus preview = the
+		   light one + hairlines. Plain var() aliases of existing theme tokens — no new theme token. */
+		--td-cal-range-bg: var(--td-color-hover-strong);
+		--td-cal-preview-bg: var(--td-color-hover);
 	}
 }
 
@@ -76,6 +80,46 @@
 		}
 	}
 
+	/* v0.61.0 datetime = two screens (data-step="date" | "time" on the popover / the range panel): the screen not showing is `hidden` */
+	.td-cal[hidden],
+	.td-time-step[hidden] {
+		display: none;
+	}
+
+	.td-time-step {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-xs);
+		min-inline-size: 0;
+	}
+
+	.td-time-step__head {
+		display: flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+	}
+
+	/* "‹" is a `.td-cal__nav` (size, hover gate, press shape, focus ring, forced colours come from it) */
+	.td-time-step__heading {
+		flex: 1 1 auto;
+		min-inline-size: 0;
+		margin: 0;
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-cal-fg);
+		text-align: center;
+	}
+
+	.td-time-step__now {
+		align-self: center;
+	}
+
+	/* the one scroller of the sheet is the modal body (and only when the screen is shorter than the content); the popover's own
+	   scroll region is a last resort of the floating placement */
+	.td-dtp-pop--sheet .td-dtp-pop__scroll {
+		overflow: visible;
+	}
+
 	/* inside the bottom sheet: the same tree, in the flow, no surface of its own (the modal dialog is the surface) */
 	.td-dtp-pop--sheet {
 		position: static;
@@ -120,14 +164,6 @@
 		gap: var(--td-space-sm);
 		justify-content: flex-end;
 		padding-block-start: var(--td-space-2xs);
-	}
-
-	/* the modal body is the scroller of the sheet: the actions stay pinned at its bottom edge */
-	.td-dtp-pop--sheet .td-dtp-pop__actions {
-		position: sticky;
-		inset-block-end: 0;
-		padding-block: var(--td-space-sm);
-		background: var(--td-glass-solid);
 	}
 
 	.td-dtp-pop__actions .td-btn[aria-disabled="true"] {
@@ -334,6 +370,47 @@
 		color: var(--td-cal-selected-fg);
 	}
 
+	/* v0.61.0 range (cellState hook of td-datetime-range). Endpoints are `aria-selected` (the solid fill above); the band between
+	   them and the preview are flat cells; a day past `max-days` is muted but stays enabled (no strike: that is for unavailable days) */
+	.td-cal__day[data-range="in"] {
+		background: var(--td-cal-range-bg);
+		border-radius: 0;
+	}
+
+	.td-cal__day[data-preview] {
+		background: var(--td-cal-preview-bg);
+		border-radius: 0;
+		box-shadow: inset 0 1px 0 var(--td-cal-muted-fg), inset 0 -1px 0 var(--td-cal-muted-fg);
+	}
+
+	.td-cal__day[data-preview="end"] {
+		border-start-end-radius: var(--td-radius-md);
+		border-end-end-radius: var(--td-radius-md);
+	}
+
+	.td-cal__day[data-range="in"]:first-child,
+	.td-cal__day[data-preview]:first-child {
+		border-start-start-radius: var(--td-radius-md);
+		border-end-start-radius: var(--td-radius-md);
+	}
+
+	.td-cal__day[data-range="in"]:last-child,
+	.td-cal__day[data-preview]:last-child {
+		border-start-end-radius: var(--td-radius-md);
+		border-end-end-radius: var(--td-radius-md);
+	}
+
+	.td-cal__day[data-dimmed] {
+		color: var(--td-cal-muted-fg);
+	}
+
+	/* an outside-month day INSIDE the band / the preview takes the full ink (the muted ink measured 4.41:1 on the band wash in the
+	   built-in light — M0.6; the same rule as a hovered / pressed muted day) */
+	.td-cal__day[data-range="in"][data-outside],
+	.td-cal__day[data-preview][data-outside] {
+		color: var(--td-cal-fg);
+	}
+
 	.td-cal__nav:focus-visible,
 	.td-cal__title:focus-visible,
 	.td-cal__day:focus-visible,
@@ -348,6 +425,15 @@
 		.td-cal__cell:hover:not([aria-selected="true"], [aria-disabled="true"], [aria-hidden="true"]) {
 			color: var(--td-cal-fg);
 			background: var(--td-cal-hover-bg);
+		}
+
+		/* the band and the preview keep their own wash under the pointer */
+		.td-cal__day[data-range="in"]:hover {
+			background: var(--td-cal-range-bg);
+		}
+
+		.td-cal__day[data-preview]:hover {
+			background: var(--td-cal-preview-bg);
 		}
 	}
 
@@ -392,8 +478,20 @@
 			color: GrayText;
 		}
 
-		.td-cal__day[data-outside] {
+		.td-cal__day[data-outside],
+		.td-cal__day[data-dimmed] {
 			color: GrayText;
+		}
+
+		/* range: the band keeps a Highlight hairline above and below (endpoints are the Highlight fill); the preview is dashed */
+		.td-cal__day[data-range="in"] {
+			border-block: 1px solid Highlight;
+		}
+
+		.td-cal__day[data-preview] {
+			outline: 1px dashed CanvasText;
+			outline-offset: -1px;
+			box-shadow: none;
 		}
 
 		.td-cal__nav:focus-visible,

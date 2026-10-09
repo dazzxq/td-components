@@ -2107,6 +2107,8 @@
     "--td-cal-cell": { "light": "36px", "dark": "36px", "why": "v0.60.0: day cell height / width of the td-datetime-picker calendar (36px; 44px = --td-touch-min on coarse pointers)" },
     "--td-cal-fg": { "light": "rgb(28, 28, 30)", "dark": "rgb(245, 245, 247)", "why": "v0.60.0: day / header ink of the calendar (= --td-color-text)" },
     "--td-cal-focus": { "light": "rgb(70, 122, 238)", "dark": "rgb(102, 158, 249)", "why": "v0.60.0: focus outline of calendar cells (= --td-field-focus)" },
+    "--td-cal-range-bg": { "light": "rgba(0, 0, 0, 0.08)", "dark": "rgba(255, 255, 255, 0.1)", "why": "v0.61.0: the band between the endpoints of td-datetime-range (= --td-color-hover-strong; plain alias, no new theme token)" },
+    "--td-cal-preview-bg": { "light": "rgba(0, 0, 0, 0.05)", "dark": "rgba(255, 255, 255, 0.06)", "why": "v0.61.0: the pointer / focus preview of the range (= --td-color-hover)" },
     "--td-cal-hover-bg": { "light": "rgba(0, 0, 0, 0.05)", "dark": "rgba(255, 255, 255, 0.06)", "why": "v0.60.0: hover fill of calendar cells (= --td-color-hover)" },
     "--td-cal-muted-fg": { "light": "rgb(107, 107, 115)", "dark": "rgb(172, 172, 180)", "why": "v0.60.0: outside-month, weekday head, unavailable days (= --td-color-text-muted, 5.28 light / 7.68 dark on the popover surface)" },
     "--td-cal-pad": { "light": "0.75rem", "dark": "0.75rem", "why": "v0.60.0: padding of the calendar popover" },

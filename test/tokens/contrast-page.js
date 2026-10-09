@@ -192,6 +192,10 @@ for (const state of ['field', 'placeholder', 'clear-pressed', 'popup']) CASES.pu
 // (aria-pressed) text ≥ 4.7 on the primary fill, also on its touch-pressed fill; the switch tab label / value ≥ 4.7 on the
 // switch track (off) and on the white "on" tab; the pair error line ≥ 4.7 on the dialog surface — computed colours.
 for (const state of ['preset', 'preset-on', 'preset-on-pressed', 'tab-off', 'tab-on', 'pair-error']) CASES.push({ kind: 'dtr', v: 'datetime-range', state, pageOnly: true });
+// v0.61.0 the range calendar of td-datetime-range (same dialog surface): a day inside the band ≥ 4.7 on the band wash, an
+// outside-month day inside the band (the FULL ink, M0.6) ≥ 4.7 on the band wash, a day past max-days (dimmed, still enabled) ≥ 4.7 on the
+// dialog, the pointer preview wash under the day ink ≥ 4.7, the endpoint ink on its fill ≥ 4.7 — computed colours.
+for (const state of ['range-in', 'range-in-outside', 'range-dimmed', 'range-preview', 'range-end']) CASES.push({ kind: 'dtr', v: 'datetime-range', state, pageOnly: true });
 // v0.60.0 td-datetime-picker calendar (popover on --td-glass-bg-strong → page only): day ink ≥ 4.7 on the popover, outside-month
 // ink ≥ 4.7, the today ring ≥ 3 (non-text), the selected day ink ≥ 4.7 on its fill, hover / pressed (a muted day takes the full text
 // colour) ≥ 4.7 on their wash, an unavailable (struck-through) day ≥ 2.2 — computed colours, light + dark.
@@ -1049,9 +1053,16 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     host.setAttribute('name', 'r');
     host.setAttribute('start', c.state === 'pair-error' ? '10/10/2026' : '29/09/2026');
     host.setAttribute('end', '05/10/2026');
+    if (c.state === 'range-dimmed' || c.state === 'range-preview') host.setAttribute('max-days', '9');
     stage.appendChild(host);
     host.querySelector('.td-dtr__trigger').click();
     await new Promise((r) => setTimeout(r, 450));
+    if (c.state === 'range-dimmed' || c.state === 'range-preview') {
+      document.querySelector('.td-dtr-panel__tab[data-side="end"]').click(); // choosing the end: cells past max-days are dimmed, a hover previews
+      if (c.state === 'range-preview') {
+        document.querySelector('.td-cal__day[data-date="2026-10-02"]').dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' }));
+      }
+    }
     const panel = document.querySelector('.td-modal[data-state="open"] .td-dtr-panel') || document.querySelector('.td-dtr-panel');
     const dialog = panel.closest('.td-modal__dialog');
     const surface = over(getComputedStyle(dialog).backgroundColor, page);
@@ -1072,6 +1083,17 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
         { what: `${c.state} label vs fill`, fg: getComputedStyle(target.querySelector('.td-dtr-panel__tab-label')).color, bg: fill, min: 4.7 },
         { what: `${c.state} value vs fill`, fg: getComputedStyle(target.querySelector('.td-dtr-panel__tab-value')).color, bg: fill, min: 4.7 },
       ];
+    } else if (c.state.startsWith('range-')) {
+      const day = (sel) => panel.querySelector(`.td-cal__day${sel}`);
+      if (c.state === 'range-in') target = day('[data-range="in"]:not([data-outside])');
+      else if (c.state === 'range-in-outside') target = day('[data-range="in"][data-outside]');
+      else if (c.state === 'range-dimmed') target = day('[data-dimmed]');
+      else if (c.state === 'range-preview') target = day('[data-preview]');
+      else target = day('[data-range="end"]');
+      if (!target) throw new Error(`dtr:${c.state}: no such day cell`);
+      const cs = getComputedStyle(target);
+      const fill = over(cs.backgroundColor, surface);
+      pairs = [{ what: `${c.state} day ink vs its fill`, fg: cs.color, bg: fill, min: 4.7 }];
     } else {
       target = panel.querySelector('.td-dtr-panel__error');
       pairs = [{ what: 'pair error vs dialog', fg: getComputedStyle(target).color, bg: surface, min: 4.7 }];

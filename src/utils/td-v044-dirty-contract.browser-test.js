@@ -67,10 +67,12 @@ const FIXTURES = {
   'td-datetime-picker': {
     html: '<td-datetime-picker name="x" label="X" value="15/06/2026 - 10:30"></td-datetime-picker>',
     act: async (el) => {
-      // v0.60.0: the calendar popover (800 px viewport): hour wheel → "Chọn" in its own action row
+      // v0.60.0: the calendar popover (800 px viewport): day → (v0.61.0) the time screen → hour wheel → "Chọn" in its own action row
       const pop = () => [...document.querySelectorAll('.td-dtp-pop')].find((p) => !p.closest('.td-modal[data-state="closing"]'));
       el.querySelector('.td-dtp__trigger').click();
-      await until(() => pop() && pop().querySelector('.td-dtp-wheel__list[data-part="hour"]'));
+      await until(() => pop() && pop().querySelector('.td-cal__day[tabindex="0"]'));
+      pop().querySelector('.td-cal__day[tabindex="0"]').click(); // v0.61.0: the day opens the TIME screen (the wheels)
+      await until(() => pop().getAttribute('data-step') === 'time');
       pop().querySelector('.td-dtp-wheel__list[data-part="hour"]').focus();
       await sendKeys({ press: 'ArrowDown' });
       pop().querySelector('[data-action="confirm"]').click();

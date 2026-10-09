@@ -29,8 +29,8 @@
  * v0.38.0: td-scan-input (single + multiple 30 rows + the 280 px column): no overflow, indicator never over the input
  * (below it under 480), list rows inside the host, speaker / Bỏ / Xoá tất cả ≥ 44 coarse (generic target probe).
  *
- * v0.40.0: td-datetime-range — dialog (sheet < 720: the "Từ | Đến" switch shows ONE side; ≥ 720 two sides side by
- * side; presets never wider than the dialog, one scrolling row < 480 / short), "Chọn" in the viewport (incl. 844×390);
+ * v0.40.0: td-datetime-range — dialog (v0.61.0: ONE calendar, the "Từ | Đến" switch at every width, presets a column ≥ 720;
+ * presets never wider than the dialog, one scrolling row < 480 / short), "Chọn" in the viewport (incl. 844×390);
  * the 160 px host never overflows and its cut trigger text carries a title.
  *
  * v0.47.0: td-check-matrix (12 roles × 40 permissions, max-height 24rem): no page overflow (the grid scrolls inside its
@@ -96,10 +96,13 @@ const tagOf = (c) => `${c.engine}-${c.w}x${c.h}-${c.touch ? 'touch' : 'mouse'}${
 const SCENARIOS = [
   { name: 'dropdown', act: (p) => p.click('#g-dd .td-dropdown__trigger'), panel: '.td-dropdown__menu[data-state="open"]' },
   // v0.60.0: the calendar — a bottom sheet below 720 (TdModal, actions pinned in the body), a popover from 720
-  { name: 'datetime', when: (c) => c.w < 720, act: (p) => p.click('#g-dtp .td-dtp__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__dialog [data-action="confirm"]'] },
+  // v0.61.0: datetime is TWO screens — the date screen offers "Hôm nay", the time screen "Bây giờ" + "Chọn" (the sheet footer)
+  { name: 'datetime', when: (c) => c.w < 720, act: (p) => p.click('#g-dtp .td-dtp__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer [data-action="today"]'] },
+  { name: 'datetime-time', when: (c) => c.w < 720, act: async (p) => { await p.click('#g-dtp .td-dtp__trigger'); await p.waitForSelector('.td-modal .td-cal__day[tabindex="0"]'); await p.click('.td-modal .td-cal__day[tabindex="0"]'); await p.waitForSelector('.td-modal .td-time-step:not([hidden])'); }, panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer [data-action="confirm"]', '.td-modal__footer [data-action="now"]'] },
   { name: 'datetime-date', when: (c) => c.w < 720, act: (p) => p.click('#g-dtp-date .td-dtp__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__dialog [data-action="today"]'] },
-  { name: 'datetime-popover', when: (c) => c.w >= 720, act: (p) => p.click('#g-dtp .td-dtp__trigger'), panel: '.td-dtp-pop', see: ['.td-dtp-pop [data-action="confirm"]'] },
-  { name: 'datetime-range', act: (p) => p.click('#g-dtr .td-dtr__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child'] }, // v0.40.0
+  { name: 'datetime-popover', when: (c) => c.w >= 720, act: (p) => p.click('#g-dtp .td-dtp__trigger'), panel: '.td-dtp-pop', see: ['.td-dtp-pop [data-action="today"]'] },
+  { name: 'datetime-popover-time', when: (c) => c.w >= 720, act: async (p) => { await p.click('#g-dtp .td-dtp__trigger'); await p.waitForSelector('.td-dtp-pop .td-cal__day[tabindex="0"]'); await p.click('.td-dtp-pop .td-cal__day[tabindex="0"]'); await p.waitForSelector('.td-dtp-pop .td-time-step:not([hidden])'); }, panel: '.td-dtp-pop', see: ['.td-dtp-pop [data-action="confirm"]'] },
+  { name: 'datetime-range', act: (p) => p.click('#g-dtr .td-dtr__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer [data-action="clear"]'] }, // v0.40.0 (v0.61.0: the footer actions carry data-action; R-actions = whatever "Chọn" state, every shown action is in view)
   { name: 'color-picker', act: (p) => p.click('#g-color .td-color__trigger'), panel: '.td-color-panel' }, // v0.48.0
   { name: 'tree-select', act: (p) => p.click('#g-ts .td-tree-select__trigger'), panel: '.td-tree-select__menu[data-state="open"]' },
   { name: 'multiselect', act: async (p) => { await p.click('#g-chips .td-chip-input__input'); await p.keyboard.press('ArrowDown'); }, panel: '.td-chip-input__menu[data-state="open"]' },
@@ -1031,34 +1034,46 @@ async function runOverlays(page, c, tag, shot) {
         if (hf.f > 64.5) err.push(`footer ${Math.round(hf.f)} > 64`);
         check(tag, `${s.name}: compact chrome budget`, err);
       }
-      if (s.name === 'datetime' && vp.w < 720 && vp.h > 500) {
-        // v0.60.0 (plan A5 / M0): a month grid of seven ≥ 44 px rows + the wheels + the actions cannot fit the v0.36 budget of 70 %
-        // (measured 665 px = 78–85 % at 360–393 wide); the sheet stays inside the modal's own cap (90 %), the actions pinned
-        check(tag, `${s.name}: sheet height budget`, m.height <= vp.h * 0.9 + 0.5 ? [] : [`sheet ${Math.round(m.height)} > 90 % of ${vp.h}`]);
+      if ((s.name === 'datetime' || s.name === 'datetime-time') && vp.w < 720 && vp.h >= 700) {
+        // v0.61.0: the "datetime sheet capped at 90 %" exception of v0.60 is GONE — each screen has the 70 % budget of the date sheet
+        // (measured: date screen 506 px, time screen 334 px). Also: nothing nested scrolls (exactly one layout scroller: the body)
+        const nest = await page.evaluate(() => {
+          const dlg = document.querySelector('.td-modal__dialog');
+          const sc = [...dlg.querySelectorAll('*')].filter((e) => !e.classList.contains('td-dtp-wheel__list') && ['auto', 'scroll'].includes(getComputedStyle(e).overflowY));
+          const nested = sc.some((a) => sc.some((b) => a !== b && a.contains(b)));
+          return { n: sc.length, nested, over: sc.filter((e) => e.scrollHeight > e.clientHeight + 1).map((e) => e.className) };
+        });
+        check(tag, `${s.name}: sheet height budget`, m.height <= vp.h * 0.7 + 0.5 ? [] : [`sheet ${Math.round(m.height)} > 70 % of ${vp.h}`]);
+        check(tag, `${s.name}: one layout scroller, nothing scrolls`, nest.n <= 1 && !nest.nested && !nest.over.length ? [] : [JSON.stringify(nest)]);
       }
       if (s.name === 'datetime-date' && vp.w < 720 && vp.h >= 700) {
         // v0.36.0 QĐ 61 budget (70 %) kept for the date-only calendar sheet (measured 521 px = 61–67 % at ≥ 360×780)
         check(tag, `${s.name}: sheet height budget`, m.height <= vp.h * 0.7 + 0.5 ? [] : [`sheet ${Math.round(m.height)} > 70 % of ${vp.h}`]);
       }
       if (s.name === 'datetime-range') {
-        // v0.40.0 (plan QĐ 24): < 720 the switch + one side; ≥ 720 both sides on one row; presets inside the dialog
-        // (one scrolling row < 480 / short); the side shown fits the dialog width
+        // v0.61.0 (plan v0.61.0-range-calendar E): ONE calendar for both endpoints; the "Từ | Đến" switch shows at every width;
+        // ≥ 720 the presets are a column beside the grid; presets never wider than the dialog, one scrolling row < 480 / short;
+        // the calendar fits the dialog and (coarse) the seven day cells are ≥ 43.5 px wide
         const dr = await page.evaluate(() => {
           const p = [...document.querySelectorAll('.td-dtr-panel')].pop();
           const d = p.closest('.td-modal__dialog').getBoundingClientRect();
           const vis = (el) => !!el && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().height > 0;
-          const sides = [...p.querySelectorAll('.td-dtr-panel__side')].filter(vis).map((x) => x.getBoundingClientRect());
+          const cal = p.querySelector('.td-cal');
+          const cr = cal.getBoundingClientRect();
           const row = p.querySelector('.td-dtr-panel__presets');
           const rr = row.getBoundingClientRect();
-          return { sw: vis(p.querySelector('.td-dtr-panel__switch')), n: sides.length, sameRow: sides.length === 2 && Math.abs(sides[0].top - sides[1].top) < 2,
-            sideOut: sides.some((x) => x.left < d.left - 0.5 || x.right > d.right + 0.5), rowOut: rr.left < d.left - 0.5 || rr.right > d.right + 0.5,
-            wrap: getComputedStyle(row).flexWrap };
+          const cell = p.querySelector('.td-cal__day[data-date]').getBoundingClientRect();
+          return { sw: vis(p.querySelector('.td-dtr-panel__switch')), cals: p.querySelectorAll('.td-cal').length, fieldsets: p.querySelectorAll('fieldset').length,
+            calOut: cr.left < d.left - 0.5 || cr.right > d.right + 0.5, rowOut: rr.left < d.left - 0.5 || rr.right > d.right + 0.5,
+            column: rr.right <= cr.left + 0.5, wrap: getComputedStyle(row).flexWrap, cellW: cell.width, coarse: matchMedia('(pointer: coarse)').matches };
         });
         const err = [];
-        if (vp.w < 720 && !(dr.sw && dr.n === 1)) err.push(`< 720: switch ${dr.sw}, sides shown ${dr.n} (switch + one side expected)`);
-        if (vp.w >= 720 && !(dr.n === 2 && dr.sameRow && !dr.sw)) err.push(`≥ 720: sides ${dr.n}, same row ${dr.sameRow}, switch ${dr.sw}`);
-        if (dr.sideOut) err.push('a side wider than the dialog');
+        if (!dr.sw) err.push('the Từ | Đến switch is hidden');
+        if (dr.cals !== 1 || dr.fieldsets) err.push(`calendars ${dr.cals}, fieldsets ${dr.fieldsets} (one calendar, no fieldset editors expected)`);
+        if (vp.w >= 720 && !dr.column) err.push('≥ 720: the presets are not a column left of the calendar');
+        if (dr.calOut) err.push('the calendar is wider than the dialog');
         if (dr.rowOut) err.push('presets row wider than the dialog');
+        if (dr.coarse && dr.cellW < 43.5) err.push(`day cell ${dr.cellW.toFixed(1)} px < 43.5`);
         if ((vp.w < 480 || vp.h <= 500) && dr.wrap !== 'nowrap') err.push(`presets wrap (${dr.wrap}) < 480 / short`);
         check(tag, `${s.name}: layout`, err);
       }

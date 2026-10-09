@@ -60,6 +60,8 @@ window.__componentsRun = (async () => {
   root.appendChild(dtp);
   dtp.querySelector('.td-dtp__trigger').click();
   await wait(500);
+  document.querySelector('.td-dtp-pop .td-cal__day[tabindex="0"]').click(); // v0.61.0: a day opens the TIME screen (the wheels)
+  await wait(300);
   const hourList = document.querySelector('.td-dtp-wheel__list[data-part="hour"]');
   const s0 = hourList.scrollTop;
   hourList.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
