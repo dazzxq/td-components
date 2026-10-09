@@ -276,7 +276,7 @@ test('v0.40.0: ./datetime-range export, sideEffects, barrel TdDatetimeRange, dat
   assert.ok(pkg.sideEffects.includes('./src/form/td-datetime-range.js'));
   const src = await readFile(join(ROOT, 'index.js'), 'utf8');
   assert.match(src, /export \{ TdDatetimeRange \} from '\.\/src\/form\/td-datetime-range\.js';/);
-  const internal = /datetime-panel|date-presets|calendar-model|calendar-grid|calendar-labels|time-wheels|range-selection/;
+  const internal = /datetime-panel|date-presets|calendar-model|calendar-grid|calendar-labels|time-wheels|time-step|range-selection/;
   assert.ok(!internal.test(src), 'date-presets / calendar-* / time-wheels / range-selection stay internal (v0.61.0: datetime-panel is gone)');
   assert.ok(!Object.values(pkg.exports).some((t) => internal.test(t)), 'no export of an internal calendar module');
   assert.equal(existsSync(join(ROOT, 'src/form/datetime-panel.js')), false, 'the legacy one-moment editor was removed in v0.61.0');
