@@ -26,7 +26,7 @@ jobs:
   # check:css / icons / stories, node --test, golden (Chromium)
   static:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -34,7 +34,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Install browsers (8 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
+      - name: Install browsers (5 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
         run: scripts/ci-install-browsers.sh
         env:
           ENGINES: 'chromium'
@@ -44,7 +44,7 @@ jobs:
   # every other group (scrollbars, ssr, pointer-n) one after another — `npm run test:browser` locally still runs them all.
   browser:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -61,7 +61,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Install browsers (8 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
+      - name: Install browsers (5 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
         run: scripts/ci-install-browsers.sh
         env:
           ENGINES: ${{ matrix.engines }}
@@ -76,7 +76,7 @@ jobs:
   # (baselines are captured on macOS — test/csp/csp.spec.mjs BASELINE_PLATFORM).
   csp:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -88,7 +88,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Install browsers (8 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
+      - name: Install browsers (5 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
         run: scripts/ci-install-browsers.sh
         env:
           ENGINES: 'chromium'
@@ -97,7 +97,7 @@ jobs:
   # engine specs (test/engines); tokens + theme switch + touch
   engines:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -109,7 +109,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Install browsers (8 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
+      - name: Install browsers (5 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
         run: scripts/ci-install-browsers.sh
         env:
           ENGINES: 'chromium firefox webkit'
@@ -119,7 +119,7 @@ jobs:
   # widths) are for humans, never compared.
   responsive:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -133,7 +133,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Install browsers (8 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
+      - name: Install browsers (5 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
         run: scripts/ci-install-browsers.sh
         env:
           ENGINES: ${{ matrix.name == 'chromium' && 'chromium' || 'webkit firefox' }}
@@ -151,7 +151,7 @@ jobs:
   # of Chromium + Firefox share a job
   theme:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -168,7 +168,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Install browsers (8 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
+      - name: Install browsers (5 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
         run: scripts/ci-install-browsers.sh
         env:
           ENGINES: ${{ matrix.install }}
