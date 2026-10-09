@@ -371,17 +371,24 @@ export class CalendarGrid {
     let sc = cell.parentElement;
     while (sc && sc !== this.el.ownerDocument.body) {
       const oy = getComputedStyle(sc).overflowY;
-      if ((oy === 'auto' || oy === 'scroll') && sc.scrollHeight > sc.clientHeight + 1) break;
+      // any overflow counts (no "+ 1" slack): the popover's region after the v0.61 two-screen change overflows by only a few px,
+      // and scrollHeight / clientHeight are INTEGERS while the cell rect is fractional (WebKit on Linux)
+      if ((oy === 'auto' || oy === 'scroll') && sc.scrollHeight > sc.clientHeight) break;
       sc = sc.parentElement;
     }
     if (!sc || sc === this.el.ownerDocument.body) return;
-    const c = cell.getBoundingClientRect();
-    const r = sc.getBoundingClientRect();
-    let bottom = r.bottom;
-    const act = sc.querySelector(':scope .td-dtp-pop__actions') || (sc.closest('.td-dtp-pop') && sc.closest('.td-dtp-pop').querySelector('.td-dtp-pop__actions'));
-    if (act && getComputedStyle(act).position === 'sticky') bottom = Math.min(bottom, act.getBoundingClientRect().top);
-    if (c.top < r.top) sc.scrollTop -= r.top - c.top;
-    else if (c.bottom > bottom) sc.scrollTop += c.bottom - bottom;
+    const fit = () => {
+      const c = cell.getBoundingClientRect();
+      const r = sc.getBoundingClientRect();
+      let bottom = r.bottom;
+      const act = sc.querySelector(':scope .td-dtp-pop__actions') || (sc.closest('.td-dtp-pop') && sc.closest('.td-dtp-pop').querySelector('.td-dtp-pop__actions'));
+      if (act && getComputedStyle(act).position === 'sticky') bottom = Math.min(bottom, act.getBoundingClientRect().top);
+      // round the step UP: a browser stores scrollTop as an integer (device pixels), so a fractional step can fall short by < 1 px
+      if (c.top < r.top - 0.01) sc.scrollTop -= Math.ceil(r.top - c.top);
+      else if (c.bottom > bottom + 0.01) sc.scrollTop += Math.ceil(c.bottom - bottom);
+    };
+    fit();
+    fit(); // a second pass absorbs what the integer rounding of the first one left (it never moves a cell that already fits)
   }
 
   /**

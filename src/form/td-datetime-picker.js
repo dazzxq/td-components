@@ -858,7 +858,10 @@ export class TdDatetimePicker extends TdFormElement {
         const t = /** @type {Node} */ (e.target);
         if (this._pop && !this._pop.contains(t) && !this.contains(t)) this._closeDialog({ focus: false });
       };
-      this._onReposition = () => {
+      this._onReposition = (e) => {
+        // a scroll INSIDE the popover (its region, the wheels) cannot move the trigger: re-placing resets the region's
+        // max-height, which clamps its scrollTop and pulls the cell the keyboard just revealed out of view (v0.62.1)
+        if (e && e.type === 'scroll' && e.target instanceof Node && this._pop && this._pop.contains(e.target)) return;
         if (this._posRaf) return;
         this._posRaf = requestAnimationFrame(() => { this._posRaf = 0; this._updatePop(); });
       };
@@ -1299,6 +1302,7 @@ export class TdDatetimePicker extends TdFormElement {
     const trigger = this._trigger();
     const scroll = this._popScroll;
     if (!pop || !trigger || !scroll) return;
+    const keep = scroll.scrollTop; // re-measuring drops the region's max-height for a moment: keep where the user is
     const box = viewportBox();
     const ins = this._insets();
     const top = box.top + ins.top;
@@ -1319,6 +1323,7 @@ export class TdDatetimePicker extends TdFormElement {
       const clamped = Math.max(top + POP_MARGIN, Math.min(want, bottom - h - POP_MARGIN));
       pop.style.setProperty('top', `${clamped}px`);
     }
+    scroll.scrollTop = keep;
   }
 
   /** @private scroll / resize / reference change: close once the trigger is hidden, else follow it */
