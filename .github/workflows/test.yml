@@ -6,14 +6,27 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Run the whole CI on any pushed branch by hand (offloads the browser gates from the dev Mac, where parallel suites
+  # disturb each other): `gh workflow run test.yml --ref <branch>`. No inputs — nothing user-supplied reaches a script.
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# A newer push to the same branch / PR supersedes a running CI (main included — the tag is cut on a green run of the
+# exact release commit, so an older main run has no value once a newer one exists).
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+# v0.62.1: the old single `test` job (~37 min) and `theme` job (~27 min) are split into parallel GitHub-hosted jobs (public
+# repo: free, each job its own VM — no cross-suite interference). Wall time ≈ the longest shard (`browser`, ~12 min).
+# Local `npm test` still runs everything in one go; the shard scripts live in package.json (test:ci:*).
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 60 # v0.57.0: green runs took ~29.6 min; v0.62.0: ~36.5 min, and a slower runner hit 45 (cancelled, same code green)
+  # check:css / icons / stories, node --test, golden (Chromium)
+  static:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -21,27 +34,87 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # The browsers pinned by playwright-core (Chromium for the browser suites; Firefox + WebKit for the token gate
-      # and the menu Tab engine check).
+      - run: npx playwright-core install --with-deps chromium
+      - run: npm run test:ci:static
+
+  # web-test-runner: Chromium + the engines groups (Firefox / WebKit)
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - run: npx playwright-core install --with-deps chromium firefox webkit
-      # The Tailwind CSP fixture (test/csp/fixture/tailwind.css) is committed, so the legacy+td profile needs no build.
-      # v0.41.0: `npm test` minus the two theme contrast gates, which run in parallel in the `theme` job below
-      # (together they exceeded this job's 30-minute limit).
-      - run: npm run test:ci
-      # v0.34.0: screenshots of the responsive gate (8 acceptance widths) — for humans, never compared.
+      - run: npm run test:browser
+
+  # CSP parity gate, td-only and legacy+td profiles. Linux runner: text-metric geometry is skipped (baselines are
+  # captured on macOS — test/csp/csp.spec.mjs BASELINE_PLATFORM).
+  csp:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright-core install --with-deps chromium firefox webkit
+      - run: npm run test:ci:csp
+
+  # tokens, theme switch, engine specs (test/engines), touch
+  engines:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright-core install --with-deps chromium firefox webkit
+      - run: npm run test:ci:engines
+
+  # v0.34.0 responsive gate, one engine per job. Screenshots (8 acceptance widths) are for humans, never compared.
+  responsive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, webkit, firefox]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright-core install --with-deps ${{ matrix.engine }}
+      - run: npm run test:responsive
+        env:
+          RSP_ENGINES: ${{ matrix.engine }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
-          name: responsive-screenshots
+          name: responsive-screenshots-${{ matrix.engine }}
           path: test/responsive/__out__/
           if-no-files-found: ignore
 
-
-  # v0.41.0: the theme contrast gates (token contrast + full-page theme gate: 3 engines × 4 palettes × 2 widths × 8
-  # states) — split out of `test` so neither job nears its time limit. `npm test` locally still runs everything.
+  # v0.41.0 theme contrast gates (token contrast + full-page theme gate), one job per gate × engine
   theme:
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        gate: [test:contrast, test:page-contrast]
+        engine: [chromium, firefox, webkit]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -49,8 +122,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright-core install --with-deps chromium firefox webkit
-      - run: npm run test:contrast-gates
+      - run: npx playwright-core install --with-deps ${{ matrix.engine }}
+      - run: npm run ${{ matrix.gate }}
+        env:
+          TD_CONTRAST_ENGINES: ${{ matrix.engine }}
+          TD_PAGE_ENGINES: ${{ matrix.engine }}
 
   # v0.33.0: pixel gate for td-media-picker / justified td-media-grid (Chromium; not part of `npm test`). Runs inside the
   # official Playwright image pinned to package.json's playwright-core (fonts + Chromium build = the baselines'
@@ -58,7 +134,7 @@ jobs:
   # Chromium build) fails instead of passing silently; a missing baseline always fails. Baselines: workflow
   # update-visual-baselines.yml (same image). Actual PNGs of failing shots are uploaded below.
   visual:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     container:
       image: mcr.microsoft.com/playwright:v1.60.0-jammy
@@ -80,7 +156,7 @@ jobs:
   # v0.18.0 F9: php/td.php promises PHP >= 8.0 — lint it and run the whole PHP adapter suite on a REAL PHP 8.0
   # (the `test` job uses the runner's newer PHP). setup-php is CI tooling only, not a kit dependency.
   php80:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

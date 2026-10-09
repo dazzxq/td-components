@@ -37,6 +37,7 @@
  * No dependencies: PNGs are decoded with node:zlib.
  *
  *   node test/tokens/contrast.spec.mjs            (npm run test:contrast)
+ *   TD_CONTRAST_ENGINES=webkit node test/tokens/contrast.spec.mjs   → one engine (CI runs one job per engine)
  */
 import { chromium, firefox, webkit } from 'playwright-core';
 import { readFile, readdir } from 'node:fs/promises';
@@ -205,7 +206,8 @@ async function runEngine(name, launcher) {
   await browser.close();
 }
 
-for (const [name, launcher] of [['chromium', chromium], ['firefox', firefox], ['webkit', webkit]]) {
+const ENGINES = (process.env.TD_CONTRAST_ENGINES || 'chromium,firefox,webkit').split(',').map((s) => s.trim());
+for (const [name, launcher] of [['chromium', chromium], ['firefox', firefox], ['webkit', webkit]].filter(([n]) => ENGINES.includes(n))) {
   try { await runEngine(name, launcher); } catch (e) { failures.push(`${name}: could not run — ${e.message.split('\n')[0]}`); }
 }
 for (const n of notes) console.log(`  ${n}`);
@@ -249,4 +251,4 @@ if (failures.length) {
   for (const f of failures.slice(0, 60)) console.log(`  ✗ ${f}`);
   process.exit(1);
 }
-console.log(`Contrast gate: all ${checks} checks passed (chromium, firefox, webkit × light/dark × 4 backdrops).`);
+console.log(`Contrast gate: all ${checks} checks passed (${ENGINES.join(', ')} × light/dark × 4 backdrops).`);

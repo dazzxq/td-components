@@ -62,6 +62,10 @@ Chi tiết và danh sách raw-HTML hatch: [security.md](security-model.md).
 
 - Đổi visual có chủ đích → chạy lại `npm run capture:baseline` và commit baseline mới kèm lý do.
 - Fixture Tailwind cho CSP gate (profile `legacy+td` = host Tailwind + td.css): `npm run build:csp-fixture` (CLI Tailwind pin version, devDependency).
+- **CI (GitHub-hosted, repo public = miễn phí, v0.62.1):** `.github/workflows/test.yml` chia thành job song song — `static`,
+  `browser`, `csp`, `engines`, `responsive` × 3 engine, `theme` (contrast / page-contrast × 3 engine), `visual`, `php80`; wall time
+  ≈ job dài nhất (~12 phút). Script shard ở `package.json` (`test:ci:*`); thêm gate mới vào `npm test` thì thêm cả vào một shard.
+  Chạy CI trên nhánh bất kỳ đã push (không chiếm trình duyệt của máy dev): `gh workflow run test.yml --ref <nhánh>`.
 - Storybook: `npm run storybook` (dev), `npm run build-storybook` (hiện đang hỏng, xem B7 trong [roadmap](roadmap.md)).
 
 ## Release
