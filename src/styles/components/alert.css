@@ -11,15 +11,23 @@
  *   </td-alert>
  * Variants: .td-alert--info (default) | --success | --warning | --danger. The registry status icon keeps colour from
  * being the only cue. Text ≥ 4.7:1 and icon / close ≥ 3.2:1 on the fill, light + dark (test/tokens/contrast.spec.mjs).
- * v0.36.0 (plan QĐ 26): the body keeps its light fill (paragraphs, links, action buttons stay readable); the IDENTITY is
- * solid — a 4px inline-start bar (--td-alert-{v}-accent = --td-solid-{v}-bg; warning: the darker amber step, amber-500
- * is < 3:1 on the light fill), the icon in the solid colour (warning #b45309 for ≥ 3:1) and a border one step stronger
- * (~300). A site that wants a fully solid alert sets -bg / -fg / -heading / -icon / -accent (docs/components/alert.md).
+ * v0.36.0 (plan QĐ 26): the body keeps its light fill (paragraphs, links, action buttons stay readable). v0.62.0 (plan A,
+ * ADR 0033): NO side stripe — the identity is the status icon in a rounded-square TILE (--td-alert-{v}-tile = the icon colour
+ * mixed 12 % into the fill, derived from the theme-contract tokens -icon / -bg, so a generated palette carries it), a
+ * 1px hairline on all four sides (--td-alert-{v}-border) and the heading colour. Markup unchanged. The v0.36.0 stripe tokens
+ * (--td-alert-{v}-accent, --td-alert-accent-width) stay declared for golden / sites but have no effect any more. A site
+ * wanting a fully solid alert sets -bg / -border / -heading / -icon (docs/components/alert.md); a denser one sets
+ * --td-alert-pad-y / --td-alert-icon-box and --td-alert-{v}-tile: transparent.
  */
 @layer td.tokens {
 	:root {
 		--td-alert-radius: var(--td-radius-lg);
-		--td-alert-accent-width: 4px;
+		--td-alert-pad-y: var(--td-space-sm);
+		--td-alert-pad-x: var(--td-space-md);
+		--td-alert-icon-box: 1.75rem;           /* the icon tile; the first text line is centred on it */
+		--td-alert-icon-radius: var(--td-radius-md);
+		--td-alert-tile-mix: 12%;               /* how much of the icon colour the tile takes from the fill */
+		--td-alert-accent-width: 4px;           /* deprecated 0.62.0: no effect (the side stripe is gone) */
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
@@ -31,7 +39,7 @@
 		--td-alert-info-border: #93c5fd;
 		--td-alert-info-heading: var(--td-pastel-info-fg);
 		--td-alert-info-icon: var(--td-solid-info-bg);
-		--td-alert-info-accent: var(--td-solid-info-bg);
+		--td-alert-info-accent: var(--td-solid-info-bg); /* accent: deprecated 0.62.0, no effect */
 		--td-alert-success-bg: #f0fdf4;
 		--td-alert-success-border: #86efac;
 		--td-alert-success-heading: var(--td-pastel-success-fg);
@@ -63,6 +71,17 @@
 		--td-alert-danger-border: #7f1d1d;
 		--td-alert-danger-icon: #fca5a5;
 	}
+
+	/* v0.62.0 icon tile fill per variant. `color-mix()` with var() does not fall back when unsupported (valid at parse,
+	   invalid at computed-value time), so it is declared only where supported; the rules below default to transparent. */
+	@supports (color: color-mix(in srgb, red 50%, blue)) {
+		:root, [data-td-theme] {
+			--td-alert-info-tile: color-mix(in srgb, var(--td-alert-info-icon) var(--td-alert-tile-mix), var(--td-alert-info-bg));
+			--td-alert-success-tile: color-mix(in srgb, var(--td-alert-success-icon) var(--td-alert-tile-mix), var(--td-alert-success-bg));
+			--td-alert-warning-tile: color-mix(in srgb, var(--td-alert-warning-icon) var(--td-alert-tile-mix), var(--td-alert-warning-bg));
+			--td-alert-danger-tile: color-mix(in srgb, var(--td-alert-danger-icon) var(--td-alert-tile-mix), var(--td-alert-danger-bg));
+		}
+	}
 }
 
 @layer td.component {
@@ -78,15 +97,13 @@
 		gap: var(--td-space-sm);
 		align-items: flex-start;
 		width: 100%;
-		padding: var(--td-space-sm) var(--td-space-md);
+		padding: var(--td-alert-pad-y) var(--td-alert-pad-x);
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
 		line-height: var(--td-leading-normal);
 		color: var(--td-alert-fg);
 		background-color: var(--td-alert-info-bg);
 		border: 1px solid var(--td-alert-info-border);
-		border-inline-start: 4px solid var(--td-alert-info-accent);
-		border-inline-start-width: var(--td-alert-accent-width);
 		border-radius: var(--td-alert-radius);
 	}
 
@@ -99,13 +116,21 @@
 	.td-alert__icon {
 		display: inline-flex;
 		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-alert-icon-box);
+		height: var(--td-alert-icon-box);
 		line-height: 0;
 		color: var(--td-alert-info-icon);
+		background-color: var(--td-alert-info-tile, transparent);
+		border-radius: var(--td-alert-icon-radius);
 	}
 
 	.td-alert__body {
 		flex: 1 1 auto;
 		min-width: 0;
+		/* the first text line is centred on the icon tile (no lh unit: Safari < 16.4) */
+		padding-block-start: calc((var(--td-alert-icon-box) - var(--td-text-sm) * var(--td-leading-normal)) / 2);
 		overflow-wrap: anywhere;
 	}
 
@@ -154,14 +179,9 @@
 	.td-alert--warning { background-color: var(--td-alert-warning-bg); border-color: var(--td-alert-warning-border); }
 	.td-alert--danger { background-color: var(--td-alert-danger-bg); border-color: var(--td-alert-danger-border); }
 
-	/* v0.36.0: the solid bar (after the border-color shorthands above, which would repaint it) */
-	.td-alert--success { border-inline-start-color: var(--td-alert-success-accent); }
-	.td-alert--warning { border-inline-start-color: var(--td-alert-warning-accent); }
-	.td-alert--danger { border-inline-start-color: var(--td-alert-danger-accent); }
-
-	.td-alert--success .td-alert__icon { color: var(--td-alert-success-icon); }
-	.td-alert--warning .td-alert__icon { color: var(--td-alert-warning-icon); }
-	.td-alert--danger .td-alert__icon { color: var(--td-alert-danger-icon); }
+	.td-alert--success .td-alert__icon { color: var(--td-alert-success-icon); background-color: var(--td-alert-success-tile, transparent); }
+	.td-alert--warning .td-alert__icon { color: var(--td-alert-warning-icon); background-color: var(--td-alert-warning-tile, transparent); }
+	.td-alert--danger .td-alert__icon { color: var(--td-alert-danger-icon); background-color: var(--td-alert-danger-tile, transparent); }
 
 	.td-alert--success .td-alert__heading { color: var(--td-alert-success-heading); }
 	.td-alert--warning .td-alert__heading { color: var(--td-alert-warning-heading); }
@@ -175,7 +195,9 @@
 		width: 2rem;
 		height: 2rem;
 		padding: 0;
-		margin: -0.25rem -0.5rem -0.25rem 0;
+		/* centred on the icon tile's row, taking no more height than the tile; pulled into the padding on the inline end */
+		margin-block: calc((var(--td-alert-icon-box) - 2rem) / 2);
+		margin-inline: 0 -0.5rem;
 		font: inherit;
 		line-height: 0;
 		color: var(--td-alert-close-fg);
@@ -202,7 +224,7 @@
 		.td-alert__close {
 			width: var(--td-touch-min);
 			height: var(--td-touch-min);
-			margin-block: -0.625rem;
+			margin-block: calc((var(--td-alert-icon-box) - var(--td-touch-min)) / 2);
 		}
 	}
 
@@ -210,9 +232,27 @@
 		.td-alert__close { transition: none; }
 	}
 
+	/* increased contrast: the hairline takes the text colour, the tile goes (the glyph keeps its own colour on the fill) */
+	@media (prefers-contrast: more) {
+		.td-alert,
+		.td-alert--success,
+		.td-alert--warning,
+		.td-alert--danger {
+			border-color: currentcolor;
+		}
+
+		.td-alert .td-alert__icon {
+			background-color: transparent;
+		}
+	}
+
 	@media (forced-colors: active) {
 		.td-alert {
 			border-color: CanvasText;
+		}
+
+		.td-alert .td-alert__icon {
+			background-color: transparent;
 		}
 
 		.td-alert__icon,

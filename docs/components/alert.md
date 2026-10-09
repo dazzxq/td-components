@@ -3,7 +3,7 @@
 # Khối thông báo — `<td-alert>`
 
 Khối thông báo **tĩnh** nằm trong dòng nội dung (flash sau khi lưu form, cảnh báo đầu trang, lỗi máy chủ…): nền màu
-nhạt theo loại, **vạch màu đặc ở mép đầu dòng** + icon màu đặc (0.36.0), tiêu đề tuỳ chọn, nút đóng tuỳ chọn. Khác [Toast](toast.md) (nổi ở góc, tự biến mất):
+nhạt theo loại, icon trong **ô** tông đậm hơn nền (0.62.0; trước đó vạch màu ở mép), tiêu đề tuỳ chọn, nút đóng tuỳ chọn. Khác [Toast](toast.md) (nổi ở góc, tự biến mất):
 alert đứng yên trong trang cho tới khi người dùng đóng hoặc trang đổi.
 
 | | |
@@ -12,7 +12,7 @@ alert đứng yên trong trang cho tới khi người dùng đóng hoặc trang 
 | Loại | Custom element + khối CSS `.td-alert` (chạy không cần JS) |
 | Form-associated | không |
 | PHP | [`td_alert()`](../guides/php-adapter.md#td_badge-và-td_alert) |
-| Từ phiên bản | 0.18.0 (vạch mép + icon màu đặc từ 0.36.0) |
+| Từ phiên bản | 0.18.0 (vạch mép + icon màu đặc 0.36.0; bỏ vạch, thêm ô icon 0.62.0) |
 
 ## Ví dụ nhanh
 
@@ -121,33 +121,41 @@ bề rộng từ cha (`display: block` — mặc định). Không có container 
 | `--td-alert-{…}-border` | `#93c5fd` · `#86efac` · `#fcd34d` · `#fca5a5` (0.36.0: đậm lên một bậc, ~300) | Viền 1px |
 | `--td-alert-{…}-heading` | `var(--td-pastel-{v}-fg)` (tông đậm của loại; 0.41.0: trỏ vào token pastel, cùng giá trị) | Màu tiêu đề |
 | `--td-alert-{…}-icon` | `var(--td-solid-{v}-bg)`; warning `var(--td-color-warning)` `#b45309` (0.36.0) | Màu icon (warning dùng sắc đậm hơn để ≥ 3:1 trên nền nhạt) |
-| `--td-alert-{…}-accent` | `var(--td-solid-{v}-bg)`; warning `var(--td-solid-warning-border)` `#d97706` (0.36.0) | Vạch mép đầu dòng (`border-inline-start`, RTL tự sang phải). Warning dùng bậc đậm vì amber-500 < 3:1 trên nền nhạt |
-| `--td-alert-accent-width` | `4px` | Độ dày vạch (0.36.0; `1px` = như 0.18–0.35) |
+| `--td-alert-{…}-tile` | `color-mix(in srgb, var(--td-alert-{v}-icon) var(--td-alert-tile-mix), var(--td-alert-{v}-bg))` | 0.62.0: nền ô icon (tông đậm hơn nền một bậc). Đặt `transparent` để bỏ ô. Trình duyệt không có `color-mix()`: không ô, icon vẫn trên nền |
+| `--td-alert-tile-mix` | `12%` | 0.62.0: phần màu icon trộn vào nền ô |
+| `--td-alert-icon-box` | `1.75rem` | 0.62.0: cạnh ô icon (dòng chữ đầu và nút đóng căn theo ô này) |
+| `--td-alert-icon-radius` | `var(--td-radius-md)` | 0.62.0: bo góc ô icon |
+| `--td-alert-pad-y`, `--td-alert-pad-x` | `var(--td-space-sm)`, `var(--td-space-md)` | 0.62.0: padding (gọn: `0.5rem` + `--td-alert-icon-box: 1.25rem`) |
+| `--td-alert-{…}-accent`, `--td-alert-accent-width` | — | **Deprecated 0.62.0, không còn tác dụng**: vạch mép 4px (0.36.0) đã bỏ. Token vẫn khai báo để site đặt chúng không lỗi |
 
 Theme tối (`data-td-theme="dark"` / nhánh tối của `auto`) có bộ giá trị riêng. `-bg` / `-border` / `-icon` thuộc
 [hợp đồng theme](../customization/theming.md#hợp-đồng-theme-và-công-thức-nền-giấy-0410) (0.41.0): site nền tối không
 bật dark đặt chúng cùng các token ngữ nghĩa. Alert thuộc **tầng nội dung** → nền đặc, không kính
-([minimal surfaces](../internal/design/liquid-glass.md)). Chữ ≥ 4.7:1, icon / nút đóng ≥ 3.2:1, vạch mép ≥ 3:1 trên nền
+([minimal surfaces](../internal/design/liquid-glass.md)). Chữ ≥ 4.7:1, icon / nút đóng ≥ 3.2:1 (icon trên ô ≥ 3:1) trên nền
 của nó ở cả light và dark (gate `npm run test:contrast`). Đổi token thì tự kiểm lại tương phản.
+
+**Giao diện (0.62.0, không còn vạch mép).** Nền nhạt đặc + viền mảnh 1px **bốn cạnh** + **ô icon** vuông bo: nhận diện loại nằm
+ở hình icon (khác nhau theo loại), tông của ô, màu tiêu đề và màu viền — không phải một cạnh dày. Ranh giới ngoài của khối
+(nền nhạt và viền ~1.4–1.9:1 với trang trắng) là trang trí, không mang nghĩa; nghĩa nằm ở icon (≥ 3:1), tiêu đề và nội dung
+(≥ 4.7:1). Chế độ tương phản cao: viền thành màu chữ, ô icon bỏ; forced colors: `CanvasText`, không ô.
 
 **Vì sao không tô đặc cả khối (0.36.0)?** Nút / toast / badge ngữ nghĩa đã thành màu đặc, nhưng alert chứa đoạn văn,
 liên kết và nút hành động — tô đặc cả khung buộc đổi màu mọi control con. Nên alert giữ nền nhạt cho thân chữ, phần
-**nhận diện** (vạch mép, icon, viền, tiêu đề) dùng màu đặc. Site muốn alert đặc hẳn (chỉ nên làm khi nội dung là chữ
+**nhận diện** (icon, ô icon, viền, tiêu đề) dùng màu của loại. Site muốn alert đặc hẳn (chỉ nên làm khi nội dung là chữ
 trơn, không liên kết / nút) đặt một khối mỗi loại:
 
 ```css
 :root {
   --td-alert-danger-bg: var(--td-solid-danger-bg);
   --td-alert-danger-border: var(--td-solid-danger-border);
-  --td-alert-danger-accent: var(--td-solid-danger-border);
   --td-alert-danger-heading: var(--td-solid-danger-fg);
   --td-alert-danger-icon: var(--td-solid-danger-fg);
+  --td-alert-danger-tile: transparent;
 }
 .td-alert--danger { --td-alert-fg: var(--td-solid-danger-fg); --td-alert-close-fg: var(--td-solid-danger-fg); }
 ```
 
-(warning: `-fg` là chữ tối `#18181b`.) Muốn bỏ vạch như 0.18–0.35: `:root { --td-alert-accent-width: 1px; }` + đặt
-`--td-alert-{v}-accent` bằng `-border`.
+(warning: `-fg` là chữ tối `#18181b`.)
 
 ## Cấu trúc DOM & class
 

@@ -26,7 +26,7 @@ Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm** (+
 | Nút ghost / disabled | `.td-btn--ghost`, `:disabled` | Không shadow |
 | Nút thao tác (0.36.0) | `.td-btn--action` (`<td-action-button>`) | Vuông chỉ icon, **trong suốt**, không shadow; icon theo tone (standard `--td-gray-700`, warning `#b45309`, danger `#b91c1c`, ≥ 4.7:1 trên trắng và trên nền hover); hover = nền nhạt theo tone; focus ring kit |
 | Badge (0.36.0) | `.td-badge--{v}` | Đặc (ngữ nghĩa = `--td-solid-*`) + **viền 1px** `--td-badge-{v}-border` (nền trộn 30 % đen, hex tính sẵn) + bóng `--td-badge-shadow`; outline / stamp trong suốt, mực `--td-badge-{v}-ink`, không bóng |
-| Alert (0.36.0) | `.td-alert--{v}` | Thân nền nhạt (đọc chữ / liên kết / nút con); nhận diện đặc: vạch `border-inline-start` 4px `--td-alert-{v}-accent`, icon màu đặc, viền ~300 |
+| Alert (0.36.0; 0.62.0 bỏ vạch) | `.td-alert--{v}` | Thân nền nhạt (đọc chữ / liên kết / nút con), viền mảnh ~300 bốn cạnh; nhận diện = icon màu của loại trong **ô** `--td-alert-{v}-tile` (icon trộn 12 % vào nền) + tiêu đề. **Không có vạch cạnh** (ADR 0033) |
 | Control nội dung | switch, slider, checkbox, chip, field, bảng, tab | Đặc; thumb / nút một shadow nhẹ |
 
 ### Bảng màu (0.21.0; màu ngữ nghĩa đặc 0.36.0)
@@ -115,7 +115,7 @@ Nút luôn đặc nên chỉ còn contrast (viền rõ, bỏ shadow) và forced 
 `-radius-inner`, `-capsule`, `-dur`, `-ease`, `-ease-flex`), `--td-btn-*-bg/-fg/-border/-hover`, `--td-btn-lift`;
 0.21.0: `--td-pastel-{success,danger,warning,info}-bg/-border/-fg` (deprecated 0.36.0, giữ), `--td-tooltip-bg/-fg/-border/-text-align`;
 0.36.0: `--td-solid-{success,danger,warning,info}-bg/-fg/-hover/-border`, `--td-badge-{v}-border`, `--td-badge-{v}-ink`,
-`--td-badge-shadow`, `--td-alert-{v}-accent`, `--td-alert-accent-width`, `--td-action-btn-*`; 0.36.2: `--td-color-pressed`, `--td-option-pressed-bg`,
+`--td-badge-shadow`, `--td-alert-{v}-tile` (0.62.0; `--td-alert-{v}-accent` / `--td-alert-accent-width` deprecated, không tác dụng), `--td-action-btn-*`; 0.36.2: `--td-color-pressed`, `--td-option-pressed-bg`,
 `--td-btn-{v}-pressed`, `--td-btn-ghost-pressed`, `--td-action-btn-{tone}-pressed-bg`, `--td-action-btn-warning-pressed-fg`.
 
 **Deprecated v0.20.0** (vẫn khai báo, không tác dụng; xoá ở bản lớn sau): `--td-glass-edge`, `-side-edge`,

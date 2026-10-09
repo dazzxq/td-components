@@ -46,3 +46,12 @@ export const CssOnly = {
     <div class="td-alert td-alert--warning" role="status"><div class="td-alert__body"><div class="td-alert__message">${esc(args.message)}</div></div></div>`,
   args: { message: 'Khối .td-alert thuần CSS.' },
 };
+
+/** v0.62.0 (no side stripe): the icon tile + hairline in every variant, with a heading, an action row and the close button. */
+export const WithActions = {
+  render: () => `
+    <div class="sb-stack">
+      ${['info', 'success', 'warning', 'danger'].map((v) => `<td-alert variant="${v}" heading="Chưa lưu" dismissible>Bài viết còn thay đổi chưa lưu. Rời trang bây giờ sẽ mất chúng.
+        <div class="td-alert__actions"><button type="button" class="td-btn td-btn--primary td-btn--sm">Lưu ngay</button><button type="button" class="td-btn td-btn--secondary td-btn--sm">Để sau</button></div></td-alert>`).join('')}
+    </div>`,
+};
