@@ -34,7 +34,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright-core install --with-deps chromium
+      - name: Install browsers (8 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
+        run: scripts/ci-install-browsers.sh
+        env:
+          ENGINES: 'chromium'
       - run: npm run test:ci:static
 
   # web-test-runner, five shards: the root config (Chromium), the `engines` group once per engine (TD_WTR_ENGINES), and
@@ -58,7 +61,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright-core install --with-deps ${{ matrix.engines }}
+      - name: Install browsers (8 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
+        run: scripts/ci-install-browsers.sh
+        env:
+          ENGINES: ${{ matrix.engines }}
       - if: matrix.shard != 'groups'
         run: npx web-test-runner --group ${{ matrix.shard }}
         env:
@@ -82,7 +88,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright-core install --with-deps chromium
+      - name: Install browsers (8 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
+        run: scripts/ci-install-browsers.sh
+        env:
+          ENGINES: 'chromium'
       - run: npm run ${{ matrix.gate }}
 
   # engine specs (test/engines); tokens + theme switch + touch
@@ -100,7 +109,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright-core install --with-deps chromium firefox webkit
+      - name: Install browsers (8 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
+        run: scripts/ci-install-browsers.sh
+        env:
+          ENGINES: 'chromium firefox webkit'
       - run: npm run ${{ matrix.gate }}
 
   # v0.34.0 responsive gate: Chromium (the most configurations) alone, WebKit + Firefox together. Screenshots (8 acceptance
@@ -121,7 +133,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright-core install --with-deps ${{ matrix.name == 'chromium' && 'chromium' || 'webkit firefox' }}
+      - name: Install browsers (8 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
+        run: scripts/ci-install-browsers.sh
+        env:
+          ENGINES: ${{ matrix.name == 'chromium' && 'chromium' || 'webkit firefox' }}
       - run: npm run test:responsive
         env:
           RSP_ENGINES: ${{ matrix.engine }}
@@ -153,7 +168,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright-core install --with-deps ${{ matrix.install }}
+      - name: Install browsers (8 min per attempt, 3 attempts — the apt mirror sometimes stalls for 20+ min)
+        run: scripts/ci-install-browsers.sh
+        env:
+          ENGINES: ${{ matrix.install }}
       - run: npm run ${{ matrix.gate }}
         env:
           TD_CONTRAST_ENGINES: ${{ matrix.engine }}
