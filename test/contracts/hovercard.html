@@ -26,7 +26,7 @@
           data-markup='<div><button type="button" id="hc-load" data-td-hovercard-label="Hồ sơ Lan">Lan</button></div>'
           data-setup='const t = el.firstElementChild; unbinds.push(TdHovercard.bind(t, { content: () => new Promise(() => {}) })); t.focus();'>
   <div class="td-hovercard td-glass-surface td-glass-surface--strong" id="td-hovercard" role="dialog" tabindex="-1" aria-label="Hồ sơ Lan" data-state="loading" data-placement="bottom">
-    <p class="td-hovercard__status" role="status"><span class="td-hovercard__spinner td-spinner td-spinner--sm" aria-hidden="true"><svg class="td-spinner__svg" aria-hidden="true"></svg></span><span class="td-hovercard__text">Đang tải…</span></p>
+    <p class="td-hovercard__status td-hovercard__status--skeleton" role="status"><span class="td-hovercard__skeleton" aria-hidden="true"><span class="td-skeleton td-skeleton--circle td-hovercard__sk-avatar"></span><span class="td-hovercard__sk-lines"><span class="td-skeleton td-hovercard__sk-title"></span><span class="td-skeleton td-skeleton--text td-skeleton--lines-2"></span></span></span><span class="td-hovercard__text td-sr-only">Đang tải…</span></p>
   </div>
 </template>
 <template data-component="td-hovercard" data-portal data-await="30"

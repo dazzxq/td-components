@@ -1,5 +1,6 @@
 import { TdBaseElement } from '../base/td-base-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
+import { resolveScrollTopColors, syncScrollTopVars } from '../utils/scroll-top-colors.js';
 
 const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex], [contenteditable=""], [contenteditable="true"]';
 
@@ -23,13 +24,17 @@ const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex]
  * @attr {string} target - CSS selector of the element that receives focus after the jump (default `#main`, then
  *   `main` / `[role="main"]`, then `<body>`). A non-focusable target gets a temporary `tabindex="-1"`.
  * @attr {string} label - Accessible name (default `TdScrollTop.labels.button`)
+ * @attr {string} color - v0.62.0 button fill (hex, basic name or rgb(); opaque only). Sets `--td-scroll-top-bg / -fg /
+ *   -bg-hover / -pressed` on the host through CSSOM (never `style="…"`); the icon colour is picked by contrast (black / white,
+ *   >= 4.58:1). Without it (or invalid) the `--td-scroll-top-*` tokens apply. Increased contrast / forced colours win.
+ * @attr {string} text-color - v0.62.0 icon colour with `color` (opaque, >= 3:1 on `color`, else ignored)
  * @fires scroll-top - After the jump started, detail `{ target }` (the element that got focus)
  */
 export class TdScrollTop extends TdBaseElement {
   /** Default texts (Vietnamese); override per site: `TdScrollTop.labels.button = 'Back to top'`. */
   static labels = { button: 'Lên đầu trang' };
 
-  static get observedAttributes() { return ['threshold', 'target', 'label']; }
+  static get observedAttributes() { return ['threshold', 'target', 'label', 'color', 'text-color']; }
 
   _label() {
     return (this.getAttribute('label') || '').trim() || String(TdScrollTop.labels.button ?? '');
@@ -51,6 +56,7 @@ export class TdScrollTop extends TdBaseElement {
     this._btn = this.querySelector('.td-scroll-top');
     this._visible = false;
     this._raf = 0;
+    this._applyColors();
     this.listen(this._btn, 'click', () => this.scrollToTop());
     const schedule = () => {
       if (this._raf) return;
@@ -67,6 +73,30 @@ export class TdScrollTop extends TdBaseElement {
     if (oldVal === newVal || !this._initialized || !this._btn) return;
     if (name === 'label') this._btn.setAttribute('aria-label', this._label());
     else if (name === 'threshold') this.update();
+    else if (name === 'color' || name === 'text-color') this._applyColors();
+  }
+
+  /**
+   * v0.62.0: `color` / `text-color` → host custom properties via CSSOM (CSP-safe). Invalid / absent → the properties go back to
+   * what the site had set before (restored, not blindly removed — see syncScrollTopVars). One fixed-text warning per element
+   * for an unusable value (never the value itself).
+   * @private
+   */
+  _applyColors() {
+    const raw = this.getAttribute('color');
+    const r = resolveScrollTopColors(raw, this.getAttribute('text-color'));
+    syncScrollTopVars(this.style, this._colorVars || (this._colorVars = new Map()), r);
+    if (!r) {
+      if (raw && raw.trim() && !this._warnedColor) {
+        this._warnedColor = true;
+        console.warn('td-scroll-top: unusable color (use an opaque hex, basic name or rgb()) — the token colours apply');
+      }
+      return;
+    }
+    if (r.textRejected && !this._warnedText) {
+      this._warnedText = true;
+      console.warn('td-scroll-top: unusable text-color (opaque, >= 3:1 on color) — the icon colour is chosen automatically');
+    }
   }
 
   /** Re-evaluate visibility against the current scroll position (runs on scroll/resize automatically). */

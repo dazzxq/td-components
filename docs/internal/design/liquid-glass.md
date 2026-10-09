@@ -26,7 +26,7 @@ Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm** (+
 | Nút ghost / disabled | `.td-btn--ghost`, `:disabled` | Không shadow |
 | Nút thao tác (0.36.0) | `.td-btn--action` (`<td-action-button>`) | Vuông chỉ icon, **trong suốt**, không shadow; icon theo tone (standard `--td-gray-700`, warning `#b45309`, danger `#b91c1c`, ≥ 4.7:1 trên trắng và trên nền hover); hover = nền nhạt theo tone; focus ring kit |
 | Badge (0.36.0) | `.td-badge--{v}` | Đặc (ngữ nghĩa = `--td-solid-*`) + **viền 1px** `--td-badge-{v}-border` (nền trộn 30 % đen, hex tính sẵn) + bóng `--td-badge-shadow`; outline / stamp trong suốt, mực `--td-badge-{v}-ink`, không bóng |
-| Alert (0.36.0) | `.td-alert--{v}` | Thân nền nhạt (đọc chữ / liên kết / nút con); nhận diện đặc: vạch `border-inline-start` 4px `--td-alert-{v}-accent`, icon màu đặc, viền ~300 |
+| Alert (0.36.0; 0.62.0 bỏ vạch) | `.td-alert--{v}` | Thân nền nhạt (đọc chữ / liên kết / nút con), viền mảnh ~300 bốn cạnh; nhận diện = icon màu của loại trong **ô** `--td-alert-{v}-tile` (icon trộn 12 % vào nền) + tiêu đề. **Không có vạch cạnh** (ADR 0033) |
 | Control nội dung | switch, slider, checkbox, chip, field, bảng, tab | Đặc; thumb / nút một shadow nhẹ |
 
 ### Bảng màu (0.21.0; màu ngữ nghĩa đặc 0.36.0)
@@ -74,10 +74,10 @@ Cài đặt: [`src/styles/glass.css`](../../../src/styles/glass.css) (recipe + f
    *Ngoại lệ chức năng (0.48.0):* điểm chọn của vùng 2 chiều và thanh sắc độ trong `td-color-picker` có **vòng kép**
    trắng 2px + đen 1px — để thấy được trên **mọi** màu (≥ 3:1 với một trong hai vòng, gate đo trên `#fff` / `#000` /
    `#808080` / `#f00`), không phải rim trang trí.
-4. **Không scale trang trí** (press / lift / pop / enter). Popup chỉ **fade**. **Ngoại lệ duy nhất (0.21.0, owner
+4. **Không scale trang trí** (press / lift / pop / enter). Popup chỉ **fade**. **Ngoại lệ (0.21.0, owner
    yêu cầu):** modal vào `scale(0.95) → none` 300ms đường cong lò xo
    `cubic-bezier(0.34, 1.56, 0.64, 1)` (vượt nhẹ) + fade 200ms, ra `scale(0.95)` 200ms / fade 150ms
-   `cubic-bezier(0.4, 0, 0.2, 1)` (0.22.1, mang từ dcms-modal; token `--td-modal-*`; reduced motion → chỉ fade). Wheel datetime cuộn mượt tới giá trị khi bấm phím là chuyển động chức năng (hiệu ứng cuộn từ 00 **khi mở** đã gỡ: picker căn giữa ngay từ 0.60.0, range từ 0.61.0 — bánh xe luôn căn giữa ở mỗi lần vào màn giờ). Giữ transform **chức năng**:
+   `cubic-bezier(0.4, 0, 0.2, 1)` (0.22.1, mang từ dcms-modal; token `--td-modal-*`; reduced motion → chỉ fade). *Mở rộng 0.62.0 ([ADR 0033](../decisions/0033-polish-batch.md)):* hộp thoại kế thừa `td-modal` — `td-media-picker` — dùng đúng chuỗi token đó (≥ 720px scale lò xo, < 720px trượt lên như sheet), chỉ qua `--td-media-picker-enter-from` / `-sheet-from`; không keyframe riêng. Wheel datetime cuộn mượt tới giá trị khi bấm phím là chuyển động chức năng (hiệu ứng cuộn từ 00 **khi mở** đã gỡ: picker căn giữa ngay từ 0.60.0, range từ 0.61.0 — bánh xe luôn căn giữa ở mỗi lần vào màn giờ). Giữ transform **chức năng**:
    vị trí thumb slider, trượt thumb switch, zoom / kéo lightbox, xoay mũi tên dropdown, sheet modal trượt lên trên
    điện thoại, slide nhẹ của toast / scroll-top, **nhãn nổi của `td-input-field` thu nhỏ + dịch lên khi focus / có giá trị
    (0.58.0, `--td-field-float-scale`, [ADR 0031](../decisions/0031-floating-label-variant.md))** — vị trí + cỡ là trạng thái
@@ -115,7 +115,7 @@ Nút luôn đặc nên chỉ còn contrast (viền rõ, bỏ shadow) và forced 
 `-radius-inner`, `-capsule`, `-dur`, `-ease`, `-ease-flex`), `--td-btn-*-bg/-fg/-border/-hover`, `--td-btn-lift`;
 0.21.0: `--td-pastel-{success,danger,warning,info}-bg/-border/-fg` (deprecated 0.36.0, giữ), `--td-tooltip-bg/-fg/-border/-text-align`;
 0.36.0: `--td-solid-{success,danger,warning,info}-bg/-fg/-hover/-border`, `--td-badge-{v}-border`, `--td-badge-{v}-ink`,
-`--td-badge-shadow`, `--td-alert-{v}-accent`, `--td-alert-accent-width`, `--td-action-btn-*`; 0.36.2: `--td-color-pressed`, `--td-option-pressed-bg`,
+`--td-badge-shadow`, `--td-alert-{v}-tile` (0.62.0; `--td-alert-{v}-accent` / `--td-alert-accent-width` deprecated, không tác dụng), `--td-action-btn-*`; 0.36.2: `--td-color-pressed`, `--td-option-pressed-bg`,
 `--td-btn-{v}-pressed`, `--td-btn-ghost-pressed`, `--td-action-btn-{tone}-pressed-bg`, `--td-action-btn-warning-pressed-fg`.
 
 **Deprecated v0.20.0** (vẫn khai báo, không tác dụng; xoá ở bản lớn sau): `--td-glass-edge`, `-side-edge`,

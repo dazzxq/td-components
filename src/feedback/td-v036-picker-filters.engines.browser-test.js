@@ -38,6 +38,8 @@ async function openReady(opts = {}, adOpts = {}) {
   const ad = opts.adapter || createMockAdapter(adOpts);
   const promise = TdMediaPicker.open({ ...opts, adapter: ad });
   await until(() => pickerRoot()?.getAttribute('data-state') === 'open', 4000, 'open');
+  // v0.62.0: the dialog enters with scale(0.95) / translateY(100%) — measure only once that motion has finished
+  await until(() => getComputedStyle(pickerRoot().querySelector('.td-media-picker__dialog')).transform === 'none', 4000, 'open motion');
   await until(() => grid() && grid().querySelector('[data-td-media-item]'), 4000, 'first page');
   await until(() => !q('.td-media-picker__facets').hidden || ad.calls.facets.length > 0, 4000, 'facets');
   await until(() => q('.td-media-picker__facet'), 4000, 'facet controls');

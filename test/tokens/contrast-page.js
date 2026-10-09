@@ -2,6 +2,7 @@
 import '/src/form/td-button.js';
 import { TdToast } from '/src/feedback/td-toast.js';
 import '/src/feedback/td-alert.js';
+import '/src/feedback/td-scroll-top.js';
 import '/src/display/td-media-grid.js';
 import { TdLightbox } from '/src/feedback/td-lightbox.js';
 import { fillIconSlots, tdIcon } from '/src/icons/td-icon.js';
@@ -164,6 +165,9 @@ for (const v of ['success', 'danger', 'warning', 'info']) CASES.push({ kind: 'v0
 for (const v of ['neutral', 'accent', 'success', 'danger', 'warning', 'info']) CASES.push({ kind: 'v036', v, state: 'badge', pageOnly: true });
 for (const v of ['info', 'success', 'warning', 'danger']) CASES.push({ kind: 'v036', v, state: 'alert', pageOnly: true });
 for (const v of ['standard', 'warning', 'danger']) CASES.push({ kind: 'v036', v, state: 'action-button', pageOnly: true });
+// v0.62.0 <td-scroll-top color=…> (plan E): the auto icon colour vs the fill, vs the hover fill (the host var) ≥ 3.2 and vs the
+// pressed overlay composited on the fill ≥ 4.7 — a spread of fills incl. the worst mid-tones for black / white
+for (const v of ['#ffffff', '#000000', '#f59e0b', '#1e40af', '#7c3aed', '#777777', '#888888', '#fef3c7', '#15803d', '#dc2626', '#0ea5e9', '#e5e7eb']) CASES.push({ kind: 'v036', v, state: 'scroll-top', pageOnly: true });
 // v0.36.0 popup option rows (dcms2): the keyboard-active row's inline-start bar ≥ 3:1 vs the popup surface, the label ≥ 4.7
 // on the active / selected fills (composited on the surface)
 for (const v of ['active', 'selected']) CASES.push({ kind: 'v036', v, state: 'option-row' });
@@ -1412,8 +1416,23 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       stage.appendChild(host);
       target = host.querySelector('.td-alert');
       const cs = getComputedStyle(target);
-      pairs = [{ what: 'alert icon vs fill', fg: getComputedStyle(target.querySelector('.td-alert__icon')).color, bg: cs.backgroundColor, min: 3.2 },
-        { what: 'alert bar vs fill', fg: cs.borderInlineStartColor || cs.borderLeftColor, bg: cs.backgroundColor, min: 3 }];
+      // v0.62.0 (ADR 0033): no side stripe any more — the status icon is measured on the alert fill AND on its tile
+      // (color-mix of the icon into the fill, non-text >= 3:1; the kit's own light / dark values reach >= 3.5)
+      const ic = getComputedStyle(target.querySelector('.td-alert__icon'));
+      pairs = [{ what: 'alert icon vs fill', fg: ic.color, bg: cs.backgroundColor, min: 3.2 },
+        { what: 'alert icon vs its tile', fg: ic.color, bg: over(ic.backgroundColor, cs.backgroundColor), min: 3 }];
+    } else if (c.state === 'scroll-top') {
+      const host = document.createElement('td-scroll-top');
+      host.setAttribute('color', c.v);
+      stage.appendChild(host);
+      target = host.querySelector('.td-scroll-top');
+      const fill = getComputedStyle(target).backgroundColor;
+      const fg = getComputedStyle(target).color;
+      const hov = host.style.getPropertyValue('--td-scroll-top-bg-hover');
+      const press = host.style.getPropertyValue('--td-scroll-top-pressed');
+      pairs = [{ what: `scroll-top ${c.v} icon vs fill`, fg, bg: fill, min: 3.2 },
+        { what: `scroll-top ${c.v} icon vs hover fill`, fg, bg: hov, min: 3.2 },
+        { what: `scroll-top ${c.v} icon vs pressed fill`, fg, bg: over(press, fill), min: 4.7 }];
     } else if (c.state === 'option-row') {
       const menu = document.createElement('div');
       menu.className = 'td-dropdown__menu td-glass-surface td-glass-surface--strong';

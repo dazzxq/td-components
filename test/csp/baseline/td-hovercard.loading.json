@@ -18,9 +18,9 @@
   ],
   "styles": {
     ".td-hovercard": {
-      "width": "160px",
-      "height": "46.2969px",
-      "min-height": "0px",
+      "width": "256px",
+      "height": "84px",
+      "min-height": "80px",
       "max-height": "480px",
       "padding-top": "12px",
       "padding-bottom": "12px",
@@ -98,8 +98,8 @@
       "--_td-toast-seq": ""
     },
     ".td-hovercard__status": {
-      "width": "129.219px",
-      "height": "20.2969px",
+      "width": "225.219px",
+      "height": "58px",
       "min-height": "0px",
       "max-height": "none",
       "padding-top": "0px",
@@ -109,7 +109,7 @@
       "margin-top": "0px",
       "margin-bottom": "0px",
       "margin-left": "0px",
-      "display": "flex",
+      "display": "block",
       "position": "static",
       "z-index": "auto",
       "opacity": "1",

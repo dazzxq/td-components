@@ -43,10 +43,18 @@
  *   <div class="td-hovercard td-glass-surface td-glass-surface--strong" id="td-hovercard" role="dialog"
  *        tabindex="-1" aria-label="{name}" data-state="loading|open|error|closed" data-placement="bottom|top" [hidden]>
  *     … content …                                                         (data-state="open")
- *     <p class="td-hovercard__status" role="status">                      (data-state="loading" | "error")
- *       [<span class="td-hovercard__spinner td-spinner td-spinner--sm" aria-hidden="true"><svg…></span>] (loading)
- *       <span class="td-hovercard__text">{labels.loading | labels.error}</span>
+ *     <p class="td-hovercard__status" role="status">                      (data-state="error")
+ *       <span class="td-hovercard__text">{labels.error}</span>
  *     </p>
+ *     <p class="td-hovercard__status td-hovercard__status--skeleton" role="status">   (data-state="loading", aria-busy="true"; v0.62.0)
+ *       <span class="td-hovercard__skeleton" aria-hidden="true">                      kit skeleton, shimmer (static under reduced motion)
+ *         <span class="td-skeleton td-skeleton--circle td-hovercard__sk-avatar"></span>
+ *         <span class="td-hovercard__sk-lines"><span class="td-skeleton td-hovercard__sk-title"></span>
+ *           <span class="td-skeleton td-skeleton--text td-skeleton--lines-2"></span></span></span>
+ *       <span class="td-hovercard__text td-sr-only">{labels.loading}</span>
+ *     </p>
+ *   The loading card has a fixed size budget (--td-hovercard-skeleton-w / -h); content that arrives from it keeps that as
+ *   its MINIMUM size (CSSOM min-width / min-height, released on close / next open), so the card only ever grows.
  *   </div>
  *   Trigger (while bound): aria-haspopup="dialog", aria-expanded="true|false", aria-controls="td-hovercard" while
  *   open; unbind restores aria-haspopup / aria-expanded / aria-controls / tabindex to their previous values.
@@ -84,25 +92,6 @@ const HOVER_QUERY = '(hover: hover) and (pointer: fine)';
 const NATIVE_FOCUSABLE = 'a[href], area[href], button, input:not([type="hidden"]), select, textarea, summary, '
   + 'iframe, [tabindex], [contenteditable]:not([contenteditable="false"])';
 const SNAP = ['aria-haspopup', 'aria-expanded', 'aria-controls', 'tabindex'];
-const SVG_NS = 'http://www.w3.org/2000/svg';
-/** The spinner built with DOM APIs (no innerHTML → works under Trusted Types enforcement). */
-function spinnerSvg() {
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('class', 'td-spinner__svg');
-  svg.setAttribute('viewBox', '0 0 50 50');
-  svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('focusable', 'false');
-  for (const cls of ['td-spinner__track', 'td-spinner__arc']) {
-    const c = document.createElementNS(SVG_NS, 'circle');
-    c.setAttribute('class', cls);
-    c.setAttribute('cx', '25');
-    c.setAttribute('cy', '25');
-    c.setAttribute('r', '20');
-    svg.appendChild(c);
-  }
-  return svg;
-}
-
 /** @type {Map<string, Promise<string>>} absolute URL (no #fragment) → fragment; LRU, successful fetches only */
 const cache = new Map();
 /** Limits (security review v0.14.0): cache entries, response bytes, request time. */
@@ -344,21 +333,16 @@ function place() {
 
 function show(state) {
   card.setAttribute('data-state', state);
+  if (state !== 'loading') card.removeAttribute('aria-busy'); // v0.62.0: set only by renderLoading
   card.hidden = false;
   place();
 }
 
-function status(text, busy) {
+/** The error line (unchanged since v0.14.0). */
+function status(text) {
   const p = document.createElement('p');
   p.className = 'td-hovercard__status';
   p.setAttribute('role', 'status');
-  if (busy) {
-    const sp = document.createElement('span');
-    sp.className = 'td-hovercard__spinner td-spinner td-spinner--sm';
-    sp.setAttribute('aria-hidden', 'true');
-    sp.appendChild(spinnerSvg());
-    p.appendChild(sp);
-  }
   const t = document.createElement('span');
   t.className = 'td-hovercard__text';
   t.textContent = text;
@@ -366,16 +350,63 @@ function status(text, busy) {
   return p;
 }
 
+/** v0.62.0: one decorative element of the skeleton (`.td-skeleton` from skeleton.css) built with DOM APIs. */
+function skeletonPiece(...classes) {
+  const el = document.createElement('span');
+  el.className = ['td-skeleton', ...classes].join(' ');
+  return el;
+}
+
+/**
+ * v0.62.0: the loading state — an avatar disc + a title bar + two text lines (kit skeleton, shimmer; reduced motion →
+ * static), the label only for screen readers. DOM APIs only (works under Trusted Types). Its size is the budget
+ * `--td-hovercard-skeleton-w/-h` (hovercard.css), which `renderContent` keeps as the minimum size of the card.
+ */
+function skeletonStatus(text) {
+  const p = document.createElement('p');
+  p.className = 'td-hovercard__status td-hovercard__status--skeleton';
+  p.setAttribute('role', 'status');
+  const sk = document.createElement('span');
+  sk.className = 'td-hovercard__skeleton';
+  sk.setAttribute('aria-hidden', 'true');
+  const lines = document.createElement('span');
+  lines.className = 'td-hovercard__sk-lines';
+  lines.append(skeletonPiece('td-hovercard__sk-title'), skeletonPiece('td-skeleton--text', 'td-skeleton--lines-2'));
+  sk.append(skeletonPiece('td-skeleton--circle', 'td-hovercard__sk-avatar'), lines);
+  const t = document.createElement('span');
+  t.className = 'td-hovercard__text td-sr-only';
+  t.textContent = text;
+  p.append(sk, t);
+  return p;
+}
+
+/** The size the card has right now (px) — the minimum of the content that replaces the loading state. */
+function holdSize() {
+  const r = card.getBoundingClientRect();
+  card.style.minWidth = `${Math.ceil(r.width)}px`;
+  card.style.minHeight = `${Math.ceil(r.height)}px`;
+}
+
+function releaseSize() {
+  if (!card) return;
+  card.style.removeProperty('min-width');
+  card.style.removeProperty('min-height');
+}
+
 function renderLoading(my) {
   if (my !== token || !cur) return;
-  card.replaceChildren(status(TdHovercard.labels.loading || 'Đang tải…', true));
+  releaseSize();
+  card.replaceChildren(skeletonStatus(TdHovercard.labels.loading || 'Đang tải…'));
+  card.setAttribute('aria-busy', 'true');
   show('loading');
 }
 
 function renderError(my, err) {
   if (my !== token || !cur) return; // stale rejection: never touches the card
   if (err) console.warn('TdHovercard: content failed', err);
-  card.replaceChildren(status(TdHovercard.labels.error || 'Không tải được nội dung.', false));
+  releaseSize();
+  card.removeAttribute('aria-busy');
+  card.replaceChildren(status(TdHovercard.labels.error || 'Không tải được nội dung.'));
   show('error');
 }
 
@@ -386,6 +417,8 @@ function renderContent(my, value) {
     // site hook (security review v0.14.0): e.g. DOMPurify / Sanitizer API / a Trusted Types policy
     try { value = TdHovercard.sanitize(value); } catch (err) { renderError(my, err); return; }
   }
+  // v0.62.0: arriving from the skeleton, the card never gets smaller than it was (growth only); other sources are free
+  if (card.getAttribute('data-state') === 'loading') holdSize(); else releaseSize();
   const trusted = isTrustedHTML(value);
   if (trusted || typeof value === 'string') {
     if (!String(value).trim()) { closeSession('empty'); return; } // empty string / empty TrustedHTML → nothing opens
@@ -539,6 +572,8 @@ function closeSession(reason) {
   if (card) {
     card.hidden = true;
     card.setAttribute('data-state', 'closed');
+    card.removeAttribute('aria-busy');
+    releaseSize();
     card.replaceChildren(); // fragments stay cached: a re-open is instant
   }
   if (s.unbridge) s.unbridge();

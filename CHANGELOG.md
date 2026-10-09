@@ -2,6 +2,34 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.62.0
+
+**Đợt chỉnh giao diện: `td-alert` bỏ vạch trái, guard drawer dùng hộp xác nhận của kit, hovercard skeleton, media-picker mở như
+modal, API màu cho `td-scroll-top`** (owner 2026-10-09; thiết kế alert qua Hallmark, owner duyệt mock). Plan
+`docs/internal/plans/v0.62.0-polish.md`, Codex plan-review APPROVE r3, impl-review APPROVE r2, security-review sạch;
+[ADR 0033](docs/internal/decisions/0033-polish-batch.md). Đổi giao diện — `docs/upgrading/breaking-changes.md#0620`.
+
+### Changed
+
+- `td-alert`: bỏ vạch màu bên trái; viền mảnh 1px bốn cạnh + **ô icon** vuông bo góc tô nhạt theo biến thể (≥ 3,2:1 icon trên ô
+  với mọi palette sinh ra); cao thêm ~5px. Markup không đổi. Token `--td-alert-{v}-accent` / `--td-alert-accent-width` còn khai
+  báo nhưng không còn tác dụng.
+- `td-hovercard` nội dung tải từ `url`: khung **skeleton** (avatar + dòng) thay spinner, giữ kích thước khi chuyển sang nội dung;
+  `aria-busy` khi đang tải.
+- `td-media-picker`: mở / đóng **giống `td-modal`** — ≥ 720px phóng lò xo, < 720px trượt lên như sheet; reduced motion → chỉ fade;
+  site tắt qua `--td-media-picker-enter-from` / `--td-media-picker-sheet-from`.
+
+### Added
+
+- `td-scroll-top`: attribute `color` / `text-color` (kiểm hợp lệ, áp qua CSSOM, tự đủ tương phản) + token `--td-scroll-top-bg` /
+  `-fg` / `-border` / `-shadow` / `-bg-hover` / `-pressed`; màu hover mặc định. Giá trị inline site đặt trước được giữ và trả lại
+  khi gỡ attribute.
+
+### Fixed
+
+- Story / docs "UnsavedGuard" của drawer dùng `window.confirm` của trình duyệt → nay dùng `TdModal.confirm` (kit đã mặc định như
+  vậy); thêm lint chặn `confirm()` / `alert()` / `prompt()` gốc trong source + story.
+
 ## 0.61.0
 
 **Lịch cho `<td-datetime-range>` + hộp thoại `datetime` hai bước (ngày → giờ) cho cả picker và range** (owner sau khi xem

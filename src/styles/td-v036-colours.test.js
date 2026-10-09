@@ -75,7 +75,7 @@ test('QĐ 21–22: badge solid fill, -ink for outline / stamp, precomputed hex -
   assert.match(css, /@media \(prefers-contrast: more\)\s*\{\s*\.td-badge\s*\{[^}]*border-color:\s*currentcolor;[^}]*box-shadow:\s*none;/);
 });
 
-test('QĐ 26: alert accent token per variant, a 4px inline-start bar, stronger border (~300)', async () => {
+test('QĐ 26 (stripe superseded in 0.62.0): alert accent tokens stay declared but inert, stronger border (~300)', async () => {
   const css = await read('src/styles/components/alert.css');
   const t = decls(css, ':root');
   assert.equal(t['--td-alert-info-accent'], 'var(--td-solid-info-bg)');
@@ -86,5 +86,6 @@ test('QĐ 26: alert accent token per variant, a 4px inline-start bar, stronger b
   for (const [v, hex] of Object.entries({ info: '#93c5fd', success: '#86efac', warning: '#fcd34d', danger: '#fca5a5' })) {
     assert.equal(t[`--td-alert-${v}-border`], hex, `${v}-border`);
   }
-  assert.match(css, /border-inline-start:\s*4px solid var\(--td-alert-info-accent\)/);
+  // v0.62.0 (plan A, ADR 0033): the 4px bar is gone — the tokens above are kept for golden / sites, nothing paints them
+  assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g, ''), /border-inline-start/);
 });

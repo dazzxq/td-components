@@ -164,6 +164,14 @@ quả bị bỏ qua (`closed` của `TdDrawer.open()` vẫn resolve).
 Hộp hỏi là một `TdModal` mở **bên trên** drawer; đóng nó thì focus quay lại trong drawer. Với `TdDrawer.open()`
 truyền thẳng `beforeClose` trong tuỳ chọn.
 
+**Đừng dùng `window.confirm()` / `confirm()` gốc trong guard** (0.62.0): hộp của trình duyệt không đổi giao diện được, chặn
+cả trang, nằm ngoài chồng lớp của kit và không trả focus về drawer. `confirmDiscard()` luôn dùng `TdModal.confirm` danger
+("Bỏ thay đổi?"); site có hộp thoại riêng thì truyền `tracker.confirmDiscard({ confirm: (dialog) => Promise<boolean> })`.
+Còn lại đúng một hộp gốc: **`beforeunload`** khi người dùng rời *trang* (tải lại, đóng tab, bấm liên kết ra ngoài app) lúc form
+bẩn. Trình duyệt bắt buộc hộp này và không cho thay: chữ tuỳ biến bị bỏ qua, handler chạy đồng bộ lúc trang đang bị gỡ nên
+không `await` được modal, Chrome / Firefox chỉ hiện sau tương tác, Safari iOS thường không hiện
+([chi tiết](form-validation.md#9-theo-dõi-thay-đổi-chưa-lưu-trackformdirty-0440)).
+
 **Cách cũ vẫn chạy** (event `before-close`, chặn đồng bộ rồi hỏi sau, có cờ để lần đóng sau đi qua):
 
 ```js
