@@ -275,6 +275,19 @@ describe('v0.63.1 editable picker â€” live mask while typing (owner: 11122026 â†
     expect(m.input.value).to.equal('01/03/2026'); // normalised on commit
   });
 
+  it('IME: nothing is rewritten while composing; the composed text is masked on compositionend (Codex r1)', async () => {
+    const m = mount('mode="date" editable');
+    await settle();
+    m.input.focus();
+    m.input.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+    m.input.value = '11122026';
+    m.input.dispatchEvent(new InputEvent('input', { bubbles: true, isComposing: true, inputType: 'insertCompositionText', data: '11122026' }));
+    expect(m.input.value).to.equal('11122026');
+    m.input.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '11122026' }));
+    expect(m.input.value).to.equal('11/12/2026');
+    expect(m.rec.input + m.rec.bare + m.rec.change.length).to.equal(0);
+  });
+
   it('datetime and month masks; an edit in the middle keeps the caret after its digit', async () => {
     const d = mount('mode="datetime" editable');
     await settle();
