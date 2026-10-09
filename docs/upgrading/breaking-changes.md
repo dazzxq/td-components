@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.62.0](#0620) | Đổi giao diện `td-alert` (bỏ vạch trái, ô icon) + DOM trạng thái tải của `td-hovercard` (skeleton) + `td-media-picker` có chuyển động mở | Không phải sửa code. Test chụp / đo alert (vạch 4px) hoặc bám `.td-hovercard__spinner` phải đổi; test đo picker ngay khi `data-state="open"` nên chờ chuyển động xong. |
 | [0.61.0](#0610) | Đổi giao diện + tương tác `td-datetime-range` (lịch một lưới thay hai bộ ba ô số) + **hộp thoại `datetime` (picker VÀ range) là hai bước: ngày → giờ** + gỡ `.td-dtp-panel*` | Không đổi markup / attribute / form / `change` / PHP. Test tự động bám ô số của range hoặc "bấm ngày rồi Chọn ngay" ở `datetime` phải đổi (xem § 0.61.0). Range `datetime`: "Chọn" chỉ ở màn giờ. |
 | [0.60.0](#0600) | Đổi giao diện + tương tác `td-datetime-picker` (lịch dạng lưới thay ba ô số) + đổi hành vi (hết cửa sổ năm 2000–2099, picker `date`/`month`/`year` chọn là ghi) + SSR `datetime-picker@2` | Không phải sửa code. Test tự động bám `.td-dtp-panel` / `[data-part]` / nút "Chọn" ở `mode="date"` phải đổi selector (có loại xanh giả). Site dựa vào cửa sổ 2000–2099 để chặn dữ liệu → đặt `min` / `max`. Triển khai JS và PHP cùng bản. |
 | [0.59.2](#0592) | Sửa lỗi giao diện (`td-table` dạng thẻ + `hide-single-page`) | Không. Thanh chip sắp xếp cách mép trên như khi còn thanh trên; markup không đổi. |
@@ -86,6 +87,21 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.62.0
+
+**Mức: đổi giao diện (không cần đổi markup / attribute / handler).**
+
+- **`td-alert`**: không còn vạch màu bên trái (`border-inline-start` 4px); viền 1px bốn cạnh, icon nằm trong ô vuông bo góc tô nhạt,
+  alert cao thêm ~5px. Token `--td-alert-{info,success,warning,danger}-accent` và `--td-alert-accent-width` **không còn tác dụng**
+  (vẫn khai báo, site đặt cũng không lỗi). Token mới: `--td-alert-pad-y|pad-x|icon-box|icon-radius|tile-mix`, `--td-alert-{v}-tile`.
+- **`td-hovercard`** khi tải `url`: `.td-hovercard__spinner` bị gỡ; trạng thái tải là `.td-hovercard__status--skeleton` chứa
+  `.td-hovercard__skeleton`; card có `aria-busy="true"` khi đang tải.
+- **`td-media-picker`**: hộp thoại có chuyển động mở / đóng như `td-modal`. Test đo kích thước / vị trí ngay khi `data-state="open"`
+  có thể đọc giá trị giữa chuyển động (ví dụ `scale(0.95)`) — chờ `transform` về `none` hoặc bật `prefers-reduced-motion`.
+- **`td-scroll-top`**: thêm `color` / `text-color` (không phá vỡ); nút có màu hover mới trong cổng hover.
 
 ---
 
