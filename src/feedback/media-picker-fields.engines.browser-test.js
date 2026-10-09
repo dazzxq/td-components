@@ -336,21 +336,12 @@ describe('media-picker-fields — date (R2-10)', () => {
     f.set('2027-03-31');
     expect(f.control.querySelector('.td-dtp__value').textContent.trim()).to.equal('31/03/2027');
     expect(f.get()).to.equal('2027-03-31');
-    // user: open, type 15 / 04 / 2027, "Chọn"
+    // user: open the calendar (a popover over the picker modal, v0.60.0), next month, pick 15 April 2027 — commits at once
     f.control.querySelector('.td-dtp__trigger').click();
     await settle();
-    const modal = [...document.querySelectorAll('.td-modal')].find((m) => m.getAttribute('data-state') !== 'closing');
-    const put = (part, v) => {
-      const inp = modal.querySelector(`.td-dtp-panel__input[data-part="${part}"]`);
-      inp.value = v;
-      inp.dispatchEvent(new Event('input', { bubbles: true }));
-      inp.dispatchEvent(new Event('change', { bubbles: true }));
-    };
-    put('day', '15');
-    put('month', '4');
-    put('year', '2027');
-    const ok = [...modal.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Chọn');
-    ok.click();
+    const pop = [...document.querySelectorAll('.td-dtp-pop')].find((p) => !p.closest('.td-modal[data-state="closing"]'));
+    pop.querySelector('[data-dir="next"]').click();
+    pop.querySelector('.td-cal__day[data-date="2027-04-15"]').click();
     await settle();
     expect(f.get()).to.equal('2027-04-15');
     expect(changes).to.equal(1);

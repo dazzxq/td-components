@@ -1102,7 +1102,7 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | td-toggle | `--td-switch-w`, `--td-switch-h`, `--td-switch-thumb-d` | `:root` (`--sm` / `--lg` đặt lại trên phần tử); `--td-switch-pad` dẫn xuất, tính trên `.td-switch` | [toggle.md](../components/toggle.md) |
 | td-slider | `--td-slider-*` | `:root` (riêng `--td-slider-h` / `--td-slider-thumb` trên phần tử) | [slider.md](../components/slider.md) |
 | td-dropdown | `--td-dropdown-*` | `:root` | [dropdown.md](../components/dropdown.md) |
-| td-datetime-picker | `--td-dtp-*` | `:root` (có `@media (pointer: coarse)`) | [datetime-picker.md](../components/datetime-picker.md) |
+| td-datetime-picker | `--td-dtp-*` (ô, bánh xe), 0.60.0 lịch: `--td-cal-cell`, `--td-cal-pad`, `--td-cal-fg`, `--td-cal-muted-fg`, `--td-cal-hover-bg`, `--td-cal-selected-bg` / `-fg`, `--td-cal-today-ring`, `--td-cal-focus` (trỏ tới token theme có sẵn — không thêm token màu) | `:root` / `[data-td-theme]` (có `@media (pointer: coarse)`) | [datetime-picker.md](../components/datetime-picker.md) |
 | td-chip-input | `--td-chip-*` | `:root` | [chip-input.md](../components/chip-input.md) |
 | td-tree (và cây trong popup của td-tree-select) | `--td-tree-*` — `--td-tree-indent` (thụt mỗi cấp, `1.25rem`), `--td-tree-row-h` (chiều cao hàng, `2rem`), `--td-tree-row-hover` / `-selected` / `-active` / `-active-line`, `--td-tree-check-radius` (0.29.0) | `:root` | [tree.md](../components/tree.md) |
 | td-tree-select | dùng `--td-field-*` (ô) + `--td-dropdown-search-*` (ô tìm) + `--td-tree-*` (cây) | `:root` | [tree-select.md](../components/tree-select.md) |

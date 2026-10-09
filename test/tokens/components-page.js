@@ -66,6 +66,7 @@ window.__componentsRun = (async () => {
   const wheelJumped = hourList.scrollTop !== s0; // read synchronously: an instant scroll has already moved
   const wheelSelected = hourList.querySelector('[aria-selected="true"]').getAttribute('data-value');
   TdModal.closeAll();
+  dtp.remove(); // v0.60.0: the picker dialog is a popover (not a modal): removing the host closes it
   await wait(400);
   TdToast._showSingle('Đã lưu', 'success', 0);
   await wait(400);

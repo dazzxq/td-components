@@ -496,3 +496,83 @@ describe('minute step (D7)', () => {
     assert.deepEqual(dt.partsFromDate(new Date(2026, 5, 15, 10, 30)), P(15, 6, 2026, 10, 30));
   });
 });
+
+// v0.60.0 (plan v0.60.0-calendar-picker B2): without min / max every representable date is valid — years 1–9999. The
+// parts helpers never needed the 2000–2099 window (it lived in the picker); these cases lock the whole domain down.
+describe('years 1–9999 (v0.60.0 B2)', () => {
+  const YEARS = [1, 4, 99, 100, 999, 1000, 1582, 1999, 2100, 9999];
+  const y4 = (y) => String(y).padStart(4, '0');
+
+  it('every mode round-trips display ⇄ parts ⇄ ISO / DB with a zero-padded 4-digit year', () => {
+    for (const y of YEARS) {
+      const Y = y4(y);
+      const p = P(15, 3, y, 9, 30);
+      assert.equal(dt.formatModeDisplay(p, 'datetime'), `15/03/${Y} - 09:30`);
+      assert.equal(dt.formatModeIso(p, 'datetime'), `${Y}-03-15T09:30:00`);
+      assert.equal(dt.formatModeDb(p, 'datetime'), `${Y}-03-15 09:30:00`);
+      assert.deepEqual(dt.parseModeValue(`15/03/${Y} - 09:30`, 'datetime'), p);
+      assert.deepEqual(dt.parseModeValue(`${Y}-03-15T09:30`, 'datetime'), p);
+      assert.deepEqual(dt.parseModeDb(`${Y}-03-15 09:30:00`, 'datetime'), p);
+      const d = P(15, 3, y, 0, 0);
+      assert.equal(dt.formatModeDisplay(d, 'date'), `15/03/${Y}`);
+      assert.equal(dt.formatModeIso(d, 'date'), `${Y}-03-15`);
+      assert.deepEqual(dt.parseModeValue(`15/03/${Y}`, 'date'), d);
+      assert.deepEqual(dt.parseModeValue(`${Y}-03-15`, 'date'), d);
+      assert.deepEqual(dt.parseModeDb(`${Y}-03-15`, 'date'), d);
+      const m = P(1, 3, y, 0, 0);
+      assert.equal(dt.formatModeDisplay(m, 'month'), `03/${Y}`);
+      assert.equal(dt.formatModeIso(m, 'month'), `${Y}-03`);
+      assert.deepEqual(dt.parseModeValue(`03/${Y}`, 'month'), m);
+      assert.deepEqual(dt.parseModeValue(`${Y}-03`, 'month'), m);
+      const yr = P(1, 1, y, 0, 0);
+      assert.equal(dt.formatModeDisplay(yr, 'year'), Y);
+      assert.deepEqual(dt.parseModeValue(Y, 'year'), yr);
+      for (const q of [p, d, m, yr]) assert.equal(dt.invalidReason(q), null, `${Y} valid`);
+    }
+  });
+
+  it('native <input> values: 4-digit years only, zero-padded both ways', () => {
+    for (const y of YEARS) {
+      const Y = y4(y);
+      assert.equal(dt.toNativeValue(P(15, 3, y, 9, 30), 'date'), `${Y}-03-15`);
+      assert.equal(dt.toNativeValue(P(15, 3, y, 9, 30), 'datetime'), `${Y}-03-15T09:30`);
+      assert.deepEqual(dt.fromNativeValue(`${Y}-03-15`, 'date'), P(15, 3, y, 0, 0));
+      assert.deepEqual(dt.fromNativeValue(`${Y}-03-15T09:30`, 'datetime'), P(15, 3, y, 9, 30));
+    }
+    // what a native input WITHOUT `max` can hold in Chromium (M0): never taken
+    for (const v of ['12026-03-15', '202600-03-15', '0000-03-15', '999-03-15']) assert.equal(dt.fromNativeValue(v, 'date'), null, v);
+    assert.equal(dt.fromNativeValue('12026-03-15T09:30', 'datetime'), null);
+  });
+
+  it('year 0, 3-digit and 5-digit years are refused; the limits are 0001-01-01 and 9999-12-31', () => {
+    assert.equal(dt.invalidReason(P(15, 3, 0, 0, 0)), 'year');
+    assert.equal(dt.invalidReason(P(15, 3, 10000, 0, 0)), 'year');
+    assert.deepEqual(dt.parseModeValue('15/03/0000', 'date'), P(15, 3, 0, 0, 0)); // syntactic; invalidReason flags it
+    for (const s of ['15/3/999', '15/03/12026', '999-03-15', '12026-03-15']) assert.equal(dt.parseModeValue(s, 'date'), null, s);
+    assert.equal(dt.parseModeValue('999', 'year'), null);
+    assert.equal(dt.parseModeValue('10000', 'year'), null);
+    assert.equal(dt.invalidReason(P(1, 1, 1, 0, 0)), null);
+    assert.equal(dt.invalidReason(P(31, 12, 9999, 23, 59)), null);
+  });
+
+  it('leap years across the domain (proleptic Gregorian)', () => {
+    for (const [y, days] of [[4, 29], [100, 28], [400, 29], [1900, 28], [2000, 29], [2024, 29], [2100, 28], [9996, 29], [9999, 28], [1, 28]]) {
+      assert.equal(dt.daysInMonth(y, 2), days, `02/${y}`);
+      assert.equal(dt.invalidReason(P(29, 2, y, 0, 0)), days === 29 ? null : 'date', `29/02/${y}`);
+    }
+  });
+
+  it('bounds: min / max of any year, compared at the mode granularity; year 0 is no bound', () => {
+    assert.deepEqual(dt.parseBound('0001-01-01', 'min'), P(1, 1, 1, 0, 0));
+    assert.deepEqual(dt.parseBound('9999-12-31', 'max'), P(31, 12, 9999, 23, 59));
+    assert.deepEqual(dt.parseBound('31/12/0999', 'max'), P(31, 12, 999, 23, 59));
+    assert.deepEqual(dt.parseBound('0001', 'min'), P(1, 1, 1, 0, 0));
+    assert.deepEqual(dt.parseBound('9999', 'max'), P(31, 12, 9999, 23, 59));
+    assert.deepEqual(dt.parseBound('02/0004', 'max'), P(29, 2, 4, 23, 59));
+    assert.equal(dt.parseBound('0000', 'min'), null);
+    assert.equal(dt.parseBound('0000-01-01', 'min'), null);
+    assert.ok(dt.compareParts(P(1, 1, 1, 0, 0), P(31, 12, 9999, 23, 59)) < 0);
+    assert.ok(dt.compareModeParts(P(31, 12, 999, 23, 59), P(1, 1, 1000, 0, 0), 'date') < 0);
+    assert.equal(dt.compareModeParts(P(31, 12, 9999, 23, 59), P(1, 1, 9999, 0, 0), 'year'), 0);
+  });
+});

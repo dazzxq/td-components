@@ -2103,7 +2103,16 @@
       "light": "rgb(37, 99, 235)",
       "dark": "rgb(75, 141, 248)",
       "why": "v0.58.0 floating label: focused label colour (= --td-accent — text ≥ 4.7:1; the focus border colour is only ≥ 3:1)"
-    }
+    },
+    "--td-cal-cell": { "light": "36px", "dark": "36px", "why": "v0.60.0: day cell height / width of the td-datetime-picker calendar (36px; 44px = --td-touch-min on coarse pointers)" },
+    "--td-cal-fg": { "light": "rgb(28, 28, 30)", "dark": "rgb(245, 245, 247)", "why": "v0.60.0: day / header ink of the calendar (= --td-color-text)" },
+    "--td-cal-focus": { "light": "rgb(70, 122, 238)", "dark": "rgb(102, 158, 249)", "why": "v0.60.0: focus outline of calendar cells (= --td-field-focus)" },
+    "--td-cal-hover-bg": { "light": "rgba(0, 0, 0, 0.05)", "dark": "rgba(255, 255, 255, 0.06)", "why": "v0.60.0: hover fill of calendar cells (= --td-color-hover)" },
+    "--td-cal-muted-fg": { "light": "rgb(107, 107, 115)", "dark": "rgb(172, 172, 180)", "why": "v0.60.0: outside-month, weekday head, unavailable days (= --td-color-text-muted, 5.28 light / 7.68 dark on the popover surface)" },
+    "--td-cal-pad": { "light": "0.75rem", "dark": "0.75rem", "why": "v0.60.0: padding of the calendar popover" },
+    "--td-cal-selected-bg": { "light": "rgb(24, 24, 27)", "dark": "rgb(244, 244, 245)", "why": "v0.60.0: selected day fill (= --td-btn-primary-bg, follows the site primary)" },
+    "--td-cal-selected-fg": { "light": "rgb(255, 255, 255)", "dark": "rgb(24, 24, 27)", "why": "v0.60.0: selected day ink (= --td-btn-primary-fg, 17.7 light / 16.1 dark)" },
+    "--td-cal-today-ring": { "light": "rgb(107, 107, 115)", "dark": "rgb(172, 172, 180)", "why": "v0.60.0: the ring around today (= --td-color-text-muted, >= 3:1 non-text)" }
   },
   "lightDeltas": {
     "--td-table-check-border": {

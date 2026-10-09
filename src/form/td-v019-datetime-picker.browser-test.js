@@ -17,10 +17,23 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
 const settle = async () => { await frame(); await frame(); await frame(); };
 const trig = (el) => el.querySelector('.td-dtp__trigger');
-const openModal = () => [...document.querySelectorAll('.td-modal')].find((m) => m.getAttribute('data-state') !== 'closing') || null;
-const panel = () => { const m = openModal(); return m ? m.querySelector('.td-dtp-panel') : null; };
+// v0.60.0: the dialog is the calendar. Where the picker "opens" = the cell that holds the roving tab stop of the view it
+// opens on (days for date / datetime, months for month, years for year); `field(part).value` reads it as before.
+const panel = () => [...document.querySelectorAll('.td-dtp-pop')].find((p) => !p.closest('.td-modal[data-state="closing"]')) || null;
 const wheel = (part) => panel().querySelector(`.td-dtp-wheel__list[data-part="${part}"] [aria-selected="true"]`).getAttribute('data-value');
-const field = (part) => panel().querySelector(`.td-dtp-panel__input[data-part="${part}"]`);
+const focusDate = () => {
+  const c = panel().querySelector('.td-cal');
+  const v = c.getAttribute('data-view');
+  if (v === 'days') {
+    const [y, m, d] = c.querySelector('.td-cal__day[tabindex="0"]').getAttribute('data-date').split('-').map(Number);
+    return { y, m, d };
+  }
+  if (v === 'months') {
+    return { y: Number(c.querySelector('[aria-live]').textContent.replace(/\D/g, '')), m: Number(c.querySelector('.td-cal__cells[data-kind="months"] [tabindex="0"]').getAttribute('data-month')) };
+  }
+  return { y: Number(c.querySelector('.td-cal__cells[data-kind="years"] [tabindex="0"]').getAttribute('data-year')) };
+};
+const field = (part) => ({ get value() { return String(focusDate()[{ year: 'y', month: 'm', day: 'd' }[part]]); } });
 async function open(el) {
   trig(el).click();
   await settle();
@@ -34,7 +47,7 @@ async function close() {
 afterEach(async () => {
   TdModal.closeAll();
   host.innerHTML = '';
-  document.querySelectorAll('body > .td-modal').forEach((m) => m.remove());
+  document.querySelectorAll('body > .td-modal, body > .td-dtp-pop').forEach((m) => m.remove());
   await wait(0);
 });
 
@@ -93,7 +106,6 @@ describe('v0.19.0 G6 — default open position = today clamped to min–max', ()
     const p = mount('<td-datetime-picker id="p" mode="date" min="1950-01-01"></td-datetime-picker>');
     await open(p);
     expect({ y: field('year').value, m: field('month').value, d: field('day').value }).to.deep.equal({ y: Y, m: M, d: D });
-    expect(field('year').min).to.equal('1950'); // the range still reaches back to min
   });
 
   it('every mode opens at today without open-at (min before 2000)', async () => {

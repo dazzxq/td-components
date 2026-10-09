@@ -2,9 +2,12 @@ import { TdModal } from '../feedback/td-modal.js';
 import { MODE_PARTS } from '../utils/datetime.js';
 
 /**
- * INTERNAL (not exported from the package): the "one-moment editor" shared by `<td-datetime-picker>` (one editor) and
- * `<td-datetime-range>` (two editors, v0.40.0). Extracted from the picker's `_buildPanel` / `_buildTimeGroup` /
- * `_buildWheel` / `_refresh` / wheel intro without any behaviour change (plan v0.39.0-filters-range QĐ 17, M1).
+ * INTERNAL (not exported from the package). **LEGACY since v0.60.0 — used by `<td-datetime-range>` ONLY (two editors, one per
+ * side), until the range gets the calendar in v0.61.0, when this file and the `.td-dtp-panel*` CSS go.** `<td-datetime-picker>`
+ * no longer imports it: its dialog is the calendar (src/form/calendar-grid.js, src/form/time-wheels.js). Frozen on purpose —
+ * the range dialog is byte-identical to v0.59.0 (except the year field's min / max, plan v0.60.0 B4).
+ * It was the "one-moment editor" shared by the picker and the range (v0.40.0), extracted from the picker's `_buildPanel` /
+ * `_buildTimeGroup` / `_buildWheel` / `_refresh` / wheel intro without any behaviour change (plan v0.39.0-filters-range QĐ 17).
  *
  * DOM (built with DOM APIs — no HTML string, no trusted hatch; `{p}` = the caller's unique prefix):
  *   <div class="td-dtp-panel" data-mode="{mode}">

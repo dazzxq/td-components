@@ -50,7 +50,11 @@ const MIME = { '.js': 'text/javascript', '.json': 'application/json', '.svg': 'i
 const TOL = 1;
 const SHOTS = process.env.TD_FOUC_SHOTS || '';
 const PKG = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
-const FIXTURE = readFileSync(join(ROOT, 'test/ssr/fixtures/fouc.html'), 'utf8');
+// v0.60.0 (plan v0.60.0-calendar-picker B6): fouc.html holds what php/td.php prints NOW (datetime-picker@2); the dtp-*
+// sections of v0.59.0 (datetime-picker@1, implicit native min / max 2000–2099) are FROZEN in a second file as dtp1-* —
+// a page rendered by an old td.php during a rolling upgrade must keep the same pre-upgrade parity.
+const FIXTURE = `${readFileSync(join(ROOT, 'test/ssr/fixtures/fouc.html'), 'utf8').replace(/\n+$/, '')}\n${
+  readFileSync(join(ROOT, 'test/ssr/fixtures/fouc-datetime-picker.v1.html'), 'utf8')}`;
 const TAILWIND = join(ROOT, 'test/csp/fixture/tailwind.css');
 
 /**
@@ -66,9 +70,16 @@ const ALL = [...CASES.keys()];
 const AFFECTED = ALL.filter((id) => !CASES.get(id).kind.startsWith('guard'));
 const SELECTS = ['dd-n', 'dd-n-ph', 'dd-n-nolabel', 'dd-n-req', 'dd-n-dis', 'dd-n-search', 'dd-n-long', 'dd-e', 'dd-e-ph', 'dd-e-dis', 'ts-n', 'ts-e'];
 // v0.56.0: td_datetime_picker / td_date (the native input styled like the trigger, ADR 0025 kind (a))
-const DTP = ['dtp-date', 'dtp-datetime', 'dtp-dis', 'dtp-empty', 'dtp-help', 'dtp-err', 'dtp-narrow',
+const DTP2 = ['dtp-date', 'dtp-datetime', 'dtp-dis', 'dtp-empty', 'dtp-help', 'dtp-err', 'dtp-narrow',
   // v0.59.0 clearable (plan v0.59.0-dsuite-small QĐ E1d)
   'dtp-clear-filled', 'dtp-clear-empty', 'dtp-clear-required', 'dtp-clear-narrow'];
+// v0.60.0: the same cases as datetime-picker@1 printed them (frozen), `dtp1-*`
+const DTP = [...DTP2, ...DTP2.map((id) => id.replace(/^dtp-/, 'dtp1-'))];
+for (const id of DTP) if (!CASES.has(id)) throw new Error(`ssr-fouc: fixture case ${id} is missing`);
+for (const id of DTP) {
+  const want = id.startsWith('dtp1-') ? 'datetime-picker@1' : 'datetime-picker@2';
+  if (!CASES.get(id).html.includes(`data-td-ssr="${want}"`)) throw new Error(`ssr-fouc: ${id} is not ${want} markup`);
+}
 const FIELDS = [...SELECTS, 'ts-n-multi', 'ts-e-multi', 'dtr-date', 'dtr-dis', 'dtr-empty', 'dtr-open-end', ...DTP];
 
 // v0.59.1: td_toggle / td_checkbox label_position=start (also run on touch and in RTL)

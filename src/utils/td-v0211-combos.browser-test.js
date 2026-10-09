@@ -601,9 +601,12 @@ describe('v0.21.1 regressions — combinations the audit found OK', () => {
     const trig = form.querySelector('.td-dtp__trigger');
     await sendMouse({ type: 'click', position: center(trig) });
     await wait(600);
-    expect(TdModalStackManager.stack.length).to.equal(2);
+    // v0.60.0: at ≥ 720 px the picker is a popover (a floating layer over the modal), not a second modal
+    const popOpen = () => !!document.querySelector('.td-dtp-pop') || TdModalStackManager.stack.length === 2;
+    expect(popOpen()).to.equal(true);
     await sendKeys({ press: 'Escape' });
     await wait(400);
+    expect(popOpen()).to.equal(false);
     expect(TdModalStackManager.stack.length).to.equal(1);
     expect(TdModal._isOpen(id)).to.equal(true);
     expect(document.activeElement === trig).to.equal(true);

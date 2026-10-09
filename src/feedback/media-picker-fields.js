@@ -45,7 +45,7 @@ export const FIELD_LABELS = {
   createError: 'Không thêm được lựa chọn.',
 };
 
-/** Year range of the date control (the datetime picker defaults to 2000–2099). */
+/** Year range of the date control (explicit bounds; since v0.60.0 the picker itself allows years 1–9999 without them). */
 const DATE_MIN = '1900-01-01';
 const DATE_MAX = '2199-12-31';
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;

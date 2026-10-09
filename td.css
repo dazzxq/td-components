@@ -8663,6 +8663,430 @@
 	}
 }
 
+/* ---- src/styles/components/calendar.css ---- */
+/*
+ * The calendar dialog of td-datetime-picker (src/form/td-datetime-picker.js, src/form/calendar-grid.js, src/form/time-wheels.js)
+ * — plan v0.60.0-calendar-picker (C2, C6, C7), ADR 0032. Blocks: .td-dtp-pop (the popover on <body> ≥ 720 px; `--sheet` =
+ * the same tree inside the TdModal bottom sheet), .td-cal (the month / year / day grids). The hour / minute wheels reuse
+ * `.td-dtp-wheel*` of datetime-picker.css.
+ * Minimal surfaces (ADR 0011): the popover is a small popup → `td-glass-surface td-glass-surface--strong` (set by the
+ * markup); cells are plain fills; one ring marks today, one fill marks the selection; hover = a different solid fill;
+ * pressed = colour only. State is in aria-* / data-* / [hidden]; JS writes geometry through CSSOM only (placeFloating).
+ * Touch (ADR 0019): ≥ 44 px cells on a coarse pointer; hover only inside the fine-pointer gate.
+ * Colours are `var()` of existing theme tokens — no new theme token (src/theme/tokens.js and ALGORITHM_VERSION unchanged).
+ */
+@layer td.tokens {
+	:root {
+		--td-cal-cell: 36px;                                       /* day cell height / width (44px on coarse pointers) */
+		--td-cal-pad: var(--td-space-sm);                          /* popover padding */
+	}
+
+	@media (pointer: coarse) {
+		:root {
+			--td-cal-cell: var(--td-touch-min);
+		}
+	}
+
+	/* colour tokens re-resolve in every theme scope (ADR 0020) */
+	:root, [data-td-theme] {
+		--td-cal-fg: var(--td-color-text);
+		--td-cal-muted-fg: var(--td-color-text-muted);             /* outside the month, weekday heads, unavailable days */
+		--td-cal-hover-bg: var(--td-color-hover);
+		--td-cal-selected-bg: var(--td-btn-primary-bg);
+		--td-cal-selected-fg: var(--td-btn-primary-fg);
+		--td-cal-today-ring: var(--td-color-text-muted);           /* ≥ 3:1 on the popover surface, both themes */
+		--td-cal-focus: var(--td-field-focus);
+	}
+}
+
+@layer td.component {
+	/* ---- Popover / sheet shell ---- */
+	.td-dtp-pop {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: var(--td-z-popover);
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-xs);
+		inline-size: calc(7 * var(--td-cal-cell) + 2 * var(--td-cal-pad) + 2px);
+		/* a static backstop for the first frame (the JS sets the exact max-height from the visual viewport): the viewport
+		   minus the margins and the safe-area insets (a notch / home bar in landscape) */
+		max-inline-size: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+		max-block-size: calc(100vh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+		max-block-size: calc(100dvh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+		padding: var(--td-cal-pad);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-cal-fg);
+		border-radius: var(--td-glass-radius);
+		outline: none;
+	}
+
+	.td-dtp-pop *,
+	.td-dtp-pop *::before {
+		box-sizing: border-box;
+	}
+
+	/* fade in only (ADR 0011 rule 4) */
+	.td-dtp-pop[data-state="open"] {
+		opacity: 1;
+		transition: opacity var(--td-glass-dur) var(--td-glass-ease);
+	}
+
+	@starting-style {
+		.td-dtp-pop[data-state="open"] {
+			opacity: 0;
+		}
+	}
+
+	/* inside the bottom sheet: the same tree, in the flow, no surface of its own (the modal dialog is the surface) */
+	.td-dtp-pop--sheet {
+		position: static;
+		inline-size: auto;
+		max-inline-size: none;
+		padding: 0;
+		border-radius: 0;
+	}
+
+	/* the sheet's side padding shrinks just enough for seven ≥ 44 px cells on a 320 px phone (M0: 4 px at 320, 24 px from 360) */
+	.td-modal__body:has(> .td-dtp-pop--sheet) {
+		padding-inline: clamp(4px, calc((100vw - 7 * var(--td-touch-min) - 2px) / 2), var(--td-modal-pad-x));
+	}
+
+	/* probe: its computed padding is the safe-area inset (read by the picker to keep the popover in the safe rectangle) */
+	.td-dtp-pop__inset {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 0;
+		height: 0;
+		padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+		margin: 0;
+		pointer-events: none;
+		visibility: hidden;
+	}
+
+	/* the ONLY scrolling part (a short viewport): the actions below stay in view */
+	.td-dtp-pop__scroll {
+		display: flex;
+		flex: 1 1 auto;
+		flex-direction: column;
+		gap: var(--td-space-sm);
+		min-block-size: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+	}
+
+	.td-dtp-pop__actions {
+		display: flex;
+		flex: none;
+		gap: var(--td-space-sm);
+		justify-content: flex-end;
+		padding-block-start: var(--td-space-2xs);
+	}
+
+	/* the modal body is the scroller of the sheet: the actions stay pinned at its bottom edge */
+	.td-dtp-pop--sheet .td-dtp-pop__actions {
+		position: sticky;
+		inset-block-end: 0;
+		padding-block: var(--td-space-sm);
+		background: var(--td-glass-solid);
+	}
+
+	.td-dtp-pop__actions .td-btn[aria-disabled="true"] {
+		cursor: not-allowed;
+	}
+
+	.td-dtp-pop__time {
+		min-inline-size: 0;
+	}
+
+	.td-dtp-pop__wheels {
+		display: flex;
+		gap: var(--td-space-sm);
+		align-items: center;
+		justify-content: center;
+	}
+
+	.td-dtp-pop__error {
+		margin: 0;
+		font-size: var(--td-text-xs);
+		color: var(--td-field-error);
+	}
+
+	.td-dtp-pop__error[hidden] {
+		display: none;
+	}
+
+	/* ---- Calendar ---- */
+	.td-cal {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-2xs);
+		min-inline-size: 0;
+	}
+
+	.td-cal__head {
+		display: flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.td-cal__titles {
+		display: flex;
+		flex: 1 1 auto;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		justify-content: center;
+		min-inline-size: 0;
+	}
+
+	.td-cal__nav,
+	.td-cal__title {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-block-size: var(--td-cal-cell);
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		color: var(--td-cal-fg);
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-radius-md);
+		outline: 2px solid transparent;
+		outline-offset: -2px;
+		-webkit-tap-highlight-color: transparent;
+		touch-action: manipulation; /* ‹ › are pressed again and again: no double-tap zoom (design/touch.md) */
+	}
+
+	.td-cal__nav {
+		flex: none;
+		inline-size: var(--td-cal-cell);
+	}
+
+	.td-cal__title {
+		min-inline-size: 0;
+		padding-inline: var(--td-space-sm);
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-semibold);
+		white-space: nowrap;
+	}
+
+	.td-cal__title[aria-pressed="true"] {
+		background: var(--td-cal-hover-bg);
+	}
+
+	.td-cal__nav[aria-disabled="true"] {
+		color: var(--td-cal-muted-fg);
+		cursor: not-allowed;
+	}
+
+	.td-cal__nav-icon {
+		display: inline-flex;
+	}
+
+	.td-cal__heading {
+		min-inline-size: 0;
+		padding-inline: var(--td-space-sm);
+		font-weight: var(--td-fw-semibold);
+		white-space: nowrap;
+	}
+
+	.td-cal__title[hidden],
+	.td-cal__heading[hidden],
+	.td-cal__days[hidden],
+	.td-cal__cells[hidden] {
+		display: none;
+	}
+
+	/* day grid */
+	.td-cal__grid {
+		inline-size: 100%;
+		table-layout: fixed;
+		border-spacing: 0;
+		border-collapse: separate;
+	}
+
+	.td-cal__weekday {
+		block-size: var(--td-cal-cell);
+		padding: 0;
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-cal-muted-fg);
+		text-align: center;
+		vertical-align: middle;
+	}
+
+	.td-cal__day,
+	.td-cal__cell {
+		padding: 0;
+		font-size: var(--td-text-sm);
+		font-variant-numeric: tabular-nums;
+		color: var(--td-cal-fg);
+		text-align: center;
+		vertical-align: middle;
+		cursor: pointer;
+		user-select: none;
+		border-radius: var(--td-radius-md);
+		outline: 2px solid transparent;
+		outline-offset: -2px;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-cal__day {
+		block-size: var(--td-cal-cell);
+	}
+
+	/* month / year grids: 4 × 3, as tall as the day grid (header row + six weeks) so the popover keeps its height */
+	.td-cal__cells {
+		display: flex;
+		flex-direction: column;
+		min-block-size: calc(7 * var(--td-cal-cell));
+	}
+
+	.td-cal__row {
+		display: grid;
+		flex: 1 1 0;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		min-block-size: var(--td-cal-cell);
+	}
+
+	.td-cal__cell {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.td-cal__cell[aria-hidden="true"],
+	.td-cal__day[aria-hidden="true"] {
+		cursor: default;
+	}
+
+	/* outside the month: quieter, still a real day */
+	.td-cal__day[data-outside] {
+		color: var(--td-cal-muted-fg);
+	}
+
+	/* today: one ring */
+	.td-cal__day[aria-current="date"],
+	.td-cal__cell[data-today] {
+		box-shadow: inset 0 0 0 1px var(--td-cal-today-ring);
+	}
+
+	/* selected: a solid fill (later than outside / today, so it wins) */
+	.td-cal__day[aria-selected="true"],
+	.td-cal__cell[aria-selected="true"] {
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-cal-selected-fg);
+		background: var(--td-cal-selected-bg);
+	}
+
+	/* unavailable (outside min–max): muted + struck through — not by colour alone */
+	.td-cal__day[aria-disabled="true"],
+	.td-cal__cell[aria-disabled="true"] {
+		color: var(--td-cal-muted-fg);
+		text-decoration: line-through;
+		cursor: not-allowed;
+	}
+
+	.td-cal__day[aria-selected="true"][aria-disabled="true"],
+	.td-cal__cell[aria-selected="true"][aria-disabled="true"] {
+		color: var(--td-cal-selected-fg);
+	}
+
+	.td-cal__nav:focus-visible,
+	.td-cal__title:focus-visible,
+	.td-cal__day:focus-visible,
+	.td-cal__cell:focus-visible {
+		outline-color: var(--td-cal-focus);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-cal__nav:hover:not([aria-disabled="true"]),
+		.td-cal__title:hover,
+		.td-cal__day:hover:not([aria-selected="true"], [aria-disabled="true"], [aria-hidden="true"]),
+		.td-cal__cell:hover:not([aria-selected="true"], [aria-disabled="true"], [aria-hidden="true"]) {
+			color: var(--td-cal-fg);
+			background: var(--td-cal-hover-bg);
+		}
+	}
+
+	/* pressed (ADR 0019, src/utils/press.js): colour only, at once; the muted ink goes to the full text colour (4.0 → 12.9) */
+	.td-cal__nav:is(:active, [data-td-pressed]):not([aria-disabled="true"]),
+	.td-cal__title:is(:active, [data-td-pressed]),
+	.td-cal__day:is(:active, [data-td-pressed]):not([aria-selected="true"], [aria-disabled="true"], [aria-hidden="true"]),
+	.td-cal__cell:is(:active, [data-td-pressed]):not([aria-selected="true"], [aria-disabled="true"], [aria-hidden="true"]) {
+		color: var(--td-cal-fg);
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-dtp-pop[data-state="open"] {
+			transition: opacity var(--td-glass-dur) linear;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-dtp-pop {
+			border: 1px solid CanvasText;
+		}
+
+		.td-cal__day[aria-selected="true"],
+		.td-cal__cell[aria-selected="true"] {
+			color: HighlightText;
+			background: Highlight;
+			forced-color-adjust: none;
+		}
+
+		.td-cal__day[aria-current="date"],
+		.td-cal__cell[data-today] {
+			outline: 1px solid CanvasText;
+			outline-offset: -1px;
+			box-shadow: none;
+		}
+
+		.td-cal__day[aria-disabled="true"],
+		.td-cal__cell[aria-disabled="true"],
+		.td-cal__nav[aria-disabled="true"] {
+			color: GrayText;
+		}
+
+		.td-cal__day[data-outside] {
+			color: GrayText;
+		}
+
+		.td-cal__nav:focus-visible,
+		.td-cal__title:focus-visible,
+		.td-cal__day:focus-visible,
+		.td-cal__cell:focus-visible {
+			outline: 2px solid Highlight;
+		}
+
+		.td-cal__day[aria-selected="true"]:focus-visible,
+		.td-cal__cell[aria-selected="true"]:focus-visible {
+			outline-color: CanvasText;
+		}
+
+		.td-cal__title[aria-pressed="true"] {
+			border: 1px solid CanvasText;
+		}
+
+		.td-cal__nav:is(:active, [data-td-pressed]),
+		.td-cal__title:is(:active, [data-td-pressed]),
+		.td-cal__day:is(:active, [data-td-pressed]),
+		.td-cal__cell:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
+}
+
 /* ---- src/styles/components/sample.css ---- */
 /*
  * td-sample (src/base/sample/td-sample.js) — the demo component for TdBaseElement (attribute sync, listen(), emit(),

@@ -27,6 +27,7 @@
     "components/dropdown.css",
     "components/table.css",
     "components/datetime-picker.css",
+    "components/calendar.css",
     "components/sample.css",
     "components/form-validation.css",
     "components/menu.css",

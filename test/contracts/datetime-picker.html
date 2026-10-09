@@ -1,7 +1,7 @@
 <!-- td-datetime-picker markup contract (plan v0.10.0-batch4 item 1, inventory §7.1). Explicit host ids →
      deterministic {host}-trigger / {host}-dtp-* ids. Templates 1–3 = the host tree (el.firstElementChild).
-     Template 4 (`data-portal`) = the dialog body of an OPEN picker (compare the .td-dtp-panel inside the TdModal root,
-     not the host). Checked by src/form/td-batch4-datetime-picker.browser-test.js. -->
+     v0.60.0: the old template 4 (the dialog body with three number fields) is gone — the calendar dialog is covered by
+     test/engines/calendar-a11y.spec.mjs (ariaSnapshot of the dialog). Checked by src/form/td-batch4-datetime-picker.browser-test.js. -->
 <template data-component="td-datetime-picker"
           data-markup='<td-datetime-picker id="dtp-c" label="Hẹn giờ" required value="15/06/2026 - 10:30"></td-datetime-picker>'>
   <div class="td-dtp" data-state="closed">
@@ -20,56 +20,5 @@
   <div class="td-dtp" data-state="closed">
     <label class="td-field__label" id="dtp-e-label" for="dtp-e-trigger">Hạn</label>
     <button type="button" class="td-dtp__trigger" id="dtp-e-trigger" role="combobox" aria-haspopup="dialog" aria-expanded="false" disabled aria-invalid="true" aria-errormessage="dtp-e-error" aria-describedby="dtp-e-error"><span class="td-dtp__value" data-placeholder>dd/mm/yyyy - hh:mm</span><span class="td-dtp__icon" data-td-icon="calendar" aria-hidden="true"><svg aria-hidden="true" class="td-icon td-icon--m" data-icon="calendar"></svg></span></button>
-  </div>
-</template>
-<template data-component="td-datetime-picker" data-portal
-          data-markup='<td-datetime-picker id="dtp-m" minute-step="30" value="15/06/2026 - 10:30"></td-datetime-picker>'>
-  <div class="td-dtp-panel">
-    <fieldset class="td-dtp-panel__group">
-      <legend class="td-dtp-panel__legend">Ngày</legend>
-      <div class="td-dtp-panel__fields">
-        <div class="td-dtp-panel__field"><label class="td-dtp-panel__label" for="dtp-m-dtp-day">Ngày</label><input class="td-dtp-panel__input" id="dtp-m-dtp-day" type="number" inputmode="numeric" min="1" max="31" data-part="day"></div>
-        <div class="td-dtp-panel__field"><label class="td-dtp-panel__label" for="dtp-m-dtp-month">Tháng</label><input class="td-dtp-panel__input" id="dtp-m-dtp-month" type="number" inputmode="numeric" min="1" max="12" data-part="month"></div>
-        <div class="td-dtp-panel__field"><label class="td-dtp-panel__label" for="dtp-m-dtp-year">Năm</label><input class="td-dtp-panel__input" id="dtp-m-dtp-year" type="number" inputmode="numeric" min="2000" max="2099" data-part="year"></div>
-      </div>
-    </fieldset>
-    <div class="td-dtp-panel__group" role="group" aria-labelledby="dtp-m-dtp-time">
-      <p class="td-dtp-panel__legend" id="dtp-m-dtp-time">Giờ</p>
-      <div class="td-dtp-panel__wheels">
-        <div class="td-dtp-wheel"><div class="td-dtp-wheel__list" role="listbox" id="dtp-m-dtp-hour" aria-label="Giờ" tabindex="0" data-part="hour" aria-activedescendant="dtp-m-dtp-hour-10">
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-0" aria-selected="false" data-value="0">00</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-1" aria-selected="false" data-value="1">01</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-2" aria-selected="false" data-value="2">02</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-3" aria-selected="false" data-value="3">03</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-4" aria-selected="false" data-value="4">04</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-5" aria-selected="false" data-value="5">05</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-6" aria-selected="false" data-value="6">06</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-7" aria-selected="false" data-value="7">07</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-8" aria-selected="false" data-value="8">08</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-9" aria-selected="false" data-value="9">09</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-10" aria-selected="true" data-value="10">10</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-11" aria-selected="false" data-value="11">11</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-12" aria-selected="false" data-value="12">12</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-13" aria-selected="false" data-value="13">13</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-14" aria-selected="false" data-value="14">14</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-15" aria-selected="false" data-value="15">15</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-16" aria-selected="false" data-value="16">16</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-17" aria-selected="false" data-value="17">17</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-18" aria-selected="false" data-value="18">18</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-19" aria-selected="false" data-value="19">19</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-20" aria-selected="false" data-value="20">20</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-21" aria-selected="false" data-value="21">21</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-22" aria-selected="false" data-value="22">22</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-hour-23" aria-selected="false" data-value="23">23</div>
-        </div></div>
-        <span class="td-dtp-wheel__sep" aria-hidden="true">:</span>
-        <div class="td-dtp-wheel"><div class="td-dtp-wheel__list" role="listbox" id="dtp-m-dtp-minute" aria-label="Phút" tabindex="0" data-part="minute" aria-activedescendant="dtp-m-dtp-minute-30">
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-minute-0" aria-selected="false" data-value="0">00</div>
-          <div class="td-dtp-wheel__option" role="option" id="dtp-m-dtp-minute-30" aria-selected="true" data-value="30">30</div>
-        </div></div>
-      </div>
-    </div>
-    <p class="td-dtp-panel__preview">15/06/2026 - 10:30</p>
-    <p class="td-dtp-panel__error" id="dtp-m-dtp-error" role="alert" hidden></p>
   </div>
 </template>

@@ -84,7 +84,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_filter_chips` (0.39.0) | **luôn** host `<td-filter-chips data-td-ssr="filter-chips@1">` chứa sẵn đúng cây component (nhóm, mỗi chip một `li` với nhãn / giá trị / ×, "Xoá tất cả", live region) | Không (× có `href` là **link** chạy ngay; × không link thì vô hình, giữ chỗ) | **Có** — nạp module `filter-chips`: nhận **tại chỗ** |
 | `td_steps` (0.45.0) | **luôn** host `<td-steps data-td-ssr="steps@1">` chứa sẵn đúng cây component (mỗi bước một `li` với marker / nhãn / chữ trạng thái / mô tả, dòng tóm tắt) | Không (bước có `href` là **link**; bước bấm được không link in như bước thường) | **Có** — nạp module `steps`: nhận **tại chỗ** |
 | `td_timeline` (0.45.0) | **luôn** host `<td-timeline data-td-ssr="timeline@1" time-zone="…">` chứa sẵn nhóm ngày, mục, `<details>` chi tiết, "Xem thêm" (link) | Không (chi tiết mở bằng `<details>`, "Xem thêm" là link `more_href`) | **Có** — nạp module `timeline`: nhận **tại chỗ** (tính lại chữ nhãn ngày) |
-| `td_datetime_picker` / `td_date` (0.56.0) | **luôn** host `<td-datetime-picker data-td-ssr="datetime-picker@1">` + **một** `<input type="date\|datetime-local">` **native** (`name`, `min` / `max`, `required`, `disabled`) tạo dáng như trigger + trigger ẩn | Không (ô ngày native chạy ngay) | **Có** — nạp module `datetime-picker`: nhận **tại chỗ**, giữ giá trị đã sửa, gỡ ô native (cùng hộp: không xô lệch) |
+| `td_datetime_picker` / `td_date` (0.56.0; hợp đồng `@2` từ 0.60.0) | **luôn** host `<td-datetime-picker data-td-ssr="datetime-picker@2">` + **một** `<input type="date\|datetime-local">` **native** (`name`, `min` / `max`, `required`, `disabled`) tạo dáng như trigger + trigger ẩn | Không (ô ngày native chạy ngay) | **Có** — nạp module `datetime-picker`: nhận **tại chỗ**, giữ giá trị đã sửa, gỡ ô native (cùng hộp: không xô lệch) |
 | `td_datetime_range` (0.40.0) | **luôn** host `<td-datetime-range data-td-ssr="datetime-range@1">` + hai `<input type="date\|datetime-local">` **native** (`{name}[start]` / `{name}[end]`, `min` / `max`, `required` theo mốc) + trigger ẩn | Không (hai ô ngày native chạy ngay) | **Có** — nạp module `datetime-range`: nhận **tại chỗ**, giữ giá trị đã sửa, gỡ ô native (0.51.1: khi JS bật, hai ô nằm trong một hộp giống trigger — không xô lệch) |
 | `td_diff` / `td_diff_snapshots` (0.46.0) | **luôn** host `<td-diff data-td-ssr="diff@1">` chứa sẵn bảng so sánh đầy đủ (hàng không đổi / JSON / giá trị dài là `<details>` native) | Không (đọc được ngay, `<details>` mở được không cần JS) | **Có** — nạp module `diff`: nhận **tại chỗ** (không đọc dữ liệu ngược từ DOM) |
 | `td_check_matrix` (0.47.0) | **luôn** host `<td-check-matrix data-td-ssr="check-matrix@1" data="{JSON}">` + **form không JS đầy đủ**: một hidden `name[col]=""` mỗi cột (đầu), một checkbox `name[col][]=row` mỗi ô áp dụng được (ô khoá-tick: checkbox `disabled` + hidden ngay sau), `name[_v]=1` (cuối); ô hàng loạt / nút nhóm / chọn cột `disabled` | Không (form gửi đúng FormData của component, từng byte) | **Có** — nạp module `check-matrix`: so **từng node** với `data`, nhận **tại chỗ** (giữ ô đã tick trước khi JS tải), gỡ marker / hidden / sentinel |
@@ -124,7 +124,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.59.2/
+public/assets/vendor/td-components/0.60.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -132,7 +132,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.59.2';
+const TD_VERSION = '0.60.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -1652,13 +1652,13 @@ coi là lệch → render an toàn (vẫn đúng giá trị).
 <?= td_date('sinh_nhat', $user->birthday, ['label' => 'Ngày sinh', 'min' => '1900-01-01', 'helper_text' => 'Theo giấy tờ']) ?>
 ```
 
-**Một** ô ngày (hoặc ngày-giờ) của [Datetime picker](../components/datetime-picker.md) — hợp đồng `datetime-picker@1`,
-**luôn element** (như `td_datetime_range`). `td_date()` = `td_datetime_picker()` **ép** `mode = date`; `td_datetime_picker()`
+**Một** ô ngày (hoặc ngày-giờ) của [Datetime picker](../components/datetime-picker.md) — hợp đồng `datetime-picker@2`
+(0.60.0; 0.56–0.59 in `@1`, module 0.60 nhận **cả hai** — xem "Miền năm" bên dưới), **luôn element** (như `td_datetime_range`). `td_date()` = `td_datetime_picker()` **ép** `mode = date`; `td_datetime_picker()`
 mặc định `mode = datetime` **giống element** (không bẫy). Khác `td_field(type=date)`: đó là lịch của trình duyệt; đây là UI
 của kit (dd/mm/yyyy, hộp thoại, nhãn tiếng Việt, `min` / `max` của kit) — với JS; không JS vẫn là ô ngày native.
 
 ```
-<td-datetime-picker data-td-ssr="datetime-picker@1" id name mode [value label placeholder min max minute-step
+<td-datetime-picker data-td-ssr="datetime-picker@2" id name mode [value label placeholder min max minute-step
                     form-value-format open-at required disabled helper-text error-text aria-label] [attrs…]>
   <div class="td-dtp" data-state="closed">
     [<label class="td-field__label" id="{id}-label" for="{id}-native">nhãn[ *]</label>]
@@ -1696,7 +1696,7 @@ giới hạn như `td_datetime_range`.
 | `$value` | `dd/mm/yyyy[ - hh:mm]`, `yyyy-mm-dd`, `yyyy-mm-ddThh:mm[:ss]` hoặc DB `yyyy-mm-dd hh:mm[:ss]`; ngày không có / sai → **bỏ** (trống). `datetime` + chỉ ngày → 00:00. Host `value` = định dạng hiển thị (`15/06/2026`), ô native `yyyy-mm-dd` / `yyyy-mm-ddThh:mm` |
 | `mode` | `datetime` (mặc định `td_datetime_picker`) \| `date`; `month` / `year` → `date` + một `E_USER_WARNING` (Firefox / Safari không có ô native tháng). `td_date` luôn `date` |
 | `min`, `max` | cùng định dạng; in dạng native trên host **và** ô native (`max` chỉ ngày ở `datetime` = 23:59); sai → bỏ |
-| **Miền năm mặc định** | **không** `min` lẫn `max` → như picker: năm 2000–2099. Ô native nhận `min` / `max` **ngầm** (`2000-01-01` / `2099-12-31`; datetime `T00:00` / `T23:59`) — chỉ trên ô native, không in lên host. Giá trị server ngoài miền → **bỏ** + một `E_USER_WARNING` (không in giá trị thô). Có bound → miền theo bound; giá trị trong năm nhưng ngoài `min` / `max` được **giữ** (cả ô native lẫn element báo dưới / trên giới hạn) |
+| **Miền năm** (0.60.0, `datetime-picker@2`) | **không** `min` lẫn `max` → mọi ngày biểu diễn được: năm **1–9999** (như element). Không giá trị nào bị bỏ vì năm, không cảnh báo. Ô native: **không** `min` ngầm; `max` = của site, không có thì `9999-12-31` (datetime `9999-12-31T23:59`) — giới hạn biểu diễn của kit, chỉ trên ô native, không in lên host (ô ngày native không có `max` cho gõ năm 6 chữ số trên Chromium; element không đọc được giá trị đó). Giá trị ngoài `min` / `max` của site vẫn được **giữ** (cả ô native lẫn element báo dưới / trên giới hạn). **0.56–0.59 (`@1`)**: không bound → năm 2000–2099, ô native nhận `min` / `max` ngầm `2000-01-01` / `2099-12-31`, giá trị server ngoài miền bị bỏ + `E_USER_WARNING`. **Nâng cấp cuốn chiếu**: module 0.60 nhận tại chỗ markup `@1` lẫn `@2` (mỗi hợp đồng chỉ khớp ô native của chính nó); module < 0.60 gặp `@2` → render lại an toàn (giữ giá trị đang có trong ô native), và vẫn coi năm ngoài 2000–2099 là không hợp lệ cho tới khi module mới được nạp |
 | `required`, `disabled` | host + ô native + trigger (`aria-required`) + dấu `*` trong nhãn |
 | `label`, `placeholder`, `aria_label` | nhãn / chữ khi trống (mặc định `Td::DTP_LABELS` = `TdDatetimePicker.labels`) / tên khi không có nhãn (host + ô native) |
 | `minute_step` (1–30, chia hết 60), `form_value_format` (`iso` / `display` / `db`), `open_at` (`today` / `min` / `max` / một ngày) | attribute của host (`minute-step` → ô native `step` = phút × 60, chỉ `datetime`); sai → bỏ |

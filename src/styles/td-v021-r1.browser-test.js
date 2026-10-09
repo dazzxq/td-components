@@ -4,6 +4,7 @@ import '../form/td-button.js';
 import '../form/td-input-field.js';
 import '../form/td-dropdown.js';
 import '../form/td-datetime-picker.js';
+import '../form/td-datetime-range.js';
 import { TdModal } from '../feedback/td-modal.js';
 import { tdTooltip } from '../feedback/td-tooltip.js';
 
@@ -301,14 +302,15 @@ describe('v0.21.0 P8 — lighter field focus', () => {
     expect(sh).to.not.match(/0\.35\)/); // not the strong --td-focus-ring
   });
 
-  it('datetime picker panel number inputs use the same lighter ring', async () => {
-    const dtp = mount('<td-datetime-picker aria-label="Thời gian" value="15/06/2026 - 10:30"></td-datetime-picker>');
+  // v0.60.0: <td-datetime-picker> has no number fields any more; the old editor (and its ring) lives on in <td-datetime-range>
+  it('datetime range panel number inputs use the same lighter ring', async () => {
+    const dtp = mount('<td-datetime-range aria-label="Khoảng" start="15/06/2026" end="20/06/2026"></td-datetime-range>');
     try {
-      dtp.querySelector('.td-dtp__trigger').click();
+      dtp.querySelector('.td-dtr__trigger').click();
       await frames();
       await wait(350);
       const modal = [...document.querySelectorAll('.td-modal')].find((m) => m.getAttribute('data-state') !== 'closing');
-      const inputs = [...modal.querySelectorAll('.td-dtp-panel__input')];
+      const inputs = [...modal.querySelectorAll('.td-dtr-panel__side[data-side="start"] .td-dtp-panel__input')];
       expect(inputs.length).to.equal(3);
       for (const input of inputs) {
         expect(await tabTo(input), input.dataset.part).to.equal(true);

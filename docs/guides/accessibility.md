@@ -48,7 +48,7 @@ Trang này chia làm ba phần:
 |---|---|
 | `td-dropdown` (APG select-only combobox) | Trigger đóng: ↓/↑/Enter/Space mở, Home/End mở ở option đầu/cuối, gõ chữ = type-ahead. Đang mở: ↑/↓ (vòng), Home/End (chỉ trên trigger), PageUp/PageDown, Enter chọn (cả từ ô tìm), Alt+↑ chọn, Space trên trigger chọn/đóng, **Escape đóng + focus trigger**, Tab từ ô tìm về trigger, Tab trên trigger đóng và đi tiếp |
 | `td-chip-input` (APG combobox, list autocomplete) | Một tab stop (ô nhập). ↓ mở + di chuyển, Alt+↓ mở không di chuyển, ↑ di chuyển, Enter chọn option / khớp chính xác / tạo mới (`allow-create`), Escape đóng popup (popup đã đóng: xoá chữ), Backspace hoặc ← ở đầu ô → nút xoá của chip cuối. Trên nút xoá chip: ←/→/Home/End di chuyển, Delete/Backspace/Enter/Space xoá, → qua chip cuối hoặc Escape về ô nhập |
-| `td-datetime-picker` (APG date picker dialog) | Trigger: Enter/Space/↓/Alt+↓ mở (không bao giờ submit form). Trong dialog: focus bắt đầu ở ô ngày; mỗi wheel giờ/phút là một tab stop: ↑/↓ ±1, PageUp/PageDown ±6 giờ / ±15 phút, Home/End. "Chọn" xác nhận, **Escape / X / "Đóng" huỷ bản nháp**; focus về trigger |
+| `td-datetime-picker` (APG date picker dialog, 0.60.0) | Trigger: Enter/Space/↓/Alt+↓ mở (không bao giờ submit form), bấm lại khi đang mở thì đóng. Trong lịch: lưới ngày `<table role="grid">` là **một** tab stop; ←→ ±1 ngày, ↑↓ ±1 tuần, Home/End Thứ Hai/Chủ Nhật, PageUp/PageDown ±1 tháng, Shift+PageUp/PageDown ±1 năm, Enter/Space chọn; lưới tháng ±1/±3, lưới năm ±1/±3/±12/±120; vùng `aria-live=polite` đọc tháng/năm một lần; mỗi wheel giờ/phút là một tab stop (↑/↓ ±1, PageUp/PageDown ±6 giờ / ±15 phút, Home/End). `date`/`month`/`year` chọn là ghi; `datetime` "Chọn" xác nhận. **Escape đóng cả lịch ở mọi khung và huỷ bản nháp**; focus về trigger |
 
 Trong mọi popup trên, option **không bao giờ nhận focus thật**; control đang focus mang `aria-activedescendant`.
 
@@ -115,7 +115,7 @@ Nút chỉ có icon (`<td-button icon="…" aria-label="…">`, `TdMenu.button({
 
 | Tuỳ chọn người dùng | Kit làm gì |
 |---|---|
-| `prefers-reduced-motion: reduce` | Không co/giãn khi nhấn, không phóng to khi hiện, không nảy (overshoot); chuyển cảnh chỉ còn mờ dần ~120ms; knob toggle/slider không "nâng"; spinner overlay không quay; wheel datetime cuộn không animation. Mọi file CSS component có nhánh reduced-motion |
+| `prefers-reduced-motion: reduce` | Không co/giãn khi nhấn, không phóng to khi hiện, không nảy (overshoot); chuyển cảnh chỉ còn mờ dần ~120ms; knob toggle/slider không "nâng"; spinner overlay không quay; wheel datetime nhảy ngay khi bấm phím (lịch 0.60.0 không còn hiệu ứng cuộn từ 00 khi mở). Mọi file CSS component có nhánh reduced-motion |
 | `prefers-reduced-transparency: reduce` | Kính (glass) thành **nền đặc**, không blur, không sheen (hiện chỉ Chromium hỗ trợ query này) |
 | `<html data-td-glass="off">` | Công tắc tay cho site/người dùng, cùng hiệu ứng như trên — dùng cho Safari/iOS (không có query reduced-transparency) |
 | `prefers-contrast: more` | Bề mặt gần đen/trắng đặc, viền tương phản (`currentcolor`), không blur, không viền sáng, không gradient |

@@ -18,9 +18,9 @@ const pick = (attrs = '') => {
   document.body.appendChild(d);
   return d.firstElementChild;
 };
-const openModal = () => [...document.querySelectorAll('.td-modal')].find((m) => m.getAttribute('data-state') !== 'closing') || null;
-const panel = () => openModal().querySelector('.td-dtp-panel');
-const field = (part) => panel().querySelector(`.td-dtp-panel__input[data-part="${part}"]`);
+// v0.60.0: the dialog is the calendar; `calendar-day` = a cell of the day grid
+const panel = () => [...document.querySelectorAll('.td-dtp-pop')].find((p) => !p.closest('.td-modal[data-state="closing"]')) || null;
+const calendarMonth = () => panel().querySelector('[aria-live]').textContent;
 async function open(el) { el.querySelector('.td-dtp__trigger').click(); await frames(); }
 
 afterEach(async () => { TdModal.closeAll(); await wait(260); document.querySelectorAll('td-datetime-picker').forEach((p) => p.parentElement.remove()); });
@@ -36,38 +36,33 @@ describe('ISSUE-1 getters return "" when out of min/max', () => {
 });
 
 describe('ISSUE-2 one-sided bound outside 2000–2099', () => {
-  it('max=1990-12-31 alone: a 1985 value is valid and the year field range is possible', async () => {
+  it('max=1990-12-31 alone: a 1985 value is valid, the calendar opens on it and next-month stops at the bound', async () => {
     const el = pick('value="15/06/1985 - 10:30" max="1990-12-31"');
     expect(el.getValue()).to.equal('15/06/1985 - 10:30');
     await open(el);
-    const y = field('year');
-    expect(Number(y.min) <= Number(y.max)).to.equal(true);
-    expect(Number(y.max)).to.equal(1990);
+    expect(calendarMonth()).to.equal('Tháng 6 năm 1985');
+    panel().querySelector('[data-pick="year"]').click();
+    expect(panel().querySelector('.td-cal__cells[data-kind="years"] [data-year="1991"]').getAttribute('aria-disabled')).to.equal('true');
+    expect(panel().querySelector('.td-cal__cells[data-kind="years"] [data-year="1990"]').hasAttribute('aria-disabled')).to.equal(false);
   });
-  it('no bounds: the 2000–2099 default still applies', () => {
+  it('v0.60.0: no bounds = every year 1–9999 (the 2000–2099 default is gone); the calendar opens on the value', async () => {
     const el = pick('value="15/06/1985 - 10:30"');
-    expect(el.getValue()).to.equal('');
+    expect(el.getValue()).to.equal('15/06/1985 - 10:30');
+    expect(el.checkValidity()).to.equal(true);
+    await open(el);
+    expect(calendarMonth()).to.equal('Tháng 6 năm 1985');
+    expect(panel().querySelector('[data-dir="prev"]').hasAttribute('aria-disabled')).to.equal(false);
   });
 });
 
-describe('ISSUE-3 negative date-field values', () => {
-  it('-1 in the day field is validated as the day and clamped on change', async () => {
-    const el = pick('value="15/06/2026 - 10:30"');
-    await open(el);
-    const d = field('day');
-    d.value = '-1';
-    d.dispatchEvent(new Event('input', { bubbles: true }));
-    expect(d.getAttribute('aria-invalid')).to.equal('true');
-    d.dispatchEvent(new Event('change', { bubbles: true }));
-    expect(d.value).to.equal('1');
-  });
-});
+// ISSUE-3 (negative values typed in the day field) is gone with the typed fields: the calendar can only offer real days
+// (td-v060-calendar: bounds D6, year 0001 / 9999 ends).
 
 describe('ISSUE-4 label change while the dialog is open keeps focus', () => {
   it('focus lands on the new trigger', async () => {
     const el = pick('value="15/06/2026 - 10:30"');
     await open(el);
-    field('day').focus();
+    panel().querySelector('.td-cal__day[tabindex="0"]').focus();
     el.setAttribute('label', 'Mới');
     await frames();
     expect(document.activeElement === el.querySelector('.td-dtp__trigger')).to.equal(true);
@@ -87,19 +82,23 @@ describe('ISSUE-7 rapid reopen: unique control ids', () => {
   it('close then reopen within the exit delay → no duplicate ids', async () => {
     const el = pick('value="15/06/2026 - 10:30"');
     await open(el);
-    TdModal.closeAll();
-    await open(el); // the closing dialog is still in the DOM
-    const ids = [...document.querySelectorAll('.td-modal [id]')].map((x) => x.id);
+    el.querySelector('.td-dtp__trigger').click(); // closes (the trigger toggles)
+    await open(el); // opens again at once
+    const ids = [...document.querySelectorAll('.td-dtp-pop [id]')].map((x) => x.id);
     expect(new Set(ids).size).to.equal(ids.length);
   });
 });
 
 describe('impl-review round 2', () => {
-  it('ISSUE-9: changing max while open updates the year field bounds', async () => {
+  it('ISSUE-9: changing max while open re-evaluates the cells in place', async () => {
     const el = pick('value="15/06/2026 - 10:30" max="2030-12-31"');
     await open(el);
-    expect(field('year').max).to.equal('2030');
+    panel().querySelector('[data-pick="year"]').click();
+    const cell = (y) => panel().querySelector(`.td-cal__cells[data-kind="years"] [data-year="${y}"]`);
+    expect(cell(2028).hasAttribute('aria-disabled')).to.equal(false);
+    el.setAttribute('max', '2026-12-31');
+    expect(cell(2028).getAttribute('aria-disabled')).to.equal('true');
     el.setAttribute('max', '2040-12-31');
-    expect(field('year').max).to.equal('2040');
+    expect(cell(2028).hasAttribute('aria-disabled')).to.equal(false);
   });
 });

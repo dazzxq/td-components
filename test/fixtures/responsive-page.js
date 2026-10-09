@@ -99,6 +99,7 @@ const controls = (p) => `
   <td-input-field label="Họ và tên khách hàng" placeholder="Nhập họ tên đầy đủ…" required></td-input-field>
   <td-dropdown id="${p}-dd" label="Chuyên mục" placeholder="— Chọn chuyên mục sản phẩm —" searchable></td-dropdown>
   <td-datetime-picker id="${p}-dtp" label="Thời điểm đăng" placeholder="dd/mm/yyyy - hh:mm"></td-datetime-picker>
+  <td-datetime-picker id="${p}-dtp-date" mode="date" label="Ngày giao" placeholder="dd/mm/yyyy"></td-datetime-picker>
   <td-datetime-range id="${p}-dtr" name="${p}-range" label="Khoảng ngày" mode="datetime" minute-step="15" start="29/09/2026 - 00:00" end="05/10/2026 - 23:45"></td-datetime-range>
   <td-chip-input id="${p}-chips" label="Vai trò" placeholder="Lọc vai trò…" selection-only select-all></td-chip-input>
   <td-tree-select id="${p}-ts" label="Danh mục" multiple allow-clear value='["ip16","mac"]'></td-tree-select>
