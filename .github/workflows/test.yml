@@ -37,15 +37,20 @@ jobs:
       - run: npx playwright-core install --with-deps chromium
       - run: npm run test:ci:static
 
-  # web-test-runner, three shards: the root config (Chromium), the `engines` group (Chromium / Firefox / WebKit), and every
-  # other group (scrollbars, ssr, pointer-n) one after another — `npm run test:browser` locally still runs them all.
+  # web-test-runner, five shards: the root config (Chromium), the `engines` group once per engine (TD_WTR_ENGINES), and
+  # every other group (scrollbars, ssr, pointer-n) one after another — `npm run test:browser` locally still runs them all.
   browser:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [default, engines, groups]
+        include:
+          - { shard: default, engines: 'chromium firefox webkit' }
+          - { shard: engines, engines: chromium }
+          - { shard: engines, engines: firefox }
+          - { shard: engines, engines: webkit }
+          - { shard: groups, engines: 'chromium firefox webkit' }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -53,9 +58,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright-core install --with-deps chromium firefox webkit
+      - run: npx playwright-core install --with-deps ${{ matrix.engines }}
       - if: matrix.shard != 'groups'
         run: npx web-test-runner --group ${{ matrix.shard }}
+        env:
+          TD_WTR_ENGINES: ${{ matrix.engines }}
       - if: matrix.shard == 'groups'
         run: npm run test:browser:groups
 
@@ -96,14 +103,17 @@ jobs:
       - run: npx playwright-core install --with-deps chromium firefox webkit
       - run: npm run ${{ matrix.gate }}
 
-  # v0.34.0 responsive gate, one engine per job. Screenshots (8 acceptance widths) are for humans, never compared.
+  # v0.34.0 responsive gate: Chromium (the most configurations) alone, WebKit + Firefox together. Screenshots (8 acceptance
+  # widths) are for humans, never compared.
   responsive:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        engine: [chromium, webkit, firefox]
+        include:
+          - { engine: chromium, name: chromium }
+          - { engine: 'webkit,firefox', name: webkit-firefox }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -111,26 +121,31 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright-core install --with-deps ${{ matrix.engine }}
+      - run: npx playwright-core install --with-deps ${{ matrix.name == 'chromium' && 'chromium' || 'webkit firefox' }}
       - run: npm run test:responsive
         env:
           RSP_ENGINES: ${{ matrix.engine }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
-          name: responsive-screenshots-${{ matrix.engine }}
+          name: responsive-screenshots-${{ matrix.name }}
           path: test/responsive/__out__/
           if-no-files-found: ignore
 
-  # v0.41.0 theme contrast gates (token contrast + full-page theme gate), one job per gate × engine
+  # v0.41.0 theme contrast gates (token contrast + full-page theme gate), split by engine; the short page-contrast runs
+  # of Chromium + Firefox share a job
   theme:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        gate: [test:contrast, test:page-contrast]
-        engine: [chromium, firefox, webkit]
+        include:
+          - { gate: 'test:contrast', engine: chromium, install: chromium }
+          - { gate: 'test:contrast', engine: firefox, install: firefox }
+          - { gate: 'test:contrast', engine: webkit, install: webkit }
+          - { gate: 'test:page-contrast', engine: 'chromium,firefox', install: 'chromium firefox' }
+          - { gate: 'test:page-contrast', engine: webkit, install: webkit }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -138,7 +153,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright-core install --with-deps ${{ matrix.engine }}
+      - run: npx playwright-core install --with-deps ${{ matrix.install }}
       - run: npm run ${{ matrix.gate }}
         env:
           TD_CONTRAST_ENGINES: ${{ matrix.engine }}

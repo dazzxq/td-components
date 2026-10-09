@@ -100,13 +100,14 @@ export default {
     ],
   }, {
     // v0.27.0: behaviour of the dsuite batch-1 components (td-otp-input, td-drawer, td-copy) in every engine.
+    // TD_WTR_ENGINES=firefox (CI: one job per engine) narrows THIS group's browsers; default: all three.
     name: 'engines',
     files: ['src/**/*.engines.browser-test.js', ...POINTER_FILES.map((f) => `!${f}`)],
     browsers: [
       playwrightLauncher({ product: 'chromium' }),
       playwrightLauncher({ product: 'firefox', launchOptions: engineLaunchOptions('firefox') }),
       playwrightLauncher({ product: 'webkit', launchOptions: engineLaunchOptions('webkit') }),
-    ],
+    ].filter((b) => (process.env.TD_WTR_ENGINES || 'chromium,firefox,webkit').split(',').includes(b.product)),
   }, ...POINTER_FILES.map((file, i) => ({
     // v0.31.0: real mouse drags (sendMouse + pointer capture). Firefox routes a mouse release of ANOTHER page of the same
     // browser instance (e.g. its afterEach resetMouse) to the element holding the capture here, so each of these files
