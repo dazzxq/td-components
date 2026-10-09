@@ -8,12 +8,11 @@ nhận **hai mục** `name[start]` / `name[end]`.
 
 **Vì sao là element riêng, không phải thuộc tính `range` của `<td-datetime-picker>`?** Giá trị là một **cặp**
 (`getValue()` → `{ start, end }`), form gửi hai mục thay vì một, và picker đơn đang chạy ở mọi site — một cờ đổi kiểu trả
-về sẽ làm hỏng luật / `required` đang có. Tới 0.59.0 hai component dùng chung **một bộ sửa mốc** (ô ngày / tháng / năm + bánh xe giờ / phút). **Từ 0.60.0
-[Datetime picker](datetime-picker.md) dùng lịch dạng lưới; `<td-datetime-range>` GIỮ NGUYÊN bộ sửa mốc cũ** (ba ô số, bánh xe
-cuộn từ 00 khi mở) — chỉ đổi: không có `min` / `max` thì ô "Năm" nhận 1–9999 (hết cửa sổ ngầm 2000–2099). Lịch chọn khoảng
-(bấm 1 = Từ, bấm 2 = Đến, tô khoảng) dự kiến 0.61.0.
+về sẽ làm hỏng luật / `required` đang có. **Từ 0.61.0 hộp thoại dùng đúng lịch của [Datetime picker](datetime-picker.md)**:
+**một lưới** cho cả hai mốc (bấm 1 = Từ, bấm 2 = Đến, tô khoảng; ngày thứ hai sớm hơn = bắt đầu khoảng mới), không còn ô gõ
+ngày / tháng / năm. `mode="datetime"` là **hai màn** cho mỗi mốc: màn ngày (lịch) → bấm ngày → màn giờ (bánh xe).
 
-**Ngoài phạm vi:** lưới lịch, khoảng theo tháng / năm (`mode="month|year"` → cảnh báo, dùng `date`), preset theo tuần
+**Ngoài phạm vi:** hai tháng cạnh nhau, khoảng theo tháng / năm (`mode="month|year"` → cảnh báo, dùng `date`), preset theo tuần
 (tuần bắt đầu thứ mấy — app tự thêm), đồng bộ URL (việc của app).
 
 | | |
@@ -61,28 +60,41 @@ Giữ tên field cũ của dcms2 (`date_from` / `date_to`):
 ## Hộp thoại
 
 - Mở bằng chuột / chạm, **Enter**, **Space** hoặc **↓** trên trigger (`role="combobox"`, `aria-haspopup="dialog"`).
-  Esc / "Đóng" huỷ thay đổi đang sửa.
+  Esc / "Đóng" huỷ thay đổi đang sửa. ≥ 720px: hộp giữa màn hình (cột **Chọn nhanh** bên trái); < 720px: bottom sheet.
 - Hàng **Chọn nhanh** (`role="group"`): bấm preset **điền cả hai mốc, chưa đóng** — vẫn bấm "Chọn" (một luồng xác nhận
-  như picker đơn). Preset đang khớp với khoảng đang sửa có `aria-pressed="true"`; sửa tay một ô thì tự bỏ. Chọn preset
+  như picker đơn). Preset đang khớp với khoảng đang sửa có `aria-pressed="true"`; chọn lại ngày thì tự bỏ. Chọn preset
   được đọc qua `role="status"`: "Đã chọn 7 ngày qua: 29/09/2026 – 05/10/2026".
-- Hai nhóm `fieldset` có `legend` "Từ" / "Đến". **≥ 720px**: hai nhóm cạnh nhau. **< 720px** (sheet điện thoại): công tắc
-  **"Từ | Đến"** (hai nút `aria-pressed`, mỗi nút tóm tắt giá trị của mốc) hiện một nhóm mỗi lần — hai cặp bánh xe giờ
-  chồng nhau sẽ quá cao. "Tiếp: Đến" (dưới nhóm Từ) hoặc chạm "Đến" chuyển nhóm và focus vào ô ngày của nhóm.
-  **< 480px** và màn ngang thấp (≤ 500px cao): preset một hàng cuộn ngang.
-- Footer: **Đóng** · **Xoá** (xoá cả hai mốc, hộp vẫn mở) · **Chọn** (một sự kiện `change`).
-- Mốc trống mở **trống** (gõ ngày / tháng / năm, hoặc bấm preset). Có `open-at` (`today` / `min` / `max` / một ngày) →
-  mốc trống mở sẵn ở vị trí đó (Từ 00:00, Đến 23:59).
+- Công tắc **"Từ | Đến"** (hai nút `aria-pressed`, mỗi nút tóm tắt giá trị của mốc) ở **mọi** bề rộng: mốc nào đang được sửa.
+- **`mode="date"`: MỘT lưới.** Bấm ngày đầu = **Từ**, bấm ngày thứ hai = **Đến** (cùng ngày = khoảng một ngày) và tô khoảng
+  (ô đầu / cuối `aria-selected`, ô giữa "…, trong khoảng"). Bấm ngày thứ hai **sớm hơn** Từ → bắt đầu một khoảng mới (không
+  báo lỗi). Di chuột / di focus bàn phím trên ô sau Từ → xem trước khoảng. Bấm tab "Đến" trước → chỉ chọn ngày kết thúc.
+  `max-days`: ô vượt giới hạn **mờ nhưng vẫn bấm được** (bấm = bắt đầu khoảng mới), ghi chú "Tối đa N ngày".
+- **`mode="datetime"`: hai màn cho mỗi mốc** (0.61.0). Màn 1 = lịch; **bấm một ngày không ghi giá trị** mà chuyển sang màn 2 =
+  giờ của mốc đó (tiêu đề "Từ · Thứ Năm, 15/10/2026", nút **"‹"** / phím **Backspace** quay lại, bánh xe giờ / phút theo
+  `minute-step`, "Bây giờ" đặt mốc đó = hiện tại và ở lại màn giờ). Luồng chuẩn: Từ (ngày → giờ) → **"Tiếp: Đến"** → Đến (ngày →
+  giờ) → **"Chọn"**. Công tắc "Từ | Đến" nhảy mốc và giữ loại màn nếu mốc đích đã có ngày. Preset → màn giờ của Từ.
+- Footer: **Đóng** · **Xoá** (xoá cả hai mốc, hộp vẫn mở) · **Chọn** (một sự kiện `change`). Ở `datetime`, **"Chọn" chỉ có ở màn
+  giờ** — ngoại lệ duy nhất: khi bản nháp **hoàn toàn rỗng** (sau "Xoá") "Chọn" hiện ngay ở màn ngày và ghi khoảng rỗng
+  (bỏ bộ lọc). Chọn một ngày thì luật chung trở lại.
+- Mốc trống mở **trống**. Có `open-at` (`today` / `min` / `max` / một ngày) → lịch mở ở tháng đó (Từ 00:00, Đến 23:59).
+  Giá trị có sẵn: mở ở **màn ngày**, ngày của mốc Từ có focus (bấm Enter trên ngày = sang màn giờ).
+- Chạm (ADR 0019): ô ≥ 44px, bánh xe vuốt có quán tính + khớp giá trị (`touch-action: pan-y`, không dây chuyền cuộn ra trang),
+  nút "‹" / "Bây giờ" / "Chọn" ≥ 44px, không có ô nhập nên bàn phím ảo không mở. Mỗi màn vừa màn hình không cuộn trên điện
+  thoại; riêng hộp range ở 320 × 568 với preset + "Không hạn" + dòng lỗi có thể cuộn bằng **một** vùng (thân hộp), chân
+  hộp (Đóng / Xoá / Chọn) luôn thấy.
+- Bàn phím trên lưới: APG (← → ↑ ↓, Home / End, PageUp / PageDown, Shift+PageUp / PageDown; Enter / Space chọn). Màn giờ: ↑ ↓
+  ±1, PageUp / PageDown ±6 giờ / ±15 phút, Home / End; Backspace = về màn ngày; Esc đóng hộp.
 
 ### Kiểm tra
 
 | Lỗi | Khi nào | Ở đâu |
 |---|---|---|
-| Từng mốc | ngày không có (31/02), thiếu ô, năm `0000` (0.60.0: không có `min` / `max` thì năm 1–9999 đều hợp lệ — hết cửa sổ ngầm 2000–2099; ô số "Năm" nhận 1–9999), ngoài `min` / `max` | dòng lỗi của mốc đó (như picker đơn) |
-| Thứ tự | Từ > Đến (bằng nhau được; so ở độ chi tiết của `mode`) — "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc" | dòng `role="alert"` của hộp; gắn `aria-describedby` + `aria-invalid` vào ô ngày "Đến" |
-| `max-days` | khoảng dài hơn n ngày lịch (tính cả hai đầu: 29/09 – 05/10 = 7) — "Khoảng tối đa {n} ngày" | như trên |
-| `required` | bấm "Chọn" khi mốc bắt buộc còn trống — "Vui lòng chọn ngày bắt đầu" / "… kết thúc" / "Vui lòng chọn khoảng ngày" | như trên, trên ô ngày của mốc thiếu |
+| Từng mốc | ngày không đọc được, ngoài `min` / `max` (0.61.0: lịch không cho chọn ngày không có; giá trị gán qua attribute vẫn được kiểm; không có `min` / `max` thì năm 1–9999 đều hợp lệ) | dòng lỗi của hộp, gắn `aria-describedby` vào tab của mốc đó |
+| Thứ tự | Từ > Đến (bằng nhau được; so ở độ chi tiết của `mode`) — "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc". `mode="date"` chọn bằng lưới không bao giờ gây lỗi này (ngày sớm hơn = khoảng mới); còn ở `datetime` (giờ cùng ngày) và giá trị gán qua attribute | dòng `role="alert"` của hộp; `aria-describedby` vào tab "Đến" |
+| `max-days` | khoảng dài hơn n ngày lịch (tính cả hai đầu: 29/09 – 05/10 = 7) — "Khoảng tối đa {n} ngày"; `datetime`, preset và giá trị gán qua attribute (lưới `date` làm mờ ô vượt thay vì báo lỗi) | như trên |
+| `required` | bấm "Chọn" khi mốc bắt buộc còn trống — "Vui lòng chọn ngày bắt đầu" / "… kết thúc" / "Vui lòng chọn khoảng ngày" | như trên, trên tab của mốc thiếu |
 
-Còn lỗi → "Chọn" **không đóng**, focus về ô lỗi (trên điện thoại chuyển sang nhóm chứa lỗi trước).
+Còn lỗi → "Chọn" **không đóng**, hộp chuyển sang mốc (và màn — ngày hoặc giờ) chứa lỗi và focus vào **tab của mốc đó**.
 
 ### Không hạn (`allow-open-end`, 0.59.0)
 
@@ -92,14 +104,15 @@ Hiệu lực khuyến mãi, hợp đồng, bảo hành… thường "từ ngày 
 <td-datetime-range name="hl" label="Hiệu lực" start="01/10/2026" required allow-open-end></td-datetime-range>
 ```
 
-- Ngày kết thúc trống hiện là **"Không hạn"**: trigger "01/10/2026 – Không hạn", tab "Đến" (sheet < 720) ghi "Không hạn".
-- Trong nhóm "Đến" có nút **"Không hạn"** (kiểu nút preset, `aria-pressed`): đang nhấn khi ngày kết thúc đang sửa trống.
-  Bấm → xoá ngày kết thúc; đang nhấn mà bấm → focus ô ngày "Đến" để gõ. Gõ ngày "Đến" / chọn preset → tự bỏ nhấn.
+- Ngày kết thúc trống hiện là **"Không hạn"**: trigger "01/10/2026 – Không hạn", tab "Đến" ghi "Không hạn".
+- Cạnh công tắc "Từ | Đến" có nút **"Không hạn"** (kiểu nút preset, `aria-pressed`): đang nhấn khi ngày kết thúc đang sửa trống.
+  Bấm → xoá ngày kết thúc (`datetime`: hộp sang **màn giờ của Từ** để "Chọn" ngay); đang nhấn mà bấm → sang lịch của "Đến" để
+  chọn ngày. Chọn ngày "Đến" / preset → tự bỏ nhấn.
 - **Ngày kết thúc không bao giờ bắt buộc**: `required` / `both` → chỉ bắt buộc Từ (im lặng); `required="end"` mâu thuẫn →
   một cảnh báo, không mốc nào bắt buộc.
 - Giá trị, FormData, `change` **không đổi**: end trống gửi `hl[end]=` (chuỗi rỗng) như trước; server hiểu rỗng = không hạn.
 - Bật / tắt lúc chạy: tại chỗ (chữ trigger, `aria-required` / dấu `*`, validity — không phát `change`). Hộp thoại đang mở:
-  nút được thêm / gỡ tại chỗ; gỡ nút đang có focus → focus vào ô ngày "Đến"; ngày đang sửa giữ nguyên.
+  nút được thêm / gỡ tại chỗ; gỡ nút đang có focus → focus vào lưới; ngày đang sửa giữ nguyên.
 - Nhãn: `TdDatetimeRange.labels.openEnd` (`'Không hạn'`; PHP `Td::RANGE_LABELS['openEnd']` phải đổi cùng).
 
 ## Preset (callback) và múi giờ
@@ -299,11 +312,19 @@ công tắc / dòng lỗi qua gate `test:contrast` ≥ 4.7. Host co tới 160px:
 </td-datetime-range>
 ```
 
-Hộp thoại (thân TdModal): `div.td-dtr-panel[data-mode][data-side]` > `div.td-dtr-panel__presets[role=group]` >
-`button.td-dtr-panel__preset[aria-pressed][data-id]` · `div.td-dtr-panel__switch` > `button.td-dtr-panel__tab[aria-pressed]`
-× 2 · `div.td-dtr-panel__sides` > `fieldset.td-dtr-panel__side[data-side]` (legend + bộ sửa `.td-dtp-panel` — bộ ba ô số cũ, chỉ còn range dùng từ 0.60.0)
-× 2 · `p.td-dtr-panel__error[role=alert]` · `p.td-sr-only[role=status]`. 0.59.0 `allow-open-end`: ngay sau legend của
-nhóm "Đến" — `button.td-dtr-panel__preset.td-dtr-panel__open-end[aria-pressed]` "Không hạn".
+Hộp thoại (thân TdModal): `div.td-dtr-panel[data-mode][data-side][data-step=date|time]` > `div.td-dtr-panel__presets[role=group]` >
+`button.td-dtr-panel__preset[aria-pressed][data-id]` · `div.td-dtr-panel__main` > (`div.td-dtr-panel__switch` > `button.td-dtr-panel__tab[aria-pressed][data-side]`
+× 2 · [`button.td-dtr-panel__preset.td-dtr-panel__open-end[aria-pressed]` "Không hạn", 0.59.0] · `div.td-cal` (lưới; ô ngày có
+`data-date`, `data-range=start|end|single|in`, `data-preview`, `data-dimmed`) · [datetime: `div.td-time-step[hidden]` > `button.td-cal__nav.td-time-step__back[data-action=back]`
++ `p.td-time-step__heading` + bánh xe (`.td-dtp-wheel__list[data-part=hour|minute]`) + `button[data-action=now]`; và `button.td-dtr-panel__next[data-action=next]`]) ·
+`p.td-dtr-panel__hint` · `p.td-dtr-panel__error[role=alert]` · `p.td-sr-only[role=status]`. Chân modal: `button[data-action=close|clear|confirm]`.
+
+### Test tự động (hợp đồng selector)
+
+Ổn định: `.td-cal [data-date]`, `data-range`, `[data-pick]` / `[data-dir]`, `.td-dtr-panel[data-step]`, `.td-dtr-panel__tab[data-side]`,
+`.td-dtr-panel__preset[data-id]`, `.td-dtr-panel__open-end`, `[data-action="close|clear|confirm|next|now|back"]`. Đã **gỡ** từ 0.61.0:
+`.td-dtp-panel*`, `.td-dtr-panel__side|sides|legend`, `[data-part="day|month|year"]` trong hộp. Để chọn khoảng: bấm hai `[data-date]`
+rồi `[data-action="confirm"]`; ở `datetime`: ngày → (màn giờ) → … → `[data-action="confirm"]` (ẩn ở màn ngày khi bản nháp không rỗng).
 
 ## Bảo mật
 

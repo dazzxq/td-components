@@ -76,6 +76,7 @@ trạng thái ở mọi compound và coi luật có tổ tiên là phủ control
 | `.td-color-panel__area` (0.48.0) | `none` | kéo 2 chiều trực tiếp (bão hoà × độ sáng; WCAG 2.5.7: bàn phím, ô chữ, preset là lối thay thế). Chỉ vùng 10rem × 17.5rem; phần còn lại của popup cuộn bình thường |
 | `.td-color-panel__hue` (0.48.0) | `none` | range native như `.td-slider__input` |
 | `.td-number__step` | `manipulation` | nút − / + của `td-number-input stepper` (v0.49.0): bấm liên tục là thao tác chính — không phóng to khi chạm nhanh hai lần trên iOS |
+| `.td-dtp-wheel__list` | `pan-y` | bánh xe giờ / phút (v0.61.0): vuốt dọc cuộn bánh xe (quán tính + CSS scroll-snap), không pan ngang, `overscroll-behavior: contain` (không dây chuyền ra trang), không phóng to khi chạm đúp |
 | `.td-cal__nav, .td-cal__title` | `manipulation` | nút ‹ › và nút tháng / năm của lịch `td-datetime-picker` (v0.60.0): đổi tháng liên tục là thao tác chính — không phóng to khi chạm nhanh hai lần trên iOS. Ô ngày / tháng / năm không đặt `touch-action` (cuộn trang bình thường) |
 
 **Không có dòng cho `td-carousel` (v0.50.0, ADR 0024)** — có chủ đích: viewport của carousel giữ `touch-action: auto`

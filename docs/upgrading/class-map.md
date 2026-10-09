@@ -239,7 +239,7 @@ Nhãn phía trên dùng chung `label.td-field__label`; lỗi dùng `span.td-fiel
 | td ≤ 0.9 | `label.block …` (Tailwind) | `label.td-field__label` (+ `span.td-field__required`) | — | 0.10.0 |
 | td ≤ 0.9 | `div.relative` | `div.td-dtp` | `data-state="closed\|open"` | 0.10.0 |
 | td ≤ 0.9 | `input[readonly]` + `svg` lịch | `button.td-dtp__trigger[role=combobox][aria-haspopup=dialog]` (+ `span.td-dtp__value`, `span.td-dtp__icon`) | `[aria-expanded]`, `[aria-invalid]`, `[data-placeholder]` trên `__value` | 0.10.0 |
-| td ≤ 0.9 | thân modal bằng chuỗi HTML (`div.p-4 …`, `h6`, input Tailwind, id `#td-dtp-{uid}-*`) | `.td-dtp-panel` (+ `__group`, `__legend`, `__fields`, `__field`, `__label`, `__input`, `__wheels`, `__preview`, `__error`) | `[aria-invalid]`, `[hidden]` | 0.10.0 |
+| td ≤ 0.9 | thân modal bằng chuỗi HTML (`div.p-4 …`, `h6`, input Tailwind, id `#td-dtp-{uid}-*`) | `.td-dtp-panel` (+ `__group`, `__legend`, `__fields`, `__field`, `__label`, `__input`, `__wheels`, `__preview`, `__error`) — **đã gỡ hẳn ở 0.61.0** (thay bằng lịch `.td-cal`, xem breaking-changes § 0.60.0 / 0.61.0) | `[aria-invalid]`, `[hidden]` | 0.10.0 |
 | td ≤ 0.9 | `.td-dtp-wheel-container` | `div.td-dtp-wheel` | — | 0.10.0 |
 | td ≤ 0.9 | `.td-dtp-wheel` (danh sách cuộn) | `.td-dtp-wheel__list[role=listbox]` (+ `.td-dtp-wheel__sep` dấu `:`) | `aria-activedescendant` | 0.10.0 |
 | td ≤ 0.9 | `.td-dtp-wheel-option` | `.td-dtp-wheel__option[role=option]` | `[aria-selected="true"]` | 0.10.0 |
@@ -369,7 +369,8 @@ Không có class legacy để đổi, nhưng phần tử bên trong đổi — C
 | `.td-pagination--single` (+ `.td-pagination__controls[hidden]`) | `hide-single-page` và chỉ một trang: phần nút ẩn, chỉ còn dòng đếm |
 | `.td-modal__text--blocks` | `message` của hộp thoại Promise là mảng / Node: `div.td-modal__text` chứa các `<p>` / node |
 | `.td-dtp--clearable`, `.td-dtp__clear`, `.td-dtp__clear-icon` | `td-datetime-picker clearable`: gốc dạng lưới, nút xoá là anh em của trigger |
-| `.td-dtr-panel__open-end` | Nút "Không hạn" (cùng `.td-dtr-panel__preset`) trong nhóm "Đến" của `td-datetime-range allow-open-end` |
+| `.td-dtr-panel__open-end` | Nút "Không hạn" (cùng `.td-dtr-panel__preset`) cạnh công tắc "Từ \| Đến" của `td-datetime-range allow-open-end` (0.61.0: không còn trong nhóm "Đến" — nhóm đã gỡ) |
+| `.td-dtr-panel__main`, `.td-time-step[__back\|__heading\|__now]`, `.td-dtr-panel__hint`, `[data-step]`, `[data-action]` | 0.61.0: thân hộp range một lưới; màn giờ của `datetime` (picker và range); ghi chú `max-days`; màn đang hiện; nút hành động |
 
 ## Class mới không thay class cũ (0.58.0)
 
