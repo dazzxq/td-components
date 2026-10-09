@@ -809,7 +809,15 @@ export class TdDatetimeRange extends TdFormElement {
       const q = toModeParts(p, mode);
       if (mode === 'datetime' && oldMode === 'date' && k === 'end') { q.hour = 23; q.minute = lastMinute(this._minuteStep()); }
       const next = formatModeDisplay(q, mode);
-      if (next !== raw) this.setAttribute(k, next);
+      if (next === raw) continue;
+      // v0.63.0 (Codex impl r2): an INTERNAL write — a typed side stays typed (its error is re-judged by the new mode)
+      const was = this._writing;
+      this._writing = true;
+      try {
+        this.setAttribute(k, next);
+      } finally {
+        this._writing = was;
+      }
     }
   }
 

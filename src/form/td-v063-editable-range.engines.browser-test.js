@@ -470,6 +470,29 @@ describe('v0.63.0 editable range — Codex impl r1 (#1, #3, #4, #5)', () => {
     expect(!!panel().querySelector('[data-date="1994-02-28"][data-range]')).to.equal(false);
   });
 
+  it('Codex r2: a mode switch keeps typed sides typed — the order / bound errors survive it, a later bound change re-raises', async () => {
+    const m = mount('mode="date" editable');
+    await settle();
+    await typeCommit(m.start, '20/03/1994', 'blur');
+    await typeCommit(m.end, '10/03/1994', 'blur');
+    expect(note(m)).to.equal('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc');
+    m.el.setAttribute('mode', 'datetime'); // 20/03 00:00 → 10/03 23:59: still out of order
+    await settle();
+    expect(m.el.getAttribute('end')).to.equal('10/03/1994 - 23:59');
+    expect(note(m)).to.equal('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc');
+    const b = mount('mode="date" editable max="31/12/1999"');
+    await settle();
+    await typeCommit(b.end, '01/01/2000', 'blur');
+    expect(note(b)).to.equal('Không được sau 31/12/1999');
+    b.el.setAttribute('mode', 'datetime');
+    await settle();
+    expect(note(b)).to.equal('Không được sau 31/12/1999 - 23:59');
+    b.el.setAttribute('max', '31/12/2005');
+    expect(note(b)).to.equal(null);
+    b.el.setAttribute('max', '31/12/1990');
+    expect(note(b)).to.equal('Không được sau 31/12/1990 - 23:59');
+  });
+
   it('#5 min / max / max-days / required changes re-judge the typed error (gone, or the new message)', async () => {
     const m = mount('mode="date" editable max="31/12/1999"');
     await settle();

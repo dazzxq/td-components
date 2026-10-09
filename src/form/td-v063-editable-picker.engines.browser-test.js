@@ -605,6 +605,20 @@ describe('v0.63.0 editable picker — Codex impl r1 (#1 custom validity, #5 re-c
     expect(m.rec.change.length).to.equal(1);
   });
 
+  it('Codex r2: a mode switch keeps a typed value typed — after the (clamping) conversion a bound change re-raises its error', async () => {
+    const m = mount('mode="date" editable max="31/12/1999"');
+    await settle();
+    await typeCommit(m, '01/01/2000', 'blur');
+    expect(note(m)).to.equal('Không được sau 31/12/1999');
+    m.el.setAttribute('mode', 'datetime'); // the 0.18 mode conversion clamps into min–max (unchanged): valid now, error gone
+    await settle();
+    expect(m.el.getAttribute('value')).to.equal('31/12/1999 - 23:59');
+    expect(note(m)).to.equal(null);
+    m.el.setAttribute('max', '31/12/1990'); // still the TYPED value (the conversion was an internal write): judged again
+    expect(note(m)).to.equal('Không được sau 31/12/1990 - 23:59');
+    expect(m.input.getAttribute('aria-invalid')).to.equal('true');
+  });
+
   it('#5 min / max / required / mode changes re-judge the typed error (gone, or the new message)', async () => {
     const m = mount('mode="date" editable max="31/12/1999"');
     await settle();

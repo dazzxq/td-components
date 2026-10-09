@@ -317,7 +317,15 @@ export class TdDatetimePicker extends TdFormElement {
     const parts = parseModeValue(raw, oldMode);
     if (!parts || invalidReason(parts)) return; // unusable: kept verbatim (the new mode flags it)
     const next = formatModeDisplay(this._clampToBounds(toModeParts(parts, oldMode)), this._mode());
-    if (next !== raw) this.setAttribute('value', next);
+    if (next === raw) return;
+    // v0.63.0 (Codex impl r2): an INTERNAL write — a typed value stays typed (its error is re-judged by the new mode)
+    const was = this._writing;
+    this._writing = true;
+    try {
+      this.setAttribute('value', next);
+    } finally {
+      this._writing = was;
+    }
   }
 
   // --- Rendering ---
