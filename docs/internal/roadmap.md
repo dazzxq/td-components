@@ -77,10 +77,10 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.60.0: date picker dạng lịch — thiết kế lại hộp chọn của `td-datetime-picker` tại chỗ (đồng thuận Claude × Codex 2026-10-09) — plan [v0.60.0-calendar-picker](plans/v0.60.0-calendar-picker.md)
 - `done` v0.61.0: `td-datetime-range` dùng lịch mới (chọn Từ → Đến trên lưới) + hộp `datetime` hai bước ngày → giờ cho picker và range — plan [v0.61.0-range-calendar](plans/v0.61.0-range-calendar.md)
 - `done` v0.62.0: đợt chỉnh giao diện — alert bỏ vạch trái (Hallmark), guard drawer dùng TdModal.confirm, hovercard skeleton, media-picker mở như modal, API màu scroll-top — plan [v0.62.0-polish](plans/v0.62.0-polish.md)
+- `done` v0.62.1: vá phím mũi tên trong lịch popover — cú cuộn hiện ô bị việc đặt lại vị trí popover kéo ngược (flake CI `calendar-a11y` WebKit)
 
 ## Chờ nhu cầu (owner 2026-10-08: chỉ làm khi có site cần)
 
-- Lịch: popover `datetime` ở màn thấp 400px trên WebKit/Linux — ô focus lệch < 1px khỏi vùng cuộn (flake CI `calendar-a11y`, 2/108 ca, chạy lại xanh). Bản sửa `_reveal` làm tròn bước cuộn + test ở nhánh `fix/v0.61-webkit-scroll` (`d5a69bc`), chưa chạy trình duyệt — gộp khi flake làm đỏ CI lần nữa
 - Test WebKit `:focus-visible` nút đóng toast (v0.21 P4) hỏng cả trên main; test tương phản scan-input lúc qua lúc hỏng — sửa khi làm đỏ CI
 - Kéo thả đổi cha / thứ tự cho bảng cây (`reorderable`, event `move`, `rowDraggable` — tên đã giữ chỗ trong plan v0.57.0); hiện dùng `moveRow` từ nút / menu
 - RTL — phím ← ở hai đầu `td-choice-group` quay vòng ngược chiều radio native (có từ v0.49); chưa site nào viết từ phải sang trái

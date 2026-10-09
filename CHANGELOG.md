@@ -2,6 +2,19 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.62.1
+
+**Vá lỗi: phím mũi tên trong lịch popover không còn làm ô đang chọn trượt khỏi vùng nhìn thấy** (CI `calendar-a11y` đỏ lặp lại
+trên WebKit). Codex impl-review. Không đổi API / markup.
+
+### Fixed
+
+- `td-datetime-picker` popover ở màn thấp (vùng lịch phải cuộn): khi phím mũi tên cuộn ô đang chọn vào vùng nhìn thấy, chính cú
+  cuộn đó kích hoạt việc đặt lại vị trí popover, làm vùng cuộn bị kéo ngược (~30px) và ô bị che. Nay cuộn **bên trong** popover
+  không đặt lại vị trí nữa, và mỗi lần đặt lại đều giữ nguyên vị trí cuộn của người dùng.
+- Lịch: bước cuộn để hiện ô đang chọn được làm tròn lên và kiểm lại một lần (WebKit lưu `scrollTop` là số nguyên, ô có kích thước
+  lẻ có thể hụt < 1px).
+
 ## 0.62.0
 
 **Đợt chỉnh giao diện: `td-alert` bỏ vạch trái, guard drawer dùng hộp xác nhận của kit, hovercard skeleton, media-picker mở như
