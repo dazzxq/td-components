@@ -213,6 +213,20 @@ qua nhiều trang — dcms2 không có), vừa là nút "Bỏ chọn tất cả"
 chọn / bỏ). Không chọn gì → không có chip. Footer luôn **một hàng**. Nhãn: `selectedChip`, `selectedChipMax`,
 `clearSelectionChip` (`selected` / `selectedMax` cũ không còn dùng).
 
+### Chuyển động mở / đóng (0.62.0)
+
+Picker dùng **cùng chuyển động với [modal](modal.md)**: ≥ 720px vào bằng `scale(0.95) → 1` (lò xo 300ms) + fade 200ms, ra
+`scale(0.95)` 200ms + fade 150ms; < 720px (picker toàn màn hình) trượt từ dưới lên như bottom-sheet của modal (không
+overshoot, tránh hở mép). Màn chắn (scrim) và `prefers-reduced-motion` (chỉ fade, không scale/trượt) lấy từ `modal.css`,
+focus vào ô tìm kiếm vẫn đúng thời điểm cũ. Trước 0.62.0 picker chỉ fade. Site muốn lại kiểu chỉ fade:
+
+```css
+:root {
+  --td-media-picker-enter-from: none;  /* ≥ 720px */
+  --td-media-picker-sheet-from: none;  /* < 720px */
+}
+```
+
 ## Hợp đồng adapter
 
 Typedef JSDoc nằm trong `src/utils/media-picker-core.js` (đúng tên / trường của hợp đồng dsuite). Interface **chốt từ
