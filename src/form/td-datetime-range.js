@@ -29,11 +29,11 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 export { toNativeValue, fromNativeValue };
 
 /**
- * `<td-datetime-range>` — a date (or date-time) RANGE "from – to" with quick presets (v0.40.0, plan
- * v0.39.0-filters-range QĐ 17–26). A separate element, not a `range` flag on `<td-datetime-picker>`: the value is a
- * pair (`getValue()` → `{ start, end }`), the form gets TWO entries, and the single picker stays untouched. Until v0.59.0 both
- * shared the one-moment editor of src/form/datetime-panel.js; since v0.60.0 the picker has the calendar and ONLY this element
- * still uses that (frozen, legacy) editor — one per side — until it gets the calendar too in v0.61.0.
+ * `<td-datetime-range>` — a date (or date-time) RANGE "from – to" with quick presets (v0.40.0, plan v0.39.0-filters-range QĐ 17–26). A
+ * separate element, not a `range` flag on `<td-datetime-picker>`: the value is a pair (`getValue()` → `{ start, end }`), the form gets
+ * TWO entries, and the single picker stays untouched. Since v0.61.0 (plan v0.61.0-range-calendar) the dialog is the calendar of
+ * v0.60.0: ONE grid (src/form/calendar-grid.js, painted through its `cellState` hook) for both endpoints, the "Từ | Đến" switch, and
+ * (datetime) one hour / minute wheel pair (src/form/time-wheels.js) that follows the endpoint being edited.
  *
  * Rendered DOM (in place updates for start / end / placeholder / required / disabled / min / max / names / formats;
  * only `label` and `mode` re-render):
@@ -52,11 +52,17 @@ export { toNativeValue, fromNativeValue };
  * Dialog (TdModal, sheet < 720, centred box ≥ 720; `{p}` = `{id}-dtr{n}`):
  *   div.td-dtr-panel[data-mode][data-side=start|end]
  *     div.td-dtr-panel__presets[role=group][aria-label="Chọn nhanh"] > button.td-dtr-panel__preset[aria-pressed] …
- *     div.td-dtr-panel__switch[role=group] > button.td-dtr-panel__tab[aria-pressed][data-side] × 2   (shown < 720)
- *     div.td-dtr-panel__sides > fieldset.td-dtr-panel__side[data-side] (legend "Từ" / "Đến" + one editor) × 2
- *     p.td-dtr-panel__error[role=alert]  (order / span / a required side; described-by of the target day field)
- *     p.td-sr-only[role=status]          (preset announcements)
+ *     div.td-dtr-panel__main
+ *       div.td-dtr-panel__switch[role=group] > button.td-dtr-panel__tab[aria-pressed][data-side] × 2   (every width, both modes)
+ *       [button.td-dtr-panel__preset.td-dtr-panel__open-end[aria-pressed]]                              (allow-open-end)
+ *       div.td-cal …                                                                                    (the calendar; day cells carry data-range / data-preview / data-dimmed)
+ *       [div.td-dtp-pop__time (hour / minute wheels) + button.td-dtr-panel__next "Tiếp: Đến"]            (datetime)
+ *     p.td-dtr-panel__hint            "Tối đa N ngày" (date mode + max-days, while the end is chosen)
+ *     p.td-dtr-panel__error[role=alert]  (order / span / required / outside min–max; described-by of the tab it is about)
+ *     p.td-sr-only[role=status]          (preset + Từ / Đến announcements)
  *   Footer: "Đóng" / "Xoá" (both sides, stays open) / "Chọn" (one `change`).
+ *   The dialog draft (v0.61.0 B8) = { date: { start, end }, time: { start, end }, side } is the ONE source of truth; the grid, the wheels,
+ *   the tabs, the presets and the error line are views of it. The selection logic is src/utils/range-selection.js.
  *
  * Form (ElementInternals): `setFormValue(FormData)` with TWO entries `{start-name | name[start]}` and
  * `{end-name | name[end]}` (an empty side = ''), formatted by `form-value-format`; state = JSON `{"v":1,"start","end"}`.

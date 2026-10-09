@@ -6,8 +6,8 @@ import './td-datetime-range.js';
 
 // v0.21.0 P6 — the wheels started at the top and smoothly scrolled to the value once the dialog had entered (like dcms).
 // v0.60.0 (plan v0.60.0-calendar-picker D / Drop): <td-datetime-picker> NO LONGER animates — its wheels (src/form/time-wheels.js)
-// are centred at once, with or without reduced motion. The opening scroll lives on only in <td-datetime-range>, whose
-// editor (src/form/datetime-panel.js) is unchanged until v0.61.0 — the original cases are kept for it, side "Từ".
+// are centred at once, with or without reduced motion. v0.61.0: <td-datetime-range> uses the same wheels — the opening scroll
+// is gone there too (the last describe).
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';
@@ -74,48 +74,41 @@ describe('v0.60.0 — the picker wheels are centred at once (no opening animatio
   });
 });
 
-// <td-datetime-range> keeps the v0.21.0 opening scroll (its editor is unchanged until v0.61.0)
-describe('v0.21.0 P6 — datetime RANGE opening wheel scroll (unchanged editor)', () => {
-  const wheel = (part) => openModal().querySelector(`.td-dtr-panel__side[data-side="start"] .td-dtp-wheel__list[data-part="${part}"]`);
+// v0.61.0 (plan v0.61.0-range-calendar B8 / B9): <td-datetime-range> uses the same wheels — centred at once on open and when the
+// endpoint switch swaps the time; the opening scroll "from 00" is gone for it too (the v0.21.0 range cases were removed).
+describe('v0.61.0 — the RANGE wheels are centred at once (no opening scroll)', () => {
+  const wheel = (part) => openModal().querySelector(`.td-dtp-wheel__list[data-part="${part}"]`);
 
-  it('starts at scrollTop 0, waits for the modal entry, then centres the selected option (still selected)', async () => {
-    const el = range('mode="datetime" start="15/06/2026 - 18:45" end="16/06/2026 - 08:00"');
-    let changes = 0;
-    el.addEventListener('change', () => { changes++; });
-    el.querySelector('.td-dtr__trigger').click();
-    await settle();
-    const h = wheel('hour');
-    const m = wheel('minute');
-    expect([h.scrollTop, m.scrollTop]).to.deep.equal([0, 0]);
-    expect([selectedValue(h), selectedValue(m)]).to.deep.equal([18, 45]);
-    const end = Date.now() + 3000;
-    while (el._dps && el._dps.start.intro && Date.now() < end) await wait(20);
-    await wait(50);
-    expect(offCentre(h)).to.be.below(2);
-    expect(offCentre(m)).to.be.below(2);
-    expect([selectedValue(h), selectedValue(m)]).to.deep.equal([18, 45]);
-    expect(changes).to.equal(0);
-  });
+  for (const reduced of [false, true]) {
+    it(`${reduced ? 'reduced motion' : 'default motion'}: centred on the start time after opening; switching to Đến centres its time; nothing is committed`, async () => {
+      if (reduced) await emulateMedia({ reducedMotion: 'reduce' });
+      const el = range('mode="datetime" start="15/06/2026 - 18:45" end="16/06/2026 - 08:00"');
+      let changes = 0;
+      el.addEventListener('change', () => { changes++; });
+      el.querySelector('.td-dtr__trigger').click();
+      await settle();
+      await wait(450);
+      const h = wheel('hour');
+      const m = wheel('minute');
+      expect([selectedValue(h), selectedValue(m)]).to.deep.equal([18, 45]);
+      expect(offCentre(h)).to.be.below(2);
+      expect(offCentre(m)).to.be.below(2);
+      openModal().querySelector('.td-dtr-panel__tab[data-side="end"]').click();
+      await settle();
+      expect([selectedValue(h), selectedValue(m)]).to.deep.equal([8, 0]);
+      expect(offCentre(h)).to.be.below(2); // at once: no smooth scroll to wait for
+      expect(offCentre(m)).to.be.below(2);
+      expect(changes).to.equal(0);
+    });
+  }
 
-  it('reduced motion: centred instantly, no intro', async () => {
-    await emulateMedia({ reducedMotion: 'reduce' });
-    const el = range('mode="datetime" start="15/06/2026 - 18:45" end="16/06/2026 - 08:00"');
-    el.querySelector('.td-dtr__trigger').click();
-    expect(el._dps.start.intro).to.equal(null);
-    await settle();
-    expect(offCentre(wheel('hour'))).to.be.below(2);
-    expect(offCentre(wheel('minute'))).to.be.below(2);
-  });
-
-  it('closing before the end cancels the listener and timers', async () => {
+  it('closing right after opening leaves the attributes alone (the wheels\' timers are cancelled)', async () => {
     const el = range('mode="datetime" start="15/06/2026 - 18:45" end="16/06/2026 - 08:00"');
     el.querySelector('.td-dtr__trigger').click();
     await settle();
-    const h = wheel('hour');
-    expect(el._dps.start.intro).to.not.equal(null);
     TdModal.closeAll();
-    await wait(500);
-    expect(h.scrollTop).to.equal(0);
+    await wait(300);
     expect(el.getAttribute('start')).to.equal('15/06/2026 - 18:45');
+    expect(el._wheels).to.equal(null);
   });
 });

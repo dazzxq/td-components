@@ -197,7 +197,7 @@ describe('v0.60.0 range — no min / max = years 1–9999 (B4)', () => {
     expect(flags(el)).to.deep.equal(['customError']);
   });
 
-  it('the dialog of a range without bounds accepts a year outside the old window ("Chọn" commits it)', async () => {
+  it('the dialog of a range without bounds shows a year outside the old window and "Chọn" commits it (v0.61.0: through the calendar)', async () => {
     const el = range();
     el.setValue({ start: '15/03/1999', end: '20/03/1999' });
     await frames(1);
@@ -205,6 +205,8 @@ describe('v0.60.0 range — no min / max = years 1–9999 (B4)', () => {
     await frames(3);
     const modal = [...document.querySelectorAll('body > .td-modal')].pop();
     expect([...modal.querySelectorAll('[role="alert"]')].every((n) => n.hidden)).to.equal(true);
+    expect(modal.querySelector('.td-cal__title[data-pick="year"]').textContent).to.equal('1999');
+    expect(modal.querySelector('.td-cal__day[data-date="1999-03-15"]').getAttribute('data-range')).to.equal('start');
     let detail = null;
     el.addEventListener('change', (e) => { detail = e.detail; });
     [...modal.querySelectorAll('.td-modal__footer button')].pop().click();
@@ -213,4 +215,5 @@ describe('v0.60.0 range — no min / max = years 1–9999 (B4)', () => {
     expect(detail.dbValue).to.deep.equal({ start: '1999-03-15', end: '1999-03-20' });
     expect(flags(el)).to.deep.equal([]);
   });
+});
 });

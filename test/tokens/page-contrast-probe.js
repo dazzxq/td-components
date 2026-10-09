@@ -11,7 +11,7 @@ const DISABLED_MIN = 2.2; // greyed-out on purpose (WCAG 1.4.3 exempts inactive 
  *  their label and are not in this list. */
 export const CONTROL_SEL = [
   '.td-field__control', '.td-chip-input__box', '.td-dropdown__trigger', '.td-dropdown__search', '.td-dtp__trigger',
-  '.td-dtp-panel__input', '.td-dtr__trigger', '.td-number__box', '.td-otp__cell', '.td-scan__input',
+  '.td-dtr__trigger', '.td-number__box', '.td-otp__cell', '.td-scan__input',
   '.td-tree-select__control', '.td-tree-select__search', '.td-tree__search', '.td-switch__track', '.td-check',
   '.td-checkbox__mark',
 ].join(', ');

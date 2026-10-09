@@ -772,18 +772,24 @@ async function chromiumSemantics(browser) {
         dialog: !!document.querySelector('.td-modal[data-state="open"]') })); // (a sheet fading out still holds its tree)
       expect(st.changes === 1 && st.focus && !st.dialog, `day tap: ${JSON.stringify(st)}`);
     });
-    await it(tag, 'range "Không hạn": ≥ 44 px tall in the dialog, a tap empties the end (aria-pressed)', async () => {
+    await it(tag, 'range calendar (v0.61.0): day cells ≥ 44 × 44, a tap on Từ then Đến paints the band, "Không hạn" ≥ 44 px tall and a tap empties the end (aria-pressed)', async () => {
       await load(page);
       await page.evaluate(() => document.querySelector('#rsp-dtr-open').setAttribute('end', '05/10/2026'));
       const t = await centre(page, '#rsp-dtr-open .td-dtr__trigger');
       await page.touchscreen.tap(t.x, t.y);
       await page.waitForSelector('.td-dtr-panel__open-end', { state: 'attached', timeout: 4000 });
-      await page.evaluate(() => {
-        const m = document.querySelector('body > .td-modal:not([data-state="closing"])');
-        const tab = m.querySelector('.td-dtr-panel__tab[data-side="end"]');
-        if (tab && tab.getClientRects().length) tab.click(); // the sheet shows one side at a time
-      });
-      await page.waitForFunction(() => document.querySelector('.td-dtr-panel__open-end')?.getClientRects().length > 0, null, { timeout: 3000 }).catch(() => {});
+      await page.evaluate(() => new Promise((r) => setTimeout(r, 450)));
+      const sizes = await page.evaluate(() => [...document.querySelectorAll('.td-modal[data-state="open"] .td-cal__day[data-date]')].slice(0, 14).map((c) => { const r = c.getBoundingClientRect(); return [r.width, r.height]; }));
+      expect(sizes.every(([w, h]) => w >= 43.5 && h >= 43.5), `range day cells ${JSON.stringify(sizes.slice(0, 3))}…`);
+      const a = await centre(page, '.td-modal[data-state="open"] .td-cal__day[data-date="2026-10-06"]');
+      await page.touchscreen.tap(a.x, a.y);
+      const z = await centre(page, '.td-modal[data-state="open"] .td-cal__day[data-date="2026-10-09"]');
+      await page.touchscreen.tap(z.x, z.y);
+      const band = await page.evaluate(() => ({
+        roles: ['06', '07', '08', '09'].map((d) => document.querySelector(`.td-modal[data-state="open"] .td-cal__day[data-date="2026-10-${d}"]`).getAttribute('data-range')),
+        preview: document.querySelectorAll('.td-modal[data-state="open"] .td-cal__day[data-preview]').length,
+      }));
+      expect(band.roles.join() === 'start,in,in,end' && band.preview === 0, `tap band ${JSON.stringify(band)}`);
       const sel = '.td-dtr-panel__open-end';
       const h = await page.evaluate((s) => document.querySelector(s).getBoundingClientRect().height, sel);
       expect(h >= 43.5, `"Không hạn" ${h} px tall`);
@@ -791,8 +797,8 @@ async function chromiumSemantics(browser) {
       await page.touchscreen.tap(pt.x, pt.y);
       await page.waitForFunction((s) => document.querySelector(s).getAttribute('aria-pressed') === 'true', sel, { timeout: 3000 }).catch(() => {});
       const st = await page.evaluate((s) => ({ pressed: document.querySelector(s).getAttribute('aria-pressed'),
-        day: document.querySelector('.td-dtr-panel__side[data-side="end"] .td-dtp-panel__input[data-part="day"]').value }), sel);
-      expect(st.pressed === 'true' && st.day === '', `"Không hạn" tap: ${JSON.stringify(st)}`);
+        end: document.querySelector('.td-dtr-panel__tab[data-side="end"] .td-dtr-panel__tab-value').textContent }), sel);
+      expect(st.pressed === 'true' && st.end === 'Không hạn', `"Không hạn" tap: ${JSON.stringify(st)}`);
       await page.evaluate(async () => { (await import('/src/feedback/td-modal.js')).TdModal.closeAll(); });
     });
 

@@ -5530,76 +5530,6 @@
       "selectorNote": "v0.40.0: error contract on the trigger + required asterisk + placeholder"
     },
     {
-      "state": "open-desktop",
-      "setup": "const C=customElements.get('td-datetime-range'); C.now=()=>new Date(2026,9,5,9,30); const p=document.createElement('td-datetime-range'); p.id='probe'; p.setAttribute('name','r'); p.setAttribute('label','Khoảng'); p.setAttribute('mode','datetime'); p.setAttribute('start','29/09/2026 - 00:00'); p.setAttribute('end','05/10/2026 - 23:59'); window.__mount.appendChild(p); p.querySelector('.td-dtr__trigger').click();",
-      "selectors": [
-        ".td-dtr-panel__presets",
-        ".td-dtr-panel__preset[aria-pressed=\"true\"]",
-        ".td-dtr-panel__preset[aria-pressed=\"false\"]",
-        ".td-dtr-panel__switch",
-        ".td-dtr-panel__sides",
-        ".td-dtr-panel__side[data-side=\"end\"]",
-        ".td-dtr-panel__legend",
-        ".td-dtr-panel__next",
-        ".td-modal__footer .td-btn--primary"
-      ],
-      "portal": [
-        ".td-dtr-panel__presets",
-        ".td-dtr-panel__preset[aria-pressed=\"true\"]",
-        ".td-dtr-panel__preset[aria-pressed=\"false\"]",
-        ".td-dtr-panel__switch",
-        ".td-dtr-panel__sides",
-        ".td-dtr-panel__side[data-side=\"end\"]",
-        ".td-dtr-panel__legend",
-        ".td-dtr-panel__next",
-        ".td-modal__footer .td-btn--primary"
-      ],
-      "settle": 500,
-      "excludeProps": [
-        "height",
-        "margin-left"
-      ],
-      "selectorNote": "v0.40.0: height / margin-left excluded up front — chip rows, legends and the side blocks are text line boxes (font metrics differ on Linux CI, like td-table selection-cards); the dialog size budgets are gated by test:responsive + the engines test. ≥ 720 (this harness is 1280×720): two sides side by side, no switch, '7 ngày qua' pressed. The sheet (< 720: switch 'Từ | Đến', one side) and the one-row scrolling presets (< 480 / short) need a viewport this harness does not set: covered by td-v040-datetime-range.engines (393×852, 844×390) + the responsive gate (#rsp-dtr)."
-    },
-    {
-      "state": "open-order",
-      "setup": "const C=customElements.get('td-datetime-range'); C.now=()=>new Date(2026,9,5,9,30); const p=document.createElement('td-datetime-range'); p.id='probe'; p.setAttribute('name','r'); p.setAttribute('start','10/10/2026'); p.setAttribute('end','05/10/2026'); window.__mount.appendChild(p); p.querySelector('.td-dtr__trigger').click();",
-      "selectors": [
-        ".td-dtr-panel__error",
-        ".td-dtr-panel__side[data-side=\"end\"] .td-dtp-panel__input[aria-invalid]"
-      ],
-      "portal": [
-        ".td-dtr-panel__error",
-        ".td-dtr-panel__side[data-side=\"end\"] .td-dtp-panel__input[aria-invalid]"
-      ],
-      "settle": 500,
-      "excludeProps": [
-        "height",
-        "margin-left"
-      ],
-      "selectorNote": "v0.40.0: height / margin-left excluded up front — chip rows, legends and the side blocks are text line boxes (font metrics differ on Linux CI, like td-table selection-cards); the dialog size budgets are gated by test:responsive + the engines test. Order error (start > end) on the pair line + the 'Đến' day field."
-    },
-    {
-      "state": "presets-wrap",
-      "setup": "const C=customElements.get('td-datetime-range'); C.now=()=>new Date(2026,9,5,9,30); C.presets=Array.from({length:12},(_, i)=>({id:'p'+i,label:'Quý '+(i+1)+' năm trước',resolve:(n)=>({start:n,end:n})})); const p=document.createElement('td-datetime-range'); p.id='probe'; p.setAttribute('name','r'); window.__mount.appendChild(p); p.querySelector('.td-dtr__trigger').click();",
-      "selectors": [
-        ".td-dtr-panel__presets",
-        ".td-dtr-panel__preset[data-id=\"p11\"]",
-        ".td-dtr-panel__preset[aria-pressed=\"false\"]"
-      ],
-      "portal": [
-        ".td-dtr-panel__presets",
-        ".td-dtr-panel__preset[data-id=\"p11\"]",
-        ".td-dtr-panel__preset[aria-pressed=\"false\"]"
-      ],
-      "settle": 500,
-      "excludeProps": [
-        "height",
-        "margin-left"
-      ],
-      "selectorNote": "v0.40.0: height / margin-left excluded up front — chip rows, legends and the side blocks are text line boxes (font metrics differ on Linux CI, like td-table selection-cards); the dialog size budgets are gated by test:responsive + the engines test. Many presets wrap onto several rows ≥ 480 (the < 480 one-row scroller: engines + responsive gates)."
-    },
-    {
       "state": "open-end",
       "markup": "<td-datetime-range name=\"r\" label=\"Hiệu lực\" start=\"01/10/2026\" allow-open-end></td-datetime-range>",
       "selectors": [
@@ -5618,6 +5548,91 @@
       "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
     },
     {
+      "state": "open-desktop",
+      "setup": "const C=customElements.get('td-datetime-range'); C.now=()=>new Date(2026,9,5,9,30); const p=document.createElement('td-datetime-range'); p.id='probe'; p.setAttribute('name','r'); p.setAttribute('label','Khoảng'); p.setAttribute('mode','datetime'); p.setAttribute('start','29/09/2026 - 00:00'); p.setAttribute('end','05/10/2026 - 23:59'); window.__mount.appendChild(p); p.querySelector('.td-dtr__trigger').click();",
+      "selectors": [
+        ".td-dtr-panel__presets",
+        ".td-dtr-panel__preset[aria-pressed=\"true\"]",
+        ".td-dtr-panel__preset[aria-pressed=\"false\"]",
+        ".td-dtr-panel__switch",
+        ".td-dtr-panel__tab[aria-pressed=\"true\"]",
+        ".td-dtr-panel__tab[aria-pressed=\"false\"]",
+        ".td-dtr-panel__next",
+        ".td-cal__day[data-range=\"start\"]",
+        ".td-cal__day[data-range=\"in\"]:not([data-outside])",
+        ".td-cal__day[data-range=\"end\"]",
+        ".td-dtp-pop__time",
+        ".td-modal__footer .td-btn--primary"
+      ],
+      "portal": [
+        ".td-dtr-panel__presets",
+        ".td-dtr-panel__preset[aria-pressed=\"true\"]",
+        ".td-dtr-panel__preset[aria-pressed=\"false\"]",
+        ".td-dtr-panel__switch",
+        ".td-dtr-panel__tab[aria-pressed=\"true\"]",
+        ".td-dtr-panel__tab[aria-pressed=\"false\"]",
+        ".td-dtr-panel__next",
+        ".td-cal__day[data-range=\"start\"]",
+        ".td-cal__day[data-range=\"in\"]:not([data-outside])",
+        ".td-cal__day[data-range=\"end\"]",
+        ".td-dtp-pop__time",
+        ".td-modal__footer .td-btn--primary"
+      ],
+      "settle": 500,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.61.0 (plan v0.61.0-range-calendar Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests. ≥ 720 (this harness is 1280×720): one calendar + the Từ | Đến switch + the wheels beside the grid; '7 ngày qua' pressed; the band cells."
+    },
+    {
+      "state": "open-order",
+      "setup": "const C=customElements.get('td-datetime-range'); C.now=()=>new Date(2026,9,5,9,30); const p=document.createElement('td-datetime-range'); p.id='probe'; p.setAttribute('name','r'); p.setAttribute('start','10/10/2026'); p.setAttribute('end','05/10/2026'); window.__mount.appendChild(p); p.querySelector('.td-dtr__trigger').click();",
+      "selectors": [
+        ".td-dtr-panel__error",
+        ".td-dtr-panel__tab[data-side=\"end\"][aria-describedby]"
+      ],
+      "portal": [
+        ".td-dtr-panel__error",
+        ".td-dtr-panel__tab[data-side=\"end\"][aria-describedby]"
+      ],
+      "settle": 500,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.61.0 (plan v0.61.0-range-calendar Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests. Order error (start > end) on the pair line + the 'Đến' tab it describes."
+    },
+    {
+      "state": "presets-wrap",
+      "setup": "const C=customElements.get('td-datetime-range'); C.now=()=>new Date(2026,9,5,9,30); const p=document.createElement('td-datetime-range'); p.id='probe'; p.setAttribute('name','r'); C.presets=Array.from({length:12},(_, i)=>({id:'p'+i,label:'Quý '+(i+1)+' năm trước',resolve:(n)=>({start:n,end:n})})); window.__mount.appendChild(p); p.querySelector('.td-dtr__trigger').click();",
+      "selectors": [
+        ".td-dtr-panel__presets",
+        ".td-dtr-panel__preset[data-id=\"p11\"]",
+        ".td-dtr-panel__preset[aria-pressed=\"false\"]"
+      ],
+      "portal": [
+        ".td-dtr-panel__presets",
+        ".td-dtr-panel__preset[data-id=\"p11\"]",
+        ".td-dtr-panel__preset[aria-pressed=\"false\"]"
+      ],
+      "settle": 500,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.61.0 (plan v0.61.0-range-calendar Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests. Many presets: a column ≥ 720 (the < 480 one-row scroller: engines + responsive gates)."
+    },
+    {
       "state": "open-end-panel",
       "setup": "const C=customElements.get('td-datetime-range'); C.now=()=>new Date(2026,9,5,9,30); const p=document.createElement('td-datetime-range'); p.id='probe'; p.setAttribute('name','r'); p.setAttribute('start','01/10/2026'); p.setAttribute('allow-open-end',''); window.__mount.appendChild(p); p.querySelector('.td-dtr__trigger').click();",
       "selectors": [
@@ -5634,7 +5649,51 @@
         "grid-template-columns",
         "line-height"
       ],
-      "selectorNote": "v0.59.0 (plan v0.59.0-dsuite-small Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
+      "selectorNote": "v0.61.0 (plan v0.61.0-range-calendar Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests. "
+    },
+    {
+      "state": "open-dimmed",
+      "setup": "const C=customElements.get('td-datetime-range'); C.now=()=>new Date(2026,9,5,9,30); const p=document.createElement('td-datetime-range'); p.id='probe'; p.setAttribute('name','r'); p.setAttribute('start','01/10/2026'); p.setAttribute('max-days','3'); window.__mount.appendChild(p); p.querySelector('.td-dtr__trigger').click(); document.querySelector('.td-dtr-panel__tab[data-side=\"end\"]').click();",
+      "selectors": [
+        ".td-cal__day[data-dimmed]",
+        ".td-cal__day[data-range=\"start\"]",
+        ".td-dtr-panel__hint"
+      ],
+      "portal": [
+        ".td-cal__day[data-dimmed]",
+        ".td-cal__day[data-range=\"start\"]",
+        ".td-dtr-panel__hint"
+      ],
+      "settle": 500,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.61.0 (plan v0.61.0-range-calendar Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests. Choosing the end with max-days: the days past the limit are muted (data-dimmed) but enabled; the 'Tối đa N ngày' hint."
+    },
+    {
+      "state": "open-preview",
+      "setup": "const C=customElements.get('td-datetime-range'); C.now=()=>new Date(2026,9,5,9,30); const p=document.createElement('td-datetime-range'); p.id='probe'; p.setAttribute('name','r'); p.setAttribute('start','01/10/2026'); window.__mount.appendChild(p); p.querySelector('.td-dtr__trigger').click(); document.querySelector('.td-dtr-panel__tab[data-side=\"end\"]').click(); document.querySelector('.td-cal__day[data-date=\"2026-10-05\"]').dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse'}));",
+      "selectors": [
+        ".td-cal__day[data-preview=\"in\"]",
+        ".td-cal__day[data-preview=\"end\"]"
+      ],
+      "portal": [
+        ".td-cal__day[data-preview=\"in\"]",
+        ".td-cal__day[data-preview=\"end\"]"
+      ],
+      "settle": 500,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "grid-template-columns",
+        "line-height"
+      ],
+      "selectorNote": "v0.61.0 (plan v0.61.0-range-calendar Gate): text-bearing boxes follow the platform font metrics — width / height / margin-left / grid-template-columns / line-height excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests. The pointer preview of start..hovered day (data-preview in / end)."
     }
   ],
   "td-theme-scope": [

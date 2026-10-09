@@ -1,7 +1,8 @@
 // v0.40.0 (plan docs/internal/plans/v0.39.0-filters-range.md QĐ 17–25, M2) — <td-datetime-range> in Chromium, Firefox
 // AND WebKit with real keys / clicks: opening, presets (+ aria-pressed, announcement), order / span / required errors in
 // the dialog, one `change`, FormData (two entries, names, reset, <fieldset disabled>, state restore), validity flags,
-// TdFormValidation, the sheet switch < 720 vs two sides ≥ 720, the short landscape footer, XSS of preset labels.
+// TdFormValidation, the calendar dialog (v0.61.0: one grid + the "Từ | Đến" switch, sheet < 720), the short landscape footer,
+// XSS of preset labels.
 // Booleans in assertions (DOM nodes in a failing chai assertion hang the runner).
 import { expect } from '@esm-bundle/chai';
 import { setViewport, sendKeys } from '@web/test-runner-commands';
@@ -29,8 +30,8 @@ const $ = (sel) => openModal().querySelector(sel);
 const $$ = (sel) => [...openModal().querySelectorAll(sel)];
 const rect = (el) => el.getBoundingClientRect();
 const shown = (el) => !!el && getComputedStyle(el).display !== 'none' && rect(el).width > 1 && rect(el).height > 1;
-const side = (k) => $(`.td-dtr-panel__side[data-side="${k}"]`);
-const field = (k, part) => side(k).querySelector(`.td-dtp-panel__input[data-part="${part}"]`);
+const day = (iso) => $(`.td-cal__day[data-date="${iso}"]`);
+const tab = (k) => $(`.td-dtr-panel__tab[data-side="${k}"]`);
 const footer = (label) => $$('.td-modal__footer .td-btn').find((b) => b.textContent.trim() === label);
 const preset = (id) => $(`.td-dtr-panel__preset[data-id="${id}"]`);
 const NOW = new Date(2026, 9, 5, 9, 30); // 05/10/2026 09:30 local
@@ -52,15 +53,7 @@ async function open(el, how = 'click') {
     await sendKeys({ press: how });
   }
   expect(await until(() => openModal() && openModal().getAttribute('data-state') === 'open'), 'modal open').to.equal(true);
-  await until(() => !el._dps || (!el._dps.start.intro && !el._dps.end.intro));
   await settle();
-}
-
-async function typeInto(input, text) {
-  input.focus();
-  for (let i = 0; i < 6; i++) await sendKeys({ press: 'Backspace' }); // real keys: every edit fires `input`
-  for (let i = 0; i < 6; i++) await sendKeys({ press: 'Delete' });
-  if (text) await sendKeys({ type: text });
 }
 
 beforeEach(() => { TdDatetimeRange.now = () => new Date(NOW.getTime()); });
@@ -129,19 +122,20 @@ describe('v0.40.0 td-datetime-range — host', () => {
   });
 });
 
-describe('v0.40.0 td-datetime-range — dialog', () => {
+describe('v0.40.0 td-datetime-range — dialog (the calendar since v0.61.0)', () => {
   before(async () => { await setViewport({ width: 1280, height: 800 }); });
 
-  it('opens with Enter and with ArrowDown (real keys); two fieldsets Từ / Đến; presets group "Chọn nhanh"', async () => {
+  it('opens with Enter and with ArrowDown (real keys); the "Từ | Đến" switch; presets group "Chọn nhanh"; focus in the calendar', async () => {
     const el = mount('label="Ngày" name="r"');
     await open(el, 'Enter');
     expect(el.querySelector('.td-dtr__trigger').getAttribute('aria-expanded')).to.equal('true');
-    expect($$('fieldset.td-dtr-panel__side > legend').map((l) => l.textContent)).to.deep.equal(['Từ', 'Đến']);
+    expect($$('.td-dtr-panel__tab .td-dtr-panel__tab-label').map((l) => l.textContent)).to.deep.equal(['Từ', 'Đến']);
+    expect($$('.td-dtr-panel fieldset').length, 'no fieldset editors any more').to.equal(0);
     expect($('.td-dtr-panel__presets').getAttribute('role')).to.equal('group');
     expect($('.td-dtr-panel__presets').getAttribute('aria-label')).to.equal('Chọn nhanh');
     expect($$('.td-dtr-panel__preset').map((b) => b.textContent)).to.deep.equal(['Hôm nay', '7 ngày qua', '30 ngày qua', 'Tháng này']);
-    expect(document.activeElement === field('start', 'day'), 'focus in the start day field').to.equal(true);
-    expect(field('start', 'day').value).to.equal(''); // an empty side opens empty
+    expect(document.activeElement === $('.td-cal__day[tabindex="0"]'), 'focus on the active calendar cell').to.equal(true);
+    expect($$('.td-dtr-panel__tab-value').map((t) => t.textContent)).to.deep.equal(['—', '—']); // an empty side opens empty
     await sendKeys({ press: 'Escape' });
     expect(await until(() => !openModal())).to.equal(true);
     await settle();
@@ -149,31 +143,36 @@ describe('v0.40.0 td-datetime-range — dialog', () => {
     expect(!!openModal()).to.equal(true);
   });
 
-  it('≥ 720 (1280): both sides side by side, no switch', async () => {
-    const el = mount('name="r" mode="datetime"');
-    await open(el);
-    expect(shown(side('start')) && shown(side('end'))).to.equal(true);
-    expect(Math.abs(rect(side('start')).top - rect(side('end')).top) < 2, 'same row').to.equal(true);
-    expect(rect(side('start')).right <= rect(side('end')).left, 'start left of end').to.equal(true);
-    expect(shown($('.td-dtr-panel__switch'))).to.equal(false);
+  it('≥ 720 (1280): ONE calendar, the switch shows in both modes, the presets are a column left of it', async () => {
+    for (const mode of ['date', 'datetime']) {
+      const el = mount(`name="r" mode="${mode}"`);
+      await open(el);
+      expect($$('.td-cal').length).to.equal(1);
+      expect(shown($('.td-dtr-panel__switch')), `${mode}: switch`).to.equal(true);
+      expect(rect($('.td-dtr-panel__presets')).right <= rect($('.td-cal')).left, `${mode}: presets left of the calendar`).to.equal(true);
+      if (mode === 'datetime') expect(rect($('.td-cal')).right <= rect($('.td-dtp-pop__time')).left + 1, 'wheels beside the grid').to.equal(true);
+      TdModal.closeAll();
+      await settle();
+      host.innerHTML = '';
+    }
   });
 
-  it('preset fills both sides + aria-pressed + announcement; editing by hand clears pressed; Chọn → one change with preset', async () => {
+  it('preset fills both sides + aria-pressed + announcement; picking a day clears pressed; Chọn → one change with preset', async () => {
     const el = mount('name="r"');
     const events = [];
     el.addEventListener('change', (e) => events.push(e.detail));
     await open(el);
     preset('last7').click();
-    expect(field('start', 'day').value + '/' + field('start', 'month').value + '/' + field('start', 'year').value).to.equal('29/9/2026');
-    expect(field('end', 'day').value).to.equal('5');
+    expect($$('.td-dtr-panel__tab-value').map((t) => t.textContent)).to.deep.equal(['29/09/2026', '05/10/2026']);
     expect(preset('last7').getAttribute('aria-pressed')).to.equal('true');
     expect(preset('today').getAttribute('aria-pressed')).to.equal('false');
     expect($('.td-dtr-panel__status').getAttribute('role')).to.equal('status');
     expect($('.td-dtr-panel__status').textContent).to.equal('Đã chọn 7 ngày qua: 29/09/2026 – 05/10/2026');
     expect(!!openModal(), 'a preset does not close').to.equal(true);
-    await typeInto(field('start', 'day'), '30');
+    day('2026-09-30').click(); // side = start → a new range
     expect(preset('last7').getAttribute('aria-pressed')).to.equal('false');
-    await typeInto(field('start', 'day'), '29');
+    day('2026-09-29').click();
+    day('2026-10-05').click();
     expect(preset('last7').getAttribute('aria-pressed')).to.equal('true');
     footer('Chọn').click();
     expect(await until(() => !openModal())).to.equal(true);
@@ -184,18 +183,20 @@ describe('v0.40.0 td-datetime-range — dialog', () => {
     expect(document.activeElement === el.querySelector('.td-dtr__trigger'), 'focus back on the trigger').to.equal(true);
   });
 
-  it('datetime presets: 00:00 → 23:45 with minute-step 15 (wheels follow)', async () => {
+  it('datetime presets: 00:00 → 23:45 with minute-step 15 (the wheels follow the active endpoint)', async () => {
     const el = mount('name="r" mode="datetime" minute-step="15"');
     await open(el);
     preset('today').click();
-    const sel = (k, part) => side(k).querySelector(`.td-dtp-wheel__list[data-part="${part}"] [aria-selected="true"]`).getAttribute('data-value');
-    expect([sel('start', 'hour'), sel('start', 'minute'), sel('end', 'hour'), sel('end', 'minute')]).to.deep.equal(['0', '0', '23', '45']);
+    const sel = (part) => $(`.td-dtp-wheel__list[data-part="${part}"] [aria-selected="true"]`).getAttribute('data-value');
+    expect([sel('hour'), sel('minute')]).to.deep.equal(['0', '0']);
+    tab('end').click();
+    expect([sel('hour'), sel('minute')]).to.deep.equal(['23', '45']);
     footer('Chọn').click();
     expect(await until(() => !openModal())).to.equal(true);
     expect(el.getValue()).to.deep.equal({ start: '05/10/2026 - 00:00', end: '05/10/2026 - 23:45' });
   });
 
-  it('start > end: "Chọn" stays open, the order error shows in role=alert, focus + describedby on the "Đến" day field', async () => {
+  it('start > end (attributes): "Chọn" stays open, the order error shows in role=alert, focus + describedby on the "Đến" tab', async () => {
     const el = mount('name="r" start="10/10/2026" end="05/10/2026"');
     let changes = 0;
     el.addEventListener('change', () => { changes++; });
@@ -208,13 +209,24 @@ describe('v0.40.0 td-datetime-range — dialog', () => {
     await settle();
     expect(!!openModal(), 'still open').to.equal(true);
     expect(changes).to.equal(0);
-    const day = field('end', 'day');
-    expect(document.activeElement === day, 'focus on Đến day').to.equal(true);
-    expect((day.getAttribute('aria-describedby') || '').split(' ').includes(line.id)).to.equal(true);
-    expect(day.getAttribute('aria-invalid')).to.equal('true');
-    await typeInto(day, '12');
+    expect(document.activeElement === tab('end'), 'focus on the Đến tab').to.equal(true);
+    expect(tab('end').getAttribute('aria-pressed')).to.equal('true');
+    expect((tab('end').getAttribute('aria-describedby') || '').split(' ').includes(line.id)).to.equal(true);
+    day('2026-10-12').click(); // side = end, start 10/10: a day after it is the new end
     expect(line.hidden).to.equal(true);
-    expect(day.hasAttribute('aria-invalid')).to.equal(false);
+    expect(tab('end').hasAttribute('aria-describedby')).to.equal(false);
+  });
+
+  it('date mode: a second day EARLIER than Từ starts a new range (no error, no order message)', async () => {
+    const el = mount('name="r"');
+    await open(el);
+    day('2026-10-05').click();
+    day('2026-10-02').click();
+    expect($('.td-dtr-panel__error').hidden).to.equal(true);
+    expect($$('.td-dtr-panel__tab-value').map((t) => t.textContent)).to.deep.equal(['02/10/2026', '—']);
+    expect(tab('end').getAttribute('aria-pressed')).to.equal('true');
+    day('2026-10-04').click();
+    expect($$('.td-dtr-panel__tab-value').map((t) => t.textContent)).to.deep.equal(['02/10/2026', '04/10/2026']);
   });
 
   it('one side empty is valid without required; "Xoá" empties both; Chọn commits the empty sides', async () => {
@@ -222,7 +234,7 @@ describe('v0.40.0 td-datetime-range — dialog', () => {
     const events = [];
     el.addEventListener('change', (e) => events.push(e.detail));
     await open(el);
-    for (const p of ['day', 'month', 'year']) await typeInto(field('end', p), '');
+    day('2026-10-01').click(); // a new range with only a start
     footer('Chọn').click();
     expect(await until(() => !openModal())).to.equal(true);
     expect(el.getValue()).to.deep.equal({ start: '01/10/2026', end: '' });
@@ -231,24 +243,25 @@ describe('v0.40.0 td-datetime-range — dialog', () => {
     await open(el);
     footer('Xoá').click();
     expect(!!openModal(), 'Xoá keeps the dialog open').to.equal(true);
-    expect(field('start', 'day').value + field('end', 'day').value).to.equal('');
+    expect($$('.td-dtr-panel__tab-value').map((t) => t.textContent)).to.deep.equal(['—', '—']);
     footer('Chọn').click();
     expect(await until(() => !openModal())).to.equal(true);
     expect(el.getValue()).to.deep.equal({ start: '', end: '' });
     expect(events.map((e) => e.preset)).to.deep.equal([null, null]);
   });
 
-  it('required="end": Chọn with an empty end → "Vui lòng chọn ngày kết thúc", focus on the end day', async () => {
+  it('required="end": Chọn with an empty end → "Vui lòng chọn ngày kết thúc", the Đến tab is active + focused', async () => {
     const el = mount('name="r" required="end"');
     await open(el);
     footer('Chọn').click();
     await settle();
     expect(!!openModal()).to.equal(true);
     expect($('.td-dtr-panel__error').textContent).to.equal('Vui lòng chọn ngày kết thúc');
-    expect(document.activeElement === field('end', 'day')).to.equal(true);
+    expect(document.activeElement === tab('end')).to.equal(true);
+    expect(tab('end').getAttribute('aria-pressed')).to.equal('true');
   });
 
-  it('max-days: span error in the dialog and customError on the host', async () => {
+  it('max-days: a preset beyond it → span error in the dialog and customError on the host', async () => {
     const el = mount('name="r" max-days="7"');
     await open(el);
     preset('last30').click();
@@ -265,14 +278,32 @@ describe('v0.40.0 td-datetime-range — dialog', () => {
     expect(el.validationMessage).to.equal('Khoảng tối đa 7 ngày');
   });
 
+  it('max-days (date): the end past the limit is DIMMED but enabled; activating it starts a new range with the note', async () => {
+    const el = mount('name="r" max-days="3"');
+    await open(el);
+    day('2026-10-05').click();
+    expect(day('2026-10-07').hasAttribute('data-dimmed')).to.equal(false); // 5, 6, 7 = 3 days
+    expect(day('2026-10-08').hasAttribute('data-dimmed')).to.equal(true);
+    expect(day('2026-10-08').hasAttribute('aria-disabled'), 'dimmed ≠ disabled').to.equal(false);
+    expect($('.td-dtr-panel__hint').hidden).to.equal(false);
+    expect($('.td-dtr-panel__hint').textContent).to.equal('Tối đa 3 ngày');
+    day('2026-10-08').click();
+    expect($$('.td-dtr-panel__tab-value').map((t) => t.textContent)).to.deep.equal(['08/10/2026', '—']);
+    expect(tab('end').getAttribute('aria-pressed')).to.equal('true');
+    expect($('.td-dtr-panel__status').textContent).to.contain('Tối đa 3 ngày');
+    expect($('.td-dtr-panel__error').hidden).to.equal(true);
+  });
+
   it('min / max clamp presets; a preset entirely outside → aria-disabled (no click effect)', async () => {
     const el = mount('name="r" min="01/10/2026" max="2026-10-03"');
     await open(el);
     preset('last7').click();
-    expect(field('start', 'day').value + '|' + field('end', 'day').value).to.equal('1|3');
+    expect($$('.td-dtr-panel__tab-value').map((t) => t.textContent)).to.deep.equal(['01/10/2026', '03/10/2026']);
     expect(preset('today').getAttribute('aria-disabled')).to.equal('true');
     preset('today').click();
-    expect(field('start', 'day').value + '|' + field('end', 'day').value).to.equal('1|3');
+    expect($$('.td-dtr-panel__tab-value').map((t) => t.textContent)).to.deep.equal(['01/10/2026', '03/10/2026']);
+    expect(day('2026-10-04').getAttribute('aria-disabled')).to.equal('true'); // the cells follow min / max
+    expect(day('2026-09-30').getAttribute('aria-disabled')).to.equal('true');
   });
 
   it('presets = [] hides the row; presets assigned before the upgrade are used; XSS label stays text', async () => {
@@ -314,40 +345,42 @@ describe('v0.40.0 td-datetime-range — dialog', () => {
   });
 });
 
-describe('v0.40.0 td-datetime-range — sheet < 720 and short landscape', () => {
-  it('393×852: switch "Từ | Đến" shows one side; tapping Đến / "Tiếp" switches and focuses its day field', async () => {
+describe('v0.40.0 td-datetime-range — sheet < 720 and short landscape (the calendar since v0.61.0)', () => {
+  it('393×852: the switch shows both endpoints; tapping Đến / "Tiếp" changes the endpoint, focuses the calendar, swaps the wheels', async () => {
     await setViewport({ width: 393, height: 852 });
-    const el = mount('name="r" mode="datetime" start="01/10/2026 - 08:00"');
+    const el = mount('name="r" mode="datetime" start="01/10/2026 - 08:00" end="05/10/2026 - 17:30"');
     await open(el);
     const tabs = $$('.td-dtr-panel__tab');
     expect(shown($('.td-dtr-panel__switch'))).to.equal(true);
     expect(tabs.map((t) => t.getAttribute('aria-pressed'))).to.deep.equal(['true', 'false']);
     expect(tabs[0].querySelector('.td-dtr-panel__tab-value').textContent).to.equal('01/10/2026 - 08:00');
-    expect(tabs[1].querySelector('.td-dtr-panel__tab-value').textContent).to.equal('—');
-    expect(shown(side('start')) && !shown(side('end'))).to.equal(true);
+    expect(tabs[1].querySelector('.td-dtr-panel__tab-value').textContent).to.equal('05/10/2026 - 17:30');
+    expect(shown($('.td-dtr-panel__next')), '"Tiếp: Đến" while editing Từ').to.equal(true);
+    const hour = () => $('.td-dtp-wheel__list[data-part="hour"] [aria-selected="true"]').getAttribute('data-value');
+    expect(hour()).to.equal('8');
     tabs[1].click();
-    expect(shown(side('end')) && !shown(side('start'))).to.equal(true);
-    expect(document.activeElement === field('end', 'day')).to.equal(true);
+    expect(tabs.map((t) => t.getAttribute('aria-pressed'))).to.deep.equal(['false', 'true']);
+    expect(hour()).to.equal('17');
+    expect(document.activeElement === $('.td-cal__day[tabindex="0"]'), 'focus in the calendar').to.equal(true);
+    expect(shown($('.td-dtr-panel__next')), 'hidden while editing Đến').to.equal(false);
     tabs[0].click();
     $('.td-dtr-panel__next').click();
-    expect(shown(side('end'))).to.equal(true);
     expect(tabs.map((t) => t.getAttribute('aria-pressed'))).to.deep.equal(['false', 'true']);
-    // the end wheels are centred once shown (they had no layout while hidden)
-    const list = side('end').querySelector('.td-dtp-wheel__list[data-part="hour"]');
+    // the wheels are centred at once on the endpoint's time
+    const list = $('.td-dtp-wheel__list[data-part="hour"]');
     const opt = list.querySelector('[aria-selected="true"]');
     const mid = rect(list).top + rect(list).height / 2;
     expect(Math.abs(rect(opt).top + rect(opt).height / 2 - mid) < 4, 'selected hour in the band').to.equal(true);
   });
 
-  it('393×852: an order error on the hidden "Đến" side switches to it before focusing', async () => {
+  it('393×852: a rejected "Chọn" activates the Đến endpoint and focuses its tab', async () => {
     await setViewport({ width: 393, height: 852 });
     const el = mount('name="r" start="10/10/2026" end="05/10/2026"');
     await open(el);
-    expect(shown(side('start'))).to.equal(true);
     footer('Chọn').click();
     await settle();
-    expect(shown(side('end'))).to.equal(true);
-    expect(document.activeElement === field('end', 'day')).to.equal(true);
+    expect(tab('end').getAttribute('aria-pressed')).to.equal('true');
+    expect(document.activeElement === tab('end')).to.equal(true);
   });
 
   it('844×390 (short): presets on one scrolling row, "Chọn" inside the viewport', async () => {

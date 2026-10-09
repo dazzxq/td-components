@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -275,8 +276,10 @@ test('v0.40.0: ./datetime-range export, sideEffects, barrel TdDatetimeRange, dat
   assert.ok(pkg.sideEffects.includes('./src/form/td-datetime-range.js'));
   const src = await readFile(join(ROOT, 'index.js'), 'utf8');
   assert.match(src, /export \{ TdDatetimeRange \} from '\.\/src\/form\/td-datetime-range\.js';/);
-  assert.ok(!/datetime-panel|date-presets/.test(src), 'datetime-panel / date-presets stay internal');
-  assert.ok(!Object.values(pkg.exports).some((t) => /datetime-panel|date-presets/.test(t)), 'no datetime-panel / date-presets export');
+  const internal = /datetime-panel|date-presets|calendar-model|calendar-grid|calendar-labels|time-wheels|range-selection/;
+  assert.ok(!internal.test(src), 'date-presets / calendar-* / time-wheels / range-selection stay internal (v0.61.0: datetime-panel is gone)');
+  assert.ok(!Object.values(pkg.exports).some((t) => internal.test(t)), 'no export of an internal calendar module');
+  assert.equal(existsSync(join(ROOT, 'src/form/datetime-panel.js')), false, 'the legacy one-moment editor was removed in v0.61.0');
   const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
   const i = files.indexOf('components/datetime-range.css');
   assert.ok(i > files.indexOf('components/datetime-picker.css') && i < files.indexOf('utilities.css'), 'datetime-range.css after datetime-picker.css, before utilities.css');

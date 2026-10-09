@@ -29,8 +29,8 @@
  * v0.38.0: td-scan-input (single + multiple 30 rows + the 280 px column): no overflow, indicator never over the input
  * (below it under 480), list rows inside the host, speaker / Bỏ / Xoá tất cả ≥ 44 coarse (generic target probe).
  *
- * v0.40.0: td-datetime-range — dialog (sheet < 720: the "Từ | Đến" switch shows ONE side; ≥ 720 two sides side by
- * side; presets never wider than the dialog, one scrolling row < 480 / short), "Chọn" in the viewport (incl. 844×390);
+ * v0.40.0: td-datetime-range — dialog (v0.61.0: ONE calendar, the "Từ | Đến" switch at every width, presets a column ≥ 720;
+ * presets never wider than the dialog, one scrolling row < 480 / short), "Chọn" in the viewport (incl. 844×390);
  * the 160 px host never overflows and its cut trigger text carries a title.
  *
  * v0.47.0: td-check-matrix (12 roles × 40 permissions, max-height 24rem): no page overflow (the grid scrolls inside its
@@ -1041,24 +1041,29 @@ async function runOverlays(page, c, tag, shot) {
         check(tag, `${s.name}: sheet height budget`, m.height <= vp.h * 0.7 + 0.5 ? [] : [`sheet ${Math.round(m.height)} > 70 % of ${vp.h}`]);
       }
       if (s.name === 'datetime-range') {
-        // v0.40.0 (plan QĐ 24): < 720 the switch + one side; ≥ 720 both sides on one row; presets inside the dialog
-        // (one scrolling row < 480 / short); the side shown fits the dialog width
+        // v0.61.0 (plan v0.61.0-range-calendar E): ONE calendar for both endpoints; the "Từ | Đến" switch shows at every width;
+        // ≥ 720 the presets are a column beside the grid; presets never wider than the dialog, one scrolling row < 480 / short;
+        // the calendar fits the dialog and (coarse) the seven day cells are ≥ 43.5 px wide
         const dr = await page.evaluate(() => {
           const p = [...document.querySelectorAll('.td-dtr-panel')].pop();
           const d = p.closest('.td-modal__dialog').getBoundingClientRect();
           const vis = (el) => !!el && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().height > 0;
-          const sides = [...p.querySelectorAll('.td-dtr-panel__side')].filter(vis).map((x) => x.getBoundingClientRect());
+          const cal = p.querySelector('.td-cal');
+          const cr = cal.getBoundingClientRect();
           const row = p.querySelector('.td-dtr-panel__presets');
           const rr = row.getBoundingClientRect();
-          return { sw: vis(p.querySelector('.td-dtr-panel__switch')), n: sides.length, sameRow: sides.length === 2 && Math.abs(sides[0].top - sides[1].top) < 2,
-            sideOut: sides.some((x) => x.left < d.left - 0.5 || x.right > d.right + 0.5), rowOut: rr.left < d.left - 0.5 || rr.right > d.right + 0.5,
-            wrap: getComputedStyle(row).flexWrap };
+          const cell = p.querySelector('.td-cal__day[data-date]').getBoundingClientRect();
+          return { sw: vis(p.querySelector('.td-dtr-panel__switch')), cals: p.querySelectorAll('.td-cal').length, fieldsets: p.querySelectorAll('fieldset').length,
+            calOut: cr.left < d.left - 0.5 || cr.right > d.right + 0.5, rowOut: rr.left < d.left - 0.5 || rr.right > d.right + 0.5,
+            column: rr.right <= cr.left + 0.5, wrap: getComputedStyle(row).flexWrap, cellW: cell.width, coarse: matchMedia('(pointer: coarse)').matches };
         });
         const err = [];
-        if (vp.w < 720 && !(dr.sw && dr.n === 1)) err.push(`< 720: switch ${dr.sw}, sides shown ${dr.n} (switch + one side expected)`);
-        if (vp.w >= 720 && !(dr.n === 2 && dr.sameRow && !dr.sw)) err.push(`≥ 720: sides ${dr.n}, same row ${dr.sameRow}, switch ${dr.sw}`);
-        if (dr.sideOut) err.push('a side wider than the dialog');
+        if (!dr.sw) err.push('the Từ | Đến switch is hidden');
+        if (dr.cals !== 1 || dr.fieldsets) err.push(`calendars ${dr.cals}, fieldsets ${dr.fieldsets} (one calendar, no fieldset editors expected)`);
+        if (vp.w >= 720 && !dr.column) err.push('≥ 720: the presets are not a column left of the calendar');
+        if (dr.calOut) err.push('the calendar is wider than the dialog');
         if (dr.rowOut) err.push('presets row wider than the dialog');
+        if (dr.coarse && dr.cellW < 43.5) err.push(`day cell ${dr.cellW.toFixed(1)} px < 43.5`);
         if ((vp.w < 480 || vp.h <= 500) && dr.wrap !== 'nowrap') err.push(`presets wrap (${dr.wrap}) < 480 / short`);
         check(tag, `${s.name}: layout`, err);
       }
