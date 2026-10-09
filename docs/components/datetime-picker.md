@@ -310,12 +310,12 @@ hành vi, test của site).
 - **Đọc lúc chốt:** như bảng dưới (cũng dùng cho giá trị dán / attribute `value`); gõ thiếu (`15/03/19` — năm 2 chữ số) → lỗi định
   dạng.
 
-| mode | gõ được | ví dụ (đều thành) |
+| mode | **gõ phím** (chỉ chữ số; phím `/` điền số 0) | **dán** / attribute `value` (đọc được, thành định dạng hiển thị) |
 |---|---|---|
-| `date` | `d/m/yyyy`, 8 chữ số `ddmmyyyy`, ISO `yyyy-mm-dd` | `15/3/1994`, `15031994`, `15.3.1994`, `1994-03-15` → `15/03/1994` |
-| `datetime` | ngày như trên + (khoảng trắng / ` - `) + `h:mm` / `h.mm` / `9h05` / `hhmm`; 12 chữ số; ISO `yyyy-mm-ddThh:mm` | `15/3/1994 9:05`, `150319940905` → `15/03/1994 - 09:05` |
-| `month` | `m/yyyy`, 6 chữ số `mmyyyy`, ISO `yyyy-mm` | `3/1994`, `031994` → `03/1994` |
-| `year` | 4 chữ số | `1994` |
+| `date` | `15031994`, `15/3/1994` → `15/03/1994` | `15/03/1994`, `15/3/1994`, `15.3.1994`, `15-3-1994`, ISO `1994-03-15` |
+| `datetime` | `150319940905`, `15/3/1994 9:5` → `15/03/1994 - 09:05` | ngày như trên + giờ `9:05` / `9h05` / `0905`; ISO `1994-03-15T09:05` |
+| `month` | `031994`, `3/1994` → `03/1994` | `3/1994`, `031994`, ISO `1994-03` |
+| `year` | `1994` | `1994` |
 
   **Năm luôn 4 chữ số** — `15/3/94` bị từ chối (lỗi định dạng), không đoán 1994 hay 2094. `datetime` thiếu giờ → lỗi "Vui lòng
   nhập đầy đủ…" (không tự thêm 00:00). `minute-step` **không** áp lên giờ gõ (nó là bước của bánh xe).

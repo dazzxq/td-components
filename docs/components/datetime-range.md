@@ -126,8 +126,9 @@ gõ (Từ – Đến) + nút lịch**; hộp thoại y như trên. **Opt-in** �
 
 - **Chỉ máy tính gõ được**; thiết bị cảm ứng (`(hover: none) and (pointer: coarse)`, theo dõi trực tiếp): hai ô `readonly` +
   `inputmode="none"`, chạm = mở hộp thoại như 0.62, không bàn phím ảo.
-- **Đọc chữ gõ** như picker đơn ([bảng](datetime-picker.md#11-gõ-tay-editable-0630)): `20031994`, `20/3/1994`, `20.3.1994`,
-  `1994-03-20` → `20/03/1994`; `datetime` thêm giờ `8:30` / `0830` (thiếu giờ → lỗi "Vui lòng nhập đầy đủ…"); năm luôn 4 chữ số.
+- **Gõ phím** như picker đơn ([bảng](datetime-picker.md#11-gõ-tay-editable-0630)): chỉ chữ số — `20031994` (hoặc `20/3/1994`,
+  phím `/` điền số 0) → `20/03/1994`; `datetime` thêm giờ `0830` (thiếu giờ → lỗi "Vui lòng nhập đầy đủ…"); năm luôn 4 chữ số.
+  **Dán** một ngày đọc được (`20.3.1994`, ISO `1994-03-20`…) → định dạng hiển thị.
 - **Chỉ chữ số + mặt nạ khi gõ (0.63.1)** trên cả hai ô, như picker đơn ([mục 11](datetime-picker.md#11-gõ-tay-editable-0630)):
   gõ `01031994` → ô hiện `01/03/1994` ngay lúc gõ; ký tự khác bị chặn, `/` điền số 0 (`1/3/1994` → `01/03/1994`); dán ngày đọc được →
   định dạng hiển thị.
