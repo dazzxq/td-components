@@ -7,10 +7,12 @@ import { CalendarGrid } from './calendar-grid.js';
 import { TimeStep } from './time-step.js';
 import { freshCalendarLabels, normalizeCalendarLabels } from './calendar-labels.js';
 import { clampDate, compareDates, isDateOutOfRange } from '../utils/calendar-model.js';
+import { matches, MQ_COARSE } from '../utils/breakpoints-internal.js';
 import { pickDay, cellFlags, rangeDays } from '../utils/range-selection.js';
 import {
   parseBound, invalidReason, normalizeMinuteStep, snapMinuteDown, partsFromDate, toModeParts, parseModeValue,
   parseModeDb, formatModeDisplay, formatModeDb, formatModeIso, compareModeParts, MODE_PARTS, toNativeValue, fromNativeValue,
+  parseTypedValue,
 } from '../utils/datetime.js';
 import {
   normalizeRangeMode, requiredParts, lastMinute, emptyParts, isEmptyParts, defaultPresets, resolvePreset, sameRange,
@@ -72,6 +74,30 @@ export { toNativeValue, fromNativeValue };
  * SSR (`datetime-range@1`, php td_datetime_range): two native inputs + the trigger; adopted through the component's
  * OWN gate (the shared TdFormElement gate allows exactly one control and stays unchanged) — see `canHydrate()`.
  *
+ * **Typed dates — `editable` (v0.63.0, plan v0.63.0-typed-dates B / D):** opt-in; without it nothing above changes. The field
+ * becomes two text inputs + the icon button that opens the same dialog:
+ *   <div class="td-dtr td-dtr--editable" data-state>
+ *     [span.td-field__label.td-dtr__label#{id}-label]
+ *     <span id="{id}-start-name" hidden>Từ ngày</span>
+ *     <input type="text" class="td-dtr__input" data-side="start" id="{id}-start-input" aria-labelledby="{id}-label {id}-start-name"
+ *            autocomplete="off" spellcheck="false" placeholder [aria-required] [readonly inputmode="none" on touch] [disabled]>
+ *     <span class="td-dtr__sep" aria-hidden="true">–</span>
+ *     <span id="{id}-end-name" hidden>Đến ngày</span> <input … data-side="end" …>   (allow-open-end: placeholder "Không hạn")
+ *     <button type="button" class="td-dtr__trigger td-dtr__trigger--icon" id="{id}-trigger" aria-label="Mở lịch" aria-haspopup="dialog"
+ *             aria-expanded><span class="td-dtr__icon" data-td-icon="calendar" aria-hidden="true"></span></button>
+ *   </div>
+ * No `name` on the inputs (the host submits); their native `input` / `change` are stopped at the input. Each input commits ITS
+ * side (Enter without preventDefault, blur, before the dialog opens; unchanged text → nothing) with the picker's table
+ * (parseTypedValue; empty → cleared; unreadable / impossible → the raw text). After the write, ONE `change` (detail as "Chọn",
+ * `preset: null`) when the whole range is valid (validity clean: requiredParts, order, `max-days`, min / max, badInput) and
+ * differs from the range before — so an open range fires after "Từ", again after "Đến"; `required` waits for both. Every
+ * write (typed side, "Chọn") goes through `_write()`. The typed error (D3) shows through the error contract (a site error
+ * wins), `aria-invalid` on the input it is about: that side's own error (format / date / min / max / required of that side),
+ * else the order / `max-days` error on the side just committed, else the other side's own error. It goes on "Chọn",
+ * setValue() / setDBValue() / an outside start / end change, reset, `editable` off, or once the range is valid. Escape puts
+ * the committed text back; ArrowDown / Alt+ArrowDown open the dialog. Touch-first devices (`MQ_COARSE`, followed live):
+ * `readonly` + `inputmode="none"`, a tap opens the dialog.
+ *
  * @element td-datetime-range
  * @attr {string} mode - date (default) | datetime (month / year → date + a warning)
  * @attr {string} start - start: display format of the mode or its ISO
@@ -93,16 +119,18 @@ export { toNativeValue, fromNativeValue };
  *   only; required="end" → one warning), trigger "{start} – Không hạn", a "Không hạn" toggle in the "Đến" side (pressed =
  *   the end being edited is empty). Value / FormData / events unchanged (end ''). In place, also while the dialog is open.
  * @attr {string} error-text - error message (error contract)
- * @fires change - "Chọn" committed: detail { value: { start, end }, dbValue: { start, end }, preset: id | null }
+ * @attr {boolean} editable - v0.63.0: both sides can be typed (desktop; touch keeps tap-to-open) — see "Typed dates" above
+ * @fires change - "Chọn" committed: detail { value: { start, end }, dbValue: { start, end }, preset: id | null }; `editable`:
+ *   a typed side committed while the whole range is valid and differs (preset null)
  */
 export class TdDatetimeRange extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'mode', 'start', 'end', 'start-name', 'end-name', 'label', 'placeholder', 'min', 'max',
-      'max-days', 'minute-step', 'form-value-format', 'open-at', 'error-text', 'aria-label', 'allow-open-end'];
+      'max-days', 'minute-step', 'form-value-format', 'open-at', 'error-text', 'aria-label', 'allow-open-end', 'editable'];
   }
 
   /** `required` carries a value (start | end | both), so it is not a boolean attribute here. */
-  static get booleanAttributes() { return ['disabled', 'allow-open-end']; }
+  static get booleanAttributes() { return ['disabled', 'allow-open-end', 'editable']; }
 
   static get errorContract() { return true; }
 
@@ -114,6 +142,9 @@ export class TdDatetimeRange extends TdFormElement {
     next: 'Tiếp: Đến', emptySide: '—', date: 'Ngày', day: 'Ngày', month: 'Tháng', year: 'Năm', time: 'Giờ',
     hour: 'Giờ', minute: 'Phút', close: 'Đóng', clear: 'Xoá', confirm: 'Chọn', presetChosen: 'Đã chọn {label}: {range}',
     openEnd: 'Không hạn', // v0.59.0 `allow-open-end`
+    // v0.63.0 `editable`: the icon button, the hidden names of the two inputs, their placeholder (per mode)
+    openCalendar: 'Mở lịch', startInput: 'Từ ngày', endInput: 'Đến ngày', startInputDatetime: 'Từ', endInputDatetime: 'Đến',
+    sidePlaceholder: 'dd/mm/yyyy', sidePlaceholderDatetime: 'dd/mm/yyyy - hh:mm',
     // v0.61.0 (calendar): cell suffixes, the max-days note, the `role=status` announcements. `date` / `day` / `month` / `year`
     // above are no longer used by the dialog (kept so a site's override does not break).
     rangeStart: 'ngày bắt đầu', rangeEnd: 'ngày kết thúc', rangeSingle: 'ngày bắt đầu và kết thúc', rangeIn: 'trong khoảng',
@@ -164,6 +195,10 @@ export class TdDatetimeRange extends TdFormElement {
     /** @private instance presets (null = TdDatetimeRange.presets) */
     this._presets = null;
     this._warned = new Set();
+    /** @private v0.63.0 `editable` (D3): { own: { start, end } (messages|null), pair: { side, message }|null, last } | null */
+    this._typedError = null;
+    /** @private v0.63.0: the text the element last put into each input (a commit of the same text is a no-op) */
+    this._inputText = { start: '', end: '' };
   }
 
   // --- Properties ---
@@ -306,6 +341,7 @@ export class TdDatetimeRange extends TdFormElement {
   // --- Rendering ---
 
   render() {
+    if (this._editable()) return this._renderEditable();
     const esc = (s) => this.escapeHtml(String(s));
     const id = esc(this.id);
     const label = this.getAttribute('label') || '';
@@ -323,9 +359,253 @@ export class TdDatetimeRange extends TdFormElement {
       + '</button></div>';
   }
 
+  /** @private v0.63.0 `editable` (plan B): label + two text inputs (hidden side names) + the separator + the icon button */
+  _renderEditable() {
+    const esc = (s) => this.escapeHtml(String(s));
+    const id = esc(this.id);
+    const L = TdDatetimeRange.labels;
+    const label = this.getAttribute('label') || '';
+    const req = this._required();
+    const disabled = this._ssrRender ? this.hasAttribute('disabled') : this._effectiveDisabled;
+    const off = disabled ? ' disabled' : '';
+    const touch = this._coarse() ? ' readonly inputmode="none"' : '';
+    const input = (k) => `<span id="${id}-${k}-name" hidden>${esc(this._text(L, `${k}Input`))}</span>`
+      + `<input type="text" class="td-dtr__input" data-side="${k}" id="${id}-${k}-input"`
+      + ` aria-labelledby="${label ? `${id}-label ` : ''}${id}-${k}-name" autocomplete="off" spellcheck="false"`
+      + ` placeholder="${esc(this._sidePlaceholder(k))}" value="${esc(this._sideText(k))}"`
+      + `${req.includes(k) ? ' aria-required="true"' : ''}${touch}${off}>`;
+    return `<div class="td-dtr td-dtr--editable" data-state="${this._isOpen ? 'open' : 'closed'}">`
+      + (label ? `<span class="td-field__label td-dtr__label" id="${id}-label">${esc(label)}`
+        + (req.length ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') + '</span>' : '')
+      + input('start')
+      + '<span class="td-dtr__sep" aria-hidden="true">–</span>'
+      + input('end')
+      + `<button type="button" class="td-dtr__trigger td-dtr__trigger--icon" id="${id}-trigger" aria-label="${esc(L.openCalendar)}"`
+      + ` aria-haspopup="dialog" aria-expanded="${this._isOpen}"${off}>`
+      + '<span class="td-dtr__icon" data-td-icon="calendar" aria-hidden="true"></span></button></div>';
+  }
+
+  /** @private v0.63.0 */
+  _editable() { return this.hasAttribute('editable'); }
+
+  /** @private v0.63.0: the typing input of one side (only rendered with `editable`) */
+  _input(side) { return this.querySelector(`.td-dtr__input[data-side="${side}"]`); }
+
+  /** @private v0.63.0: both inputs (none without `editable`) */
+  _inputs() { return [...this.querySelectorAll('.td-dtr__input')]; }
+
+  /** @private v0.63.0 plan E: a touch-first device — the inputs are read-only there */
+  _coarse() { return matches(MQ_COARSE); }
+
+  /** @private v0.63.0: the placeholder of one input (`allow-open-end`: the end reads "Không hạn") */
+  _sidePlaceholder(side) {
+    const L = TdDatetimeRange.labels;
+    return side === 'end' && this.hasAttribute('allow-open-end') ? L.openEnd : this._text(L, 'sidePlaceholder');
+  }
+
+  /** @private v0.63.0: the inputs in place — text (the program wins, also while focused), placeholder */
+  _syncInputs() {
+    for (const k of SIDES) {
+      const input = this._input(k);
+      if (!input) continue;
+      const text = this._sideText(k);
+      if (input.value !== text) input.value = text;
+      this._inputText[k] = text;
+      const ph = this._sidePlaceholder(k);
+      if (input.getAttribute('placeholder') !== ph) input.setAttribute('placeholder', ph);
+    }
+  }
+
+  /** @private v0.63.0 plan E: follow MQ_COARSE live — touch → readonly + inputmode=none (pending text committed first) */
+  _applyTouchMode() {
+    const touch = this._coarse();
+    for (const input of this._inputs()) {
+      if (touch === input.readOnly) continue;
+      if (touch) {
+        this._commitSide(input.getAttribute('data-side'));
+        input.readOnly = true;
+        input.setAttribute('inputmode', 'none');
+      } else {
+        input.readOnly = false;
+        input.removeAttribute('inputmode');
+      }
+    }
+  }
+
+  /** @private v0.63.0: one `matchMedia(MQ_COARSE)` change listener per connection (released on disconnect) */
+  _watchTouch() {
+    if (this._touchWatch || typeof window.matchMedia !== 'function') return;
+    let mql = null;
+    try { mql = window.matchMedia(MQ_COARSE); } catch { return; }
+    if (!mql || typeof mql.addEventListener !== 'function') return;
+    const onChange = () => this._applyTouchMode();
+    mql.addEventListener('change', onChange);
+    this._touchWatch = () => mql.removeEventListener('change', onChange);
+    this._cleanups.push(() => {
+      if (this._touchWatch) this._touchWatch();
+      this._touchWatch = null;
+    });
+  }
+
+  /**
+   * @private v0.63.0 plan B / D2 / E: the listeners of one input. Its native `input` / `change` stop AT the input; Enter / blur
+   * commit its side; Escape puts the committed text back; ArrowDown / Alt+ArrowDown open the dialog; a tap opens it on touch.
+   */
+  _bindInput(input) {
+    const side = input.getAttribute('data-side');
+    const stop = (e) => e.stopPropagation();
+    this.listen(input, 'input', stop);
+    this.listen(input, 'change', stop);
+    this.listen(input, 'blur', () => {
+      if (input === this._input(side)) this._commitSide(side);
+    });
+    this.listen(input, 'click', () => {
+      if (input.readOnly) this._open(); // touch: a tap opens the dialog as before
+    });
+    this.listen(input, 'keydown', (e) => {
+      if (e.isComposing || e.keyCode === 229) return; // IME composition
+      if (e.key === 'Enter') {
+        this._commitSide(side); // no preventDefault: an implicit form submission follows and sees the new value
+      } else if (e.key === 'Escape') {
+        if (input.value !== this._inputText[side]) {
+          input.value = this._inputText[side]; // back to the committed text; nothing committed, no event
+          e.preventDefault();
+        }
+      } else if (e.key === 'ArrowDown' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        e.preventDefault();
+        this._open();
+      }
+    });
+  }
+
+  /**
+   * @private v0.63.0 plan D (range): commit ONE side's typed text (Enter / blur / before the dialog opens). Unchanged text →
+   * nothing. The side is written like the picker's table (empty → cleared; valid → the display format; outside min–max →
+   * written, never clamped; unreadable / impossible → the raw text); then ONE `change` when the whole range is valid and
+   * differs from the range before. Everything goes through `_write()`.
+   * @param {'start'|'end'} side
+   */
+  _commitSide(side) {
+    const input = this._input(side);
+    if (!input || !input.isConnected || input.readOnly || this._effectiveDisabled) return;
+    const text = input.value;
+    if (text === this._inputText[side]) return;
+    const M = TdDatetimeRange.messages;
+    const mode = this._mode();
+    const before = this._validity() ? null : this.getValue(); // null = the range before was not valid
+    const t = text.trim();
+    let value = null;
+    let own = null;
+    if (t) {
+      const parts = parseTypedValue(t, mode);
+      if (!parts || invalidReason(parts)) {
+        value = t; // the raw text (badInput, like a malformed attribute)
+        own = parts ? this._checkParts(parts).message : this._text(M, 'format');
+      } else {
+        value = formatModeDisplay(toModeParts(parts, mode), mode);
+      }
+    }
+    this._write({ [side]: value }, {
+      typed: () => {
+        const s = this._side(side);
+        if (!own && !s.raw && this._required().includes(side)) own = side === 'start' ? M.requiredStart : M.requiredEnd;
+        if (!own && s.error) own = s.error.message; // min / max
+        const prev = this._typedError;
+        const next = { own: { start: null, end: null, ...(prev ? prev.own : {}), [side]: own }, pair: null, last: side };
+        const a = this._side('start');
+        const b = this._side('end');
+        const pair = a.usable && b.usable ? this._pairCheck(a.parts, b.parts) : null;
+        if (pair) next.pair = { side, message: pair }; // order / max-days: on the side just committed
+        return next.own.start || next.own.end || next.pair ? next : null;
+      },
+      change: () => {
+        if (this._validity()) return null;
+        const v = this.getValue();
+        if (before && before.start === v.start && before.end === v.end) return null;
+        return { value: v, dbValue: this.getDBValue(), preset: null };
+      },
+    });
+  }
+
+  /**
+   * @private v0.63.0 (plan Rủi ro): the ONE write of a user value — "Chọn" (`_confirm`) and a typed side (`_commitSide`): the
+   * attributes, the field text, the form value + validity, the typed error, then at most ONE `change`. `typed` / `change` may be
+   * functions, read AFTER the attributes are written (the validity of the new range decides).
+   * @param {{ start?: string|null, end?: string|null }} next the sides to write (null removes the attribute)
+   * @param {{ typed?: object|null|(() => object|null), change?: object|null|(() => object|null) }} [o]
+   */
+  _write(next, { typed = null, change = null } = {}) {
+    this._writing = true;
+    try {
+      for (const k of SIDES) {
+        if (!(k in next)) continue;
+        if (next[k]) this.setAttribute(k, next[k]);
+        else this.removeAttribute(k);
+      }
+    } finally {
+      this._writing = false;
+    }
+    const hadTyped = this._typedError != null;
+    this._typedError = typeof typed === 'function' ? typed() : typed;
+    this._updateValueText();
+    this._syncForm();
+    if (hadTyped || this._typedError) this._applyErrorState();
+    const detail = typeof change === 'function' ? change() : change;
+    if (detail) this.emit('change', detail);
+  }
+
+  /** @private v0.63.0 D3: the typed error shown — `{ side, message }` or null (own error of the last side > pair > the other side) */
+  _typedShown() {
+    const t = this._typedError;
+    if (!t || !this._editable()) return null;
+    const other = t.last === 'start' ? 'end' : 'start';
+    if (t.own[t.last]) return { side: t.last, message: t.own[t.last] };
+    if (t.pair) return t.pair;
+    if (t.own[other]) return { side: other, message: t.own[other] };
+    return null;
+  }
+
+  /** @private v0.63.0 D3: the typed error goes (an outside value change, setValue, reset, `editable` off, a valid range) */
+  _dropTypedError() {
+    if (this._typedError == null) return;
+    this._typedError = null;
+    this._applyErrorState();
+  }
+
+  /** v0.63.0 D3: the site's error (`setError()` / `error-text`) first, else the typed error. */
+  get errorMessage() {
+    const shown = this._typedShown();
+    return super.errorMessage || (shown ? shown.message : '');
+  }
+
+  /** @protected v0.63.0: the error ARIA sits on the input the typed error is about (else the start input / the trigger) */
+  _ariaTarget() {
+    const shown = this._typedShown();
+    return (shown && this._input(shown.side)) || this._focusTarget();
+  }
+
+  /** @protected v0.63.0: only the failing input carries aria-invalid (the target may move between the two inputs) */
+  _applyErrorState() {
+    super._applyErrorState();
+    const target = this._ariaTarget();
+    for (const input of this._inputs()) {
+      if (input === target) continue;
+      input.removeAttribute('aria-invalid');
+      input.removeAttribute('aria-errormessage');
+    }
+  }
+
   afterRender() {
     fillIconSlots(this);
     const trigger = this._trigger();
+    for (const input of this._inputs()) { // v0.63.0 `editable`
+      this._bindInput(input);
+      this._inputText[input.getAttribute('data-side')] = input.value;
+    }
+    if (this._inputs().length) {
+      this._watchTouch();
+      this._applyTouchMode();
+    }
     if (trigger) {
       this.listen(trigger, 'click', () => this._open());
       this.listen(trigger, 'keydown', (e) => {
@@ -374,6 +654,10 @@ export class TdDatetimeRange extends TdFormElement {
 
   /** @private */
   _updateValueText() {
+    if (this._inputs().length) { // v0.63.0 `editable`: the inputs show the sides
+      this._syncInputs();
+      return;
+    }
     const span = this.querySelector('.td-dtr__value');
     if (!span) return;
     const { text, placeholder } = this._triggerText();
@@ -388,6 +672,7 @@ export class TdDatetimeRange extends TdFormElement {
     if (oldVal === newVal) return;
     if (name === 'disabled') this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
     if (!this._initialized) return;
+    if ((name === 'start' || name === 'end') && !this._writing) this._dropTypedError(); // v0.63.0 D3: a value from outside
     switch (name) {
       case 'start':
       case 'end':
@@ -437,19 +722,25 @@ export class TdDatetimeRange extends TdFormElement {
         this._convertMode(normalizeRangeMode(oldVal).mode);
         this._rerender();
         return;
+      case 'editable': // v0.63.0: another field — uncommitted text and the typed error go
+        this._typedError = null;
+        this._rerender();
+        return;
       default: // label
         this._rerender();
     }
   }
 
-  /** @private structural change: close an open dialog, render again, keep the focus on the trigger */
+  /** @private structural change: close an open dialog, render again, keep the focus on the trigger (v0.63.0: or on the same input) */
   _rerender() {
     const active = document.activeElement;
     const modalRoot = this._modalId ? document.getElementById(this._modalId) : null;
     const hadFocus = this.contains(active) || !!(modalRoot && modalRoot.contains(active));
+    const side = active instanceof Element && active.matches('.td-dtr__input') && this.contains(active) ? active.getAttribute('data-side') : null;
     if (this._isOpen) this._close();
     this._doRender();
-    if (hadFocus && this._trigger()) this._trigger().focus();
+    const home = (side && this._input(side)) || this._trigger();
+    if (hadFocus && home) home.focus();
   }
 
   /**
@@ -483,14 +774,22 @@ export class TdDatetimeRange extends TdFormElement {
   _applyDisabled() {
     const trigger = this._trigger();
     if (trigger) trigger.disabled = this._effectiveDisabled;
+    for (const input of this._inputs()) input.disabled = this._effectiveDisabled; // v0.63.0
     if (this._effectiveDisabled && this._isOpen) this._close();
   }
 
   /** @private aria-required + the decorative asterisk follow `required` in place (same markup as render()) */
   _applyRequired() {
-    const required = this._required().length > 0;
+    const req = this._required();
+    const required = req.length > 0;
     const trigger = this._trigger();
-    if (trigger) {
+    const inputs = this._inputs();
+    if (inputs.length) { // v0.63.0 `editable`: per side, on the inputs (the icon button is not the field)
+      for (const input of inputs) {
+        if (req.includes(input.getAttribute('data-side'))) input.setAttribute('aria-required', 'true');
+        else input.removeAttribute('aria-required');
+      }
+    } else if (trigger) {
       if (required) trigger.setAttribute('aria-required', 'true');
       else trigger.removeAttribute('aria-required');
     }
@@ -508,7 +807,28 @@ export class TdDatetimeRange extends TdFormElement {
 
   /** @private visible label (aria-labelledby in render()) → host aria-label → external <label for> */
   _applyName() {
-    this._applyAccessibleName(this._trigger(), !!this.getAttribute('label'));
+    const inputs = this._inputs();
+    if (!inputs.length) {
+      this._applyAccessibleName(this._trigger(), !!this.getAttribute('label'));
+      return;
+    }
+    // v0.63.0 `editable`: each input = the field's name + its hidden side name ("Từ ngày" / "Đến ngày"): the visible label,
+    // else external <label for="{host}"> elements, else the host aria-label (copied as text in front of the side name)
+    const label = this.getAttribute('label');
+    const aria = this.getAttribute('aria-label');
+    let names = [];
+    if (label) names = [`${this.id}-label`];
+    else if (!aria) {
+      this._applyAccessibleName(inputs[0], false); // generates the external labels' ids into aria-labelledby
+      names = (inputs[0].getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+    }
+    for (const input of inputs) {
+      const k = input.getAttribute('data-side');
+      const nameEl = [...this.querySelectorAll('span[hidden]')].find((n) => n.id === `${this.id}-${k}-name`);
+      if (nameEl) nameEl.textContent = (!label && aria ? `${aria} ` : '') + this._text(TdDatetimeRange.labels, `${k}Input`);
+      input.removeAttribute('aria-label');
+      input.setAttribute('aria-labelledby', [...names, `${this.id}-${k}-name`].join(' '));
+    }
   }
 
   // --- Form participation ---
@@ -531,7 +851,10 @@ export class TdDatetimeRange extends TdFormElement {
     }
     const v = this._validity();
     if (v) this._setValidity(v.flags, v.message, this._focusTarget());
-    else this._setValidity({});
+    else {
+      this._setValidity({});
+      this._dropTypedError(); // v0.63.0: the range is valid — a stale typed error goes
+    }
   }
 
   _captureDefaults() {
@@ -565,7 +888,7 @@ export class TdDatetimeRange extends TdFormElement {
     this.setValue({ start: o.start, end: o.end });
   }
 
-  _focusTarget() { return this._trigger(); }
+  _focusTarget() { return this._input('start') || this._trigger(); } // v0.63.0 `editable`: the start input
 
   /** @private */
   _trigger() { return this.querySelector('.td-dtr__trigger'); }
@@ -582,7 +905,14 @@ export class TdDatetimeRange extends TdFormElement {
     if (this._isOpen || this._effectiveDisabled || !this.isConnected) return;
     const trigger = this._trigger();
     if (!trigger) return;
-    if (document.activeElement !== trigger) trigger.focus({ preventScroll: true });
+    const inputs = this._inputs();
+    if (inputs.length) { // v0.63.0 `editable`: typed text is committed before the dialog opens (it opens at that range)
+      for (const k of SIDES) this._commitSide(k);
+      if (this._isOpen || this._effectiveDisabled || !this.isConnected || this._trigger() !== trigger) return; // a `change` listener changed it
+    }
+    // the dialog gives the focus back to its opener: the trigger, or (v0.63.0) the input it was opened from
+    const opener = inputs.includes(/** @type {any} */ (document.activeElement)) ? document.activeElement : trigger;
+    if (document.activeElement !== opener) trigger.focus({ preventScroll: true });
     const L = TdDatetimeRange.labels;
     this._isOpen = true;
     const panel = this._buildPanel();
@@ -1213,24 +1543,16 @@ export class TdDatetimeRange extends TdFormElement {
     const mode = this._mode();
     const preset = this._presetState ? this._presetState.matched : null;
     const out = {};
-    for (const k of SIDES) {
-      if (!this._draft.date[k]) {
-        this.removeAttribute(k);
-        out[k] = null;
-      } else {
-        const q = toModeParts(this._partsOf(k), mode);
-        this.setAttribute(k, formatModeDisplay(q, mode));
-        out[k] = q;
-      }
-    }
-    this._updateValueText();
-    this._syncForm();
+    for (const k of SIDES) out[k] = this._draft.date[k] ? toModeParts(this._partsOf(k), mode) : null;
     const disp = (q) => (q ? formatModeDisplay(q, mode) : '');
     const db = (q) => (q ? formatModeDb(q, mode) : '');
-    this.emit('change', {
-      value: { start: disp(out.start), end: disp(out.end) },
-      dbValue: { start: db(out.start), end: db(out.end) },
-      preset,
+    // v0.63.0: through the one write path (`editable`: a typed error goes)
+    this._write({ start: disp(out.start) || null, end: disp(out.end) || null }, {
+      change: {
+        value: { start: disp(out.start), end: disp(out.end) },
+        dbValue: { start: db(out.start), end: db(out.end) },
+        preset,
+      },
     });
     return true;
   }
@@ -1267,6 +1589,7 @@ export class TdDatetimeRange extends TdFormElement {
       if (x == null || x === '') this.removeAttribute(k);
       else this.setAttribute(k, String(x));
     }
+    this._dropTypedError(); // v0.63.0 D3 (also when no attribute changed)
     if (this._initialized) {
       this._updateValueText();
       this._syncForm();
@@ -1375,7 +1698,7 @@ export class TdDatetimeRange extends TdFormElement {
       this._updateValueText();
       this._syncForm();
     }
-    if (s.refocus) this._trigger()?.focus({ preventScroll: true });
+    if (s.refocus) this._focusTarget()?.focus({ preventScroll: true }); // v0.63.0 `editable`: the start input
   }
 
   /**
