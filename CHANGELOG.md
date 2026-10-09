@@ -2,6 +2,21 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.63.1
+
+**Chỉ gõ chữ số + mặt nạ khi gõ cho `editable`** (owner 2026-10-10: "gõ 11122026 thì phải hiển thị real time thành 11/12/2026",
+"chỉ allow digits"). Codex
+impl-review APPROVE r3 (sol / high), security-review sạch. Không đổi API / markup / sự kiện.
+
+### Changed
+
+- `td-datetime-picker` / `td-datetime-range` có `editable`: **chỉ gõ được chữ số** (chữ, khoảng trắng, dấu bị chặn) và ô hiện
+  đúng định dạng **ngay lúc gõ** (`11122026` → `11/12/2026`; datetime `111220260930` → `11/12/2026 - 09:30`; month `031994` →
+  `03/1994`). Dấu do mặt nạ viết, chỉ khi có chữ số tiếp theo (Backspace không kẹt); xoá không định dạng lại; phím `/ . - :` / cách
+  điền số 0 cho phần mới có một chữ số (`1/3/1994` → `01/03/1994`); dán một ngày đọc được (`1994-03-15`…) → định dạng hiển thị, dán thứ
+  khác → chỉ giữ chữ số; IME làm sạch khi gõ xong. Chốt và `change` như 0.63.0. Hàm thuần `maskTypedValue()` / `padTypedSegment()` /
+  `maskCaret()` trong `src/utils/datetime.js`.
+
 ## 0.63.0
 
 **Gõ ngày bằng tay trong `td-datetime-picker` / `td-datetime-range` — attribute `editable` (opt-in)** (yêu cầu của 135, owner duyệt

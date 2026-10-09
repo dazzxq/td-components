@@ -8,7 +8,7 @@ import { LAYERS, register as registerLayer, bridgeTheme, focusablesIn } from '..
 import { matchesBelow, matches, MQ_COARSE } from '../utils/breakpoints-internal.js';
 import { clampDate, isDateOutOfRange, monthOutOfRange, yearOutOfRange } from '../utils/calendar-model.js';
 import { CalendarGrid } from './calendar-grid.js';
-import { maskOnInput, compositionStarted, maskAfterComposition } from './typed-mask.js';
+import { refuseNonDigits, maskOnInput, compositionStarted, maskAfterComposition } from './typed-mask.js';
 import { TimeStep } from './time-step.js';
 import { freshCalendarLabels, normalizeCalendarLabels } from './calendar-labels.js';
 import {
@@ -462,6 +462,7 @@ export class TdDatetimePicker extends TdFormElement {
       e.stopPropagation();
       maskOnInput(/** @type {InputEvent} */ (e), input, this._mode());
     });
+    this.listen(input, 'beforeinput', (e) => refuseNonDigits(/** @type {InputEvent} */ (e), input, this._mode())); // v0.63.1: digits only
     this.listen(input, 'compositionstart', () => compositionStarted(input));
     this.listen(input, 'compositionend', () => maskAfterComposition(input, this._mode())); // v0.63.1: IME text, masked once it is done
     this.listen(input, 'change', stop);

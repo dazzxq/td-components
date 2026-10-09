@@ -132,12 +132,14 @@ for (const how of ['enter', 'blur']) {
       expect(m.el.getValue()).to.equal('15/03/1994');
     });
 
-    it('criterion 3: 31/02/1994 / 15/3/94 / abc → the note, aria-invalid on the input, form invalid, 0 change; fixed → 1 change', async () => {
+    it('criterion 3: 31/02/1994 / 15/3/94 / 150319 → the note, aria-invalid on the input, form invalid, 0 change; fixed → 1 change', async () => {
       const m = mount();
       await settle();
-      const want = [['31/02/1994', 'Ngày không hợp lệ'], ['15/3/94', 'Định dạng ngày không hợp lệ'], ['abc', 'Định dạng ngày không hợp lệ']];
-      for (const [text, msg] of want) {
-        await typeCommit(m, text, how);
+      // v0.63.1: digits only — "/" zero-pads a one-digit segment (15/3/94 → 15/03/94), a 2-digit year is a format error
+      const want = [['31021994', '31/02/1994', 'Ngày không hợp lệ'], ['15/3/94', '15/03/94', 'Định dạng ngày không hợp lệ'],
+        ['150319', '15/03/19', 'Định dạng ngày không hợp lệ']];
+      for (const [typed, text, msg] of want) {
+        await typeCommit(m, typed, how);
         expect(note(m), text).to.equal(msg);
         expect(invalid(m), text).to.equal('true');
         expect(m.input.getAttribute('aria-errormessage')).to.equal(`${m.el.id}-error`);
@@ -162,7 +164,7 @@ for (const how of ['enter', 'blur']) {
       await settle();
       expect(note(m)).to.equal('Lỗi của site');
       expect(invalid(m)).to.equal('true');
-      await typeCommit(m, 'abc', how);
+      await typeCommit(m, '150319', how);
       expect(note(m)).to.equal('Lỗi của site');
       m.el.removeAttribute('error-text');
       await settle();
@@ -189,7 +191,7 @@ for (const how of ['enter', 'blur']) {
       expect(m.rec.change).to.deep.equal([{ value: '31/12/1999', dbValue: '1999-12-31' }]);
       // min too
       m.el.setAttribute('min', '01/01/1990');
-      await typeCommit(m, '1989-12-31', how);
+      await typeCommit(m, '31121989', how);
       expect(note(m)).to.equal('Không được trước 01/01/1990');
       expect(m.el.validity.rangeUnderflow).to.equal(true);
       expect(m.rec.change.length).to.equal(1);
@@ -257,7 +259,7 @@ describe('v0.63.1 editable picker — live mask while typing (owner: 11122026 �
     expect(m.rec.change).to.deep.equal([{ value: '11/12/2026', dbValue: '2026-12-11' }]);
   });
 
-  it('Backspace never sticks on a separator; typed separators keep a single-digit day', async () => {
+  it('Backspace never sticks on a separator', async () => {
     const m = mount('mode="date" editable');
     await settle();
     m.input.focus();
@@ -268,11 +270,44 @@ describe('v0.63.1 editable picker — live mask while typing (owner: 11122026 �
     expect(m.input.value).to.equal('11/12');
     await sendKeys({ press: 'Backspace' });
     expect(m.input.value).to.equal('11/1');
-    m.input.select();
-    await sendKeys({ type: '1/3/2026' });
-    expect(m.input.value).to.equal('1/3/2026');
+  });
+
+  it('only digits can be typed (owner): letters, spaces and separators are refused', async () => {
+    const m = mount('mode="date" editable');
+    await settle();
+    m.input.focus();
+    await sendKeys({ type: 'a11/12-x 2026.' }); // separators after a full segment do nothing
+    expect(m.input.value).to.equal('11/12/2026');
+    expect(m.rec.input + m.rec.bare + m.rec.change.length).to.equal(0);
+  });
+
+  it('a separator key after a one-digit day / month zero-pads it: 1/3/1994 → 01/03/1994 (the key itself is not written)', async () => {
+    const m = mount('mode="datetime" editable');
+    await settle();
+    m.input.focus();
+    await sendKeys({ type: '1/3/1994 9:5' });
+    expect(m.input.value).to.equal('01/03/1994 - 09:5');
+    await sendKeys({ type: '0' });
+    expect(m.input.value).to.equal('01/03/1994 - 09:50');
     await sendKeys({ press: 'Enter' });
-    expect(m.input.value).to.equal('01/03/2026'); // normalised on commit
+    expect(m.rec.change).to.deep.equal([{ value: '01/03/1994 - 09:50', dbValue: '1994-03-01 09:50:00' }]);
+  });
+
+  it('a pasted date in any readable format becomes the display format; other pasted text keeps its digits', async () => {
+    const m = mount('mode="date" editable');
+    await settle();
+    m.input.focus();
+    const paste = (text) => {
+      m.input.value = text;
+      m.input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
+    };
+    paste('1994-03-15');
+    expect(m.input.value).to.equal('15/03/1994');
+    paste('15.3.1994');
+    expect(m.input.value).to.equal('15/03/1994');
+    paste('ngày 11 tháng 12 năm 2026');
+    expect(m.input.value).to.equal('11/12/2026');
+    expect(m.rec.input + m.rec.bare + m.rec.change.length).to.equal(0);
   });
 
   it('IME: nothing is rewritten while composing; the composed text is masked on compositionend (Codex r1)', async () => {
@@ -339,9 +374,9 @@ describe('v0.63.0 editable picker — typing never leaks (D2)', () => {
   it('a stale error stays while the user types (until the next commit)', async () => {
     const m = mount();
     await settle();
-    await typeCommit(m, 'abc', 'blur');
+    await typeCommit(m, '150319', 'blur');
     m.input.focus();
-    await sendKeys({ type: 'x' });
+    await sendKeys({ type: '9' });
     expect(note(m)).to.equal('Định dạng ngày không hợp lệ');
   });
 });
@@ -395,7 +430,7 @@ describe('v0.63.0 editable picker — Escape / ArrowDown / calendar (plan D, F)'
     await settle();
     m.input.focus();
     m.input.select();
-    await sendKeys({ type: '1994-04-02' });
+    await sendKeys({ type: '02041994' });
     await sendKeys({ press: 'ArrowDown' });
     expect(await until(() => !!pop())).to.equal(true);
     await settle();
@@ -414,7 +449,7 @@ describe('v0.63.0 editable picker — Escape / ArrowDown / calendar (plan D, F)'
     const m = mount();
     await settle();
     m.input.focus();
-    await sendKeys({ type: 'abc' });
+    await sendKeys({ type: '150319' }); // 15/03/19: a 2-digit year — unreadable
     m.trigger.click();
     expect(await until(() => !!pop())).to.equal(true);
     await settle();
@@ -426,7 +461,7 @@ describe('v0.63.0 editable picker — Escape / ArrowDown / calendar (plan D, F)'
     m.input.focus();
     expect(await until(() => !pop())).to.equal(true);
     expect(m.rec.change.length).to.equal(0);
-    expect(m.el.getAttribute('value')).to.equal('abc');
+    expect(m.el.getAttribute('value')).to.equal('15/03/19');
   });
 
   it('a calendar write clears the typed error', async () => {
@@ -518,7 +553,7 @@ describe('v0.63.0 editable picker — form (criterion 8)', () => {
   it('form reset → the default value, the typed error goes', async () => {
     const m = mount('mode="date" editable value="15/03/1994"', (h) => `<form>${h}</form>`);
     await settle();
-    await typeCommit(m, 'abc', 'blur');
+    await typeCommit(m, '150319', 'blur');
     expect(note(m)).to.equal('Định dạng ngày không hợp lệ');
     host.querySelector('form').reset();
     await settle();
@@ -534,7 +569,7 @@ describe('v0.63.0 editable picker — programmatic + attributes', () => {
   it('setValue / setDBValue / the value attribute while focused: the input follows at once, no change, the typed error goes', async () => {
     const m = mount();
     await settle();
-    await typeCommit(m, 'abc', 'blur');
+    await typeCommit(m, '150319', 'blur');
     m.input.focus();
     m.el.setValue('01/02/1995');
     expect(m.input.value).to.equal('01/02/1995');
@@ -557,14 +592,14 @@ describe('v0.63.0 editable picker — programmatic + attributes', () => {
     expect(!!input).to.equal(true);
     expect(input.value).to.equal('15/03/1994');
     expect(active() === input).to.equal(true);
-    await typeCommit({ ...m, input }, 'abc', 'enter');
+    await typeCommit({ ...m, input }, '150319', 'enter');
     expect(note(m)).to.equal('Định dạng ngày không hợp lệ');
     m.el.removeAttribute('editable');
     await settle();
     expect(m.el.querySelector('.td-dtp__input')).to.equal(null);
     expect(note(m)).to.equal(null); // the typed error went with `editable`
     expect(m.el.querySelector('.td-dtp__trigger').getAttribute('role')).to.equal('combobox');
-    expect(m.el.querySelector('.td-dtp__value').textContent).to.equal('abc'); // the raw value is still the value (badInput)
+    expect(m.el.querySelector('.td-dtp__value').textContent).to.equal('15/03/19'); // the raw value is still the value (badInput)
     expect(active() === m.el.querySelector('.td-dtp__trigger')).to.equal(true);
     expect(m.rec.change.length).to.equal(0);
   });

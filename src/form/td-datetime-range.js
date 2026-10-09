@@ -4,7 +4,7 @@ import { ValueTitleWatcher, displayedValueText } from '../utils/value-title.js';
 import { TdModal } from '../feedback/td-modal.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { CalendarGrid } from './calendar-grid.js';
-import { maskOnInput, compositionStarted, maskAfterComposition } from './typed-mask.js';
+import { refuseNonDigits, maskOnInput, compositionStarted, maskAfterComposition } from './typed-mask.js';
 import { TimeStep } from './time-step.js';
 import { freshCalendarLabels, normalizeCalendarLabels } from './calendar-labels.js';
 import { clampDate, compareDates, isDateOutOfRange } from '../utils/calendar-model.js';
@@ -463,6 +463,7 @@ export class TdDatetimeRange extends TdFormElement {
       e.stopPropagation();
       maskOnInput(/** @type {InputEvent} */ (e), input, this._mode());
     });
+    this.listen(input, 'beforeinput', (e) => refuseNonDigits(/** @type {InputEvent} */ (e), input, this._mode())); // v0.63.1: digits only
     this.listen(input, 'compositionstart', () => compositionStarted(input));
     this.listen(input, 'compositionend', () => maskAfterComposition(input, this._mode())); // v0.63.1: IME text, masked once it is done
     this.listen(input, 'change', stop);

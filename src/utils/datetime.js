@@ -697,10 +697,9 @@ export function parseTypedValue(str, mode) {
   }
 }
 
-// v0.63.1 (owner: "gõ 11122026 thì phải hiển thị real time thành 11/12/2026"): the live mask of an `editable` input. Segments
-// of the mode's display format; a separator is written only when the NEXT digit arrives (so Backspace never sticks on it), a
-// separator the user typed ends the segment early ("1/3/2026" stays as typed). Year-first text (ISO) and anything with other
-// characters are left alone — the lenient parser (parseTypedValue) still reads them on commit.
+// v0.63.1 (owner: "gõ 11122026 thì phải hiển thị real time thành 11/12/2026"; "chỉ allow digits"): the live mask of an
+// `editable` input. Only DIGITS count — the separators of the mode's display format are written by the mask, and only when the
+// NEXT digit arrives (so Backspace never sticks on one). Digits past the last segment are dropped.
 const MASK = {
   date: { sizes: [2, 2, 4], seps: ['/', '/'] },
   datetime: { sizes: [2, 2, 4, 2, 2], seps: ['/', '/', ' - ', ':'] },
@@ -709,8 +708,8 @@ const MASK = {
 };
 
 /**
- * The masked text for what is in an `editable` input (plan v0.63.1): `11122026` → `11/12/2026`, `111` → `11/1`, `11/` → `11/`,
- * `111220260930` (datetime) → `11/12/2026 - 09:30`. Digits past the last segment are dropped.
+ * The masked text for the digits of `str` (plan v0.63.1): `11122026` → `11/12/2026`, `111` → `11/1`, `11` → `11`,
+ * `111220260930` (datetime) → `11/12/2026 - 09:30`. Every non-digit is ignored.
  * @param {string} str
  * @param {unknown} mode
  * @returns {string}
@@ -718,28 +717,39 @@ const MASK = {
 export function maskTypedValue(str, mode) {
   if (typeof str !== 'string') return '';
   const m = MASK[normalizeMode(mode)];
-  // year-first typed key by key: the mask has already made "1994" → "19/94"; a "-" after it says it was a year — but only when
-  // those four digits cannot be a day / month ("15-03-1994" typed key by key is also "15/03" + "-" at that moment)
-  const isoTyping = /^(\d{2})\/(\d{2})-(.*)$/s.exec(str);
-  if (isoTyping && (Number(isoTyping[2]) > 12 || Number(isoTyping[1]) > 31)) return `${isoTyping[1]}${isoTyping[2]}-${isoTyping[3]}`;
-  if (/^\s*\d{3,4}\s*[-/.]/.test(str) || /[^\d/.\-:h\s]/i.test(str)) return str; // ISO / something else: as typed
-  const segs = [''];
-  for (const ch of str) {
-    let k = segs.length - 1;
-    if (ch >= '0' && ch <= '9') {
-      if (segs[k].length >= m.sizes[k]) {
-        if (k + 1 >= m.sizes.length) continue; // past the last segment
-        segs.push('');
-        k += 1;
-      }
-      segs[k] += ch;
-    } else if (segs[k] !== '' && k + 1 < m.sizes.length) {
-      segs.push(''); // a separator the user typed: the segment ends here (a second one in a row is ignored)
-    }
-  }
-  let out = segs[0];
-  for (let i = 1; i < segs.length; i += 1) out += m.seps[i - 1] + segs[i];
+  const digits = str.replace(/\D/g, '');
+  let out = '';
+  let at = 0;
+  m.sizes.forEach((size, k) => {
+    if (at >= digits.length) return;
+    out += (k ? m.seps[k - 1] : '') + digits.slice(at, at + size);
+    at += size;
+  });
   return out;
+}
+
+/**
+ * v0.63.1: a separator KEY (`/ . - :` or a space) typed at the end of an `editable` input is not written — when the segment being
+ * typed has one digit of two (day, month, hour, minute) it is zero-padded so the next digit starts the next segment: `1` + "/" →
+ * `01`, `01/3` + "/" → `01/03`. Returns the new masked text, or null when the key changes nothing.
+ * @param {string} str the current text
+ * @param {unknown} mode
+ * @returns {string|null}
+ */
+export function padTypedSegment(str, mode) {
+  if (typeof str !== 'string') return null;
+  const m = MASK[normalizeMode(mode)];
+  const digits = str.replace(/\D/g, '');
+  let at = 0;
+  for (const size of m.sizes) {
+    const filled = digits.length - at;
+    if (filled < size) {
+      if (filled !== 1 || size !== 2) return null;
+      return maskTypedValue(`${digits.slice(0, at)}0${digits.slice(at)}`, mode);
+    }
+    at += size;
+  }
+  return null;
 }
 
 /**

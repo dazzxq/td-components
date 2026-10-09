@@ -124,7 +124,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.63.0/
+public/assets/vendor/td-components/0.63.1/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -132,7 +132,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.63.0';
+const TD_VERSION = '0.63.1';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -1635,7 +1635,7 @@ foreach ((array) ($_GET['tag'] ?? []) as $t) {               // nhiều giá tr�
 | `min`, `max` | cùng định dạng; in ra dạng native (`yyyy-mm-dd` / `yyyy-mm-ddThh:mm`; `max` chỉ ngày = 23:59) trên host **và** hai ô; sai → bỏ |
 | `required` | `true` / `'both'` → cả hai (`required` trần); `'start'` / `'end'` → một mốc (`required="start"`); `false` / không có → không |
 | `allow_open_end` | 0.59.0: host `allow-open-end` — ngày kết thúc trống = "Không hạn" (trigger `01/10/2026 – Không hạn`) và **không bao giờ** bắt buộc: ô native "Đến" không `required` (`true` / `'both'` → chỉ "Từ"; `'end'` → không mốc nào) |
-| `editable` | 0.63.0: host `editable` — gõ hai mốc bằng tay trên máy tính ([datetime-range › Gõ tay](../components/datetime-range.md#gõ-tay-editable-0630)). Chỉ in attribute; markup SSR không đổi (element render an toàn, giữ giá trị native) |
+| `editable` | 0.63.1: host `editable` — gõ hai mốc bằng tay trên máy tính ([datetime-range › Gõ tay](../components/datetime-range.md#gõ-tay-editable-0630)). Chỉ in attribute; markup SSR không đổi (element render an toàn, giữ giá trị native) |
 | `disabled`, `max_days` (≥ 1), `minute_step` (1–30, chia hết 60), `form_value_format` (`iso` / `display` / `db`) | attribute của host; giá trị sai → bỏ |
 | `start_name`, `end_name` | ghi đè tên hai mục (dcms2: `date_from` / `date_to`) |
 | `error` | `error-text` trên host + dòng lỗi + `aria-invalid` / `aria-describedby` trên hai ô native |
@@ -1704,7 +1704,7 @@ giới hạn như `td_datetime_range`.
 | `helper_text` (alias `hint`), `error` | gợi ý / lỗi ([ADR 0027](../internal/decisions/0027-shared-helper-contract.md)): ghi chú + `aria-describedby` trên ô native; có lỗi thì gợi ý ẩn |
 | `id`, `class` | id / class của **host** (ô native `{id}-native`, trigger `{id}-trigger`) |
 | `clearable` | 0.59.0: host `clearable` + `div.td-dtp--clearable` + nút xoá sau trigger (`hidden` khi chưa có giá trị / `required` / `disabled`; vô hình tới khi module chạy — giữ chỗ, không có nút "chết" khi không JS). Tên nút `Td::DTP_LABELS['clear']` |
-| `editable` | 0.63.0: host `editable` — gõ ngày bằng tay trên máy tính ([datetime-picker › Gõ tay](../components/datetime-picker.md#11-gõ-tay-editable-0630)). Chỉ in attribute; markup SSR không đổi (element render an toàn, giữ giá trị native) |
+| `editable` | 0.63.1: host `editable` — gõ ngày bằng tay trên máy tính ([datetime-picker › Gõ tay](../components/datetime-picker.md#11-gõ-tay-editable-0630)). Chỉ in attribute; markup SSR không đổi (element render an toàn, giữ giá trị native) |
 | `attrs` | attribute thêm trên **host** (allowlist). Giữ chỗ: `id` `class` `name` `mode` `value` `label` `placeholder` `min` `max` `minute-step` `form-value-format` `open-at` `required` `disabled` `helper-text` `error-text` `aria-label` `clearable` `editable` + mọi `data-td-*` |
 
 ## td_steps (0.45.0)

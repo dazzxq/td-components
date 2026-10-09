@@ -212,7 +212,7 @@ for (const how of ['enter', 'blur']) {
       expect(inv(m.start)).to.equal('true');
       expect(inv(m.end)).to.equal(null);
       expect(m.rec.change.length).to.equal(0);
-      await typeCommit(m.start, '1995-02-01', how);
+      await typeCommit(m.start, '01021995', how);
       expect(note(m)).to.equal(null);
       expect(m.rec.change).to.deep.equal([{ value: { start: '01/02/1995', end: '28/02/1995' }, dbValue: { start: '1995-02-01', end: '1995-02-28' }, preset: null }]);
     });
