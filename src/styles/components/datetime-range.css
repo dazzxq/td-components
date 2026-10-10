@@ -155,9 +155,15 @@
 	.td-dtr--editable {
 		--_td-dtr-icon-w: 2.25rem;
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+		/*
+		 * v0.63.3: each input is as wide as the text it shows (its .td-dtr__sizer sets the column; the two shrink together
+		 * when the field is narrower), the free space goes to an empty column before the button: the row reads
+		 * "26/07/2026 – 26/07/2026", the dash the same distance from both dates. 0.63.0–0.63.2 gave each input half the
+		 * field, so a wide field left a gap after the start date only.
+		 */
+		grid-template-columns: minmax(0, max-content) auto minmax(0, max-content) minmax(0, 1fr) auto;
 		grid-template-rows: auto var(--td-field-h-md);
-		grid-template-areas: "label label label label" "start sep end trigger";
+		grid-template-areas: "label label label label label" "start sep end . trigger";
 	}
 
 	.td-dtr--editable::before {
@@ -207,8 +213,8 @@
 
 	.td-dtr__input {
 		align-self: stretch;
-		width: 100%;
-		min-width: 0;
+		width: 0; /* v0.63.3: no width of its own (the `size` default) — its sizer sets the column, the input fills it */
+		min-width: 100%;
 		height: auto;
 		padding: 0 var(--td-space-2xs);
 		margin: 0;
@@ -231,6 +237,43 @@
 
 	.td-dtr__input[data-side="end"] {
 		grid-area: end;
+	}
+
+	/*
+	 * v0.63.3: the invisible twin of an input in its grid cell, padded like it, holding its placeholder and a full value of
+	 * the mode ("00/00/0000", tabular digits = any date): only the one the input shows takes width, so the column is exactly
+	 * that text wide.
+	 */
+	.td-dtr__sizer {
+		display: grid;
+		grid-row: 2;
+		align-self: start;
+		height: 0;
+		padding: 0 var(--td-space-2xs);
+		overflow: hidden;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		white-space: pre;
+		visibility: hidden;
+		pointer-events: none;
+	}
+
+	.td-dtr__sizer[data-side="start"] {
+		grid-column: start;
+		padding-inline-start: 15px;
+	}
+
+	.td-dtr__sizer[data-side="end"] {
+		grid-column: end;
+	}
+
+	.td-dtr__sizer > * {
+		grid-area: 1 / 1;
+	}
+
+	.td-dtr__input:placeholder-shown + .td-dtr__sizer > :last-child,
+	.td-dtr__input:not(:placeholder-shown) + .td-dtr__sizer > :first-child {
+		display: none;
 	}
 
 	.td-dtr__input::placeholder {
@@ -653,7 +696,8 @@
 			grid-template-rows: auto minmax(var(--td-touch-min), auto);
 		}
 
-		.td-dtr__input {
+		.td-dtr__input,
+		.td-dtr__sizer {
 			font-size: max(1rem, 1em);
 		}
 

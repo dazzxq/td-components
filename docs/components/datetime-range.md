@@ -164,6 +164,10 @@ gõ (Từ – Đến) + nút lịch**; hộp thoại y như trên. **Opt-in** �
 - **PHP**: `td_datetime_range('chup', $from, $to, ['editable' => true])` chỉ in attribute `editable` trên host; markup SSR (hai
   ô native + trigger) không đổi — element không nhận markup đó (khác cấu trúc) mà render an toàn, **giữ giá trị native** người
   dùng đã sửa trước khi JS chạy.
+- **Bề rộng hai ô (0.63.3)**: mỗi ô rộng đúng bằng chữ nó hiện (placeholder khi trống, một ngày đầy đủ khi có giá trị), chỗ
+  thừa dồn về trước nút lịch — dòng đọc liền `26/07/2026 – 26/07/2026`, dấu "–" cách đều hai ngày ở mọi bề rộng. Ô hẹp hơn chữ
+  (`datetime` trong ô hẹp) thì hai ô co đều, chữ cắt bằng "…" như trước. Bề rộng do hai `span.td-dtr__sizer` ẩn (`aria-hidden`)
+  cạnh mỗi ô quyết định — đừng nhắm chúng trong test.
 - **Selector cho test**: `.td-dtr--editable`, `.td-dtr__input[data-side="start|end"]`, `.td-dtr__sep`, `.td-dtr__trigger` (mở hộp
   thoại như 0.62), `.td-dtr__trigger--icon`. Ví dụ: `page.fill('#chup .td-dtr__input[data-side="start"]', '20031994')` rồi
   `press('Tab')`.

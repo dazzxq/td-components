@@ -532,3 +532,79 @@ describe('v0.63.0 editable range — Codex impl r1 (#1, #3, #4, #5)', () => {
     expect(m.rec.change.length).to.equal(1); // only the valid commit of the start (end was already typed: range valid)
   });
 });
+
+// v0.63.3 (135 report): the inputs are as wide as their text, so the "–" sits the same distance from both dates at any field
+// width (0.63.0–0.63.2: each input took half the field — a wide field left a gap after the start date only). Text widths are
+// measured with a span in the input's font (the input's own text is not measurable).
+describe('v0.63.3 editable range — the dash between the two dates', () => {
+  const textW = (input, text) => {
+    const cs = getComputedStyle(input);
+    const s = document.createElement('span');
+    s.textContent = text;
+    s.style.cssText = `position:absolute;visibility:hidden;white-space:pre;font-family:${cs.fontFamily};font-size:${cs.fontSize};`
+      + `font-weight:${cs.fontWeight};font-variant-numeric:${cs.fontVariantNumeric};letter-spacing:${cs.letterSpacing}`;
+    document.body.appendChild(s);
+    const w = s.getBoundingClientRect().width;
+    s.remove();
+    return w;
+  };
+  const box = (input) => {
+    const r = input.getBoundingClientRect();
+    const cs = getComputedStyle(input);
+    return { left: r.left + parseFloat(cs.paddingLeft), right: r.right - parseFloat(cs.paddingRight) };
+  };
+  const gaps = (m) => {
+    const sep = m.el.querySelector('.td-dtr__sep').getBoundingClientRect();
+    const before = sep.left - (box(m.start).left + textW(m.start, m.start.value));
+    const after = box(m.end).left - sep.right;
+    return { before, after };
+  };
+  // the text against the input's content box (not scrollWidth: WebKit adds room for the caret, no ellipsis shown)
+  const fits = (input, text) => textW(input, text) <= box(input).right - box(input).left + 0.5;
+
+  for (const width of [560, 266, 340]) {
+    it(`date, field ${width}px: the dash is centred between the dates, both dates fit`, async () => {
+      host.style.width = `${width}px`;
+      const m = mount('mode="date" editable start="26/07/2026" end="26/07/2026"');
+      await settle();
+      const g = gaps(m);
+      expect(Math.abs(g.before - g.after) <= 2, `before ${g.before} after ${g.after}`).to.equal(true);
+      expect(fits(m.start, m.start.value) && fits(m.end, m.end.value)).to.equal(true);
+      const field = m.el.querySelector('.td-dtr--editable').getBoundingClientRect();
+      expect(m.trigger.getBoundingClientRect().right <= field.right + 0.5).to.equal(true);
+      host.style.width = '560px';
+    });
+  }
+
+  it('empty: the input is its placeholder wide (date, datetime, allow-open-end); a full datetime fits, the dash centred', async () => {
+    for (const attrs of ['mode="date" editable allow-open-end', 'mode="datetime" editable']) {
+      const m = mount(attrs);
+      await settle();
+      for (const input of [m.start, m.end]) {
+        const room = box(input).right - box(input).left;
+        expect(Math.abs(textW(input, input.placeholder) - room) <= 1, `${input.placeholder} ${room}`).to.equal(true);
+      }
+    }
+    const m = mount('mode="datetime" editable start="26/07/2026 - 09:30" end="28/07/2026 - 18:45"');
+    await settle();
+    expect(m.start.value).to.equal('26/07/2026 - 09:30');
+    expect(fits(m.start, m.start.value) && fits(m.end, m.end.value)).to.equal(true);
+    const g = gaps(m);
+    expect(Math.abs(g.before - g.after) <= 2, `before ${g.before} after ${g.after}`).to.equal(true);
+  });
+
+  it('a mode switch resizes the inputs (date → datetime → date)', async () => {
+    const m = mount('mode="date" editable');
+    await settle();
+    const w = () => m.start.getBoundingClientRect().width;
+    const date = w();
+    m.el.setAttribute('mode', 'datetime');
+    await settle();
+    const s = m.el.querySelector('.td-dtr__input[data-side="start"]');
+    expect(s.getBoundingClientRect().width > date * 1.5).to.equal(true);
+    m.el.setAttribute('mode', 'date');
+    await settle();
+    const s2 = m.el.querySelector('.td-dtr__input[data-side="start"]');
+    expect(Math.abs(s2.getBoundingClientRect().width - date) < 1).to.equal(true);
+  });
+});

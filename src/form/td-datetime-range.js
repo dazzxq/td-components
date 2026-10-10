@@ -82,8 +82,11 @@ export { toNativeValue, fromNativeValue };
  *     <span id="{id}-start-name" hidden>Từ ngày</span>
  *     <input type="text" class="td-dtr__input" data-side="start" id="{id}-start-input" aria-labelledby="{id}-label {id}-start-name"
  *            autocomplete="off" spellcheck="false" placeholder [aria-required] [readonly inputmode="none" on touch] [disabled]>
+ *     <span class="td-dtr__sizer" data-side="start" aria-hidden="true"><span>{placeholder}</span><span>00/00/0000</span></span>
  *     <span class="td-dtr__sep" aria-hidden="true">–</span>
- *     <span id="{id}-end-name" hidden>Đến ngày</span> <input … data-side="end" …>   (allow-open-end: placeholder "Không hạn")
+ *     <span id="{id}-end-name" hidden>Đến ngày</span> <input … data-side="end" …> <span class="td-dtr__sizer" data-side="end" …>
+ *     (allow-open-end: placeholder "Không hạn"). v0.63.3: the invisible sizers set the input widths (placeholder while empty,
+ *     a full value of the mode otherwise), so the dash sits the same distance from both dates.
  *     <button type="button" class="td-dtr__trigger td-dtr__trigger--icon" id="{id}-trigger" aria-label="Mở lịch" aria-haspopup="dialog"
  *             aria-expanded><span class="td-dtr__icon" data-td-icon="calendar" aria-hidden="true"></span></button>
  *   </div>
@@ -378,7 +381,9 @@ export class TdDatetimeRange extends TdFormElement {
       + `<input type="text" class="td-dtr__input" data-side="${k}" id="${id}-${k}-input"`
       + ` aria-labelledby="${label ? `${id}-label ` : ''}${id}-${k}-name" autocomplete="off" spellcheck="false"`
       + ` placeholder="${esc(this._sidePlaceholder(k))}" value="${esc(this._sideText(k))}"`
-      + `${req.includes(k) ? ' aria-required="true"' : ''}${touch}${off}>`;
+      + `${req.includes(k) ? ' aria-required="true"' : ''}${touch}${off}>`
+      + `<span class="td-dtr__sizer" data-side="${k}" aria-hidden="true"><span>${esc(this._sidePlaceholder(k))}</span>`
+      + `<span>${esc(this._sizerValue())}</span></span>`;
     return `<div class="td-dtr td-dtr--editable" data-state="${this._isOpen ? 'open' : 'closed'}">`
       + (label ? `<span class="td-field__label td-dtr__label" id="${id}-label">${esc(label)}`
         + (req.length ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') + '</span>' : '')
@@ -408,7 +413,12 @@ export class TdDatetimeRange extends TdFormElement {
     return side === 'end' && this.hasAttribute('allow-open-end') ? L.openEnd : this._text(L, 'sidePlaceholder');
   }
 
-  /** @private v0.63.0: the inputs in place — text (the program wins, also while focused), placeholder */
+  /** @private v0.63.3: a full value of the mode for the width of the inputs ("00/00/0000" — tabular digits: any date) */
+  _sizerValue() {
+    return formatModeDisplay({ year: 0, month: 0, day: 0, hour: 0, minute: 0 }, this._mode());
+  }
+
+  /** @private v0.63.0: the inputs in place — text (the program wins, also while focused), placeholder (+ v0.63.3 sizer) */
   _syncInputs() {
     for (const k of SIDES) {
       const input = this._input(k);
@@ -418,6 +428,13 @@ export class TdDatetimeRange extends TdFormElement {
       this._inputText[k] = text;
       const ph = this._sidePlaceholder(k);
       if (input.getAttribute('placeholder') !== ph) input.setAttribute('placeholder', ph);
+      const sizer = /** @type {HTMLElement|null} */ (input.nextElementSibling);
+      if (sizer && sizer.classList.contains('td-dtr__sizer')) {
+        const [a, b] = /** @type {HTMLElement[]} */ ([...sizer.children]);
+        if (a.textContent !== ph) a.textContent = ph;
+        const v = this._sizerValue();
+        if (b.textContent !== v) b.textContent = v;
+      }
     }
   }
 

@@ -2,6 +2,17 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.63.3
+
+**Vá giao diện `editable` của `<td-datetime-range>`: dấu "–" cách đều hai ngày** (báo cáo của 135).
+
+### Fixed
+
+- 0.63.0–0.63.2 chia đôi bề rộng ô cho hai ô gõ, chữ căn trái: ô rộng thì sau ngày "Từ" thừa một khoảng trống lớn, dấu "–" dính
+  sát ngày "Đến" (`26/07/2026        – 26/07/2026`). Nay mỗi ô rộng đúng bằng chữ nó hiện (placeholder khi trống, một ngày đầy đủ
+  khi có giá trị — đo bằng một `span.td-dtr__sizer` ẩn cạnh ô, không JS đo), chỗ thừa dồn về trước nút lịch: dòng đọc
+  `26/07/2026 – 26/07/2026` ở mọi bề rộng, mọi trình duyệt. Ô hẹp hơn chữ: hai ô co đều như trước.
+
 ## 0.63.2
 
 **Vá `editable`: một chuỗi chèn một lần (Playwright `fill()`, đọc chính tả, thay thế chữ) không còn bị chặn thành ô trống.**
