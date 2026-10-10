@@ -75,11 +75,28 @@ const TEXT_METRIC_PROPS = new Set(['width', 'right', 'left', 'transform', 'inlin
 const SKIP_TEXT_METRICS = process.platform !== BASELINE_PLATFORM;
 const MIME = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json', '.svg': 'image/svg+xml' };
 
+/**
+ * v0.64.0 (ADR 0034, plan M3): TD_DIST=1 serves the committed minified dist/ bytes for td.css and every shipped kit module
+ * (index.js, src/**\/*.js without tests / stories) — compared against the SAME source baselines. DIST_SERVED counts them
+ * (the run fails when nothing came from dist/).
+ */
+const DIST = process.env.TD_DIST === '1';
+const DIST_SERVED = { css: 0, js: 0 };
+
 /** Map an http://csp.local/<path> URL to a file on disk (identical to capture). */
 function urlToFile(url) {
   const u = new URL(url);
   if (u.pathname.startsWith('/fixture/')) return join(__dirname, u.pathname.slice(1));
-  return join(REPO_ROOT, u.pathname.replace(/^\/+/, ''));
+  const rel = u.pathname.replace(/^\/+/, '');
+  if (DIST && !rel.includes('..') && (rel === 'td.css' || rel === 'index.js'
+    || (rel.startsWith('src/') && rel.endsWith('.js') && !/\.(test|browser-test|stories)\.js$|\.spec\./.test(rel)))) {
+    const dist = join(REPO_ROOT, 'dist', rel);
+    if (existsSync(dist)) {
+      DIST_SERVED[rel === 'td.css' ? 'css' : 'js'] += 1;
+      return dist;
+    }
+  }
+  return join(REPO_ROOT, rel);
 }
 
 /**
@@ -613,6 +630,13 @@ async function main() {
   // It FAILS (non-zero) whenever ANY state or clean smoke fails. Pre-refactor that means
   // the affected components fail (expected) AND clean ones pass; post-refactor everything
   // must pass for the gate to go green. We exit non-zero if anything failed.
+  if (DIST) {
+    console.log(`TD_DIST=1: served from dist/ — td.css ×${DIST_SERVED.css}, JS modules ×${DIST_SERVED.js}`);
+    if (!DIST_SERVED.css || !DIST_SERVED.js) {
+      console.error('TD_DIST=1 but nothing came from dist/ — the parity run would be vacuous');
+      process.exit(1);
+    }
+  }
   if (failed.length) process.exit(1);
   process.exit(0);
 }

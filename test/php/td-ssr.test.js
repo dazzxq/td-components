@@ -5,7 +5,8 @@
 // that generated file is stale: `node test/ssr/build-button-fixture.mjs`).
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, copyFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HAS_PHP, ROOT, runPhp, php1 } from './php.mjs';
 import { BUTTON_FIXTURES, BUTTON_FIXTURE_FILE, renderButtonFixture } from '../ssr/ssr.mjs';
@@ -211,19 +212,47 @@ describe('php/td.php — SSR element mode (v0.25.0, ADR 0012)', opts, () => {
 });
 
 describe('Td::modulePreloads (v0.25.0)', opts, () => {
-  test('short and full names → <link rel="modulepreload"> with the import-map URL, deduplicated, in order', () => {
+  // v0.64.0 (ADR 0034): with module-graph.json in the kit directory the static closure follows the roots (sorted, no
+  // duplicates); a kit directory without it keeps the 0.25.0 output (roots only).
+  const GRAPH = JSON.parse(readFileSync(join(ROOT, 'module-graph.json'), 'utf8')).modules;
+  const closure = (roots) => {
+    const seen = new Set(roots);
+    const queue = [...roots];
+    const deps = [];
+    for (let i = 0; i < queue.length; i++) {
+      for (const d of GRAPH[queue[i]] || []) if (!seen.has(d)) { seen.add(d); deps.push(d); queue.push(d); }
+    }
+    return [...roots, ...deps.sort()];
+  };
+  const links = (paths, base = BASE, extra = '') => paths.map((p) => `<link rel="modulepreload" href="${base}/${p}"${extra}>`).join('');
+
+  test('short and full names → the roots (import-map URLs, deduplicated, in order) then their static closure', () => {
     const [r, empty] = runPhp([
       { fn: 'Td::modulePreloads', args: [['button', '@dazzxq/td-components/alert', 'button', 'icons']] },
       { fn: 'Td::modulePreloads', args: [[]] },
     ], { baseUrl: BASE });
     const html = r.out;
-    assert.equal(html, `<link rel="modulepreload" href="${BASE}/src/form/td-button.js">`
-      + `<link rel="modulepreload" href="${BASE}/src/feedback/td-alert.js">`
-      + `<link rel="modulepreload" href="${BASE}/src/icons/td-icon.js">`);
+    const roots = ['src/form/td-button.js', 'src/feedback/td-alert.js', 'src/icons/td-icon.js'];
+    assert.equal(html, links(closure(roots)));
+    assert.ok(html.startsWith(links(roots)));
+    assert.ok(html.includes(`href="${BASE}/src/base/td-base-element.js"`)); // a dependency, printed once
+    assert.equal(html.split('td-base-element.js').length, 2);
     // the URL is exactly the import map's (same configured version)
     const map = runPhp([{ fn: 'Td::importMap', args: [] }], { baseUrl: BASE })[0].out;
     assert.ok(html.includes(`href="${map['@dazzxq/td-components/button']}"`));
     assert.equal(empty.out, '');
+  });
+
+  test('a kit directory without module-graph.json: roots only (the 0.25.0 output)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'td-nograph-'));
+    try {
+      copyFileSync(join(ROOT, 'package.json'), join(dir, 'package.json'));
+      const [r] = runPhp([{ fn: 'Td::modulePreloads', args: [['button', '@dazzxq/td-components/alert', 'button', 'icons']] }],
+        { baseUrl: BASE, kitDir: dir });
+      assert.equal(r.out, links(['src/form/td-button.js', 'src/feedback/td-alert.js', 'src/icons/td-icon.js']));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   test('unknown / non-kit / non-string names throw InvalidArgumentException; values are escaped; nonce', () => {
@@ -236,9 +265,10 @@ describe('Td::modulePreloads (v0.25.0)', opts, () => {
       { fn: 'Td::modulePreloads', args: [['button'], 'n"1'] },
     ], { baseUrl: BASE });
     for (const r of res.slice(0, 5)) assert.equal(r.error, 'InvalidArgumentException', JSON.stringify(r));
-    assert.equal(res[5].out, `<link rel="modulepreload" href="${BASE}/src/form/td-button.js" nonce="n&quot;1">`);
+    assert.equal(res[5].out, links(closure(['src/form/td-button.js']), BASE, ' nonce="n&quot;1"'));
     const amp = runPhp([{ fn: 'Td::modulePreloads', args: [['button']] }], { baseUrl: '/v/a&b' })[0].out;
-    assert.equal(amp, '<link rel="modulepreload" href="/v/a&amp;b/src/form/td-button.js">');
+    assert.ok(amp.startsWith('<link rel="modulepreload" href="/v/a&amp;b/src/form/td-button.js">'));
+    assert.ok(!amp.includes('a&b'));
   });
 
   test('requires configure()', () => {

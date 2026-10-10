@@ -1,0 +1,2 @@
+var f=Object.defineProperty;var i=(t,e)=>f(t,"name",{value:e,configurable:!0});function l(t,e,r){return t===0?{from:0,to:0}:{from:(r-1)*e+1,to:Math.min(r*e,t)}}i(l,"pageRange");function h(t,e,r,o){if(typeof t!="function")return null;let u;try{u=t(e)}catch(n){return r(`${o} threw — the default text is used. ${n&&n.message?n.message:String(n)}`),null}return typeof u=="string"?u:(r(`${o} must return a string — the default text is used.`),null)}i(h,"hookText");export{h as hookText,l as pageRange};
+//# sourceMappingURL=page-info.js.map

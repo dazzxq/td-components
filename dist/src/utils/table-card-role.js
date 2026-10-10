@@ -1,0 +1,2 @@
+var c=Object.defineProperty;var t=(r,i)=>c(r,"name",{value:i,configurable:!0});const s=["lead","primary","secondary","meta","actions"];function d(r){if(!Array.isArray(r))return[];const i=r.some(a=>a&&a.card==="primary");return r.map((a,n)=>{const e=a||{};return e.card===!1?"false":s.includes(e.card)?e.card:Array.isArray(e.actions)?"actions":n===0?i?"lead":"primary":"secondary"})}t(d,"cardRoles");export{s as CARD_ROLES,d as cardRoles};
+//# sourceMappingURL=table-card-role.js.map

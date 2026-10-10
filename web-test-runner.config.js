@@ -68,6 +68,27 @@ const storiesPlugin = {
 };
 
 /**
+ * v0.64.0 (ADR 0034, plan M3): TD_DIST=1 serves the COMMITTED minified bytes for every shipped kit module (/index.js,
+ * /src/**\/*.js without tests / stories) and /td.css from dist/ — a URL rewrite only, no transform. Test files are untouched
+ * and import the kit relatively, so the suite runs on dist. Rewritten responses carry `x-td-variant: dist`
+ * (*.dist.browser-test.js, only run with TD_DIST, asserts it).
+ */
+const DIST = process.env.TD_DIST === '1';
+const SHIPPED = /^\/(index\.js|src\/.+\.js)$/;
+const NOT_SHIPPED = /\.(test|browser-test|stories)\.js$|\.spec\./;
+async function distMiddleware(ctx, next) {
+  const path = ctx.path;
+  if (!path.includes('..') && (path === '/td.css' || (SHIPPED.test(path) && !NOT_SHIPPED.test(path)))
+    && existsSync(join('dist', path))) {
+    ctx.url = `/dist${ctx.url}`;
+    await next();
+    ctx.set('x-td-variant', 'dist');
+    return;
+  }
+  await next();
+}
+
+/**
  * Real-browser test runner (ISSUE-1). The form-association suite needs a REAL
  * browser: `attachInternals()`, native `FormData`, constraint validation,
  * `<fieldset disabled>`, `requestSubmit()`, label association, and
@@ -79,7 +100,8 @@ const storiesPlugin = {
  */
 export default {
   files: ['src/**/*.browser-test.js', '!src/**/*.scrollbar.browser-test.js', '!src/**/*.ssr.browser-test.js',
-    '!src/**/*.engines.browser-test.js'],
+    '!src/**/*.engines.browser-test.js', ...(DIST ? [] : ['!src/**/*.dist.browser-test.js'])],
+  middleware: DIST ? [distMiddleware] : [],
   nodeResolve: true,
   plugins: [storiesPlugin],
   browsers: [playwrightLauncher({ product: 'chromium' })],

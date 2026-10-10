@@ -1,0 +1,680 @@
+{
+  "schema": 1,
+  "modules": {
+    "index.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/display/td-carousel.js",
+      "src/display/td-copy.js",
+      "src/display/td-diff.js",
+      "src/display/td-empty-state.js",
+      "src/display/td-filter-chips.js",
+      "src/display/td-masked-value.js",
+      "src/display/td-media-grid.js",
+      "src/display/td-pagination.js",
+      "src/display/td-rating.js",
+      "src/display/td-sortable.js",
+      "src/display/td-steps.js",
+      "src/display/td-table.js",
+      "src/display/td-tabs.js",
+      "src/display/td-timeline.js",
+      "src/feedback/td-alert.js",
+      "src/feedback/td-drawer.js",
+      "src/feedback/td-hovercard.js",
+      "src/feedback/td-lightbox.js",
+      "src/feedback/td-loading.js",
+      "src/feedback/td-media-picker.js",
+      "src/feedback/td-menu.js",
+      "src/feedback/td-modal-stack.js",
+      "src/feedback/td-modal.js",
+      "src/feedback/td-progress.js",
+      "src/feedback/td-scroll-top.js",
+      "src/feedback/td-toast.js",
+      "src/feedback/td-tooltip.js",
+      "src/form/td-action-button.js",
+      "src/form/td-button.js",
+      "src/form/td-check-matrix.js",
+      "src/form/td-checkbox.js",
+      "src/form/td-chip-input.js",
+      "src/form/td-choice-group.js",
+      "src/form/td-color-picker.js",
+      "src/form/td-cropper.js",
+      "src/form/td-datetime-picker.js",
+      "src/form/td-datetime-range.js",
+      "src/form/td-dropdown.js",
+      "src/form/td-dropzone.js",
+      "src/form/td-hint.js",
+      "src/form/td-input-field.js",
+      "src/form/td-media-field.js",
+      "src/form/td-media-gallery.js",
+      "src/form/td-number-input.js",
+      "src/form/td-otp-input.js",
+      "src/form/td-password-meter.js",
+      "src/form/td-repeater.js",
+      "src/form/td-scan-input.js",
+      "src/form/td-slider.js",
+      "src/form/td-toggle.js",
+      "src/form/td-tree-select.js",
+      "src/form/td-tree.js",
+      "src/icons/td-icon-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/breakpoints.js",
+      "src/utils/datetime.js",
+      "src/utils/dom-utils.js",
+      "src/utils/form-validation.js"
+    ],
+    "src/base/sample/td-sample.js": [
+      "src/base/td-base-element.js"
+    ],
+    "src/base/td-base-element.js": [
+      "src/utils/css-safe.js",
+      "src/utils/escape.js",
+      "src/utils/press.js",
+      "src/utils/upgrade-props.js"
+    ],
+    "src/base/td-checkable-element.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/icons/td-icon.js"
+    ],
+    "src/base/td-form-element.js": [
+      "src/base/td-base-element.js"
+    ],
+    "src/base/td-v059-baseline.fixture.js": [
+      "src/display/td-pagination.js",
+      "src/display/td-table.js",
+      "src/feedback/td-modal.js",
+      "src/form/td-datetime-picker.js",
+      "src/form/td-datetime-range.js",
+      "src/form/td-number-input.js"
+    ],
+    "src/base/td-v060-baseline.fixture.js": [
+      "src/form/td-datetime-picker.js",
+      "src/form/td-datetime-range.js"
+    ],
+    "src/display/td-carousel.js": [
+      "src/base/td-base-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/breakpoints.js",
+      "src/utils/carousel-model.js",
+      "src/utils/carousel-scroll.js"
+    ],
+    "src/display/td-copy.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/icons/td-icon.js"
+    ],
+    "src/display/td-diff.js": [
+      "src/base/td-base-element.js",
+      "src/utils/diff-markup.js",
+      "src/utils/diff-model.js"
+    ],
+    "src/display/td-empty-state.js": [
+      "src/base/td-base-element.js",
+      "src/icons/td-icon.js"
+    ],
+    "src/display/td-filter-chips.js": [
+      "src/base/td-base-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/filter-chips-model.js"
+    ],
+    "src/display/td-masked-value.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/display/td-copy.js",
+      "src/icons/td-icon.js"
+    ],
+    "src/display/td-media-grid.js": [
+      "src/base/td-base-element.js",
+      "src/utils/check-mark.js",
+      "src/utils/justified.js",
+      "src/utils/layers.js"
+    ],
+    "src/display/td-pagination.js": [
+      "src/base/td-base-element.js",
+      "src/form/td-button.js",
+      "src/icons/td-icon.js",
+      "src/theme/color.js",
+      "src/utils/page-info.js"
+    ],
+    "src/display/td-rating.js": [
+      "src/base/td-base-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/rating-model.js"
+    ],
+    "src/display/td-sortable.js": [
+      "src/base/td-base-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/ordered-collection.js",
+      "src/utils/sortable-controller.js"
+    ],
+    "src/display/td-steps.js": [
+      "src/base/td-base-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/filter-chips-model.js",
+      "src/utils/ssr-tree.js",
+      "src/utils/steps-model.js"
+    ],
+    "src/display/td-table.js": [
+      "src/base/td-base-element.js",
+      "src/display/td-empty-state.js",
+      "src/display/td-pagination.js",
+      "src/feedback/td-menu.js",
+      "src/icons/td-icon.js",
+      "src/utils/check-mark.js",
+      "src/utils/css-safe.js",
+      "src/utils/key-selection.js",
+      "src/utils/page-info.js",
+      "src/utils/table-card-role.js",
+      "src/utils/table-tree-model.js"
+    ],
+    "src/display/td-tabs.js": [
+      "src/base/td-base-element.js",
+      "src/icons/td-icon.js"
+    ],
+    "src/display/td-timeline.js": [
+      "src/base/td-base-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/datetime.js",
+      "src/utils/filter-chips-model.js",
+      "src/utils/ssr-tree.js",
+      "src/utils/timeline-model.js"
+    ],
+    "src/display/td-v057-flat-snapshot.fixture.js": [
+      "src/display/td-table.js"
+    ],
+    "src/feedback/crop-dialog.js": [
+      "src/feedback/dialog-layer.js",
+      "src/form/td-cropper.js",
+      "src/icons/td-icon.js",
+      "src/utils/crop-geometry.js",
+      "src/utils/layers.js",
+      "src/utils/media-field-model.js"
+    ],
+    "src/feedback/dialog-layer.js": [
+      "src/utils/keyboard-viewport.js",
+      "src/utils/layers.js",
+      "src/utils/press.js",
+      "src/utils/scroll-lock.js",
+      "src/utils/transition.js"
+    ],
+    "src/feedback/media-picker-fields.js": [
+      "src/form/td-chip-input.js",
+      "src/form/td-datetime-picker.js",
+      "src/form/td-dropdown.js",
+      "src/form/td-input-field.js",
+      "src/form/td-toggle.js",
+      "src/utils/media-picker-core.js"
+    ],
+    "src/feedback/media-picker-filters.js": [
+      "src/feedback/dialog-layer.js",
+      "src/feedback/media-picker-fields.js",
+      "src/icons/td-icon.js",
+      "src/utils/keyboard-viewport.js",
+      "src/utils/layers.js"
+    ],
+    "src/feedback/media-picker-upload.js": [
+      "src/display/td-tabs.js",
+      "src/feedback/dialog-layer.js",
+      "src/feedback/media-picker-fields.js",
+      "src/feedback/td-modal.js",
+      "src/feedback/td-progress.js",
+      "src/feedback/td-toast.js",
+      "src/form/td-button.js",
+      "src/form/td-dropzone.js",
+      "src/form/td-input-field.js",
+      "src/icons/td-icon.js",
+      "src/utils/keyboard-viewport.js",
+      "src/utils/layers.js",
+      "src/utils/media-picker-core.js",
+      "src/utils/media-url.js"
+    ],
+    "src/feedback/td-alert.js": [
+      "src/base/td-base-element.js",
+      "src/icons/td-icon.js"
+    ],
+    "src/feedback/td-drawer.js": [
+      "src/feedback/dialog-layer.js",
+      "src/icons/td-icon.js",
+      "src/utils/layers.js",
+      "src/utils/transition.js",
+      "src/utils/upgrade-props.js"
+    ],
+    "src/feedback/td-hovercard.js": [
+      "src/utils/floating.js",
+      "src/utils/layers.js"
+    ],
+    "src/feedback/td-lightbox.js": [
+      "src/feedback/td-menu.js",
+      "src/icons/td-icon.js",
+      "src/utils/breakpoints.js",
+      "src/utils/gesture.js",
+      "src/utils/layers.js",
+      "src/utils/press.js",
+      "src/utils/scroll-lock.js"
+    ],
+    "src/feedback/td-loading.js": [
+      "src/utils/css-safe.js",
+      "src/utils/layers.js",
+      "src/utils/scroll-lock.js"
+    ],
+    "src/feedback/td-media-picker.js": [
+      "src/display/td-copy.js",
+      "src/display/td-empty-state.js",
+      "src/display/td-media-grid.js",
+      "src/display/td-pagination.js",
+      "src/feedback/crop-dialog.js",
+      "src/feedback/dialog-layer.js",
+      "src/feedback/media-picker-fields.js",
+      "src/feedback/media-picker-filters.js",
+      "src/feedback/media-picker-upload.js",
+      "src/feedback/td-alert.js",
+      "src/feedback/td-menu.js",
+      "src/feedback/td-modal-stack.js",
+      "src/feedback/td-modal.js",
+      "src/feedback/td-toast.js",
+      "src/form/td-button.js",
+      "src/form/td-input-field.js",
+      "src/icons/td-icon.js",
+      "src/utils/breakpoints.js",
+      "src/utils/dom-utils.js",
+      "src/utils/keyboard-viewport.js",
+      "src/utils/layers.js",
+      "src/utils/media-picker-core.js",
+      "src/utils/media-url.js"
+    ],
+    "src/feedback/td-menu.js": [
+      "src/icons/td-icon.js",
+      "src/utils/check-mark.js",
+      "src/utils/floating.js",
+      "src/utils/layers.js",
+      "src/utils/typeahead.js"
+    ],
+    "src/feedback/td-modal-stack.js": [
+      "src/utils/layers.js",
+      "src/utils/scroll-lock.js"
+    ],
+    "src/feedback/td-modal.js": [
+      "src/feedback/dialog-layer.js",
+      "src/feedback/td-modal-stack.js",
+      "src/icons/td-icon.js",
+      "src/utils/confirm-phrase.js",
+      "src/utils/layers.js",
+      "src/utils/transition.js"
+    ],
+    "src/feedback/td-progress.js": [
+      "src/base/td-base-element.js"
+    ],
+    "src/feedback/td-scroll-top.js": [
+      "src/base/td-base-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/scroll-top-colors.js"
+    ],
+    "src/feedback/td-toast.js": [
+      "src/feedback/toast-placement.js",
+      "src/icons/td-icon.js",
+      "src/utils/layers.js",
+      "src/utils/press.js",
+      "src/utils/transition.js"
+    ],
+    "src/feedback/td-tooltip.js": [
+      "src/theme/color.js",
+      "src/utils/css-safe.js",
+      "src/utils/floating.js",
+      "src/utils/layers.js"
+    ],
+    "src/feedback/toast-placement.js": [],
+    "src/form/button-structure.js": [],
+    "src/form/calendar-grid.js": [
+      "src/icons/td-icon.js",
+      "src/utils/calendar-model.js"
+    ],
+    "src/form/calendar-labels.js": [],
+    "src/form/field-affix.js": [
+      "src/utils/escape.js"
+    ],
+    "src/form/td-action-button.js": [
+      "src/feedback/td-tooltip.js",
+      "src/form/button-structure.js",
+      "src/form/td-button.js",
+      "src/icons/td-icon.js",
+      "src/utils/log-safe.js"
+    ],
+    "src/form/td-button.js": [
+      "src/base/td-base-element.js",
+      "src/form/button-structure.js",
+      "src/icons/td-icon.js",
+      "src/theme/color.js"
+    ],
+    "src/form/td-check-matrix.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/check-matrix-model.js",
+      "src/utils/check-matrix-render.js"
+    ],
+    "src/form/td-checkbox.js": [
+      "src/base/td-checkable-element.js"
+    ],
+    "src/form/td-chip-input.js": [
+      "src/base/td-form-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/check-mark.js",
+      "src/utils/floating.js",
+      "src/utils/layers.js",
+      "src/utils/typeahead.js"
+    ],
+    "src/form/td-choice-group.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/choice-options.js",
+      "src/utils/css-safe.js",
+      "src/utils/media-url.js",
+      "src/utils/segmented-layout.js"
+    ],
+    "src/form/td-color-picker.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/icons/td-icon.js",
+      "src/theme/color.js",
+      "src/utils/check-mark.js",
+      "src/utils/color-picker-model.js",
+      "src/utils/floating.js",
+      "src/utils/layers.js"
+    ],
+    "src/form/td-cropper.js": [
+      "src/base/td-base-element.js",
+      "src/feedback/crop-dialog.js",
+      "src/icons/td-icon.js",
+      "src/utils/crop-geometry.js",
+      "src/utils/media-field-model.js",
+      "src/utils/media-url.js"
+    ],
+    "src/form/td-datetime-picker.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/feedback/td-modal.js",
+      "src/form/calendar-grid.js",
+      "src/form/calendar-labels.js",
+      "src/form/time-step.js",
+      "src/form/typed-mask.js",
+      "src/icons/td-icon.js",
+      "src/utils/breakpoints-internal.js",
+      "src/utils/calendar-model.js",
+      "src/utils/datetime.js",
+      "src/utils/floating.js",
+      "src/utils/layers.js",
+      "src/utils/value-title.js"
+    ],
+    "src/form/td-datetime-range.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/feedback/td-modal.js",
+      "src/form/calendar-grid.js",
+      "src/form/calendar-labels.js",
+      "src/form/time-step.js",
+      "src/form/typed-mask.js",
+      "src/icons/td-icon.js",
+      "src/utils/breakpoints-internal.js",
+      "src/utils/calendar-model.js",
+      "src/utils/date-presets.js",
+      "src/utils/datetime.js",
+      "src/utils/range-selection.js",
+      "src/utils/value-title.js"
+    ],
+    "src/form/td-dropdown.js": [
+      "src/base/td-form-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/breakpoints.js",
+      "src/utils/floating.js",
+      "src/utils/layers.js",
+      "src/utils/typeahead.js",
+      "src/utils/value-title.js"
+    ],
+    "src/form/td-dropzone.js": [
+      "src/base/td-form-element.js",
+      "src/feedback/td-progress.js",
+      "src/icons/td-icon.js",
+      "src/utils/dom-utils.js"
+    ],
+    "src/form/td-hint.js": [
+      "src/base/td-base-element.js"
+    ],
+    "src/form/td-input-field.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/form/field-affix.js",
+      "src/icons/td-icon.js"
+    ],
+    "src/form/td-media-field.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/feedback/crop-dialog.js",
+      "src/feedback/td-media-picker.js",
+      "src/icons/td-icon.js",
+      "src/utils/media-field-model.js",
+      "src/utils/media-picker-core.js",
+      "src/utils/media-url.js"
+    ],
+    "src/form/td-media-gallery.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/feedback/crop-dialog.js",
+      "src/feedback/td-media-picker.js",
+      "src/icons/td-icon.js",
+      "src/utils/media-field-model.js",
+      "src/utils/media-picker-core.js",
+      "src/utils/media-url.js",
+      "src/utils/ordered-collection.js",
+      "src/utils/sortable-controller.js"
+    ],
+    "src/form/td-number-input.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/form/field-affix.js",
+      "src/icons/td-icon.js",
+      "src/utils/number-format.js",
+      "src/utils/number-locale.js"
+    ],
+    "src/form/td-otp-input.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/utils/otp.js"
+    ],
+    "src/form/td-password-meter.js": [
+      "src/base/td-base-element.js",
+      "src/icons/td-icon.js"
+    ],
+    "src/form/td-repeater.js": [
+      "src/base/td-base-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/log-safe.js",
+      "src/utils/ordered-collection.js",
+      "src/utils/sortable-controller.js"
+    ],
+    "src/form/td-scan-input.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/beep.js",
+      "src/utils/layers.js",
+      "src/utils/scan-burst.js"
+    ],
+    "src/form/td-slider.js": [
+      "src/base/td-form-element.js"
+    ],
+    "src/form/td-toggle.js": [
+      "src/base/td-checkable-element.js",
+      "src/icons/td-icon.js"
+    ],
+    "src/form/td-tree-select.js": [
+      "src/base/td-form-element.js",
+      "src/form/td-tree.js",
+      "src/icons/td-icon.js",
+      "src/utils/breakpoints.js",
+      "src/utils/floating.js",
+      "src/utils/layers.js",
+      "src/utils/tree-model.js",
+      "src/utils/value-title.js"
+    ],
+    "src/form/td-tree.js": [
+      "src/base/td-form-element.js",
+      "src/icons/td-icon.js",
+      "src/utils/check-mark.js",
+      "src/utils/tree-model.js"
+    ],
+    "src/form/time-step.js": [
+      "src/form/time-wheels.js",
+      "src/icons/td-icon.js",
+      "src/utils/calendar-model.js"
+    ],
+    "src/form/time-wheels.js": [],
+    "src/form/typed-mask.js": [
+      "src/utils/datetime.js"
+    ],
+    "src/icons/registry.js": [],
+    "src/icons/td-icon-element.js": [
+      "src/icons/td-icon.js"
+    ],
+    "src/icons/td-icon.js": [
+      "src/icons/registry.js"
+    ],
+    "src/theme/builder/theme-builder.js": [
+      "index.js",
+      "src/feedback/td-menu.js",
+      "src/theme/color.js",
+      "src/theme/index.js"
+    ],
+    "src/theme/color.js": [],
+    "src/theme/index.js": [
+      "src/theme/color.js",
+      "src/theme/palette.js",
+      "src/theme/presets.js",
+      "src/theme/serialize.js",
+      "src/theme/tokens.js"
+    ],
+    "src/theme/palette.js": [
+      "src/theme/color.js",
+      "src/theme/presets.js",
+      "src/theme/selectors.js",
+      "src/theme/tokens.js"
+    ],
+    "src/theme/presets.js": [],
+    "src/theme/selectors.js": [],
+    "src/theme/serialize.js": [
+      "src/theme/palette.js",
+      "src/theme/selectors.js",
+      "src/theme/tokens.js"
+    ],
+    "src/theme/tokens.js": [],
+    "src/utils/beep.js": [],
+    "src/utils/breakpoints-internal.js": [],
+    "src/utils/breakpoints.js": [
+      "src/utils/breakpoints-internal.js"
+    ],
+    "src/utils/calendar-model.js": [
+      "src/utils/datetime.js"
+    ],
+    "src/utils/carousel-model.js": [],
+    "src/utils/carousel-scroll.js": [],
+    "src/utils/check-mark.js": [
+      "src/icons/td-icon.js"
+    ],
+    "src/utils/check-matrix-model.js": [],
+    "src/utils/check-matrix-render.js": [
+      "src/utils/check-matrix-model.js"
+    ],
+    "src/utils/choice-options.js": [],
+    "src/utils/color-picker-model.js": [
+      "src/theme/color.js"
+    ],
+    "src/utils/confirm-phrase.js": [],
+    "src/utils/crop-geometry.js": [],
+    "src/utils/css-safe.js": [],
+    "src/utils/date-presets.js": [
+      "src/utils/datetime.js"
+    ],
+    "src/utils/datetime.js": [],
+    "src/utils/diff-markup.js": [
+      "src/utils/diff-model.js",
+      "src/utils/escape.js"
+    ],
+    "src/utils/diff-model.js": [],
+    "src/utils/dom-utils.js": [
+      "src/theme/color.js"
+    ],
+    "src/utils/escape.js": [],
+    "src/utils/filter-chips-model.js": [],
+    "src/utils/floating.js": [],
+    "src/utils/form-dirty.js": [],
+    "src/utils/form-validation.js": [
+      "src/base/td-form-element.js",
+      "src/utils/form-dirty.js"
+    ],
+    "src/utils/gesture.js": [],
+    "src/utils/inert-lock.js": [],
+    "src/utils/justified.js": [],
+    "src/utils/key-selection.js": [],
+    "src/utils/keyboard-viewport.js": [
+      "src/utils/floating.js"
+    ],
+    "src/utils/layers.js": [
+      "src/theme/tokens.js",
+      "src/utils/inert-lock.js"
+    ],
+    "src/utils/log-safe.js": [],
+    "src/utils/media-field-model.js": [
+      "src/utils/media-url.js"
+    ],
+    "src/utils/media-picker-core.js": [],
+    "src/utils/media-url.js": [],
+    "src/utils/number-format.js": [],
+    "src/utils/number-locale.js": [],
+    "src/utils/ordered-collection.js": [],
+    "src/utils/otp.js": [
+      "src/utils/number-format.js"
+    ],
+    "src/utils/page-info.js": [],
+    "src/utils/press.js": [
+      "src/utils/gesture.js"
+    ],
+    "src/utils/range-selection.js": [
+      "src/utils/calendar-model.js"
+    ],
+    "src/utils/rating-model.js": [],
+    "src/utils/scan-burst.js": [],
+    "src/utils/scroll-lock.js": [],
+    "src/utils/scroll-top-colors.js": [
+      "src/theme/color.js",
+      "src/utils/css-safe.js"
+    ],
+    "src/utils/segmented-layout.js": [],
+    "src/utils/sortable-controller.js": [
+      "src/utils/gesture.js",
+      "src/utils/layers.js",
+      "src/utils/sortable-geometry.js"
+    ],
+    "src/utils/sortable-geometry.js": [],
+    "src/utils/ssr-tree.js": [],
+    "src/utils/steps-model.js": [
+      "src/utils/filter-chips-model.js"
+    ],
+    "src/utils/table-card-role.js": [],
+    "src/utils/table-tree-model.js": [
+      "src/utils/key-selection.js",
+      "src/utils/tree-model.js"
+    ],
+    "src/utils/timeline-model.js": [
+      "src/utils/datetime.js",
+      "src/utils/filter-chips-model.js"
+    ],
+    "src/utils/transition.js": [],
+    "src/utils/tree-model.js": [
+      "src/utils/typeahead.js"
+    ],
+    "src/utils/typeahead.js": [],
+    "src/utils/upgrade-props.js": [],
+    "src/utils/value-title.js": []
+  }
+}

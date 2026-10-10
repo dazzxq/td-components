@@ -336,6 +336,7 @@ describe('batch 3 — td-toast visuals', () => {
   it('coarse pointer: the (keyboard-revealed) close button is ≥ 44px', async () => {
     // emulateMedia cannot fake (pointer: coarse); assert the rule ships in td.css instead
     const css = await (await fetch('/td.css')).text();
-    expect(/@media \(pointer: coarse\)\s*\{\s*\.td-toast__close:focus-visible\s*\{\s*width: var\(--td-touch-min\)/.test(css)).to.equal(true);
+    // v0.64.0: whitespace-agnostic — the same rule must be in the minified dist/td.css (npm run test:browser:dist)
+    expect(/@media\s*\(pointer:\s*coarse\)\s*\{\s*\.td-toast__close:focus-visible\s*\{\s*width:\s*var\(--td-touch-min\)/.test(css)).to.equal(true);
   });
 });

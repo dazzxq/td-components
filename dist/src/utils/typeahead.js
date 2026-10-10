@@ -1,0 +1,2 @@
+var g=Object.defineProperty;var s=(t,r)=>g(t,"name",{value:r,configurable:!0});const f=s(t=>String(t??"").normalize("NFD").replace(new RegExp("\\p{M}","gu"),"").toLocaleLowerCase().replace(/đ/g,"d"),"fold");function x(t,r,i){const e=f(i),o=t.length;if(!e||!o)return-1;const c=[...e].every(n=>n===e[0]),p=c?e[0]:e,u=r<0?0:r+(c||e.length===1?1:0);for(let n=0;n<o;n++){const l=(u+n)%o,a=t[l];if(a!=null&&f(a).startsWith(p))return l}return-1}s(x,"nextTypeaheadIndex");export{f as fold,x as nextTypeaheadIndex};
+//# sourceMappingURL=typeahead.js.map

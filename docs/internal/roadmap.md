@@ -82,6 +82,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.63.1: mặt nạ khi gõ cho `editable` (11122026 → 11/12/2026 ngay lúc gõ) — owner
 - `done` v0.63.2: vá `editable` — chuỗi chèn một lần (`fill()`, đọc chính tả) xử lý như dán, không bị chặn
 - `done` v0.63.3: vá giao diện `editable` range — hai ô rộng theo chữ, dấu "–" cách đều hai ngày (báo cáo 135)
+- `done` v0.64.0: bản minify `dist/` (mirror gốc package, source map) + `module-graph.json` → `modulePreloads` in cả chuỗi + PHP `assets` (`source` mặc định / `dist`) — đề nghị dsuite, plan [v0.64.0-dist](plans/v0.64.0-dist.md), [ADR 0034](decisions/0034-minified-dist.md)
 
 ## Chờ nhu cầu (owner 2026-10-08: chỉ làm khi có site cần)
 

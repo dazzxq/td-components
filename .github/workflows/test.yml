@@ -40,8 +40,9 @@ jobs:
           ENGINES: 'chromium'
       - run: npm run test:ci:static
 
-  # web-test-runner, five shards: the root config (Chromium), the `engines` group once per engine (TD_WTR_ENGINES), and
-  # every other group (scrollbars, ssr, pointer-n) one after another — `npm run test:browser` locally still runs them all.
+  # web-test-runner, six shards: the root config (Chromium), the `engines` group once per engine (TD_WTR_ENGINES), every
+  # other group (scrollbars, ssr, pointer-n) one after another — `npm run test:browser` locally still runs them all — and
+  # v0.64.0 (ADR 0034) the root config again on the committed minified dist/ bytes (TD_DIST=1).
   browser:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -54,6 +55,7 @@ jobs:
           - { shard: engines, engines: firefox }
           - { shard: engines, engines: webkit }
           - { shard: groups, engines: 'chromium firefox webkit' }
+          - { shard: dist, engines: chromium }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -65,14 +67,16 @@ jobs:
         run: scripts/ci-install-browsers.sh
         env:
           ENGINES: ${{ matrix.engines }}
-      - if: matrix.shard != 'groups'
+      - if: matrix.shard != 'groups' && matrix.shard != 'dist'
         run: npx web-test-runner --group ${{ matrix.shard }}
         env:
           TD_WTR_ENGINES: ${{ matrix.engines }}
       - if: matrix.shard == 'groups'
         run: npm run test:browser:groups
+      - if: matrix.shard == 'dist'
+        run: npm run test:browser:dist
 
-  # CSP parity gate, td-only and legacy+td profiles (one job each). Linux runner: text-metric geometry is skipped
+  # CSP parity gate, td-only and legacy+td profiles, and td-only on the minified dist/ (v0.64.0) — one job each. Linux runner: text-metric geometry is skipped
   # (baselines are captured on macOS — test/csp/csp.spec.mjs BASELINE_PLATFORM).
   csp:
     runs-on: ubuntu-24.04
@@ -80,7 +84,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gate: [test:csp, test:csp:combined]
+        gate: [test:csp, test:csp:combined, test:csp:dist]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

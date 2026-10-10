@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.60.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.64.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.64.0](#0640) | Không phá vỡ: `dist/` và `assets` là opt-in; **đổi hành vi** `Td::modulePreloads()` (in thêm module phụ thuộc) | Không phải sửa code. Muốn bản minify: `Td::configure(…, ['assets' => 'dist'])` và copy cả `dist/` + `module-graph.json`. Test so nguyên chuỗi output của `modulePreloads` phải cập nhật. |
 | [0.63.0](#0630) | Không phá vỡ: `editable` là opt-in | Không phải sửa code. Muốn gõ tay: thêm `editable`. `messages.incomplete` (picker datetime) đổi câu; site đã override cho mode `date` → override `incompleteDate`. |
 | [0.62.0](#0620) | Đổi giao diện `td-alert` (bỏ vạch trái, ô icon) + DOM trạng thái tải của `td-hovercard` (skeleton) + `td-media-picker` có chuyển động mở | Không phải sửa code. Test chụp / đo alert (vạch 4px) hoặc bám `.td-hovercard__spinner` phải đổi; test đo picker ngay khi `data-state="open"` nên chờ chuyển động xong. |
 | [0.61.0](#0610) | Đổi giao diện + tương tác `td-datetime-range` (lịch một lưới thay hai bộ ba ô số) + **hộp thoại `datetime` (picker VÀ range) là hai bước: ngày → giờ** + gỡ `.td-dtp-panel*` | Không đổi markup / attribute / form / `change` / PHP. Test tự động bám ô số của range hoặc "bấm ngày rồi Chọn ngay" ở `datetime` phải đổi (xem § 0.61.0). Range `datetime`: "Chọn" chỉ ở màn giờ. |
@@ -90,6 +91,20 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.64.0
+
+**Đổi hành vi** (`Td::modulePreloads()`): khi thư mục kit có `module-graph.json` (có sẵn từ 0.64.0), hàm in thêm mọi module
+mà các tên được nêu import tĩnh, sắp theo đường dẫn và đứng sau các tên đó. Chữ ký hàm giữ nguyên, các tên được nêu vẫn đứng
+đầu theo thứ tự gọi. Test so nguyên chuỗi output phải cập nhật; muốn giữ output cũ thì đừng copy `module-graph.json`.
+
+**Thêm (opt-in):** bản minify `dist/` và `Td::configure(…, ['assets' => 'dist'])`. Mặc định `'source'` nên URL không đổi.
+Bật `dist` thì:
+
+- copy cả `dist/` và `module-graph.json`;
+- **không trộn** URL `…/src/…` với `…/dist/src/…` trên một trang, vì mỗi class sẽ bị nạp hai lần.
+
+Xem [Cài đặt › Bản minify](../getting-started/installation.md#bản-minify-dist-0640).
 
 ## 0.63.0
 

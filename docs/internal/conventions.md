@@ -72,9 +72,12 @@ Chi tiết và danh sách raw-HTML hatch: [security.md](security-model.md).
 
 1. Cập nhật [roadmap.md](roadmap.md) (đánh `done`) và `CHANGELOG.md` (mục `## x.y.z`: Fixed / Changed / Added / Breaking).
 2. Bump `version` trong `package.json` (+ `package-lock.json`).
-3. `npm test` xanh.
-4. Review theo quy trình Codex (impl-review, + security-review nếu đụng input/CSP) trước commit.
-5. Commit, merge vào `main`, tag `vX.Y.Z`.
+3. `npm run build` (0.64.0, [ADR 0034](decisions/0034-minified-dist.md)): sinh lại `td.css`, rồi `dist/` + `module-graph.json`;
+   commit cả ba (gate `check:dist` trong CI so từng byte). Nâng esbuild là **một thay đổi riêng** (sinh lại gần như cả
+   `dist/`), kiểm đủ gate, không gộp với tính năng.
+4. `npm test` xanh.
+5. Review theo quy trình Codex (impl-review, + security-review nếu đụng input/CSP) trước commit.
+6. Commit, merge vào `main`, tag `vX.Y.Z`.
 
 Consumer cài bằng `npm install github:dazzxq/td-components#vX.Y.Z`.
 

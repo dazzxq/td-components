@@ -1,0 +1,2 @@
+var c=Object.defineProperty;var r=(t,u)=>c(t,"name",{value:u,configurable:!0});const a=64,f=/[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028-\u202e\u2066-\u2069]/g;function l(t,u=64){let n="",o=0;for(const e of String(t)){if(o>=u)break;n+=e,o+=1}return n.replace(/[\\"]/g,e=>`\\${e}`).replace(f,e=>`\\u${e.charCodeAt(0).toString(16).padStart(4,"0")}`)}r(l,"logSafe");function i(t){return String(t).length}r(i,"logLength");export{a as LOG_TEXT_MAX,i as logLength,l as logSafe};
+//# sourceMappingURL=log-safe.js.map

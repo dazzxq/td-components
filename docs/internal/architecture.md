@@ -16,7 +16,7 @@ src/icons/               icon registry (Lucide)
 test/csp/                CSP parity gate (Playwright)
 ```
 
-Mỗi subpath trong `package.json#exports` trỏ thẳng vào một file source (không bundle).
+Mỗi subpath trong `package.json#exports` trỏ thẳng vào một file source (không bundle). Từ 0.64.0 có thêm `dist/`, bản minify từng file cùng cấu trúc (không bundle, [ADR 0034](decisions/0034-minified-dist.md)); `exports` vẫn trỏ source, PHP chọn bản qua `Td::configure(…, ['assets' => …])`.
 
 ## Base classes
 

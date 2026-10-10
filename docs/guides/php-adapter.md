@@ -124,15 +124,16 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.63.3/
+public/assets/vendor/td-components/0.64.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
+  dist/  module-graph.json                    (0.64.0+: bản minify + đồ thị preload)
 ```
 
 Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.63.3';
+const TD_VERSION = '0.64.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -155,6 +156,7 @@ TdComponents\Td::configure(
 
   | Option | Kiểu | Mặc định | Ý nghĩa |
   |---|---|---|---|
+  | `assets` (0.64.0) | `'source'` \| `'dist'` | `'source'` | URL của kit trỏ vào bản source (như trước 0.64) hay bản minify `{baseUrl}/dist` — [Bản minify và preload](#bản-minify-và-preload-0640) |
   | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` / `td_dropdown`, từ 0.27.0 cả `td_otp_input`, từ 0.30.0 cả `td_number_input`, từ 0.38.0 cả `td_scan_input` (đơn) — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
 
   > **Nâng từ 0.25 lên 0.26 mà đã bật `ssr_elements`:** từ 0.26.0 cờ này áp thêm cho `td_field` / `td_toggle` /
@@ -163,9 +165,9 @@ TdComponents\Td::configure(
   > [td_field ở chế độ element](#td_field-ở-chế-độ-element-0260) trước khi nâng; muốn giữ native cho từng lần gọi thì
   > truyền `'element' => false`.
 
-  Key lạ (gõ nhầm `ssr_element`…) hoặc giá trị không phải `bool` → `InvalidArgumentException` (không im lặng bỏ qua).
-  Mỗi lần gọi lại `configure()` đặt lại option theo tham số mới (không truyền → `false`). `Td::ssrElements()` trả giá
-  trị hiện tại.
+  Key lạ (gõ nhầm `ssr_element`…), `ssr_elements` không phải `bool` hoặc `assets` khác `'source'` / `'dist'` →
+  `InvalidArgumentException` (không im lặng bỏ qua). Mỗi lần gọi lại `configure()` đặt lại option theo tham số mới (không
+  truyền → mặc định). `Td::ssrElements()` / `Td::assets()` trả giá trị hiện tại.
 
 ## CSS và import map
 
@@ -187,8 +189,8 @@ Một hợp đồng, hai cách gọi:
 |---|---|
 | `Td::importMap(array $extra = []): array` / `td_import_map(array $extra = [])` | mảng `specifier => URL`: mọi entry `.js` trong `exports` (kit trước, theo thứ tự `exports`), rồi `$extra` |
 | `td_import_map_tag(array $extra = [], ?string $nonce = null): string` | `<script type="importmap" nonce="…">{"imports":…}</script>` |
-| `td_stylesheet_tag(?string $nonce = null): string` | `<link rel="stylesheet" href="{baseUrl}/td.css" nonce="…">` |
-| `Td::modulePreloads(array $names, ?string $nonce = null): string` (0.25.0) | `<link rel="modulepreload" href="…">` cho từng module kit trong `$names` |
+| `td_stylesheet_tag(?string $nonce = null): string` | `<link rel="stylesheet" href="{baseUrl}/td.css" nonce="…">` (`assets` `'dist'`: `{baseUrl}/dist/td.css`) |
+| `Td::modulePreloads(array $names, ?string $nonce = null): string` (0.25.0) | `<link rel="modulepreload" href="…">` cho từng module kit trong `$names`, từ 0.64.0 kèm mọi module chúng import tĩnh |
 
 ### Thứ tự nạp và `Td::modulePreloads` (0.25.0)
 
@@ -207,13 +209,17 @@ Thứ tự khuyến nghị trong `<head>` — **stylesheet → import map → mo
   (`'@dazzxq/td-components/button'`). Mỗi tên được phân giải qua **cùng** bản đồ của `Td::importMap()` (đúng phiên bản
   đã `configure`), nên URL preload luôn trùng URL module thật (không tải hai lần).
 - Trùng tên → in một lần (giữ thứ tự gặp đầu). Mảng rỗng → chuỗi rỗng.
+- **0.64.0:** khi thư mục kit có `module-graph.json`, sau các module được nêu tên, hàm in thêm **mọi module chúng import tĩnh**
+  (trực tiếp hoặc gián tiếp). Phần thêm này sắp theo đường dẫn, không trùng giữa các tên. Trình duyệt nhờ vậy tải song song
+  cả chuỗi, không phải tải xong tầng này mới biết tầng sau. Thư mục kit thiếu file thì in như 0.25 (chỉ các tên).
+  Module nạp lười bằng `import()` (ví dụ `td-modal.js` cho hộp xác nhận) không được preload.
 - Tên không phải module JS của kit (`'td.css'`, `'app'`, gõ nhầm…), tên rỗng hoặc không phải chuỗi →
   `InvalidArgumentException`.
 - `href` và nonce được escape. Với CSP nonce, truyền cùng `$nonce` như các thẻ khác.
 - Đây chỉ là **tối ưu** (module bắt đầu tải song song với HTML), **không** thay SSR: nút vẫn cần
   [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) để không nháy khi module về muộn. Chỉ preload module
-  thật sự có trên trang — preload thừa tốn băng thông. Module phụ thuộc (`base`, `icons`…) trình duyệt tự phát hiện
-  khi tải entry; preload thêm chúng là tuỳ chọn.
+  thật sự có trên trang — preload thừa tốn băng thông. Từ 0.64.0 hàm tự in luôn module phụ thuộc (`base`, `icons`…).
+  **Đừng preload barrel** (`'@dazzxq/td-components'`) trừ khi trang thật sự import nó: bao đóng của nó là gần như cả kit.
 
 Luật:
 
@@ -227,6 +233,24 @@ Luật:
 - `./td.css`, `./icons.json`, `./package.json` không vào import map (không phải module JS).
 - WordPress: dùng mảng `td_import_map()` để `wp_register_script_module()` từng entry (WordPress tự in import map) —
   xem [WordPress & PHP](wordpress-php.md#đăng-ký-css-và-module).
+
+### Bản minify và preload (0.64.0)
+
+```php
+TdComponents\Td::configure('/assets/vendor/td-components/' . TD_VERSION, $tdDir, ['assets' => 'dist']);
+```
+
+- `'dist'` đổi **cả ba** cùng lúc: import map (`{baseUrl}/dist/src/…`, `{baseUrl}/dist/index.js`), stylesheet
+  (`{baseUrl}/dist/td.css`) và preload. Entry `$extra` của site không đổi.
+- Bản minify nhẹ hơn khoảng một nửa sau gzip; số đo ở [Cài đặt › Bản minify](../getting-started/installation.md#bản-minify-dist-0640).
+  Hành vi giống hệt: CI chạy lại bộ test trình duyệt và gate CSP trên chính các file đã commit trong `dist/`.
+- **Một trang chỉ dùng một bản.** Mọi URL tới kit phải đi qua cùng một `configure`. Một `<script src="…/src/…">` viết tay cạnh
+  import map `dist` sẽ nạp mỗi class hai lần: `instanceof` sai, và đăng ký thẻ lần thứ hai báo lỗi. WordPress: dùng mảng
+  `td_import_map()` (đã theo `assets`) thay cho đường dẫn gõ tay.
+- **Copy cả package** (`src/`, `dist/`, `module-graph.json`, `php/`, `package.json`). Source map của `dist/` trỏ về `src/`;
+  adapter đọc `package.json`, `src/icons/icons.json` và `module-graph.json` từ `$tdDir`.
+- Thiếu `dist/` mà vẫn bật `'dist'` thì trình duyệt báo 404. Adapter không dò thư mục và không tự quay về source.
+- Mặc định vẫn là `'source'`; kit sẽ đổi sang `'dist'` ở một bản minor sau, có ghi trong CHANGELOG.
 
 Server phải trả `.js` (và `.mjs` nếu site dùng) với `Content-Type: text/javascript`; nginx cũ không map `.mjs`, kèm
 `X-Content-Type-Options: nosniff` thì module bị chặn. Cấu hình nginx/Apache:

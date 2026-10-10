@@ -2,6 +2,36 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.64.0
+
+**Bản minify `dist/` và preload cả chuỗi module** (đề nghị của dsuite, owner duyệt; [ADR 0034](docs/internal/decisions/0034-minified-dist.md),
+plan [v0.64.0-dist](docs/internal/plans/v0.64.0-dist.md)). Source vẫn là nguồn sự thật: `exports` không đổi, Vite / npm dùng như cũ.
+
+### Added
+
+- **`dist/`**: bản minify từng file, cùng cấu trúc với gốc package (`dist/index.js`, `dist/src/**`, `dist/td.css`), mỗi file kèm
+  `.map` trỏ về `src/`. Sinh bằng `npm run build:dist` (esbuild 0.25.12, `bundle:false`, giữ tên class, cú pháp không vượt sàn
+  Chrome 102 / Firefox 112 / Safari 16.4) và commit trong tag.
+  Gzip: JS 955 KB → 485 KB (−49 %), `td.css` 148 KB → 63 KB (−57 %).
+- **`module-graph.json`**: import tĩnh trực tiếp của từng module (không gồm `import()` lười).
+- **PHP `Td::configure(…, ['assets' => 'dist'])`** (mặc định `'source'`, URL y như 0.63): import map, `td.css` và preload trỏ
+  vào `{baseUrl}/dist`. `Td::assets()` trả chế độ hiện tại.
+- Gate: `check:dist` (từng byte, file thừa / thiếu, source map, đồ thị, tập export giống source, tập file `npm pack` ship).
+  CI thêm bộ test Chromium và gate CSP chạy trên chính byte `dist/` đã commit (`test:browser:dist`, `test:csp:dist`, cùng
+  baseline với source).
+
+### Changed
+
+- **`Td::modulePreloads()`** in thêm mọi module mà các tên được nêu import tĩnh, trực tiếp hoặc gián tiếp: các tên trước theo
+  thứ tự gọi, rồi phụ thuộc sắp theo đường dẫn, không trùng. Nhờ vậy trình duyệt tải song song cả chuỗi, không phải tải từng
+  tầng import. Điều kiện là thư mục kit có `module-graph.json`; thiếu file thì in như cũ, file hỏng thì `RuntimeException`.
+  Chữ ký hàm không đổi.
+
+### Không làm
+
+- Gộp lõi (base element, icons, utils) thành ít file hơn. Trang dùng lõi gộp cạnh subpath lẻ sẽ nạp mỗi class hai lần
+  (`instanceof` sai, đăng ký thẻ lần hai báo lỗi). Preload cả chuỗi đã xoá thác nước import.
+
 ## 0.63.3
 
 **Vá giao diện `editable` của `<td-datetime-range>`: dấu "–" cách đều hai ngày** (báo cáo của 135).

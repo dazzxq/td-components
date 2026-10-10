@@ -202,8 +202,9 @@ describe('batch 2 — td-pagination', () => {
 
   it('coarse pointer / forced colours rules are present in td.css', async () => {
     const css = await (await fetch('/td.css')).text();
-    expect(css).to.match(/@media \(pointer: coarse\)\s*{\s*:root\s*{\s*--td-pagination-item-size: var\(--td-touch-min\)/); // v0.16.0 D5
-    expect(css).to.match(/\.td-pagination__page\[aria-current="page"\]\s*{\s*color: HighlightText;\s*background: Highlight;/);
+    // v0.64.0: whitespace-agnostic — the same rules must be in the minified dist/td.css (npm run test:browser:dist)
+    expect(css).to.match(/@media\s*\(pointer:\s*coarse\)\s*{\s*:root\s*{\s*--td-pagination-item-size:\s*var\(--td-touch-min\)/); // v0.16.0 D5
+    expect(css).to.match(/\.td-pagination__page\[aria-current="?page"?\]\s*{\s*color:\s*HighlightText;\s*background:\s*Highlight\s*[;}]/);
   });
 
   it('size: page buttons are ≥ 32 px (fine pointer)', () => {

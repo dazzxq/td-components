@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.63.3/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.63.3', __DIR__ . '/public/assets/vendor/td-components/0.63.3');
+ *   require_once '/path/to/vendor/td-components/0.64.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.64.0', __DIR__ . '/public/assets/vendor/td-components/0.64.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -157,6 +157,10 @@ namespace TdComponents {
          * td_field / td_toggle / td_checkbox).
          */
         private static bool $ssrElements = false;
+        /** v0.64.0 (ADR 0034): which build the kit URLs point at: 'source' (the package root) or 'dist' (`{base}/dist`). */
+        private static string $assets = 'source';
+        /** v0.64.0: parsed module-graph.json of the configured kit: null = not read yet, false = no file, else path => deps. */
+        private static array|false|null $graph = null;
 
         /** SSR contract markers (ADR 0012): `data-td-ssr` value printed by element-mode helpers. */
         public const SSR_BUTTON = 'button@1';
@@ -441,24 +445,29 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.63.3') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.64.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
-         * @param array{ssr_elements?: bool} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
+         * @param array{ssr_elements?: bool, assets?: string} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
          *                        print the `<td-button>` host + its full SSR markup (hydrated in place by the JS
          *                        module) instead of a native control; a per-call `element` option overrides it.
          *                        v0.26.0: also td_field / td_toggle / td_checkbox (`<td-input-field>` / `<td-toggle>`
          *                        / `<td-checkbox>`).
          *                        Unknown keys throw (typos never pass silently).
+         *                        v0.64.0 (ADR 0034): `assets` ('source' default | 'dist'): the kit import map, stylesheet and
+         *                        module preloads point at the package root or at its minified mirror `{base}/dist`.
          */
         public static function configure(string $baseUrl, string $kitDir, array $options = []): void
         {
             foreach ($options as $k => $v) {
-                if ($k !== 'ssr_elements') {
+                if ($k !== 'ssr_elements' && $k !== 'assets') {
                     throw new InvalidArgumentException("Td::configure: unknown option \"$k\"");
                 }
-                if (!is_bool($v)) {
+                if ($k === 'ssr_elements' && !is_bool($v)) {
                     throw new InvalidArgumentException('Td::configure: ssr_elements must be a bool');
+                }
+                if ($k === 'assets' && $v !== 'source' && $v !== 'dist') {
+                    throw new InvalidArgumentException('Td::configure: assets must be "source" or "dist"');
                 }
             }
             // asset base: http(s) or relative — independent of the LINK policy (allowHttpLinks only gates td_button/td_link)
@@ -475,6 +484,20 @@ namespace TdComponents {
             self::$kitIcons = null;
             self::$kitAliases = null;
             self::$ssrElements = $options['ssr_elements'] ?? false;
+            self::$assets = $options['assets'] ?? 'source';
+            self::$graph = null;
+        }
+
+        /** v0.64.0 (ADR 0034): 'source' or 'dist' (Td::configure(..., ['assets' => …])). */
+        public static function assets(): string
+        {
+            return self::$assets;
+        }
+
+        /** v0.64.0 (ADR 0034): URL base of the kit files: baseUrl() for 'source', baseUrl()/dist for 'dist'. */
+        private static function assetBase(): string
+        {
+            return self::$assets === 'dist' ? self::baseUrl() . '/dist' : self::baseUrl();
         }
 
         /** v0.25.0: whether element mode is the default (Td::configure(..., ['ssr_elements' => true])). */
@@ -523,7 +546,7 @@ namespace TdComponents {
         {
             $pkg = self::package();
             $name = is_string($pkg['name'] ?? null) ? $pkg['name'] : self::PACKAGE;
-            $base = self::baseUrl();
+            $base = self::assetBase();
             $map = [];
             foreach (($pkg['exports'] ?? []) as $sub => $target) {
                 if (!is_string($target) || !str_ends_with($target, '.js') || !str_starts_with($target, './')) {
@@ -559,6 +582,9 @@ namespace TdComponents {
          * configured version), de-duplicated in order. A name that is not a kit JS export throws
          * InvalidArgumentException. Print after the import map, before the entry module:
          * stylesheetTag() → importMapTag() → modulePreloads([...]) → `<script type="module" src="app.js">`.
+         * v0.64.0 (ADR 0034): when `module-graph.json` sits in the kit directory, the whole static dependency closure is
+         * printed (the roots in call order, then every other module sorted by path, no duplicates) so the browser fetches
+         * it in parallel; without the file only the named modules are printed. A malformed graph throws RuntimeException.
          * @param array<int,string> $names
          */
         public static function modulePreloads(array $names, ?string $nonce = null): string
@@ -566,7 +592,8 @@ namespace TdComponents {
             $map = self::importMap();
             $pkg = self::package();
             $prefix = (is_string($pkg['name'] ?? null) ? $pkg['name'] : self::PACKAGE);
-            $urls = [];
+            $base = self::assetBase() . '/';
+            $roots = [];
             foreach ($names as $name) {
                 if (!is_string($name) || $name === '') {
                     throw new InvalidArgumentException('Td::modulePreloads: names must be non-empty strings');
@@ -575,19 +602,101 @@ namespace TdComponents {
                 if (!isset($map[$spec])) {
                     throw new InvalidArgumentException("Td::modulePreloads: \"$name\" is not a JS module of the kit");
                 }
-                $urls[$map[$spec]] = true;
+                $roots[substr($map[$spec], strlen($base))] = true; // the package path (the URL is {assetBase}/{path})
+            }
+            $paths = array_map('strval', array_keys($roots));
+            $graph = self::moduleGraph();
+            if ($graph !== false) {
+                foreach ($paths as $root) { // Codex impl r2: a graph without a named module is incomplete, not "no deps"
+                    if (!array_key_exists($root, $graph)) {
+                        throw new RuntimeException('td-components: module-graph.json does not list ' . $root);
+                    }
+                }
+                $seen = array_fill_keys($paths, true);
+                $queue = $paths;
+                $deps = [];
+                for ($i = 0; $i < count($queue); $i++) {
+                    foreach ($graph[$queue[$i]] ?? [] as $dep) {
+                        if (!isset($seen[$dep])) {
+                            $seen[$dep] = true;
+                            $deps[] = $dep;
+                            $queue[] = $dep;
+                        }
+                    }
+                }
+                sort($deps, SORT_STRING);
+                $paths = array_merge($paths, $deps);
             }
             $out = '';
-            foreach (array_keys($urls) as $url) {
-                $out .= '<link rel="modulepreload" href="' . self::e((string) $url) . '"' . self::nonceAttr($nonce) . '>';
+            foreach ($paths as $path) {
+                $out .= '<link rel="modulepreload" href="' . self::e($base . $path) . '"' . self::nonceAttr($nonce) . '>';
             }
             return $out;
         }
 
-        /** `<link rel="stylesheet" href="{base}/td.css">` + optional nonce. */
+        /**
+         * v0.64.0 (ADR 0034): `{kitDir}/module-graph.json` ({"schema":1,"modules":{path:[direct static imports]}}), read once
+         * per configure(). false = no file. Every failure is a RuntimeException.
+         * @return array<string,array<int,string>>|false
+         */
+        private static function moduleGraph(): array|false
+        {
+            if (self::$graph !== null) {
+                return self::$graph;
+            }
+            $file = self::kitDir() . '/module-graph.json';
+            if (!is_file($file)) {
+                return self::$graph = false;
+            }
+            $raw = @file_get_contents($file);
+            if ($raw === false) {
+                throw new RuntimeException('td-components: module-graph.json is not readable');
+            }
+            try {
+                $data = json_decode($raw, false, 64, JSON_THROW_ON_ERROR);
+            } catch (\JsonException $e) {
+                throw new RuntimeException('td-components: module-graph.json is not valid JSON', 0, $e);
+            }
+            if (!($data instanceof \stdClass) || ($data->schema ?? null) !== 1 || !(($data->modules ?? null) instanceof \stdClass)) {
+                throw new RuntimeException('td-components: module-graph.json must be {"schema":1,"modules":{…}}');
+            }
+            $graph = [];
+            foreach ($data->modules as $path => $deps) {
+                $path = (string) $path;
+                if (!is_array($deps) || !self::graphPathOk($path)) {
+                    throw new RuntimeException('td-components: module-graph.json has an invalid module entry');
+                }
+                foreach ($deps as $dep) {
+                    if (!is_string($dep) || !self::graphPathOk($dep)) {
+                        throw new RuntimeException('td-components: module-graph.json has an invalid dependency path');
+                    }
+                }
+                $graph[$path] = $deps;
+            }
+            foreach ($graph as $deps) { // every dependency is itself a module of the graph (Codex security r1)
+                foreach ($deps as $dep) {
+                    if (!isset($graph[$dep])) {
+                        throw new RuntimeException('td-components: module-graph.json has a dependency that is not a module');
+                    }
+                }
+            }
+            return self::$graph = $graph;
+        }
+
+        /**
+         * v0.64.0: a canonical package module path — `index.js` or `src/…/name.js`, each segment starting with a letter, digit
+         * or `_` then only letters, digits, `_`, `.`, `-` (Codex security r1: an allowlist, so no `..` / `.` / empty segment,
+         * no percent-encoding such as `%2e%2e`, no `?` `#` `:` `\` or control characters can reach a preload URL).
+         */
+        private static function graphPathOk(string $path): bool
+        {
+            return preg_match('~\A(?:index\.js|src/(?:[A-Za-z0-9_][A-Za-z0-9_.-]*/)*[A-Za-z0-9_][A-Za-z0-9_.-]*\.js)\z~', $path) === 1;
+        }
+
+        /** `<link rel="stylesheet" href="{base}/td.css">` + optional nonce (v0.64.0: `{base}/dist/td.css` with assets 'dist'). */
         public static function stylesheetTag(?string $nonce = null): string
         {
-            return '<link rel="stylesheet" href="' . self::e(self::baseUrl() . '/td.css') . '"' . self::nonceAttr($nonce) . '>';
+            return '<link rel="stylesheet" href="' . self::e(self::assetBase() . '/td.css') . '"' . self::nonceAttr($nonce) . '>';
         }
 
         private static function nonceAttr(?string $nonce): string

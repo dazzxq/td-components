@@ -44,7 +44,7 @@ Mọi `import` **bên trong** kit là đường dẫn tương đối (`../base/t
 Các file cần copy lên server (đúng mục `files` của `package.json`):
 
 ```text
-td-components/0.63.3/
+td-components/0.64.0/
   td.css
   index.js
   package.json            (adapter PHP đọc danh sách exports từ đây)
@@ -52,7 +52,14 @@ td-components/0.63.3/
   src/                    (toàn bộ; adapter đọc src/icons/icons.json)
   THIRD_PARTY_NOTICES.md  (giấy phép icon Lucide)
   bin/                    (0.42.0+: CLI td-theme — bỏ bin/*.test.mjs)
+  dist/                   (0.64.0+: bản minify, cùng cấu trúc — index.js, src/**, td.css + .map)
+  module-graph.json       (0.64.0+: import tĩnh của từng module — adapter in preload cả chuỗi)
 ```
+
+**Từ 0.64.0, `dist/` là bản minify** của chính các file trên, nhẹ hơn khoảng một nửa sau gzip. Muốn dùng thì đổi gốc đường
+dẫn từ `…/0.64.0/` sang `…/0.64.0/dist/`; với adapter PHP thì truyền `Td::configure(…, ['assets' => 'dist'])`, đổi cả import
+map, `td.css` và preload ([adapter PHP](php-adapter.md#bản-minify-và-preload-0640)). Một trang chỉ dùng một bản: trộn URL
+`src/` với `dist/src/` thì mỗi class bị nạp hai lần.
 
 **Từ 0.42.0 gói có thêm `bin/`** (CLI `td-theme` sinh palette): site copy file bằng tay theo `package.json#files` phải
 copy cả `bin/` và **bỏ** `bin/*.test.mjs` (`npm pack` đã tự loại). CLI chạy thẳng từ thư mục vendor, không cần npx /
@@ -64,10 +71,10 @@ Lấy từ tag git hoặc `npm pack`:
 
 ```bash
 # trong repo td-components, đúng tag cần dùng
-git checkout v0.63.3
-npm pack                              # tạo dazzxq-td-components-0.63.3.tgz
-tar -xzf dazzxq-td-components-0.63.3.tgz
-mv package /đường/dẫn/site/assets/vendor/td-components/0.63.3
+git checkout v0.64.0
+npm pack                              # tạo dazzxq-td-components-0.64.0.tgz
+tar -xzf dazzxq-td-components-0.64.0.tgz
+mv package /đường/dẫn/site/assets/vendor/td-components/0.64.0
 ```
 
 ### Đặt phiên bản vào đường dẫn, không dùng `?ver=` cho module
@@ -79,7 +86,7 @@ mv package /đường/dẫn/site/assets/vendor/td-components/0.63.3
 - `?ver=` chỉ gắn vào file entry; các import tương đối bên trong **không** mang theo `?ver=`, nên khi nâng cấp trình
   duyệt vẫn dùng file con cũ trong cache → trộn hai phiên bản.
 
-Cách đúng: **mỗi phiên bản một thư mục** (`…/td-components/0.63.3/`), URL module không có query string, và cho thư mục
+Cách đúng: **mỗi phiên bản một thư mục** (`…/td-components/0.64.0/`), URL module không có query string, và cho thư mục
 đó cache dài hạn. Nâng cấp = thư mục mới = URL mới cho mọi file.
 
 ```nginx
@@ -123,7 +130,7 @@ Khai báo một chỗ duy nhất:
 ```php
 <?php
 // dwp: trong dwp-core; 135: trong config/bootstrap
-const TD_VERSION = '0.63.3';
+const TD_VERSION = '0.64.0';
 ```
 
 ## Import map cho PHP thuần
@@ -138,8 +145,8 @@ require_once $tdDir . '/php/td.php';                 // $tdDir = thư mục kit 
 TdComponents\Td::configure('/assets/vendor/td-components/' . TD_VERSION, $tdDir);
 
 td_import_map();
-// → ['@dazzxq/td-components' => '/assets/vendor/td-components/0.63.3/index.js',
-//    '@dazzxq/td-components/button' => '/assets/vendor/td-components/0.63.3/src/form/td-button.js', …]
+// → ['@dazzxq/td-components' => '/assets/vendor/td-components/0.64.0/index.js',
+//    '@dazzxq/td-components/button' => '/assets/vendor/td-components/0.64.0/src/form/td-button.js', …]
 
 td_import_map(['dompurify' => '/assets/vendor/dompurify/3.4.16/purify.es.js']); // + entry riêng của site (sau kit)
 echo td_import_map_tag(['app/' => '/assets/app/'], $nonce);                     // in luôn <script type="importmap">
@@ -173,7 +180,7 @@ dữ liệu `script_module_data_{$id}` cần **6.7+**. dwp đang chạy 7.0.2.
 Kit là hạ tầng dùng chung cho mọi site dwp → đặt trong plugin engine, **không** trong theme:
 
 ```text
-engine/dwp-core/assets/vendor/td-components/0.63.3/   ← kit (không sửa file bên trong)
+engine/dwp-core/assets/vendor/td-components/0.64.0/   ← kit (không sửa file bên trong)
 sites/aetv/aehh-theme/assets/css/td-overrides.css     ← skin: chỉ ghi đè token --td-* (unlayered)
 ```
 
@@ -187,7 +194,7 @@ sites/aetv/aehh-theme/assets/css/td-overrides.css     ← skin: chỉ ghi đè t
 ```php
 <?php
 // engine/dwp-core — đăng ký một lần cho front và admin
-const TD_VERSION = '0.63.3';
+const TD_VERSION = '0.64.0';
 
 function dwp_td_base_url(): string {
     return DWP_CORE_URL . 'assets/vendor/td-components/' . TD_VERSION . '/';
@@ -398,7 +405,7 @@ Specifier cũng tách biệt: kit mới dùng `@dazzxq/td-components/*`, không 
 ### Đặt kit và partial
 
 ```text
-public/assets/vendor/td-components/0.63.3/   ← kit (có php/td.php)
+public/assets/vendor/td-components/0.64.0/   ← kit (có php/td.php)
 ```
 
 Bootstrap (một lần cho mọi request):
@@ -648,7 +655,7 @@ Tên field dạng mảng PHP (`tags[]`, `meta[title]`) khớp với key dạng c
 ## Nâng cấp phiên bản
 
 1. Đọc [Nâng cấp](../upgrading/README.md) và [Breaking changes](../upgrading/breaking-changes.md) cho các bản ở giữa.
-2. Copy bản mới vào thư mục **mới** (ví dụ `…/td-components/0.63.3/`); giữ thư mục cũ tới khi xong.
+2. Copy bản mới vào thư mục **mới** (ví dụ `…/td-components/0.64.0/`); giữ thư mục cũ tới khi xong.
 3. Đổi `TD_VERSION`. Mọi URL (CSS + module) đổi theo, cache cũ không còn được dùng.
 4. Kiểm tra trên staging: form (submit, validation, lỗi server), modal, lightbox, menu, hovercard, trang có CSP (console
    không có `Refused to …`).
