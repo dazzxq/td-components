@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.64.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.65.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.65.0](#0650) | **Đổi hành vi** PHP: `assets` mặc định là `'dist'` | Copy cả `dist/` + `module-graph.json` khi nâng kit (thiếu `dist/td.css` → `Td::configure()` ném `RuntimeException`). Muốn giữ URL source: `['assets' => 'source']`. Test so URL `td.css` / import map / preload phải thêm `/dist`. |
 | [0.64.0](#0640) | Không phá vỡ: `dist/` và `assets` là opt-in; **đổi hành vi** `Td::modulePreloads()` (in thêm module phụ thuộc) | Không phải sửa code. Muốn bản minify: `Td::configure(…, ['assets' => 'dist'])` và copy cả `dist/` + `module-graph.json`. Test so nguyên chuỗi output của `modulePreloads` phải cập nhật. |
 | [0.63.0](#0630) | Không phá vỡ: `editable` là opt-in | Không phải sửa code. Muốn gõ tay: thêm `editable`. `messages.incomplete` (picker datetime) đổi câu; site đã override cho mode `date` → override `incompleteDate`. |
 | [0.62.0](#0620) | Đổi giao diện `td-alert` (bỏ vạch trái, ô icon) + DOM trạng thái tải của `td-hovercard` (skeleton) + `td-media-picker` có chuyển động mở | Không phải sửa code. Test chụp / đo alert (vạch 4px) hoặc bám `.td-hovercard__spinner` phải đổi; test đo picker ngay khi `data-state="open"` nên chờ chuyển động xong. |
@@ -91,6 +92,18 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.65.0
+
+**Đổi hành vi** (adapter PHP): `Td::configure()` không truyền `assets` giờ là `'dist'`. Import map, `td_stylesheet_tag()` và
+`modulePreloads()` trỏ vào `{baseUrl}/dist/…`.
+
+- **Việc phải làm khi nâng:** copy cả `dist/` và `module-graph.json` (như mọi file trong `package.json#files`). Script vendor
+  hay manifest kiểu `td-vendor-check` phải gồm chúng.
+- **Thiếu `dist/td.css`:** `configure()` ném `RuntimeException` ngay, câu lỗi ghi cách sửa.
+- **Giữ URL cũ:** `Td::configure($url, $dir, ['assets' => 'source'])`.
+- **Không trộn:** một trang chỉ dùng một bản. Đường dẫn `…/src/…` gõ tay cạnh import map `dist` sẽ nạp mỗi class hai lần.
+- **Test của site:** test so URL `td.css` / import map / preload phải thêm `/dist`.
 
 ## 0.64.0
 

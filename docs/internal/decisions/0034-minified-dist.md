@@ -43,9 +43,17 @@ Owner duyệt làm cả gói ("all đê", 2026-10-10). Phương án đã đượ
    - Khoá và mảng được sắp xếp, đường dẫn POSIX tương đối.
    - PHP tự duyệt bao đóng (closure) khi in `modulepreload`.
 6. **PHP: `Td::configure(..., ['assets' => 'source' | 'dist'])`, mặc định `source`.**
+   **Cập nhật 0.65.0** (owner, 2026-10-10: "có các site dùng components rồi mà"): mặc định đổi sang `dist`. Lý do, đã kiểm trên
+   repo các site (chỉ đọc):
+   - dsuite đã chạy `dist`.
+   - 135 nạp mọi URL qua `td.php`, không gõ tay `/src/`.
+   - dwp chưa dùng kit.
+
+   Thay cho "lặng lẽ quay về source", `configure()` ném lỗi ngay khi chế độ `dist` mà thiếu `dist/td.css`.
    - `source` cho ra URL y như 0.63; `dist` đổi gốc của import map, stylesheet và preload.
-   - Không tự dò thư mục, không lặng lẽ quay về `source`. Chọn `dist` mà thiếu file thì người dùng thấy lỗi 404 rõ ràng.
-   - Lật mặc định sang `dist` ở một bản minor sau, khi đã có site chạy thật.
+   - Không lặng lẽ quay về `source`. 0.64.0: chọn `dist` mà thiếu file thì trình duyệt báo 404. Từ 0.65.0, `configure()` ném
+     `RuntimeException` khi thiếu `dist/td.css`.
+   - 0.64.0 dự định lật mặc định sang `dist` ở bản minor sau; việc này đã làm ở 0.65.0 (xem cập nhật bên trên).
 7. **`Td::modulePreloads()` giữ nguyên chữ ký.** Có `module-graph.json` thì in cả bao đóng tĩnh: gốc theo thứ tự gọi, rồi phụ
    thuộc đã sắp xếp, bỏ trùng toàn cục, dùng gốc URL của chế độ `assets`. Không có file thì in như cũ (chỉ module gốc).
    File hỏng thì ném lỗi.

@@ -124,7 +124,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.64.0/
+public/assets/vendor/td-components/0.65.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
   dist/  module-graph.json                    (0.64.0+: bản minify + đồ thị preload)
 ```
@@ -133,7 +133,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.64.0';
+const TD_VERSION = '0.65.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -156,7 +156,7 @@ TdComponents\Td::configure(
 
   | Option | Kiểu | Mặc định | Ý nghĩa |
   |---|---|---|---|
-  | `assets` (0.64.0) | `'source'` \| `'dist'` | `'source'` | URL của kit trỏ vào bản source (như trước 0.64) hay bản minify `{baseUrl}/dist` — [Bản minify và preload](#bản-minify-và-preload-0640) |
+  | `assets` (0.64.0) | `'source'` \| `'dist'` | `'dist'` (từ 0.65.0; 0.64: `'source'`) | URL của kit trỏ vào bản minify `{baseUrl}/dist` hay bản source (như trước 0.64) — [Bản minify và preload](#bản-minify-và-preload-0640) |
   | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` / `td_dropdown`, từ 0.27.0 cả `td_otp_input`, từ 0.30.0 cả `td_number_input`, từ 0.38.0 cả `td_scan_input` (đơn) — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
 
   > **Nâng từ 0.25 lên 0.26 mà đã bật `ssr_elements`:** từ 0.26.0 cờ này áp thêm cho `td_field` / `td_toggle` /
@@ -249,8 +249,8 @@ TdComponents\Td::configure('/assets/vendor/td-components/' . TD_VERSION, $tdDir,
   `td_import_map()` (đã theo `assets`) thay cho đường dẫn gõ tay.
 - **Copy cả package** (`src/`, `dist/`, `module-graph.json`, `php/`, `package.json`). Source map của `dist/` trỏ về `src/`;
   adapter đọc `package.json`, `src/icons/icons.json` và `module-graph.json` từ `$tdDir`.
-- Thiếu `dist/` mà vẫn bật `'dist'` thì trình duyệt báo 404. Adapter không dò thư mục và không tự quay về source.
-- Mặc định vẫn là `'source'`; kit sẽ đổi sang `'dist'` ở một bản minor sau, có ghi trong CHANGELOG.
+- **Từ 0.65.0 mặc định là `'dist'`** (0.64: `'source'`). Thư mục kit thiếu `dist/td.css` thì `configure()` ném `RuntimeException` ngay, kèm cách sửa: copy `dist/`, hoặc truyền `['assets' => 'source']`. Lỗi hiện ngay ở bước cấu hình, không thành một trang mất hết CSS và module.
+- `'source'` dành cho lúc debug, hoặc cho site nào còn đường dẫn `…/src/…` gõ tay chưa bỏ được.
 
 Server phải trả `.js` (và `.mjs` nếu site dùng) với `Content-Type: text/javascript`; nginx cũ không map `.mjs`, kèm
 `X-Content-Type-Options: nosniff` thì module bị chặn. Cấu hình nginx/Apache:

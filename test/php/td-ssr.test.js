@@ -5,7 +5,7 @@
 // that generated file is stale: `node test/ssr/build-button-fixture.mjs`).
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, mkdtempSync, copyFileSync, rmSync } from 'node:fs';
+import { readFileSync, mkdtempSync, copyFileSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HAS_PHP, ROOT, runPhp, php1 } from './php.mjs';
@@ -224,7 +224,8 @@ describe('Td::modulePreloads (v0.25.0)', opts, () => {
     }
     return [...roots, ...deps.sort()];
   };
-  const links = (paths, base = BASE, extra = '') => paths.map((p) => `<link rel="modulepreload" href="${base}/${p}"${extra}>`).join('');
+  // v0.65.0: the default assets is 'dist' ({base}/dist/…)
+  const links = (paths, base = `${BASE}/dist`, extra = '') => paths.map((p) => `<link rel="modulepreload" href="${base}/${p}"${extra}>`).join('');
 
   test('short and full names → the roots (import-map URLs, deduplicated, in order) then their static closure', () => {
     const [r, empty] = runPhp([
@@ -235,7 +236,7 @@ describe('Td::modulePreloads (v0.25.0)', opts, () => {
     const roots = ['src/form/td-button.js', 'src/feedback/td-alert.js', 'src/icons/td-icon.js'];
     assert.equal(html, links(closure(roots)));
     assert.ok(html.startsWith(links(roots)));
-    assert.ok(html.includes(`href="${BASE}/src/base/td-base-element.js"`)); // a dependency, printed once
+    assert.ok(html.includes(`href="${BASE}/dist/src/base/td-base-element.js"`)); // a dependency, printed once
     assert.equal(html.split('td-base-element.js').length, 2);
     // the URL is exactly the import map's (same configured version)
     const map = runPhp([{ fn: 'Td::importMap', args: [] }], { baseUrl: BASE })[0].out;
@@ -247,6 +248,8 @@ describe('Td::modulePreloads (v0.25.0)', opts, () => {
     const dir = mkdtempSync(join(tmpdir(), 'td-nograph-'));
     try {
       copyFileSync(join(ROOT, 'package.json'), join(dir, 'package.json'));
+      mkdirSync(join(dir, 'dist'));
+      writeFileSync(join(dir, 'dist', 'td.css'), '');
       const [r] = runPhp([{ fn: 'Td::modulePreloads', args: [['button', '@dazzxq/td-components/alert', 'button', 'icons']] }],
         { baseUrl: BASE, kitDir: dir });
       assert.equal(r.out, links(['src/form/td-button.js', 'src/feedback/td-alert.js', 'src/icons/td-icon.js']));
@@ -265,9 +268,9 @@ describe('Td::modulePreloads (v0.25.0)', opts, () => {
       { fn: 'Td::modulePreloads', args: [['button'], 'n"1'] },
     ], { baseUrl: BASE });
     for (const r of res.slice(0, 5)) assert.equal(r.error, 'InvalidArgumentException', JSON.stringify(r));
-    assert.equal(res[5].out, links(closure(['src/form/td-button.js']), BASE, ' nonce="n&quot;1"'));
+    assert.equal(res[5].out, links(closure(['src/form/td-button.js']), `${BASE}/dist`, ' nonce="n&quot;1"'));
     const amp = runPhp([{ fn: 'Td::modulePreloads', args: [['button']] }], { baseUrl: '/v/a&b' })[0].out;
-    assert.ok(amp.startsWith('<link rel="modulepreload" href="/v/a&amp;b/src/form/td-button.js">'));
+    assert.ok(amp.startsWith('<link rel="modulepreload" href="/v/a&amp;b/dist/src/form/td-button.js">'));
     assert.ok(!amp.includes('a&b'));
   });
 

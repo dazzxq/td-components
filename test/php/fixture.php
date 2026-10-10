@@ -9,7 +9,7 @@ require __DIR__ . '/../../php/td.php';
 
 use TdComponents\Td;
 
-Td::configure('/', dirname(__DIR__, 2));
+Td::configure('/', dirname(__DIR__, 2), ['assets' => 'source']); // the browser tests import the source modules (one variant per page)
 
 $parity = [
     'btn-primary' => td_button('Lưu', ['variant' => 'primary', 'icon' => 'download']),

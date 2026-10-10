@@ -175,7 +175,7 @@ describe('php/td.php', opts, () => {
   test('Td::configure accepts an absolute http: asset base without allowHttpLinks (review v0.17.0 ISSUE-6)', () => {
     const [res] = runPhp([{ fn: 'td_stylesheet_tag', args: [] }], { baseUrl: 'http://cdn.local/td/0.17.0' });
     assert.ok(!res.error, `${res.error}: ${res.message}`);
-    assert.match(res.out, /href="http:\/\/cdn\.local\/td\/0\.17\.0\/td\.css"/);
+    assert.match(res.out, /href="http:\/\/cdn\.local\/td\/0\.17\.0\/dist\/td\.css"/); // v0.65.0: default assets 'dist'
   });
 
   test('attrs: positive allowlist — form-owner / submitter overrides are dropped (security review v0.17.0)', () => {
@@ -335,6 +335,8 @@ describe('php/td.php', opts, () => {
     const dir = mkdtempSync(join(tmpdir(), 'td-php-icons-'));
     try {
       mkdirSync(join(dir, 'src', 'icons'), { recursive: true });
+      mkdirSync(join(dir, 'dist'));
+      writeFileSync(join(dir, 'dist', 'td.css'), ''); // v0.65.0: the default assets 'dist' needs dist/ in kitDir
       writeFileSync(join(dir, 'package.json'), '{"name":"@dazzxq/td-components","exports":{}}');
       writeFileSync(join(dir, 'src', 'icons', 'icons.json'), JSON.stringify({ icons: json.icons, aliases: { 'old-tick': 'check', 'Bad Name': 'check', 'x-evil': 1 } }));
       const own = runPhp([
@@ -449,7 +451,8 @@ describe('php/td.php', opts, () => {
     const keys = Object.keys(map);
     assert.deepEqual(keys.slice(0, kit.length), kit.map(([s]) => (s === '.' ? pkg.name : `${pkg.name}/${s.slice(2)}`)), 'kit first, exports order');
     assert.deepEqual(keys.slice(kit.length), ['app', 'dompurify'], 'extra after');
-    for (const [s, t] of kit) assert.equal(map[s === '.' ? pkg.name : `${pkg.name}/${s.slice(2)}`], `/vendor/td/0.17.0/${t.slice(2)}`);
+    // v0.65.0: the default assets is 'dist' — the kit entries point at the minified mirror {base}/dist
+    for (const [s, t] of kit) assert.equal(map[s === '.' ? pkg.name : `${pkg.name}/${s.slice(2)}`], `/vendor/td/0.17.0/dist/${t.slice(2)}`);
     assert.ok(!keys.some((k) => /td\.css|icons\.json|package\.json/.test(map[k])), 'only .js entries');
     for (const i of [1, 2, 3, 4]) assert.equal(res[i].error, 'InvalidArgumentException', `case ${i}`);
     assert.deepEqual(res[5].out, Object.fromEntries(Object.entries(map).slice(0, kit.length)));
@@ -466,10 +469,10 @@ describe('php/td.php', opts, () => {
     const m = /^<script type="importmap" nonce="n&quot;&gt;&lt;script&gt;">(.*)<\/script>$/s.exec(tag);
     assert.ok(m, tag.slice(0, 120));
     assert.ok(!/<|>|&|'/.test(m[1]), 'HEX flags: no < > & \' inside the script');
-    assert.ok(m[1].includes('/vendor/td/0.17.0/index.js'), 'slashes unescaped');
+    assert.ok(m[1].includes('/vendor/td/0.17.0/dist/index.js'), 'slashes unescaped');
     assert.deepEqual(JSON.parse(m[1]), { imports: plain });
     assert.match(noNonce, /^<script type="importmap">\{"imports":\{/);
-    assert.equal(css, '<link rel="stylesheet" href="/vendor/td/0.17.0/td.css" nonce="&quot;&gt;&lt;x">');
+    assert.equal(css, '<link rel="stylesheet" href="/vendor/td/0.17.0/dist/td.css" nonce="&quot;&gt;&lt;x">');
   });
 
   test('configure: required for import map / stylesheet, validates baseUrl', () => {
@@ -484,7 +487,7 @@ describe('php/td.php', opts, () => {
     ], {});
     assert.equal(bad[0].error, 'InvalidArgumentException');
     assert.equal(bad[1].error, 'InvalidArgumentException');
-    assert.equal(bad[3].out, '<link rel="stylesheet" href="https://cdn.example/td/0.17.0/td.css">');
+    assert.equal(bad[3].out, '<link rel="stylesheet" href="https://cdn.example/td/0.17.0/dist/td.css">');
   });
 
   test('global namespace: only td_* functions + TdComponents\\Td (+ TdComponents\\TdTrustedHtml)', () => {

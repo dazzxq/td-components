@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.64.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.64.0', __DIR__ . '/public/assets/vendor/td-components/0.64.0');
+ *   require_once '/path/to/vendor/td-components/0.65.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.65.0', __DIR__ . '/public/assets/vendor/td-components/0.65.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -158,7 +158,7 @@ namespace TdComponents {
          */
         private static bool $ssrElements = false;
         /** v0.64.0 (ADR 0034): which build the kit URLs point at: 'source' (the package root) or 'dist' (`{base}/dist`). */
-        private static string $assets = 'source';
+        private static string $assets = 'dist';
         /** v0.64.0: parsed module-graph.json of the configured kit: null = not read yet, false = no file, else path => deps. */
         private static array|false|null $graph = null;
 
@@ -445,7 +445,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.64.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.65.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool, assets?: string} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -454,7 +454,7 @@ namespace TdComponents {
          *                        v0.26.0: also td_field / td_toggle / td_checkbox (`<td-input-field>` / `<td-toggle>`
          *                        / `<td-checkbox>`).
          *                        Unknown keys throw (typos never pass silently).
-         *                        v0.64.0 (ADR 0034): `assets` ('source' default | 'dist'): the kit import map, stylesheet and
+         *                        v0.64.0 (ADR 0034): `assets` ('source' | 'dist', default 'dist' since v0.65.0): the kit import map, stylesheet and
          *                        module preloads point at the package root or at its minified mirror `{base}/dist`.
          */
         public static function configure(string $baseUrl, string $kitDir, array $options = []): void
@@ -478,13 +478,20 @@ namespace TdComponents {
             if (!is_dir($kitDir)) {
                 throw new InvalidArgumentException('Td::configure: kitDir is not a directory');
             }
+            $assets = $options['assets'] ?? 'dist';
+            // v0.65.0: 'dist' is the default — a vendor copy without dist/ fails here, loudly, instead of a page whose td.css
+            // and modules all 404
+            if ($assets === 'dist' && !is_file(rtrim($kitDir, '/\\') . '/dist/td.css')) {
+                throw new RuntimeException('Td::configure: assets "dist" (the default since 0.65.0) needs the dist/ directory of the '
+                    . 'package in kitDir — copy it, or pass [\'assets\' => \'source\']');
+            }
             self::$baseUrl = rtrim($url, '/');
             self::$kitDir = rtrim($kitDir, '/\\');
             self::$pkg = null;
             self::$kitIcons = null;
             self::$kitAliases = null;
             self::$ssrElements = $options['ssr_elements'] ?? false;
-            self::$assets = $options['assets'] ?? 'source';
+            self::$assets = $assets;
             self::$graph = null;
         }
 

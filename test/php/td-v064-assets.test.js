@@ -3,7 +3,7 @@
 // from module-graph.json when the kit directory has one. Fixture kit directories are created in os.tmpdir() at runtime.
 import { test, describe, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { HAS_PHP, ROOT, runPhp } from './php.mjs';
@@ -22,6 +22,8 @@ function fixtureKit(graph) {
   const dir = mkdtempSync(join(tmpdir(), 'td-v064-'));
   tmpDirs.push(dir);
   writeFileSync(join(dir, 'package.json'), JSON.stringify(PKG));
+  mkdirSync(join(dir, 'dist'));
+  writeFileSync(join(dir, 'dist', 'td.css'), ''); // v0.65.0: the default assets 'dist' needs dist/ in kitDir
   if (graph !== null) writeFileSync(join(dir, 'module-graph.json'), typeof graph === 'string' ? graph : JSON.stringify(graph));
   return dir;
 }
@@ -39,19 +41,48 @@ const GRAPH = {
 const link = (href, nonce = '') => `<link rel="modulepreload" href="${href}"${nonce}>`;
 
 describe('assets option (v0.64.0)', opts, () => {
-  test('default and explicit "source": URLs are the 0.63 ones', () => {
+  test('explicit "source": URLs are the 0.63 ones', () => {
+    const [map, css, assets] = runPhp([
+      { fn: 'Td::importMap', args: [{ site: '/app.js' }] },
+      { fn: 'Td::stylesheetTag', args: [] },
+      { fn: 'Td::assets', args: [] },
+    ], { baseUrl: BASE, options: { assets: 'source' } });
+    assert.equal(map.out[`${NAME}/button`], `${BASE}/src/form/td-button.js`);
+    assert.equal(map.out[NAME], `${BASE}/index.js`);
+    assert.equal(map.out.site, '/app.js');
+    assert.equal(css.out, `<link rel="stylesheet" href="${BASE}/td.css">`);
+    assert.equal(assets.out, 'source');
+  });
+
+  test('v0.65.0: the default is "dist" (same as passing it)', () => {
     const calls = [
       { fn: 'Td::importMap', args: [{ site: '/app.js' }] },
       { fn: 'Td::stylesheetTag', args: [] },
       { fn: 'Td::assets', args: [] },
     ];
-    const [d, s] = [runPhp(calls, { baseUrl: BASE }), runPhp(calls, { baseUrl: BASE, options: { assets: 'source' } })];
-    assert.deepEqual(d, s);
-    assert.equal(d[0].out[`${NAME}/button`], `${BASE}/src/form/td-button.js`);
-    assert.equal(d[0].out[NAME], `${BASE}/index.js`);
-    assert.equal(d[0].out.site, '/app.js');
-    assert.equal(d[1].out, `<link rel="stylesheet" href="${BASE}/td.css">`);
-    assert.equal(d[2].out, 'source');
+    const [d, x] = [runPhp(calls, { baseUrl: BASE }), runPhp(calls, { baseUrl: BASE, options: { assets: 'dist' } })];
+    assert.deepEqual(d, x);
+    assert.equal(d[0].out[`${NAME}/button`], `${BASE}/dist/src/form/td-button.js`);
+    assert.equal(d[1].out, `<link rel="stylesheet" href="${BASE}/dist/td.css">`);
+    assert.equal(d[2].out, 'dist');
+  });
+
+  test('v0.65.0: a kit directory without dist/ — the default / "dist" throws a RuntimeException naming the fix; "source" works', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'td-v065-nodist-'));
+    tmpDirs.push(dir);
+    writeFileSync(join(dir, 'package.json'), JSON.stringify(PKG));
+    const res = runPhp([
+      { fn: 'Td::configure', args: [BASE, dir] },
+      { fn: 'Td::configure', args: [BASE, dir, { assets: 'dist' }] },
+      { fn: 'Td::configure', args: [BASE, dir, { assets: 'source' }] },
+      { fn: 'Td::stylesheetTag', args: [] },
+    ], {});
+    for (const r of res.slice(0, 2)) {
+      assert.equal(r.error, 'RuntimeException', JSON.stringify(r));
+      assert.match(r.message, /dist\/ directory.*'assets' => 'source'/);
+    }
+    assert.equal(res[2].error, undefined);
+    assert.equal(res[3].out, `<link rel="stylesheet" href="${BASE}/td.css">`);
   });
 
   test('"dist": kit URLs move to {base}/dist, the site\'s extra entries stay', () => {
@@ -93,10 +124,10 @@ describe('assets option (v0.64.0)', opts, () => {
       { fn: 'Td::assets', args: [] },
       { fn: 'Td::ssrElements', args: [] },
       { fn: 'Td::stylesheetTag', args: [] },
-    ], { baseUrl: BASE, options: { assets: 'dist', ssr_elements: true } });
-    assert.deepEqual(res.slice(0, 2).map((r) => r.out), ['dist', true]);
-    assert.deepEqual(res.slice(3, 5).map((r) => r.out), ['source', false]);
-    assert.equal(res[5].out, `<link rel="stylesheet" href="${BASE}/td.css">`);
+    ], { baseUrl: BASE, options: { assets: 'source', ssr_elements: true } });
+    assert.deepEqual(res.slice(0, 2).map((r) => r.out), ['source', true]);
+    assert.deepEqual(res.slice(3, 5).map((r) => r.out), ['dist', false]); // v0.65.0: back to the defaults
+    assert.equal(res[5].out, `<link rel="stylesheet" href="${BASE}/dist/td.css">`);
   });
 });
 
@@ -106,10 +137,10 @@ describe('Td::modulePreloads with module-graph.json (v0.64.0)', opts, () => {
     const [r] = runPhp([{ fn: 'Td::modulePreloads', args: [['b', `${NAME}/a`, 'b']] }], { baseUrl: BASE, kitDir });
     // roots: b, a. discovered: core, base, c, z -> sorted: base, c, core, z
     assert.equal(r.out, ['src/b.js', 'src/a.js', 'src/base.js', 'src/c.js', 'src/core.js', 'src/z.js']
-      .map((p) => link(`${BASE}/${p}`)).join(''));
+      .map((p) => link(`${BASE}/dist/${p}`)).join(''));
     const [one] = runPhp([{ fn: 'Td::modulePreloads', args: [['c']] }], { baseUrl: BASE, kitDir });
     assert.equal(one.out, ['src/c.js', 'src/a.js', 'src/base.js', 'src/core.js', 'src/z.js']
-      .map((p) => link(`${BASE}/${p}`)).join(''));
+      .map((p) => link(`${BASE}/dist/${p}`)).join(''));
   });
 
   test('a dist base gives the dist URLs; the nonce is escaped', () => {
@@ -127,7 +158,7 @@ describe('Td::modulePreloads with module-graph.json (v0.64.0)', opts, () => {
       { fn: 'Td::modulePreloads', args: [['a', 'b', 'a']] },
       { fn: 'Td::modulePreloads', args: [[]] },
     ], { baseUrl: BASE, kitDir });
-    assert.equal(r.out, link(`${BASE}/src/a.js`) + link(`${BASE}/src/b.js`));
+    assert.equal(r.out, link(`${BASE}/dist/src/a.js`) + link(`${BASE}/dist/src/b.js`));
     assert.equal(e.out, '');
   });
 
@@ -185,7 +216,7 @@ describe('Td::modulePreloads with module-graph.json (v0.64.0)', opts, () => {
     ], { baseUrl: BASE, kitDir });
     assert.equal(r.error, 'RuntimeException');
     assert.match(r.message, /does not list src\/a\.js/);
-    assert.equal(ok.out, link(`${BASE}/src/b.js`));
+    assert.equal(ok.out, link(`${BASE}/dist/src/b.js`));
   });
 
   test('an invalid JSON error is a RuntimeException that names the file', () => {

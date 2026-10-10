@@ -2,7 +2,21 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.65.0
+
+**Adapter PHP dùng bản minify mặc định**: `Td::configure()` không truyền `assets` giờ là `'dist'` (owner, 2026-10-10;
+[ADR 0034](docs/internal/decisions/0034-minified-dist.md) QĐ 6 cập nhật).
+
+### Changed
+
+- `assets` mặc định là `'dist'`: import map, `td.css` và preload trỏ vào `{baseUrl}/dist`.
+  - Thiếu `dist/td.css` thì `configure()` ném `RuntimeException` ngay, câu lỗi ghi cách sửa (copy `dist/`, hoặc
+    `['assets' => 'source']`), thay vì một trang mất hết CSS.
+  - Đã kiểm trên repo các site: dsuite đã chạy `dist`; 135 nạp mọi URL qua `td.php`; dwp chưa dùng kit.
+  - Xem [breaking-changes § 0.65.0](docs/upgrading/breaking-changes.md#0650).
+
 ## 0.64.0
+
 
 **Bản minify `dist/` và preload cả chuỗi module** (đề nghị của dsuite, owner duyệt; [ADR 0034](docs/internal/decisions/0034-minified-dist.md),
 plan [v0.64.0-dist](docs/internal/plans/v0.64.0-dist.md)). Source vẫn là nguồn sự thật: `exports` không đổi, Vite / npm dùng như cũ.
