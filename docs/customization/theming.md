@@ -440,6 +440,8 @@ Ghi chú:
   trang, hover phủ `--td-btn-ghost-hover-bg`. Cổng tương phản đo chữ ghost ≥ 4.7:1 trên nền trắng (light) và đen
   (dark) — ghost không dành cho nền ảnh. Đổi `--td-btn-ghost-fg` sang màu khác thì tự kiểm tra tương phản trên nền
   trang của bạn. Hai token này tính ở `:root` (bẫy 2 ở trên): muốn đổi theo vùng, ghi đè thẳng `--td-btn-ghost-fg`.
+  Nút **plain** (0.69.0, `variant="plain"`) **dùng lại đúng các token ghost** (`--td-btn-ghost-fg`, `-hover-fg`,
+  `-hover-fg-fallback`): không có token riêng, ghi đè token ghost là đổi cả hai.
 - **Primary về accent** (như trước 0.21.0): một khối `:root` không layer, đủ cho cả hai theme (`--td-accent-fill` tự
   tối đi 20 % ở dark):
 

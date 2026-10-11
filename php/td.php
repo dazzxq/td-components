@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.68.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.68.0', __DIR__ . '/public/assets/vendor/td-components/0.68.0');
+ *   require_once '/path/to/vendor/td-components/0.69.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.69.0', __DIR__ . '/public/assets/vendor/td-components/0.69.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -87,7 +87,7 @@ namespace TdComponents {
         public const JSON_FLAGS = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES
             | JSON_THROW_ON_ERROR;
 
-        public const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning', 'ghost'];
+        public const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning', 'ghost', 'plain'];
         public const SIZES = ['sm', 'md', 'lg'];
         public const TARGETS = ['_blank', '_self', '_parent', '_top'];
 
@@ -445,7 +445,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.68.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.69.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool, assets?: string} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -1148,7 +1148,8 @@ namespace {
 
     /**
      * Standalone native button (`button.td-btn…`), or `a.td-btn…` when `href` is given (E3 link contract).
-     * Options: variant primary|secondary|success|danger|info|warning|ghost (default secondary — 135 compatible),
+     * Options: variant primary|secondary|success|danger|info|warning|ghost|plain (default secondary — 135 compatible; `plain` v0.69.0:
+     * a text action inside a line of text, no horizontal padding),
      * size sm|md|lg (xs → sm), icon, icon_position left|right, type button|submit|reset, name, value, disabled,
      * loading, full_width, aria_label, tooltip, id, class, attrs; link only: href, target, download.
      * v0.25.0 `element` (bool, default Td::configure ssr_elements = false): print the `<td-button

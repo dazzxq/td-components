@@ -26,7 +26,7 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 
 | Component | Dạng | Import | Form-associated | Dùng để |
 |---|---|---|---|---|
-| [Button](button.md) | `<td-button>` | `/button` | không (nhưng `type="submit"` gửi form cha) | Nút bấm: 6 biến thể màu đặc + ghost, loading, icon, `run(asyncFn)` chống bấm đúp |
+| [Button](button.md) | `<td-button>` | `/button` | không (nhưng `type="submit"` gửi form cha) | Nút bấm: 6 biến thể màu đặc + ghost + plain (chữ trong dòng chữ, 0.69.0), loading, icon, `run(asyncFn)` chống bấm đúp |
 | [Action button](action-button.md) | `<td-action-button>` | `/action-button` | không | (0.36.0) Nút thao tác vuông chỉ icon như dcms2 `ActionButtons`: 23 preset (sửa / xem / xoá / gửi…), tooltip = nhãn, 3 tone × 3 cỡ, `registerPreset()`, PHP `td_action_button` |
 | [Input field](input-field.md) | `<td-input-field>` | `/input-field` | có | Ô nhập text/số/email/mật khẩu/textarea, label, ghi chú, lỗi, đếm ký tự, tự giãn |
 | [Checkbox](checkbox.md) | `<td-checkbox>` | `/checkbox` | có | Ô chọn (tròn), trạng thái lỗi |

@@ -5,7 +5,7 @@ import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 // td-action-button can reuse it with its own allowlists.
 import { sameControlStructure, contentNodes, safeDownloadName } from './button-structure.js';
 
-const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning', 'ghost'];
+const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning', 'ghost', 'plain'];
 const SIZES = ['sm', 'md', 'lg'];
 const TYPES = ['submit', 'reset', 'button'];
 const TARGETS = ['_blank', '_self', '_parent', '_top'];
@@ -79,9 +79,12 @@ export function safeButtonHref(href) {
  *   usual. The marker is removed once consumed. Moving the element re-binds without re-rendering (static hydratable).
  * Ghost (v0.17.0): `variant="ghost"` — transparent, no shadow / border, accent label
  * (`--td-btn-ghost-fg`), a soft hover fill (`--td-btn-ghost-hover-bg`).
+ * Plain (v0.69.0): `variant="plain"` — ghost's look with NO horizontal padding, for a text action inside a line of text (icon /
+ * label start on the column edge); hover / pressed change the label colour only (no underline, no fill). `color` /
+ * `text-color` are ignored for it.
  *
  * @element td-button
- * @attr {string} variant - primary | secondary | success | danger | info | warning | ghost (default: primary)
+ * @attr {string} variant - primary | secondary | success | danger | info | warning | ghost | plain (default: primary)
  * @attr {string} size - sm | md | lg (default: md)
  * @attr {string} icon - Icon registry name or alias (e.g. "download", "external-link"). DEPRECATED: any other value is
  *   treated as a legacy class list (e.g. Font Awesome "fas fa-edit") rendered as `<i aria-hidden="true">`. A single
@@ -307,7 +310,7 @@ export class TdButton extends TdBaseElement {
     const size = SIZES.includes(this.getAttribute('size')) ? this.getAttribute('size') : 'md';
     const rawType = this.getAttribute('type');
     const type = TYPES.includes(rawType) ? rawType : 'button';
-    const custom = !!this._customColor();
+    const custom = variant !== 'plain' && !!this._customColor(); // v0.69.0: `plain` ignores `color` (it would become a filled box)
     const classes = ['td-btn', `td-btn--${variant}`, `td-btn--${size}`];
     if (this.hasAttribute('full-width')) classes.push('td-btn--full');
     if (custom) classes.push('td-btn--custom');

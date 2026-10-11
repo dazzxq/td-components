@@ -12,8 +12,9 @@
  *   4. assert opacity 1 on the element and its ancestors (a faded element cannot hide a failure).
  * v0.20.0: every filled variant and two `.td-btn--custom` colours (dark + white text, light + dark text) are also
  * measured in the REAL hover state (the pointer is moved onto the button; the fill is the computed darker solid).
- * Ghost buttons (v0.17.0) have no fill of their own and sit on the page background, so they are measured only over
- * the theme's page colour: white (light) / black (dark). Same for the content-layer alerts (message + heading ≥ 4.7,
+ * Ghost buttons (v0.17.0; v0.69.0: and `plain`, a ghost without padding / border) have no fill of their own and sit on the
+ * page background, so they are measured only over the theme's page colour: white (light) / black (dark). Same for the
+ * content-layer alerts (message + heading ≥ 4.7,
  * icon / close ≥ 3.2 on the variant fill) and badges (soft fill, outline, stamp) of v0.18.0 F5.
  * v0.21.0: the black tooltip chip (default + start-aligned) over every backdrop; the field focus border (input-field,
  * open dropdown trigger) ≥ 3:1 against the field fill, the backdrop and --td-color-bg (computed colours, page only).

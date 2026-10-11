@@ -1841,6 +1841,7 @@
  * State: :disabled (native) · [aria-busy="true"] (loading, focus kept) · :focus-visible.
  * Link buttons (v0.17.0, <a class="td-btn">): disabled = [aria-disabled="true"] without aria-busy (or with
  * tabindex="-1" when also busy) — same disabled tokens. Ghost (v0.17.0): transparent, no shadow, accent label.
+ * Plain (v0.69.0): ghost's look without the horizontal padding — a text action inside a line of text (see below).
  * Per-instance colours: host custom properties --td-btn-bg / --td-btn-fg (+ .td-btn--custom) — same solid contract.
  */
 @layer td.component {
@@ -1978,6 +1979,23 @@
 		box-shadow: none;
 	}
 
+	/* v0.69.0 plain: a text-only action for the MIDDLE of a line of text (under a field's helper, after a sentence). The look of
+	   ghost (accent label, no fill, no shadow) but NO horizontal padding and NO border: the box is its content, so the icon / label
+	   start exactly on the column edge (a ghost box keeps its padding + a 1px border and looks indented). No negative margin
+	   (it made the <td-button> host, an inline-block that shrink-wraps its child, wrap the label). Feedback is the label colour
+	   ONLY (hover / pressed below): no underline, no wash, no shadow (the focus ring is a box-shadow and must stay visible).
+	   After .td-btn--sm / --lg (same specificity: the later padding-inline wins). `color` / `text-color` are ignored (no
+	   .td-btn--custom for plain). Forced colours: a text action without a frame, like a link. */
+	.td-btn--plain {
+		--td-btn-bg-v: transparent;
+		--td-btn-fg-v: var(--td-btn-ghost-fg);
+		--td-btn-border-v: transparent;
+
+		padding-inline: 0;
+		border-width: 0;
+		box-shadow: none;
+	}
+
 	/* Custom colours (color / text-color attributes → host --td-btn-bg / --td-btn-fg): the same solid contract. */
 	.td-btn--custom {
 		--td-btn-bg-v: var(--td-btn-bg);
@@ -2011,7 +2029,7 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
-		.td-btn:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--ghost) {
+		.td-btn:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--ghost, .td-btn--plain) {
 			background-color: var(--td-btn-hover-v, var(--td-btn-bg-v));
 		}
 	}
@@ -2032,6 +2050,21 @@
 		}
 	}
 
+	/* plain hover: the label colour only — the ghost hover colours (scheme-aware, contrast already solved), never a fill */
+	@media (hover: hover) and (pointer: fine) {
+		.td-btn--plain:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+			color: var(--td-btn-ghost-hover-fg-fallback);
+		}
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, transparent)) {
+		@media (hover: hover) and (pointer: fine) {
+			.td-btn--plain:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+				color: var(--td-btn-ghost-hover-fg);
+			}
+		}
+	}
+
 	/* v0.36.2 pressed (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — a SOLID fill one step past
 	   hover (--td-btn-{v}-pressed; -tint / custom: 16 % darker), applied at once (no transition in), colour only.
 	   Engines without color-mix(): a custom button falls back to its hover / resting fill. */
@@ -2039,7 +2072,7 @@
 		-webkit-tap-highlight-color: transparent;
 	}
 
-	.td-btn:is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--ghost) {
+	.td-btn:is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--ghost, .td-btn--plain) {
 		background-color: var(--td-btn-pressed-v, var(--td-btn-hover-v, var(--td-btn-bg-v)));
 		transition-duration: 0s;
 	}
@@ -2052,6 +2085,18 @@
 
 	@supports (color: color-mix(in srgb, red 50%, transparent)) {
 		.td-btn--ghost:not(.td-btn--custom):is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+			color: var(--td-btn-ghost-hover-fg);
+		}
+	}
+
+	/* plain pressed (touch has no hover): the label colour only, like its hover — no fill, no shadow (touch.md rule 5) */
+	.td-btn--plain:is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+		color: var(--td-btn-ghost-hover-fg-fallback);
+		transition-duration: 0s;
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, transparent)) {
+		.td-btn--plain:is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
 			color: var(--td-btn-ghost-hover-fg);
 		}
 	}
@@ -2075,6 +2120,12 @@
 
 	/* A disabled ghost stays a ghost: no fill / border, greyed label. */
 	.td-btn--ghost:is(:disabled, [aria-disabled="true"]:not([aria-busy="true"]), a[aria-disabled="true"][tabindex="-1"]) {
+		background-color: transparent;
+		border-color: transparent;
+	}
+
+	/* A disabled plain stays plain, like ghost. */
+	.td-btn--plain:is(:disabled, [aria-disabled="true"]:not([aria-busy="true"]), a[aria-disabled="true"][tabindex="-1"]) {
 		background-color: transparent;
 		border-color: transparent;
 	}
@@ -2126,7 +2177,7 @@
 
 	/* Increased contrast: a visible edge on every filled button (glass.css drops the shadow). */
 	@media (prefers-contrast: more) {
-		.td-btn:not(.td-btn--ghost) { border-color: currentcolor; }
+		.td-btn:not(.td-btn--ghost, .td-btn--plain) { border-color: currentcolor; }
 	}
 
 	@media (forced-colors: active) {

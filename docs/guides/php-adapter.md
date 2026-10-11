@@ -124,7 +124,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.68.0/
+public/assets/vendor/td-components/0.69.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
   dist/  module-graph.json                    (0.64.0+: bản minify + đồ thị preload)
 ```
@@ -133,7 +133,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.68.0';
+const TD_VERSION = '0.69.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -326,7 +326,7 @@ Option chung cho các control:
 
 | Option | Giá trị | Mặc định |
 |---|---|---|
-| `variant` | `primary` `secondary` `success` `danger` `info` `warning` `ghost` | `secondary` (giữ như 135; `<td-button>` mặc định `primary`) |
+| `variant` | `primary` `secondary` `success` `danger` `info` `warning` `ghost` `plain` (0.69.0: nút chữ không padding cho hành động trong dòng chữ, xem [Button](../components/button.md#nút-plain--hành-động-dạng-chữ-trong-dòng-chữ-0690)) | `secondary` (giữ như 135; `<td-button>` mặc định `primary`) |
 | `size` | `sm` `md` `lg` (`xs` → `sm`) | `md` |
 | `icon` | tên icon registry (hoặc icon site đã `registerIcons`) | — |
 | `icon_position` | `left` `right` | `left` |

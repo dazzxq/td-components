@@ -2,6 +2,22 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.69.0
+
+**`td-button` / `td_button`: biến thể `plain`, nút chữ cho hành động nằm trong dòng chữ** (owner kit, 2026-10-12, từ ảnh chụp của dsuite;
+[plan](docs/internal/plans/v0.69.0-button-plain.md)).
+
+### Added
+
+- `variant="plain"` (PHP: `'variant' => 'plain'`): giống `ghost` (chữ accent, không nền, không bóng) nhưng **không padding ngang và
+  không viền**, nên hộp của nút đúng bằng nội dung và icon / nhãn bắt đầu **đúng mép cột chữ** (ghost thụt vào bằng padding của nó:
+  cỡ `sm` ≈ 14,6px). Dành cho hành động dạng chữ đặt trong luồng chữ, ví dụ "Gợi ý lại theo tên" dưới dòng helper của ô nhập.
+  - Hover và nhấn **chỉ đổi màu chữ** (không gạch chân, không nền, không bóng); vòng focus như mọi nút; disabled vẫn trong suốt.
+  - Dùng lại token của ghost (`--td-btn-ghost-fg`, `-hover-fg`, `-hover-fg-fallback`): không token mới, theme và palette không đổi.
+  - `color` / `text-color` bị bỏ qua với `plain`. Không dùng trong `.td-alert__actions` / `.td-empty-state__actions` (kéo nút 100%).
+    Bảng, modal và empty-state có danh sách `variant` riêng chưa có `plain` (rơi về `secondary`).
+- Không đổi gì cho ai không dùng `plain`: các biến thể khác, baseline CSP, token và theme giữ nguyên.
+
 ## 0.68.0
 
 **`td-media-picker`: `autoSelectFirst` bật mặc định** (owner kit, 2026-10-12: "bật đê";

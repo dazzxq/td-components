@@ -68,12 +68,15 @@ const CASES = {
   'button default (secondary) submit name/value': ['td_button', 'Lưu', { type: 'submit', name: 'action', value: 'save' }],
   'button ghost sm xs→sm icon right': ['td_button', 'Bỏ', { variant: 'ghost', size: 'xs', icon: 'close', icon_position: 'right' }],
   'button loading': ['td_button', 'Đang lưu', { variant: 'primary', loading: true }],
+  'button plain sm icon (v0.69.0)': ['td_button', 'Gợi ý lại theo tên', { variant: 'plain', size: 'sm', icon: 'rotate-cw' }],
+  'button plain href link (v0.69.0)': ['td_button', 'Xem thêm', { variant: 'plain', href: '/docs', size: 'lg' }],
   'button disabled full + tooltip + attrs': ['td_button', 'Khoá', { disabled: true, full_width: true, tooltip: 'Gợi ý', class: 'td-x app', attrs: { 'aria-pressed': 'false', 'data-x': '1' } }],
   'button icon-only aria_label': ['td_button', '', { icon: 'menu', aria_label: 'Mở menu' }],
   'button href link _blank download': ['td_button', 'Tải file', { href: '/f/a.pdf', target: '_blank', download: 'báo cáo.pdf', variant: 'primary' }],
   'button href disabled': ['td_button', 'Mở', { href: '/x', disabled: true }],
   'button href loading': ['td_button', 'Mở', { href: '/x', loading: true }],
   'link default ghost': ['td_link', 'Xem site', '/', { icon: 'external-link', target: '_blank' }],
+  'link plain sm (v0.69.0)': ['td_link', 'Đổi đường dẫn', '/doi', { variant: 'plain', size: 'sm' }],
   'field text + hint + error': ['td_field', 'email', 'x', { label: 'Email', type: 'email', hint: 'Email công ty', error: 'Sai', id: 'em' }],
   'field password autocomplete required': ['td_field', 'password', '', { label: 'Mật khẩu', type: 'password', autocomplete: 'current-password', required: true, id: 'pw' }],
   'field E1 hints': ['td_field', 'q', '', { inputmode: 'search', enterkeyhint: 'search', autocapitalize: 'off', spellcheck: false, autofocus: true, id: 'q' }],
@@ -126,6 +129,27 @@ describe('php/td.php', opts, () => {
     const busy = php1('td_button', 'A', { loading: true });
     assert.match(busy, /disabled aria-busy="true" aria-disabled="true"/);
     assert.match(busy, /td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true"><svg/, 'spinner visible');
+  });
+
+  test('v0.69.0 plain: td_button / td_link accept it; unknown variants still fall back (secondary / ghost)', () => {
+    assert.match(php1('td_button', 'A', { variant: 'plain' }), /^<button class="td-btn td-btn--plain td-btn--md" type="button">/);
+    assert.match(php1('td_button', 'A', { variant: 'plain', size: 'xs' }), /^<button class="td-btn td-btn--plain td-btn--sm" type="button">/);
+    assert.match(php1('td_button', 'A', { variant: 'plain', href: '/a' }), /^<a class="td-btn td-btn--plain td-btn--md" href="\/a">/);
+    assert.match(php1('td_link', 'A', '/a', { variant: 'plain', size: 'sm' }), /^<a class="td-btn td-btn--plain td-btn--sm" href="\/a">/);
+    // the closed set is exact and case-sensitive: anything else keeps the old defaults (td_button secondary, td_link ghost)
+    for (const v of ['PLAIN', 'Plain', 'plain ', 'plains', 'plain" onclick="x', '', null]) {
+      assert.match(php1('td_button', 'A', { variant: v }), /^<button class="td-btn td-btn--secondary td-btn--md" type="button">/, String(v));
+      assert.match(php1('td_link', 'A', '/a', { variant: v }), /^<a class="td-btn td-btn--ghost td-btn--md" href="\/a">/, String(v));
+    }
+    assert.match(php1('td_link', 'A', '/a'), /^<a class="td-btn td-btn--ghost td-btn--md"/);
+    assert.match(php1('td_button', 'A'), /^<button class="td-btn td-btn--secondary td-btn--md"/);
+    // a plain button is plain markup: no inline style, no custom-colour class (PHP has no colour option at all)
+    const out = php1('td_button', 'A', { variant: 'plain', size: 'sm', icon: 'rotate-cw', attrs: { 'data-x': '1' } });
+    assert.ok(!/ style=|td-btn--custom/.test(out), out);
+    // element mode (v0.25.0): the host carries variant="plain" and the control the same class (the JS VARIANTS list must know it)
+    const el = php1('td_button', 'A', { variant: 'plain', element: true });
+    assert.match(el, /^<td-button data-td-ssr="button@1" variant="plain" size="md" /);
+    assert.match(el, /<button class="td-btn td-btn--plain td-btn--md" type="button">/);
   });
 
   test('button href → <a> (E3 link contract)', () => {

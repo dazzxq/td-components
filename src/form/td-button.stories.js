@@ -6,7 +6,7 @@ export default {
   title: 'Form/Button',
   tags: ['autodocs'],
   argTypes: {
-    variant: { control: 'select', options: ['primary', 'secondary', 'success', 'danger', 'info', 'warning'] },
+    variant: { control: 'select', options: ['primary', 'secondary', 'success', 'danger', 'info', 'warning', 'plain'] },
     size: { control: 'select', options: ['sm', 'md', 'lg'] },
     icon: { control: 'text' },
     'icon-position': { control: 'select', options: ['left', 'right'] },
@@ -51,6 +51,7 @@ export const AllVariants = {
       <td-button variant="danger" label="Danger"></td-button>
       <td-button variant="info" label="Info"></td-button>
       <td-button variant="warning" label="Warning"></td-button>
+      <td-button variant="plain" label="Plain"></td-button>
     </div>
   `,
 };

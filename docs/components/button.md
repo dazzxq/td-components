@@ -5,7 +5,7 @@
 Nút bấm màu đặc (minimal surfaces, 0.20.0): **primary màu đen** (0.21.0; theme tối đảo thành nền sáng chữ đen),
 success / danger / info / warning là **màu đặc ngữ nghĩa** (0.36.0: xanh lá / đỏ / xanh dương chữ trắng, vàng hổ phách
 **chữ đậm tối**; trước đó là pastel), secondary là
-nền xám nhạt có viền mảnh, ghost là nút chữ không nền. Mỗi nút có một bóng mềm. Dùng cho mọi hành động (lưu, gửi form, mở modal…). Cần một
+nền xám nhạt có viền mảnh, ghost là nút chữ không nền, plain (0.69.0) là nút chữ không hộp cho hành động nằm trong dòng chữ. Mỗi nút có một bóng mềm. Dùng cho mọi hành động (lưu, gửi form, mở modal…). Cần một
 **đường dẫn trông như nút** (chuyển trang, tải file) thì thêm `href`: `td-button` render `<a>` thật (xem
 [Nút dạng link](#nút-dạng-link-href)). Nếu cần nút có menu con, dùng [menu](menu.md) gắn vào một `td-button`.
 
@@ -44,6 +44,7 @@ vẫn chạy nhưng không có giao diện.
 <td-button variant="info">Info</td-button>
 <td-button variant="warning">Warning</td-button>
 <td-button variant="ghost">Ghost</td-button>
+<td-button variant="plain">Plain</td-button>
 
 <td-button size="sm">Nhỏ (32px)</td-button>
 <td-button size="md">Vừa (40px)</td-button>
@@ -65,6 +66,34 @@ glow. Focus bàn phím có vòng focus như mọi nút. Disabled: vẫn trong su
 Dùng cho hành động phụ đặt trên **nền trang** (Huỷ, Xem thêm, liên kết trong toolbar). Không đặt ghost trên ảnh/nền
 nhiều màu: chữ accent không có nền riêng nên không bảo đảm tương phản ở đó (cổng tương phản chỉ đo ghost trên nền
 trắng/đen của theme).
+
+### Nút plain — hành động dạng chữ trong dòng chữ (0.69.0)
+
+```html
+<p class="helper">Tự điền theo tên, sửa được.</p>
+<td-button variant="plain" size="sm" icon="rotate-cw">Gợi ý lại theo tên</td-button>
+```
+
+`plain` có cái nhìn của `ghost` (chữ màu accent, không nền, không bóng) nhưng **không padding ngang và không viền**: hộp của
+nút đúng bằng nội dung, nên icon và nhãn bắt đầu **đúng mép cột chữ** phía trên. Một nút `ghost` đặt dưới dòng helper thì thụt vào
+bằng padding của nó (cỡ `sm` ≈ 14,6px; mặc định ≈ 21px) vì hộp vô hình vẫn còn.
+
+| | `ghost` | `plain` |
+|---|---|---|
+| Dùng cho | hành động phụ của **toolbar / thanh nút**, đặt trên nền trang (Huỷ, Xem thêm) | hành động dạng chữ **nằm trong luồng chữ**: dưới helper hoặc label, cạnh một câu, trong đoạn |
+| Padding ngang / viền | có (như mọi nút) | **không** |
+| Hover / nhấn | nền mờ + đổi màu chữ | **chỉ đổi màu chữ**: không gạch chân, không nền, không bóng |
+| Vùng bấm | rộng theo padding | đúng bằng chữ + icon; chiều cao vẫn ≥ `min-height` của cỡ (44px trên cảm ứng) |
+
+- Phản hồi hover và nhấn chỉ là màu chữ, dùng lại token của ghost (`--td-btn-ghost-fg`, `--td-btn-ghost-hover-fg`,
+  `--td-btn-ghost-hover-fg-fallback`): không có token mới, theme sáng / tối và palette generator giữ nguyên. Vòng focus bàn phím
+  như mọi nút. Disabled: vẫn trong suốt, chữ xám. Hai cỡ chữ `sm` / `md` / `lg` vẫn quyết định cỡ chữ và chiều cao.
+- `color` / `text-color` **bị bỏ qua** với `plain` (nó sẽ thành một khối đặc không padding).
+- Chế độ forced-colors / tương phản cao: nút `plain` không có khung viền, như một liên kết (chữ + icon, vòng focus vẫn hiện).
+- **Đừng đặt `plain` trong `.td-alert__actions` hay `.td-empty-state__actions`**: ở container hẹp các hộp đó kéo nút ra 100% bề rộng và
+  mất tính "thẳng cột". Bảng (`td-table`), modal và empty-state có danh sách `variant` riêng chưa có `plain`: giá trị này rơi về `secondary` ở đó.
+- PHP: `td_button('Gợi ý lại theo tên', ['variant' => 'plain', 'size' => 'sm', 'icon' => 'rotate-cw'])` (xem
+  [adapter PHP](../guides/php-adapter.md)).
 
 ### Nút dạng link (`href`)
 
@@ -328,7 +357,7 @@ trang hay bị cắt `…` — nhãn hành động bị cắt có thể đổi n
 
 | Attribute | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
-| `variant` | string | `primary` | `primary` \| `secondary` \| `success` \| `danger` \| `info` \| `warning` \| `ghost` (0.17.0). Giá trị khác → `primary`. |
+| `variant` | string | `primary` | `primary` \| `secondary` \| `success` \| `danger` \| `info` \| `warning` \| `ghost` (0.17.0) \| `plain` (0.69.0). Giá trị khác → `primary`. |
 | `size` | string | `md` | `sm` \| `md` \| `lg` (cao tối thiểu 32 / 40 / 48 px; trên màn cảm ứng tối thiểu 44 px và bo tròn dạng viên thuốc). Giá trị khác → `md`. |
 | `label` | string | chữ trong thẻ | Chữ trên nút. Ưu tiên hơn nội dung thẻ. Đổi `label` cập nhật tại chỗ (không mất focus). |
 | `icon` | string | — | Tên icon registry hoặc alias (ví dụ `download`, `external-link` — 0.18.0). **Deprecated:** giá trị không có trong registry được hiểu là danh sách class (ví dụ `fas fa-edit`) và render `<i>`; một từ kebab-case không có trong registry → `console.warn` một lần (0.18.0). |
@@ -516,7 +545,7 @@ site dùng `-tint` thì kiểm lại `--td-btn-{v}-fg` cho hợp nền của mì
 | Class / attribute | Ý nghĩa |
 |---|---|
 | `.td-btn` | Block nút. |
-| `.td-btn--{primary\|secondary\|success\|danger\|info\|warning\|ghost}` | Variant. |
+| `.td-btn--{primary\|secondary\|success\|danger\|info\|warning\|ghost\|plain}` | Variant (`plain`: 0.69.0, không padding ngang, không viền). |
 | `.td-btn--{sm\|md\|lg}` | Size. |
 | `.td-btn--full` | `full-width`. |
 | `.td-btn--custom` | Đang dùng `color` tuỳ chỉnh (nền đặc từ `--td-btn-bg` / `--td-btn-fg` trên host). |

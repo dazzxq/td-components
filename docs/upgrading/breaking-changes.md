@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.68.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.69.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.69.0](#0690) | Không phá vỡ: thêm biến thể Button `plain` (opt-in) | Không phải sửa code. Muốn nút chữ thẳng cột với dòng chữ phía trên (thay vì ghost thụt vào): `variant="plain"` / `'variant' => 'plain'`. Không dùng thì giống từng byte 0.68. |
 | [0.68.0](#0680) | **Đổi hành vi**: `autoSelectFirst` của `td-media-picker` giờ bật mặc định | Mở picker mà không đặt option thì ảnh đầu đã được chọn sẵn và "Chèn" bật (cả `multiple`). Không muốn: `TdMediaPicker.configureDefaults({ …, autoSelectFirst: false })` hoặc `open({ autoSelectFirst: false })`. Test của site dựa vào "mở ra chưa chọn gì" phải tắt tường minh. |
 | [0.67.0](#0670) | Không phá vỡ: `autoSelectFirst` của `td-media-picker` là opt-in | Không phải sửa code. Muốn chọn sẵn ảnh đầu khi mở: `TdMediaPicker.configureDefaults({ …, autoSelectFirst: true })` (áp cả cho `td-media-field`; ô đã có ảnh không bị đè). Không bật thì giống từng byte 0.66. |
 | [0.66.0](#0660) | Không phá vỡ: opt-in; adapter không có `collections` → giống từng byte 0.65 | Không phải sửa code. Muốn album trong picker: thêm `adapter.collections` (và dùng `collectionId` ở `list` / `facets` / `upload` / `uploadFromUrl`). **Esc trong một album = Quay lại**, không đóng picker. |
@@ -95,6 +96,16 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.69.0
+
+**Không phá vỡ.** Thêm biến thể `plain` cho Button (`<td-button variant="plain">`, `td_button(…, ['variant' => 'plain'])`). Không dùng thì DOM,
+CSS hiệu lực và hành vi giống từng byte 0.68; biến thể khác không đổi.
+
+Dùng khi một hành động dạng chữ nằm trong luồng chữ (dưới helper của ô nhập, cạnh một câu) mà `ghost` trông thụt vào: `plain` không có
+padding ngang và không có viền nên icon / nhãn nằm đúng mép cột. Chuyển `'variant' => 'ghost'` thành `'plain'` ở những chỗ đó
+([chi tiết](../components/button.md#nút-plain--hành-động-dạng-chữ-trong-dòng-chữ-0690)); ghost của toolbar giữ nguyên. Lưu ý: bảng,
+modal và empty-state có danh sách variant riêng và rơi `plain` về `secondary`; `color` / `text-color` bị bỏ qua với `plain`.
 
 ## 0.68.0
 

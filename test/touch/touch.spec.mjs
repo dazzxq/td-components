@@ -70,6 +70,7 @@ const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
   const extra = document.getElementById('touch-extra');
   extra.innerHTML = '<button type="button" class="td-btn td-btn--primary" id="t-primary"><span class="td-btn__label">Lưu</span></button>'
     + '<button type="button" class="td-btn td-btn--ghost" id="t-ghost"><span class="td-btn__label">Bỏ qua</span></button>'
+    + '<button type="button" class="td-btn td-btn--plain" id="t-plain"><span class="td-btn__label">Gợi ý lại</span></button>'
     + '<td-action-button id="t-action" action="edit"></td-action-button>';
   await import('${ORIGIN}/src/form/td-action-button.js');
   const { openers } = mountResponsiveFixture(document.getElementById('root'));
@@ -174,6 +175,8 @@ const tokenColour = (page, token) => page.evaluate((t) => {
 const PRESS_TYPES = [
   { name: 'button', sel: '#t-primary', token: '--td-btn-primary-pressed' },
   { name: 'ghost', sel: '#t-ghost', token: '--td-btn-ghost-pressed' },
+  // v0.69.0 plain: no fill in any state — its pressed look is the LABEL colour (the ghost hover tokens), so `prop: 'color'`
+  { name: 'plain', sel: '#t-plain', token: '--td-btn-ghost-hover-fg', prop: 'color' },
   { name: 'action', sel: '#t-action .td-btn--action', token: '--td-action-btn-standard-pressed-bg' },
   { name: 'tab', sel: '#rsp-tabs .td-tabs__tab[aria-selected="true"]', token: '--td-color-pressed' },
   { name: 'page', sel: 'td-pagination .td-pagination__nav:not([aria-disabled="true"])', token: '--td-color-pressed' },
@@ -217,11 +220,11 @@ async function controlMatrix(tag, page, input) {
       if (t.name === 'picker card') { await input.down(pt); await input.cancel(); } // a tap would open the detail
       else await input.tap(pt);
       await quiet(page, t.sel);
-      const after = await bgOf(page, t.sel, t.pseudo);
+      const after = await lookOf(page, t);
       const h = await centre(page, t.name === 'picker card' ? '.td-media-picker .td-modal__title' : '#root h2');
       await input.tap(h);
       await quiet(page, t.sel);
-      const away = await bgOf(page, t.sel, t.pseudo);
+      const away = await lookOf(page, t);
       expect(after === away, `${after} ≠ ${away} (a hover style stuck after the tap)`);
     });
   }
@@ -246,16 +249,63 @@ async function controlMatrix(tag, page, input) {
       const c = await centre(page, t.sel);
       const pt = t.top ? { x: c.x, y: Math.round(c.bb.y + 6) } : c;
       await quiet(page, t.sel);
-      const rest = await bgOf(page, t.sel, t.pseudo);
+      const rest = await lookOf(page, t);
       await input.down(pt);
       await frames(page, 2);
       const m = await pressedMatches(page, t);
-      expect(m.ok, `pressed look missing: attr ${m.got.attr}, bg ${m.got.bg} (want ${m.want})`);
+      expect(m.ok, `pressed look missing: attr ${m.got.attr}, bg ${m.got.bg}${t.prop ? `, ${t.prop} ${m.got.prop}, shadow ${m.got.shadow}` : ''} (want ${m.want})`);
       await input.cancel();
       await quiet(page, t.sel);
-      expect(await bgOf(page, t.sel, t.pseudo) === rest, 'not back to the resting fill');
+      expect(await lookOf(page, t) === rest, 'not back to the resting fill');
     });
   }
+
+  // v0.69.0 plain on a REAL coarse pointer (the engines suite can only switch the td.css media rule on): ≥ 44 px tall (--td-touch-min),
+  // the box is still its content (no padding / border: the width follows the label), the icon / label start on the column edge,
+  // the host of the element form is as wide as its button — native markup and <td-button>
+  await it(tag, 'plain: coarse pointer — ≥ 44 px tall, width = content, on the column edge (native and element)', async () => {
+    await load(page);
+    const m = await page.evaluate(async () => {
+      await import('/src/form/td-button.js');
+      const col = document.createElement('div');
+      col.style.setProperty('width', '300px');
+      col.innerHTML = '<p>Địa chỉ bài viết trên trang web.</p>'
+        + '<button type="button" class="td-btn td-btn--sm td-btn--plain" id="p-native"><span class="td-btn__label">Gợi ý lại theo tên</span></button><br>'
+        + '<td-button variant="plain" size="sm" icon="rotate-cw" id="p-el">Gợi ý lại theo tên</td-button>';
+      col.firstElementChild.style.setProperty('margin', '0');
+      document.body.appendChild(col);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const edge = col.firstElementChild.getBoundingClientRect().left;
+      const read = (b, ink) => {
+        const cs = getComputedStyle(b);
+        const r = b.getBoundingClientRect();
+        const kids = [...b.children].filter((c) => c.getBoundingClientRect().width > 0 && getComputedStyle(c).position !== 'absolute');
+        const content = kids.reduce((n, c) => n + c.getBoundingClientRect().width, 0) + parseFloat(cs.columnGap) * (kids.length - 1);
+        return { minH: cs.minHeight, h: r.height, w: r.width, content, pad: cs.paddingLeft + cs.paddingRight, border: cs.borderLeftWidth + cs.borderRightWidth,
+          dLeft: ink.getBoundingClientRect().left - edge, boxLeft: r.left - edge };
+      };
+      const nb = col.querySelector('#p-native');
+      const eb = col.querySelector('#p-el .td-btn');
+      const host = col.querySelector('#p-el');
+      const out = { coarse: matchMedia('(pointer: coarse)').matches, native: read(nb, nb.querySelector('.td-btn__label')),
+        element: read(eb, eb.querySelector('.td-btn__icon')), hostW: host.getBoundingClientRect().width, lines: 0 };
+      const range = document.createRange();
+      range.selectNodeContents(eb.querySelector('.td-btn__label'));
+      out.lines = range.getClientRects().length;
+      col.remove();
+      return out;
+    });
+    expect(m.coarse, 'the emulated page is a coarse pointer');
+    for (const k of ['native', 'element']) {
+      const b = m[k];
+      expect(b.minH === '44px' && b.h >= 43.5, `${k}: min-height ${b.minH}, height ${b.h}`);
+      expect(b.pad === '0px0px' && b.border === '0px0px', `${k}: padding ${b.pad}, border ${b.border}`);
+      expect(Math.abs(b.w - b.content) <= 0.5, `${k}: width ${b.w} vs content ${b.content}`);
+      expect(Math.abs(b.dLeft) <= 0.5 && Math.abs(b.boxLeft) <= 0.5, `${k}: icon / label ${b.dLeft}, box ${b.boxLeft} from the column edge`);
+    }
+    expect(Math.abs(m.hostW - m.element.w) <= 0.5, `host ${m.hostW} vs button ${m.element.w}`);
+    expect(m.lines === 1, `the element label broke into ${m.lines} lines`);
+  });
 
   // ISSUE-1: no pressed fill on a disabled dropzone or during a drag over it
   for (const [what, setup] of [
@@ -334,13 +384,23 @@ const bgOf = (page, sel, pseudo = null) => page.evaluate(([s, ps]) => {
   return `${cs.backgroundColor} | ${cs.backgroundImage}`;
 }, [sel, pseudo]);
 
+/**
+ * What a control type looks like for the matrix: its background (colour + image), or — for a type without a fill (`prop`, v0.69.0
+ * plain) — that computed property (its label colour). Always followed by the background so a wash appearing on a plain button fails.
+ */
+const lookOf = (page, t) => (t.prop
+  ? page.evaluate(([s, p]) => { const cs = getComputedStyle(document.querySelector(s)); return `${cs[p]} | ${cs.backgroundColor} | ${cs.boxShadow}`; }, [t.sel, t.prop])
+  : bgOf(page, t.sel, t.pseudo));
+
 async function pressedMatches(page, t) {
   const want = await tokenColour(page, t.token);
-  const got = await page.evaluate(([s, ps]) => {
+  const got = await page.evaluate(([s, ps, prop]) => {
     const el = document.querySelector(s);
     const cs = getComputedStyle(el, ps);
-    return { attr: el.hasAttribute('data-td-pressed'), bg: cs.backgroundColor, img: cs.backgroundImage };
-  }, [t.sel, t.pseudo || null]);
+    return { attr: el.hasAttribute('data-td-pressed'), bg: cs.backgroundColor, img: cs.backgroundImage, prop: prop ? cs[prop] : null, shadow: cs.boxShadow };
+  }, [t.sel, t.pseudo || null, t.prop || null]);
+  // a type without a fill: the pressed look is `prop` (the label colour) and NOTHING else — no wash, no shadow
+  if (t.prop) return { want, got, ok: got.attr && got.prop === want && got.bg === 'rgba(0, 0, 0, 0)' && got.shadow === 'none' };
   return { want, got, ok: got.attr && got.bg === want };
 }
 
@@ -1409,6 +1469,14 @@ async function webkitSmoke(browser) {
       await tap('#root h2');
       await quiet(page, '#t-ghost');
       expect(after === await bgOf(page, '#t-ghost'), 'ghost hover stuck');
+      // v0.69.0 plain: the same, by its label colour (it has no fill)
+      const plainT = PRESS_TYPES.find((x) => x.name === 'plain');
+      await tap('#t-plain');
+      await quiet(page, '#t-plain');
+      const afterPlain = await lookOf(page, plainT);
+      await tap('#root h2');
+      await quiet(page, '#t-plain');
+      expect(afterPlain === await lookOf(page, plainT), 'plain hover stuck');
       // option rows: tap one (it is picked, the menu closes), reopen — the next row has the resting fill of an unpicked row
       await tap('#g-dd .td-dropdown__trigger');
       const opt = '.td-dropdown__menu[data-state="open"] .td-dropdown__option';

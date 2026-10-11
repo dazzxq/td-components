@@ -102,7 +102,7 @@ export const Showcase = {
       return c;
     };
     const buttons = col('Button đặc');
-    for (const [v, label] of [['primary', 'Lưu'], ['secondary', 'Huỷ'], ['success', 'Xuất bản'], ['danger', 'Xoá'], ['info', 'Chi tiết'], ['warning', 'Cảnh báo']]) {
+    for (const [v, label] of [['primary', 'Lưu'], ['secondary', 'Huỷ'], ['success', 'Xuất bản'], ['danger', 'Xoá'], ['info', 'Chi tiết'], ['warning', 'Cảnh báo'], ['plain', 'Gợi ý lại']]) {
       const b = document.createElement('td-button');
       b.setAttribute('variant', v);
       b.textContent = label;

@@ -56,7 +56,12 @@ for (const color of ['#1e3a8a', '#fde047']) {
 }
 // v0.17.0 ghost buttons sit on the PAGE background, never on a photo: measured only over the theme's page colour
 // (white in light, black in dark) — `pageOnly` (contrast.spec.mjs skips the other backdrops).
-for (const state of ['rest', 'disabled', 'loading', 'icon']) CASES.push({ kind: 'button', v: 'ghost', state, pageOnly: true });
+// v0.69.0: `plain` (a ghost without padding / border, for the middle of a line of text) is listed the same way — it is no fill
+// either, so it is never in VARIANTS above (those are measured over all four backdrops).
+for (const v of ['ghost', 'plain']) for (const state of ['rest', 'disabled', 'loading', 'icon']) CASES.push({ kind: 'button', v, state, pageOnly: true });
+// …and its REAL hover: the label takes the ghost hover colour (no fill appears). The pointer moves after the setup returns, so
+// the case measures the hover-token colour (resolved below) on the hovered pixels; the engines suite reads the live colour.
+CASES.push({ kind: 'button', v: 'plain', state: 'hover', pageOnly: true });
 // v0.18.0 F5: alerts and badges live in the content layer (solid fills on the page) → page colour only, like ghost.
 // Alert: message + heading text ≥ 4.7, icon + close ≥ 3.2 on the variant fill. Badge: text ≥ 4.7 on its soft fill,
 // and on the page for --outline / --stamp (transparent).
@@ -175,7 +180,7 @@ for (const v of ['active', 'selected']) CASES.push({ kind: 'v036', v, state: 'op
 // ensurePressStates() sets for touch / pen) — computed colours: every td-button variant + ghost label ≥ 4.7 on its
 // pressed fill (composited on the page), td-action-button icon (3 tones) ≥ 4.7 on its pressed fill, a popup option
 // row label ≥ 4.7 on the pressed fill (composited on the popup surface) — light + dark.
-for (const v of ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'ghost']) CASES.push({ kind: 'v0362', v, state: 'btn-pressed', pageOnly: true });
+for (const v of ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'ghost', 'plain']) CASES.push({ kind: 'v0362', v, state: 'btn-pressed', pageOnly: true }); // 'plain': v0.69.0 (label colour only)
 for (const v of ['standard', 'warning', 'danger']) CASES.push({ kind: 'v0362', v, state: 'action-pressed', pageOnly: true });
 CASES.push({ kind: 'v0362', v: 'option', state: 'option-pressed', pageOnly: true });
 // v0.36.2 review ISSUE-1: the toast surface (tap = dismiss) and the dropzone zone (tap = file picker) are pressed too —
@@ -1369,11 +1374,19 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       const cs = getComputedStyle(target);
       const fill = over(cs.backgroundColor, page);
       pairs = [{ what: `${c.state === 'action-pressed' ? 'icon' : 'label'} vs pressed fill`, fg: cs.color, bg: fill, min: 4.7 }];
-      if (c.v !== 'ghost' && c.state === 'btn-pressed') {
+      if (c.v !== 'ghost' && c.v !== 'plain' && c.state === 'btn-pressed') {
         const rest = document.createElement('button');
         rest.className = `td-btn td-btn--${c.v}`;
         stage.appendChild(rest);
         pairs.push({ what: 'pressed fill differs from rest', fg: fill, bg: over(getComputedStyle(rest).backgroundColor, page), min: 1.05 });
+      }
+      if (c.v === 'plain' && c.state === 'btn-pressed') {
+        // v0.69.0: plain has no fill (like ghost) — its pressed feedback is the LABEL colour: it must differ from the resting one
+        // (the label vs the page pair above is the contrast; this one proves the press is visible at all)
+        const rest = document.createElement('button');
+        rest.className = 'td-btn td-btn--plain';
+        stage.appendChild(rest);
+        pairs.push({ what: 'pressed label differs from rest label', fg: cs.color, bg: over(getComputedStyle(rest).color, page), min: 1.05 });
       }
     }
     const b = target.getBoundingClientRect();
@@ -2234,6 +2247,17 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     close: parts.close ? cs(parts.close).color : null,
     spinner: parts.spinner && !parts.spinner.hidden ? cs(parts.spinner).color : null,
   };
+  if (c.kind === 'button' && c.v === 'plain' && c.state === 'hover') {
+    // v0.69.0: the spec moves the pointer AFTER this returns, so `ink` above is the REST colour — but plain hover changes the label
+    // colour (and only that): resolve the colour the hover rule uses (button.css: -hover-fg, or the fixed -fallback without
+    // color-mix()) and measure it on the pixels under the hovered button (a fill appearing on hover lands in that screenshot).
+    const probe = document.createElement('span');
+    const mix = CSS.supports('color', 'color-mix(in srgb, red 50%, transparent)');
+    probe.style.setProperty('color', mix ? 'var(--td-btn-ghost-hover-fg)' : 'var(--td-btn-ghost-hover-fg-fallback)');
+    stage.appendChild(probe);
+    ink.label = getComputedStyle(probe).color;
+    probe.remove();
+  }
   let op = 1;
   for (let n = el; n; n = n.parentElement) op = Math.min(op, Number(getComputedStyle(n).opacity));
   if (hideInk) el.classList.add('td-contrast-probe-noink');

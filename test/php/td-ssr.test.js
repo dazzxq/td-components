@@ -113,7 +113,7 @@ describe('php/td.php — SSR element mode (v0.25.0, ADR 0012)', opts, () => {
       const isLink = c.fn === 'td_link' || o.href != null;
       const { host, inner } = splitHost(r.out);
       const expected = new Map([['data-td-ssr', 'button@1']]);
-      const variants = ['primary', 'secondary', 'success', 'danger', 'info', 'warning', 'ghost'];
+      const variants = ['primary', 'secondary', 'success', 'danger', 'info', 'warning', 'ghost', 'plain']; // 'plain': v0.69.0
       expected.set('variant', variants.includes(o.variant) ? o.variant : (c.fn === 'td_link' ? 'ghost' : 'secondary'));
       expected.set('size', o.size === 'xs' ? 'sm' : (['sm', 'md', 'lg'].includes(o.size) ? o.size : 'md'));
       if (o.full_width) expected.set('full-width', true);

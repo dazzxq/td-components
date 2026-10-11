@@ -122,6 +122,7 @@ describe('v0.17.0 E5 — PHP SSR markup', () => {
       'btn-danger-lg': '<td-button variant="danger" size="lg" icon="close" icon-position="right">Xoá</td-button>',
       'btn-disabled': '<td-button variant="primary" disabled>Khoá</td-button>',
       'btn-ghost': '<td-button variant="ghost">Bỏ qua</td-button>',
+      'btn-plain': '<td-button variant="plain" size="sm" icon="rotate-cw">Gợi ý lại</td-button>', // v0.69.0
       'btn-link': '<td-button variant="primary" href="/docs" target="_blank">Mở</td-button>',
       'field-text': '<td-input-field id="cf-text" name="full_name" label="Họ tên" helper-text="Tên đầy đủ" value="An"></td-input-field>',
       'field-lg': '<td-input-field id="cf-lg" name="email" size="lg" label="Email" value="a@b.vn"></td-input-field>',
@@ -198,7 +199,8 @@ describe('v0.17.0 E5 — PHP SSR markup', () => {
       expect(parseFloat(cs.height)).to.be.greaterThan(20);
     });
 
-    for (const key of ['btn-secondary-sm', 'btn-danger-lg', 'btn-disabled']) {
+    // v0.69.0: btn-plain pins the PHP and JS variant lists to each other (both are hand-copied) and the plain box (no padding / border)
+    for (const key of ['btn-secondary-sm', 'btn-danger-lg', 'btn-disabled', 'btn-plain']) {
       it(`button ${key}`, async () => { await compare(key, 'btn'); });
     }
 

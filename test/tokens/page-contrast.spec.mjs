@@ -71,6 +71,7 @@ const FOCUS_CASES = [
   { name: 'button primary', focus: '.demo-section:not(:has(.demo-glass-stage)) .td-btn--primary:not(:disabled)' },
   { name: 'button secondary', focus: '.demo-section:not(:has(.demo-glass-stage)) .td-btn--secondary:not(:disabled)' },
   { name: 'button ghost', focus: '.td-btn--ghost:not(:disabled)' },
+  { name: 'button plain', focus: '.td-btn--plain:not(:disabled)' }, // v0.69.0: no padding / border — the ring hugs the label
   { name: 'checkbox', focus: '.td-checkbox__input:not(:checked):not(:disabled)', ring: (el) => el.parentElement.querySelector('.td-checkbox__mark') },
   { name: 'checkbox checked', focus: '.td-checkbox__input:checked:not(:disabled)', ring: (el) => el.parentElement.querySelector('.td-checkbox__mark') },
   { name: 'toggle', focus: '.td-switch__input:not(:disabled)', ring: (el) => el.parentElement.querySelector('.td-switch__track') },
@@ -280,6 +281,9 @@ async function tokenPairs(page, palette, tag) {
   pair('action danger icon pressed', t['--td-action-btn-danger-fg'], over(t['--td-action-btn-danger-pressed-bg'], surf), 4.7);
   pair('ghost label on hover (page)', t['--td-btn-ghost-hover-fg'], over(t['--td-color-hover'], t['--td-color-bg']), 4.5);
   pair('ghost label on hover (surface)', t['--td-btn-ghost-hover-fg'], over(t['--td-color-hover'], surf), 4.5);
+  // v0.69.0 plain: the same hover label, but on the BARE page / surface (no wash under it)
+  pair('plain label on hover (page)', t['--td-btn-ghost-hover-fg'], t['--td-color-bg'], 4.5);
+  pair('plain label on hover (surface)', t['--td-btn-ghost-hover-fg'], surf, 4.5);
   pair('dropdown create option in the popup', t['--td-dropdown-create-fg'], popup, 4.5);
   pair('accent badge', t['--td-badge-accent-fg'], t['--td-badge-accent-bg'], 4.5);
   pair('text on a selected row', t['--td-color-text'], over(t['--td-table-row-selected'], surf), 4.7);

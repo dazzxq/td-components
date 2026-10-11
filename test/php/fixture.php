@@ -17,6 +17,7 @@ $parity = [
     'btn-danger-lg' => td_button('Xoá', ['variant' => 'danger', 'size' => 'lg', 'icon' => 'close', 'icon_position' => 'right']),
     'btn-disabled' => td_button('Khoá', ['variant' => 'primary', 'disabled' => true]),
     'btn-ghost' => td_button('Bỏ qua', ['variant' => 'ghost']),
+    'btn-plain' => td_button('Gợi ý lại', ['variant' => 'plain', 'size' => 'sm', 'icon' => 'rotate-cw']), // v0.69.0
     'btn-link' => td_button('Mở', ['variant' => 'primary', 'href' => '/docs', 'target' => '_blank']),
     'field-text' => td_field('full_name', 'An', ['label' => 'Họ tên', 'hint' => 'Tên đầy đủ', 'id' => 'pf-text']),
     'field-lg' => td_field('email', 'a@b.vn', ['label' => 'Email', 'size' => 'lg', 'id' => 'pf-lg']),
