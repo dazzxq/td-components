@@ -305,6 +305,20 @@ describe('resolveOptions + DefaultsRegistry (decision 6)', () => {
     }
   });
 
+  it('v0.67.0: autoSelectFirst — false by default; only `=== true` turns it on; from defaults or open(); open() wins', () => {
+    assert.equal(resolveOptions({ adapter: adapter() }).autoSelectFirst, false);
+    assert.equal(resolveOptions({ adapter: adapter() }, { autoSelectFirst: true }).autoSelectFirst, true);
+    assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: true }).autoSelectFirst, true, 'from the defaults');
+    assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: true }, { autoSelectFirst: false }).autoSelectFirst, false,
+      'open() false overrides the defaults');
+    for (const v of ['yes', 'true', 1, 0, null, {}, []]) {
+      assert.equal(resolveOptions({ adapter: adapter() }, { autoSelectFirst: v }).autoSelectFirst, false, `${JSON.stringify(v)} is not true`);
+    }
+    assert.equal(resolveOptions({ adapter: adapter() }, { autoSelectFirst: undefined }).autoSelectFirst, false);
+    assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: true }, { autoSelectFirst: undefined }).autoSelectFirst, true,
+      'undefined never overrides a lower layer');
+  });
+
   it('v0.66.0 (K8): initialCollection: null = absent (like undefined) — no TypeError, never overrides a lower layer', () => {
     assert.equal(resolveOptions({ adapter: adapter() }, { initialCollection: null }).initialCollection, null);
     assert.equal(resolveOptions({ adapter: adapter(), initialCollection: null }).initialCollection, null);

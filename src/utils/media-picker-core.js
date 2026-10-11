@@ -190,6 +190,8 @@
  *   `open()` layers only (never from `configureDefaults`, like `selection`); `null` = absent; a bad shape → TypeError
  * @property {{ showWithoutQuery?: boolean }} [collections] v0.66.0 (K8): `showWithoutQuery: true` shows the collection
  *   strip before anything is typed (default false); also via configureDefaults
+ * @property {boolean} [autoSelectFirst] v0.67.0: select the first selectable asset of the FIRST list load of the session
+ *   (default false: only `=== true` turns it on; also via configureDefaults); skipped when `selection.initialIds` has entries
  */
 
 export const KINDS = Object.freeze(['image', 'video', 'file']);
@@ -615,12 +617,12 @@ let warnedCropMultiple = false;
  * `aspectRatio` warns once ⇒ free; `selection.mode = 'multiple'` warns once ⇒ no crop; unknown keys ignored). No valid adapter → TypeError (a
  * programming error). v0.66.0 (K8): `initialCollection` (never from `defaults`; `{ id, label }` | null, a bad shape →
  * TypeError) and `collections` (→ `{ showWithoutQuery }`, a non-object → TypeError); `null` for either = absent (like
- * undefined: skipped, never overrides a lower layer).
+ * undefined: skipped, never overrides a lower layer). v0.67.0: `autoSelectFirst` (`=== true`, also from `defaults`).
  * @param {object|null|undefined} defaults
  * @param {...(object|null|undefined)} layers last argument may be `{ warn }` only when it is the sole key
  * @returns {OpenMediaPickerOptions & { cropResolved: { aspectRatio: number|null, allowFocalPoint: boolean } | null,
  *   capabilitiesResolved: MediaCapabilities, initialCollection: { id: string, label: string } | null,
- *   collections: { showWithoutQuery: boolean } }}
+ *   collections: { showWithoutQuery: boolean }, autoSelectFirst: boolean }}
  */
 export function resolveOptions(defaults, ...layers) {
   let warn = console.warn;
@@ -719,6 +721,7 @@ export function resolveOptions(defaults, ...layers) {
     locale: typeof merged.locale === 'string' ? merged.locale : '',
     initialCollection,
     collections,
+    autoSelectFirst: merged.autoSelectFirst === true,
     cropResolved,
     capabilitiesResolved: resolveCapabilities(merged.adapter, merged.capabilities),
   };

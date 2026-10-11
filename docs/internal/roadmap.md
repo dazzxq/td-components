@@ -85,6 +85,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.64.0: bản minify `dist/` (mirror gốc package, source map) + `module-graph.json` → `modulePreloads` in cả chuỗi + PHP `assets` (`source` mặc định / `dist`) — đề nghị dsuite, plan [v0.64.0-dist](plans/v0.64.0-dist.md), [ADR 0034](decisions/0034-minified-dist.md)
 - `done` v0.65.0: adapter PHP mặc định `assets` = `dist` (owner: đã có site dùng kit); thiếu `dist/` → `configure()` báo lỗi ngay
 - `done` v0.66.0: bộ sưu tập (album) trong `td-media-picker` (K8, dsuite) — `adapter.collections`, `collectionId`, `initialCollection`, event `collection-change`, Esc = Quay lại trong album; opt-in, giống từng byte 0.65 khi không dùng — plan [v0.66.0-media-collections](plans/v0.66.0-media-collections.md), [ADR 0013 › Bổ sung v0.66](decisions/0013-media-picker-boundary.md#bổ-sung-v066-k8)
+- `done` v0.67.0: `td-media-picker` `autoSelectFirst` (opt-in): chọn sẵn ảnh đầu khi mở — owner; plan [v0.67.0-auto-select-first](plans/v0.67.0-auto-select-first.md); ngoại lệ so với QĐ 69 (ADR 0013 § Bổ sung v0.67)
 
 ## Chờ nhu cầu (owner 2026-10-08: chỉ làm khi có site cần)
 

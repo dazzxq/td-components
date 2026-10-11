@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.66.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.67.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.67.0](#0670) | Không phá vỡ: `autoSelectFirst` của `td-media-picker` là opt-in | Không phải sửa code. Muốn chọn sẵn ảnh đầu khi mở: `TdMediaPicker.configureDefaults({ …, autoSelectFirst: true })` (áp cả cho `td-media-field`; ô đã có ảnh không bị đè). Không bật thì giống từng byte 0.66. |
 | [0.66.0](#0660) | Không phá vỡ: opt-in; adapter không có `collections` → giống từng byte 0.65 | Không phải sửa code. Muốn album trong picker: thêm `adapter.collections` (và dùng `collectionId` ở `list` / `facets` / `upload` / `uploadFromUrl`). **Esc trong một album = Quay lại**, không đóng picker. |
 | [0.65.0](#0650) | **Đổi hành vi** PHP: `assets` mặc định là `'dist'` | Copy cả `dist/` + `module-graph.json` khi nâng kit (thiếu `dist/td.css` → `Td::configure()` ném `RuntimeException`). Muốn giữ URL source: `['assets' => 'source']`. Test so URL `td.css` / import map / preload phải thêm `/dist`. |
 | [0.64.0](#0640) | Không phá vỡ: `dist/` và `assets` là opt-in; **đổi hành vi** `Td::modulePreloads()` (in thêm module phụ thuộc) | Không phải sửa code. Muốn bản minify: `Td::configure(…, ['assets' => 'dist'])` và copy cả `dist/` + `module-graph.json`. Test so nguyên chuỗi output của `modulePreloads` phải cập nhật. |
@@ -93,6 +94,18 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.67.0
+
+**Không phá vỡ.** `autoSelectFirst` là option mới của `td-media-picker`, mặc định tắt: không bật thì DOM, request và hành vi giống
+từng byte 0.66 ("Chèn" vẫn tắt tới khi người dùng chọn).
+
+Bật thì picker chọn sẵn asset đầu tiên chọn được của lần tải danh sách đầu ([chi tiết](../components/media-picker.md#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670)):
+
+- Chỉ lần tải đầu; ô `td-media-field` đã có ảnh (có `selection.initialIds`) không bị đè.
+- Không phát `selection-change`. Code của site chỉ nghe `selection-change` để biết "đã có lựa chọn" sẽ không thấy lựa chọn chọn sẵn
+  này; đọc selection ở `confirm` hoặc giá trị trả về của `open()`.
+- Hộp thoại có sẵn một lựa chọn khi mở: bấm "Chèn" ngay là chèn ảnh đó.
 
 ## 0.66.0
 

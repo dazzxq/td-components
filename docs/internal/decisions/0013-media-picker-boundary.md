@@ -226,3 +226,26 @@ cho lịch của `<td-datetime-picker>` ("Esc lùi một khung — hai nghĩa ch
 
 Phương án bác: giữ Esc luôn đóng picker (đồng bộ với ADR 0032) — người dùng đang ở trong album sẽ thoát cả picker khi chỉ
 muốn ra khỏi album.
+
+## Bổ sung v0.67
+
+Ngày 2026-10-11. Nguồn: plan [v0.67.0-auto-select-first](../plans/v0.67.0-auto-select-first.md); owner kit yêu cầu "khi mở cứ auto select
+chọn cái ảnh đầu tiên". Mục này **chỉ thêm** một option, mặc định tắt: phiên không bật nó giữ DOM, request và hành vi giống từng
+byte 0.66.
+
+### Ngoại lệ so với "Tự chọn bị loại" (bổ sung v0.36, QĐ 69)
+
+QĐ 69 (owner, 2026-10-05) loại việc tự chọn vì chọn là quyết định của người dùng: tự chọn làm một cú bấm "Chèn" vội chèn nhầm.
+Owner nay muốn picker chọn sẵn ảnh đầu khi mở. Kit giữ QĐ 69 làm **mặc định** và thêm một ngoại lệ **opt-in**:
+
+- Option `autoSelectFirst` (boolean, mặc định `false`; chỉ `=== true` bật; lấy được từ `configureDefaults`). Site bật một lần ở
+  bootstrap thì áp cho mọi lần mở, kể cả ô `td-media-field`.
+- Chỉ **lần tải danh sách đầu** của phiên (lần đầu lỗi thì "Thử lại" vẫn là lần mở đó); chọn **một** asset đầu tiên chọn được (`ready`, đúng `kinds`); bỏ qua khi
+  `selection.initialIds` có phần tử (ô `td-media-field` đã có ảnh).
+- Chọn bằng code như kết quả `initialIds`: **không** phát `selection-change` (sự kiện của người dùng), `confirm` vẫn mang
+  selection, đóng picker vẫn trả `selection: []`.
+- Một thông báo live region gộp ("{n} kết quả. Đã chọn sẵn: {tên}"), không chuyển focus.
+
+Vì sao opt-in: chỉ dsuite dùng picker, nhưng ô `td-media-field` (logo, ảnh đại diện, banner, SEO…) dùng chung nó; mặc định bật
+thì một cú bấm "Chèn" nhầm ở các ô đó chèn ảnh mới nhất, đúng rủi ro mà QĐ 69 đã loại. Phương án bác: bật mặc định cho mọi site
+(đảo QĐ 69 trong im lặng). Lật mặc định về sau là một thay đổi riêng, có ghi trong CHANGELOG, như `assets` ở 0.65.

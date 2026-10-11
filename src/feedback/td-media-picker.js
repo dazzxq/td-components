@@ -249,6 +249,7 @@ export class TdMediaPicker extends HTMLElement {
     collectionsTruncated: 'Gõ thêm để thu hẹp',
     collectionEntered: '{label}: {n} kết quả',
     collectionLeft: 'Tất cả: {n} kết quả',
+    autoSelected: 'Đã chọn sẵn: {name}',
     kind: { image: 'Ảnh', video: 'Video', file: 'File' },
     status: { pending: 'Đang chờ', processing: 'Đang xử lý', failed: 'Lỗi', archived: 'Đã lưu trữ' },
     meta: {
@@ -439,6 +440,8 @@ export class TdMediaPicker extends HTMLElement {
       uploadFields: normalizeFields(opts.uploadFields, { warn: (m) => warnOnce(`uf:${m}`, m) }),
       ctrl: new AbortController(),
       announceQueued: false,
+      /** v0.67.0: the FAILED first load carried `autoSelectFirst` → its "Thử lại" is still the opening load (see `_loadPage`) */
+      autoRetry: false,
       pendingAnnounce: '',
       // v0.66.0 (K8): a collection-enabled session (adapter.collections, or initialCollection) — the only kind that sends
       // `collectionId` and builds the strip / breadcrumb; `collection` = the one we are in; `collCards` = the strip shown
@@ -496,12 +499,15 @@ export class TdMediaPicker extends HTMLElement {
     }
     this._renderSelection();
     this._loadFacets();
+    // v0.67.0 `autoSelectFirst`: only the FIRST list request of the session carries it (a query typed before it returns
+    // supersedes it: a stale request never renders, so it never selects); an explicit `initialIds` always wins
+    const autoFirst = opts.autoSelectFirst === true && !opts.selection.initialIds.length;
     if (s.collection) {
       const c = { ...s.collection };
-      this._loadPage('reload', { announce: (n) => this._t('collectionEntered', { label: c.label, n }) });
+      this._loadPage('reload', { autoFirst, announce: (n) => this._t('collectionEntered', { label: c.label, n }) });
       queueMicrotask(() => { if (this._live(s)) this._emit('collection-change', { collection: c, reason: 'initial' }); });
     } else {
-      this._loadPage('reload');
+      this._loadPage('reload', { autoFirst });
       if (s.collEnabled) this._loadCollections();
     }
   }
@@ -599,7 +605,7 @@ export class TdMediaPicker extends HTMLElement {
     }
     if (s.collEnabled) this._buildCollections();
     const retry = makeButton(t('retry'), { size: 'sm', cls: 'td-media-picker__retry' });
-    retry.addEventListener('click', () => { if (usable(retry)) this._loadPage(s.lastHow); });
+    retry.addEventListener('click', () => { if (usable(retry)) this._loadPage(s.lastHow, { autoFirst: s.autoRetry === true }); });
     e.error.appendChild(retry);
     e.retry = retry;
     // footer (decision 17)
@@ -1162,11 +1168,14 @@ export class TdMediaPicker extends HTMLElement {
    * (pages mode). Cursor navigation is single-flight (PageState refuses while pending); a reset / pages-mode click is
    * latest-wins (the list slot aborts the previous request). Never served from a cache (decision 9).
    * @param {'reload'|'next'|'prev'|number} how
-   * @param {{ reset?: boolean, keepGrid?: boolean, nav?: boolean, button?: HTMLElement, stepBack?: boolean }} [o]
+   * @param {{ reset?: boolean, keepGrid?: boolean, nav?: boolean, button?: HTMLElement, stepBack?: boolean,
+   *   autoFirst?: boolean }} [o] `autoFirst` (v0.67.0): the session's first load only (and the "Thử lại" of that load when it
+   *   failed), see `_autoSelectFirst`
    */
   _loadPage(how, o = {}) {
     const s = this._s;
     if (!this._live(s)) return;
+    s.autoRetry = false; // v0.67.0: any other load ends the "retry of the opening load" window (Retry passes `autoFirst` itself)
     if (o.reset) s.pages.reset();
     const r = s.pages.begin(how);
     if (!r) {
@@ -1194,6 +1203,7 @@ export class TdMediaPicker extends HTMLElement {
       if ('error' in res) {
         s.pages.rollback(r.token);
         this._renderPager();
+        s.autoRetry = o.autoFirst === true; // v0.67.0: the opening load failed → "Thử lại" is still the opening load
         this._listError(res.error);
         return;
       }
@@ -1204,6 +1214,7 @@ export class TdMediaPicker extends HTMLElement {
       } catch (err) {
         s.pages.rollback(r.token);
         this._renderPager();
+        s.autoRetry = o.autoFirst === true;
         this._listError(err);
         return;
       }
@@ -1217,7 +1228,7 @@ export class TdMediaPicker extends HTMLElement {
           return;
         }
       }
-      this._renderPage(page, !o.nav && !o.keepGrid, o.announce);
+      this._renderPage(page, !o.nav && !o.keepGrid, o.announce, o.autoFirst === true);
       this._renderPager();
       if (o.nav) {
         s.els.results.scrollTop = 0;
@@ -1263,8 +1274,9 @@ export class TdMediaPicker extends HTMLElement {
    * @private replace the grid content with a page (silent clear before, silent re-select after)
    * @param {object} page @param {boolean} announce
    * @param {(n: number) => string} [announceText] v0.66.0 (K8): the results count merged into one message
+   * @param {boolean} [autoFirst] v0.67.0: select the first selectable asset first (`autoSelectFirst`, first load only)
    */
-  _renderPage(page, announce, announceText) {
+  _renderPage(page, announce, announceText, autoFirst = false) {
     const s = this._s;
     const grid = s.els.grid;
     if (typeof grid.clear === 'function') grid.clear();
@@ -1287,20 +1299,40 @@ export class TdMediaPicker extends HTMLElement {
     } else {
       this._showResults();
     }
+    const auto = autoFirst ? this._autoSelectFirst(page) : null; // before _syncGrid (drawn selected) and _autoPreview
     this._syncGrid();
     if (announce) {
       const n = page.total ?? page.items.length;
-      this._announce(announceText ? announceText(n) : this._t('resultsCount', { n }));
+      let text = announceText ? announceText(n) : this._t('resultsCount', { n });
+      if (auto) text = `${text}. ${this._t('autoSelected', { name: auto.name || auto.id })}`; // one message: the last wins
+      this._announce(text);
     }
     this._autoPreview(page);
+  }
+
+  /**
+   * @private v0.67.0 `autoSelectFirst` (opt-in): the FIRST list of the session selects its first selectable asset — the one
+   * exception to the QĐ 69 rule below, "the selection is never touched". Programmatic, like the initialIds result: no
+   * revision bump and no `selection-change` (user changes only; `confirm` still carries the selection). The footer
+   * ("Chèn", the multiple chip) is re-rendered HERE because `_syncGrid` does not. Not when something is already selected.
+   * @returns {object|null} the selected asset
+   */
+  _autoSelectFirst(page) {
+    const s = this._s;
+    if (s.model.size) return null;
+    const asset = page.items.find((a) => this._selectable(a));
+    if (!asset) return null;
+    s.model.applyInitial([asset], s.model.revision);
+    this._renderSelection();
+    return s.model.has(asset.id) ? asset : null;
   }
 
   /**
    * @private v0.36.0 (plan QĐ 69, ADR 0013 note; review ISSUE-2): ≥ 720 the detail panel always PREVIEWS something after
    * every list load — the asset already viewed when it is still in the results, else the first SELECTED asset that is in
    * the results, else the first result; an empty result clears the panel (empty state). The selection is never touched
-   * ("Chèn" stays disabled until the user selects). < 720 the grid comes first (no auto-open); a dirty form is never
-   * replaced.
+   * ("Chèn" stays disabled until the user selects) — except v0.67.0's opt-in `autoSelectFirst`, see `_autoSelectFirst`.
+   * < 720 the grid comes first (no auto-open); a dirty form is never replaced.
    */
   _autoPreview(page) {
     const s = this._s;

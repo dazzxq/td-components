@@ -410,7 +410,7 @@ TdMediaPicker.defaults;           // bản sao nông của object đã cấu hì
 - Thứ tự resolve **mỗi lần mở** (merge nông theo key, giá trị `undefined` không ghi đè):
   **tham số `open()`** > **`field.pickerOptions`** > **`field.adapter`** > **defaults**.
 - `selection` **không bao giờ** lấy từ defaults: luôn do người gọi `open()` hoặc [media field](media-field.md) quyết.
-  `initialCollection` (0.66) cũng vậy. `collections: { showWithoutQuery }` thì lấy được từ defaults.
+  `initialCollection` (0.66) cũng vậy. `collections: { showWithoutQuery }` và `autoSelectFirst` (0.67) thì lấy được từ defaults.
 - Không resolve được adapter hợp lệ → `open()` ném `TypeError` đồng bộ (lỗi lập trình).
 
 ## Mở picker — `TdMediaPicker.open(options)`
@@ -445,12 +445,13 @@ const outcome = await TdMediaPicker.open({
 | `upload` | `{ accept?, maxSize?, multiple? = true, acceptLabel? }` | — | Chuyển cho `td-dropzone` ([dropzone](dropzone.md)). `acceptLabel` (0.33) chỉ là **chữ** trên badge / mô tả tab URL, không phải bộ lọc; thiếu thì suy từ `accept` |
 | `initialCollection` | `{ id: string, label: string }` \| `null` | `null` | 0.66.0: mở **thẳng vào** bộ sưu tập này (breadcrumb + `collectionId` ngay từ request đầu). `capabilities: { collections: false }` của site thắng: khi đó `initialCollection` bị bỏ qua và phiên chạy như phiên thường. `id` ≤ 512 ký tự, `label` cắt còn 200 code point; sai hình dạng → `TypeError`; `null` = không có. **Không** lấy từ defaults. Focus vẫn ở ô tìm. Xem [Bộ sưu tập](#bộ-sưu-tập-0660) |
 | `collections` | `{ showWithoutQuery?: boolean }` | `{ showWithoutQuery: false }` | 0.66.0: `true` → dải bộ sưu tập hiện cả khi chưa gõ tìm. Không phải object → `TypeError`; `null` = bỏ qua |
+| `autoSelectFirst` | `boolean` | `false` | 0.67.0: chọn sẵn asset đầu tiên chọn được của lần tải danh sách đầu — [Tự chọn ảnh đầu](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670). Chỉ `=== true` mới bật; lấy được từ defaults; `open({ autoSelectFirst: false })` tắt riêng lần mở |
 | `crop` | `{ enabled, aspectRatio?, allowFocalPoint? }` | — | 0.35.0: `enabled: true` + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `[0.01, 100]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
 
 - **Một picker một lúc**: gọi `open()` khi đã có picker mở → resolve ngay `{ status: 'cancelled', reason:
   'programmatic' }` + cảnh báo một lần (không chồng picker).
 - `TdMediaPicker.open()` tạo host tạm trên `<body>` và gỡ sau khi đóng.
-- Mở picker **không** tự chọn mục nào (trừ `initialIds`); panel chi tiết ở trạng thái rỗng, "Chèn" disabled.
+- Mặc định mở picker **không** tự chọn mục nào, trừ hai ngoại lệ: `selection.initialIds`, và (0.67, opt-in) [`autoSelectFirst`](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670) chọn sẵn ảnh đầu tiên của lần tải đầu. Không có ngoại lệ nào thì lựa chọn vẫn rỗng và "Chèn" disabled; từ 720px panel chi tiết vẫn **xem trước** asset đầu mà không chọn.
 
 ### Kết quả — `PickerOutcome`
 
@@ -561,7 +562,7 @@ Phát trên host (`<td-media-picker>`, hoặc host tạm của `open()`), `bubbl
 
 | Event | detail | Khi nào |
 |---|---|---|
-| `selection-change` | `{ selection: SelectedMedia[], addedIds: string[], removedIds: string[] }` | Người dùng đổi lựa chọn (không phát khi áp `initialIds`) |
+| `selection-change` | `{ selection: SelectedMedia[], addedIds: string[], removedIds: string[] }` | Người dùng đổi lựa chọn (không phát khi áp `initialIds`, cũng không phát khi `autoSelectFirst` (0.67) chọn sẵn) |
 | `asset-change` | `{ operation: 'upload' \| 'upload-url' \| 'update' \| 'delete', asset?, id?, deduplication? }` | Tải lên xong (file / URL; `deduplication` của `UploadResult`), lưu thông tin thành công, xoá thành công (`id`) |
 | `confirm` | `{ selection }` | Bấm "Chèn" và picker kết thúc với `selected` |
 | `cancel` | `{ reason }` | Picker kết thúc với `cancelled` |
@@ -635,7 +636,7 @@ TdMediaPicker.configureDefaults({ adapter: mediaAdapter, pagination: 'pages' });
   chọn; nếu form chi tiết đang bẩn thì hỏi trước, "Không" → lựa chọn và chi tiết giữ nguyên.
 - **Chế độ nhiều** (giống dcms2): click card hoặc Enter = **chỉ xem** chi tiết, không đổi lựa chọn. Tick (góc trên-phải,
   luôn hiện) và phím tắt bên dưới đổi lựa chọn. Vượt `maxItems` → bị chặn + thông báo "Tối đa {max} mục".
-- **Không bao giờ tự chọn** (khác dcms2). Từ 720px picker tự **xem trước** asset đầu ([Panel chi tiết](#panel-chi-tiết-luôn-mở)) — xem, không chọn.
+- **Mặc định không tự chọn** (khác dcms2): mở ra thì chưa chọn gì và "Chèn" tắt. Từ 720px picker tự **xem trước** asset đầu ([Panel chi tiết](#panel-chi-tiết-luôn-mở)) — xem, không chọn. Ngoại lệ **opt-in** từ 0.67: [`autoSelectFirst`](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670).
 
 **Phím tắt chọn** (thật bằng chuột + bàn phím, test 3 engine). "Cmd" trên macOS, "Ctrl" trên Windows / Linux — trên macOS
 Ctrl+click là menu chuột phải, nên chỉ Cmd dùng được:
@@ -650,6 +651,27 @@ Ctrl+click là menu chuột phải, nên chỉ Cmd dùng được:
 
 Lựa chọn tích luỹ qua nhiều trang. Shift+click không bôi đen chữ trên lưới. Không có Ctrl/Cmd+A (picker phân trang —
 "tất cả" mơ hồ) và Ctrl/Cmd+Space (đụng phím đổi bộ gõ / Spotlight).
+
+### Tự chọn ảnh đầu khi mở — `autoSelectFirst` (0.67.0)
+
+```js
+TdMediaPicker.configureDefaults({ adapter, autoSelectFirst: true }); // một lần ở bootstrap: áp cho mọi lần mở, kể cả ô td-media-field
+TdMediaPicker.open({ adapter, autoSelectFirst: true });              // hoặc từng lần mở (false = tắt riêng lần đó)
+```
+
+Bật thì picker **chọn sẵn asset đầu tiên chọn được** của danh sách lúc mở: "Chèn" bật ngay và khung chi tiết (≥ 720px) xem
+trước đúng asset đó. Mặc định **tắt**: quyết định v0.36.0 (QĐ 69) cố ý không tự chọn, để một cú bấm "Chèn" vội ở ô logo,
+banner, SEO… không chèn nhầm ảnh mới nhất. Option này là ngoại lệ opt-in cho site nào muốn.
+
+| Quy tắc | Chi tiết |
+|---|---|
+| Khi nào | Chỉ **lần tải danh sách đầu tiên** của phiên ("khi mở"). Lần đầu bị lỗi thì "Thử lại" vẫn là lần mở đó (thử lại thành công thì chọn sẵn). Không áp dụng cho tìm kiếm, đổi bộ lọc, phân trang, vào / ra bộ sưu tập, "Thử lại" của một lần tải **khác** lần đầu, hay tải lại sau khi upload |
+| Gõ tìm sớm | Gõ tìm trước khi trang đầu về → danh sách đầu bị thay thế, không tự chọn gì |
+| Chọn gì | Asset **đầu tiên chọn được** (`status: 'ready'`, đúng `selection.kinds`): ảnh đang xử lý hoặc lỗi bị bỏ qua, lấy ảnh kế tiếp; không có ảnh nào chọn được thì không chọn gì. Cả chế độ đơn lẫn nhiều đều chỉ chọn **một** asset |
+| Bỏ qua khi | `selection.initialIds` có phần tử, kể cả khi tải ảnh đó thất bại. Ô [`td-media-field`](media-field.md) đã có ảnh truyền sẵn id của nó, nên chỉ ô còn trống được tự chọn |
+| Sự kiện | **Không** phát `selection-change` (sự kiện đó chỉ cho thay đổi của người dùng, như khi áp `initialIds`). Kết quả `confirm` mang selection như thường; đóng picker vẫn trả `selection: []` |
+| Trợ năng | Không chuyển focus. Live region đọc **một** thông báo: "{n} kết quả. Đã chọn sẵn: {tên}" (`labels.autoSelected`, tên = `asset.name` hoặc id) |
+| Kết hợp | Mở bằng [`initialCollection`](#bộ-sưu-tập-0660) thì "danh sách đầu" là của bộ sưu tập đó |
 
 ## Dialog tải lên
 
@@ -1110,6 +1132,7 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `collections` · `allItems` · `location` (0.66) | "Album" · "Tất cả" · "Vị trí" |
 | `collectionCount` · `collectionName` (0.66) | "{n} ảnh" · "{label}, {n} ảnh" |
 | `collectionsTruncated` · `collectionEntered` · `collectionLeft` (0.66) | "Gõ thêm để thu hẹp" · "{label}: {n} kết quả" · "Tất cả: {n} kết quả" |
+| `autoSelected` (0.67) | "Đã chọn sẵn: {name}" |
 | `empty` · `emptyHint` · `retry` · `back` | "Không có media nào" · "Thử từ khoá khác" · "Thử lại" · "Quay lại" |
 | `detail` · `detailEmpty` · `detailEmptyHint` · `fileName` | "Chi tiết" · "Chọn một ảnh để xem chi tiết" · "Bấm vào ảnh trong danh sách bên trái" · "Tên file" |
 | `save` · `saved` | "Lưu" · "Đã lưu thay đổi" |

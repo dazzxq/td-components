@@ -2,6 +2,28 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.67.0
+
+**`td-media-picker`: chọn sẵn ảnh đầu khi mở (`autoSelectFirst`, opt-in)** (owner kit, 2026-10-11;
+[plan](docs/internal/plans/v0.67.0-auto-select-first.md), [ADR 0013 § Bổ sung v0.67](docs/internal/decisions/0013-media-picker-boundary.md)).
+
+### Added
+
+- Option `autoSelectFirst` (boolean, mặc định `false`; trong `open()` và `configureDefaults()`): picker chọn sẵn asset đầu tiên
+  chọn được của lần tải danh sách đầu, nên "Chèn" bật ngay và khung chi tiết xem trước đúng asset đó.
+  - Chỉ lần tải đầu của phiên. Lần đầu bị lỗi thì "Thử lại" vẫn là lần mở đó. Không áp dụng cho tìm kiếm, bộ lọc, phân trang,
+    bộ sưu tập, "Thử lại" của một lần tải khác, hay gõ tìm trước khi trang đầu về.
+  - Bỏ qua khi `selection.initialIds` có phần tử, nên ô `td-media-field` đã có ảnh không bị đè; ô còn trống thì được chọn sẵn.
+  - Chọn bằng code như `initialIds`: không phát `selection-change`; kết quả `confirm` mang selection; đóng picker vẫn trả
+    `selection: []`.
+  - Nhãn mới `autoSelected` ("Đã chọn sẵn: {name}"), gộp vào thông báo số kết quả của live region; không chuyển focus.
+
+### Notes
+
+- Mặc định vẫn **tắt**. v0.36.0 (QĐ 69) cố ý không tự chọn để một cú bấm "Chèn" vội không chèn nhầm; nếu bật cho mọi site thì ô logo,
+  banner, SEO… sẽ chèn ảnh mới nhất. Site bật một lần: `TdMediaPicker.configureDefaults({ adapter, autoSelectFirst: true })`.
+  Phiên không bật option giữ DOM, request và hành vi giống từng byte 0.66.
+
 ## 0.66.0
 
 **Bộ sưu tập (album) trong `td-media-picker`** — yêu cầu K8 của dsuite (A2.15, 2026-10-10), owner kit duyệt 2026-10-11.
