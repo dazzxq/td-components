@@ -35,6 +35,7 @@ Liên quan: [ADR 0006](0006-modal-no-backdrop-close.md) (modal không đóng b�
      tháng); lựa chọn trung gian không phát `change`, không đóng — chỉ lựa chọn ở khung gốc của mode mới ghi.
    - **Esc luôn đóng cả dialog và huỷ, ở mọi khung** (APG; một luật). Quay lại mà không chọn = bấm lại nút tháng / năm
      đang bật trên đầu lịch (`aria-pressed`). Phương án bác: Esc lùi một khung — hai nghĩa cho một phím, lệch APG.
+     (Ngoại lệ có chủ ý ở chỗ khác: trong một bộ sưu tập của media picker, Esc = Quay lại — xem [ADR 0013 › Bổ sung v0.66](0013-media-picker-boundary.md#bổ-sung-v066-k8).)
    - Mỗi lần đổi khung, focus vào ô hoạt động của khung mới; vùng live đọc tiêu đề khung một lần.
    - Lưới ngày là `<table role="grid">` (M0: `ariaSnapshot()` giống từng ký tự ở 3 engine; khác `div` ở chỗ `abbr` của `<th>` không vào tên trợ năng ⇒ `<th>` mang cả `abbr` lẫn `aria-label` = tên đủ của thứ). Lưới tháng / năm là `div[role=grid]` > `div[role=row]` > `div[role=gridcell]` (không dùng `button` mang `role=gridcell`).
 5. **Tuần bắt đầu Thứ Hai**, cố định. Không cấu hình.

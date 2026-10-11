@@ -44,7 +44,13 @@
  * Events on the host (bubbles + composed): `selection-change { selection, addedIds, removedIds }` (user changes only),
  * `asset-change { operation: 'upload'|'upload-url'|'update'|'delete', asset?, id?, deduplication? }`,
  * `confirm { selection }`, `cancel { reason }`,
- * `operation-error { operation: 'list'|'facets'|'get'|'upload'|'upload-url'|'update'|'delete'|'download', code, retryable }`.
+ * `operation-error { operation: 'list'|'facets'|'get'|'upload'|'upload-url'|'update'|'delete'|'download'|'collections', code,
+ * retryable }`, v0.66.0 (K8) `collection-change { collection: { id, label } | null, reason: 'enter'|'initial'|'back' }`.
+ *
+ * v0.66.0 (K8, plan v0.66.0-media-collections): a collection-enabled session (`adapter.collections`, or
+ * `initialCollection`) also builds, inside the results section before the grid, a breadcrumb
+ * `<nav class="td-media-picker__crumbs">` and the collection strip `.td-media-picker__colls` (heading, `role=list` of
+ * `button.td-media-picker__coll`, the truncated hint). Other sessions keep the v0.65 DOM and requests exactly.
  *
  * @element td-media-picker
  * @property {object} options - OpenMediaPickerOptions (merged over TdMediaPicker.defaults at open())
@@ -53,6 +59,7 @@
  * @fires confirm
  * @fires cancel
  * @fires operation-error
+ * @fires collection-change
  */
 import { matchesBelow, mqBelow } from '../utils/breakpoints.js';
 import { openDialogLayer } from './dialog-layer.js';
@@ -68,6 +75,7 @@ import {
   DefaultsRegistry, resolveOptions, cancelledOutcome, buildOutcome, normalizeAsset, normalizePage, normalizeFacets,
   normalizeFields, normalizeError, canDo, buildListRequest, requestKey, LatestRequest, SelectionModel, InitialLoad,
   Debouncer, SessionCache, formatLabel, PageState, defaultTitle, normalizeDeleteResult, normalizeDownloadResult,
+  normalizeCollections,
 } from '../utils/media-picker-core.js';
 import { createFacetControl, FieldForm, FIELD_LABELS } from './media-picker-fields.js';
 import { TdMenu } from './td-menu.js';
@@ -232,6 +240,15 @@ export class TdMediaPicker extends HTMLElement {
     blockedHeading: 'Không xoá được',
     blockedText: 'Media đang được dùng ở {n} nơi.',
     blockedMore: '… và {k} nơi khác',
+    /** v0.66.0 (K8): collections (albums) */
+    collections: 'Album',
+    allItems: 'Tất cả',
+    location: 'Vị trí',
+    collectionCount: '{n} ảnh',
+    collectionName: '{label}, {n} ảnh',
+    collectionsTruncated: 'Gõ thêm để thu hẹp',
+    collectionEntered: '{label}: {n} kết quả',
+    collectionLeft: 'Tất cả: {n} kết quả',
     kind: { image: 'Ảnh', video: 'Video', file: 'File' },
     status: { pending: 'Đang chờ', processing: 'Đang xử lý', failed: 'Lỗi', archived: 'Đã lưu trữ' },
     meta: {
@@ -373,6 +390,9 @@ export class TdMediaPicker extends HTMLElement {
   _setup(opts) {
     const id = `td-media-picker-${++uid}`;
     const mode = opts.selection.mode;
+    // v0.66.0 (K8): the site's explicit `capabilities.collections: false` wins over `initialCollection` — a legacy session
+    const collOff = !!opts.capabilities && opts.capabilities.collections === false;
+    const initialCollection = collOff ? null : opts.initialCollection;
     const s = {
       id,
       opts,
@@ -392,7 +412,8 @@ export class TdMediaPicker extends HTMLElement {
       /** @type {Map<string, HTMLElement>} grid items by id */
       items: new Map(),
       req: { list: new LatestRequest(), facets: new LatestRequest(), detail: new LatestRequest(),
-        update: new LatestRequest(), reload: new LatestRequest(), download: new LatestRequest() },
+        update: new LatestRequest(), reload: new LatestRequest(), download: new LatestRequest(),
+        collections: new LatestRequest() },
       /** @type {Map<string, LatestRequest>} delete slot per asset (decision 24) */
       del: new Map(),
       deleteConfirmId: null,
@@ -419,7 +440,20 @@ export class TdMediaPicker extends HTMLElement {
       ctrl: new AbortController(),
       announceQueued: false,
       pendingAnnounce: '',
+      // v0.66.0 (K8): a collection-enabled session (adapter.collections, or initialCollection) — the only kind that sends
+      // `collectionId` and builds the strip / breadcrumb; `collection` = the one we are in; `collCards` = the strip shown
+      // (+ its provenance `key`); `collSnap` = what Back restores ({ query, cards, scrollLeft })
+      collEnabled: !collOff && (!!opts.capabilitiesResolved.collections || !!initialCollection),
+      collection: null,
+      collCards: null,
+      collSnap: null,
     };
+    if (initialCollection) {
+      // decision 10: open inside the collection; Back returns to the top level with `initialQuery` (no strip snapshot)
+      s.collection = { id: initialCollection.id, label: initialCollection.label };
+      s.collSnap = { query: s.query, cards: null, scrollLeft: 0 };
+      s.query = '';
+    }
     // review SEC-3 r2: an asset keeps only the metadata keys of its field descriptors
     s.metaKeys = s.assetFields.map((f) => f.key);
     this._s = s;
@@ -462,7 +496,14 @@ export class TdMediaPicker extends HTMLElement {
     }
     this._renderSelection();
     this._loadFacets();
-    this._loadPage('reload');
+    if (s.collection) {
+      const c = { ...s.collection };
+      this._loadPage('reload', { announce: (n) => this._t('collectionEntered', { label: c.label, n }) });
+      queueMicrotask(() => { if (this._live(s)) this._emit('collection-change', { collection: c, reason: 'initial' }); });
+    } else {
+      this._loadPage('reload');
+      if (s.collEnabled) this._loadCollections();
+    }
   }
 
   /** @private build the root (static skeleton markup + DOM-API content) */
@@ -556,6 +597,7 @@ export class TdMediaPicker extends HTMLElement {
       card.append(thumb, info);
       e.skeleton.appendChild(card);
     }
+    if (s.collEnabled) this._buildCollections();
     const retry = makeButton(t('retry'), { size: 'sm', cls: 'td-media-picker__retry' });
     retry.addEventListener('click', () => { if (usable(retry)) this._loadPage(s.lastHow); });
     e.error.appendChild(retry);
@@ -587,6 +629,233 @@ export class TdMediaPicker extends HTMLElement {
     this._bindGrid();
     this._renderDetail();
     return root;
+  }
+
+  /**
+   * @private v0.66.0 (K8, decisions 4-5): breadcrumb + collection strip, before the grid inside the results section
+   * (DOM APIs only; built in collection-enabled sessions only, so other sessions keep the v0.65 DOM).
+   */
+  _buildCollections() {
+    const s = this._s;
+    const e = s.els;
+    const t = (k, p) => this._t(k, p);
+    const crumbs = document.createElement('nav');
+    crumbs.className = 'td-media-picker__crumbs';
+    crumbs.setAttribute('aria-label', t('location'));
+    crumbs.hidden = true;
+    const all = makeButton(t('allItems'), { variant: 'ghost', size: 'sm', cls: 'td-media-picker__crumb-all' });
+    all.addEventListener('click', () => { if (usable(all)) this._leaveCollection(); });
+    const sep = document.createElement('span');
+    sep.className = 'td-media-picker__crumb-sep';
+    sep.setAttribute('aria-hidden', 'true');
+    sep.textContent = '/';
+    const current = document.createElement('span');
+    current.className = 'td-media-picker__crumb-current';
+    current.setAttribute('aria-current', 'page');
+    const back = makeButton(t('back'), { size: 'sm', icon: 'back', cls: 'td-media-picker__coll-back' });
+    back.addEventListener('click', () => { if (usable(back)) this._leaveCollection(); });
+    crumbs.append(all, sep, current, back);
+    const box = document.createElement('div');
+    box.className = 'td-media-picker__colls';
+    box.hidden = true;
+    const heading = document.createElement('h4');
+    heading.className = 'td-media-picker__colls-heading';
+    heading.id = `${s.id}-ch`;
+    heading.textContent = t('collections');
+    const list = document.createElement('div');
+    list.className = 'td-media-picker__collections';
+    list.setAttribute('role', 'list');
+    list.setAttribute('aria-labelledby', heading.id);
+    const hint = document.createElement('p');
+    hint.className = 'td-media-picker__colls-hint';
+    hint.textContent = t('collectionsTruncated');
+    hint.hidden = true;
+    box.append(heading, list, hint);
+    e.results.insertBefore(crumbs, e.grid);
+    e.results.insertBefore(box, e.grid);
+    Object.assign(e, { crumbs, crumbAll: all, crumbCurrent: current, collBack: back, colls: box, collList: list, collHint: hint });
+    this._renderCrumbs();
+  }
+
+  /** @private v0.66.0 (K8): the breadcrumb follows `s.collection` (shown only inside one) */
+  _renderCrumbs() {
+    const s = this._s;
+    const e = s.els;
+    if (!e.crumbs) return;
+    e.crumbs.hidden = !s.collection;
+    e.crumbCurrent.textContent = s.collection ? s.collection.label : '';
+  }
+
+  /**
+   * @private v0.66.0 (K8, decision 1/4): the strip may show — the adapter has `collections` (capability), we are at the
+   * top level, and something is typed (or `collections.showWithoutQuery`)
+   */
+  _collEligible() {
+    const s = this._s;
+    return !!s.collEnabled && !!s.opts.capabilitiesResolved.collections && !s.collection
+      && (!!s.query || s.opts.collections.showWithoutQuery === true);
+  }
+
+  /** @private provenance key of a strip: the `{ query, filters }` of the request that produced it (decision 6) */
+  _collKey(query = this._s.query) {
+    return requestKey({ query, filters: this._s.filters });
+  }
+
+  /** @private hide the strip (its cards are dropped) */
+  _hideCollections() {
+    const s = this._s;
+    const e = s.els;
+    s.collCards = null;
+    if (!e.colls) return;
+    e.colls.hidden = true;
+    e.collHint.hidden = true;
+    e.collList.replaceChildren();
+  }
+
+  /**
+   * @private v0.66.0 (K8, decisions 4, 7): (re)load the strip, latest-wins in `s.req.collections`. Not eligible → abort +
+   * hide. A new eligible request hides the old cards at once; a result is dropped unless `{ query, filters, top level }`
+   * still match the call. Error → hidden + `operation-error` (`collections`); the grid is never blocked.
+   */
+  _loadCollections() {
+    const s = this._s;
+    if (!this._live(s) || !s.els.colls) return;
+    s.req.collections.abort();
+    this._hideCollections();
+    if (!this._collEligible()) return;
+    const query = s.query;
+    const key = this._collKey(query);
+    const filters = buildListRequest({ filters: s.filters, pageSize: 0 }).filters;
+    s.req.collections.run((signal) => s.adapter.collections({ query, filters,
+      ...(s.context !== undefined ? { context: s.context } : {}), signal })).then((r) => {
+      if (r.stale || !this._live(s)) return;
+      if (!this._collEligible() || s.query !== query || this._collKey() !== key) return;
+      let res;
+      try {
+        if ('error' in r) throw r.error;
+        res = normalizeCollections(r.value, { safeUrl: safeMediaUrl });
+      } catch (err) {
+        const n = normalizeError(err, null, { operation: 'collections' });
+        if (n) this._emit('operation-error', { operation: 'collections', code: n.code, retryable: n.retryable });
+        return;
+      }
+      this._renderCollections({ items: res.items, truncated: res.truncated, key });
+    });
+  }
+
+  /** @private one strip (text only; `description` → the button title; unsafe / missing cover → an icon) */
+  _renderCollections(cards) {
+    const s = this._s;
+    const e = s.els;
+    const t = (k, p) => this._t(k, p);
+    e.collList.replaceChildren();
+    if (!cards.items.length) {
+      this._hideCollections();
+      return;
+    }
+    s.collCards = cards;
+    for (const c of cards.items) {
+      const li = document.createElement('div');
+      li.setAttribute('role', 'listitem');
+      li.className = 'td-media-picker__coll-item';
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'td-media-picker__coll';
+      b.setAttribute('data-id', c.id);
+      b.setAttribute('aria-label', c.count !== undefined ? t('collectionName', { label: c.label, n: c.count }) : c.label);
+      if (c.description) b.title = c.description;
+      const cover = document.createElement('span');
+      cover.className = 'td-media-picker__coll-cover';
+      cover.setAttribute('aria-hidden', 'true');
+      if (c.coverUrl) {
+        const img = document.createElement('img');
+        img.alt = '';
+        img.setAttribute('loading', 'lazy');
+        img.setAttribute('decoding', 'async');
+        img.setAttribute('referrerpolicy', 'no-referrer');
+        img.src = c.coverUrl;
+        cover.appendChild(img);
+      } else {
+        const ic = document.createElement('span');
+        ic.className = 'td-media-picker__coll-icon';
+        const svg = tdIcon('layers', { size: 'l' });
+        if (svg) ic.appendChild(svg);
+        cover.appendChild(ic);
+      }
+      const name = document.createElement('span');
+      name.className = 'td-media-picker__coll-name';
+      name.setAttribute('aria-hidden', 'true');
+      name.textContent = c.label;
+      b.append(cover, name);
+      if (c.count !== undefined) {
+        const n = document.createElement('span');
+        n.className = 'td-media-picker__coll-count';
+        n.setAttribute('aria-hidden', 'true');
+        n.textContent = t('collectionCount', { n: c.count });
+        b.appendChild(n);
+      }
+      const card = { id: c.id, label: c.label };
+      b.addEventListener('click', () => { if (b.isConnected) this._enterCollection(card); }); // a card hidden by a newer request is stale
+      li.appendChild(b);
+      e.collList.appendChild(li);
+    }
+    e.collHint.hidden = !cards.truncated;
+    e.colls.hidden = false;
+  }
+
+  /**
+   * @private v0.66.0 (K8, decision 5): enter a collection from the strip. Snapshot = the canonical query (the trimmed
+   * LIVE search value, even when the debounce has not committed it), the strip + its provenance, its scrollLeft; then
+   * the search is cleared directly (never through _applyQuery), facets + page 1 reload inside the collection. No discard
+   * confirmation (decision 9).
+   * @param {{ id: string, label: string }} card
+   */
+  _enterCollection(card) {
+    const s = this._s;
+    if (!this._live(s) || s.collection) return;
+    const f = s.els.search;
+    const query = f ? String(f.getValue?.() ?? '').trim() : s.query;
+    s.collSnap = { query, cards: s.collCards, scrollLeft: s.els.collList.scrollLeft };
+    s.debounce.cancel();
+    s.req.collections.abort();
+    if (f) f.setValue('');
+    s.query = '';
+    s.collection = { id: card.id, label: card.label };
+    this._hideCollections();
+    this._renderCrumbs();
+    this._loadFacets();
+    this._loadPage('reload', { reset: true, announce: (n) => this._t('collectionEntered', { label: card.label, n }) });
+    this._focus(s.els.heading);
+    this._emit('collection-change', { collection: { ...s.collection }, reason: 'enter' });
+  }
+
+  /**
+   * @private v0.66.0 (K8, decision 6): back to the top level (Back, "Tất cả", Escape). The canonical query goes back into
+   * the search and is committed; facets + page 1 reload; the saved strip (+ scrollLeft) comes back only when its
+   * provenance `{ query, filters }` equals the current one, else `collections()` runs when eligible.
+   */
+  _leaveCollection() {
+    const s = this._s;
+    if (!this._live(s) || !s.collection) return;
+    const snap = s.collSnap || { query: '', cards: null, scrollLeft: 0 };
+    s.collSnap = null;
+    s.debounce.cancel();
+    const f = s.els.search;
+    if (f) f.setValue(snap.query);
+    s.query = snap.query;
+    s.collection = null;
+    this._renderCrumbs();
+    this._loadFacets();
+    this._loadPage('reload', { reset: true, announce: (n) => this._t('collectionLeft', { n }) });
+    if (snap.cards && snap.cards.key === this._collKey() && this._collEligible()) {
+      s.req.collections.abort();
+      this._renderCollections(snap.cards);
+      s.els.collList.scrollLeft = snap.scrollLeft;
+    } else {
+      this._loadCollections();
+    }
+    this._focus(s.els.heading);
+    this._emit('collection-change', { collection: null, reason: 'back' });
   }
 
   /** @private upload button, search, facets container, pager (decisions 7-10, 13) */
@@ -781,6 +1050,7 @@ export class TdMediaPicker extends HTMLElement {
     if (reconciled) s.cache.invalidateLists();
     this._loadFacets({ fresh: reconciled });
     this._loadPage('reload', { reset: true });
+    if (s.collEnabled) this._loadCollections(); // v0.66.0 (K8, decision 7): the strip follows the filters
   }
 
   /** @private the inner <input> of the search field */
@@ -801,6 +1071,8 @@ export class TdMediaPicker extends HTMLElement {
         themeFrom: s.root,
         adapter: s.adapter,
         context: s.context,
+        // v0.66.0 (K8, decision 3): the collection in view (null = top level), collection-enabled sessions only
+        ...(s.collEnabled ? { collectionId: s.collection ? s.collection.id : null } : {}),
         sources: { ...s.sources },
         upload: s.opts.upload,
         uploadFields: s.uploadFields,
@@ -867,7 +1139,10 @@ export class TdMediaPicker extends HTMLElement {
   /** @private */
   _listState() {
     const s = this._s;
-    return { query: s.query, filters: s.filters, pageSize: s.pageSize, context: s.context, kinds: s.kinds };
+    const st = { query: s.query, filters: s.filters, pageSize: s.pageSize, context: s.context, kinds: s.kinds };
+    // v0.66.0 (K8, decision 3): only a collection-enabled session has the key (null = top level)
+    if (s.collEnabled) st.collectionId = s.collection ? s.collection.id : null;
+    return st;
   }
 
   /** @private */
@@ -879,6 +1154,7 @@ export class TdMediaPicker extends HTMLElement {
     s.query = q;
     this._loadFacets();
     this._loadPage('reload', { reset: true });
+    if (s.collEnabled) this._loadCollections(); // v0.66.0 (K8, decision 4)
   }
 
   /**
@@ -941,7 +1217,7 @@ export class TdMediaPicker extends HTMLElement {
           return;
         }
       }
-      this._renderPage(page, !o.nav && !o.keepGrid);
+      this._renderPage(page, !o.nav && !o.keepGrid, o.announce);
       this._renderPager();
       if (o.nav) {
         s.els.results.scrollTop = 0;
@@ -983,8 +1259,12 @@ export class TdMediaPicker extends HTMLElement {
     e.grid.hidden = false;
   }
 
-  /** @private replace the grid content with a page (silent clear before, silent re-select after) */
-  _renderPage(page, announce) {
+  /**
+   * @private replace the grid content with a page (silent clear before, silent re-select after)
+   * @param {object} page @param {boolean} announce
+   * @param {(n: number) => string} [announceText] v0.66.0 (K8): the results count merged into one message
+   */
+  _renderPage(page, announce, announceText) {
     const s = this._s;
     const grid = s.els.grid;
     if (typeof grid.clear === 'function') grid.clear();
@@ -1008,7 +1288,10 @@ export class TdMediaPicker extends HTMLElement {
       this._showResults();
     }
     this._syncGrid();
-    if (announce) this._announce(this._t('resultsCount', { n: page.total ?? page.items.length }));
+    if (announce) {
+      const n = page.total ?? page.items.length;
+      this._announce(announceText ? announceText(n) : this._t('resultsCount', { n }));
+    }
     this._autoPreview(page);
   }
 
@@ -1076,6 +1359,9 @@ export class TdMediaPicker extends HTMLElement {
     const s = this._s;
     if (!s || this._settled || typeof s.adapter.facets !== 'function') return;
     const state = { query: s.query, filters: s.filters };
+    // v0.66.0 (K8, decision 3): facets are computed inside the collection; key + request carry it (enabled sessions only)
+    const coll = s.collEnabled ? { collectionId: s.collection ? s.collection.id : null } : {};
+    Object.assign(state, coll);
     const key = requestKey(state, null);
     // `fresh`: the descriptors changed under us (reconciliation) — a cached older descriptor set must never come back
     const cached = fresh ? undefined : s.cache.getFacets(key);
@@ -1085,7 +1371,7 @@ export class TdMediaPicker extends HTMLElement {
       return;
     }
     s.req.facets.run((signal) => s.adapter.facets({ query: s.query, filters: buildListRequest({ ...state, pageSize: 0 }).filters,
-      ...(s.context !== undefined ? { context: s.context } : {}), signal })).then((r) => {
+      ...(s.context !== undefined ? { context: s.context } : {}), ...coll, signal })).then((r) => {
       if (r.stale || !this._live(s)) return;
       if ('error' in r) {
         const n = normalizeError(r.error, null, { operation: 'facets' });
@@ -1166,6 +1452,7 @@ export class TdMediaPicker extends HTMLElement {
       s.cache.invalidateLists(); // older descriptor sets (and pages) cached for these filters are now stale
       this._loadFacets({ fresh: true });
       this._loadPage('reload', { reset: true });
+      if (s.collEnabled) this._loadCollections(); // v0.66.0 (K8): the filters in force changed
     }
     return filtersChanged;
   }
@@ -1183,6 +1470,7 @@ export class TdMediaPicker extends HTMLElement {
     if (s.els.search) s.query = String(s.els.search.getValue?.() ?? '').trim();
     this._loadFacets();
     this._loadPage('reload', { reset: true });
+    if (s.collEnabled) this._loadCollections(); // v0.66.0 (K8, decision 7)
   }
 
   // --- grid + selection (decisions 11-12, 15-17) ---
@@ -2284,7 +2572,10 @@ export class TdMediaPicker extends HTMLElement {
     });
   }
 
-  /** @private Escape on the picker layer (popups / nested dialogs handle theirs): clears a non-empty search first */
+  /**
+   * @private Escape on the picker layer (popups / nested dialogs handle theirs): clears a non-empty search first; then
+   * (v0.66.0) leaves the collection; else closes
+   */
   _onEscape() {
     const s = this._s;
     if (!s || this._settled) return;
@@ -2293,6 +2584,10 @@ export class TdMediaPicker extends HTMLElement {
       f.setValue('');
       s.debounce.cancel();
       this._applyQuery('');
+      return;
+    }
+    if (s.collection) { // v0.66.0 (K8, decision 8): inside a collection Escape goes back, never closes
+      this._leaveCollection();
       return;
     }
     this._requestFinish('cancel', 'escape');

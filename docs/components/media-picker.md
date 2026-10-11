@@ -10,7 +10,7 @@ asset — picker **không** tự chèn gì vào trang. Bật option `crop` (ch�
 kèm toạ độ crop + điểm trọng tâm (0.35.0, không tạo file mới).
 
 Kit **không biết** backend của bạn. Site đưa vào một **adapter** — object gồm vài hàm `async` (`list`, `get`, tuỳ chọn
-`facets`, `upload`, `uploadFromUrl`, `update`, `delete`, `download`) tự gọi API của mình và trả dữ liệu theo đúng hình
+`facets`, `upload`, `uploadFromUrl`, `update`, `delete`, `download`, `collections`) tự gọi API của mình và trả dữ liệu theo đúng hình
 dạng ở mục [Hợp đồng adapter](#hợp-đồng-adapter). Endpoint, envelope JSON, CSRF, **quyền**, lưu trữ, kiểm file, chặn SSRF,
 kiểm usage trước khi xoá đều là việc của site ([ADR 0013](../internal/decisions/0013-media-picker-boundary.md)).
 
@@ -23,7 +23,7 @@ chọn → [`<td-media-grid>`](media-grid.md) là đủ.
 | Import | `import '@dazzxq/td-components/media-picker'` (class: `import { TdMediaPicker } from '@dazzxq/td-components'`) |
 | Loại | API JS tĩnh (`TdMediaPicker.open()`) + custom element khai báo `<td-media-picker>` |
 | Form-associated | không (ô form là [`<td-media-field>`](media-field.md)) |
-| Từ phiên bản | 0.32.0 (cần `td.css`); 0.33.0 bố cục dcms2, tải từ URL, xoá, tải về, copy link, phân trang số; 0.35.0 bước cắt ảnh (option [`crop`](#cắt-ảnh--option-crop-0350)) |
+| Từ phiên bản | 0.32.0 (cần `td.css`); 0.33.0 bố cục dcms2, tải từ URL, xoá, tải về, copy link, phân trang số; 0.35.0 bước cắt ảnh (option [`crop`](#cắt-ảnh--option-crop-0350)); 0.66.0 [bộ sưu tập](#bộ-sưu-tập-0660) (album, tuỳ chọn) |
 
 ## Ví dụ nhanh
 
@@ -56,7 +56,7 @@ document.querySelector('#insert-image').addEventListener('click', async () => {
 | Dialog full viewport, focus, Escape theo tầng, khoá cuộn, hộp xác nhận "bỏ thay đổi" / "xoá" | Endpoint, envelope JSON, map DTO → `MediaAsset` |
 | Ô tìm (debounce 250ms), facet gọn, phân trang (cursor hoặc số trang); request cũ không bao giờ thắng | Auth, CSRF, 2FA / xác thực lại, **quyền**, audit, rate limit |
 | Trạng thái đang tải (30 card skeleton) / rỗng / lỗi / "Thử lại" | Chuẩn hoá lỗi thành `MediaAdapterError` (chữ an toàn cho người dùng) |
-| Lưới card + panel chi tiết, chọn đơn / nhiều + `maxItems` | Album, brand, tag, bản quyền… (đưa vào qua facet + descriptor) |
+| Lưới card + panel chi tiết, chọn đơn / nhiều + `maxItems` | Album, brand, tag, bản quyền… (đưa vào qua facet + descriptor; muốn album là **cấp điều hướng** có thẻ + breadcrumb thì cài [`collections`](#bộ-sưu-tập-0660)) |
 | Dialog tải lên: tiến độ, huỷ, "dùng lại ảnh cũ"; ô URL (kiểm cú pháp cho **tiện**, không phải bảo mật) | Kiểm file thật (magic byte, re-encode, dung lượng), dedup SHA-256, **chặn SSRF** khi tải từ URL |
 | Nút Xoá + hộp xác nhận + hiển thị danh sách "đang được dùng" do server trả | **Kiểm usage + quyền trước khi xoá** — kit không bao giờ tự kiểm |
 | Tải về (`<a download>` tạm, blob không bao giờ mở trong tab), Copy link | URL tải ký / `Content-Disposition`, bảng `media_usages`, chèn vào nội dung |
@@ -231,7 +231,7 @@ focus vào ô tìm kiếm vẫn đúng thời điểm cũ. Trước 0.62.0 picke
 
 Typedef JSDoc nằm trong `src/utils/media-picker-core.js` (đúng tên / trường của hợp đồng dsuite). Interface **chốt từ
 0.32.0**; 0.33.0 chỉ **thêm** phần tuỳ chọn (`uploadFromUrl`, `capabilities.uploadFromUrl` / `copyLink`,
-`MediaListRequest.page`) — adapter 0.32 chạy y nguyên.
+`MediaListRequest.page`), 0.66.0 thêm `collections` + `collectionId` — adapter 0.32 chạy y nguyên.
 
 ```ts
 type Scalar = string | number | boolean | null;
@@ -243,6 +243,7 @@ interface MediaListRequest {
   cursor: string | null;                  // opaque với kit (null = trang đầu; luôn null ở pagination 'pages')
   page?: number;                          // 0.33: chỉ ở pagination 'pages' — số trang, bắt đầu từ 1
   limit: number;                          // = pageSize (mặc định 30)
+  collectionId?: string | null;           // 0.66: CHỈ phiên có bộ sưu tập — null = cấp ngoài, id = đang trong bộ sưu tập
   sort?: { key: string; direction: 'asc' | 'desc' };   // kit không đặt (muốn sắp xếp: facet key `sort`)
   context?: unknown;                      // chuyển nguyên từ options.context, kit không đọc
   kinds: ('image' | 'video' | 'file')[] | null;        // từ selection.kinds — adapter NÊN lọc
@@ -296,7 +297,11 @@ interface MediaCapabilities {
   delete: boolean; downloadOriginal: boolean;    // mặc định false — site bật tường minh
   uploadFromUrl: boolean;                        // 0.33: suy ra !!adapter.uploadFromUrl
   copyLink: boolean;                             // 0.33: mặc định false
+  collections: boolean;                          // 0.66: suy ra !!adapter.collections (cờ của PHIÊN, không đọc từ asset.capabilities)
 }
+
+// 0.66 — thẻ bộ sưu tập (album) do adapter.collections() trả về
+interface CollectionCard { id: string; label: string; count?: number; coverUrl?: string; description?: string }
 
 interface UploadProgress { loaded: number; total?: number; percent?: number }
 interface UploadResult {
@@ -320,12 +325,15 @@ interface MediaAdapterError extends Error {
 interface MediaPickerAdapter {
   list(request: MediaListRequest): Promise<MediaPage>;                          // bắt buộc
   get(id: string, o: { context?: unknown; signal: AbortSignal }): Promise<MediaAsset>;   // bắt buộc
-  facets?(request: { query: string; filters: Record<string, FilterValue>; context?: unknown; signal: AbortSignal })
-    : Promise<FacetDescriptor[]>;
-  upload?(file: File, o: { fields: Record<string, unknown>; context?: unknown; signal: AbortSignal;
-    onProgress(p: UploadProgress): void }): Promise<UploadResult>;
-  uploadFromUrl?(url: string, o: { fields: Record<string, unknown>; context?: unknown; signal: AbortSignal;
-    onProgress?(p: UploadProgress): void }): Promise<UploadResult>;             // 0.33
+  facets?(request: { query: string; filters: Record<string, FilterValue>; context?: unknown; collectionId?: string | null;
+    signal: AbortSignal }): Promise<FacetDescriptor[]>;                         // 0.66: collectionId (phiên có bộ sưu tập)
+  upload?(file: File, o: { fields: Record<string, unknown>; context?: unknown; collectionId?: string | null;
+    signal: AbortSignal; onProgress(p: UploadProgress): void }): Promise<UploadResult>;
+  uploadFromUrl?(url: string, o: { fields: Record<string, unknown>; context?: unknown; collectionId?: string | null;
+    signal: AbortSignal; onProgress?(p: UploadProgress): void }): Promise<UploadResult>;             // 0.33
+  collections?(request: { query: string; filters: Record<string, FilterValue>; context?: unknown; signal: AbortSignal })
+    : Promise<{ items: CollectionCard[]; truncated?: boolean }>;                // 0.66 — xem "Bộ sưu tập"
+
   update?(id: string, patch: { fields: Record<string, unknown>; version?: string | number },
     o: { context?: unknown; signal: AbortSignal }): Promise<MediaAsset>;
   delete?(id: string, o: { context?: unknown; signal: AbortSignal }): Promise<DeleteResult>;
@@ -347,6 +355,8 @@ có `pixels` và kit kiểm được tỉ lệ — preview lệch tỉ lệ > 1 
 - Mục sai `kinds` (khi có `selection.kinds`) bị **ẩn** dù adapter không lọc; mục `status ≠ 'ready'` hiện nhưng **không
   chọn được** (thông báo `labels.notReady`).
 - Facet / descriptor sai kiểu hoặc trùng `key` → bỏ (cái đầu thắng) + cảnh báo.
+- 0.66: thẻ bộ sưu tập sai `id` / thiếu `label` / `id` trùng → bỏ; `coverUrl` không qua cổng URL → thẻ hiện icon thay ảnh;
+  `collections()` trả thứ không phải `{ items: [] }` → coi như lỗi `server` (chi tiết ở [Bộ sưu tập](#bộ-sưu-tập-0660)).
 - Giá trị option là `Scalar` và **giữ đúng kiểu**: `1` khác `"1"`, `null`, `false` đều đến adapter nguyên kiểu (trong
   `filters` và trong `update().fields`).
 - `UploadResult` sai hợp đồng (không phải `created`, hoặc `exact-reused` mà `matchedAssetId !== asset.id`), `DeleteResult` /
@@ -354,7 +364,7 @@ có `pixels` và kit kiểm được tỉ lệ — preview lệch tỉ lệ > 1 
 
 ### Kit gọi adapter khi nào, với signal nào
 
-Mỗi "khe" (`list`, `facets`, `get` chi tiết, `update`, trang, `delete` theo asset, `download`, `uploadFromUrl`) chỉ có
+Mỗi "khe" (`list`, `facets`, `collections`, `get` chi tiết, `update`, trang, `delete` theo asset, `download`, `uploadFromUrl`) chỉ có
 **một** request còn hiệu lực: gọi mới → abort `signal` cũ; kết quả về muộn bị **bỏ** kể cả khi adapter phớt lờ `signal`
 (latest-wins). Đóng picker → abort **mọi** request đang chạy, kể cả upload. Đóng dialog tải lên → abort các tác vụ của nó.
 
@@ -366,6 +376,7 @@ xoá cache facet; đóng picker xoá hết. Không localStorage, không cache li
 |---|---|---|
 | `list` | Mở picker; gõ ô tìm (**debounce 250ms**; Enter = gọi ngay); đổi facet (về trang 1); đổi trang; "Thử lại"; sau upload (trang 1) / update / xoá (trang hiện tại) | Có `list` mới (đổi query / filter; `pages`: bấm trang khác); đóng picker |
 | `facets` | Mở picker; cùng nhịp với `list` do đổi query / filter (cùng query + filter đã tải → dùng lại); sau upload / update / xoá | Như `list` |
+| `collections` (0.66) | Chỉ khi adapter có hàm này, đang ở **cấp ngoài** và đã gõ tìm (hoặc bật `showWithoutQuery`): sau debounce, mở picker, đổi facet, quay lại từ một bộ sưu tập (nếu không dùng lại được dải cũ) | Có `collections` mới; xoá hết chữ tìm; vào bộ sưu tập; đóng picker |
 | `get` (initial) | Mở picker có `selection.initialIds`: song song từng id, chung một signal, tối đa `maxItems`, bỏ id trùng | Người dùng đổi lựa chọn trước khi xong; đóng picker |
 | `get` (chi tiết) | Mở chi tiết một mục (trong lúc chờ hiện bản từ lưới); "Tải lại" sau lỗi `conflict` | Mở chi tiết mục khác; đóng picker |
 | `upload` | Mỗi file thả / chọn trong dialog tải lên (sau lọc `accept` / `maxSize`) | Bấm xoá dòng file; đóng dialog (sau khi đồng ý huỷ); đóng picker |
@@ -399,6 +410,7 @@ TdMediaPicker.defaults;           // bản sao nông của object đã cấu hì
 - Thứ tự resolve **mỗi lần mở** (merge nông theo key, giá trị `undefined` không ghi đè):
   **tham số `open()`** > **`field.pickerOptions`** > **`field.adapter`** > **defaults**.
 - `selection` **không bao giờ** lấy từ defaults: luôn do người gọi `open()` hoặc [media field](media-field.md) quyết.
+  `initialCollection` (0.66) cũng vậy. `collections: { showWithoutQuery }` thì lấy được từ defaults.
 - Không resolve được adapter hợp lệ → `open()` ném `TypeError` đồng bộ (lỗi lập trình).
 
 ## Mở picker — `TdMediaPicker.open(options)`
@@ -431,6 +443,8 @@ const outcome = await TdMediaPicker.open({
 | `pageSize` | số 1–100 | `30` | → `limit` (0.32: 40) |
 | `pagination` | `'cursor'` \| `'pages'` | `'cursor'` | 0.33 — [Phân trang](#phân-trang--hai-chế-độ) |
 | `upload` | `{ accept?, maxSize?, multiple? = true, acceptLabel? }` | — | Chuyển cho `td-dropzone` ([dropzone](dropzone.md)). `acceptLabel` (0.33) chỉ là **chữ** trên badge / mô tả tab URL, không phải bộ lọc; thiếu thì suy từ `accept` |
+| `initialCollection` | `{ id: string, label: string }` \| `null` | `null` | 0.66.0: mở **thẳng vào** bộ sưu tập này (breadcrumb + `collectionId` ngay từ request đầu). `capabilities: { collections: false }` của site thắng: khi đó `initialCollection` bị bỏ qua và phiên chạy như phiên thường. `id` ≤ 512 ký tự, `label` cắt còn 200 code point; sai hình dạng → `TypeError`; `null` = không có. **Không** lấy từ defaults. Focus vẫn ở ô tìm. Xem [Bộ sưu tập](#bộ-sưu-tập-0660) |
+| `collections` | `{ showWithoutQuery?: boolean }` | `{ showWithoutQuery: false }` | 0.66.0: `true` → dải bộ sưu tập hiện cả khi chưa gõ tìm. Không phải object → `TypeError`; `null` = bỏ qua |
 | `crop` | `{ enabled, aspectRatio?, allowFocalPoint? }` | — | 0.35.0: `enabled: true` + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `[0.01, 100]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
 
 - **Một picker một lúc**: gọi `open()` khi đã có picker mở → resolve ngay `{ status: 'cancelled', reason:
@@ -551,7 +565,8 @@ Phát trên host (`<td-media-picker>`, hoặc host tạm của `open()`), `bubbl
 | `asset-change` | `{ operation: 'upload' \| 'upload-url' \| 'update' \| 'delete', asset?, id?, deduplication? }` | Tải lên xong (file / URL; `deduplication` của `UploadResult`), lưu thông tin thành công, xoá thành công (`id`) |
 | `confirm` | `{ selection }` | Bấm "Chèn" và picker kết thúc với `selected` |
 | `cancel` | `{ reason }` | Picker kết thúc với `cancelled` |
-| `operation-error` | `{ operation: 'list' \| 'facets' \| 'get' \| 'upload' \| 'upload-url' \| 'update' \| 'delete' \| 'download', code, retryable }` | Lời gọi adapter lỗi (không phát khi abort). **Không** có chữ lỗi — dùng để log / đo |
+| `collection-change` | `{ collection: { id, label } \| null, reason: 'enter' \| 'initial' \| 'back' }` | 0.66.0: vào bộ sưu tập (`enter`: bấm thẻ; `initial`: mở bằng `initialCollection`, phát ngay sau khi dựng) hoặc quay ra cấp ngoài (`back`, `collection: null`). Chỉ ở phiên có bộ sưu tập |
+| `operation-error` | `{ operation: 'list' \| 'facets' \| 'get' \| 'upload' \| 'upload-url' \| 'update' \| 'delete' \| 'download' \| 'collections', code, retryable }` | Lời gọi adapter lỗi (không phát khi abort). **Không** có chữ lỗi — dùng để log / đo |
 
 ## Capability ≠ quyền
 
@@ -567,6 +582,7 @@ per-asset không tắt**:
 | `delete` | **`false`** | `delete` | Nút "Xoá" |
 | `downloadOriginal` | **`false`** | `download` | Nút "Tải về" |
 | `copyLink` | **`false`** | — | Nút "Copy link" |
+| `collections` (0.66) | `!!adapter.collections` | `collections` | Dải bộ sưu tập + gửi `collectionId`. `capabilities.collections: false` **do site đặt rõ** tắt dù có method, và thắng cả `initialCollection`. Giá trị `false` chỉ vì adapter thiếu method thì **không** chặn `initialCollection`. Cờ của **phiên**: `asset.capabilities.collections` bị bỏ qua |
 
 `asset.capabilities` chỉ **thu hẹp** (đặt `true` không mở được thứ top-level đã tắt). Ẩn nút **không phải** phân quyền:
 mọi endpoint mà adapter gọi phải tự kiểm quyền ở server. Lọc file phía trình duyệt (`accept`, `maxSize`) và kiểm URL phía
@@ -712,6 +728,185 @@ Endpoint đứng sau `uploadFromUrl` là một **máy tải URL tuỳ ý theo l�
 Site không làm được các điều trên → **đừng** cài `uploadFromUrl` (tab URL sẽ không hiện), hoặc đặt
 `capabilities.uploadFromUrl: false`.
 
+## Bộ sưu tập (0.66.0)
+
+Site quản lý ảnh theo **album** (bộ sưu tập, thư mục) có thể cho picker một cấp điều hướng thứ hai: gõ "redmi turbo 4" thì
+album khớp hiện thành một **dải thẻ** phía trên lưới, ảnh khớp ở dưới; bấm một album thì xem ảnh của album ngay trong picker,
+có breadcrumb và nút **Quay lại**. Tính năng **tuỳ chọn hoàn toàn**: adapter không có `collections` và không mở bằng
+`initialCollection` thì DOM, request và hành vi giống **từng byte** 0.65. Nguồn: yêu cầu K8 của dsuite; xem
+[ADR 0013 › Bổ sung v0.66](../internal/decisions/0013-media-picker-boundary.md) và plan
+[v0.66.0](../internal/plans/v0.66.0-media-collections.md).
+
+### Hợp đồng — `adapter.collections`
+
+```ts
+interface CollectionCard {
+  id: string;            // opaque, 1–512 ký tự; gửi lại nguyên vẹn ở MediaListRequest.collectionId
+  label: string;         // bắt buộc; chữ thường (không HTML)
+  count?: number;        // số nguyên ≥ 0 — hiện "{n} ảnh"; sai kiểu thì bỏ riêng trường này
+  coverUrl?: string;     // ảnh bìa — qua cổng URL như urls.* (không nhận blob:)
+  description?: string;  // CHỈ làm tooltip (thuộc tính title) của nút thẻ, không có dòng hiển thị
+}
+
+adapter.collections?({ query, filters, context, signal }): Promise<{ items: CollectionCard[]; truncated?: boolean }>
+```
+
+- `query` đã trim, `filters` là bản sao (giống `list()`), `context` chuyển nguyên, `signal` bị abort theo latest-wins. Trả các
+  album **khớp** `query` + `filters`; thứ tự trả về là thứ tự hiện. Có hàm này thì capability `collections` bật
+  (`capabilities.collections: false` tắt lại).
+- `truncated: true` (đúng boolean `true`) → hiện dòng gợi ý `labels.collectionsTruncated` "Gõ thêm để thu hẹp" dưới dải. Kit
+  cũng tự đặt `truncated` khi phải cắt bớt thẻ hợp lệ vì quá 20.
+
+**Kit chuẩn hoá kết quả** (`normalizeCollections`, trước khi vào DOM; adapter sai không làm vỡ trang):
+
+| Dữ liệu | Quy tắc |
+|---|---|
+| Kết quả | Không phải `{ items: [] }` → lỗi `server` (dải ẩn + `operation-error`) |
+| Số thẻ | Tối đa **20** (duyệt tối đa 4 × 20 phần tử rồi dừng); `id` trùng → giữ cái đầu |
+| `id` | Chuỗi không rỗng, ≤ **512** ký tự — sai thì bỏ thẻ |
+| `label` | Bắt buộc, không rỗng sau trim — thiếu thì bỏ thẻ; **cắt** còn 200 code point; luôn gán bằng `textContent` |
+| `count` | Số nguyên ≥ 0; sai thì bỏ riêng trường |
+| `coverUrl` | Qua `safeMediaUrl` (`https:`, tương đối; **không** `blob:`); không an toàn / thiếu → icon thay ảnh |
+| `description` | Cắt 200 code point; chỉ gán vào `title` của nút thẻ |
+| Key | Chỉ đọc own property; thẻ ném lỗi khi đọc thì bỏ |
+
+### `collectionId` trong request
+
+**Chỉ phiên có bộ sưu tập** (adapter có `collections`, hoặc `open({ initialCollection })`; trừ khi site **đặt rõ** `capabilities: { collections: false }` (khi đó luôn là phiên thường)) mới gửi `collectionId`; phiên thường
+**không có key này** ở bất kỳ request nào. Trong phiên có bộ sưu tập:
+
+| Request | `collectionId` |
+|---|---|
+| `list(request)` | `null` ở cấp ngoài (không lọc), `id` khi đang trong bộ sưu tập |
+| `facets(request)` | như `list` — facet tính **trong** bộ sưu tập |
+| `upload(file, options)` · `uploadFromUrl(url, options)` | như `list` — album đang xem lúc tải lên; adapter tự quyết có gắn ảnh vào album không. Ảnh được dùng lại (`exact-reused`) hành vi không đổi |
+| `collections(request)` | **không có** (luôn chạy ở cấp ngoài) |
+
+Phía server, `collectionId` ánh xạ 1:1 sang bộ lọc "thuộc album này"; `null` nghĩa là không lọc.
+
+### Dải thẻ
+
+- **Khi nào hiện**: adapter có `collections`, đang ở cấp ngoài, và **đã gõ tìm** (query khác rỗng). Muốn hiện cả khi chưa gõ:
+  `collections: { showWithoutQuery: true }` (trong `open()` hoặc `configureDefaults`). Có `initialQuery` thì dải hiện ngay lúc mở.
+- **Khi nào gọi `collections()`**: sau debounce 250 ms cùng nhịp với `list`; lúc mở; khi đổi facet ở cấp ngoài (dải theo
+  `filters`); khi quay lại từ một bộ sưu tập mà không dùng lại được dải cũ. Latest-wins: kết quả về muộn bị bỏ, kể cả khi
+  người dùng đã xoá hết chữ, đổi query hoặc vào bộ sưu tập trong lúc chờ. Bắt đầu một request mới thì dải cũ **ẩn ngay**.
+- **Lỗi hoặc không có thẻ** → dải ẩn. Lỗi phát `operation-error { operation: 'collections', code, retryable }`; lưới ảnh
+  **không bao giờ** bị chặn.
+- **Bố cục**: nằm trong vùng kết quả, ngay trước lưới (cuộn cùng lưới). Luôn **một hàng**, tràn thì cuộn ngang ở mọi bề rộng.
+  Thẻ rộng 120–160 px, ảnh bìa 4:3, tên một dòng cắt bằng dấu "…", số ảnh màu phụ. Theo
+  [minimal surfaces](../internal/design/liquid-glass.md) và [chuẩn cảm ứng](../guides/touch.md).
+- Bấm một thẻ đã bị gỡ khỏi DOM (thẻ cũ của request trước) thì không làm gì.
+
+### Vào bộ sưu tập và Quay lại
+
+**Vào** (bấm thẻ hoặc `open({ initialCollection })`):
+
+1. Picker cất lại **query chuẩn** (giá trị đang nằm trong ô tìm, đã trim — kể cả khi debounce chưa kịp chốt), các thẻ đang hiện
+   và `scrollLeft` của dải.
+2. Ô tìm được **xoá** (từ đây ô tìm tìm *bên trong* bộ sưu tập), dải ẩn, breadcrumb hiện, facet và trang 1 tải lại với
+   `collectionId`. Bộ lọc (facet) đang chọn giữ nguyên và vẫn áp dụng. **Lựa chọn giữ nguyên** (đơn / nhiều / `maxItems`).
+3. Focus chuyển về **tiêu đề vùng kết quả**; live region đọc `labels.collectionEntered` "{label}: {n} kết quả".
+4. Phát `collection-change { collection: { id, label }, reason: 'enter' }`.
+
+Form chi tiết đang sửa dở **không** bị hỏi "bỏ thay đổi" khi vào hay ra (giống đổi query).
+
+**Quay lại** (nút "Quay lại", nút "Tất cả" trong breadcrumb, hoặc Esc):
+
+1. Query chuẩn được trả vào ô tìm và chốt ngay; `collectionId` về `null`; facet và **trang 1** tải lại (vị trí trang cũ không
+   được nhớ).
+2. Dải: nếu còn thẻ đã cất **và** nguồn gốc của chúng (`{ query, filters }` của request đã sinh ra chúng) trùng với
+   `{ query, filters }` hiện tại → hiện lại đúng các thẻ đó, khôi phục `scrollLeft`, **không** gọi lại `collections()`. Còn lại
+   (đổi bộ lọc khi đang ở trong, hoặc mở bằng `initialCollection` nên chưa có thẻ nào) → gọi `collections()` nếu dải đủ điều
+   kiện hiện. Adapter không có `collections` thì không gọi gì và không có dải.
+3. Focus về tiêu đề vùng kết quả; live region đọc `labels.collectionLeft` "Tất cả: {n} kết quả".
+4. Phát `collection-change { collection: null, reason: 'back' }`.
+
+Mở bằng `initialCollection` thì Quay lại về cấp ngoài với query là `initialQuery`.
+
+**Breadcrumb** `nav.td-media-picker__crumbs` (`aria-label` = `labels.location` "Vị trí"): nút "Tất cả" · dấu `/`
+(`aria-hidden`) · tên bộ sưu tập (`aria-current="page"`) · nút "Quay lại". Chỉ hiện khi đang trong một bộ sưu tập.
+
+### Phím Escape trong bộ sưu tập
+
+Thứ tự: popup / dialog lồng (do tầng tự xử lý) → **xoá chữ ở ô tìm** nếu đang ở ô tìm và ô có chữ → **đang trong bộ sưu tập
+thì Quay lại** (không đóng picker) → đóng picker (`cancelled / escape`, qua cổng xác nhận nếu có việc dở). Ở cấp ngoài Esc
+giữ nguyên cách cũ. Ngoại lệ "Esc = lùi một cấp" này khác quy tắc của lịch trong [ADR 0032](../internal/decisions/0032-calendar-picker.md);
+lý do ở ADR 0013 › Bổ sung v0.66.
+
+### `open({ initialCollection })`
+
+```js
+await TdMediaPicker.open({
+  selection: { mode: 'multiple', kinds: ['image'] },
+  initialCollection: { id: 'alb_77', label: 'REDMI Turbo 4' },   // null / bỏ qua = cấp ngoài
+});
+```
+
+- `{ id, label }` bắt buộc đủ hai trường (`id` ≤ 512 ký tự, `label` cắt còn 200 code point), sai → `TypeError` đồng bộ. **Không**
+  lấy từ `configureDefaults`.
+- Picker mở **thẳng vào** bộ sưu tập (trừ khi site **đặt rõ** `capabilities: { collections: false }`: khi đó `initialCollection` bị bỏ qua): request `list` / `facets` đầu tiên đã có `collectionId`. **Focus vẫn ở ô tìm** như mở bình
+  thường (để tìm ngay trong bộ sưu tập). Phát `collection-change` với `reason: 'initial'`.
+- Kit **không** gọi `collections()` để tra tên: `label` do site truyền. Adapter không có `collections` thì vẫn vào / ra được
+  bộ sưu tập, nhưng không có dải thẻ.
+
+### Sự kiện và nhãn
+
+`collection-change` — `detail: { collection: { id: string, label: string } | null, reason: 'enter' | 'initial' | 'back' }`,
+`bubbles` + `composed` như các event khác của picker; chỉ phát ở phiên có bộ sưu tập. `operation-error` có thêm
+`operation: 'collections'`.
+
+| Nhãn | Mặc định | Dùng ở |
+|---|---|---|
+| `collections` | "Album" | Tiêu đề dải |
+| `allItems` | "Tất cả" | Nút đầu breadcrumb |
+| `location` | "Vị trí" | `aria-label` của breadcrumb |
+| `collectionCount` | "{n} ảnh" | Số ảnh trên thẻ |
+| `collectionName` | "{label}, {n} ảnh" | Tên truy cập của nút thẻ (không có `count` → chỉ `label`) |
+| `collectionsTruncated` | "Gõ thêm để thu hẹp" | Gợi ý khi `truncated` |
+| `collectionEntered` | "{label}: {n} kết quả" | Live region khi vào |
+| `collectionLeft` | "Tất cả: {n} kết quả" | Live region khi quay lại |
+
+Nút "Quay lại" dùng lại nhãn `back` sẵn có. Class của nó là `.td-media-picker__coll-back`, **khác**
+`.td-media-picker__back` (mũi tên đóng pane chi tiết trên điện thoại).
+
+### Trợ năng
+
+- Dải là `role="list"` (tên từ tiêu đề "Album" qua `aria-labelledby`); mỗi thẻ là `role="listitem"` chứa một `<button>` — Tab tới
+  thẻ, Enter hoặc Space để vào. Tên truy cập là `labels.collectionName`; chữ và số trong thẻ là `aria-hidden` để không đọc đôi.
+- Breadcrumb là `<nav>` có `aria-label` "Vị trí"; mục hiện tại có `aria-current="page"`.
+- Vào / ra: focus về tiêu đề vùng kết quả, số kết quả đọc qua live region (gộp với "{n} kết quả" để không bị đè).
+- Forced colors: viền thẻ và focus ring vẫn thấy. Ảnh bìa `alt=""` (trang trí), `referrerpolicy="no-referrer"`, `loading="lazy"`.
+
+### Ví dụ (kiểu dsuite)
+
+```js
+const mediaAdapter = {
+  list: ({ query, filters, collectionId, limit, cursor, signal }) =>
+    api('/media', { q: query, ...filters, 'filter[collection]': collectionId ?? undefined, limit, cursor }, signal),
+  get: (id, { signal }) => api(`/media/${id}`, {}, signal),
+  collections: async ({ query, filters, signal }) => {
+    const r = await api('/collections', { q: query, ...filters, limit: 20 }, signal);
+    return {
+      items: r.data.map((a) => ({
+        id: String(a.id), label: a.name, count: a.photoCount, coverUrl: a.coverThumb, description: a.note,
+      })),
+      truncated: r.meta.total > r.data.length,     // → "Gõ thêm để thu hẹp"
+    };
+  },
+  upload: (file, { fields, collectionId, signal, onProgress }) =>
+    uploadFile(file, { ...fields, album: collectionId ?? undefined }, signal, onProgress),
+};
+
+TdMediaPicker.configureDefaults({ adapter: mediaAdapter });
+TdMediaPicker.open({ selection: { mode: 'multiple', kinds: ['image'] } });   // gõ "redmi turbo 4" → album hiện phía trên
+```
+
+### Giới hạn (tóm tắt)
+
+20 thẻ mỗi lần · `id` ≤ 512 · `label` / `description` 200 code point · `count` số nguyên ≥ 0 · `coverUrl` chỉ `https:` /
+tương đối (không `blob:`) · dải chỉ ở cấp ngoài · Quay lại luôn về trang 1 · thẻ không có dòng mô tả hiển thị (chỉ `title`).
+
 ## Xoá
 
 Nút "Xoá" hiện khi `canDo('delete')`: có `adapter.delete`, `capabilities.delete: true` (mặc định **false**), per-asset
@@ -792,6 +987,7 @@ kèm **một** `console.warn` chỉ có số lượng (không có dữ liệu th
 | Option mỗi facet / mỗi field (kể cả kết quả `loadOptions`) | 200; nhãn option 500 code point |
 | Field descriptor (`assetFields`, `uploadFields`) | 50; `label` / `helpText` 500 code point |
 | `usages` của `DeleteResult` | 50 (hiện 20); `label` 200 code point |
+| Thẻ bộ sưu tập (`collections()`, 0.66) | 20 thẻ (duyệt tối đa 4 × 20 phần tử); `id` ≤ 512 ký tự; `label` / `description` 200 code point |
 | URL nhập ở tab URL | 2 048 ký tự |
 
 Mảng lớn được **xử lý có giới hạn**: mỗi danh sách chỉ được **duyệt** tối đa 4 × giới hạn ở trên rồi dừng — mảng 1 triệu
@@ -865,7 +1061,7 @@ chọn chưa xác nhận **không** tính là việc dở. `close()` bằng code
 |---|---|
 | Tab / Shift+Tab | Bị giữ trong dialog; mở picker → focus ô tìm (hoặc card đầu / dialog) |
 | Gõ trong ô tìm | Tìm sau 250ms; **Enter = tìm ngay**, không bao giờ là Chèn |
-| Escape | Theo tầng: popup (dropdown, chip, lịch) → dialog lồng (tải lên, xác nhận, **bước cắt** = "Quay lại") → ô tìm có chữ (xoá chữ) → đóng picker (`cancelled / escape`, qua cổng xác nhận nếu có việc dở) |
+| Escape | Theo tầng: popup (dropdown, chip, lịch) → dialog lồng (tải lên, xác nhận, **bước cắt** = "Quay lại") → ô tìm có chữ (xoá chữ) → **đang trong bộ sưu tập (0.66): Quay lại cấp ngoài** → đóng picker (`cancelled / escape`, qua cổng xác nhận nếu có việc dở) |
 | Enter trên card | Đơn: chọn + xem. Nhiều: chỉ xem chi tiết |
 | Space trên card | Đơn: chọn + xem. Nhiều: bật / tắt chọn; Shift+Space: chọn dải |
 | Ctrl+click card (⌘+click trên macOS) | (nhiều) Bật / tắt chọn; (đơn) như click |
@@ -875,7 +1071,7 @@ chọn chưa xác nhận **không** tính là việc dở. `close()` bằng code
 | Enter trong ô URL | Gửi tải từ URL |
 
 - **Không có Enter toàn cục = Chèn**: chỉ nút "Chèn" ở footer xác nhận (disabled khi chưa chọn gì).
-- Live region của picker đọc: số kết quả, "Trang {n}", tải lên xong / dùng lại, đã lưu, đã xoá. `aria-busy` trên vùng kết
+- Live region của picker đọc: số kết quả, "Trang {n}", tải lên xong / dùng lại, đã lưu, đã xoá; vào / ra bộ sưu tập (0.66). `aria-busy` trên vùng kết
   quả khi đang tải. Đóng → focus về phần tử đã mở picker.
 - Facet không nhãn hiển thị vẫn có tên truy cập (`aria-label` = nhãn descriptor); nút "Tải lên" / "Bộ lọc" / "Bỏ chọn tất
   cả" chỉ-icon có `aria-label` (nút Bộ lọc kèm số bộ lọc đang áp).
@@ -898,7 +1094,7 @@ chọn chưa xác nhận **không** tính là việc dở. `close()` bằng code
 
 Đổi toàn trang bằng `Object.assign(TdMediaPicker.labels, {...})`; đổi **theo lần mở** bằng `options.messages` (chuỗi hoặc
 hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dùng nhãn mặc định). Placeholder `{n}`, `{max}`,
-`{total}`, `{from}`, `{to}`, `{name}`, `{ok}`, `{k}`, `{accept}` được điền sẵn. Kết quả **luôn** gán bằng `textContent`.
+`{total}`, `{from}`, `{to}`, `{name}`, `{ok}`, `{k}`, `{accept}`, `{label}` (0.66) được điền sẵn. Kết quả **luôn** gán bằng `textContent`.
 
 | Key | Mặc định |
 |---|---|
@@ -911,6 +1107,9 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `filtersApply` · `filtersClear` · `filtersClose` (0.36) | "Áp dụng" · "Xoá lọc" · "Đóng bộ lọc" |
 | `pagination` · `pageItem` · `pageInfo` · `page` | "Phân trang media" · "media" · "Hiển thị {from}-{to} / {total} media" · "Trang {n}" |
 | `prevPage` · `nextPage` · `resultsCount` | "Trang trước" · "Trang sau" · "{n} kết quả" |
+| `collections` · `allItems` · `location` (0.66) | "Album" · "Tất cả" · "Vị trí" |
+| `collectionCount` · `collectionName` (0.66) | "{n} ảnh" · "{label}, {n} ảnh" |
+| `collectionsTruncated` · `collectionEntered` · `collectionLeft` (0.66) | "Gõ thêm để thu hẹp" · "{label}: {n} kết quả" · "Tất cả: {n} kết quả" |
 | `empty` · `emptyHint` · `retry` · `back` | "Không có media nào" · "Thử từ khoá khác" · "Thử lại" · "Quay lại" |
 | `detail` · `detailEmpty` · `detailEmptyHint` · `fileName` | "Chi tiết" · "Chọn một ảnh để xem chi tiết" · "Bấm vào ảnh trong danh sách bên trái" · "Tên file" |
 | `save` · `saved` | "Lưu" · "Đã lưu thay đổi" |
@@ -1098,6 +1297,23 @@ Ghi nhớ khi viết adapter:
       </div>
       <div class="td-media-picker__content">
         <section class="td-media-picker__results" aria-busy><h3 class="td-media-picker__results-heading td-sr-only">
+          <!-- 0.66.0, CHỈ phiên có bộ sưu tập (adapter.collections hoặc initialCollection): hai khối sau nằm trước lưới -->
+          <nav class="td-media-picker__crumbs" aria-label="Vị trí" hidden>     <!-- chỉ hiện khi đang trong bộ sưu tập -->
+            td-button.td-media-picker__crumb-all ("Tất cả") · span.td-media-picker__crumb-sep[aria-hidden] "/" ·
+            span.td-media-picker__crumb-current[aria-current=page] · td-button.td-media-picker__coll-back ("Quay lại")
+          </nav>
+          <div class="td-media-picker__colls" hidden>
+            <h4 class="td-media-picker__colls-heading">Album</h4>
+            <div class="td-media-picker__collections" role="list" aria-labelledby="…-ch">
+              <div class="td-media-picker__coll-item" role="listitem">
+                <button class="td-media-picker__coll" data-id aria-label="REDMI Turbo 4, 12 ảnh" [title=description]>
+                  <span class="td-media-picker__coll-cover" aria-hidden><img> | <span class="td-media-picker__coll-icon"></span>
+                  <span class="td-media-picker__coll-name" aria-hidden> · <span class="td-media-picker__coll-count" aria-hidden>
+                </button>
+              </div> …
+            </div>
+            <p class="td-media-picker__colls-hint" hidden>Gõ thêm để thu hẹp</p>
+          </div>
           <td-media-grid class="td-media-picker__grid" select-mode="tick">.td-media-picker__card …</td-media-grid>
           .td-media-picker__skeleton | td-empty-state.td-media-picker__empty | .td-media-picker__error[role=alert] + .td-media-picker__retry
         </section>
@@ -1167,7 +1383,7 @@ Picker theo bố cục và cách dùng của media picker dcms2. Bảng dưới 
 | Copy link | Có | Tuỳ chọn (`copyLink`, mặc định tắt); link hiển thị, không phải danh tính | khớp có điều kiện |
 | Tự chọn mục đầu | Có | Không | cố ý khác |
 | Enter toàn cục = Chèn | Có | Không | cố ý khác |
-| Escape | Không đóng | Đóng theo tầng (qua cổng xác nhận) | cố ý khác |
+| Escape | Không đóng | Đóng theo tầng (qua cổng xác nhận); trong bộ sưu tập (0.66) thì lùi ra cấp ngoài trước | cố ý khác |
 | Mobile chi tiết | Che kín, không lối ra | Pane trượt có "Quay lại" | sửa lỗi |
 | Request cũ / debounce | Kết quả cũ thắng, không debounce | Latest-wins + abort, debounce 250ms | cố ý khác |
 | Crop | Bấm "Chèn" → modal crop (CropperJS) khi có tỉ lệ; chọn nhiều không crop | Như dcms2: bước cắt sau "Chèn" (`crop`), khung lớn nhất đúng tỉ lệ căn giữa, chọn nhiều không crop; + "Quay lại", điểm trọng tâm, bàn phím | khớp UX |
@@ -1178,7 +1394,7 @@ Picker theo bố cục và cách dùng của media picker dcms2. Bảng dưới 
 
 ## Cảm ứng
 
-- Khi bàn phím ảo mở (ô tìm, trường chi tiết, hộp tải lên / URL, sheet lọc), lớp phủ co theo vùng nhìn thấy; vùng cuộn chứa ô đang nhập tự cuộn tới nó. Card, nút quay lại có hình nhấn (opener ảnh tối nhẹ); hover viền chỉ trên con trỏ mịn.
+- Khi bàn phím ảo mở (ô tìm, trường chi tiết, hộp tải lên / URL, sheet lọc), lớp phủ co theo vùng nhìn thấy; vùng cuộn chứa ô đang nhập tự cuộn tới nó. Card, thẻ bộ sưu tập (0.66), nút quay lại có hình nhấn (opener ảnh tối nhẹ); hover viền chỉ trên con trỏ mịn.
 - Bước cắt (crop dialog) không theo bàn phím (không có ô gõ chữ).
 
 Chuẩn chung: [Cảm ứng](../guides/touch.md).
@@ -1205,12 +1421,18 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - **Bước cắt báo lỗi tỉ lệ, "Chèn" khoá** → `urls.preview` là ảnh đã cắt sẵn (thumbnail) trong khi `width/height` là của
   ảnh gốc. Trả preview là ảnh nguyên.
 - **`usage.crop` không có `pixels`** → asset thiếu `width` / `height`.
+- **Dải bộ sưu tập không hiện** → adapter không có `collections` (hoặc `capabilities.collections: false`); chưa gõ tìm (bật
+  `collections: { showWithoutQuery: true }` nếu muốn hiện sẵn); `collections()` trả rỗng / lỗi (lỗi → `operation-error`
+  `collections`, lưới vẫn chạy); đang ở trong một bộ sưu tập (dải chỉ có ở cấp ngoài).
+- **Bấm Esc trong album không đóng picker** → đúng thiết kế từ 0.66: Esc đầu xoá chữ tìm (nếu có), Esc tiếp theo lùi ra cấp
+  ngoài, Esc ở cấp ngoài mới đóng.
 
 ## Xem thêm
 
 - [Media field](media-field.md) · [Cropper](cropper.md) · [Media grid](media-grid.md) · [Dropzone](dropzone.md) · [Modal](modal.md) ·
   [Pagination](pagination.md) · [Copy](copy.md)
 - [Hook › TdMediaPicker](../customization/hooks.md#tdmediapicker) · [CSP](../guides/csp.md) · [Bảo mật](../guides/security.md)
-- [ADR 0013](../internal/decisions/0013-media-picker-boundary.md) (kèm "Bổ sung v0.33", "Bổ sung v0.35") · plan
+- [ADR 0013](../internal/decisions/0013-media-picker-boundary.md) (kèm "Bổ sung v0.33", "Bổ sung v0.35", "Bổ sung v0.66") · plan
   [v0.33.0](../internal/plans/v0.33.0-media-picker-dcms-parity.md) ·
+  [v0.66.0](../internal/plans/v0.66.0-media-collections.md) ·
   [security-model › Media picker](../internal/security-model.md#6-media-picker--media-field)

@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.65.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.66.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.66.0](#0660) | Không phá vỡ: opt-in; adapter không có `collections` → giống từng byte 0.65 | Không phải sửa code. Muốn album trong picker: thêm `adapter.collections` (và dùng `collectionId` ở `list` / `facets` / `upload` / `uploadFromUrl`). **Esc trong một album = Quay lại**, không đóng picker. |
 | [0.65.0](#0650) | **Đổi hành vi** PHP: `assets` mặc định là `'dist'` | Copy cả `dist/` + `module-graph.json` khi nâng kit (thiếu `dist/td.css` → `Td::configure()` ném `RuntimeException`). Muốn giữ URL source: `['assets' => 'source']`. Test so URL `td.css` / import map / preload phải thêm `/dist`. |
 | [0.64.0](#0640) | Không phá vỡ: `dist/` và `assets` là opt-in; **đổi hành vi** `Td::modulePreloads()` (in thêm module phụ thuộc) | Không phải sửa code. Muốn bản minify: `Td::configure(…, ['assets' => 'dist'])` và copy cả `dist/` + `module-graph.json`. Test so nguyên chuỗi output của `modulePreloads` phải cập nhật. |
 | [0.63.0](#0630) | Không phá vỡ: `editable` là opt-in | Không phải sửa code. Muốn gõ tay: thêm `editable`. `messages.incomplete` (picker datetime) đổi câu; site đã override cho mode `date` → override `incompleteDate`. |
@@ -92,6 +93,18 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.66.0
+
+**Không phá vỡ** — bộ sưu tập (album) trong `td-media-picker` là opt-in. Adapter không có `collections` và `open()` không truyền
+`initialCollection` → DOM, request và hành vi giống từng byte 0.65 (phiên thường không có key `collectionId` ở bất kỳ request nào).
+
+- **Việc phải làm khi nâng:** không có. Test của site so nguyên request `list` / `facets` / `upload` không đổi.
+- **Muốn dùng:** thêm `adapter.collections({ query, filters, context, signal })` trả `{ items, truncated? }`; adapter nhận thêm
+  `collectionId` (`null` ở cấp ngoài) ở `list`, `facets`, `upload`, `uploadFromUrl`. Xem
+  [media-picker › Bộ sưu tập](../components/media-picker.md#bộ-sưu-tập-0660).
+- **Đổi hành vi chỉ khi đã bật:** trong một bộ sưu tập Esc = Quay lại (không đóng picker); ô tìm được xoá khi vào và trả lại khi ra.
+  Site có test bấm Esc để đóng picker trong lúc đang ở album thì phải bấm thêm một lần.
 
 ## 0.65.0
 

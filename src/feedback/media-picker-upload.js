@@ -14,6 +14,8 @@
  *     t,            // (key: string, params?: object) => string — the picker's label resolver
  *     adapter,      // the resolved adapter (upload / uploadFromUrl are called on it)
  *     context,      // OpenMediaPickerOptions.context (passed through to the adapter)
+ *     collectionId, // v0.66.0 (K8), optional: present (null | id) only in a collection-enabled picker session → passed
+ *                   //   through to upload / uploadFromUrl options; absent → the options keep the v0.65 shape
  *     sources,      // { file: boolean, url: boolean } — which sources the picker allows (caps + methods resolved)
  *     upload,       // resolved OpenMediaPickerOptions.upload { accept?, maxSize?, multiple?, acceptLabel? }
  *     uploadFields, // normalizeFields() output (may be [])
@@ -165,6 +167,8 @@ export function openUploadDialog(o) {
   const sources = { file: !!(o.sources && o.sources.file), url: !!(o.sources && o.sources.url) };
   const up = o.upload && typeof o.upload === 'object' ? o.upload : {};
   const id = String(o.idPrefix || 'td-media-picker-upload');
+  // v0.66.0 (K8): the collection the picker is in (null = top level) — only when the picker passed the key at all
+  const collOpt = o.collectionId !== undefined ? { collectionId: o.collectionId } : {};
   const metaKeys = Array.isArray(o.metaKeys) ? o.metaKeys : [];
   const acceptLabel = typeof up.acceptLabel === 'string' && up.acceptLabel.trim() ? up.acceptLabel.trim()
     : acceptLabelFrom(up.accept);
@@ -450,7 +454,8 @@ export function openUploadDialog(o) {
     const fieldValues = values(); // captured when the file starts
     let out;
     try {
-      out = Promise.resolve(o.adapter.upload(file, { fields: fieldValues, context: o.context, signal, onProgress: progressBridge(onProgress) }));
+      out = Promise.resolve(o.adapter.upload(file, { fields: fieldValues, context: o.context, ...collOpt, signal,
+        onProgress: progressBridge(onProgress) }));
     } catch (err) {
       out = Promise.reject(err);
     }
@@ -556,7 +561,7 @@ export function openUploadDialog(o) {
     };
     let out;
     try {
-      out = Promise.resolve(o.adapter.uploadFromUrl(href, { fields: fieldValues, context: o.context, signal, onProgress }));
+      out = Promise.resolve(o.adapter.uploadFromUrl(href, { fields: fieldValues, context: o.context, ...collOpt, signal, onProgress }));
     } catch (err) {
       out = Promise.reject(err);
     }

@@ -243,6 +243,30 @@ Test: guard tĩnh QĐ 2 (`crop-geometry.test.js`), fuzz 10 000 ca `toOutput` →
 JS = PHP, engines a11y (`alt` = `<img src=x onerror=…>` chỉ là text; `src` `javascript:` / `data:` / `blob:` → `image-error
 src`; không thuộc tính `style` ngoài `--_tdc-*` trên host), CSP gate state `td-cropper` + bước cắt picker.
 
+**Bổ sung v0.66 — bộ sưu tập (K8)** ([ADR 0013 › Bổ sung v0.66](decisions/0013-media-picker-boundary.md#bổ-sung-v066-k8), plan
+[v0.66.0](plans/v0.66.0-media-collections.md)): `adapter.collections()` trả dữ liệu do người dùng khác tạo (tên album, mô tả,
+ảnh bìa) → cùng mô hình không tin cậy:
+
+- **`normalizeCollections`** (`media-picker-core.js`) chạy trước DOM, trả **object mới** (không bao giờ object của adapter): kết
+  quả không phải `{ items: [] }` → lỗi `server`; ≤ 20 thẻ và duyệt tối đa 4 × 20 phần tử (mảng 1 triệu phần tử tốn như mảng
+  nhỏ); `id` chuỗi không rỗng ≤ 512 ký tự, trùng → giữ cái đầu; `label` bắt buộc, cắt 200 code point; `count` số nguyên ≥ 0 (sai →
+  bỏ); chỉ đọc own property, getter ném lỗi → bỏ thẻ.
+- **`coverUrl` qua `safeMediaUrl` và từ chối `blob:`** (như `download`): `javascript:` / `data:` / `file:` / `blob:` → thẻ hiện
+  icon thay ảnh, không có `<img src>`. `<img>` có `alt=""`, `referrerpolicy="no-referrer"`, `loading="lazy"`.
+- **Text-only**: `label` gán bằng `textContent`; `count` đi qua nhãn `collectionCount` rồi `textContent`; tên truy cập
+  (`aria-label`) dựng từ `labels.collectionName` bằng `setAttribute`. **`description` chỉ đi vào thuộc tính `title`** (thuộc tính DOM,
+  không HTML, không dòng hiển thị riêng) — `<img src=x onerror=…>` ở mọi trường chỉ là chữ.
+- **`collectionId` là dữ liệu của app, không phải quyền**: kit gửi lại nguyên vẹn id đã nhận (hoặc `initialCollection.id` do site
+  truyền, ≤ 512 ký tự); server **phải** kiểm quyền xem / ghi vào bộ sưu tập ở từng request (`list`, `facets`, `upload`,
+  `uploadFromUrl`) và coi `collectionId` là input không tin cậy như mọi tham số khác. Phiên không có bộ sưu tập không gửi key này.
+- **Latest-wins + abort**: thêm slot `collections`; bị abort khi xoá hết chữ tìm, vào bộ sưu tập, đóng picker; kết quả về muộn bị bỏ
+  (đối chiếu `{ query, filters, cấp ngoài }` lúc gọi). Lỗi chỉ phát `operation-error { operation: 'collections', code, retryable }`
+  (không chữ lỗi, không dội body của adapter).
+
+Test: `media-picker-core.test.js` (normalizer: giới hạn, id trùng, `coverUrl` không an toàn, `count` sai, `truncated` không phải
+boolean), `td-v066-media-picker-collections.engines.browser-test.js` (ca XSS: `label` HTML hiện thành chữ, `description` nguyên văn trong
+`title`, `coverUrl` `javascript:` / `data:` → icon).
+
 ## 6b. Chọn dòng `td-table` (v0.37.0)
 
 [ADR 0018](decisions/0018-table-row-selection.md). Mô hình đe doạ: dữ liệu dòng (tên hiển thị, khoá) do người dùng khác

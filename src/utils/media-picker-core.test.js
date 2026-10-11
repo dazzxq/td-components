@@ -9,7 +9,7 @@ import {
   resolveOptions, DefaultsRegistry, buildListRequest, requestKey, LatestRequest, SelectionModel, InitialLoad, Debouncer,
   SessionCache, ScalarTokens, buildOutcome, cancelledOutcome, formatLabel, LIMITS, VALUE_LIMITS, normalizeOptions,
   validateRemoteUrl, normalizeDeleteResult, normalizeDownloadResult, safeFilename, defaultTitle, normalizeUploadResult,
-  PageState, PAGE_SIZE_DEFAULT, REMOTE_URL_MAX, _resetCoreWarnings,
+  PageState, PAGE_SIZE_DEFAULT, REMOTE_URL_MAX, _resetCoreWarnings, normalizeCollections,
 } from './media-picker-core.js';
 import { safeMediaUrl } from './media-url.js';
 // Wall-clock budgets guard against super-linear blow-ups, not micro-speed: on a shared host (CI, several suites at
@@ -198,10 +198,26 @@ describe('normalizeError (decision 8)', () => {
 describe('capabilities (decisions 2, 5)', () => {
   it('missing caps → inferred from methods', () => {
     assert.deepEqual(resolveCapabilities(adapter(), undefined),
-      { search: true, upload: false, editMetadata: false, delete: false, downloadOriginal: false, uploadFromUrl: false, copyLink: false });
+      { search: true, upload: false, editMetadata: false, delete: false, downloadOriginal: false, uploadFromUrl: false, copyLink: false,
+        collections: false });
     const full = adapter({ upload: async () => {}, update: async () => {}, delete: async () => {} });
     assert.deepEqual(resolveCapabilities(full, null),
-      { search: true, upload: true, editMetadata: true, delete: false, downloadOriginal: false, uploadFromUrl: false, copyLink: false });
+      { search: true, upload: true, editMetadata: true, delete: false, downloadOriginal: false, uploadFromUrl: false, copyLink: false,
+        collections: false });
+  });
+
+  it('v0.66.0 (K8): collections = the adapter has a collections() function; a flag only narrows', () => {
+    const coll = async () => ({ items: [] });
+    assert.equal(resolveCapabilities(adapter({ collections: coll }), undefined).collections, true);
+    assert.equal(resolveCapabilities(adapter(), undefined).collections, false);
+    assert.equal(resolveCapabilities(adapter({ collections: 'x' }), undefined).collections, false);
+    assert.equal(resolveCapabilities(adapter(), { collections: true }).collections, false);
+    assert.equal(resolveCapabilities(adapter({ collections: coll }), { collections: false }).collections, false);
+    assert.equal(canDo('collections', adapter({ collections: coll }), undefined, null), true);
+    assert.equal(resolveOptions({ adapter: adapter({ collections: coll }) }).capabilitiesResolved.collections, true);
+    // session-level only: a per-asset `capabilities.collections` is not copied (the per-asset shape is unchanged)
+    assert.deepEqual(normalizeAsset(raw('a', { capabilities: { collections: true, delete: false } }), { safeUrl }).capabilities,
+      { delete: false });
   });
 
   it('flag true without the method → false; flag false hides', () => {
@@ -265,6 +281,59 @@ describe('resolveOptions + DefaultsRegistry (decision 6)', () => {
     assert.throws(() => resolveOptions({ adapter: { list() {} } }), TypeError);
   });
 
+  it('v0.66.0 (K8): initialCollection — valid → a fresh { id, label }; absent → null; never from the defaults', () => {
+    const ic = { id: 'alb-1', label: 'REDMI Turbo 4', extra: 'x' };
+    const o = resolveOptions({ adapter: adapter() }, { initialCollection: ic });
+    assert.deepEqual(o.initialCollection, { id: 'alb-1', label: 'REDMI Turbo 4' });
+    assert.notEqual(o.initialCollection, ic);
+    assert.equal(resolveOptions({ adapter: adapter() }).initialCollection, null);
+    assert.equal(resolveOptions({ adapter: adapter() }, { initialCollection: undefined }).initialCollection, null);
+    assert.equal(resolveOptions({ adapter: adapter(), initialCollection: ic }).initialCollection, null, 'defaults ignored');
+    // a bad shape in the defaults is ignored too (never validated, never thrown)
+    assert.equal(resolveOptions({ adapter: adapter(), initialCollection: 'bad' }).initialCollection, null);
+    const long = resolveOptions({ adapter: adapter() }, { initialCollection: { id: 'i'.repeat(512), label: '😀'.repeat(300) } });
+    assert.equal(long.initialCollection.id.length, 512);
+    assert.equal([...long.initialCollection.label].length, 200);
+  });
+
+  it('v0.66.0 (K8): initialCollection — each bad shape → TypeError', () => {
+    const bad = ['alb-1', ['alb-1', 'x'], 5, true, {},{ id: 'a' }, { label: 'L' }, { id: '', label: 'L' }, { id: 5, label: 'L' },
+      { id: 'i'.repeat(513), label: 'L' }, { id: 'a', label: '' }, { id: 'a', label: '   ' }, { id: 'a', label: 5 }];
+    for (const initialCollection of bad) {
+      assert.throws(() => resolveOptions({ adapter: adapter() }, { initialCollection }),
+        { name: 'TypeError', message: 'TdMediaPicker: initialCollection must be {id, label}' }, JSON.stringify(initialCollection));
+    }
+  });
+
+  it('v0.66.0 (K8): initialCollection: null = absent (like undefined) — no TypeError, never overrides a lower layer', () => {
+    assert.equal(resolveOptions({ adapter: adapter() }, { initialCollection: null }).initialCollection, null);
+    assert.equal(resolveOptions({ adapter: adapter(), initialCollection: null }).initialCollection, null);
+    const keep = resolveOptions({ adapter: adapter() }, { initialCollection: { id: 'a', label: 'A' } }, { initialCollection: null });
+    assert.deepEqual(keep.initialCollection, { id: 'a', label: 'A' }, 'a later null is skipped like undefined');
+  });
+
+  it('v0.66.0 (K8): collections: null = absent (like undefined) — no TypeError, never overrides a lower layer', () => {
+    assert.deepEqual(resolveOptions({ adapter: adapter() }, { collections: null }).collections, { showWithoutQuery: false });
+    assert.deepEqual(resolveOptions({ adapter: adapter(), collections: null }).collections, { showWithoutQuery: false });
+    assert.deepEqual(resolveOptions({ adapter: adapter(), collections: { showWithoutQuery: true } }, { collections: null }).collections,
+      { showWithoutQuery: true }, 'open() null keeps the defaults');
+  });
+
+  it('v0.66.0 (K8): collections — default { showWithoutQuery: false }; from defaults / open; a non-object → TypeError', () => {
+    assert.deepEqual(resolveOptions({ adapter: adapter() }).collections, { showWithoutQuery: false });
+    assert.deepEqual(resolveOptions({ adapter: adapter(), collections: { showWithoutQuery: true } }).collections,
+      { showWithoutQuery: true });
+    assert.deepEqual(resolveOptions({ adapter: adapter(), collections: { showWithoutQuery: true } },
+      { collections: { showWithoutQuery: false } }).collections, { showWithoutQuery: false }, 'open() wins');
+    assert.deepEqual(resolveOptions({ adapter: adapter() }, { collections: { showWithoutQuery: 'yes', x: 1 } }).collections,
+      { showWithoutQuery: false });
+    assert.deepEqual(resolveOptions({ adapter: adapter() }, { collections: {} }).collections, { showWithoutQuery: false });
+    for (const collections of [true, 'on', 1, []]) {
+      assert.throws(() => resolveOptions({ adapter: adapter() }, { collections }), TypeError, JSON.stringify(collections));
+      assert.throws(() => resolveOptions({ adapter: adapter(), collections }), TypeError, `defaults: ${JSON.stringify(collections)}`);
+    }
+  });
+
   it('configure replaces the WHOLE default object; get() is a shallow copy', () => {
     const reg = new DefaultsRegistry();
     const ad = adapter();
@@ -306,6 +375,150 @@ describe('buildListRequest / requestKey', () => {
     assert.notEqual(requestKey(s({ a: 1 })), requestKey(s({ a: '1' })));
     assert.notEqual(requestKey(s({})), requestKey(s({}), 'c2'));
     assert.notEqual(requestKey(s({}, 'a')), requestKey(s({}, 'b')));
+  });
+
+  // Snapshots of the v0.65.0 output (taken from the v0.65.0 core): a session without collections keeps them exactly.
+  const legacy = () => ({ query: ' q ', filters: { tags: ['a', 1], b: true, n: null }, pageSize: 30, context: { x: 1 }, kinds: ['image'] });
+  const V065_REQ = { query: 'q', filters: { tags: ['a', 1], b: true, n: null }, cursor: 'c1', limit: 30, kinds: ['image'],
+    context: { x: 1 }, signal: undefined };
+  const V065_KEY = '["q",[["b","boolean:true"],["n","n"],["tags",["string:a","number:1"]]],"c1",30,["image"],null]';
+
+  it('v0.66.0 (K8): legacy state (no collectionId key) → the v0.65 request and key, byte for byte', () => {
+    const r = buildListRequest(legacy(), { cursor: 'c1' });
+    assert.deepEqual(r, V065_REQ);
+    assert.equal('collectionId' in r, false);
+    assert.deepEqual(Object.keys(buildListRequest(legacy(), { page: 2 })),
+      ['query', 'filters', 'cursor', 'limit', 'kinds', 'signal', 'page', 'context']);
+    assert.equal(requestKey(legacy(), 'c1'), V065_KEY);
+    assert.equal(requestKey({ query: 'q', filters: { a: 1 } }, null, 3), '["q",[["a","number:1"]],null,null,null,3]');
+    assert.equal(requestKey({ query: 'q', filters: {} }, null), '["q",[],null,null,null,null]');
+    // an explicit undefined is the legacy shape too
+    assert.equal('collectionId' in buildListRequest({ ...legacy(), collectionId: undefined }), false);
+    assert.equal(requestKey({ ...legacy(), collectionId: undefined }, 'c1'), V065_KEY);
+  });
+
+  it('v0.66.0 (K8): collectionId null / a string → the request field + a trailing key element; null ≠ "a"', () => {
+    const top = buildListRequest({ ...legacy(), collectionId: null }, { cursor: 'c1' });
+    assert.deepEqual(top, { ...V065_REQ, collectionId: null });
+    const inside = buildListRequest({ ...legacy(), collectionId: 'a' }, { cursor: 'c1' });
+    assert.deepEqual(inside, { ...V065_REQ, collectionId: 'a' });
+    const kNull = requestKey({ ...legacy(), collectionId: null }, 'c1');
+    const kA = requestKey({ ...legacy(), collectionId: 'a' }, 'c1');
+    assert.equal(kNull, `${V065_KEY.slice(0, -1)},null]`);
+    assert.equal(kA, `${V065_KEY.slice(0, -1)},"a"]`);
+    assert.deepEqual(JSON.parse(kA).slice(0, -1), JSON.parse(V065_KEY), 'existing elements keep their positions');
+    assert.notEqual(kNull, V065_KEY);
+    assert.notEqual(kA, V065_KEY);
+    assert.notEqual(kNull, kA);
+    assert.notEqual(requestKey({ ...legacy(), collectionId: 'a' }), requestKey({ ...legacy(), collectionId: 'b' }));
+  });
+});
+
+describe('normalizeCollections (v0.66.0, K8)', () => {
+  const card = (id, extra = {}) => ({ id, label: `Album ${id}`, ...extra });
+  const many = (n, f) => Array.from({ length: n }, (_, i) => f(i));
+
+  it('a valid card → a fresh copy with only the known fields', () => {
+    const c = card('a', { count: 12, coverUrl: 'https://cdn.test/a.jpg', description: 'Ảnh sản phẩm', extra: 'x' });
+    const raw0 = { items: [c], truncated: false };
+    const r = normalizeCollections(raw0, { safeUrl });
+    assert.deepEqual(r, { items: [{ id: 'a', label: 'Album a', count: 12, coverUrl: 'https://cdn.test/a.jpg',
+      description: 'Ảnh sản phẩm' }], truncated: false });
+    assert.notEqual(r.items[0], c);
+    assert.notEqual(r.items, raw0.items);
+    assert.deepEqual(normalizeCollections({ items: [card('b')] }, { safeUrl }), { items: [{ id: 'b', label: 'Album b' }],
+      truncated: false });
+  });
+
+  it('cap of 20: extra valid cards cut → truncated; exactly 20 → not truncated', () => {
+    const r = normalizeCollections({ items: many(25, (i) => card(`c${i}`)) }, { safeUrl });
+    assert.equal(r.items.length, 20);
+    assert.equal(r.items[19].id, 'c19');
+    assert.equal(r.truncated, true);
+    const exact = normalizeCollections({ items: many(20, (i) => card(`c${i}`)) }, { safeUrl });
+    assert.equal(exact.items.length, 20);
+    assert.equal(exact.truncated, false);
+    // invalid / duplicate entries after the 20th valid one do not count as cut
+    const tail = normalizeCollections({ items: [...many(20, (i) => card(`c${i}`)), {}, card('c0')] }, { safeUrl });
+    assert.equal(tail.truncated, false);
+  });
+
+  it('BUDGET bound: at most 4 × 20 entries inspected', () => {
+    const reads = { n: 0 };
+    const arr = new Array(1e6).fill({});
+    const p = new Proxy(arr, { get(t, k) { if (typeof k === 'string' && /^\d+$/.test(k)) reads.n += 1; return t[k]; } });
+    assert.deepEqual(normalizeCollections({ items: p }, { safeUrl }), { items: [], truncated: false });
+    assert.ok(reads.n <= 4 * LIMITS.collections, `reads ${reads.n}`);
+    // a valid card past the budget is never reached
+    const late = normalizeCollections({ items: [...many(80, () => ({})), card('z')] }, { safeUrl });
+    assert.deepEqual(late.items, []);
+  });
+
+  it('duplicate ids → the first', () => {
+    const r = normalizeCollections({ items: [card('a', { count: 1 }), card('b'), card('a', { count: 2 })] }, { safeUrl });
+    assert.deepEqual(r.items.map((c) => [c.id, c.count]), [['a', 1], ['b', undefined]]);
+  });
+
+  it('bad id (empty / non-string / too long) or empty label → the card is skipped', () => {
+    const r = normalizeCollections({ items: [
+      card(''), card(5), { label: 'no id' }, card('i'.repeat(513)), card('i'.repeat(512)),
+      { id: 'l1', label: '' }, { id: 'l2', label: '   ' }, { id: 'l3' }, { id: 'l4', label: 7 },
+      null, 'x', 5, ['a'], card('ok'),
+    ] }, { safeUrl });
+    assert.deepEqual(r.items.map((c) => c.id), ['i'.repeat(512), 'ok']);
+  });
+
+  it('label / description cut to 200 code points; empty description omitted', () => {
+    const long = '😀'.repeat(300);
+    const r = normalizeCollections({ items: [card('a', { label: long, description: long }), card('b', { description: '' }),
+      card('c', { description: 5 })] }, { safeUrl });
+    assert.equal([...r.items[0].label].length, 200);
+    assert.equal([...r.items[0].description].length, 200);
+    assert.equal('description' in r.items[1], false);
+    assert.equal('description' in r.items[2], false);
+  });
+
+  it('count: -1 / 1.5 / "3" / NaN dropped, 0 kept', () => {
+    const r = normalizeCollections({ items: [card('a', { count: -1 }), card('b', { count: 1.5 }), card('c', { count: '3' }),
+      card('d', { count: NaN }), card('e', { count: 0 })] }, { safeUrl });
+    assert.deepEqual(r.items.map((c) => 'count' in c), [false, false, false, false, true]);
+    assert.equal(r.items[4].count, 0);
+  });
+
+  it('coverUrl: javascript: / data: / blob: / empty / non-string dropped, https: kept', () => {
+    const urls = ['javascript:alert(1)', 'data:image/png;base64,AAAA', 'blob:https://site.test/1234', '', 5];
+    const r = normalizeCollections({ items: [...urls.map((u, i) => card(`u${i}`, { coverUrl: u })),
+      card('ok', { coverUrl: 'https://cdn.test/a.jpg' })] }, { safeUrl });
+    assert.deepEqual(r.items.map((c) => c.coverUrl), [undefined, undefined, undefined, undefined, undefined, 'https://cdn.test/a.jpg']);
+    assert.ok(r.items.slice(0, 5).every((c) => !('coverUrl' in c)));
+    // a safeUrl that lets blob: through is still refused
+    const loose = (u) => safeMediaUrl(u, { baseURI: 'https://site.test/', protocol: 'https:', allowBlob: true });
+    assert.equal('coverUrl' in normalizeCollections({ items: [card('b', { coverUrl: 'blob:https://site.test/1' })] },
+      { safeUrl: loose }).items[0], false);
+  });
+
+  it('truncated: only exactly true counts', () => {
+    for (const t of ['true', 1, {}, null, undefined, false]) {
+      assert.equal(normalizeCollections({ items: [card('a')], truncated: t }, { safeUrl }).truncated, false, String(t));
+    }
+    assert.equal(normalizeCollections({ items: [], truncated: true }, { safeUrl }).truncated, true);
+  });
+
+  it('__proto__ pollution ignored: fields are own properties only; a throwing getter skips the card', () => {
+    const polluted = JSON.parse('{"__proto__": {"id": "p", "label": "P", "coverUrl": "https://evil.test/x.jpg"}, "id": "a", "label": "A"}');
+    const inherited = Object.create({ id: 'x', label: 'X' });
+    const protoCover = Object.assign(Object.create({ coverUrl: 'https://cdn.test/p.jpg', count: 3 }), { id: 'b', label: 'B' });
+    const throwing = { id: 't', get label() { throw new Error('boom'); } };
+    const r = normalizeCollections({ items: [polluted, inherited, protoCover, throwing, card('ok')] }, { safeUrl });
+    assert.deepEqual(r.items, [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'ok', label: 'Album ok' }]);
+    assert.equal(Object.getPrototypeOf(r.items[0]), Object.prototype);
+    assert.equal(({}).id, undefined, 'Object.prototype untouched');
+  });
+
+  it('not an object / items missing or not an array → contractError (code server)', () => {
+    for (const bad of [null, undefined, 'x', 5, [], [card('a')], {}, { items: 'x' }, { items: {} }, { items: null }]) {
+      assert.throws(() => normalizeCollections(bad, { safeUrl }), (e) => e.code === 'server', JSON.stringify(bad));
+    }
   });
 });
 
@@ -630,7 +843,8 @@ describe('payload bounds (review SEC-3)', () => {
   const many = (n, f) => Array.from({ length: n }, (_, i) => f(i));
 
   it('LIMITS are the documented numbers', () => {
-    assert.deepEqual({ ...LIMITS }, { pageItems: 100, text: 500, badges: 10, facets: 20, options: 200, fields: 50 });
+    assert.deepEqual({ ...LIMITS }, { pageItems: 100, text: 500, badges: 10, facets: 20, options: 200, fields: 50,
+      collections: 20 });
   });
 
   it('page items capped at min(limit, 100), one warning without raw data', () => {

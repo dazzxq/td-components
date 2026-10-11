@@ -10,7 +10,7 @@
  *   with an AbortError.
  * - manual (`manual: true`): every call stays pending; the test settles it through its record:
  *   `ad.calls.list[0].resolve()` (default result) / `.resolve(value)` / `.reject(err)`.
- * Every call is recorded in `ad.calls.{list|get|facets|upload|update|uploadFromUrl|delete|download}` as `{ args, signal,
+ * Every call is recorded in `ad.calls.{list|get|facets|upload|update|uploadFromUrl|delete|download|collections}` as `{ args, signal,
  * result, promise, resolve, reject, settled }`. `ad.ignoreSignal = true` → aborts are ignored (an adapter that does not
  * honour the signal).
  *
@@ -42,6 +42,11 @@
  * @param {'cursor'|'pages'} [o.pagination='cursor'] v0.33: 'pages' → list honours `request.page`
  * @param {boolean} [o.total=true] v0.33: false → list never returns `total`
  * @param {string} [o.unsafeDownloadId='m2'] v0.33: this asset's download answers a `javascript:` URL
+ * @param {boolean|{ count?: number }} [o.collections] v0.66.0 (K8): off by default. On → `count` (default 4) collections
+ *   `c1…cN` ("Bộ sưu tập k", cover `${base}{1..4}.svg`, description, `count` = its assets); asset `m{i}` belongs to
+ *   `c{((i - 1) % count) + 1}` (`asset.collectionId`); `collections({ query, filters })` returns the cards whose label
+ *   contains the query OR that hold an asset matching query + filters (≤ 20, `truncated` beyond); `list` / `facets`
+ *   honour `request.collectionId` (null / absent = no filter; without this option it is ignored); an upload with `collectionId` lands in that collection.
  */
 export function createMockAdapter(o = {}) {
   const count = o.count ?? 60;
@@ -73,8 +78,17 @@ export function createMockAdapter(o = {}) {
     });
   }
   let seq = count;
+  // v0.66.0 (K8): collections (albums) — deterministic membership
+  const nColl = o.collections ? Math.max(1, Number(o.collections.count) || 4) : 0;
+  const collList = [];
+  for (let k = 1; k <= nColl; k++) {
+    collList.push({ id: `c${k}`, label: `Bộ sưu tập ${k}`, coverUrl: `${base}${((k - 1) % 4) + 1}.svg`,
+      description: `Mô tả bộ sưu tập ${k}` });
+  }
+  if (nColl) for (const [id, a] of db) a.collectionId = `c${((Number(id.slice(1)) - 1) % nColl) + 1}`;
 
-  const calls = { list: [], get: [], facets: [], upload: [], update: [], uploadFromUrl: [], delete: [], download: [] };
+  const calls = { list: [], get: [], facets: [], upload: [], update: [], uploadFromUrl: [], delete: [], download: [],
+    collections: [] };
   /** v0.33: imported URL → asset id (dedup of uploadFromUrl). */
   const byUrl = new Map(count >= 1 ? [['https://example.com/anh-1.jpg', 'm1']] : []);
   const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
@@ -135,7 +149,24 @@ export function createMockAdapter(o = {}) {
     if (f.album !== undefined && f.album !== null && a.metadata.album !== f.album) return false;
     if (f.scope === 'mine' && Number(a.id.slice(1)) % 2 === 0) return false;
     if (Array.isArray(f.tags) && f.tags.length && !f.tags.some((t) => (a.metadata.tags || []).includes(t))) return false;
+    if (nColl && typeof req.collectionId === 'string' && a.collectionId !== req.collectionId) return false; // v0.66.0 (K8)
     return true;
+  }
+
+  if (nColl) {
+    ad.collections = (req) => {
+      const rec = record('collections', [req], req.signal, () => {
+        const q = (req.query || '').toLowerCase();
+        const assets = [...db.values()];
+        const hits = collList.filter((c) => (q && c.label.toLowerCase().includes(q))
+          || assets.some((a) => a.collectionId === c.id && matches(a, { query: req.query, filters: req.filters })));
+        return {
+          items: hits.slice(0, 20).map((c) => ({ ...c, count: assets.filter((a) => a.collectionId === c.id).length })),
+          truncated: hits.length > 20,
+        };
+      });
+      return rec.promise;
+    };
   }
 
   ad.list = (req) => {
@@ -197,6 +228,7 @@ export function createMockAdapter(o = {}) {
           urls: { thumbnail: `${base}1.svg`, preview: `${base}1.svg` }, defaultAltText: '',
           metadata: { album: Number(opts.fields?.album) || 1, license: 'owned', title: file.name, tags: [] }, badges: [],
         };
+        if (nColl && typeof opts.collectionId === 'string') asset.collectionId = opts.collectionId;
         db.set(id, asset);
         return { asset: clone(asset), deduplication: { outcome: 'created' } };
       }, true);
@@ -245,6 +277,7 @@ export function createMockAdapter(o = {}) {
           urls: { thumbnail: `${base}2.svg`, preview: `${base}2.svg` }, defaultAltText: '',
           metadata: { album: Number(opts.fields?.album) || 1, license: 'owned', title: name, tags: [] }, badges: [],
         };
+        if (nColl && typeof opts.collectionId === 'string') asset.collectionId = opts.collectionId;
         db.set(id, asset);
         byUrl.set(url, id);
         return { asset: clone(asset), deduplication: { outcome: 'created' } };

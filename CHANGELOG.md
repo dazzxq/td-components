@@ -2,6 +2,40 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.66.0
+
+**Bộ sưu tập (album) trong `td-media-picker`** — yêu cầu K8 của dsuite (A2.15, 2026-10-10), owner kit duyệt 2026-10-11.
+Hoàn toàn **opt-in**: adapter không có `collections` và không mở bằng `initialCollection` thì DOM, request và hành vi giống
+từng byte 0.65. Xem [docs/components/media-picker.md › Bộ sưu tập](docs/components/media-picker.md#bộ-sưu-tập-0660),
+[ADR 0013 › Bổ sung v0.66](docs/internal/decisions/0013-media-picker-boundary.md#bổ-sung-v066-k8), plan
+[v0.66.0](docs/internal/plans/v0.66.0-media-collections.md).
+
+### Added
+
+- **`adapter.collections({ query, filters, context, signal })`** (tuỳ chọn) trả `{ items: CollectionCard[], truncated? }`,
+  `CollectionCard = { id, label, count?, coverUrl?, description? }`. Có hàm này thì capability `collections` bật. Kit chuẩn hoá
+  (`normalizeCollections`): ≤ 20 thẻ, `id` ≤ 512, `coverUrl` qua `safeMediaUrl` (không `blob:`), `description` chỉ làm `title`.
+- **Dải thẻ album** phía trên lưới: chỉ hiện khi đã gõ tìm (bật hiện sẵn bằng option `collections: { showWithoutQuery: true }`),
+  một hàng cuộn ngang, dòng gợi ý "Gõ thêm để thu hẹp" khi `truncated`. Lỗi → ẩn dải + `operation-error` `collections`, lưới vẫn chạy.
+- **Vào / ra bộ sưu tập**: bấm thẻ → breadcrumb "Tất cả / {album}" + nút Quay lại; ô tìm tìm trong album; Quay lại khôi phục
+  query + dải cũ (không gọi lại `collections()` khi bộ lọc không đổi) và về trang 1. Lựa chọn giữ nguyên qua hai cấp.
+- **`collectionId`** trong `list`, `facets`, `upload` và `uploadFromUrl`: chỉ ở phiên có bộ sưu tập (`null` ở cấp ngoài, id khi ở trong).
+- **`open({ initialCollection: { id, label } })`**: mở thẳng vào album (focus vẫn ở ô tìm; không lấy từ `configureDefaults`).
+- **Event `collection-change`** `{ collection: { id, label } | null, reason: 'enter' | 'initial' | 'back' }`; `operation-error`
+  có thêm `operation: 'collections'`.
+- **Nhãn mới**: `collections`, `allItems`, `location`, `collectionCount`, `collectionName`, `collectionsTruncated`,
+  `collectionEntered`, `collectionLeft`.
+
+### Changed
+
+- **Esc trong một bộ sưu tập = Quay lại** (không đóng picker). Thứ tự: popup / dialog lồng → xoá chữ ở ô tìm → Quay lại → đóng.
+  Ở cấp ngoài Esc giữ như cũ. Đây là ngoại lệ có chủ ý so với [ADR 0032](docs/internal/decisions/0032-calendar-picker.md) (lý do ở ADR 0013).
+
+### Docs
+
+- [media-picker › Bộ sưu tập](docs/components/media-picker.md#bộ-sưu-tập-0660), [security-model §6](docs/internal/security-model.md#6-media-picker--media-field),
+  [breaking-changes § 0.66.0](docs/upgrading/breaking-changes.md#0660) (không phá vỡ).
+
 ## 0.65.0
 
 **Adapter PHP dùng bản minify mặc định**: `Td::configure()` không truyền `assets` giờ là `'dist'` (owner, 2026-10-10;

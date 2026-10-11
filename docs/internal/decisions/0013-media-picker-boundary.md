@@ -189,3 +189,40 @@ adapter / FormData / kết quả picker.
    `list` (không request nếu nháp trùng); × / Escape / đóng picker bỏ nháp. Không thêm facet / sort mới (vẫn là descriptor
    của adapter).
 3. **< 720 px**: pager dời xuống **dưới lưới** (cuối vùng kết quả); 720–1023 và ≥ 1024 pager ở toolbar.
+
+## Bổ sung v0.66 (K8)
+
+Ngày 2026-10-11. Nguồn: plan [v0.66.0-media-collections](../plans/v0.66.0-media-collections.md) quyết định 1-12; yêu cầu K8 của
+dsuite (album trong picker). Owner kit duyệt ngày 2026-10-10 / 2026-10-11. Mục này **chỉ thêm**: mọi phần mới đều tuỳ chọn, adapter
+v0.65 chạy y nguyên và phiên không dùng bộ sưu tập giữ DOM + request giống từng byte 0.65.
+
+### Hợp đồng: phần thêm
+
+| Phần thêm | Kiểu | Mặc định / ghi chú |
+|---|---|---|
+| `adapter.collections?(request)` | `({ query, filters, context?, signal }) => Promise<{ items: CollectionCard[], truncated?: boolean }>`, `CollectionCard = { id, label, count?, coverUrl?, description? }` | Tuỳ chọn. Có hàm này thì capability `collections` bật (đặt `capabilities.collections: false` để tắt). Kết quả qua `normalizeCollections`: ≤ 20 thẻ, `id` ≤ 512, `label` bắt buộc, `coverUrl` qua cổng URL (không `blob:`), `description` chỉ làm `title` |
+| `collectionId` trong `MediaListRequest`, request `facets`, options của `upload` / `uploadFromUrl` | `string \| null` | **Chỉ phiên có bộ sưu tập** (adapter có `collections`, hoặc `open({ initialCollection })`, trừ khi site đặt `capabilities.collections: false`: khi đó luôn là phiên thường): `null` ở cấp ngoài, id khi ở trong. Phiên thường **không có key** → hình dạng 0.65 không đổi |
+| `OpenMediaPickerOptions.initialCollection` | `{ id: string, label: string } \| null` | Mở thẳng vào bộ sưu tập. Chỉ ở `open()`, **không** lấy từ `configureDefaults` (như `selection`) |
+| `OpenMediaPickerOptions.collections` | `{ showWithoutQuery?: boolean }` | `false`: dải thẻ chỉ hiện khi đã gõ tìm. Đặt được qua `configureDefaults` |
+| Event `collection-change` | `{ collection: { id, label } \| null, reason: 'enter' \| 'initial' \| 'back' }` | Chỉ ở phiên có bộ sưu tập. `operation-error` thêm `operation: 'collections'` |
+
+Kit vẫn **không** biết "album" là gì ở backend: `collections()` và `collectionId` chỉ là hai đầu của một bộ lọc do app định nghĩa
+(dsuite ánh xạ `collectionId` 1:1 sang `filter[collection]`). Quyền xem / tải vào bộ sưu tập vẫn do server kiểm từng request; `description`
+và `label` là text (không HTML), cover qua cổng URL như `urls.*`. Chi tiết hành vi: [docs/components/media-picker.md › Bộ sưu tập](../../components/media-picker.md#bộ-sưu-tập-0660).
+
+### Ngoại lệ Esc so với ADR 0032
+
+Trong một bộ sưu tập, **Esc = Quay lại** cấp ngoài, không đóng picker. [ADR 0032](0032-calendar-picker.md) đã bác đúng kiểu này
+cho lịch của `<td-datetime-picker>` ("Esc lùi một khung — hai nghĩa cho một phím, lệch APG"). Ở đây khác vì:
+
+- **Owner kit chốt ngày 2026-10-11** khi duyệt K8 (xem plan, mục "Nguồn"): Esc trong bộ sưu tập = Quay lại, không đóng picker.
+- **Bộ sưu tập là một cấp điều hướng *bên trong* dialog, không phải một bước *của* dialog.** Khung tháng / năm của lịch là các
+  chế độ nhìn của cùng một lựa chọn; còn album có breadcrumb, có nút "Quay lại", có vị trí (`collectionId`) mà kết quả lệ thuộc —
+  giống nút Back của trình duyệt, nên Esc = lùi một cấp là hành vi quen thuộc, và có lối ra tường minh khác (nút Quay lại,
+  "Tất cả") để người dùng không phải học thêm.
+- **Cấp ngoài không đổi**: ở cấp ngoài Esc giữ thứ tự cũ (popup / dialog lồng → xoá chữ ở ô tìm → đóng picker qua cổng xác nhận).
+  Thứ tự mới chỉ chèn một nấc: popup / dialog lồng → xoá chữ ở ô tìm → **Quay lại nếu đang trong bộ sưu tập** → đóng picker.
+  Vì vậy mất tối đa một lần Esc thêm (và vào bộ sưu tập thì ô tìm đã được xoá), và ADR 0032 vẫn đúng cho lịch.
+
+Phương án bác: giữ Esc luôn đóng picker (đồng bộ với ADR 0032) — người dùng đang ở trong album sẽ thoát cả picker khi chỉ
+muốn ra khỏi album.

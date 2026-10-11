@@ -15706,6 +15706,187 @@
 			outline: 2px solid Highlight;
 		}
 	}
+
+	/*
+	 * v0.66.0 (K8, plan v0.66.0-media-collections): collections. Breadcrumb `.td-media-picker__crumbs` (inside a collection)
+	 * and the collection strip `.td-media-picker__colls` (top level), both before the grid in the results scroller; built
+	 * only in collection-enabled sessions. The strip is ONE row of 120–160px cards that scrolls inline when it overflows
+	 * (native scroll, no touch-action — like td-carousel); cover 4:3, one-line name, muted count.
+	 */
+	.td-media-picker__crumbs {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--td-space-xs);
+		min-width: 0;
+	}
+
+	.td-media-picker__crumb-sep {
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker__crumb-current {
+		flex: 0 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		font-size: var(--td-text-sm);
+		font-weight: 500;
+		color: var(--td-color-text);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-media-picker__coll-back {
+		margin-inline-start: auto;
+	}
+
+	.td-media-picker__colls {
+		display: flex;
+		flex: none;
+		flex-direction: column;
+		gap: var(--td-space-xs);
+		min-width: 0;
+	}
+
+	.td-media-picker__colls-heading {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		font-weight: 500;
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker__collections {
+		display: flex;
+		gap: 0.75rem;
+		min-width: 0;
+		padding: 4px; /* room for the focus ring inside the scroller */
+		margin: -4px;
+		overflow-x: auto;
+		overflow-y: hidden;
+		overscroll-behavior-inline: contain;
+	}
+
+	.td-media-picker__coll-item {
+		display: flex;
+		flex: none;
+	}
+
+	.td-media-picker__coll {
+		display: flex;
+		flex-direction: column;
+		box-sizing: border-box;
+		width: 160px;
+		padding: 0;
+		overflow: hidden;
+		font: inherit;
+		color: inherit;
+		text-align: start;
+		cursor: pointer;
+		background: var(--td-color-surface);
+		border: 2px solid transparent;
+		border-radius: var(--td-media-picker-card-radius);
+		box-shadow: var(--td-media-picker-card-shadow);
+		transition: border-color var(--td-dur-fast) var(--td-ease);
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-picker__coll:hover {
+			border-color: var(--td-media-picker-card-hover);
+		}
+	}
+
+	.td-media-picker__coll:focus-visible {
+		outline: 2px solid transparent;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-media-picker__coll:is(:active, [data-td-pressed]) {
+		border-color: var(--td-media-picker-card-hover);
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-media-picker__coll-cover {
+		display: block;
+		aspect-ratio: 4 / 3;
+		overflow: hidden;
+		background: var(--td-color-surface-muted);
+	}
+
+	.td-media-picker__coll-cover img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.td-media-picker__coll-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		height: 100%;
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker__coll-name {
+		padding: 0.375rem 0.5rem 0;
+		overflow: hidden;
+		font-size: var(--td-text-sm);
+		font-weight: 500;
+		color: var(--td-color-text);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-media-picker__coll-count {
+		padding: 0 0.5rem 0.375rem;
+		font-size: var(--td-text-xs);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker__coll-name:last-child {
+		padding-bottom: 0.375rem;
+	}
+
+	.td-media-picker__colls-hint {
+		margin: 0;
+		font-size: var(--td-text-xs);
+		color: var(--td-color-text-muted);
+	}
+
+	@media (max-width: 719.98px) {
+		.td-media-picker__coll {
+			width: 120px;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-media-picker__coll {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-media-picker__coll {
+			border-color: CanvasText;
+		}
+
+		@media (hover: hover) and (pointer: fine) {
+			.td-media-picker__coll:hover {
+				border-color: Highlight;
+			}
+		}
+
+		.td-media-picker__coll:focus-visible {
+			outline: 2px solid Highlight;
+		}
+
+		.td-media-picker__coll:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/media-picker-upload.css ---- */

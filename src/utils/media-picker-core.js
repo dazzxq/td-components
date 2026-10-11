@@ -12,6 +12,10 @@
  * page size 30; pure helpers for URL upload (`validateRemoteUrl`), delete / download results, filenames, default titles,
  * upload results and paging (`PageState`). v0.32 adapters keep working unchanged.
  *
+ * v0.66.0 (plan v0.66.0-media-collections M1, K8) — additive only: optional `adapter.collections()` + the `collections`
+ * capability, `normalizeCollections`, `collectionId` in list requests / request keys of collection-enabled sessions,
+ * `initialCollection` / `collections` options. Other sessions keep the v0.65 request / key shape exactly.
+ *
  * @module utils/media-picker-core
  */
 
@@ -28,6 +32,8 @@
  * @property {{ key: string, direction: 'asc'|'desc' }} [sort] never set by v0.32 (use a `sort` facet)
  * @property {unknown} [context] passed through, never interpreted
  * @property {Array<'image'|'video'|'file'>|null} [kinds] v0.32 addition: `selection.kinds` (adapters should filter)
+ * @property {string|null} [collectionId] v0.66.0 (K8): sent ONLY in a collection-enabled session — `null` at the top
+ *   level (no collection filter), the collection id inside one; other sessions never have the key (the v0.65 shape)
  * @property {AbortSignal} signal
  */
 
@@ -40,6 +46,8 @@
  * @property {boolean} downloadOriginal
  * @property {boolean} uploadFromUrl v0.33: inferred `!!adapter.uploadFromUrl`; `false` hides the URL tab (decision 22)
  * @property {boolean} copyLink v0.33: default false (no method needed; copies the DISPLAY url `urls.preview`, decision 27)
+ * @property {boolean} [collections] v0.66.0 (K8): inferred `typeof adapter.collections === 'function'` (session-level
+ *   only — never read from a per-asset `capabilities`)
  */
 
 /**
@@ -69,6 +77,20 @@
  * @property {string|null} [previousCursor] not used by v0.32
  * @property {number} [total] integer ≥ 0; REQUIRED in `pagination: 'pages'` mode (missing → warned once, cursor UI)
  */
+
+/**
+ * v0.66.0 (K8): one collection (album) card of `adapter.collections()`. `label` / `description` are text only;
+ * `coverUrl` goes through the URL gate (never `blob:`).
+ * @typedef {{ id: string, label: string, count?: number, coverUrl?: string, description?: string }} CollectionCard
+ */
+/**
+ * @typedef {object} MediaCollectionsRequest
+ * @property {string} query
+ * @property {Record<string, FilterValue>} filters
+ * @property {unknown} [context] passed through, never interpreted
+ * @property {AbortSignal} signal
+ */
+/** @typedef {{ items: CollectionCard[], truncated: boolean }} MediaCollectionsResult `normalizeCollections` output */
 
 /** @typedef {{ value: Scalar, label: string, count?: number, disabled?: boolean }} FacetOption */
 /** @typedef {{ key: string, label: string, type: 'single'|'multiple'|'toggle', options: FacetOption[] }} FacetDescriptor */
@@ -108,20 +130,26 @@
 /**
  * @typedef {object} MediaPickerAdapter
  * @property {(request: MediaListRequest) => Promise<MediaPage>} list
- * @property {(request: { query: string, filters: Record<string, FilterValue>, context?: unknown, signal: AbortSignal })
- *   => Promise<FacetDescriptor[]>} [facets]
+ * @property {(request: { query: string, filters: Record<string, FilterValue>, context?: unknown,
+ *   collectionId?: string|null, signal: AbortSignal }) => Promise<FacetDescriptor[]>} [facets] v0.66.0 (K8):
+ *   `collectionId` as in `MediaListRequest` (collection-enabled sessions only)
  * @property {(id: string, o: { context?: unknown, signal: AbortSignal }) => Promise<MediaAsset>} get
- * @property {(file: File, o: { fields: Record<string, unknown>, context?: unknown, signal: AbortSignal,
- *   onProgress(p: UploadProgress): void }) => Promise<UploadResult>} [upload]
+ * @property {(file: File, o: { fields: Record<string, unknown>, context?: unknown, collectionId?: string|null,
+ *   signal: AbortSignal, onProgress(p: UploadProgress): void }) => Promise<UploadResult>} [upload] `collectionId`
+ *   (v0.66.0, K8): present only in a collection-enabled session
  * @property {(id: string, patch: { fields: Record<string, unknown>, version?: string|number },
  *   o: { context?: unknown, signal: AbortSignal }) => Promise<MediaAsset>} [update]
- * @property {(url: string, o: { fields: Record<string, unknown>, context?: unknown, signal: AbortSignal,
- *   onProgress?(p: UploadProgress): void }) => Promise<UploadResult>} [uploadFromUrl] v0.33 (decision 22): `url` is the
- *   normalised `href` of `validateRemoteUrl` (UX only — the SERVER must block SSRF, decision 23)
+ * @property {(url: string, o: { fields: Record<string, unknown>, context?: unknown, collectionId?: string|null,
+ *   signal: AbortSignal, onProgress?(p: UploadProgress): void }) => Promise<UploadResult>} [uploadFromUrl] v0.33
+ *   (decision 22): `url` is the normalised `href` of `validateRemoteUrl` (UX only — the SERVER must block SSRF, decision
+ *   23); `collectionId` (v0.66.0, K8): present only in a collection-enabled session
  * @property {(id: string, o: { context?: unknown, signal: AbortSignal }) => Promise<DeleteResult>} [delete] the SERVER
  *   checks usage + permission; the kit never does (decision 24)
  * @property {(id: string, o: { rendition: 'original', context?: unknown, signal: AbortSignal })
  *   => Promise<DownloadResult>} [download] decision 25 (a blob is only ever downloaded, never opened)
+ * @property {(request: MediaCollectionsRequest) => Promise<{ items: CollectionCard[], truncated?: boolean }>} [collections]
+ *   v0.66.0 (K8): the collection cards matching `query` / `filters` (≤ 20, `normalizeCollections`); the method's
+ *   presence turns the `collections` capability on. `upload` / `uploadFromUrl` / `facets` then also get `collectionId`.
  */
 
 /**
@@ -158,6 +186,10 @@
  * @property {'cursor'|'pages'} [pagination] v0.33 addition (default 'cursor'; also via configureDefaults, decision 13)
  * @property {{ accept?: string, maxSize?: string, multiple?: boolean, acceptLabel?: string }} [upload] v0.32 addition
  *   (→ td-dropzone); v0.33 `acceptLabel`: badge TEXT only, never a filter (decision 21)
+ * @property {{ id: string, label: string }} [initialCollection] v0.66.0 (K8): open straight inside this collection;
+ *   `open()` layers only (never from `configureDefaults`, like `selection`); `null` = absent; a bad shape → TypeError
+ * @property {{ showWithoutQuery?: boolean }} [collections] v0.66.0 (K8): `showWithoutQuery: true` shows the collection
+ *   strip before anything is typed (default false); also via configureDefaults
  */
 
 export const KINDS = Object.freeze(['image', 'video', 'file']);
@@ -169,7 +201,10 @@ export const CONTROLS = Object.freeze(['text', 'textarea', 'url', 'select', 'mul
 export const FACET_TYPES = Object.freeze(['single', 'multiple', 'toggle']);
 const CAP_KEYS = ['search', 'upload', 'editMetadata', 'delete', 'downloadOriginal', 'uploadFromUrl', 'copyLink'];
 const CAP_METHOD = { upload: 'upload', editMetadata: 'update', delete: 'delete', downloadOriginal: 'download',
-  uploadFromUrl: 'uploadFromUrl' };
+  uploadFromUrl: 'uploadFromUrl', collections: 'collections' };
+// v0.66.0 (K8): `collections` is a session capability only — kept out of CAP_KEYS so a per-asset `capabilities` stays
+// exactly as before
+const SESSION_CAP_KEYS = [...CAP_KEYS, 'collections'];
 const RETRYABLE = new Set(['network', 'rate-limited', 'server']);
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const TEXT_MAX = 200;
@@ -181,7 +216,8 @@ export const PAGINATION_MODES = Object.freeze(['cursor', 'pages']);
  * Bounds on adapter payloads before anything reaches the DOM (review SEC-3): extras are dropped (one warning per call,
  * counts only — never the raw data). `text` = code points of a display string (asset name / alt / labels / help text).
  */
-export const LIMITS = Object.freeze({ pageItems: 100, text: 500, badges: 10, facets: 20, options: 200, fields: 50 });
+export const LIMITS = Object.freeze({ pageItems: 100, text: 500, badges: 10, facets: 20, options: 200, fields: 50,
+  collections: 20 });
 /**
  * Review SEC-3 r2: how many raw entries are INSPECTED at most (4 × the cap) — scanning stops there whatever was accepted,
  * so a 1e6-entry array costs the same as a small one.
@@ -374,6 +410,63 @@ export function normalizeFacets(raw, { warn = console.warn } = {}) {
   return out;
 }
 
+/** An own property of `o` (inherited / prototype-polluted values never count), else undefined. */
+const own = (o, k) => (Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined);
+
+/**
+ * v0.66.0 (K8): one raw collection card → a fresh normalised copy, or null (not an object / bad id / empty label /
+ * a throwing getter). Fields are read as OWN properties only.
+ * @param {unknown} c @param {(u: unknown) => string} safeUrl @returns {CollectionCard|null}
+ */
+function normalizeCollectionCard(c, safeUrl) {
+  try {
+    if (!isObj(c)) return null;
+    const id = own(c, 'id');
+    const label = own(c, 'label');
+    if (typeof id !== 'string' || !id || id.length > ID_MAX) return null;
+    if (typeof label !== 'string' || !label.trim()) return null;
+    /** @type {CollectionCard} */
+    const card = { id, label: capText(label, TEXT_MAX) };
+    const count = own(c, 'count');
+    if (Number.isInteger(count) && count >= 0) card.count = count;
+    const cover = safeUrl(own(c, 'coverUrl'));
+    if (typeof cover === 'string' && cover && !/^blob:/i.test(cover)) card.coverUrl = cover;
+    const desc = own(c, 'description');
+    if (typeof desc === 'string' && desc) card.description = capText(desc, TEXT_MAX);
+    return card;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * v0.66.0 (K8): raw `adapter.collections()` result → `{ items, truncated }`. At most `LIMITS.collections` cards, at most
+ * `BUDGET × LIMITS.collections` entries inspected; invalid entries skipped, duplicate id → the first. `truncated` is
+ * `raw.truncated === true` or the cap cut valid cards. Not an object / `items` not an array → throws `code: 'server'`.
+ * Only fresh objects are returned — never the adapter's.
+ * @param {unknown} raw
+ * @param {{ safeUrl: (u: unknown) => string }} opts `safeUrl` = `safeMediaUrl` WITHOUT `allowBlob` (a `blob:` result is
+ *   refused anyway)
+ * @returns {MediaCollectionsResult}
+ */
+export function normalizeCollections(raw, { safeUrl }) {
+  if (!isObj(raw) || !Array.isArray(/** @type {any} */ (raw).items)) throw contractError('server');
+  const o = /** @type {any} */ (raw);
+  const list = o.items;
+  const items = [];
+  const seen = new Set();
+  let capped = false;
+  const budget = Math.min(list.length, LIMITS.collections * BUDGET);
+  for (let i = 0; i < budget; i++) {
+    const card = normalizeCollectionCard(list[i], safeUrl);
+    if (!card || seen.has(card.id)) continue;
+    if (items.length >= LIMITS.collections) { capped = true; break; }
+    seen.add(card.id);
+    items.push(card);
+  }
+  return { items, truncated: o.truncated === true || capped };
+}
+
 /**
  * Raw field descriptors → the valid ones; duplicate key → the first; HTML is never accepted (labels / help are text).
  * @param {unknown} raw
@@ -471,8 +564,8 @@ export function normalizeError(err, signal, { warn = console.warn, operation = '
  * flags are inferred: search true, upload = !!adapter.upload, editMetadata = !!adapter.update, uploadFromUrl =
  * !!adapter.uploadFromUrl (v0.33); delete / downloadOriginal stay false unless the site sets them true (destructive /
  * egress actions are an explicit opt-in — a v0.32 adapter that merely HAS the method shows nothing new); copyLink
- * (v0.33, no method) false unless set true. Only booleans count. Presentation hints only — the server still authorises
- * every call.
+ * (v0.33, no method) false unless set true; collections = !!adapter.collections (v0.66.0, K8). Only booleans count.
+ * Presentation hints only — the server still authorises every call.
  * @param {MediaPickerAdapter} adapter
  * @param {Partial<MediaCapabilities>|null|undefined} caps
  * @returns {MediaCapabilities}
@@ -481,9 +574,9 @@ export function resolveCapabilities(adapter, caps) {
   const c = isObj(caps) ? caps : {};
   const has = (m) => !!adapter && typeof adapter[m] === 'function';
   const inferred = { search: true, upload: has('upload'), editMetadata: has('update'), delete: false, downloadOriginal: false,
-    uploadFromUrl: has('uploadFromUrl'), copyLink: false };
+    uploadFromUrl: has('uploadFromUrl'), copyLink: false, collections: has('collections') };
   const out = /** @type {MediaCapabilities} */ ({});
-  for (const k of CAP_KEYS) {
+  for (const k of SESSION_CAP_KEYS) {
     const flag = typeof c[k] === 'boolean' ? c[k] : inferred[k];
     out[k] = flag && (!CAP_METHOD[k] || has(CAP_METHOD[k]));
   }
@@ -520,11 +613,14 @@ let warnedCropMultiple = false;
  * `pageSize` (1-100, default 30), `pagination` ('cursor' | 'pages', invalid → warned + 'cursor'), `upload` (+ text
  * `acceptLabel`), `messages`, `crop` (v0.35 decision 23 → `cropResolved = { aspectRatio, allowFocalPoint } | null`: a bad
  * `aspectRatio` warns once ⇒ free; `selection.mode = 'multiple'` warns once ⇒ no crop; unknown keys ignored). No valid adapter → TypeError (a
- * programming error).
+ * programming error). v0.66.0 (K8): `initialCollection` (never from `defaults`; `{ id, label }` | null, a bad shape →
+ * TypeError) and `collections` (→ `{ showWithoutQuery }`, a non-object → TypeError); `null` for either = absent (like
+ * undefined: skipped, never overrides a lower layer).
  * @param {object|null|undefined} defaults
  * @param {...(object|null|undefined)} layers last argument may be `{ warn }` only when it is the sole key
  * @returns {OpenMediaPickerOptions & { cropResolved: { aspectRatio: number|null, allowFocalPoint: boolean } | null,
- *   capabilitiesResolved: MediaCapabilities }}
+ *   capabilitiesResolved: MediaCapabilities, initialCollection: { id: string, label: string } | null,
+ *   collections: { showWithoutQuery: boolean } }}
  */
 export function resolveOptions(defaults, ...layers) {
   let warn = console.warn;
@@ -537,7 +633,10 @@ export function resolveOptions(defaults, ...layers) {
   const apply = (layer, isDefault) => {
     if (!isObj(layer)) return;
     for (const k of Object.keys(layer)) {
-      if (BAD_KEYS.has(k) || (isDefault && k === 'selection') || layer[k] === undefined) continue;
+      // v0.66.0 (K8): `initialCollection` never comes from the defaults either (per open, like `selection`)
+      if (BAD_KEYS.has(k) || (isDefault && (k === 'selection' || k === 'initialCollection')) || layer[k] === undefined) continue;
+      // v0.66.0 (K8): `initialCollection: null` / `collections: null` = absent, exactly like undefined (`album ?? null`)
+      if (layer[k] === null && (k === 'initialCollection' || k === 'collections')) continue;
       merged[k] = layer[k];
     }
   };
@@ -586,6 +685,20 @@ export function resolveOptions(defaults, ...layers) {
     }
   }
   const filters = isObj(merged.initialFilters) ? { ...merged.initialFilters } : {};
+  // v0.66.0 (K8): `initialCollection` absent → null; present → exactly `{ id, label }` (a fresh object) or a TypeError
+  let initialCollection = null;
+  if (merged.initialCollection !== undefined) {
+    const ic = merged.initialCollection;
+    if (!isObj(ic) || typeof ic.id !== 'string' || !ic.id || ic.id.length > ID_MAX || typeof ic.label !== 'string'
+      || !ic.label.trim()) {
+      throw new TypeError('TdMediaPicker: initialCollection must be {id, label}');
+    }
+    initialCollection = { id: ic.id, label: capText(ic.label, TEXT_MAX) };
+  }
+  if (merged.collections !== undefined && !isObj(merged.collections)) {
+    throw new TypeError('TdMediaPicker: collections must be { showWithoutQuery?: boolean }');
+  }
+  const collections = { showWithoutQuery: merged.collections?.showWithoutQuery === true };
   return {
     ...merged,
     selection: { mode, maxItems, initialIds: maxItems ? ids.slice(0, maxItems) : ids, kinds: kinds.length ? kinds : null },
@@ -604,6 +717,8 @@ export function resolveOptions(defaults, ...layers) {
     uploadFields: Array.isArray(merged.uploadFields) ? merged.uploadFields : [],
     title: typeof merged.title === 'string' ? merged.title : '',
     locale: typeof merged.locale === 'string' ? merged.locale : '',
+    initialCollection,
+    collections,
     cropResolved,
     capabilitiesResolved: resolveCapabilities(merged.adapter, merged.capabilities),
   };
@@ -634,10 +749,16 @@ export class DefaultsRegistry {
   get() { return { ...this._d }; }
 }
 
+/** v0.66.0 (K8): is this a collection-enabled state (`collectionId` null or a string)? */
+const hasCollectionId = (state) => state.collectionId === null || typeof state.collectionId === 'string';
+
 /**
  * The adapter list request for the current query / filters (filters copied one level deep — arrays included — so the
  * adapter can never mutate the picker's state, and the picker never mutates the caller's object). No `sort` in v0.32.
- * @param {{ query?: string, filters?: Record<string, FilterValue>, pageSize: number, context?: unknown, kinds?: string[]|null }} state
+ * v0.66.0 (K8): `state.collectionId` null or a string (a collection-enabled session) → `request.collectionId`; undefined
+ * (any other session) → no key, the v0.65 shape.
+ * @param {{ query?: string, filters?: Record<string, FilterValue>, pageSize: number, context?: unknown, kinds?: string[]|null,
+ *   collectionId?: string|null }} state
  * @param {{ cursor?: string|null, page?: number, signal?: AbortSignal }} [o] `page` (v0.33, pages mode): an integer ≥ 1 →
  *   `request.page` and `cursor: null`; anything else → no `page` key (cursor mode, the v0.32 shape)
  * @returns {MediaListRequest}
@@ -656,6 +777,7 @@ export function buildListRequest(state, { cursor = null, page, signal } = {}) {
   };
   if (pages) req.page = page;
   if (state.context !== undefined) req.context = state.context;
+  if (hasCollectionId(state)) req.collectionId = state.collectionId;
   return req;
 }
 
@@ -669,15 +791,19 @@ function filtersKey(filters) {
 }
 
 /**
- * Cache key of a list (or facet) request: query + typed filters + cursor + limit + kinds + page (v0.33, pages mode).
- * @param {{ query?: string, filters?: object, pageSize?: number, kinds?: string[]|null }} state
+ * Cache key of a list (or facet) request: query + typed filters + cursor + limit + kinds + page (v0.33, pages mode)
+ * + collectionId (v0.66.0 K8: a trailing element ONLY when `state.collectionId` is null or a string — otherwise the key
+ * is exactly the v0.65 one).
+ * @param {{ query?: string, filters?: object, pageSize?: number, kinds?: string[]|null, collectionId?: string|null }} state
  * @param {string|null} [cursor]
  * @param {number|null} [page]
  * @returns {string}
  */
 export function requestKey(state, cursor = null, page = null) {
-  return JSON.stringify([typeof state.query === 'string' ? state.query.trim() : '', filtersKey(state.filters), cursor || null,
-    state.pageSize ?? null, state.kinds || null, Number.isInteger(page) && page >= 1 ? page : null]);
+  const parts = [typeof state.query === 'string' ? state.query.trim() : '', filtersKey(state.filters), cursor || null,
+    state.pageSize ?? null, state.kinds || null, Number.isInteger(page) && page >= 1 ? page : null];
+  if (hasCollectionId(state)) parts.push(state.collectionId);
+  return JSON.stringify(parts);
 }
 
 /**
