@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.69.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.70.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.70.0](#0700) | Không phá vỡ: `td-tabs` thêm số đếm (`count`, `tone`, `setTabCount`) (opt-in) | Không phải sửa code. Muốn dải lọc có số đếm: thêm `count` / `tone` vào mục `tabs`, cập nhật số bằng `td.setTabCount(id, n, tone?)` (không dựng lại thanh). Không dùng thì giống từng byte 0.69. |
 | [0.69.0](#0690) | Không phá vỡ: thêm biến thể Button `plain` (opt-in) | Không phải sửa code. Muốn nút chữ thẳng cột với dòng chữ phía trên (thay vì ghost thụt vào): `variant="plain"` / `'variant' => 'plain'`. Không dùng thì giống từng byte 0.68. |
 | [0.68.0](#0680) | **Đổi hành vi**: `autoSelectFirst` của `td-media-picker` giờ bật mặc định | Mở picker mà không đặt option thì ảnh đầu đã được chọn sẵn và "Chèn" bật (cả `multiple`). Không muốn: `TdMediaPicker.configureDefaults({ …, autoSelectFirst: false })` hoặc `open({ autoSelectFirst: false })`. Test của site dựa vào "mở ra chưa chọn gì" phải tắt tường minh. |
 | [0.67.0](#0670) | Không phá vỡ: `autoSelectFirst` của `td-media-picker` là opt-in | Không phải sửa code. Muốn chọn sẵn ảnh đầu khi mở: `TdMediaPicker.configureDefaults({ …, autoSelectFirst: true })` (áp cả cho `td-media-field`; ô đã có ảnh không bị đè). Không bật thì giống từng byte 0.66. |
@@ -96,6 +97,15 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.70.0
+
+**Không phá vỡ.** `td-tabs` thêm số đếm có màu cạnh nhãn thẻ, hoàn toàn opt-in. Không có `count` ở mục nào thì DOM, CSS hiệu lực và hành vi giống từng byte 0.69; không token mới;
+PHP không đổi (không có helper `td_tabs`).
+
+Dùng cho dải lọc có số lượng theo mục: thêm `count` (số hoặc chuỗi) và `tone` vào mục của `tabs`, và cập nhật số bất đồng bộ bằng `setTabCount(id, count, tone?)`
+([chi tiết](../components/tabs.md#số-đếm-count-tone-0700)): cập nhật tại chỗ, không dựng lại thanh, giữ focus và thẻ đang chọn; `null` xoá viên thuốc. Gán lại `tabs`
+vẫn dựng lại cả thanh. Lưu ý: tên truy cập của thẻ có số thành "Nhãn, 12", nên test dựa vào tên thẻ phải tính cả phần số.
 
 ## 0.69.0
 

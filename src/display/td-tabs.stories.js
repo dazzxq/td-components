@@ -127,3 +127,32 @@ export const LongLabelAmongShort = {
     ];
   },
 };
+
+export const WithCounts = {
+  name: 'With counts (0.70.0)',
+  render: (args) => `
+    <div class="sb-stack">
+      <td-tabs size="${escapeHtml(String(args.size || 'md'))}" aria-label="Trạng thái đơn hàng"></td-tabs>
+      <p class="sb-note">Mỗi thẻ có thể kèm số đếm có màu (tone như badge). "Tải số đếm" mô phỏng số đến muộn sau khi tải dữ liệu:
+        <code>setTabCount(id, count, tone?)</code> cập nhật tại chỗ (focus và thẻ đang chọn giữ nguyên); <code>null</code> xoá viên thuốc.</p>
+      <button type="button" class="td-btn td-btn--secondary td-btn--sm" data-sb-load>Tải số đếm</button>
+      <button type="button" class="td-btn td-btn--secondary td-btn--sm" data-sb-clear>Xoá số đếm</button>
+    </div>
+  `,
+  args: { size: 'md' },
+  play: async ({ canvasElement }) => {
+    const el = canvasElement.querySelector('td-tabs');
+    el.tabs = [
+      { id: 'todo', label: 'Cần xử lý' }, { id: 'new', label: 'Mới' }, { id: 'confirmed', label: 'Đã xác nhận' },
+      { id: 'shipping', label: 'Đang giao' }, { id: 'done', label: 'Hoàn tất' }, { id: 'cancelled', label: 'Đã hủy' }, { id: 'all', label: 'Tất cả' },
+    ];
+    const tones = { todo: 'danger', new: 'info', confirmed: 'info', shipping: 'warning', done: 'success', cancelled: 'neutral', all: 'neutral' };
+    const counts = { todo: 4, new: 12, confirmed: 7, shipping: 3, done: 1284, cancelled: 0, all: 1310 };
+    canvasElement.querySelector('[data-sb-load]').addEventListener('click', () => {
+      for (const [id, n] of Object.entries(counts)) el.setTabCount(id, n, tones[id]);
+    });
+    canvasElement.querySelector('[data-sb-clear]').addEventListener('click', () => {
+      for (const id of Object.keys(counts)) el.setTabCount(id, null);
+    });
+  },
+};

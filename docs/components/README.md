@@ -81,7 +81,7 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 | [Diff](diff.md) | `<td-diff>` | `/diff` | So sánh trước / sau theo trường cho màn audit log: Thêm / Xoá / Đổi bằng chữ, `[ĐÃ ẨN]`, mảng quyền so như tập (+ / −), giá trị dài thu gọn, JSON view tuỳ chọn, inline khi hẹp; chỉ hiển thị (server che dữ liệu); PHP `td_diff` / `td_diff_snapshots` (0.46) |
 | [Rating](rating.md) | `<td-rating>` | `/rating` | Đánh giá sao **chỉ đọc**: số lẻ (nửa sao / tô đúng tỉ lệ), tên đọc bằng chữ "4,3 trên 5 sao", số lượt "(1.234 đánh giá)", "Chưa có đánh giá"; PHP `td_rating` chạy không JS (0.50) |
 | [Carousel](carousel.md) | `<td-carousel>` | `/carousel` | Dải cuộn ngang native + scroll-snap: nút trước / sau, chấm, bộ đếm, số slide mỗi khung theo container query (token); không JS vẫn cuộn được; **không autoplay / loop / drag**; PHP `td_carousel` giữ chỗ (không CLS) (0.50) |
-| [Tabs](tabs.md) | `<td-tabs>` | `/tabs` | Tab (chuẩn APG, kích hoạt thủ công) |
+| [Tabs](tabs.md) | `<td-tabs>` | `/tabs` | Tab (chuẩn APG, kích hoạt thủ công); số đếm có màu cạnh nhãn, cập nhật tại chỗ bằng `setTabCount` (0.70.0) |
 | [Pagination](pagination.md) | `<td-pagination>` | `/pagination` | Phân trang |
 | [Empty state](empty-state.md) | `<td-empty-state>` | `/empty-state` | Màn "chưa có dữ liệu" có hành động |
 | [Media grid](media-grid.md) | `<td-media-grid>` | `/media-grid` | Lưới ảnh chọn được: nâng cấp markup site/PHP, tick khi rê/focus, chế độ chọn, Shift chọn dải, Space/Enter/Esc, `select-change` / `activate` |

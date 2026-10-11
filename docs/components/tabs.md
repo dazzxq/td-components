@@ -116,10 +116,11 @@ tabs.tabs = [
 
 | Thành viên | Kiểu / chữ ký | Mô tả |
 |---|---|---|
-| `tabs` | `Array<{ id, label, icon?, panel? }>` | Danh sách thẻ. Mục thiếu `id` (hoặc `id` rỗng) bị bỏ qua; `id` được ép sang chuỗi; `label` null → `''`. Gán lại → dựng lại thanh, nếu focus đang trong td-tabs thì focus về thẻ đang chọn. |
+| `tabs` | `Array<{ id, label, icon?, panel?, count?, tone? }>` | Danh sách thẻ. Mục thiếu `id` (hoặc `id` rỗng) bị bỏ qua; `id` được ép sang chuỗi; `label` null → `''`. Gán lại → dựng lại thanh, nếu focus đang trong td-tabs thì focus về thẻ đang chọn. |
 | `onChange` | `(tabId: string) => void` | Callback khi thẻ đổi do người dùng hoặc `setActiveTab`. Không phải function → `null`. |
 | `setActiveTab(tabId)` | `(string) => void` | Chọn thẻ; nếu thật sự đổi thì gọi `onChange` rồi phát `tab-change`. `id` không tồn tại hoặc đang chọn → không làm gì. |
 | `getActiveTab()` | `() => string \| null` | `id` thẻ đang chọn, `null` nếu không có thẻ. |
+| `setTabCount(tabId, count, tone?)` | `(string, number \| string \| null, string?) => boolean` | **0.70.0**: đặt, đổi hoặc xoá viên số đếm của MỘT thẻ **tại chỗ** (không dựng lại thanh) — xem [Số đếm](#số-đếm-count-tone-0700). Trả `false` (không làm gì, không ném lỗi) nếu không có thẻ đó. |
 
 Khoá của một mục `tabs`:
 
@@ -129,6 +130,43 @@ Khoá của một mục `tabs`:
 | `label` | string | Chữ hiển thị (escape). **Không bao giờ bị cắt** (v0.34.0): không đủ chỗ thì hàng thẻ cuộn ngang — xem [Responsive](#responsive-v0340). |
 | `icon` | string | Tên icon registry (hoặc class cũ, deprecated). |
 | `panel` | string | `id` của phần tử panel **nằm ngoài** td-tabs (cùng document / shadow root với td-tabs). |
+| `count` | number \| string | **0.70.0**: số đếm vẽ thành viên thuốc sau nhãn. Số hữu hạn → chữ số; chuỗi hiển thị **nguyên văn** (không cắt). `null` / `undefined` / `''` / chuỗi trắng / `NaN` / `±Infinity` / kiểu khác → **không vẽ gì**; `0` → "0". |
+| `tone` | `'neutral'` \| `'info'` \| `'success'` \| `'warning'` \| `'danger'` | **0.70.0**: màu viên số đếm, cùng bộ tone của [badge](badge.md). Thiếu hoặc lạ → `neutral`. Không có `count` thì bị bỏ qua. |
+
+## Số đếm (`count`, `tone`) (0.70.0)
+
+Dùng cho dải lọc có số lượng theo từng mục (ví dụ trạng thái đơn hàng): mỗi thẻ có thể kèm một viên thuốc nhỏ chứa số, màu theo `tone`.
+
+```js
+tabs.tabs = [
+  { id: 'todo', label: 'Cần xử lý', count: 4, tone: 'danger' },
+  { id: 'done', label: 'Hoàn tất',  count: 12, tone: 'success' },
+  { id: 'all',  label: 'Tất cả' },                      // không có count: không vẽ viên thuốc
+];
+
+// số đếm đến muộn / đổi sau khi tải dữ liệu: cập nhật TẠI CHỖ, không dựng lại thanh
+tabs.setTabCount('done', 13);              // đổi số, giữ tone 'success'
+tabs.setTabCount('done', 13, 'neutral');   // đổi cả tone
+tabs.setTabCount('done', null);            // chưa biết: xoá viên thuốc (và quên tone)
+```
+
+- **`setTabCount` sửa tại chỗ**: thanh danh sách và các nút giữ nguyên là cùng một phần tử, nên **focus, thẻ đang chọn và roving
+  tabindex không đổi**, không phát `tab-change`, và không có live region (cập nhật bất đồng bộ không được làm trình đọc màn hình đọc lại cả
+  thanh). `tone` bỏ trống thì **giữ tone hiện có** của thẻ (mới có số lần đầu: `neutral`); muốn về trung tính thì truyền `'neutral'`.
+- Gán lại `tabs` vẫn dựng lại cả thanh như trước (không so sánh); `count` / `tone` trong mảng mới thắng mọi giá trị đã đặt bằng `setTabCount`.
+  Getter `tabs` trả đúng mảng đã gán (không bị `setTabCount` ghi đè): số hiện hành nằm trong component. Dùng `setTabCount` cho cập nhật số, gán `tabs`
+  khi danh sách thẻ đổi.
+- **Tên truy cập là "Hoàn tất, 12"**: dấu phẩy nằm trong chính nội dung nút (một `span.td-tabs__count-sep` ẩn bằng cách cắt, không `display: none`
+  nên vẫn nằm trong tên), không dùng `aria-label`. Màu không là tín hiệu duy nhất: luôn có chữ của thẻ và số.
+- **Màu** dùng lại cặp màu đặc của [badge](badge.md) (`--td-badge-{tone}-bg` / `-fg` / `-border`, đã theo vùng theme sáng / tối và đã được cổng tương phản
+  đo): không có token mới. Site đổi màu bằng chính token của badge. Viên thuốc có màu riêng nên không đổi theo thẻ đang chọn / hover. Forced colors:
+  viền `ButtonText`.
+- **Bố cục**: viên thuốc nằm cùng hàng với nhãn, không bao giờ xuống dòng hay co lại, chữ số dùng `tabular-nums`, và **không làm thẻ cao hơn**
+  (nếu không dải lọc sẽ giật xuống khi số đếm đến muộn). Số dài làm thẻ rộng ra và có thể chuyển hàng thẻ sang chế độ cuộn ngang, như một nhãn dài
+  ([Responsive](#responsive-v0340)); site định dạng ("1.234", "99+") và chịu trách nhiệm độ dài chuỗi.
+- Đổi số làm bề rộng thẻ đổi: td-tabs đo lại **một lần** (gộp theo khung hình, kể cả khi nhiều `setTabCount` liên tiếp) để chế độ cuộn và viên chỉ báo
+  đúng. Gọi khi phần tử đang bị gỡ khỏi DOM vẫn được: việc đo được bù khi gắn lại.
+- Không có panel: dải lọc kiểu "lọc một bảng tại chỗ" dùng `td-tabs` không `panel` và tự đồng bộ URL / dữ liệu ở `tab-change`.
 
 ## Event
 
@@ -223,6 +261,8 @@ cột hẹp của trang desktop cũng đúng như trên điện thoại.
             aria-selected="true" tabindex="0" aria-controls="panel-profile">
       <span class="td-tabs__icon" data-td-icon="upload" data-td-icon-size="s" aria-hidden="true"><svg class="td-icon td-icon--s" data-icon="upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg></span>
       <span class="td-tabs__label" data-label="Hồ sơ">Hồ sơ</span>
+      <!-- 0.70.0, chỉ khi thẻ có count: -->
+      <span class="td-tabs__count" data-tone="success"><span class="td-tabs__count-sep">, </span>12</span>
     </button>
     …
   </div>
@@ -250,12 +290,13 @@ cột hẹp của trang desktop cũng đúng như trên điện thoại.
 - Ở chế độ `manual`, roving tabindex **đi theo focus**: thẻ vừa được focus bằng mũi tên là thẻ Tab sẽ quay về, dù chưa
   được chọn.
 - Phím kèm Alt / Ctrl / Meta bị bỏ qua (không chặn phím tắt trình duyệt).
-- Vùng bấm ≥ 24 px, ≥ `--td-touch-min` trên thiết bị cảm ứng. Chữ thẻ chưa chọn và đã chọn đạt ≥ 4.5:1 (sáng + tối).
+- Vùng bấm ≥ 24 px, ≥ `--td-touch-min` trên thiết bị cảm ứng. Thẻ có số đếm đọc là "{nhãn}, {số}" (xem [Số đếm](#số-đếm-count-tone-0700)). Chữ thẻ chưa chọn và đã chọn đạt ≥ 4.5:1 (sáng + tối).
 - `prefers-reduced-motion`: viên thuốc không trượt. Forced colors: thẻ chọn có viền `Highlight` 2px.
 
 ## Bảo mật
 
-`label`, `id`, `icon`, `panel` đều được escape khi vào markup; class icon cũ qua whitelist ký tự. Không có cửa sau HTML.
+`label`, `id`, `icon`, `panel` và (0.70.0) `count` đều được escape khi vào markup hoặc gán bằng `textContent`; `tone` chỉ nhận 5 giá trị trong danh sách
+(lạ → `neutral`, không bao giờ vào thuộc tính nguyên văn); class icon cũ qua whitelist ký tự. Không có cửa sau HTML.
 
 ## Cảm ứng
 

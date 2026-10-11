@@ -3,6 +3,20 @@ import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 
 let _autoIdCounter = 0;
 const SIZES = ['sm', 'md'];
+/** v0.70.0 (K9): the td-badge tones a count pill can take (anything else → 'neutral') */
+const TONES = ['neutral', 'info', 'success', 'warning', 'danger'];
+
+/**
+ * v0.70.0 (K9): a count as the text of its pill, '' = no pill. A finite number → String(n); a string verbatim (the site
+ * formats "1.234" / "99+" and owns the length); null / undefined / blank / NaN / ±Infinity / anything else → ''.
+ * @param {unknown} count
+ * @returns {string}
+ */
+function countText(count) {
+  if (typeof count === 'number') return Number.isFinite(count) ? String(count) : '';
+  if (typeof count === 'string') return count.trim() === '' ? '' : count;
+  return '';
+}
 const CLASS_TOKEN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 const DEFAULT_NAME = 'Các thẻ';
 /** px — width of the overflow edge fade (tabs.css `--_td-tabs-fade`); the active tab is scrolled clear of it. */
@@ -32,7 +46,10 @@ const FOCUSABLE = [
  *             aria-selected="true|false" tabindex="0|-1" [aria-controls="{panel}"]>
  *       [<span class="td-tabs__icon" data-td-icon="{name}" aria-hidden="true">svg</span>]
  *       <span class="td-tabs__label" data-label="{label}">{label}</span>
+ *       [<span class="td-tabs__count" data-tone="neutral|info|success|warning|danger"><span class="td-tabs__count-sep">, </span>{count}</span>]
  *     </button>…
+ *   v0.70.0 (K9, plan v0.70.0-tabs-counts): the optional count pill only exists for a tab that has a `count`; the visually hidden ", "
+ *   makes the accessible name read "{label}, {count}" (name from content, no aria-label). Colours = the td-badge tone pairs.
  *   v0.36.0 (plan QĐ 16): `data-label` feeds `.td-tabs__label::after` (0 px tall, hidden, semibold) — every label is as
  *   wide as its bold rendering, so switching the active (bold) tab never moves text or neighbours.
  *   </div>
@@ -60,8 +77,10 @@ const FOCUSABLE = [
  * @attr {string} aria-label - Tablist name (default "Các thẻ"); `aria-labelledby` is forwarded too
  * @fires tab-change - When the user (or setActiveTab) changes the tab, detail: { tabId }
  *
- * @property {Array<{id: string, label: string, icon?: string, panel?: string}>} tabs - Tab definitions.
- *   `icon`: registry name; DEPRECATED: any other value is a class list rendered as `<i class aria-hidden>`.
+ * @property {Array<{id: string, label: string, icon?: string, panel?: string, count?: number|string, tone?: string}>} tabs - Tab
+ *   definitions. `icon`: registry name; DEPRECATED: any other value is a class list rendered as `<i class aria-hidden>`.
+ *   v0.70.0: `count` (a finite number or a string; null / undefined / blank / NaN = no pill; 0 → "0") and `tone`
+ *   (neutral | info | success | warning | danger, default neutral) draw a count pill after the label.
  * @property {Function} onChange - Callback receiving tabId (runs before `tab-change`; a throw is logged with
  *   `console.error` and the event still fires)
  */
@@ -96,6 +115,10 @@ export class TdTabs extends TdBaseElement {
     /** @type {boolean|null} decision waiting for its frame */
     this._pendingOverflow = null;
     this._modeRaf = 0;
+    // v0.70.0 (K9): ONE coalesced re-measure after setTabCount (its own handle); `_countDirty` = a re-measure is owed (the element was
+    // disconnected when the count changed, or when its frame had not run yet) — connectedCallback pays it
+    this._countRaf = 0;
+    this._countDirty = false;
   }
 
   // --- JS Property accessors ---
@@ -105,12 +128,19 @@ export class TdTabs extends TdBaseElement {
     this._tabs = Array.isArray(data) ? data : [];
     this._items = this._tabs
       .filter((t) => t && typeof t === 'object' && t.id != null && t.id !== '')
-      .map((t) => ({
-        id: String(t.id),
-        label: t.label == null ? '' : String(t.label),
-        icon: typeof t.icon === 'string' ? t.icon.trim() : '',
-        panel: typeof t.panel === 'string' ? t.panel.trim() : '',
-      }));
+      .map((t) => {
+        const count = countText(t.count); // read ONCE (an accessor-backed tab object may answer differently the second time)
+        const tone = t.tone;
+        return {
+          id: String(t.id),
+          label: t.label == null ? '' : String(t.label),
+          icon: typeof t.icon === 'string' ? t.icon.trim() : '',
+          panel: typeof t.panel === 'string' ? t.panel.trim() : '',
+          count,
+          // a tone only means something with a pill: without a count it is dropped (a later setTabCount with no tone starts neutral)
+          tone: count && TONES.includes(tone) ? tone : 'neutral',
+        };
+      });
     this._validateActive();
     if (this._initialized) {
       const hadFocus = this.contains(document.activeElement);
@@ -142,7 +172,10 @@ export class TdTabs extends TdBaseElement {
     } else {
       this._observe();
       this._syncPanels();
-      this._scheduleIndicator();
+      if (this._countDirty) { // v0.70.0: a count changed while disconnected → widths / overflow mode / indicator are stale
+        this._countDirty = false;
+        this._remeasure();
+      } else this._scheduleIndicator();
     }
   }
 
@@ -154,6 +187,11 @@ export class TdTabs extends TdBaseElement {
     this._raf = 0;
     if (this._modeRaf) cancelAnimationFrame(this._modeRaf);
     this._modeRaf = 0;
+    if (this._countRaf) { // v0.70.0: the re-measure had not run — keep owing it
+      cancelAnimationFrame(this._countRaf);
+      this._countRaf = 0;
+      this._countDirty = true;
+    }
     this._pendingOverflow = null;
     this._releasePanels(new Set());
   }
@@ -194,7 +232,7 @@ export class TdTabs extends TdBaseElement {
       return `<button type="button" role="tab" class="td-tabs__tab" id="${this.escapeHtml(this._tabDomId(i))}"`
         + ` data-tab-id="${this.escapeHtml(tab.id)}" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"${controls}>`
         + `${this._iconMarkup(tab.icon)}<span class="td-tabs__label" data-label="${this.escapeHtml(tab.label)}">`
-        + `${this.escapeHtml(tab.label)}</span></button>`;
+        + `${this.escapeHtml(tab.label)}</span>${this._countMarkup(tab)}</button>`;
     }).join('');
     // Keep the current mode on a re-render (no flash); afterRender re-decides from a fresh measurement.
     const overflow = this._overflow ? ' data-overflow=""' : '';
@@ -212,6 +250,45 @@ export class TdTabs extends TdBaseElement {
     this._measure();
     this._decideFromLayout();
     this._updateIndicator();
+  }
+
+  /** v0.70.0 (K9): the count pill of one tab ('' without a count); `tone` was validated against TONES, `count` is escaped. */
+  _countMarkup(tab) {
+    if (!tab.count) return '';
+    return `<span class="td-tabs__count" data-tone="${tab.tone}"><span class="td-tabs__count-sep">, </span>`
+      + `${this.escapeHtml(tab.count)}</span>`;
+  }
+
+  /** v0.70.0 (K9): bring the pill of ONE rendered tab in line with its item — create, retext / retone, or remove (in place). */
+  _paintCount(btn, item) {
+    let pill = btn.querySelector(':scope > .td-tabs__count');
+    if (!item.count) {
+      if (pill) pill.remove();
+      return;
+    }
+    if (!pill) {
+      pill = document.createElement('span');
+      pill.className = 'td-tabs__count';
+      btn.append(pill); // after the label (the last child otherwise)
+    }
+    pill.setAttribute('data-tone', item.tone);
+    const sep = document.createElement('span');
+    sep.className = 'td-tabs__count-sep';
+    sep.textContent = ', ';
+    pill.replaceChildren(sep, document.createTextNode(item.count));
+  }
+
+  /** v0.70.0 (K9): ONE re-measure after any run of setTabCount calls (a dedicated handle; see `_countDirty` for a disconnected host). */
+  _scheduleRemeasure() {
+    if (!this.isConnected) {
+      this._countDirty = true;
+      return;
+    }
+    if (this._countRaf) return;
+    this._countRaf = requestAnimationFrame(() => {
+      this._countRaf = 0;
+      this._remeasure();
+    });
   }
 
   _tabDomId(i) { return `${this.id}-tab-${i}`; }
@@ -565,6 +642,32 @@ export class TdTabs extends TdBaseElement {
    */
   getActiveTab() {
     return this._activeTabId;
+  }
+
+  /**
+   * v0.70.0 (K9): set, change or clear the count pill of ONE tab IN PLACE — the tablist and the buttons stay the same nodes (focus,
+   * the selected tab and the roving tabindex are untouched), no `tab-change`. `count` null / undefined / '' / NaN clears the pill
+   * (and forgets its tone); 0 shows "0". `tone` omitted keeps the tab's current tone (neutral when it had none); pass 'neutral' to
+   * reset it. Then ONE coalesced re-measure (widths, overflow mode, indicator). Assigning `tabs` still rebuilds everything and its
+   * own `count` / `tone` win.
+   * @param {string} tabId
+   * @param {number|string|null|undefined} count
+   * @param {string} [tone] neutral | info | success | warning | danger
+   * @returns {boolean} false when there is no such tab (nothing happens)
+   */
+  setTabCount(tabId, count, tone) {
+    const id = tabId == null ? null : String(tabId);
+    const item = id == null ? null : this._items.find((t) => t.id === id);
+    if (!item) return false;
+    item.count = countText(count);
+    if (!item.count) item.tone = 'neutral';
+    else if (tone !== undefined) item.tone = TONES.includes(tone) ? tone : 'neutral';
+    const btn = this._buttonFor(id);
+    if (btn) {
+      this._paintCount(btn, item);
+      this._scheduleRemeasure();
+    }
+    return true;
   }
 }
 

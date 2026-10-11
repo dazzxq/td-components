@@ -2,6 +2,24 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.70.0
+
+**`td-tabs`: số đếm có màu cạnh nhãn thẻ (`count`, `tone`, `setTabCount`)** (yêu cầu K9 của dsuite, owner kit duyệt;
+[plan](docs/internal/plans/v0.70.0-tabs-counts.md), [ADR 0035](docs/internal/decisions/0035-tabs-count-pill.md)).
+
+### Added
+
+- Mỗi mục của `tabs` nhận `count` (số hữu hạn hoặc chuỗi; `null` / `undefined` / trống / `NaN` = không vẽ; `0` vẽ "0"; chuỗi hiển thị nguyên văn, không cắt) và `tone`
+  (`neutral` | `info` | `success` | `warning` | `danger`, cùng bộ tone của badge; thiếu hoặc lạ → `neutral`): một viên thuốc nhỏ sau nhãn, chữ số `tabular-nums`.
+- **`setTabCount(tabId, count, tone?)`** (trả `boolean`): đặt, đổi hoặc xoá viên số đếm của một thẻ **tại chỗ**. Thanh và các nút giữ nguyên là cùng phần tử nên focus, thẻ đang chọn
+  và roving tabindex không đổi; không phát `tab-change`. `count` rỗng (`null`…) xoá viên thuốc (cho số đếm đến muộn); `tone` bỏ trống giữ tone hiện có. Id không tồn tại → `false`,
+  không làm gì. Đo lại bề rộng, chế độ cuộn và viên chỉ báo **một lần** gộp theo khung hình, kể cả khi gọi lúc phần tử đang bị gỡ khỏi DOM.
+- Tên truy cập của thẻ có số là **"Nhãn, 12"** (từ nội dung, không `aria-label`); màu không là tín hiệu duy nhất. Viên thuốc dùng lại cặp màu đặc của badge
+  (`--td-badge-{tone}-bg` / `-fg` / `-border`): không token mới, đúng ở theme sáng / tối và forced colors (viền `ButtonText`).
+- Viên thuốc nằm cùng hàng với nhãn, không xuống dòng, và **không làm thẻ cao hơn** (dải lọc không giật khi số đếm đến muộn). Số dài làm thẻ rộng ra và có thể chuyển hàng
+  thẻ sang chế độ cuộn ngang, như một nhãn dài.
+- Không có `count` thì DOM, CSS hiệu lực và hành vi giống từng byte 0.69. Gán lại `tabs` vẫn dựng lại cả thanh (count / tone của mảng mới thắng `setTabCount`).
+
 ## 0.69.0
 
 **`td-button` / `td_button`: biến thể `plain`, nút chữ cho hành động nằm trong dòng chữ** (owner kit, 2026-10-12, từ ảnh chụp của dsuite;
