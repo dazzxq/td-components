@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.67.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.68.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.68.0](#0680) | **Đổi hành vi**: `autoSelectFirst` của `td-media-picker` giờ bật mặc định | Mở picker mà không đặt option thì ảnh đầu đã được chọn sẵn và "Chèn" bật (cả `multiple`). Không muốn: `TdMediaPicker.configureDefaults({ …, autoSelectFirst: false })` hoặc `open({ autoSelectFirst: false })`. Test của site dựa vào "mở ra chưa chọn gì" phải tắt tường minh. |
 | [0.67.0](#0670) | Không phá vỡ: `autoSelectFirst` của `td-media-picker` là opt-in | Không phải sửa code. Muốn chọn sẵn ảnh đầu khi mở: `TdMediaPicker.configureDefaults({ …, autoSelectFirst: true })` (áp cả cho `td-media-field`; ô đã có ảnh không bị đè). Không bật thì giống từng byte 0.66. |
 | [0.66.0](#0660) | Không phá vỡ: opt-in; adapter không có `collections` → giống từng byte 0.65 | Không phải sửa code. Muốn album trong picker: thêm `adapter.collections` (và dùng `collectionId` ở `list` / `facets` / `upload` / `uploadFromUrl`). **Esc trong một album = Quay lại**, không đóng picker. |
 | [0.65.0](#0650) | **Đổi hành vi** PHP: `assets` mặc định là `'dist'` | Copy cả `dist/` + `module-graph.json` khi nâng kit (thiếu `dist/td.css` → `Td::configure()` ném `RuntimeException`). Muốn giữ URL source: `['assets' => 'source']`. Test so URL `td.css` / import map / preload phải thêm `/dist`. |
@@ -94,6 +95,23 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.68.0
+
+**Đổi hành vi.** `autoSelectFirst` (thêm ở 0.67.0, mặc định tắt) giờ **bật mặc định**. Một picker mở ra mà không đặt option này:
+
+- chọn sẵn asset đầu tiên chọn được của danh sách ([chi tiết](../components/media-picker.md#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670)),
+  "Chèn" bật ngay, khung chi tiết (≥ 720px) xem trước đúng asset đó;
+- **không** phát `selection-change` (lựa chọn này do code đặt); đọc selection ở `confirm` hoặc từ giá trị `open()` trả về;
+- áp cả cho picker `multiple` (album, gallery: một ảnh được chọn sẵn) và cho ô `td-media-field` còn trống; ô đã có ảnh không bị đè.
+
+Việc site cần làm:
+
+- Muốn giữ hành vi cũ ("mở ra chưa chọn gì"): `TdMediaPicker.configureDefaults({ …, autoSelectFirst: false })` ở bootstrap (cả site), hoặc
+  `open({ autoSelectFirst: false })` / `pickerOptions.autoSelectFirst = false` (một chỗ). `configureDefaults` thay cả object defaults, nên
+  đặt cờ trong lời gọi hiện có của site, không gọi thêm lần thứ hai.
+- Test tự động của site dựa vào "mở picker thì 'Chèn' đang tắt / selection rỗng" phải tắt tường minh như trên.
+- Site đã đặt `configureDefaults({ autoSelectFirst: true })` từ 0.67.0: không còn cần dòng đó (vô hại).
 
 ## 0.67.0
 

@@ -99,9 +99,11 @@ function opErrors() {
   return log;
 }
 
+// v0.68.0: `autoSelectFirst` is ON by default; this suite's premise is "nothing is selected on open" → off in every open
+// (a call can still override it). The auto-select behaviour is covered by td-v067-*.
 async function open(opts = {}, adOpts = {}) {
   const ad = opts.adapter || createMockAdapter(adOpts);
-  const promise = TdMediaPicker.open({ ...opts, adapter: ad });
+  const promise = TdMediaPicker.open({ autoSelectFirst: false, ...opts, adapter: ad });
   await frames(3);
   return { ad, promise, root: pickerRoot() };
 }
@@ -279,7 +281,7 @@ describe('v0.66.0 media picker collections — the strip (cases 2, 3, 6c, 6d, 9,
 
   it('3. latest wins: q1 settling after q2 is dropped; a click on a stale (detached) card is ignored, a fresh card enters', async () => {
     const ad = createMockAdapter({ manual: true, collections: true });
-    TdMediaPicker.open({ adapter: ad });
+    TdMediaPicker.open({ adapter: ad, autoSelectFirst: false });
     await until(() => ad.calls.list.length === 1 && ad.calls.facets.length === 1);
     ad.resolveAll();
     await until(() => items().length);
@@ -342,7 +344,7 @@ describe('v0.66.0 media picker collections — the strip (cases 2, 3, 6c, 6d, 9,
 
   it('6d. a pending collections() + the search cleared → aborted, hidden, its late result dropped', async () => {
     const ad = createMockAdapter({ manual: true, collections: true });
-    TdMediaPicker.open({ adapter: ad });
+    TdMediaPicker.open({ adapter: ad, autoSelectFirst: false });
     await until(() => ad.calls.list.length === 1 && ad.calls.facets.length === 1);
     ad.resolveAll();
     await until(() => items().length);
@@ -391,7 +393,7 @@ describe('v0.66.0 media picker collections — the strip (cases 2, 3, 6c, 6d, 9,
 
   it('11. XSS: label / description stay text, description only in title; javascript: / data: cover → icon', async () => {
     const ad = createMockAdapter({ manual: true, collections: true });
-    TdMediaPicker.open({ adapter: ad });
+    TdMediaPicker.open({ adapter: ad, autoSelectFirst: false });
     await until(() => ad.calls.list.length === 1 && ad.calls.facets.length === 1);
     ad.resolveAll();
     await until(() => items().length);

@@ -249,3 +249,22 @@ Owner nay muốn picker chọn sẵn ảnh đầu khi mở. Kit giữ QĐ 69 là
 Vì sao opt-in: chỉ dsuite dùng picker, nhưng ô `td-media-field` (logo, ảnh đại diện, banner, SEO…) dùng chung nó; mặc định bật
 thì một cú bấm "Chèn" nhầm ở các ô đó chèn ảnh mới nhất, đúng rủi ro mà QĐ 69 đã loại. Phương án bác: bật mặc định cho mọi site
 (đảo QĐ 69 trong im lặng). Lật mặc định về sau là một thay đổi riêng, có ghi trong CHANGELOG, như `assets` ở 0.65.
+
+## Bổ sung v0.68
+
+Ngày 2026-10-12. Nguồn: plan [v0.68.0-auto-select-default-on](../plans/v0.68.0-auto-select-default-on.md); owner kit trả lời trong chat
+("bật đê") câu hỏi "`autoSelectFirst` mặc định tắt hay bật?" của bổ sung v0.67. Mục này **đổi một mặc định**, không đổi hợp đồng adapter,
+FormData hay kết quả picker.
+
+- `autoSelectFirst` **bật mặc định**. Chỉ boolean `false` mới tắt (`resolveOptions`: `autoSelectFirst !== false`; `null` / vắng = vắng,
+  không đè lớp dưới, nên `configureDefaults({ autoSelectFirst: false })` không bị `open({ autoSelectFirst: null })` bật lại).
+- Mọi quy tắc khác của bổ sung v0.67 giữ nguyên: chỉ lần tải danh sách đầu (và "Thử lại" của nó khi lỗi), một asset đầu tiên chọn được
+  (cả chế độ `multiple`), bỏ qua khi `selection.initialIds` có phần tử, chọn bằng code (không phát `selection-change`), một thông báo
+  live region gộp, không chuyển focus.
+- Tác động tới **QĐ 69** (v0.36, "tự chọn bị loại"): QĐ 69 không còn đúng như một mặc định. Phần "tự xem trước asset đầu ≥ 720 px,
+  không chọn" vẫn là hành vi khi `autoSelectFirst: false`.
+
+Vì sao đảo: chỉ dsuite dùng picker và owner kit cũng là owner dsuite; owner muốn mở ra là có sẵn ảnh đầu ("khi mở cứ auto select chọn
+cái ảnh đầu tiên"). Rủi ro đã nêu và được chấp nhận: một cú bấm "Chèn" vội ở ô còn trống (logo, banner, SEO…) chèn ảnh đầu của danh
+sách; picker `multiple` (album, gallery) mở ra đã có một ảnh được chọn. Site nào không muốn thì đặt `autoSelectFirst: false` (cả site
+hoặc từng lần mở). Phương án bác: giữ opt-in (đã làm ở 0.67).

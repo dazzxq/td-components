@@ -204,7 +204,8 @@ const BLOCKED_ID = 'm59';
 async function openPicker(page, selection = { mode: 'single' }, capabilities = undefined) {
   await page.evaluate(({ sel, caps }) => {
     window.__adapter = window.createMockAdapter();
-    const opts = { adapter: window.__adapter, selection: sel };
+    // v0.68.0: `autoSelectFirst` is ON by default; the baselines are the pre-0.68 state (nothing selected on open)
+    const opts = { adapter: window.__adapter, selection: sel, autoSelectFirst: false };
     if (caps) opts.capabilities = caps;
     window.__outcome = window.TdMediaPicker.open(opts);
   }, { sel: selection, caps: capabilities });
@@ -260,7 +261,7 @@ const STATES = {
   async 'crop-step'(page) {
     await page.evaluate(() => {
       window.__adapter = window.createMockAdapter();
-      window.__outcome = window.TdMediaPicker.open({ adapter: window.__adapter, selection: { mode: 'single' },
+      window.__outcome = window.TdMediaPicker.open({ adapter: window.__adapter, selection: { mode: 'single' }, autoSelectFirst: false,
         crop: { enabled: true, aspectRatio: 1.91, allowFocalPoint: true } });
     });
     await page.locator(`${PICKER} [data-td-media-item]`).first().waitFor({ state: 'visible' });

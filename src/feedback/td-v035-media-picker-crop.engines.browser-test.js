@@ -60,11 +60,15 @@ const clickDiscard = (yes) => {
 };
 const focusInConfirm = () => !!confirmBtn() && confirmBtn().contains(document.activeElement);
 
-/** Open with the mock adapter; `patch(db)` edits the raw assets first. Resolves once the first page is shown. */
+/**
+ * Open with the mock adapter; `patch(db)` edits the raw assets first. Resolves once the first page is shown.
+ * v0.68.0: `autoSelectFirst` is ON by default; this suite's premise is "nothing is selected on open" → off in every open
+ * (a call can still override it). The auto-select behaviour is covered by td-v067-*.
+ */
 async function openReady(opts = {}, patch = null) {
   const ad = createMockAdapter();
   if (patch) patch(ad.db);
-  const promise = TdMediaPicker.open({ ...opts, adapter: ad });
+  const promise = TdMediaPicker.open({ autoSelectFirst: false, ...opts, adapter: ad });
   await until(() => items().length > 0, 4000, 'first page');
   return { ad, promise };
 }
@@ -295,7 +299,7 @@ describe('td-media-picker — crop step (v0.35 decisions 23-26)', () => {
   it('host removed while the crop step is open → programmatic, the crop dialog closes too', async () => {
     const ad = createMockAdapter();
     const host = document.createElement('td-media-picker');
-    host.options = { adapter: ad, ...CROP };
+    host.options = { adapter: ad, autoSelectFirst: false, ...CROP };
     document.body.appendChild(host);
     const cancels = [];
     host.addEventListener('cancel', (e) => cancels.push(e.detail.reason));

@@ -190,8 +190,9 @@
  *   `open()` layers only (never from `configureDefaults`, like `selection`); `null` = absent; a bad shape → TypeError
  * @property {{ showWithoutQuery?: boolean }} [collections] v0.66.0 (K8): `showWithoutQuery: true` shows the collection
  *   strip before anything is typed (default false); also via configureDefaults
- * @property {boolean} [autoSelectFirst] v0.67.0: select the first selectable asset of the FIRST list load of the session
- *   (default false: only `=== true` turns it on; also via configureDefaults); skipped when `selection.initialIds` has entries
+ * @property {boolean} [autoSelectFirst] v0.67.0: select the first selectable asset of the FIRST list load of the session;
+ *   ON BY DEFAULT since v0.68.0 (owner): only a boolean `false` turns it off (`null` / `undefined` = absent, never overriding a
+ *   lower layer); also via configureDefaults; skipped when `selection.initialIds` has entries
  */
 
 export const KINDS = Object.freeze(['image', 'video', 'file']);
@@ -617,7 +618,8 @@ let warnedCropMultiple = false;
  * `aspectRatio` warns once ⇒ free; `selection.mode = 'multiple'` warns once ⇒ no crop; unknown keys ignored). No valid adapter → TypeError (a
  * programming error). v0.66.0 (K8): `initialCollection` (never from `defaults`; `{ id, label }` | null, a bad shape →
  * TypeError) and `collections` (→ `{ showWithoutQuery }`, a non-object → TypeError); `null` for either = absent (like
- * undefined: skipped, never overrides a lower layer). v0.67.0: `autoSelectFirst` (`=== true`, also from `defaults`).
+ * undefined: skipped, never overrides a lower layer). v0.67.0 / v0.68.0: `autoSelectFirst` (default ON; only `false` turns it
+ * off, also from `defaults`; `null` = absent like the two keys above).
  * @param {object|null|undefined} defaults
  * @param {...(object|null|undefined)} layers last argument may be `{ warn }` only when it is the sole key
  * @returns {OpenMediaPickerOptions & { cropResolved: { aspectRatio: number|null, allowFocalPoint: boolean } | null,
@@ -637,8 +639,9 @@ export function resolveOptions(defaults, ...layers) {
     for (const k of Object.keys(layer)) {
       // v0.66.0 (K8): `initialCollection` never comes from the defaults either (per open, like `selection`)
       if (BAD_KEYS.has(k) || (isDefault && (k === 'selection' || k === 'initialCollection')) || layer[k] === undefined) continue;
-      // v0.66.0 (K8): `initialCollection: null` / `collections: null` = absent, exactly like undefined (`album ?? null`)
-      if (layer[k] === null && (k === 'initialCollection' || k === 'collections')) continue;
+      // v0.66.0 (K8): `initialCollection: null` / `collections: null` = absent, exactly like undefined (`album ?? null`);
+      // v0.68.0: `autoSelectFirst: null` too (it must not turn a lower layer's `false` back on)
+      if (layer[k] === null && (k === 'initialCollection' || k === 'collections' || k === 'autoSelectFirst')) continue;
       merged[k] = layer[k];
     }
   };
@@ -721,7 +724,7 @@ export function resolveOptions(defaults, ...layers) {
     locale: typeof merged.locale === 'string' ? merged.locale : '',
     initialCollection,
     collections,
-    autoSelectFirst: merged.autoSelectFirst === true,
+    autoSelectFirst: merged.autoSelectFirst !== false, // v0.68.0: ON unless an explicit `false`
     cropResolved,
     capabilitiesResolved: resolveCapabilities(merged.adapter, merged.capabilities),
   };

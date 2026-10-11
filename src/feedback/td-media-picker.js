@@ -1311,8 +1311,8 @@ export class TdMediaPicker extends HTMLElement {
   }
 
   /**
-   * @private v0.67.0 `autoSelectFirst` (opt-in): the FIRST list of the session selects its first selectable asset — the one
-   * exception to the QĐ 69 rule below, "the selection is never touched". Programmatic, like the initialIds result: no
+   * @private v0.67.0 `autoSelectFirst` (ON by default since v0.68.0; `autoSelectFirst: false` turns it off): the FIRST list of
+   * the session selects its first selectable asset — the exception to the QĐ 69 rule below, "the selection is never touched". Programmatic, like the initialIds result: no
    * revision bump and no `selection-change` (user changes only; `confirm` still carries the selection). The footer
    * ("Chèn", the multiple chip) is re-rendered HERE because `_syncGrid` does not. Not when something is already selected.
    * @returns {object|null} the selected asset
@@ -1331,7 +1331,7 @@ export class TdMediaPicker extends HTMLElement {
    * @private v0.36.0 (plan QĐ 69, ADR 0013 note; review ISSUE-2): ≥ 720 the detail panel always PREVIEWS something after
    * every list load — the asset already viewed when it is still in the results, else the first SELECTED asset that is in
    * the results, else the first result; an empty result clears the panel (empty state). The selection is never touched
-   * ("Chèn" stays disabled until the user selects) — except v0.67.0's opt-in `autoSelectFirst`, see `_autoSelectFirst`.
+   * ("Chèn" stays disabled until the user selects) — except `autoSelectFirst` (v0.67.0; on by default since v0.68.0), see `_autoSelectFirst`.
    * < 720 the grid comes first (no auto-open); a dirty form is never replaced.
    */
   _autoPreview(page) {

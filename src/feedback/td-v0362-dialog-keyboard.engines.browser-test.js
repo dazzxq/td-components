@@ -143,7 +143,7 @@ describe('v0.36.2 dialogs above the on-screen keyboard', () => {
   });
 
   it('media picker: the full-viewport root follows the keyboard, the search field and the footer stay visible', async () => {
-    const promise = TdMediaPicker.open({ adapter: createMockAdapter() });
+    const promise = TdMediaPicker.open({ adapter: createMockAdapter(), autoSelectFirst: false }); // v0.68.0: the pre-0.68 footer
     const root = /** @type {HTMLElement} */ (await (async () => { let r; await until(() => (r = document.querySelector('.td-media-picker[data-state="open"]'))); return r; })());
     await settled(root);
     const input = root.querySelector('.td-media-picker__search input');

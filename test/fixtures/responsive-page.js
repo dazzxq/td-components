@@ -585,11 +585,13 @@ export function mountResponsiveFixture(root) {
     loading: () => TdLoading.show('Đang xử lý đơn hàng, vui lòng chờ...'),
     cropDialog: () => TdCropper.openDialog({ src: '/test/fixtures/photo.svg', alt: 'Ảnh phong cảnh', naturalWidth: 1200,
       naturalHeight: 800, aspectRatio: 1.91, allowFocalPoint: true, focalPoint: { x: 0.5, y: 0.5 } }),
+    // v0.68.0: `autoSelectFirst` is ON by default; these layout scenarios keep the pre-0.68 state (nothing selected on open:
+    // the ticks, the "Chèn" state and the crop flow of the gates start from an empty selection)
     pickerCrop: () => TdMediaPicker.open({ adapter: createMockAdapter({ latency: 0 }), selection: { mode: 'single', kinds: ['image'] },
-      crop: { enabled: true, aspectRatio: 1.91, allowFocalPoint: true } }),
+      crop: { enabled: true, aspectRatio: 1.91, allowFocalPoint: true }, autoSelectFirst: false }),
     picker: (multiple = false, pages = false) => {
       const adapter = createMockAdapter({ latency: 0, ...(pages ? { pagination: 'pages' } : {}) });
-      return TdMediaPicker.open({ adapter, ...(pages ? { pagination: 'pages' } : {}),
+      return TdMediaPicker.open({ adapter, ...(pages ? { pagination: 'pages' } : {}), autoSelectFirst: false,
         selection: multiple ? { mode: 'multiple', maxItems: 5 } : { mode: 'single' } });
     },
     // v0.44.0: type-to-confirm with a 60-character phrase without spaces (must wrap, never overflow)

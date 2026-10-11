@@ -213,9 +213,10 @@ field đặt (`mode: 'single'`, `initialIds`, `kinds` từ `accept-kind`) — `p
 không → `{ enabled: false }` — `pickerOptions.crop` / `configureDefaults({ crop })` không bao giờ mở được bước cắt cho field
 không `croppable`.
 
-**Chọn sẵn ảnh đầu (0.67.0):** `TdMediaPicker.configureDefaults({ autoSelectFirst: true })` (hoặc `pickerOptions.autoSelectFirst`)
-áp cho field như mọi lần mở picker. Field **đã có ảnh** truyền `selection.initialIds = [giá trị]` nên không bị tự chọn đè; chỉ
-field còn **trống** được chọn sẵn ảnh đầu của danh sách. Xem [Tự chọn ảnh đầu](media-picker.md#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670).
+**Chọn sẵn ảnh đầu (0.67.0, bật mặc định từ 0.68.0):** field **còn trống** mở picker với ảnh đầu của danh sách đã được chọn sẵn
+("Chèn" bật ngay). Field **đã có ảnh** truyền `selection.initialIds = [giá trị]` nên không bị tự chọn đè. Tắt cho mọi field:
+`TdMediaPicker.configureDefaults({ autoSelectFirst: false })`; tắt cho một field: `pickerOptions.autoSelectFirst = false`.
+Xem [Tự chọn ảnh đầu](media-picker.md#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670).
 
 ### 6. Alt (chế độ usage)
 

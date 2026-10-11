@@ -196,7 +196,7 @@ describe('v0.42.0 portal bridge (N6)', () => {
     expect(document.getElementById('td-hovercard').getAttribute('data-td-theme')).to.equal('dark');
     unbind();
     expect(document.getElementById('td-hovercard').hasAttribute('data-td-theme')).to.equal(false);
-    const picking = TdMediaPicker.open({ adapter: createMockAdapter(), themeRoot: s });
+    const picking = TdMediaPicker.open({ adapter: createMockAdapter(), themeRoot: s, autoSelectFirst: false }); // v0.68.0: pre-0.68 state
     await until(() => document.querySelector('.td-media-picker'));
     const proot = document.querySelector('.td-media-picker').closest('[data-td-theme]');
     expect(proot && proot.parentElement === document.body).to.equal(true);

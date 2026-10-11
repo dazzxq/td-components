@@ -125,10 +125,14 @@ async function chipPick(ci, label) {
   await tickTask();
 }
 
-/** Open with a mock adapter; manual → resolve the first list (+ facets) on demand. */
+/**
+ * Open with a mock adapter; manual → resolve the first list (+ facets) on demand.
+ * v0.68.0: `autoSelectFirst` is ON by default; this suite's premise is "nothing is selected on open", so every open here
+ * turns it off explicitly (a call can still override it). The auto-select behaviour is covered by td-v067-*.
+ */
 async function open(opts = {}, adOpts = {}) {
   const ad = opts.adapter || createMockAdapter(adOpts);
-  const promise = TdMediaPicker.open({ ...opts, adapter: ad });
+  const promise = TdMediaPicker.open({ autoSelectFirst: false, ...opts, adapter: ad });
   await frames(3);
   return { ad, promise, root: pickerRoot() };
 }
@@ -238,7 +242,7 @@ describe('td-media-picker — shell (decisions 10-12)', () => {
 
   it('configureDefaults: adapter from the defaults; replaced wholesale', async () => {
     const ad = createMockAdapter();
-    TdMediaPicker.configureDefaults({ adapter: ad, pageSize: 7 });
+    TdMediaPicker.configureDefaults({ adapter: ad, pageSize: 7, autoSelectFirst: false }); // v0.68.0: off, see open()
     extra.push(() => TdMediaPicker.configureDefaults({}));
     const p = TdMediaPicker.open({ selection: { mode: 'single' } });
     await until(() => ad.calls.list.length > 0);
@@ -404,7 +408,7 @@ describe('td-media-picker — host removed while open (R1-5, R2-5)', () => {
   it('removed while the discard confirm is open → that confirm closes too', async () => {
     const ad = createMockAdapter();
     const host = document.createElement('td-media-picker');
-    host.options = { adapter: ad, assetFields: assetFields() };
+    host.options = { adapter: ad, assetFields: assetFields(), autoSelectFirst: false };
     document.body.appendChild(host);
     const promise = host.open();
     await until(() => items().length);
@@ -428,7 +432,7 @@ describe('td-media-picker — host removed while open (R1-5, R2-5)', () => {
     aBtn.focus();
     const ad = createMockAdapter();
     const host = document.createElement('td-media-picker');
-    host.options = { adapter: ad, assetFields: assetFields() };
+    host.options = { adapter: ad, assetFields: assetFields(), autoSelectFirst: false };
     document.body.appendChild(host);
     const promise = host.open();
     await until(() => items().length);
@@ -559,7 +563,7 @@ describe('td-media-picker — initialIds transaction (R1-4, R2-4)', () => {
 describe('td-media-picker — latest wins + abort (decision 9)', () => {
   it('typing a, ab, abc with pending lists resolved in reverse → only "abc" shows; older signals aborted', async () => {
     const ad = createMockAdapter({ manual: true });
-    const promise = TdMediaPicker.open({ adapter: ad });
+    const promise = TdMediaPicker.open({ adapter: ad, autoSelectFirst: false });
     await until(() => ad.calls.list.length === 1);
     ad.calls.list[0].resolve();
     await until(() => items().length);
@@ -624,7 +628,7 @@ describe('td-media-picker — latest wins + abort (decision 9)', () => {
   it('close → pending list / facets / get / update all aborted; late resolves write nothing', async () => {
     const ad = createMockAdapter({ manual: true });
     const events = [];
-    const promise = TdMediaPicker.open({ adapter: ad, assetFields: assetFields() });
+    const promise = TdMediaPicker.open({ adapter: ad, assetFields: assetFields(), autoSelectFirst: false });
     document.querySelector('td-media-picker').addEventListener('asset-change', (e) => events.push(e));
     await until(() => ad.calls.list.length && ad.calls.facets.length);
     ad.calls.list[0].resolve();
@@ -657,7 +661,7 @@ describe('td-media-picker — latest wins + abort (decision 9)', () => {
 describe('td-media-picker — list states', () => {
   it('skeleton while loading → grid; aria-busy; nothing selected at open; count text', async () => {
     const ad = createMockAdapter({ manual: true });
-    const promise = TdMediaPicker.open({ adapter: ad, pageSize: 20 });
+    const promise = TdMediaPicker.open({ adapter: ad, pageSize: 20, autoSelectFirst: false });
     await until(() => ad.calls.list.length);
     expect(q('.td-media-picker__skeleton').hidden).to.equal(false);
     expect(q('.td-media-picker__skeleton').querySelectorAll('.td-media-picker__skeleton-card').length).to.equal(30);
@@ -687,7 +691,7 @@ describe('td-media-picker — list states', () => {
   it('error → alert with the curated text (never the raw message) + "Thử lại" calls list again', async () => {
     const ad = createMockAdapter({ manual: true });
     const errs = [];
-    const promise = TdMediaPicker.open({ adapter: ad });
+    const promise = TdMediaPicker.open({ adapter: ad, autoSelectFirst: false });
     document.querySelector('td-media-picker').addEventListener('operation-error', (e) => errs.push(e.detail));
     await until(() => ad.calls.list.length);
     ad.calls.list[0].reject(Object.assign(new Error('SQLSTATE secret'), { code: 'network' }));
@@ -1291,7 +1295,7 @@ describe('td-media-picker — mobile, motion, forced colours', () => {
 
   it('reduced motion → no transform on the opening dialog', async () => {
     await emulateMedia({ reducedMotion: 'reduce' });
-    const p = TdMediaPicker.open({ adapter: createMockAdapter() });
+    const p = TdMediaPicker.open({ adapter: createMockAdapter(), autoSelectFirst: false });
     const dialog = q('.td-media-picker__dialog', anyRoot());
     expect(getComputedStyle(dialog).transform === 'none' || getComputedStyle(dialog).transform === '').to.equal(true);
     document.querySelector('td-media-picker').close();

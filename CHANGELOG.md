@@ -2,6 +2,24 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.68.0
+
+**`td-media-picker`: `autoSelectFirst` bật mặc định** (owner kit, 2026-10-12: "bật đê";
+[plan](docs/internal/plans/v0.68.0-auto-select-default-on.md), [ADR 0013 § Bổ sung v0.68](docs/internal/decisions/0013-media-picker-boundary.md)).
+
+### Changed
+
+- **Đổi hành vi:** không đặt `autoSelectFirst` thì picker giờ **chọn sẵn asset đầu tiên chọn được** của lần tải danh sách đầu, "Chèn"
+  bật ngay (0.67.0: mặc định tắt, mở ra chưa chọn gì). Chỉ boolean `false` mới tắt; `null` / vắng = mặc định và không đè lớp dưới
+  (một `configureDefaults({ autoSelectFirst: false })` không bị `open({ autoSelectFirst: null })` bật lại).
+  - Áp cho mọi chỗ mở picker, kể cả ô `td-media-field` còn trống và picker `multiple` (album, gallery: chọn sẵn một ảnh). Ô đã có ảnh
+    (`selection.initialIds`) không bị đè.
+  - Tắt cho cả site: `TdMediaPicker.configureDefaults({ …, autoSelectFirst: false })`; tắt một lần mở: `open({ autoSelectFirst:
+    false })`, với field `pickerOptions.autoSelectFirst = false`.
+  - Mọi quy tắc khác của 0.67.0 không đổi (chỉ lần tải đầu và "Thử lại" của nó, một asset, không `selection-change`, một thông báo
+    live region, không chuyển focus).
+- Docs `media-picker.md`, `media-field.md` và ADR 0013 ghi lại: "tự chọn bị loại" (v0.36.0, QĐ 69) không còn là mặc định.
+
 ## 0.67.0
 
 **`td-media-picker`: chọn sẵn ảnh đầu khi mở (`autoSelectFirst`, opt-in)** (owner kit, 2026-10-11;

@@ -825,6 +825,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     TdMediaPicker.open({
       adapter: ad, pagination: pages ? 'pages' : 'cursor', selection: { mode: 'multiple', maxItems: 5 },
       upload: { accept: 'image/*', maxSize: '5MB' },
+      autoSelectFirst: false, // v0.68.0: ON by default; the gate ticks m40 / m39 itself (checked / viewing / rest cards)
     });
     const R = () => document.querySelector('body > .td-media-picker');
     const wait = async (fn, what) => {

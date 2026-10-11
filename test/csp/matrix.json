@@ -4587,7 +4587,7 @@
   "td-media-picker": [
     {
       "state": "viewport",
-      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ adapter: createMockAdapter({ count: 12 }), assetFields: assetFields(), capabilities: { delete: true, downloadOriginal: true, copyLink: true }, selection: { mode: 'single', kinds: ['image'] } }); await w(300); R().querySelector('[data-id=\"m12\"] [data-td-media-open]').click(); await w(300);",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ autoSelectFirst: false, adapter: createMockAdapter({ count: 12 }), assetFields: assetFields(), capabilities: { delete: true, downloadOriginal: true, copyLink: true }, selection: { mode: 'single', kinds: ['image'] } }); await w(300); R().querySelector('[data-id=\"m12\"] [data-td-media-open]').click(); await w(300);",
       "selectors": [
         ".td-media-picker",
         ".td-media-picker__dialog",
@@ -4679,7 +4679,7 @@
     },
     {
       "state": "multiple",
-      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ adapter: createMockAdapter({ count: 40 }), selection: { mode: 'multiple', maxItems: 5 } }); await w(300); for (const id of ['m40', 'm38', 'm37']) R().querySelector(`[data-id=\"${id}\"] .td-media-grid__tick`).click(); await w(200); R().querySelector('[data-id=\"m36\"] [data-td-media-open]').click(); await w(300);",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ autoSelectFirst: false, adapter: createMockAdapter({ count: 40 }), selection: { mode: 'multiple', maxItems: 5 } }); await w(300); for (const id of ['m40', 'm38', 'm37']) R().querySelector(`[data-id=\"${id}\"] .td-media-grid__tick`).click(); await w(200); R().querySelector('[data-id=\"m36\"] [data-td-media-open]').click(); await w(300);",
       "selectors": [
         ".td-media-picker",
         ".td-media-picker__dialog",
@@ -4737,7 +4737,7 @@
     },
     {
       "state": "pages",
-      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ adapter: createMockAdapter({ count: 40, pagination: 'pages' }), pagination: 'pages', selection: { mode: 'multiple' } }); await w(400);",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ autoSelectFirst: false, adapter: createMockAdapter({ count: 40, pagination: 'pages' }), pagination: 'pages', selection: { mode: 'multiple' } }); await w(400);",
       "selectors": [
         ".td-media-picker",
         ".td-media-picker__dialog",
@@ -4777,7 +4777,7 @@
     },
     {
       "state": "upload",
-      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); const ad = createMockAdapter({ count: 12 }); ad.upload = (f, o) => { o.onProgress({ loaded: 40, total: 100 }); return new Promise(() => {}); }; TdMediaPicker.open({ adapter: ad, uploadFields: [{ key: 'note', label: 'Ghi chú', control: 'text', helpText: 'Lưu kèm file' }], upload: { accept: 'image/*', maxSize: '5MB' } }); await w(300); R().querySelector('.td-media-picker__upload-btn button').click(); await w(400); U().querySelector('td-dropzone').addFiles([new File(['x'], 'anh-moi.png', { type: 'image/png' })]); await w(200);",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); const ad = createMockAdapter({ count: 12 }); ad.upload = (f, o) => { o.onProgress({ loaded: 40, total: 100 }); return new Promise(() => {}); }; TdMediaPicker.open({ autoSelectFirst: false, adapter: ad, uploadFields: [{ key: 'note', label: 'Ghi chú', control: 'text', helpText: 'Lưu kèm file' }], upload: { accept: 'image/*', maxSize: '5MB' } }); await w(300); R().querySelector('.td-media-picker__upload-btn button').click(); await w(400); U().querySelector('td-dropzone').addFiles([new File(['x'], 'anh-moi.png', { type: 'image/png' })]); await w(200);",
       "selectors": [
         ".td-media-picker",
         ".td-media-picker__dialog",
@@ -4849,7 +4849,7 @@
     },
     {
       "state": "upload-url",
-      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ adapter: createMockAdapter({ count: 12 }), upload: { accept: 'image/*', acceptLabel: 'JPG, PNG' } }); await w(300); R().querySelector('.td-media-picker__upload-btn button').click(); await w(400); [...U().querySelectorAll('.td-tabs__tab')].pop().click(); await w(200); const i = U().querySelector('.td-media-picker-upload__url input'); i.focus(); i.value = 'ftp://example.com/a.jpg'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new FocusEvent('focusout', { bubbles: true })); await w(200);",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ autoSelectFirst: false, adapter: createMockAdapter({ count: 12 }), upload: { accept: 'image/*', acceptLabel: 'JPG, PNG' } }); await w(300); R().querySelector('.td-media-picker__upload-btn button').click(); await w(400); [...U().querySelectorAll('.td-tabs__tab')].pop().click(); await w(200); const i = U().querySelector('.td-media-picker-upload__url input'); i.focus(); i.value = 'ftp://example.com/a.jpg'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new FocusEvent('focusout', { bubbles: true })); await w(200);",
       "selectors": [
         ".td-media-picker",
         ".td-media-picker__dialog",
@@ -4903,7 +4903,7 @@
     },
     {
       "state": "blocked",
-      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ adapter: createMockAdapter({ count: 12 }), capabilities: { delete: true, downloadOriginal: true, copyLink: true } }); await w(300); R().querySelector('[data-id=\"m10\"] [data-td-media-open]').click(); await w(300); R().querySelector('.td-media-picker__delete button').click(); await w(300); [...document.querySelectorAll('body > .td-modal')].pop().querySelector('.td-btn--danger').click(); await w(500);",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ autoSelectFirst: false, adapter: createMockAdapter({ count: 12 }), capabilities: { delete: true, downloadOriginal: true, copyLink: true } }); await w(300); R().querySelector('[data-id=\"m10\"] [data-td-media-open]').click(); await w(300); R().querySelector('.td-media-picker__delete button').click(); await w(300); [...document.querySelectorAll('body > .td-modal')].pop().querySelector('.td-btn--danger').click(); await w(500);",
       "selectors": [
         ".td-media-picker",
         ".td-media-picker__dialog",
@@ -4953,7 +4953,7 @@
     },
     {
       "state": "form-errors",
-      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); const ad = createMockAdapter({ count: 12 }); ad.update = async () => { throw Object.assign(new Error('x'), { code: 'validation', userMessage: 'Kiểm tra lại các trường.', fieldErrors: { title: ['Tiêu đề quá dài'], other: ['Lỗi chung'] } }); }; TdMediaPicker.open({ adapter: ad, assetFields: assetFields() }); await w(300); R().querySelector('[data-id=\"m12\"] [data-td-media-open]').click(); await w(400); const t = R().querySelector('.td-media-picker__field[data-key=\"title\"] input'); t.value = 'Tiêu đề mới'; t.dispatchEvent(new Event('input', { bubbles: true })); await w(100); R().querySelector('.td-media-picker__save button').click(); await w(300);",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); const ad = createMockAdapter({ count: 12 }); ad.update = async () => { throw Object.assign(new Error('x'), { code: 'validation', userMessage: 'Kiểm tra lại các trường.', fieldErrors: { title: ['Tiêu đề quá dài'], other: ['Lỗi chung'] } }); }; TdMediaPicker.open({ autoSelectFirst: false, adapter: ad, assetFields: assetFields() }); await w(300); R().querySelector('[data-id=\"m12\"] [data-td-media-open]').click(); await w(400); const t = R().querySelector('.td-media-picker__field[data-key=\"title\"] input'); t.value = 'Tiêu đề mới'; t.dispatchEvent(new Event('input', { bubbles: true })); await w(100); R().querySelector('.td-media-picker__save button').click(); await w(300);",
       "selectors": [
         ".td-media-picker",
         ".td-media-picker__dialog",
@@ -4999,7 +4999,7 @@
     },
     {
       "state": "empty",
-      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ adapter: createMockAdapter({ count: 0 }) }); await w(300);",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ autoSelectFirst: false, adapter: createMockAdapter({ count: 0 }) }); await w(300);",
       "selectors": [
         ".td-media-picker",
         ".td-media-picker__dialog",
@@ -5035,7 +5035,7 @@
     },
     {
       "state": "error",
-      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); const ad = createMockAdapter({ count: 12 }); ad.list = async () => { throw Object.assign(new Error('raw'), { code: 'network' }); }; TdMediaPicker.open({ adapter: ad }); await w(300);",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); const ad = createMockAdapter({ count: 12 }); ad.list = async () => { throw Object.assign(new Error('raw'), { code: 'network' }); }; TdMediaPicker.open({ autoSelectFirst: false, adapter: ad }); await w(300);",
       "selectors": [
         ".td-media-picker",
         ".td-media-picker__dialog",
@@ -5073,7 +5073,7 @@
     },
     {
       "state": "crop-step",
-      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ adapter: createMockAdapter({ count: 12 }), selection: { mode: 'single', kinds: ['image'] }, crop: { enabled: true, aspectRatio: 1.91, allowFocalPoint: true } }); await w(300); R().querySelector('[data-id=\"m12\"] [data-td-media-open]').click(); await w(300); R().querySelector('.td-media-picker__confirm').click(); await w(500);",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ autoSelectFirst: false, adapter: createMockAdapter({ count: 12 }), selection: { mode: 'single', kinds: ['image'] }, crop: { enabled: true, aspectRatio: 1.91, allowFocalPoint: true } }); await w(300); R().querySelector('[data-id=\"m12\"] [data-td-media-open]').click(); await w(300); R().querySelector('.td-media-picker__confirm').click(); await w(500);",
       "selectors": [
         ".td-crop-dialog",
         ".td-crop-dialog__dialog",

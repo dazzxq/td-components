@@ -39,9 +39,11 @@ async function search(text) {
   f.dispatchEvent(new Event('input', { bubbles: true }));
   f.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
 }
+// v0.68.0: `autoSelectFirst` is ON by default; this suite's premise is "nothing is selected on open" → off in every open
+// (a call can still override it). The auto-select behaviour is covered by td-v067-*.
 async function openReady(opts = {}, adOpts = {}) {
   const ad = opts.adapter || createMockAdapter(adOpts);
-  const promise = TdMediaPicker.open({ ...opts, adapter: ad });
+  const promise = TdMediaPicker.open({ autoSelectFirst: false, ...opts, adapter: ad });
   await until(() => pickerRoot()?.getAttribute('data-state') === 'open', 4000, 'open');
   // v0.62.0: the dialog enters with scale(0.95) / translateY(100%) — measure only once that motion has finished
   await until(() => getComputedStyle(pickerRoot().querySelector('.td-media-picker__dialog')).transform === 'none', 4000, 'open motion');
@@ -88,7 +90,7 @@ describe('v0.33 td-media-picker — cursor pages (decision 13, default)', () => 
 
   it('single-flight: two quick › → ONE request; while pending ‹ › disabled + loading on the clicked one; resolve → page 2 (not 3)', async () => {
     const ad = createMockAdapter({ manual: true });
-    const promise = TdMediaPicker.open({ adapter: ad, pageSize: 20 });
+    const promise = TdMediaPicker.open({ adapter: ad, pageSize: 20, autoSelectFirst: false });
     await until(() => ad.calls.list.length === 1, 4000, 'first list');
     ad.calls.list[0].resolve();
     await until(() => items().length === 20, 4000, 'page 1');
@@ -113,7 +115,7 @@ describe('v0.33 td-media-picker — cursor pages (decision 13, default)', () => 
   it('error → still page 1, cursor stack unchanged; › again sends the same cursor; "Thử lại" retries the navigation', async () => {
     const ad = createMockAdapter({ manual: true });
     const errs = [];
-    const promise = TdMediaPicker.open({ adapter: ad, pageSize: 20 });
+    const promise = TdMediaPicker.open({ adapter: ad, pageSize: 20, autoSelectFirst: false });
     document.querySelector('td-media-picker').addEventListener('operation-error', (e) => errs.push(e.detail));
     await until(() => ad.calls.list.length === 1);
     ad.calls.list[0].resolve();
@@ -204,7 +206,7 @@ describe('v0.33 td-media-picker — pages mode (decision 13)', () => {
 
   it('latest wins: page 2 then page 3 quickly → page 2 aborted; only page 3 renders, even when page 2 resolves later', async () => {
     const ad = createMockAdapter({ manual: true, pagination: 'pages' });
-    const promise = TdMediaPicker.open({ adapter: ad, pagination: 'pages', pageSize: 20 });
+    const promise = TdMediaPicker.open({ adapter: ad, pagination: 'pages', pageSize: 20, autoSelectFirst: false });
     await until(() => ad.calls.list.length === 1);
     ad.calls.list[0].resolve();
     await until(() => items().length === 20 && pageBtn(3), 4000, 'page 1');
@@ -227,7 +229,7 @@ describe('v0.33 td-media-picker — pages mode (decision 13)', () => {
 
   it('a page error → td-pagination back on the committed page (silent attribute sync)', async () => {
     const ad = createMockAdapter({ manual: true, pagination: 'pages' });
-    const promise = TdMediaPicker.open({ adapter: ad, pagination: 'pages', pageSize: 20 });
+    const promise = TdMediaPicker.open({ adapter: ad, pagination: 'pages', pageSize: 20, autoSelectFirst: false });
     await until(() => ad.calls.list.length === 1);
     ad.calls.list[0].resolve();
     await until(() => pageBtn(2), 4000, 'pagination');

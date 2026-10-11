@@ -34,9 +34,11 @@ const host = () => document.querySelector('td-media-picker');
 const visible = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
 const detailName = () => q('.td-media-picker__detail-name')?.textContent || '';
 
+// v0.68.0: `autoSelectFirst` is ON by default; this suite's premise is "nothing is selected on open" → off in every open
+// (a call can still override it). The auto-select behaviour is covered by td-v067-*.
 async function openReady(opts = {}, adOpts = {}) {
   const ad = opts.adapter || createMockAdapter(adOpts);
-  const promise = TdMediaPicker.open({ ...opts, adapter: ad });
+  const promise = TdMediaPicker.open({ autoSelectFirst: false, ...opts, adapter: ad });
   await until(() => pickerRoot()?.getAttribute('data-state') === 'open', 4000, 'open');
   // v0.62.0: the dialog enters with scale(0.95) / translateY(100%) — measure only once that motion has finished
   await until(() => getComputedStyle(pickerRoot().querySelector('.td-media-picker__dialog')).transform === 'none', 4000, 'open motion');
