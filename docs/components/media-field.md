@@ -237,7 +237,7 @@ không `croppable`.
 **Chọn sẵn ảnh đầu (0.67.0, bật mặc định từ 0.68.0):** field **còn trống** mở picker với ảnh đầu của danh sách đã được chọn sẵn
 ("Chèn" bật ngay). Field **đã có ảnh** truyền `selection.initialIds = [giá trị]` nên không bị tự chọn đè. Tắt cho mọi field:
 `TdMediaPicker.configureDefaults({ autoSelectFirst: false })`; tắt cho một field: `pickerOptions.autoSelectFirst = false`.
-Xem [Tự chọn ảnh đầu](media-picker.md#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670).
+Xem [Tự chọn ảnh đầu](media-picker.md#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670) Field luôn là picker chọn **một** ảnh, nên 0.72.0 (picker `multiple` mặc định không chọn sẵn) không đổi gì ở đây.
 
 ### 6. Alt (chế độ usage)
 

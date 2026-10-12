@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.71.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.72.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.72.0](#0720) | **Đổi hành vi**: `autoSelectFirst` của `td-media-picker` mặc định chỉ bật cho picker chọn một ảnh | Picker `multiple` (album, `td-media-gallery`) mở ra chưa chọn gì, "Chèn" tắt tới khi người dùng chọn. Muốn chọn sẵn: `autoSelectFirst: true` cho lần mở đó. Site còn `configureDefaults({ autoSelectFirst: true })` (từ 0.67) thì bỏ dòng đó, nếu không `multiple` vẫn chọn sẵn. Test của site dựa vào "`multiple` mở ra đã có ảnh" phải bật tường minh. |
 | [0.71.0](#0710) | Không phá vỡ: `td-media-field` thêm token `--td-media-field-frame-w` (opt-in); `td-table` cuộn ngang canh thông báo rỗng theo vùng nhìn thấy (sửa lỗi) | Không phải sửa code. Ô logo nhỏ: đặt `--td-media-field-frame-w` thay vì thu `--td-media-field-w` rồi bỏ CSS vòng. Thông báo rỗng của bảng cuộn ngang tự hiện đúng chỗ; bảng không cuộn giống 0.70. |
 | [0.70.0](#0700) | Không phá vỡ: `td-tabs` thêm số đếm (`count`, `tone`, `setTabCount`) (opt-in) | Không phải sửa code. Muốn dải lọc có số đếm: thêm `count` / `tone` vào mục `tabs`, cập nhật số bằng `td.setTabCount(id, n, tone?)` (không dựng lại thanh). Không dùng thì giống từng byte 0.69. |
 | [0.69.0](#0690) | Không phá vỡ: thêm biến thể Button `plain` (opt-in) | Không phải sửa code. Muốn nút chữ thẳng cột với dòng chữ phía trên (thay vì ghost thụt vào): `variant="plain"` / `'variant' => 'plain'`. Không dùng thì giống từng byte 0.68. |
@@ -99,6 +100,25 @@ theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao
 
 ---
 
+## 0.72.0
+
+**Đổi hành vi.** `autoSelectFirst` (bật mặc định từ 0.68.0) giờ **mặc định theo chế độ chọn**:
+
+- picker chọn **một** ảnh (mặc định của `open()`, và `td-media-field`): vẫn chọn sẵn asset đầu tiên chọn được, như 0.68;
+- picker **`multiple`** (album, `td-media-gallery`): mở ra **chưa chọn gì**, "Chèn" tắt tới khi người dùng chọn; từ 720px khung chi tiết vẫn xem trước ảnh đầu
+  ([chi tiết](../components/media-picker.md#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670)). Tính theo `selection.mode`, không theo `maxItems`.
+
+Giá trị đã đặt thắng ở cả hai chế độ (quy tắc 0.68 không đổi): chỉ boolean `false` tắt, mọi giá trị khác có mặt, kể cả `true`, bật; `null` = chưa đặt.
+
+Việc site cần làm:
+
+- **Bỏ `configureDefaults({ autoSelectFirst: true })`** nếu site còn dòng này từ 0.67.0 (0.68.0 từng gọi nó là "vô hại"): từ 0.72 nó **bật cả picker `multiple`**, trái với mặc định mới.
+  Với picker một ảnh nó đã thừa từ 0.68.
+- Muốn một picker `multiple` chọn sẵn ảnh đầu: `TdMediaPicker.open({ …, autoSelectFirst: true, selection: { mode: 'multiple' } })`, hoặc `gallery.pickerOptions = { autoSelectFirst: true }`.
+- Site đã đặt `autoSelectFirst: false` ở album / gallery theo gợi ý của 0.68: dòng đó giờ thừa, vô hại, có thể bỏ.
+- Test tự động của site dựa vào "picker `multiple` mở ra đã có một ảnh được chọn / 'Chèn' đang bật" phải đặt `autoSelectFirst: true` tường minh. Test dựa vào "chưa chọn gì" ở picker `multiple`
+  không còn cần tắt tường minh.
+
 ## 0.71.0
 
 **Không phá vỡ.** Hai thay đổi nhỏ, theo yêu cầu của một site (dsuite):
@@ -143,7 +163,7 @@ Việc site cần làm:
   `open({ autoSelectFirst: false })` / `pickerOptions.autoSelectFirst = false` (một chỗ). `configureDefaults` thay cả object defaults, nên
   đặt cờ trong lời gọi hiện có của site, không gọi thêm lần thứ hai.
 - Test tự động của site dựa vào "mở picker thì 'Chèn' đang tắt / selection rỗng" phải tắt tường minh như trên.
-- Site đã đặt `configureDefaults({ autoSelectFirst: true })` từ 0.67.0: không còn cần dòng đó (vô hại).
+- Site đã đặt `configureDefaults({ autoSelectFirst: true })` từ 0.67.0: không còn cần dòng đó (vô hại) — **từ 0.72.0 không còn vô hại**: nó bật lại cả picker `multiple` (xem § 0.72.0).
 
 ## 0.67.0
 

@@ -7,6 +7,9 @@ import { sendKeys, setViewport } from '@web/test-runner-commands';
 // default; 1b, 2b…), the off switch is an explicit `autoSelectFirst: false` (1, 9b, 9d, 9e), and `true` is spelled out where
 // the explicit value is the point (2a, 9a, 9f). Only a boolean `false` turns it off (9c); `null` / `undefined` = absent (9e).
 // The "first load only" cases (6–8) run ON on purpose: with `false` they would prove nothing.
+// v0.72.0 (plan docs/internal/plans/v0.72.0-auto-select-single-only.md) made the DEFAULT follow selection.mode: ON for a single picker,
+// OFF for a `multiple` one (1c). A present value still wins in both modes, so every `multiple` case below that exercises the selection
+// MECHANICS (1b, 2c, 3, 4, 6, 8e, 11c, 9g) opens with an explicit `autoSelectFirst: true`.
 // Mock adapter: test/fixtures/media-adapter.js (newest first: m60, m59, …;
 // m7 processing; videos i % 10 = 4; files i % 15 = 11; with `collections: true` asset m{i} lives in c{((i - 1) % n) + 1}).
 // Helpers copied from td-media-picker.engines.browser-test.js / td-v066-media-picker-collections.engines.browser-test.js.
@@ -181,12 +184,15 @@ describe('v0.67.0 media picker autoSelectFirst — the option (cases 1, 2, 3, 12
     });
   }
 
-  for (const mode of ['single', 'multiple']) {
-    it(`1b. ${mode}: option absent → the first asset is selected (the v0.68.0 default): "Chèn" enabled, one merged message, NO selection-change`, async () => {
+  for (const [mode, opts, what] of [
+    ['single', {}, 'option absent (the default since v0.68.0)'],
+    ['multiple', { autoSelectFirst: true }, 'explicit true (a multiple picker is OFF by default since v0.72.0, see 1c)'],
+  ]) {
+    it(`1b. ${mode}: ${what} → the first asset is selected: "Chèn" enabled, one merged message, NO selection-change`, async () => {
       const events = selEvents();
       const log = liveLog();
-      const { ad, promise } = await open({ selection: { mode } });
-      await until(() => ticked() === 'm60', 3000, 'm60 auto-selected by the default');
+      const { ad, promise } = await open({ ...opts, selection: { mode } });
+      await until(() => ticked() === 'm60', 3000, 'm60 auto-selected');
       expect(item('m60').hasAttribute('data-selected'), 'card ticked').to.equal(true);
       expect(disabled(), 'Chèn enabled').to.equal(false);
       if (mode === 'multiple') {
@@ -206,6 +212,26 @@ describe('v0.67.0 media picker autoSelectFirst — the option (cases 1, 2, 3, 12
       expect(out.status).to.equal('selected');
       expect(out.selection.map((s) => s.assetId)).to.deep.equal(['m60']);
       expect(events.length, 'confirming is not a selection change either').to.equal(0);
+    });
+  }
+
+  for (const [what, selection] of [
+    ['multiple', { mode: 'multiple' }],
+    ['multiple + maxItems 1 (a one-slot multiple is still multiple)', { mode: 'multiple', maxItems: 1 }],
+  ]) {
+    it(`1c. ${what}: option absent (the v0.72.0 default) → NOTHING is selected, "Chèn" disabled, the first asset is still previewed, one results message, NO selection-change`, async () => {
+      const events = selEvents();
+      const log = liveLog();
+      const { ad } = await openReady({ selection });
+      await detailReady('m60');
+      expect(grid().selectedIds).to.deep.equal([]);
+      expect(selCount()).to.equal(0);
+      expect(disabled(), 'Chèn disabled').to.equal(true);
+      expect(btnText(confirmBtn())).to.equal('Chèn');
+      expect(item('m60').hasAttribute('data-viewing'), 'm60 previewed').to.equal(true);
+      expect(log, 'only the results count').to.deep.equal(['60 kết quả']);
+      expect(events.length).to.equal(0);
+      expect(ad.calls.list.length).to.equal(1);
     });
   }
 
@@ -255,7 +281,7 @@ describe('v0.67.0 media picker autoSelectFirst — the option (cases 1, 2, 3, 12
     it(`2c. ${mode}: the footer is updated together with the grid — not later, when the preview request settles`, async () => {
       // manual mode: the preview's get() never settles, so nothing else re-renders the footer (_applyFreshAsset does)
       const ad = createMockAdapter({ manual: true });
-      const promise = TdMediaPicker.open({ adapter: ad, selection: { mode } });
+      const promise = TdMediaPicker.open({ adapter: ad, autoSelectFirst: true, selection: { mode } });
       await until(() => ad.calls.list.length === 1, 3000, 'first list requested');
       expect(disabled(), 'nothing yet').to.equal(true);
       ad.calls.list[0].resolve();
@@ -276,7 +302,7 @@ describe('v0.67.0 media picker autoSelectFirst — the option (cases 1, 2, 3, 12
 
   it('3. multiple + maxItems: only the first asset is selected (chip 1/2), the user adds others up to maxItems', async () => {
     const events = selEvents();
-    const { promise } = await open({ selection: { mode: 'multiple', maxItems: 2 } });
+    const { promise } = await open({ autoSelectFirst: true, selection: { mode: 'multiple', maxItems: 2 } });
     await until(() => ticked() === 'm60', 3000, 'm60 auto-selected');
     expect(selCount(), 'chip count').to.equal(1);
     expect(chip().hidden, 'chip shown').to.equal(false);
@@ -324,7 +350,8 @@ describe('v0.67.0 media picker autoSelectFirst — initialIds always win (cases 
   /** manual mode: open with `initialIds`; returns once list() and the initial get() are pending */
   async function openInitial(mode, initialIds) {
     const ad = createMockAdapter({ manual: true });
-    const promise = TdMediaPicker.open({ adapter: ad, selection: { mode, initialIds } });
+    // explicit true: a multiple picker is OFF by default (v0.72.0), and these cases are about initialIds beating a pending auto-selection
+    const promise = TdMediaPicker.open({ adapter: ad, autoSelectFirst: true, selection: { mode, initialIds } });
     await until(() => ad.calls.list.length === 1 && ad.calls.get.length === initialIds.length, 3000, 'list + initial get requested');
     expect(ad.calls.get[0].args[0]).to.equal(initialIds[0]);
     return { ad, promise };
@@ -453,7 +480,7 @@ describe('v0.67.0 media picker autoSelectFirst — the first SELECTABLE asset (c
 describe('v0.67.0 media picker autoSelectFirst — the FIRST load only (cases 6, 7, 8)', () => {
   it('6a. paging (cursor) and searching keep exactly the one auto-selected asset (multiple); it comes back ticked on its page', async () => {
     const events = selEvents();
-    const { ad, promise } = await open({ pageSize: 10, selection: { mode: 'multiple' } });
+    const { ad, promise } = await open({ pageSize: 10, autoSelectFirst: true, selection: { mode: 'multiple' } });
     await until(() => ticked() === 'm60', 3000, 'm60 auto-selected');
     expect(selCount()).to.equal(1);
     nextBtn().click();
@@ -501,7 +528,7 @@ describe('v0.67.0 media picker autoSelectFirst — the FIRST load only (cases 6,
 
   it('6c. the user clears the auto-selection → the next page, the previous page and a search do not select again', async () => {
     const events = selEvents();
-    const { ad } = await open({ pageSize: 10, selection: { mode: 'multiple' } });
+    const { ad } = await open({ pageSize: 10, autoSelectFirst: true, selection: { mode: 'multiple' } });
     await until(() => ticked() === 'm60', 3000, 'm60 auto-selected');
     click(tick('m60'));
     await until(() => selCount() === 0, 3000, 'cleared by the user');
@@ -527,7 +554,7 @@ describe('v0.67.0 media picker autoSelectFirst — the FIRST load only (cases 6,
 
   it('6d. the user clears the auto-selection → a filter change reloads without selecting again', async () => {
     const events = selEvents();
-    const { ad } = await open({ selection: { mode: 'multiple' } });
+    const { ad } = await open({ autoSelectFirst: true, selection: { mode: 'multiple' } });
     await until(() => ticked() === 'm60', 3000, 'm60 auto-selected');
     click(tick('m60'));
     await until(() => selCount() === 0, 3000, 'cleared by the user');
@@ -544,7 +571,7 @@ describe('v0.67.0 media picker autoSelectFirst — the FIRST load only (cases 6,
 
   it('6e. top level, the user clears the auto-selection → a search, entering a collection and Back never select again', async () => {
     const events = selEvents();
-    const { ad } = await open({ selection: { mode: 'multiple' } }, { collections: true });
+    const { ad } = await open({ autoSelectFirst: true, selection: { mode: 'multiple' } }, { collections: true });
     await until(() => ticked() === 'm60', 3000, 'm60 auto-selected');
     click(tick('m60'));
     await until(() => selCount() === 0, 3000, 'cleared by the user');
@@ -571,7 +598,7 @@ describe('v0.67.0 media picker autoSelectFirst — the FIRST load only (cases 6,
     const log = liveLog();
     const ad = createMockAdapter({ manual: true });
     ad.ignoreSignal = true; // the stale first page may still settle later
-    const promise = TdMediaPicker.open({ adapter: ad, selection: { mode: 'multiple' } });
+    const promise = TdMediaPicker.open({ adapter: ad, autoSelectFirst: true, selection: { mode: 'multiple' } });
     await until(() => ad.calls.list.length === 1 && q('.td-media-picker__upload-btn'), 3000, 'first list requested');
     q('.td-media-picker__upload-btn').click();
     await until(() => dropzone(), 3000, 'upload dialog');
@@ -708,7 +735,7 @@ describe('v0.67.0 media picker autoSelectFirst — the FIRST load only (cases 6,
 
   it('8e. "Thử lại" of a failed LATER load (a search) does not auto-select: only the opening load carries it', async () => {
     const ad = createMockAdapter({ manual: true });
-    TdMediaPicker.open({ adapter: ad, selection: { mode: 'multiple' } });
+    TdMediaPicker.open({ adapter: ad, autoSelectFirst: true, selection: { mode: 'multiple' } });
     await until(() => ad.calls.list.length === 1, 3000, 'first list requested');
     ad.calls.list[0].resolve();
     await until(() => ticked() === 'm60', 3000, 'm60 auto-selected');
@@ -771,22 +798,21 @@ describe('v0.67.0 media picker autoSelectFirst — defaults, announcement, colle
     }
   });
 
-  for (const mode of ['single', 'multiple']) {
-    it(`9d. ${mode}: configureDefaults({ autoSelectFirst: false }) turns it off for an open() that sets nothing`, async () => {
-      const events = selEvents();
-      const ad = createMockAdapter();
-      TdMediaPicker.configureDefaults({ adapter: ad, autoSelectFirst: false });
-      const promise = TdMediaPicker.open({ selection: { mode } });
-      await until(() => items().length > 0, 3000, 'first page');
-      await detailReady('m60');
-      expect(ticked(), 'off from the site defaults').to.equal('');
-      expect(selCount()).to.equal(0);
-      expect(disabled(), 'Chèn disabled').to.equal(true);
-      expect(events.length).to.equal(0);
-      document.querySelector('td-media-picker').close();
-      await promise;
-    });
-  }
+  // single only: a `multiple` open() is OFF without the key anyway (v0.72.0), so this case would prove nothing there (see 9g / 9h)
+  it('9d. single: configureDefaults({ autoSelectFirst: false }) turns it off for an open() that sets nothing', async () => {
+    const events = selEvents();
+    const ad = createMockAdapter();
+    TdMediaPicker.configureDefaults({ adapter: ad, autoSelectFirst: false });
+    const promise = TdMediaPicker.open({ selection: { mode: 'single' } });
+    await until(() => items().length > 0, 3000, 'first page');
+    await detailReady('m60');
+    expect(ticked(), 'off from the site defaults').to.equal('');
+    expect(selCount()).to.equal(0);
+    expect(disabled(), 'Chèn disabled').to.equal(true);
+    expect(events.length).to.equal(0);
+    document.querySelector('td-media-picker').close();
+    await promise;
+  });
 
   for (const value of [null, undefined]) {
     it(`9e. open({ autoSelectFirst: ${value} }) over configureDefaults({ autoSelectFirst: false }) stays off — ${value} is absent, it never turns a lower layer back on`, async () => {
@@ -828,6 +854,31 @@ describe('v0.67.0 media picker autoSelectFirst — defaults, announcement, colle
     expect(disabled()).to.equal(true);
     document.querySelector('td-media-picker').close();
     await second;
+  });
+
+  it('9g. multiple: configureDefaults({ autoSelectFirst: true }) (the 0.67.0 site-wide opt-in) still switches a multiple open() ON — a present value wins over the multiple default', async () => {
+    const events = selEvents();
+    const ad = createMockAdapter();
+    TdMediaPicker.configureDefaults({ adapter: ad, autoSelectFirst: true });
+    const promise = TdMediaPicker.open({ selection: { mode: 'multiple' } });
+    await until(() => ticked() === 'm60', 3000, 'm60 auto-selected from the site defaults');
+    expect(selCount(), 'chip count').to.equal(1);
+    expect(btnText(confirmBtn())).to.equal('Chèn (1)');
+    expect(events.length, 'no selection-change').to.equal(0);
+    confirmBtn().click();
+    expect((await promise).selection.map((s) => s.assetId)).to.deep.equal(['m60']);
+  });
+
+  it('9h. multiple: open({ autoSelectFirst: null }) over defaults without the key is absent → the multiple default, OFF', async () => {
+    const ad = createMockAdapter();
+    TdMediaPicker.configureDefaults({ adapter: ad });
+    const promise = TdMediaPicker.open({ autoSelectFirst: null, selection: { mode: 'multiple' } });
+    await until(() => items().length > 0, 3000, 'first page');
+    await detailReady('m60');
+    expect(ticked(), 'null is absent: nothing selected').to.equal('');
+    expect(disabled()).to.equal(true);
+    document.querySelector('td-media-picker').close();
+    await promise;
   });
 
   it('10. ONE live message after the first list: the results count and "Đã chọn sẵn: {name}" together', async () => {
@@ -884,7 +935,7 @@ describe('v0.67.0 media picker autoSelectFirst — defaults, announcement, colle
 
   it('11c. leaving the collection (Back) never auto-selects: the user cleared it, the top-level list stays unselected', async () => {
     const events = selEvents();
-    const { ad } = await open({ selection: { mode: 'multiple' }, initialCollection: { id: 'c2', label: 'Album hai' } },
+    const { ad } = await open({ autoSelectFirst: true, selection: { mode: 'multiple' }, initialCollection: { id: 'c2', label: 'Album hai' } },
       { collections: true });
     await until(() => ticked() === 'm58', 3000, 'm58 auto-selected');
     click(tick('m58'));

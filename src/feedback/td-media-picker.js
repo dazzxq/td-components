@@ -500,7 +500,8 @@ export class TdMediaPicker extends HTMLElement {
     this._renderSelection();
     this._loadFacets();
     // v0.67.0 `autoSelectFirst`: only the FIRST list request of the session carries it (a query typed before it returns
-    // supersedes it: a stale request never renders, so it never selects); an explicit `initialIds` always wins
+    // supersedes it: a stale request never renders, so it never selects); an explicit `initialIds` always wins.
+    // `opts.autoSelectFirst` is already resolved (v0.72.0: an explicit value, else single = on / multiple = off)
     const autoFirst = opts.autoSelectFirst === true && !opts.selection.initialIds.length;
     if (s.collection) {
       const c = { ...s.collection };
@@ -1311,7 +1312,8 @@ export class TdMediaPicker extends HTMLElement {
   }
 
   /**
-   * @private v0.67.0 `autoSelectFirst` (ON by default since v0.68.0; `autoSelectFirst: false` turns it off): the FIRST list of
+   * @private v0.67.0 `autoSelectFirst` (ON by default for a single picker since v0.68.0, OFF by default for a `multiple` one since
+   * v0.72.0 — resolveOptions folds that default in; an explicit `true` / `false` always wins): the FIRST list of
    * the session selects its first selectable asset — the exception to the QĐ 69 rule below, "the selection is never touched". Programmatic, like the initialIds result: no
    * revision bump and no `selection-change` (user changes only; `confirm` still carries the selection). The footer
    * ("Chèn", the multiple chip) is re-rendered HERE because `_syncGrid` does not. Not when something is already selected.
@@ -1331,7 +1333,8 @@ export class TdMediaPicker extends HTMLElement {
    * @private v0.36.0 (plan QĐ 69, ADR 0013 note; review ISSUE-2): ≥ 720 the detail panel always PREVIEWS something after
    * every list load — the asset already viewed when it is still in the results, else the first SELECTED asset that is in
    * the results, else the first result; an empty result clears the panel (empty state). The selection is never touched
-   * ("Chèn" stays disabled until the user selects) — except `autoSelectFirst` (v0.67.0; on by default since v0.68.0), see `_autoSelectFirst`.
+   * ("Chèn" stays disabled until the user selects) — except `autoSelectFirst` (v0.67.0; on by default for a single picker only,
+   * v0.68.0 / v0.72.0), see `_autoSelectFirst`.
    * < 720 the grid comes first (no auto-open); a dirty form is never replaced.
    */
   _autoPreview(page) {

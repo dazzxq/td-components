@@ -204,6 +204,7 @@ Nút **Thêm ảnh** nằm dưới lưới (gallery rỗng: khung lớn "Chọn 
   title: label, themeRoot: gallery }
 ```
 
+- **Mở ra chưa chọn gì** (0.72.0): picker của gallery là `multiple`, nên [`autoSelectFirst`](media-picker.md#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670) mặc định tắt — "Chèn" tắt tới khi người dùng chọn. Muốn chọn sẵn ảnh đầu: `gallery.pickerOptions = { autoSelectFirst: true }`.
 - Ảnh chọn được **nối cuối** theo thứ tự người dùng chọn trong picker. Alt ban đầu = `usage.altText` → `asset.defaultAltText`;
   crop / focal = `null` (picker chỉ cắt ở chế độ một ảnh — cắt từng ảnh sau bằng nút **Cắt**).
 - Ảnh **đã có** trong gallery bị bỏ qua và đọc "Bỏ qua {n} ảnh đã có" (một asset không xuất hiện hai lần). Picker trả thừa

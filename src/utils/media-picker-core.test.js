@@ -305,28 +305,57 @@ describe('resolveOptions + DefaultsRegistry (decision 6)', () => {
     }
   });
 
-  it('v0.68.0: autoSelectFirst — ON by default; only an explicit `false` turns it off; open() and defaults both work', () => {
-    assert.equal(resolveOptions({ adapter: adapter() }).autoSelectFirst, true);
-    assert.equal(resolveOptions({ adapter: adapter() }, { autoSelectFirst: true }).autoSelectFirst, true);
-    assert.equal(resolveOptions({ adapter: adapter() }, { autoSelectFirst: false }).autoSelectFirst, false);
-    assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: false }).autoSelectFirst, false, 'from the defaults');
-    assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: false }, { autoSelectFirst: true }).autoSelectFirst, true,
-      'open() true overrides a defaults false');
-    assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: true }, { autoSelectFirst: false }).autoSelectFirst, false,
-      'open() false overrides a defaults true');
-    for (const v of ['yes', 'no', 'false', 1, 0, {}, []]) {
-      assert.equal(resolveOptions({ adapter: adapter() }, { autoSelectFirst: v }).autoSelectFirst, true, `${JSON.stringify(v)} is not \`false\``);
+  it('v0.72.0: autoSelectFirst — absent → ON for a single picker, OFF for a multiple one (the default follows selection.mode)', () => {
+    assert.equal(resolveOptions({ adapter: adapter() }).autoSelectFirst, true, 'no selection = single');
+    assert.equal(resolveOptions({ adapter: adapter() }, { selection: { mode: 'single' } }).autoSelectFirst, true);
+    assert.equal(resolveOptions({ adapter: adapter() }, { selection: { mode: 'multiple' } }).autoSelectFirst, false);
+    assert.equal(resolveOptions({ adapter: adapter() }, { selection: { mode: 'multiple', maxItems: 1 } }).autoSelectFirst, false,
+      'a one-slot multiple is still multiple');
+    assert.equal(resolveOptions({ adapter: adapter() }, { selection: { mode: 'multiple', maxItems: 5, initialIds: ['a'] } }).autoSelectFirst, false);
+    assert.equal(resolveOptions({ adapter: adapter() }, { selection: { mode: 'nope' } }).autoSelectFirst, true, 'an unknown mode normalises to single');
+    // `selection` never comes from the defaults, so a defaults mode cannot turn the default off
+    assert.equal(resolveOptions({ adapter: adapter(), selection: { mode: 'multiple' } }).autoSelectFirst, true, 'defaults selection is ignored → single');
+  });
+
+  it('v0.72.0: autoSelectFirst — a present value wins in BOTH modes; only a boolean `false` turns it off; open() and defaults both work', () => {
+    for (const mode of ['single', 'multiple']) {
+      const sel = { selection: { mode } };
+      assert.equal(resolveOptions({ adapter: adapter() }, { ...sel, autoSelectFirst: true }).autoSelectFirst, true, `${mode}: open() true`);
+      assert.equal(resolveOptions({ adapter: adapter() }, { ...sel, autoSelectFirst: false }).autoSelectFirst, false, `${mode}: open() false`);
+      assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: true }, sel).autoSelectFirst, true, `${mode}: defaults true, open() sets nothing`);
+      assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: false }, sel).autoSelectFirst, false, `${mode}: defaults false, open() sets nothing`);
+      assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: false }, { ...sel, autoSelectFirst: true }).autoSelectFirst, true,
+        `${mode}: open() true overrides a defaults false`);
+      assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: true }, { ...sel, autoSelectFirst: false }).autoSelectFirst, false,
+        `${mode}: open() false overrides a defaults true`);
+      for (const v of ['yes', 'no', 'false', 1, 0, {}, []]) {
+        assert.equal(resolveOptions({ adapter: adapter() }, { ...sel, autoSelectFirst: v }).autoSelectFirst, true,
+          `${mode}: ${JSON.stringify(v)} is not \`false\``);
+      }
     }
   });
 
-  it('v0.68.0: autoSelectFirst: null / undefined = absent — never overrides a lower layer (a defaults false stays false)', () => {
-    assert.equal(resolveOptions({ adapter: adapter() }, { autoSelectFirst: null }).autoSelectFirst, true);
-    assert.equal(resolveOptions({ adapter: adapter() }, { autoSelectFirst: undefined }).autoSelectFirst, true);
-    assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: false }, { autoSelectFirst: null }).autoSelectFirst, false);
-    assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: false }, { autoSelectFirst: undefined }).autoSelectFirst, false);
-    assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: null }).autoSelectFirst, true, 'null in the defaults is absent too');
-    assert.equal(resolveOptions({ adapter: adapter() }, { autoSelectFirst: false }, { autoSelectFirst: null }).autoSelectFirst, false,
+  it('v0.72.0: autoSelectFirst: null / undefined = absent — never overrides a lower layer, falls back to the mode default', () => {
+    const single = { selection: { mode: 'single' } };
+    const multi = { selection: { mode: 'multiple' } };
+    for (const v of [null, undefined]) {
+      assert.equal(resolveOptions({ adapter: adapter() }, { ...single, autoSelectFirst: v }).autoSelectFirst, true, `single, ${v}`);
+      assert.equal(resolveOptions({ adapter: adapter() }, { ...multi, autoSelectFirst: v }).autoSelectFirst, false, `multiple, ${v}`);
+    }
+    assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: null }).autoSelectFirst, true, 'null in the defaults is absent too (single)');
+    assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: null }, multi).autoSelectFirst, false, 'null in the defaults is absent too (multiple)');
+    for (const m of [single, multi]) {
+      assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: false }, { ...m, autoSelectFirst: null }).autoSelectFirst, false,
+        `${m.selection.mode}: a defaults false stays false under null`);
+      assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: false }, { ...m, autoSelectFirst: undefined }).autoSelectFirst, false,
+        `${m.selection.mode}: a defaults false stays false under undefined`);
+    }
+    assert.equal(resolveOptions({ adapter: adapter(), autoSelectFirst: true }, { ...multi, autoSelectFirst: null }).autoSelectFirst, true,
+      'a defaults true stays true under null, also for multiple');
+    assert.equal(resolveOptions({ adapter: adapter() }, { ...multi, autoSelectFirst: false }, { autoSelectFirst: null }).autoSelectFirst, false,
       'a later null does not undo an earlier false');
+    assert.equal(resolveOptions({ adapter: adapter() }, { ...multi, autoSelectFirst: true }, { autoSelectFirst: null }).autoSelectFirst, true,
+      'a later null does not undo an earlier true');
   });
 
   it('v0.66.0 (K8): initialCollection: null = absent (like undefined) — no TypeError, never overrides a lower layer', () => {

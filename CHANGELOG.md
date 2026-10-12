@@ -2,6 +2,30 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.72.0
+
+**`td-media-picker`: `autoSelectFirst` mặc định chỉ bật cho picker chọn MỘT ảnh — picker `multiple` (album, `td-media-gallery`) mở ra chưa chọn gì** (owner kit: "ko nhé";
+[plan](docs/internal/plans/v0.72.0-auto-select-single-only.md), [ADR 0013 § Bổ sung v0.72](docs/internal/decisions/0013-media-picker-boundary.md#bổ-sung-v072)).
+
+### Changed
+
+- **Đổi hành vi (mặc định).** 0.68.0 bật `autoSelectFirst` cho mọi picker, kể cả `multiple`. Từ 0.72.0, khi không đặt option, mặc định **theo `selection.mode`**: picker một ảnh (mặc định của
+  `open()` và của `td-media-field`) vẫn chọn sẵn asset đầu tiên chọn được như 0.68; picker `multiple` (album, `td-media-gallery`) **mở ra chưa chọn gì**, "Chèn" tắt tới khi người dùng chọn, và từ 720px
+  khung chi tiết vẫn xem trước ảnh đầu. Tính theo chế độ, không theo `maxItems` (`multiple` còn một chỗ trống vẫn là `multiple`).
+- Giá trị đã đặt thắng ở cả hai chế độ, quy tắc 0.68 giữ nguyên: chỉ boolean `false` tắt, mọi giá trị khác có mặt (kể cả `true`) bật, `null` / `undefined` = chưa đặt (rơi về mặc định theo chế độ,
+  không đè lớp dưới). `autoSelectFirst: true` tường minh trên `multiple` (qua `open()`, `pickerOptions` của gallery hay `configureDefaults`) vẫn chọn sẵn một ảnh, như 0.67.
+- Việc site cần làm: không phải sửa gì nếu muốn đúng hành vi mới. **Site còn `configureDefaults({ autoSelectFirst: true })` từ 0.67.0** (0.68.0 từng bảo dòng đó "vô hại") vẫn có picker `multiple`
+  chọn sẵn: bỏ dòng đó (với picker một ảnh nó đã thừa từ 0.68). Muốn một picker `multiple` chọn sẵn ảnh đầu: `open({ autoSelectFirst: true, selection: { mode: 'multiple' } })` hoặc
+  `gallery.pickerOptions = { autoSelectFirst: true }`. Site đã đặt `autoSelectFirst: false` ở album / gallery theo gợi ý của 0.68: dòng đó giờ thừa, vô hại. Test của site dựa vào "picker `multiple`
+  mở ra đã có một ảnh được chọn" phải bật tường minh.
+
+### Ghi chú
+
+- Mã chỉ đổi một dòng ở `resolveOptions` (mặc định tính ở đó vì `selection` không bao giờ lấy từ `configureDefaults`); logic picker, DOM, CSS, token, sự kiện và PHP không đổi.
+- Docs: [Tự chọn ảnh đầu](docs/components/media-picker.md#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670) (tiêu đề về lại "(0.67.0)" để các liên kết cũ chạy lại; trước đó đuôi "bật mặc định từ 0.68.0" làm hỏng neo),
+  [media-gallery.md](docs/components/media-gallery.md), [media-field.md](docs/components/media-field.md). Test mới: `td-v072-media-gallery-auto-select` (picker thật qua `td-media-gallery`, trước đó chưa
+  test nào mở picker thật từ gallery); bộ `td-v067-…` đổi các ca `multiple` sang `autoSelectFirst: true` tường minh và thêm ca mặc định mới.
+
 ## 0.71.0
 
 **`td-media-field`: bề rộng riêng cho khung ảnh (`--td-media-field-frame-w`) · `td-table`: thông báo rỗng canh theo vùng đang nhìn thấy** (yêu cầu K10 / K11 của dsuite,

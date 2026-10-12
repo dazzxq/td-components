@@ -410,7 +410,7 @@ TdMediaPicker.defaults;           // bản sao nông của object đã cấu hì
 - Thứ tự resolve **mỗi lần mở** (merge nông theo key, giá trị `undefined` không ghi đè):
   **tham số `open()`** > **`field.pickerOptions`** > **`field.adapter`** > **defaults**.
 - `selection` **không bao giờ** lấy từ defaults: luôn do người gọi `open()` hoặc [media field](media-field.md) quyết.
-  `initialCollection` (0.66) cũng vậy. `collections: { showWithoutQuery }` và `autoSelectFirst` (0.67) thì lấy được từ defaults (`false` ở defaults tắt cho cả site).
+  `initialCollection` (0.66) cũng vậy. `collections: { showWithoutQuery }` và `autoSelectFirst` (0.67) thì lấy được từ defaults (`false` ở defaults tắt cho cả site; `true` ở defaults bật cả picker `multiple`, xem [Tự chọn ảnh đầu](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670)).
 - Không resolve được adapter hợp lệ → `open()` ném `TypeError` đồng bộ (lỗi lập trình).
 
 ## Mở picker — `TdMediaPicker.open(options)`
@@ -445,13 +445,13 @@ const outcome = await TdMediaPicker.open({
 | `upload` | `{ accept?, maxSize?, multiple? = true, acceptLabel? }` | — | Chuyển cho `td-dropzone` ([dropzone](dropzone.md)). `acceptLabel` (0.33) chỉ là **chữ** trên badge / mô tả tab URL, không phải bộ lọc; thiếu thì suy từ `accept` |
 | `initialCollection` | `{ id: string, label: string }` \| `null` | `null` | 0.66.0: mở **thẳng vào** bộ sưu tập này (breadcrumb + `collectionId` ngay từ request đầu). `capabilities: { collections: false }` của site thắng: khi đó `initialCollection` bị bỏ qua và phiên chạy như phiên thường. `id` ≤ 512 ký tự, `label` cắt còn 200 code point; sai hình dạng → `TypeError`; `null` = không có. **Không** lấy từ defaults. Focus vẫn ở ô tìm. Xem [Bộ sưu tập](#bộ-sưu-tập-0660) |
 | `collections` | `{ showWithoutQuery?: boolean }` | `{ showWithoutQuery: false }` | 0.66.0: `true` → dải bộ sưu tập hiện cả khi chưa gõ tìm. Không phải object → `TypeError`; `null` = bỏ qua |
-| `autoSelectFirst` | `boolean` | `true` | 0.67.0 (opt-in) → **bật mặc định từ 0.68.0**: chọn sẵn asset đầu tiên chọn được của lần tải danh sách đầu — [Tự chọn ảnh đầu](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670). Chỉ boolean `false` mới tắt (`null` / vắng = mặc định); lấy được từ defaults; `open({ autoSelectFirst: false })` tắt riêng lần mở |
+| `autoSelectFirst` | `boolean` | theo chế độ | 0.67.0 (opt-in) → bật mặc định từ 0.68.0 → **từ 0.72.0 mặc định chỉ bật cho picker chọn MỘT ảnh (`selection.mode: 'single'`), tắt cho `multiple`**: chọn sẵn asset đầu tiên chọn được của lần tải danh sách đầu — [Tự chọn ảnh đầu](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670). Giá trị đã đặt thắng ở cả hai chế độ: chỉ boolean `false` mới tắt, mọi giá trị khác có mặt (kể cả `true`) bật; `null` / vắng = mặc định theo chế độ; lấy được từ defaults; `open({ autoSelectFirst: false })` tắt riêng lần mở, `open({ autoSelectFirst: true, selection: { mode: 'multiple' } })` bật cho picker nhiều ảnh |
 | `crop` | `{ enabled, aspectRatio?, allowFocalPoint? }` | — | 0.35.0: `enabled: true` + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `[0.01, 100]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
 
 - **Một picker một lúc**: gọi `open()` khi đã có picker mở → resolve ngay `{ status: 'cancelled', reason:
   'programmatic' }` + cảnh báo một lần (không chồng picker).
 - `TdMediaPicker.open()` tạo host tạm trên `<body>` và gỡ sau khi đóng.
-- **Từ 0.68.0 mặc định mở picker chọn sẵn asset đầu tiên chọn được** của lần tải đầu ([`autoSelectFirst`](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670); trước đó, 0.67, là opt-in; trước nữa không tự chọn gì). Hai trường hợp không chọn sẵn: `selection.initialIds` có phần tử, hoặc site đặt `autoSelectFirst: false`; khi đó lựa chọn rỗng và "Chèn" disabled, và từ 720px panel chi tiết vẫn **xem trước** asset đầu mà không chọn.
+- **Picker chọn một ảnh mặc định mở ra chọn sẵn asset đầu tiên chọn được** của lần tải đầu ([`autoSelectFirst`](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670); từ 0.68.0, trước đó 0.67 là opt-in, trước nữa không tự chọn gì). **Picker `multiple` thì không** (từ 0.72.0). Các trường hợp không chọn sẵn: `selection.initialIds` có phần tử, site đặt `autoSelectFirst: false`, hoặc picker là `multiple` mà không đặt `autoSelectFirst: true`; khi đó lựa chọn rỗng và "Chèn" disabled, và từ 720px panel chi tiết vẫn **xem trước** asset đầu mà không chọn.
 
 ### Kết quả — `PickerOutcome`
 
@@ -636,7 +636,7 @@ TdMediaPicker.configureDefaults({ adapter: mediaAdapter, pagination: 'pages' });
   chọn; nếu form chi tiết đang bẩn thì hỏi trước, "Không" → lựa chọn và chi tiết giữ nguyên.
 - **Chế độ nhiều** (giống dcms2): click card hoặc Enter = **chỉ xem** chi tiết, không đổi lựa chọn. Tick (góc trên-phải,
   luôn hiện) và phím tắt bên dưới đổi lựa chọn. Vượt `maxItems` → bị chặn + thông báo "Tối đa {max} mục".
-- **Từ 0.68.0 mở ra là có sẵn một lựa chọn** (như dcms2): [`autoSelectFirst`](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670) chọn asset đầu tiên chọn được của lần tải đầu, "Chèn" bật ngay. Tắt bằng `autoSelectFirst: false`: khi đó mở ra chưa chọn gì, "Chèn" tắt, và từ 720px picker chỉ **xem trước** asset đầu ([Panel chi tiết](#panel-chi-tiết-luôn-mở)) — xem, không chọn.
+- **Mở ra có sẵn một lựa chọn chỉ ở chế độ một ảnh** (từ 0.68.0; picker `multiple` mở ra chưa chọn gì từ 0.72.0): [`autoSelectFirst`](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670) chọn asset đầu tiên chọn được của lần tải đầu, "Chèn" bật ngay. Chế độ nhiều, hoặc `autoSelectFirst: false`: mở ra chưa chọn gì, "Chèn" tắt, và từ 720px picker chỉ **xem trước** asset đầu ([Panel chi tiết](#panel-chi-tiết-luôn-mở)) — xem, không chọn. Muốn picker nhiều ảnh chọn sẵn ảnh đầu: `autoSelectFirst: true`.
 
 **Phím tắt chọn** (thật bằng chuột + bàn phím, test 3 engine). "Cmd" trên macOS, "Ctrl" trên Windows / Linux — trên macOS
 Ctrl+click là menu chuột phải, nên chỉ Cmd dùng được:
@@ -652,19 +652,28 @@ Ctrl+click là menu chuột phải, nên chỉ Cmd dùng được:
 Lựa chọn tích luỹ qua nhiều trang. Shift+click không bôi đen chữ trên lưới. Không có Ctrl/Cmd+A (picker phân trang —
 "tất cả" mơ hồ) và Ctrl/Cmd+Space (đụng phím đổi bộ gõ / Spotlight).
 
-### Tự chọn ảnh đầu khi mở — `autoSelectFirst` (0.67.0, bật mặc định từ 0.68.0)
+### Tự chọn ảnh đầu khi mở — `autoSelectFirst` (0.67.0)
 
 ```js
-TdMediaPicker.open({ adapter });                                      // 0.68+: tự chọn ảnh đầu (không cần option)
-TdMediaPicker.configureDefaults({ adapter, autoSelectFirst: false }); // một lần ở bootstrap: TẮT cho cả site, kể cả ô td-media-field
-TdMediaPicker.open({ adapter, autoSelectFirst: false });              // hoặc tắt riêng một lần mở
+TdMediaPicker.open({ adapter });                                                         // chọn MỘT ảnh: tự chọn ảnh đầu (không cần option)
+TdMediaPicker.open({ adapter, selection: { mode: 'multiple' } });                        // chọn NHIỀU ảnh (0.72+): không tự chọn
+TdMediaPicker.open({ adapter, autoSelectFirst: true, selection: { mode: 'multiple' } }); // …muốn thì bật riêng cho lần mở đó
+TdMediaPicker.configureDefaults({ adapter, autoSelectFirst: false });                    // một lần ở bootstrap: TẮT cho cả site, kể cả ô td-media-field
+TdMediaPicker.open({ adapter, autoSelectFirst: false });                                 // hoặc tắt riêng một lần mở
 ```
 
 Picker **chọn sẵn asset đầu tiên chọn được** của danh sách lúc mở: "Chèn" bật ngay và khung chi tiết (≥ 720px) xem trước đúng
-asset đó. Lịch sử: 0.36.0 (QĐ 69) cố ý không tự chọn, để một cú bấm "Chèn" vội ở ô logo, banner, SEO… không chèn nhầm ảnh mới nhất;
-0.67.0 thêm option này ở dạng opt-in; owner kit đảo lại ở **0.68.0**: bật mặc định. Chỉ boolean `false` mới tắt (`null` / vắng =
-mặc định; một lớp dưới đã `false` thì `null` không bật lại). Site có picker `multiple` (album, gallery) mà không muốn chọn sẵn thì đặt
-`autoSelectFirst: false` cho lần mở đó.
+asset đó. **Mặc định theo chế độ (0.72.0): bật với picker chọn một ảnh, tắt với picker `multiple`** (album, [`td-media-gallery`](media-gallery.md)): mở picker
+nhiều ảnh ra thì chưa chọn gì, "Chèn" tắt, và từ 720px panel chi tiết chỉ xem trước ảnh đầu. Tính theo `selection.mode`, không theo `maxItems`
+(picker `multiple` còn một chỗ trống vẫn là `multiple`).
+
+Lịch sử: 0.36.0 (QĐ 69) cố ý không tự chọn, để một cú bấm "Chèn" vội ở ô logo, banner, SEO… không chèn nhầm ảnh mới nhất;
+0.67.0 thêm option này ở dạng opt-in; owner kit đảo lại ở **0.68.0**: bật mặc định, cả `multiple`; **0.72.0** (owner: picker nhiều ảnh thì không)
+giữ bật cho picker một ảnh và trả `multiple` về "mở ra chưa chọn gì".
+
+Giá trị đã đặt thắng ở cả hai chế độ: chỉ boolean `false` mới tắt, mọi giá trị khác có mặt (kể cả `true`) bật; `null` / vắng = chưa đặt (rơi
+về mặc định theo chế độ; một lớp dưới đã `false` thì `null` không bật lại). **Lưu ý khi nâng lên 0.72:** `configureDefaults({ autoSelectFirst: true })`
+(viết từ 0.67.0, khi đó là cách bật; từ 0.68.0 nó thừa với picker một ảnh) giờ bật **cả** picker `multiple` — bỏ dòng đó nếu không muốn.
 
 | Quy tắc | Chi tiết |
 |---|---|
@@ -1407,7 +1416,7 @@ Picker theo bố cục và cách dùng của media picker dcms2. Bảng dưới 
 | Xoá | Xoá cứng / mềm, không hỏi usage | Hỏi lại; **server** kiểm usage + quyền, trả `blocked` | cố ý khác |
 | Tải về | `window.open` | `<a download>` tạm; blob không bao giờ mở trong tab | cố ý khác |
 | Copy link | Có | Tuỳ chọn (`copyLink`, mặc định tắt); link hiển thị, không phải danh tính | khớp có điều kiện |
-| Tự chọn mục đầu | Có | Không | cố ý khác |
+| Tự chọn mục đầu | Có | Chọn một ảnh: có (`autoSelectFirst`, bật mặc định từ 0.68). Chọn nhiều ảnh: không (mặc định từ 0.72; bật bằng `autoSelectFirst: true`) | khớp có điều kiện |
 | Enter toàn cục = Chèn | Có | Không | cố ý khác |
 | Escape | Không đóng | Đóng theo tầng (qua cổng xác nhận); trong bộ sưu tập (0.66) thì lùi ra cấp ngoài trước | cố ý khác |
 | Mobile chi tiết | Che kín, không lối ra | Pane trượt có "Quay lại" | sửa lỗi |

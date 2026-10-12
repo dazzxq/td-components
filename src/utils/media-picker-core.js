@@ -191,8 +191,10 @@
  * @property {{ showWithoutQuery?: boolean }} [collections] v0.66.0 (K8): `showWithoutQuery: true` shows the collection
  *   strip before anything is typed (default false); also via configureDefaults
  * @property {boolean} [autoSelectFirst] v0.67.0: select the first selectable asset of the FIRST list load of the session;
- *   ON BY DEFAULT since v0.68.0 (owner): only a boolean `false` turns it off (`null` / `undefined` = absent, never overriding a
- *   lower layer); also via configureDefaults; skipped when `selection.initialIds` has entries
+ *   v0.68.0 (owner): ON by default; v0.72.0 (owner): the default is ON for a single picker and OFF for a `multiple` one (album,
+ *   gallery). A present value wins in both modes: only a boolean `false` turns it off, anything else (`true` too) turns it on;
+ *   `null` / `undefined` = absent (never overriding a lower layer, falls back to the mode default); also via configureDefaults;
+ *   skipped when `selection.initialIds` has entries
  */
 
 export const KINDS = Object.freeze(['image', 'video', 'file']);
@@ -618,8 +620,9 @@ let warnedCropMultiple = false;
  * `aspectRatio` warns once ⇒ free; `selection.mode = 'multiple'` warns once ⇒ no crop; unknown keys ignored). No valid adapter → TypeError (a
  * programming error). v0.66.0 (K8): `initialCollection` (never from `defaults`; `{ id, label }` | null, a bad shape →
  * TypeError) and `collections` (→ `{ showWithoutQuery }`, a non-object → TypeError); `null` for either = absent (like
- * undefined: skipped, never overrides a lower layer). v0.67.0 / v0.68.0: `autoSelectFirst` (default ON; only `false` turns it
- * off, also from `defaults`; `null` = absent like the two keys above).
+ * undefined: skipped, never overrides a lower layer). v0.67.0 / v0.68.0 / v0.72.0: `autoSelectFirst` (absent → ON for a single
+ * picker, OFF for a `multiple` one; a present value wins: only `false` turns it off, also from `defaults`; `null` = absent like
+ * the two keys above).
  * @param {object|null|undefined} defaults
  * @param {...(object|null|undefined)} layers last argument may be `{ warn }` only when it is the sole key
  * @returns {OpenMediaPickerOptions & { cropResolved: { aspectRatio: number|null, allowFocalPoint: boolean } | null,
@@ -724,7 +727,9 @@ export function resolveOptions(defaults, ...layers) {
     locale: typeof merged.locale === 'string' ? merged.locale : '',
     initialCollection,
     collections,
-    autoSelectFirst: merged.autoSelectFirst !== false, // v0.68.0: ON unless an explicit `false`
+    // v0.72.0: absent at every layer → ON only for a single picker (a `multiple` one — album, gallery — opens with nothing selected);
+    // a present value always wins: only a boolean `false` turns it off, anything else (`true` too) turns it on (v0.68.0 rule)
+    autoSelectFirst: merged.autoSelectFirst === undefined ? mode === 'single' : merged.autoSelectFirst !== false,
     cropResolved,
     capabilitiesResolved: resolveCapabilities(merged.adapter, merged.capabilities),
   };

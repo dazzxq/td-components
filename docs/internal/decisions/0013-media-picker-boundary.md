@@ -268,3 +268,21 @@ Vì sao đảo: chỉ dsuite dùng picker và owner kit cũng là owner dsuite; 
 cái ảnh đầu tiên"). Rủi ro đã nêu và được chấp nhận: một cú bấm "Chèn" vội ở ô còn trống (logo, banner, SEO…) chèn ảnh đầu của danh
 sách; picker `multiple` (album, gallery) mở ra đã có một ảnh được chọn. Site nào không muốn thì đặt `autoSelectFirst: false` (cả site
 hoặc từng lần mở). Phương án bác: giữ opt-in (đã làm ở 0.67).
+
+## Bổ sung v0.72
+
+Ngày 2026-10-12. Nguồn: plan [v0.72.0-auto-select-single-only](../plans/v0.72.0-auto-select-single-only.md); owner kit trả lời trong chat ("ko nhé") câu hỏi riêng
+"picker chọn nhiều ảnh (album, gallery) có nên chọn sẵn ảnh đầu không?". Câu "bật đê" của bổ sung v0.68 trả lời câu chung "mặc định tắt hay bật?", chưa nói riêng
+về `multiple` (plan 0.68 đã ghi đó là một rủi ro). Mục này **đổi một mặc định** nữa, không đổi hợp đồng adapter, FormData hay kết quả picker.
+
+- `autoSelectFirst` vắng ở mọi lớp (`undefined`, `null`) → **bật khi `selection.mode` là `'single'`, tắt khi là `'multiple'`** (`resolveOptions`:
+  `autoSelectFirst === undefined ? mode === 'single' : autoSelectFirst !== false`). Tính theo chế độ, không theo `maxItems`: `multiple` còn một chỗ trống vẫn là `multiple`.
+- Giá trị đã đặt vẫn thắng ở cả hai chế độ (quy tắc "chỉ `false` mới tắt" của bổ sung v0.68 giữ nguyên): `true` tường minh trên `multiple` (qua `open()`,
+  `pickerOptions` hay `configureDefaults`) vẫn chọn sẵn một ảnh, như 0.67.
+- `selection` không bao giờ lấy từ `configureDefaults`, nên mặc định theo chế độ chỉ tính được ở `resolveOptions` (lúc mở), không đặt được ở defaults.
+- Mọi quy tắc khác của bổ sung v0.67 / v0.68 giữ nguyên (chỉ lần tải danh sách đầu, một asset, bỏ qua khi có `initialIds`, chọn bằng code không phát `selection-change`,
+  một thông báo live region, không chuyển focus).
+
+Phương án bác: (1) giữ bật cho cả hai chế độ (0.68): trái ý owner; (2) "`multiple` không bao giờ chọn sẵn, kể cả khi `true`": âm thầm vô hiệu hoá `true` mà site đã viết
+từ 0.67 là thay đổi phá vỡ thứ hai không ai yêu cầu, trong khi ý owner là về **mặc định**. Hệ quả chấp nhận và nói thẳng: site còn `configureDefaults({ autoSelectFirst: true })`
+từ 0.67 vẫn có picker `multiple` chọn sẵn tới khi bỏ dòng đó (CHANGELOG và breaking-changes ghi rõ). QĐ 69 (v0.36) giờ đúng trở lại với chế độ nhiều ảnh.
