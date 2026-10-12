@@ -2,6 +2,29 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.71.0
+
+**`td-media-field`: bề rộng riêng cho khung ảnh (`--td-media-field-frame-w`) · `td-table`: thông báo rỗng canh theo vùng đang nhìn thấy** (yêu cầu K10 / K11 của dsuite,
+owner kit duyệt; [plan](docs/internal/plans/v0.71.0-field-frame-table-empty.md)).
+
+### Added
+
+- Token **`--td-media-field-frame-w`** (mặc định `100%`): bề rộng của **riêng khung ảnh** của `td-media-field` (độ dài hoặc phần trăm của ô, tối đa bằng ô; là custom property nên
+  đặt trên cha là đủ). Nhãn, nút "Đổi ảnh" / "Gỡ", gợi ý, ô alt và dòng lỗi giữ bề rộng của ô, nên ô logo vuông nhỏ (vd `7.5rem`) không còn ép chúng vào 120px. Khung giữ tỉ lệ
+  (`aspect-ratio`), xem trước vùng cắt co theo khung; ngưỡng xếp dọc hai nút (< 360px) vẫn tính theo ô, không theo khung. Không đặt token: bố cục không đổi.
+  Chi tiết: [media-field.md](docs/components/media-field.md#khung-nhỏ-trong-ô-rộng---td-media-field-frame-w-0710). Story mới `SmallFrame`.
+
+### Fixed
+
+- `td-table` cuộn ngang (vd `layout="table"` trên điện thoại): thông báo "không có dữ liệu" (`td-empty-state` trong ô rỗng) canh giữa theo **bề rộng cuộn** nên nằm ngoài tầm nhìn,
+  lệch ra mép và bị cắt. Giờ nó canh giữa theo **vùng đang nhìn thấy** và bám mép đầu khi cuộn ngang (`position: sticky` + giới hạn `100cqi`, cùng một token `--td-space-lg` với
+  khoảng đệm của ô). Bảng không cuộn và chế độ thẻ không đổi; Chrome / Edge 102–104 (không có đơn vị `cqi`) giữ cách cũ.
+
+### Ghi chú
+
+- Test `td-drawer` ("show() / close() are idempotent…") hết dùng chờ cố định làm tín hiệu sẵn sàng (đã đỏ một lần trên CI chậm): chờ sự kiện `open` / `close` theo điều kiện, và giữ
+  một cửa sổ quan sát 450 ms có chủ ý để vẫn bắt được sự kiện bắn đôi. Chỉ đổi test, không đổi mã sản phẩm.
+
 ## 0.70.0
 
 **`td-tabs`: số đếm có màu cạnh nhãn thẻ (`count`, `tone`, `setTabCount`)** (yêu cầu K9 của dsuite, owner kit duyệt;

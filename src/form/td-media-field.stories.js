@@ -117,6 +117,19 @@ export const WithError = {
   args: { label: 'Ảnh bắt buộc', required: true, errorText: 'Vui lòng chọn ảnh.' },
 };
 
+/**
+ * v0.71.0 (K10): a small square logo frame — `--td-media-field-frame-w: 7.5rem` (class `.sb-logo-frame` in story-layout.css). The label,
+ * the Đổi / Gỡ buttons, the helper text and the error keep the width of the field instead of being squeezed into the frame.
+ */
+export const SmallFrame = {
+  render: (args) => field('class="sb-logo-frame" aspect-ratio="1/1" preview-fit="contain" value="m2" preview-src="/lightbox/2.svg" preview-alt="logo.png"', args),
+  args: {
+    label: 'Logo cửa hàng',
+    helperText: 'PNG hoặc SVG, tối đa 2 MB.',
+    errorText: 'Ảnh này chưa đạt yêu cầu: cần một ảnh vuông, nền trong suốt, tối thiểu 512 × 512 điểm ảnh.',
+  },
+};
+
 /** SSR (`media-field@1`): the markup php/td.php td_media_field('hero', 'm1', [...usage...]) prints — adopted in place. */
 export const ServerRendered = {
   render: (args) => {

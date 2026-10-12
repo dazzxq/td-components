@@ -34,3 +34,5 @@ form.sb-stack.sb-narrow { align-items: stretch; }
 /* v0.53.1: segmented in a sidebar-wide column (dsuite: 232 px sidebar → 216 px content) and a 140 px one */
 .sb-side216 { width: 216px; }
 .sb-side140 { width: 140px; }
+/* v0.71.0: td-media-field small square logo frame — the token sizes the frame alone; the label, buttons and error keep the field's width */
+.sb-logo-frame { --td-media-field-frame-w: 7.5rem; }

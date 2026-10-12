@@ -904,6 +904,21 @@
 		border: 0;
 	}
 
+	/*
+	 * v0.71.0 (K11 of dsuite, plan v0.71.0-field-frame-table-empty): a table that scrolls sideways (layout="table" on a phone)
+	 * has an empty cell as wide as the SCROLL width, so the centred message sat where nobody looks. The message is capped at what
+	 * is visible — 100cqi is the width of the td-table host (the only container up the chain), minus the cell padding on both
+	 * sides — and sticks to the start edge while the table scrolls. The inset equals the cell padding, so at scroll 0 the box does
+	 * not move, and a table that does not scroll is unchanged (the cap is not smaller than the cell content box). Without cqi
+	 * units (Chrome 102–104) the max-inline-size declaration is dropped: the message keeps the cell's width as before and only
+	 * the (harmless) sticky inset remains.
+	 */
+	.td-table__empty > td-empty-state {
+		position: sticky;
+		inset-inline-start: var(--td-space-lg);
+		max-inline-size: calc(100cqi - 2 * var(--td-space-lg));
+	}
+
 	/* Loading skeleton (D19): deterministic widths, 135 shimmer */
 	.td-table__skeleton {
 		position: relative;

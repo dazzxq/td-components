@@ -89,6 +89,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.68.0: `td-media-picker` `autoSelectFirst` **bật mặc định** (owner, 2026-10-12) — chỉ `false` mới tắt; plan [v0.68.0-auto-select-default-on](plans/v0.68.0-auto-select-default-on.md); ADR 0013 § Bổ sung v0.68
 - `done` v0.69.0: Button biến thể `plain` (nút chữ không padding, không viền, không gạch chân) cho hành động trong dòng chữ — owner, từ ảnh chụp dsuite; plan [v0.69.0-button-plain](plans/v0.69.0-button-plain.md)
 - `done` v0.70.0: `td-tabs` số đếm có màu cạnh nhãn (`count`, `tone`, `setTabCount` cập nhật tại chỗ) — yêu cầu K9 của dsuite; plan [v0.70.0-tabs-counts](plans/v0.70.0-tabs-counts.md); [ADR 0035](decisions/0035-tabs-count-pill.md)
+- `done` v0.71.0: `td-media-field` token `--td-media-field-frame-w` (bề rộng riêng của khung ảnh; nhãn / nút / lỗi giữ bề rộng ô) + `td-table` cuộn ngang canh thông báo rỗng theo vùng nhìn thấy (sticky + `100cqi`) + test `td-drawer` bớt flake — yêu cầu K10 / K11 của dsuite; plan [v0.71.0-field-frame-table-empty](plans/v0.71.0-field-frame-table-empty.md)
 
 ## Chờ nhu cầu (owner 2026-10-08: chỉ làm khi có site cần)
 

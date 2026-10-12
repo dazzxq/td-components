@@ -10,6 +10,10 @@
  * Before define (php/td.php td_media_field): the open / Đổi / Gỡ buttons are `visibility: hidden` (no dead control;
  * the box, sizer and preview stay → no layout shift).
  * Tokens: --td-media-field-w (host inline size), --td-media-field-empty-h, --td-media-field-max-h.
+ * v0.71.0 (plan v0.71.0-field-frame-table-empty, K10): --td-media-field-frame-w = the inline size of the image FRAME alone (a length or
+ * a % of the host, default 100%, capped at the host). The label, the Đổi / Gỡ buttons, the alt field, the helper text and the error
+ * keep the width of the HOST — a small square logo field no longer squeezes them into its own width. The < 360px container
+ * query below still reads the HOST width, not the frame's.
  * v0.35 (plan v0.35.0-cropper decisions 28, 30): "Cắt ảnh" button (.td-media-field__crop-btn, one more action button —
  * same touch rule), the crop source error (.td-media-field__status, role="status", text only) and the crop preview of
  * `td-media-field[croppable]` with a ratio: the `<img>` is sized / offset so the frame shows exactly the cropped area
@@ -21,6 +25,7 @@
 @layer td.tokens {
 	:root {
 		--td-media-field-w: 100%;
+		--td-media-field-frame-w: 100%;
 		--td-media-field-empty-h: 10rem;
 		--td-media-field-max-h: 24rem;
 	}
@@ -60,7 +65,8 @@
 	.td-media-field__frame {
 		position: relative;
 		display: grid;
-		inline-size: 100%;
+		/* v0.71.0 (K10): capped at the host through min() rather than max-inline-size, so the computed max-width stays `none` (CSP parity baseline) */
+		inline-size: min(var(--td-media-field-frame-w, 100%), 100%);
 		border: 1px solid var(--td-color-border);
 		border-radius: var(--td-radius-md);
 		background: var(--td-color-surface);

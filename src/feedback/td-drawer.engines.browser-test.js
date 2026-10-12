@@ -26,6 +26,19 @@ await import('../form/td-dropdown.js');
 const { isScrollLocked } = await import('../utils/scroll-lock.js');
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// polls a condition every 10 ms — the READINESS signal of a case; a fixed wait is never one (a loaded CI box can take longer than any constant)
+async function until(fn, what = 'condition', ms = 3000) {
+  const t0 = performance.now();
+  for (;;) {
+    let v;
+    try { v = fn(); } catch { v = false; }
+    if (v) return v;
+    if (performance.now() - t0 > ms) throw new Error(`timeout: ${what}`);
+    await wait(10);
+  }
+}
+// a deliberate window in which a DUPLICATE event would show up (an observation, not a readiness wait): longer than the enter / exit transitions
+const OBSERVE = 450;
 const frames = (n = 2) => new Promise((r) => {
   const f = () => (--n <= 0 ? r() : requestAnimationFrame(f));
   requestAnimationFrame(f);
@@ -119,11 +132,14 @@ describe('td-drawer — declarative lifecycle', () => {
     host.show();
     expect(roots().length).to.equal(1);
     expect(host.hasAttribute('open')).to.equal(true);
-    await wait(450); // `open` fires after the entrance transition (review round 1 IMPL-1)
+    await until(() => opens >= 1, 'the open event (it fires after the entrance transition, review round 1 IMPL-1)');
+    await wait(OBSERVE); // a second `open` (from the second show()) would show up here
+    expect(opens).to.equal(1);
     host.open = false;
     expect(host.hasAttribute('open')).to.equal(false);
     host.close();
-    await wait(400);
+    await until(() => closes >= 1, 'the close event (it fires after the exit transition)');
+    await wait(OBSERVE); // a duplicate `close` / `open` would show up here
     expect(opens).to.equal(1);
     expect(closes).to.equal(1);
     host.close(); // already closed → nothing

@@ -4,7 +4,7 @@
 
 Khối "chưa có gì ở đây": icon trang trí, tiêu đề, một câu giải thích và (tuỳ chọn) các nút hành động như "Tạo mới".
 Dùng khi một danh sách, kết quả tìm kiếm hay khu vực nội dung không có dữ liệu. Bảng [`td-table`](table.md) đã tự hiện
-empty state khi không có hàng, bạn không cần tự đặt. Không dùng cho lỗi cần người dùng chú ý ngay (dùng
+empty state khi không có hàng (canh theo vùng nhìn thấy khi bảng cuộn ngang, 0.71.0), bạn không cần tự đặt. Không dùng cho lỗi cần người dùng chú ý ngay (dùng
 [toast](toast.md) hoặc [modal](modal.md)).
 
 | | |

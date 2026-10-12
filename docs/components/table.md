@@ -202,6 +202,9 @@ table.setLoading(false);
 - Khi không loading và không có hàng: hiện `<td-empty-state compact size="sm">` trong một ô trải hết số cột, với
   `empty-title` / `empty-text` (mặc định "Không có dữ liệu" / "Chưa có dữ liệu để hiển thị."). Heading của empty state
   lấy cấp `heading-level + 1` nếu bảng có `title`, ngược lại là `h3`.
+- Bảng **cuộn ngang** (vd `layout="table"` trên điện thoại): từ 0.71.0 thông báo rỗng canh giữa theo **vùng đang nhìn thấy** và bám mép đầu khi cuộn,
+  thay vì canh theo bề rộng cuộn (nơi không ai nhìn). Bảng không cuộn và chế độ thẻ không đổi. Muốn đổi khoảng đệm quanh thông báo, đổi `--td-space-lg`
+  (ô rỗng và vị trí bám dùng chung token này; đừng ghi đè riêng `padding` của `.td-table__empty`).
 
 ```html
 <td-table title="Đơn hàng" empty-title="Chưa có đơn hàng" empty-text="Đơn hàng mới sẽ xuất hiện ở đây."></td-table>

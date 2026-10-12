@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.70.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.71.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.71.0](#0710) | Không phá vỡ: `td-media-field` thêm token `--td-media-field-frame-w` (opt-in); `td-table` cuộn ngang canh thông báo rỗng theo vùng nhìn thấy (sửa lỗi) | Không phải sửa code. Ô logo nhỏ: đặt `--td-media-field-frame-w` thay vì thu `--td-media-field-w` rồi bỏ CSS vòng. Thông báo rỗng của bảng cuộn ngang tự hiện đúng chỗ; bảng không cuộn giống 0.70. |
 | [0.70.0](#0700) | Không phá vỡ: `td-tabs` thêm số đếm (`count`, `tone`, `setTabCount`) (opt-in) | Không phải sửa code. Muốn dải lọc có số đếm: thêm `count` / `tone` vào mục `tabs`, cập nhật số bằng `td.setTabCount(id, n, tone?)` (không dựng lại thanh). Không dùng thì giống từng byte 0.69. |
 | [0.69.0](#0690) | Không phá vỡ: thêm biến thể Button `plain` (opt-in) | Không phải sửa code. Muốn nút chữ thẳng cột với dòng chữ phía trên (thay vì ghost thụt vào): `variant="plain"` / `'variant' => 'plain'`. Không dùng thì giống từng byte 0.68. |
 | [0.68.0](#0680) | **Đổi hành vi**: `autoSelectFirst` của `td-media-picker` giờ bật mặc định | Mở picker mà không đặt option thì ảnh đầu đã được chọn sẵn và "Chèn" bật (cả `multiple`). Không muốn: `TdMediaPicker.configureDefaults({ …, autoSelectFirst: false })` hoặc `open({ autoSelectFirst: false })`. Test của site dựa vào "mở ra chưa chọn gì" phải tắt tường minh. |
@@ -97,6 +98,16 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.71.0
+
+**Không phá vỡ.** Hai thay đổi nhỏ, theo yêu cầu của một site (dsuite):
+
+- **`td-media-field`: token mới `--td-media-field-frame-w`** (mặc định `100%`) là bề rộng của **riêng khung ảnh**; nhãn, nút "Đổi ảnh" / "Gỡ", gợi ý và dòng lỗi giữ bề rộng của ô
+  ([chi tiết](../components/media-field.md#khung-nhỏ-trong-ô-rộng---td-media-field-frame-w-0710)). Opt-in: không đặt token thì bố cục không đổi. Site nào đã thu ô logo bằng
+  `--td-media-field-w` (rồi vá nhãn / nút / lỗi bằng CSS riêng) có thể đổi sang token mới và bỏ phần vá. PHP không đổi.
+- **`td-table` cuộn ngang: thông báo "không có dữ liệu" canh theo vùng đang nhìn thấy** (trước đây canh theo bề rộng cuộn nên lệch ra mép trên điện thoại). Là sửa lỗi nên không có tuỳ chọn;
+  bảng không cuộn và chế độ thẻ không đổi. Nếu site đã tự vá bằng CSS cho `.td-table__empty > td-empty-state`, kiểm lại rằng bản vá không chồng với `position: sticky` mới (nên bỏ bản vá).
 
 ## 0.70.0
 

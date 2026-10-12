@@ -170,6 +170,27 @@ giá trị form ai cũng sửa được.
   Cần kích thước gốc: `asset.width/height`, không có thì kích thước ảnh xem trước (cùng tỉ lệ gốc theo
   [hợp đồng nguồn ảnh](#nguồn-ảnh-cho-hộp-cắt)). SSR / chưa có JS: cover như cũ, khung không xô lệch.
 
+#### Khung nhỏ trong ô rộng: `--td-media-field-frame-w` (0.71.0)
+
+Ô logo hay ảnh đại diện cần **khung nhỏ** (vd 7,5rem) nhưng nhãn, nút "Đổi ảnh" / "Gỡ", gợi ý và dòng lỗi vẫn phải rộng đủ đọc. Đừng thu
+cả ô bằng `--td-media-field-w` (nhãn, nút và lỗi bị ép vào cùng bề rộng đó); hãy đặt `--td-media-field-frame-w`, bề rộng của **riêng khung ảnh**:
+
+```css
+.logo-field { --td-media-field-frame-w: 7.5rem; }   /* khung 120px; nhãn, nút, gợi ý và lỗi vẫn rộng bằng ô */
+```
+
+```html
+<td-media-field class="logo-field" name="logo" label="Logo" aspect-ratio="1/1" helper-text="PNG hoặc SVG, tối đa 2 MB."></td-media-field>
+```
+
+- Giá trị là **độ dài hoặc phần trăm** (phần trăm tính theo bề rộng của ô, vd `50%`). Giá trị khác (vd `fit-content`, `max-content`) không dùng được: khung rộng bằng ô.
+  Mặc định `100%` (khung rộng bằng ô, như trước 0.71.0). Khung không bao giờ rộng hơn ô: token lớn hơn ô (vd `900px` trong ô 300px) bị chặn ở `100%` của ô.
+- Token là custom property nên **kế thừa**: đặt trên cha (`.logo-field`, `:root`, một `<form>`) là đủ. Khung nằm ở mép đầu của ô.
+- Với `aspect-ratio`, khung nhỏ lại vẫn giữ tỉ lệ (ô `1/1` thành hình vuông đúng bề rộng token); xem trước vùng cắt co theo khung. Không có `aspect-ratio`,
+  chiều cao khung rỗng vẫn là `--td-media-field-empty-h`.
+- Ngưỡng xếp dọc hai nút (< 360px, mục [Responsive](#responsive-0340)) vẫn tính theo **bề rộng của ô**, không theo khung: ô 400px có khung 120px thì hai nút vẫn nằm cạnh nhau.
+- Chỉ đặt bằng CSS: helper PHP `td_media_field` không có tuỳ chọn bề rộng.
+
 ### 3. Video và file
 
 - `accept-kind` (danh sách cách nhau bởi dấu phẩy / khoảng trắng: `image`, `video`, `file`; mặc định `image`) → chuyển
@@ -362,9 +383,10 @@ Bảng option đầy đủ: [Adapter PHP › td_media_field](../guides/php-adapt
 
 Host `<td-media-field>` là **container** (`container: td-media-field / inline-size`, thêm `min-inline-size: 0`). Khi field
 **hẹp hơn 360px** (cỡ `2xs` chỉ dành cho container) hai nút **Đổi / Gỡ xếp dọc, mỗi nút rộng 100%**. ≥ 360px: như trước
-(cạnh nhau). Khung ảnh vẫn `max-inline-size: 100%`. Cần bề rộng từ cha: `--td-media-field-w` phải là độ dài / phần trăm
+(cạnh nhau). Khung ảnh không bao giờ rộng hơn ô (luôn bị chặn ở 100% bề rộng ô). Cần bề rộng từ cha: `--td-media-field-w` phải là độ dài / phần trăm
 (mặc định `100%`), **không** `fit-content` / `max-content` (container co theo nội dung sẽ sụp về 0). Không có container
-query (Chrome / Edge 102–104): dự phòng theo viewport < 360px.
+query (Chrome / Edge 102–104): dự phòng theo viewport < 360px. Muốn khung nhỏ mà phần còn lại vẫn rộng: dùng
+[`--td-media-field-frame-w`](#khung-nhỏ-trong-ô-rộng---td-media-field-frame-w-0710), đừng thu `--td-media-field-w`.
 
 ## Attribute
 
@@ -434,7 +456,8 @@ phát event.
 
 | Token | Mặc định | Tác dụng |
 |---|---|---|
-| `--td-media-field-w` | `100%` | Bề rộng host |
+| `--td-media-field-w` | `100%` | Bề rộng host (nhãn, nút, gợi ý, lỗi và khung nằm trong bề rộng này) |
+| `--td-media-field-frame-w` | `100%` | Bề rộng của **riêng khung ảnh**: độ dài hoặc phần trăm của host, tối đa bằng host (0.71.0). Xem [khung nhỏ trong ô rộng](#khung-nhỏ-trong-ô-rộng---td-media-field-frame-w-0710) |
 | `--td-media-field-empty-h` | `10rem` | Chiều cao khung rỗng khi **không** có `aspect-ratio` |
 | `--td-media-field-max-h` | `24rem` | Chiều cao tối đa của ảnh khi **không** có `aspect-ratio` |
 
