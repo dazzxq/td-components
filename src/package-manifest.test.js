@@ -220,7 +220,10 @@ test('v0.35.0: ./cropper export, sideEffects, barrel TdCropper, cropper CSS in t
   assert.ok(i > files.indexOf('components/modal.css') && i < files.indexOf('utilities.css'), 'cropper.css after modal.css, before utilities.css');
   const css = await readFile(join(ROOT, 'td.css'), 'utf8');
   for (const sel of ['td-cropper:not(:defined)', '.td-cropper__box', '.td-cropper__handle--corner', '.td-cropper__focal',
-    '@container td-cropper (width < 480px)', '.td-crop-dialog__cropper', '--td-cropper-h', '--td-cropper-dim', '--td-cropper-line-contrast']) {
+    '@container td-cropper (width < 480px)', '.td-crop-dialog__cropper', '--td-cropper-h', '--td-cropper-dim', '--td-cropper-line-contrast',
+    // v0.73.0: pan mode (fixed frame) + the round frame + the public inset token
+    'td-cropper[data-mode="pan"] .td-cropper__stage', 'td-cropper[data-mode="pan"] .td-cropper__handle',
+    'td-cropper[data-mode="pan"] .td-cropper__zoom', 'td-cropper[data-shape="circle"] .td-cropper__box', '--td-cropper-pan-inset: 24px']) {
     assert.ok(css.includes(sel), sel);
   }
 });

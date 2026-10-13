@@ -192,6 +192,16 @@ cho chế độ tối.
 Vì sao dùng CSS "unlayered": token của kit nằm trong `@layer td.tokens`; CSS của site không nằm trong layer nào luôn thắng,
 không cần `!important`. Xem [Styling](../customization/styling.md) và [Theming](../customization/theming.md).
 
+### Đánh đổi 3: cắt ảnh chỉ dịch được bằng kéo hoặc bàn phím (WCAG 2.5.7 — chưa đạt)
+
+`<td-cropper>` — **cả hai kiểu** — có lối thay thế cho **zoom** (nút − / +, phím `+` / `-`, và ở `mode="pan"` còn có
+thanh trượt) nhưng **không** có lối thay thế bằng một con trỏ đơn cho việc **dịch**: kiểu `box` dịch khung, kiểu `pan`
+(0.73.0) dịch ảnh dưới khung đều chỉ làm được bằng kéo hoặc bằng phím mũi tên. Người dùng chỉ có một con trỏ mà không kéo
+được (một số công cụ trợ năng, điều khiển bằng đầu / mắt) không dịch được vùng cắt. Kit coi kéo là thao tác thiết yếu của
+cắt ảnh nên **không** tuyên bố đạt WCAG 2.5.7 cho phần này; bàn phím (tab tới khung, mũi tên, Shift) thay thế cho người
+dùng bàn phím và trình đọc màn hình. Nếu site cần đạt đầy đủ: cho phép nhập toạ độ bằng số ở form riêng, hoặc chỉ dùng ảnh
+đã đúng tỉ lệ. Xem [cropper](../components/cropper.md#bàn-phím--trợ-năng).
+
 ### Tuỳ biến màu an toàn
 
 - `td-button` với `color="…"` tự chọn chữ đen/trắng theo tương phản WCAG (đổi bằng `text-color`); nền tuỳ chỉnh luôn

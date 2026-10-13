@@ -68,7 +68,7 @@ trạng thái ở mọi compound và coi luật có tổ tiên là phủ control
 
 | Selector | Giá trị | Lý do |
 |---|---|---|
-| `.td-cropper__stage` | `none` | kéo / pinch khung cắt trực tiếp (WCAG 2.5.7 "essential"; bàn phím thay thế) |
+| `.td-cropper__stage` | `none` | kéo / pinch khung cắt trực tiếp, và (kiểu `pan`, 0.73.0) kéo / pinch ảnh dưới khung cố định (WCAG 2.5.7 "essential"; bàn phím thay thế) |
 | `.td-slider__input` | `none` | range native: chạm để chọn + kéo thumb. Vuốt dọc bắt đầu trên slider **không** cuộn trang |
 | `.td-sortable__handle`, `td-sortable button[data-td-sort-handle]`, `td-repeater button[data-td-sort-handle]` | `none` | chỉ tay nắm; thân item cuộn bình thường |
 | `.td-lightbox__stage`, `.td-lightbox__nav > .td-lightbox__btn` | `none` | pinch / pan / vuốt bằng Pointer Events |
@@ -91,7 +91,7 @@ Lane touch: vuốt ngang cuộn dải, vuốt dọc cuộn trang, chạm "tiếp
 - Lightbox: `MOVE_SLOP 8` (khoá trục), vuốt chốt > 25 % bề rộng cột nhìn thấy (`viewRect()`) hoặc flick > 0.3 px/ms
   (mẫu 100 ms cuối) qua slop và cùng chiều; dây chun lực cản 0.35, trần 20 % bề rộng; trượt ra `--td-lb-dur-fast`, lò xo
   `--td-lb-dur` + `--td-lb-spring`; hẹn giờ cố định = thời lượng + 50 ms. Bắt đầu trong 24 px mép = của trình duyệt.
-- Cropper `TAP_PX 4`; sortable / repeater / media-grid `dragSlop()`.
+- Cropper `TAP_PX 4`; **ngoại lệ**: cropper kiểu `pan` (0.73.0) không có ngưỡng kéo, vì stage không có hành động chạm (công cụ trọng tâm tắt) nên không cần phân biệt chạm / kéo — ảnh theo ngón từ px đầu. Nếu sau này `pan` có thao tác chạm thì phải đọc `dragSlop(e.pointerType)`. Sortable / repeater / media-grid `dragSlop()`.
 - `press.js` gỡ `data-td-pressed` khi ngón di quá `dragSlop()` (6 px giữ, 12 px gỡ với touch).
 
 ## Bàn phím ảo

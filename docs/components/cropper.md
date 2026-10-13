@@ -21,7 +21,7 @@ cắt ngay trong trang (trang sửa ảnh, trình soạn thảo).
 | Import | `import '@dazzxq/td-components/cropper'` (class: `import { TdCropper } from '@dazzxq/td-components'`) |
 | Loại | Custom element + API tĩnh `TdCropper.openDialog()` |
 | Form-associated | **không** (giá trị form của crop nằm ở [media field](media-field.md)) |
-| Từ phiên bản | 0.35.0 (cần `td.css`) — [ADR 0015](../internal/decisions/0015-td-cropper.md) |
+| Từ phiên bản | 0.35.0 (cần `td.css`) — [ADR 0015](../internal/decisions/0015-td-cropper.md); `mode` / `shape` từ 0.73.0 — [ADR 0036](../internal/decisions/0036-cropper-pan-mode.md) |
 
 ## Ví dụ nhanh
 
@@ -67,6 +67,61 @@ if (res.status === 'applied' && res.changed) {
   figure.focalPoint = res.focalPoint; // { x, y } | null
 }
 ```
+
+## Hai kiểu thao tác — `mode` (0.73.0)
+
+Cùng một kết quả (`CropValue`), hai cách làm việc trên ảnh. Chọn bằng attribute `mode`:
+
+| `mode` | Ai di chuyển | Khung | Dùng cho |
+|---|---|---|---|
+| `box` (mặc định, như từ 0.35.0) | **Khung** kéo / đổi cỡ trên ảnh đứng yên | Tự do hoặc khoá tỉ lệ; 4 góc + 4 cạnh | Cắt tự do: ảnh bìa, ảnh OG, ảnh sản phẩm |
+| `pan` | **Ảnh** kéo / phóng dưới một khung cố định | Luôn có tỉ lệ (mặc định 1:1), đứng giữa vùng cắt, không tay nắm | Avatar: mặt người luôn to bằng khung |
+
+```html
+<!-- avatar: khung vuông cố định, kéo ảnh bên dưới -->
+<td-cropper src="https://cdn.example.com/o/a_9f2c.jpg" alt="Ảnh đại diện"
+            natural-width="4032" natural-height="3024" mode="pan"></td-cropper>
+
+<!-- avatar tròn: khung vẽ tròn, kết quả vẫn là hình vuông bao -->
+<td-cropper src="…" natural-width="4032" natural-height="3024" mode="pan" aspect-ratio="1:1" shape="circle"></td-cropper>
+```
+
+> **`pan` không bao giờ cắt tự do.** Khung luôn đúng một tỉ lệ (không có mục "Tự do", không có tay nắm kéo khung).
+> Cần cắt tự do thì dùng `box`; đừng đặt `mode="pan"` cho ảnh bìa tự do.
+
+Trong `pan`:
+
+- **Tỉ lệ**: `aspect-ratio` (khoá) → tỉ lệ của preset đang chọn → **1:1**. Nhóm tỉ lệ vẫn hiện khi không khoá, nhưng
+  bỏ các preset `ratio: null` ("Tự do") và mặc định chọn 1:1. Đổi tỉ lệ đổi hình khung ngay, **giữ tâm và mức zoom
+  tương đối** (không nhảy về mức nhỏ nhất như `box`).
+- **Kéo ảnh**: kéo chuột / ngón tay **bất kỳ đâu trên vùng cắt** (kể cả vùng mờ ngoài khung); ảnh đi theo con trỏ từ pixel
+  đầu tiên (không ngưỡng kéo). Wheel / trackpad phóng quanh con trỏ (điểm ảnh dưới con trỏ đứng yên); pinch hai ngón vừa
+  phóng vừa đi theo trung điểm hai ngón.
+- **Zoom**: nút − / +, phím `+` / `-`, wheel, pinch và **thanh trượt** (mục dưới). Zoom nhỏ nhất = khung phủ vừa cạnh ngắn
+  của ảnh; không bao giờ lộ vùng ngoài ảnh.
+- **Trần phóng to 8×**: một pixel ảnh gốc vẽ tối đa 8 pixel màn hình (khung 400 px ⇒ vùng cắt nhỏ nhất 50 px ảnh). Đây là
+  trần **kích thước phần tử** (ảnh 4000 px không thành phần tử 100 000 px CSS), không phải trần chất lượng; tới trần thì nút
+  "Phóng to", wheel, pinch và thanh trượt dừng. Trần chỉ chặn chiều phóng to: crop ban đầu nhỏ hơn trần được giữ nguyên,
+  và đổi cỡ vùng cắt không bao giờ đổi kết quả. Ảnh nhỏ đến mức đã vượt 8× ở mức nhỏ nhất thì không phóng được.
+- **Thanh trượt zoom**: `<td-slider class="td-cropper__zoom">` nằm **cùng hàng** giữa nút − và + (chỉ tạo ở `pan`; gỡ khi về
+  `box`). Thang **logarit**, 0 = xa nhất, 100 = gần nhất; zoom quanh tâm khung; không `name` nên không vào form. Mọi cách
+  zoom khác tự cập nhật vị trí thanh trượt, không phát event. Ảnh quá nhỏ để zoom ⇒ thanh trượt `disabled`. Kéo thanh
+  trượt phát `crop-input` / `crop-change` với `source: 'button'`; tên là nhãn `labels.zoom`.
+- **Điểm trọng tâm tắt**: nút và điểm ẩn (khung đã là chủ thể). Giá trị `focal` có sẵn được giữ nguyên và vẫn trả ra ở
+  `focalPoint` / `getResult()`; không có `focal-change`.
+- **1:1 ra pixel vuông tuyệt đối**: khi tỉ lệ đang áp dụng đúng bằng 1, `pixels.width === pixels.height` kể cả khi khung chạm
+  mép ảnh ở toạ độ lẻ. Kiểu `box` không đổi output một byte (kể cả ca lệch 1 px có sẵn); các tỉ lệ khác của `pan` giữ cách
+  làm tròn chung.
+- **Hình tròn — `shape="circle"`**: chỉ vẽ khung tròn (viền, lớp mờ, vòng focus đi theo bo tròn). Kết quả **vẫn là hình
+  vuông bao**; việc cắt tròn là của trang hiển thị (`border-radius: 50%`). Chỉ có hiệu lực khi `mode="pan"` **và** tỉ lệ đang
+  áp dụng **đúng bằng 1** (tỉ lệ gần vuông như `1.005` không tính; người dùng đổi sang 16:9 thì khung về chữ nhật, về 1:1 thì tròn lại). Cấu hình tĩnh sai (`shape="circle"`
+  không có `mode="pan"`, hoặc `aspect-ratio` khoá khác 1) ⇒ một `console.warn` mỗi element rồi bỏ qua.
+- **Đổi `mode` lúc chạy** (im lặng, không event): cử chỉ đang dở bị huỷ; giữ tỉ lệ đang chọn nếu danh sách mới còn; `box →
+  pan` mà tỉ lệ đổi thì về khung lớn nhất của tỉ lệ đó quanh tâm cũ (chưa có mức zoom nào để giữ).
+
+Giá trị lạ / rỗng của `mode` = `box`, của `shape` = `rect` (so khớp sau `trim().toLowerCase()`, không cảnh báo). Mọi giá
+trị chỉ được **so sánh** với danh sách trắng; không chép vào DOM hay CSS. Option cho hộp thoại, media field, gallery, picker
+và PHP **chưa có** ở bản này.
 
 ## Cách dùng
 
@@ -130,7 +185,9 @@ document.querySelector('#hero-crop').presets = [{ label: '1:1', ratio: 1 }, { la
 
 ### 3. Zoom = đổi cỡ khung
 
-Không có zoom khung nhìn. **"Phóng to" thu khung lại × 0.9** quanh một điểm neo (vùng chọn nhỏ hơn ⇒ ảnh ra "gần"
+Ở tầng model, không có zoom khung nhìn. Kiểu `pan` (0.73.0) chỉ **vẽ** khác đi: người dùng thấy ảnh phóng dưới khung cố
+định, nhưng giá trị vẫn là cỡ vùng cắt trên ảnh gốc — xem [Hai kiểu thao tác](#hai-kiểu-thao-tác--mode-0730). Mô tả dưới
+đây là `box`. **"Phóng to" thu khung lại × 0.9** quanh một điểm neo (vùng chọn nhỏ hơn ⇒ ảnh ra "gần"
 hơn), "Thu nhỏ" nới khung × 1/0.9. Neo: tâm khung (phím `+` / `-`, nút − / +), con trỏ (lăn chuột / trackpad pinch
 `ctrlKey`), trung điểm hai ngón (pinch cảm ứng). Kẹp giữa mức tối thiểu và khung lớn nhất giữ tỉ lệ hiện tại, rồi tịnh
 tiến vào trong ảnh.
@@ -147,7 +204,8 @@ Vì sao: mọi thao tác đều đổi kết quả (không có trạng thái ẩ
 
 ### 4. Điểm trọng tâm — `focal-point`
 
-Thuộc tính `focal-point` bật nút "Điểm trọng tâm" (`aria-pressed`). Bật → điểm đặt ở tâm khung, phát `focal-change`;
+Thuộc tính `focal-point` bật nút "Điểm trọng tâm" (`aria-pressed`). **Tắt trong `mode="pan"`** (nút và điểm ẩn, giá trị
+`focal` có sẵn vẫn được giữ và trả ra). Bật → điểm đặt ở tâm khung, phát `focal-change`;
 tắt → `focalPoint = null`. Khi bật: chạm / bấm lên ảnh (di chuyển ≤ 4 px) = đặt điểm; kéo điểm = di chuyển; kéo khung
 vẫn di chuyển khung.
 
@@ -258,6 +316,7 @@ TdCropper.openDialog(opts: {
   alt?: string;                    // nhãn của vùng cắt
   naturalWidth?: number; naturalHeight?: number;   // kích thước gốc (cả hai) ⇒ có pixels + kiểm tỉ lệ
   aspectRatio?: number | null;     // số w/h ⇒ khoá; null / thiếu ⇒ tự do (có bộ chọn preset)
+                                   // (0.73.0: option mode / shape của hộp thoại chưa có — hộp thoại luôn là kiểu box)
   crop?: CropBox | null;           // normalized hiện tại (null ⇒ khung mặc định)
   focalPoint?: FocalPoint;         // điểm hiện tại
   allowFocalPoint?: boolean;       // bật công cụ điểm trọng tâm
@@ -289,6 +348,10 @@ Host là **container** (`container: td-cropper / inline-size`, `display: block`)
 riêng, cuộn ngang nếu thiếu chỗ), nút − / + chỉ còn icon (nhãn vẫn ở `aria-label`). Không có container query (Chrome /
 Edge 102–104): dự phòng theo viewport < 480px.
 
+Kiểu `pan` (0.73.0): khung = vùng cắt trừ khoảng đệm `--td-cropper-pan-inset` (24px mỗi cạnh), tự tính lại theo cỡ vùng
+cắt và theo tỉ lệ; đổi cỡ vùng cắt không đổi kết quả. Thanh trượt zoom nằm cùng hàng với nút − / +, co lại theo toolbar
+(rộng 4rem–10rem) nên không làm toolbar tràn ở cột hẹp.
+
 Chiều cao vùng cắt: `--td-cropper-h` (mặc định `min(60vh, 32rem)`); `td-cropper:not(:defined)` giữ chỗ cùng chiều cao
 (không xô lệch khi JS tải). Cảm ứng (`pointer: coarse`): vùng chạm của góc / điểm trọng tâm / nút toolbar ≥ 44px (chuột ≥ 24px;
 vùng chạm thật 26 / 46px vì góc nằm trên nửa pixel bị trình duyệt làm tròn thiếu 1px) — vùng cắt có đệm trong (14 / 24px) để vùng chạm của góc nằm sát mép ảnh không bị cắt; khung hiển thị quá nhỏ thì ẩn tay nắm cạnh, góc vẫn
@@ -306,6 +369,8 @@ còn.
 | `focal-point` | boolean | — | Bật công cụ điểm trọng tâm |
 | `focal` | JSON v1 `{"v":1,"x","y"}` | — | Điểm trọng tâm ban đầu |
 | `disabled` | boolean | — | Không tương tác, không event |
+| `mode` | `box` \| `pan` | `box` | 0.73.0. `pan` = khung cố định, kéo / phóng **ảnh** ([mục trên](#hai-kiểu-thao-tác--mode-0730)); giá trị lạ = `box`, im lặng |
+| `shape` | `rect` \| `circle` | `rect` | 0.73.0. `circle` = vẽ khung tròn; chỉ khi `mode="pan"` và tỉ lệ đang áp dụng 1:1, output vẫn vuông; giá trị lạ = `rect` |
 
 ## Property & method
 
@@ -348,6 +413,7 @@ preset nằm ở `TdCropper.presets` (`label`), không ở đây.
 | `nw` · `ne` · `se` · `sw` | "Góc trên trái" · "Góc trên phải" · "Góc dưới phải" · "Góc dưới trái" |
 | `focalPoint` | "Điểm trọng tâm" (tên của điểm) |
 | `boxHelp` · `cornerHelp` · `focalHelp` | hướng dẫn phím (đọc qua `aria-describedby`) |
+| `zoom` · `panHelp` | 0.73.0, chỉ `pan`: "Thu phóng ảnh" (tên thanh trượt) · hướng dẫn phím thay `boxHelp` ("Mũi tên: dịch ảnh dưới khung, Shift + mũi tên: bước lớn, + / −: phóng to / thu nhỏ ảnh.") |
 | `valuePx` · `valuePct` | "Vùng cắt {w} × {h} px, cách trái {x} px, cách trên {y} px" · bản theo % khi không có `pixels` |
 | `focalValue` · `focalOff` | "Điểm trọng tâm {x} %, {y} %" · "Đã bỏ điểm trọng tâm" |
 | `ratio` · `ratioFree` | "Tỉ lệ {label}" · "Tỉ lệ tự do" |
@@ -366,6 +432,7 @@ preset nằm ở `TdCropper.presets` (`label`), không ở đây.
 | `--td-cropper-focus` | trắng | Vòng focus bàn phím trên ảnh (khung / góc / điểm trọng tâm) — không dùng màu accent của kit vì đo được ~1.1:1 trên ảnh sáng đã làm mờ |
 | `--td-cropper-focus-halo` | đen 75 % | Quầng tối dưới vòng focus của góc / điểm trọng tâm (vòng hai tông: luôn có một tông tương phản với ảnh) |
 | `--td-cropper-handle` | trắng | Nền tay nắm góc / cạnh (viền tối) |
+| `--td-cropper-pan-inset` | `24px` | 0.73.0, chỉ `mode="pan"`: khoảng đệm tối thiểu từ mép vùng cắt tới khung cố định |
 
 Bề mặt theo [minimal surfaces](../internal/design/liquid-glass.md): không shadow trang trí, không blur; lưới 1/3 chỉ
 hiện khi đang kéo (`data-dragging`). Gate tương phản đo viền khung / tay nắm / điểm ≥ 3:1 trên ảnh trắng, ảnh đen và
@@ -380,11 +447,13 @@ Giá trị vị trí / kích thước từng instance do JS đặt bằng CSSOM 
 Light DOM do element dựng (không có helper PHP):
 
 ```html
-<td-cropper data-state="loading|ready|error" [data-error="src|load|size|ratio"] [data-locked] [data-dragging] [data-small-box]>
+<td-cropper data-state="loading|ready|error" [data-error="src|load|size|ratio"] [data-locked] [data-dragging] [data-small-box]
+            [data-mode="pan"] [data-shape="circle"]>
   <div class="td-cropper__toolbar" role="group">
     <div class="td-cropper__ratios" role="radiogroup"><button class="td-cropper__ratio" role="radio">…</button>…</div>
     <div class="td-cropper__tools">
       <button class="td-btn … td-cropper__tool td-cropper__zoom-out">…</button>
+      <td-slider class="td-cropper__zoom" size="sm" min="0" max="100"></td-slider> <!-- chỉ khi data-mode="pan" -->
       <button class="td-btn … td-cropper__tool td-cropper__zoom-in">…</button>
       <button class="td-btn … td-cropper__tool td-cropper__focal-toggle" aria-pressed="false" hidden>…</button>
       <button class="td-btn … td-cropper__tool td-cropper__reset">…</button>
@@ -408,7 +477,10 @@ Light DOM do element dựng (không có helper PHP):
 ```
 
 - `data-locked`: đang khoá tỉ lệ (chỉ 4 góc). `data-small-box`: khung hiển thị < 88px — CSS ẩn tay nắm cạnh trên màn cảm
-  ứng. `data-dragging`: hiện lưới 1/3.
+  ứng (không bao giờ có ở `pan`). `data-dragging`: hiện lưới 1/3.
+- `data-mode="pan"` / `data-shape="circle"` (0.73.0): hằng do JS đặt sau khi attribute `mode` / `shape` khớp danh sách
+  trắng; kiểu `box` và khung chữ nhật **không có** hai attribute này. CSS của `pan` chỉ bám vào chúng, không bám `[mode]`.
+  `.td-cropper__zoom` chỉ tồn tại ở `pan`; tay nắm `display: none` (ra khỏi thứ tự Tab và cây trợ năng).
 - Vùng mờ ngoài khung = `box-shadow` lan rộng của `.td-cropper__box` trong `.td-cropper__stage` `overflow: hidden`.
 
 ## Bàn phím & trợ năng
@@ -419,7 +491,7 @@ cho chuột / chạm (`aria-hidden`, không focus) — 4 góc đã chỉnh đư�
 
 | Phím | Ở đâu | Tác dụng |
 |---|---|---|
-| ← → ↑ ↓ | Khung | Di chuyển 1 % cạnh ảnh theo trục đó (≥ 1 px) |
+| ← → ↑ ↓ | Khung | Di chuyển 1 % cạnh ảnh theo trục đó (≥ 1 px). **`pan`**: dịch **ảnh** theo hướng mũi tên (→ ảnh sang phải), bước 1 % cạnh **khung** theo model |
 | Shift + mũi tên | Khung / góc / điểm | Bước × 10 |
 | ← → ↑ ↓ | Góc | Đổi cỡ từ góc đó (khoá tỉ lệ: trục của phím quyết định, trục kia suy ra) |
 | ← → ↑ ↓ | Điểm trọng tâm | Di chuyển 1 % |
@@ -429,6 +501,9 @@ cho chuột / chạm (`aria-hidden`, không focus) — 4 góc đã chỉnh đư�
 | Escape | Đang kéo | Trả khung về lúc bắt đầu kéo, **không** đóng hộp thoại |
 | Escape | Hộp thoại (không kéo) | Huỷ |
 
+- **`pan`** (0.73.0): tab qua toolbar (nhóm tỉ lệ nếu không khoá, − , **thanh trượt zoom**, + , Đặt lại) rồi tới **khung**
+  (`aria-describedby` đọc giá trị hiện tại + `labels.panHelp`); 4 góc không còn trong thứ tự Tab. Thanh trượt dùng bàn phím
+  của [td-slider](slider.md) (mũi tên, Home / End).
 - Mũi tên theo hướng **vật lý**: ← luôn sang trái, kể cả trang RTL (toolbar vẫn theo RTL). Ctrl / ⌘ + phím không bị
   nuốt.
 - ARIA: vùng cắt `role="group"` "Cắt ảnh: {alt}"; khung `role="group"` + `aria-roledescription="khung cắt"` +
@@ -454,6 +529,7 @@ cho chuột / chạm (`aria-hidden`, không focus) — 4 góc đã chỉnh đư�
 ## Cảm ứng
 
 - **Cắt ảnh là thao tác kéo thiết yếu** (WCAG 2.5.7 "essential"): kéo khung, kéo tay nắm, pinch hai ngón để zoom. Cách thay thế không cần kéo: bàn phím (tay nắm + phím mũi tên) và ô tỉ lệ. Mặt cắt `touch-action: none`.
+- **`pan` (0.73.0)**: kéo một ngón **ở bất kỳ đâu trên vùng cắt** dịch ảnh ngay (không ngưỡng kéo vì vùng cắt không có thao tác chạm); hai ngón vừa phóng vừa đi theo trung điểm. Zoom còn có nút − / + và thanh trượt (vùng chạm ≥ 44px). Dịch ảnh vẫn chỉ bằng kéo hoặc bàn phím — xem đánh đổi WCAG 2.5.7 ở [Trợ năng](../guides/accessibility.md).
 - Ô tỉ lệ có hình nhấn; hover chỉ trên con trỏ mịn. Ngón tay bị huỷ giữa chừng (`pointercancel`) kết thúc cử chỉ gọn.
 
 Chuẩn chung: [Cảm ứng](../guides/touch.md).
@@ -469,6 +545,9 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
   bề rộng từ cha.
 - **Ảnh trống, console báo CSP** → thêm origin ảnh vào `img-src`.
 - **Không có event khi gán `crop`** → đúng quy ước: gán bằng code im lặng.
+- **`mode="pan"` mà không cắt tự do được** → đúng thiết kế: `pan` luôn có tỉ lệ; cắt tự do là việc của `box`.
+- **`shape="circle"` không tròn** → cần `mode="pan"` và tỉ lệ đang áp dụng đúng 1:1 (xem console: cấu hình tĩnh sai có một cảnh báo).
+- **Không phóng to thêm được ở `pan`** → đã chạm trần 8× (một pixel ảnh vẽ tối đa 8 pixel màn hình).
 
 ## Xem thêm
 

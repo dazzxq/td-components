@@ -25,9 +25,9 @@ const showEvents = (canvasElement) => {
   }
 };
 
-const story = (attrs, { narrow = false } = {}) => ({
+const story = (attrs, { narrow = false, img = IMG } = {}) => ({
   render: (args) => `<div class="sb-stack">
-    <td-cropper class="sb-cropper${narrow ? ' sb-cropper--narrow' : ''}" src="${IMG}" alt="${esc(args.alt)}"${attrs}${args.disabled ? ' disabled' : ''}></td-cropper>
+    <td-cropper class="sb-cropper${narrow ? ' sb-cropper--narrow' : ''}" src="${img}" alt="${esc(args.alt)}"${attrs}${args.disabled ? ' disabled' : ''}></td-cropper>
     <pre class="sb-rep-pre">(chưa có sự kiện)</pre></div>`,
   args: { alt: 'Ảnh minh hoạ', disabled: false },
   play: ({ canvasElement }) => showEvents(canvasElement),
@@ -53,3 +53,24 @@ export const RatioError = { name: 'Lỗi tỉ lệ', ...story(' natural-width="1
 
 /** A 320px column: the toolbar goes to two rows (ratios scroll sideways), − / + icon only. */
 export const NarrowColumn = { name: 'Cột hẹp 320px', ...story(' natural-width="1600" natural-height="900"', { narrow: true }) };
+
+// v0.73.0 — mode="pan": the frame stands still in the middle of the stage, the image moves and zooms under it (the
+// habit of avatar pickers). Same output as box mode; a zoom slider sits between the − and + buttons.
+
+/** Pan, locked 1:1 (avatar): drag the image, wheel / pinch / slider / − + to zoom. */
+export const PanSquare = { name: 'Avatar: khung cố định 1:1', ...story(' natural-width="1600" natural-height="900" mode="pan" aspect-ratio="1:1"') };
+
+/** Pan + shape="circle": the frame is DRAWN round (display only — the output is still the bounding square). */
+export const PanCircle = {
+  name: 'Avatar tròn',
+  ...story(' natural-width="1600" natural-height="900" mode="pan" aspect-ratio="1:1" shape="circle"'),
+};
+
+/** Pan without a lock: the ratio presets (no "Tự do" entry, 1:1 by default) change the shape of the frame. */
+export const PanPresets = { name: 'Pan + preset tỉ lệ', ...story(' natural-width="1600" natural-height="900" mode="pan"') };
+
+/** Pan on a 4000 × 3000 raster (manual check of a large image: drag and zoom stay smooth; the small face can fill the frame). */
+export const PanLarge = {
+  name: 'Pan: ảnh lớn 4000 × 3000',
+  ...story(' natural-width="4000" natural-height="3000" mode="pan" aspect-ratio="1:1" shape="circle"', { img: '/cropper/crop-large.png' }),
+};

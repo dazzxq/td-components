@@ -21,3 +21,4 @@ docs).
 | 12 | Xoay ngang máy với modal / lightbox đang mở | Bố cục đúng, nút với tới được, safe-area không che |
 | 13 | VoiceOver: đi qua lightbox (nút trước / sau / đóng) và modal (tiêu đề, ô, nút) | Đọc đúng tên, thứ tự hợp lý, double-tap kích hoạt |
 | 14 | Bật Reduce Motion (Cài đặt › Trợ năng) rồi vuốt lightbox | Ảnh không theo ngón, thả qua 1/3 → đổi ngay |
+| 15 | Kiểu pan trên iPhone thật: `<td-cropper mode="pan">` (story "Avatar: khung cố định 1:1", thử cả "Avatar tròn" và ảnh lớn 4000 × 3000): kéo một ngón, pinch hai ngón, kéo thanh trượt zoom, chạm − / + | Khung đứng yên; ảnh theo ngón từ px đầu, không giật; pinch phóng quanh trung điểm và theo trung điểm; trang không cuộn khi vuốt dọc trên vùng cắt; thanh trượt và nút ≥ 44px |

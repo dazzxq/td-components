@@ -8,6 +8,7 @@ import {
   stepFor, toOutput, isWholeImage, clampFocal, ratioMismatch, displayToModel, modelToDisplay, containFit, wheelFactor,
   isTrackpadDelta, dampedWheelFactor, WHEEL_FRAME_CAP,
   cropChanged, focalChanged,
+  PAN_MAX_UPSCALE, panFrame, panFit, panBy, panPinch, panZoom, panRatio, panMinWidth, panZoomToT, panTToWidth,
 } from './crop-geometry.js';
 import { parseCrop, serializeCrop } from './media-field-model.js';
 
@@ -329,4 +330,286 @@ it('v0.36.0 trackpad damping: isTrackpadDelta + dampedWheelFactor (capped per fr
   assert.equal(dampedWheelFactor(1000), WHEEL_FRAME_CAP);
   assert.equal(dampedWheelFactor(-1000), 1 / WHEEL_FRAME_CAP);
   assert.equal(dampedWheelFactor(Number.POSITIVE_INFINITY), 1);
+});
+
+// v0.73.0 (plan docs/internal/plans/v0.73.0-cropper-pan-mode.md M1) — pan mode: the frame stands still, the image moves under it.
+describe('pan mode geometry (v0.73.0)', () => {
+  const centre = (r) => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 });
+  /** screen position (frame space) of a model point under a fit */
+  const screen = (p, f) => ({ x: f.x + p.x * f.scale, y: f.y + p.y * f.scale });
+
+  it('panFrame: centred, the exact ratio, whole-pixel width / position, inside the content box; invalid ⇒ zero rect', () => {
+    assert.deepEqual(panFrame(600, 400, 1), { x: 100, y: 0, w: 400, h: 400 });
+    assert.deepEqual(panFrame(400, 600, 1), { x: 0, y: 100, w: 400, h: 400 });
+    assert.deepEqual(panFrame(640, 400, 16 / 9), { x: 0, y: 20, w: 640, h: 360 });
+    for (const [bw, bh, ratio] of [[592.5, 432.25, 1], [333.3, 211.7, 16 / 9], [280, 500, 4 / 3], [501, 300.4, 1.91], [77.7, 33.3, 0.5]]) {
+      const f = panFrame(bw, bh, ratio);
+      assert.ok(Number.isInteger(f.w) && Number.isInteger(f.x) && Number.isInteger(f.y), `integers ${bw}×${bh}`);
+      assert.ok(near(f.w / f.h, ratio, 1e-12), 'ratio');
+      assert.ok(f.x >= 0 && f.y >= 0 && f.x + f.w <= bw + 1e-9 && f.y + f.h <= bh + 1e-9, `inside ${bw}×${bh}`);
+      assert.ok(Math.abs(f.x - (bw - f.w) / 2) <= 0.5 && Math.abs(f.y - (bh - f.h) / 2) <= 0.5, 'centred');
+      assert.ok(bw - f.w <= 1 || bh - f.h <= 1 + 1 / ratio, 'the largest that fits (≤ 1 px of rounding)');
+    }
+    const zero = { x: 0, y: 0, w: 0, h: 0 };
+    for (const bad of [[0, 100, 1], [100, 0, 1], [-5, 100, 1], [100, 100, 0], [100, 100, null], [100, 100, NaN], [0.5, 0.5, 1]]) {
+      assert.deepEqual(panFrame(.../** @type {[number, number, number]} */ (bad)), zero);
+    }
+  });
+
+  it('panFit: the frame stands still — the rect lies exactly under the frame, the image covers it', () => {
+    const W = 4000;
+    const H = 3000;
+    const frame = panFrame(592, 432, 1);
+    for (const rect of [fitLargest(W, H, 1), { x: 0, y: 0, w: 500, h: 500 }, { x: 3500, y: 2500, w: 500, h: 500 }, { x: 1234.5, y: 77.25, w: 321.5, h: 321.5 }]) {
+      const f = panFit(rect, frame, W, H);
+      assert.ok(near(f.scale, frame.w / rect.w));
+      assert.ok(near(f.x + rect.x * f.scale, frame.x) && near(f.y + rect.y * f.scale, frame.y), 'top-left under the frame');
+      assert.ok(near(rect.w * f.scale, frame.w) && near(rect.h * f.scale, frame.h), 'same size as the frame');
+      assert.ok(near(f.w, W * f.scale) && near(f.h, H * f.scale));
+      assert.ok(f.x <= frame.x + 1e-9 && f.y <= frame.y + 1e-9 && f.x + f.w >= frame.x + frame.w - 1e-9
+        && f.y + f.h >= frame.y + frame.h - 1e-9, 'the image covers the frame');
+    }
+    assert.equal(panFit({ x: 0, y: 0, w: 0, h: 0 }, frame, W, H).scale, 0);
+    assert.equal(panFit({ x: 0, y: 0, w: 10, h: 10 }, { x: 0, y: 0, w: 0, h: 0 }, W, H).scale, 0);
+  });
+
+  it('panBy: the finger goes right ⇒ rect.x decreases; clamped at the image edges; size unchanged', () => {
+    const r = { x: 400, y: 300, w: 200, h: 200 };
+    assert.deepEqual(panBy(r, 50, 0, 2, 1000, 800), { x: 375, y: 300, w: 200, h: 200 });
+    assert.deepEqual(panBy(r, -50, 20, 2, 1000, 800), { x: 425, y: 290, w: 200, h: 200 });
+    assert.deepEqual(panBy(r, 5000, -5000, 2, 1000, 800), { x: 0, y: 600, w: 200, h: 200 });
+    assert.deepEqual(panBy(r, -5000, 5000, 2, 1000, 800), { x: 800, y: 0, w: 200, h: 200 });
+    assert.deepEqual(panBy(r, 50, 50, 0, 1000, 800), r);
+    assert.deepEqual(panBy(r, NaN, undefined, 2, 1000, 800), r);
+  });
+
+  it('zoom around the pointer: the model point under it keeps its screen position (away from the edges)', () => {
+    const W = 4000;
+    const H = 3000;
+    const frame = panFrame(600, 400, 1);
+    const r = { x: 1500, y: 1000, w: 800, h: 800 };
+    for (const [k, at] of [[0.8, { x: 1700, y: 1650 }], [1.25, { x: 2200, y: 1100 }], [0.5, { x: 1400, y: 900 }]]) {
+      const before = screen(at, panFit(r, frame, W, H));
+      const z = panZoom(r, k, at, { ratio: 1, W, H, frameW: frame.w });
+      assert.ok(near(z.w, r.w * k), `k ${k}`);
+      const after = screen(at, panFit(z, frame, W, H));
+      assert.ok(near(before.x, after.x, 1e-6) && near(before.y, after.y, 1e-6), `pointer fixed at k ${k}`);
+    }
+  });
+
+  it('panPinch: pinch only = scaleAround; midpoint only = panBy; both ⇒ inside the image, same ratio', () => {
+    const W = 2000;
+    const H = 1500;
+    const o = { ratio: 1, W, H };
+    const r = { x: 600, y: 400, w: 600, h: 600 };
+    const a = { x: 900, y: 700 };
+    assert.deepEqual(panPinch(r, 0.5, a, { x: 0, y: 0 }, 400, o), scaleAround(r, 0.5, a, o));
+    assert.deepEqual(panPinch(r, 1, a, { x: 30, y: -12 }, 400, o), panBy(r, 30, -12, 400 / 600, W, H));
+    const both = panPinch(r, 0.5, a, { x: 40, y: 20 }, 400, o);
+    assert.ok(near(both.w, 300) && near(both.h, 300) && inside(both, W, H));
+    // the midpoint moved 40 px right at the scale AFTER the zoom (400 / 300): the rect went 30 model px left
+    const z = scaleAround(r, 0.5, a, o);
+    assert.ok(near(both.x, z.x - 30) && near(both.y, z.y - 15));
+    const far = panPinch(r, 3, a, { x: -9000, y: 9000 }, 400, o);
+    assert.ok(inside(far, W, H) && !ratioMismatch(far.w, far.h, 1, 1));
+  });
+
+  it('limits: all the way out = fitLargest; all the way in = max(minSize, frameW / PAN_MAX_UPSCALE); tiny image ⇒ no-op', () => {
+    assert.equal(PAN_MAX_UPSCALE, 8);
+    const W = 4000;
+    const H = 3000;
+    const r = { x: 1500, y: 1000, w: 800, h: 800 };
+    const c = centre(r);
+    const out = panZoom(r, 1e6, c, { ratio: 1, W, H, frameW: 400 });
+    assert.ok(near(out.w, fitLargest(W, H, 1).w) && near(out.h, H) && inside(out, W, H), 'the largest rect of the ratio');
+    assert.ok(near(panZoom(r, 1e-6, c, { ratio: 1, W, H, frameW: 400 }).w, 50)); // 400 / 8 > 16
+    assert.ok(near(panZoom(r, 1e-6, c, { ratio: 1, W, H, frameW: 80 }).w, MIN_PX)); // 80 / 8 = 10 < 16
+    assert.ok(near(panZoom(r, 1e-6, c, { ratio: 2, W, H, frameW: 80 }).w, 2 * MIN_PX));
+    assert.ok(near(panZoom(r, 1e-6, c, { ratio: 1, W, H }).w, MIN_PX)); // no frame known ⇒ only minSize
+    assert.equal(panMinWidth({ ratio: 1, W, H, frameW: 400 }), 50);
+    assert.equal(panMinWidth({ ratio: 1, W, H, frameW: 80 }), MIN_PX);
+    assert.equal(panMinWidth({ ratio: 1, W: 30, H: 20, frameW: 400 }), 20); // never above the largest rect
+    // an image smaller than MIN_PX: the only rect is the largest one — zoom is a no-op both ways
+    const tiny = fitLargest(10, 8, 1);
+    for (const k of [0.5, 0.9, 1.5, 4]) assert.deepEqual(panZoom(tiny, k, centre(tiny), { ratio: 1, W: 10, H: 8, frameW: 400 }), tiny);
+    assert.deepEqual(panZoom(r, NaN, c, { ratio: 1, W, H, frameW: 400 }), r);
+    assert.deepEqual(panZoom(r, 0, c, { ratio: 1, W, H, frameW: 400 }), r);
+  });
+
+  for (const W of [4000, 100000]) {
+    it(`display ceiling (geometry, not timing), W = ${W}: the image is never drawn wider than W · max(8, cover-fit scale)`, () => {
+      const H = W * 0.75;
+      const rand = rng(0x73c0ffee + W);
+      for (const frameW of [152, 400, 592]) {
+        const frame = { x: 0, y: 0, w: frameW, h: frameW };
+        const o = { ratio: 1, W, H, frameW };
+        const cover = frameW / fitLargest(W, H, 1).w;
+        const bound = W * Math.max(PAN_MAX_UPSCALE, cover) * (1 + 1e-12);
+        let r = fitLargest(W, H, 1);
+        for (let i = 0; i < 400; i++) {
+          r = panZoom(r, 0.5 + rand() * 0.6, { x: rand() * W, y: rand() * H }, o); // mostly zooming in
+          assert.ok(panFit(r, frame, W, H).w <= bound, `#${i} ${panFit(r, frame, W, H).w} > ${bound}`);
+          assert.ok(inside(r, W, H) && !ratioMismatch(r.w, r.h, 1, 1));
+        }
+        for (let i = 0; i < 60; i++) r = panZoom(r, 0.5, centre(r), o);
+        assert.ok(near(r.w, frameW / PAN_MAX_UPSCALE, 1e-6), `ends ON the ceiling (${r.w})`);
+        assert.ok(near(panFit(r, frame, W, H).w, W * PAN_MAX_UPSCALE, W * 1e-9));
+      }
+    });
+  }
+
+  it('display ceiling only stops zooming IN: a rect already below it is kept, never shrinks, and may still zoom out', () => {
+    const W = 4000;
+    const H = 3000;
+    const small = { x: 1000, y: 1000, w: 20, h: 20 }; // frameW 400 ⇒ ceiling 50
+    const o = { ratio: 1, W, H, frameW: 400 };
+    const c = centre(small);
+    for (const k of [0.99, 0.9, 0.5, 1e-6]) {
+      const z = panZoom(small, k, c, o);
+      assert.ok(near(z.x, small.x) && near(z.y, small.y) && near(z.w, 20) && near(z.h, 20), `kept at k ${k}`);
+    }
+    assert.ok(near(panZoom(small, 1, c, o).w, 20));
+    assert.ok(near(panZoom(small, 2, c, o).w, 40), 'zooming out is free');
+    assert.ok(near(panZoom(panZoom(small, 4, c, o), 0.1, c, o).w, 50), 'back in: stops at the ceiling, not at the old rect');
+    // a stage resize (another frameW) never changes the rect by itself: nothing in the geometry reads frameW until a zoom
+    for (const frameW of [100, 400, 1600]) {
+      assert.ok(near(panZoom(small, 1, c, { ...o, frameW }).w, 20));
+      assert.ok(near(panFit(small, { x: 0, y: 0, w: frameW, h: frameW }, W, H).scale, frameW / 20));
+    }
+    // an image so small that cover-fit is already beyond 8 ×: no zoom in at all
+    const big = fitLargest(40, 30, 1);
+    assert.deepEqual(panZoom(big, 0.5, centre(big), { ratio: 1, W: 40, H: 30, frameW: 400 }), big);
+  });
+
+  it('panRatio: 1:1 → 16:9 → 1:1 keeps the centre and the relative zoom; always the new ratio, inside the image', () => {
+    const W = 4000;
+    const H = 3000;
+    const r = { x: 1700, y: 1200, w: 600, h: 600 }; // zoom 3000 / 600 = 5 ×
+    const wide = panRatio(r, 1, 16 / 9, W, H);
+    assert.ok(near(wide.w, 4000 / 5) && near(wide.w / wide.h, 16 / 9), 'relative zoom 5 × of the 16:9 largest');
+    assert.deepEqual(centre(wide), centre(r));
+    const back = panRatio(wide, 16 / 9, 1, W, H);
+    assert.ok(near(back.x, r.x) && near(back.y, r.y) && near(back.w, r.w) && near(back.h, r.h), 'round trip');
+    // NOT applyPreset (which falls back to the widest view)
+    assert.ok(near(applyPreset(r, 16 / 9, W, H).w, 4000) && wide.w < 1000);
+    // the widest view stays the widest view
+    assert.deepEqual(panRatio(fitLargest(W, H, 1), 1, 16 / 9, W, H), fitLargest(W, H, 16 / 9));
+    // near an edge: clamped inside, ratio kept; never below minSize
+    const edge = panRatio({ x: 3900, y: 0, w: 100, h: 100 }, 1, 16 / 9, W, H);
+    assert.ok(inside(edge, W, H) && near(edge.w / edge.h, 16 / 9));
+    const min = panRatio({ x: 100, y: 100, w: 16, h: 16 }, 1, 2, W, H);
+    assert.ok(near(min.h, MIN_PX) && near(min.w, 2 * MIN_PX));
+    const r0 = { x: 1, y: 2, w: 3, h: 3 };
+    assert.deepEqual(panRatio(r0, null, 1, W, H), r0);
+    assert.deepEqual(panRatio(r0, 1, 0, W, H), r0);
+  });
+
+  it('toOutput square (pan 1:1 only): integer pixels exactly square; WITHOUT the flag the output is the old one', () => {
+    const edge = { x: 50.5, y: 10.2, w: 50.5, h: 50.5 };
+    const o = { W: 101, H: 100, pixelsKnown: true, ratio: 1 };
+    assert.deepEqual(toOutput(edge, o).pixels, { x: 51, y: 10, width: 50, height: 51 }); // box mode: unchanged (50 × 51)
+    assert.deepEqual(toOutput(edge, { ...o, square: false }).pixels, { x: 51, y: 10, width: 50, height: 51 });
+    const sq = toOutput(edge, { ...o, square: true });
+    assert.deepEqual(sq.pixels, { x: 51, y: 10, width: 50, height: 50 });
+    assert.equal(sq.aspectRatio, 1);
+    assert.ok(parseCrop(JSON.stringify({ v: 1, ...sq.normalized })));
+    assert.deepEqual(sq.normalized, { x: q(51 / 101), y: 0.1, width: q(50 / 101), height: 0.5 });
+    // the four corners of an odd image and `.5` positions
+    for (const [W, H] of [[101, 100], [100, 101], [333, 77], [77, 333]]) {
+      const s = Math.min(W, H) / 2 + 0.5;
+      for (const r of [{ x: 0, y: 0 }, { x: W - s, y: 0 }, { x: 0, y: H - s }, { x: W - s, y: H - s }, { x: (W - s) / 2, y: (H - s) / 2 }]) {
+        const out = toOutput({ ...r, w: s, h: s }, { W, H, pixelsKnown: true, ratio: 1, square: true });
+        assert.equal(out.pixels.width, out.pixels.height, `${W}×${H} @ ${r.x},${r.y}`);
+        assert.ok(out.pixels.x + out.pixels.width <= W && out.pixels.y + out.pixels.height <= H);
+      }
+    }
+    // a square that already rounds square is untouched by the flag
+    const plain = { x: 10, y: 20, w: 300, h: 300 };
+    assert.deepEqual(toOutput(plain, { W: 1000, H: 800, pixelsKnown: true, ratio: 1, square: true }),
+      toOutput(plain, { W: 1000, H: 800, pixelsKnown: true, ratio: 1 }));
+  });
+
+  it('zoom slider scale: LOG, exact ends, round trip — also for a width below the ceiling', () => {
+    const wMax = 3000;
+    const wMin = 50;
+    assert.equal(panZoomToT(wMax, wMin, wMax), 0);
+    assert.equal(panZoomToT(wMin, wMin, wMax), 1);
+    assert.equal(panTToWidth(0, wMin, wMax), wMax);
+    assert.equal(panTToWidth(1, wMin, wMax), wMin);
+    // log, not linear: half way is the GEOMETRIC mean (each step is the same zoom factor)
+    assert.ok(near(panTToWidth(0.5, wMin, wMax), Math.sqrt(wMin * wMax), 1e-9));
+    assert.ok(near(panZoomToT(Math.sqrt(wMin * wMax), wMin, wMax), 0.5, 1e-12));
+    assert.ok(near(panTToWidth(0.25, wMin, wMax) / panTToWidth(0.5, wMin, wMax), panTToWidth(0.5, wMin, wMax) / panTToWidth(0.75, wMin, wMax), 1e-9));
+    for (const w of [3000, 2999.5, 1234.56, 400, 77.7, 50.001, 50]) {
+      assert.ok(near(panTToWidth(panZoomToT(w, wMin, wMax), wMin, wMax), w, 1e-9), `round trip ${w}`);
+    }
+    // a rect narrower than the ceiling becomes the lower end itself (wMinEff = min(wMin, w)): t = 1 maps back EXACTLY
+    for (const w of [49.999, 20, 16.5, 7.123456789]) {
+      const eff = Math.min(wMin, w);
+      assert.equal(panZoomToT(w, eff, wMax), 1);
+      assert.equal(panTToWidth(panZoomToT(w, eff, wMax), eff, wMax), w);
+    }
+    // out of range / degenerate
+    assert.equal(panZoomToT(5000, wMin, wMax), 0);
+    assert.equal(panZoomToT(10, wMin, wMax), 1);
+    assert.equal(panZoomToT(100, 100, 100), 0);
+    assert.equal(panTToWidth(0.5, 100, 100), 100);
+    assert.equal(panTToWidth(-1, wMin, wMax), wMax);
+    assert.equal(panTToWidth(2, wMin, wMax), wMin);
+    assert.equal(panTToWidth(NaN, wMin, wMax), wMax);
+  });
+
+  it('unknown original size + an initial crop off the frame ratio: the frame still stands still, no pixels in the output', () => {
+    const W = 800; // the size of the preview only (no natural-*)
+    const H = 450;
+    const rect = normalizeInitial({ x: 0.1, y: 0.2, width: 0.5, height: 0.25 }, { W, H, ratio: 1 });
+    assert.ok(!ratioMismatch(rect.w, rect.h, 1, 1) && inside(rect, W, H));
+    const frame = panFrame(592, 432, 1);
+    const f = panFit(rect, frame, W, H);
+    assert.ok(near(f.x + rect.x * f.scale, frame.x) && near(f.y + rect.y * f.scale, frame.y) && near(rect.w * f.scale, frame.w));
+    const out = toOutput(rect, { W, H, ratio: 1, square: true });
+    assert.equal('pixels' in out, false);
+    assert.ok(parseCrop(JSON.stringify({ v: 1, ...out.normalized })));
+  });
+
+  it('fuzz 10 000 seeded steps of pan / zoom / pinch / ratio change: inside the image, the ratio in force, parseCrop', () => {
+    const rand = rng(0x0073a11e);
+    const ratios = [1, 4 / 3, 3 / 2, 16 / 9, 1.91, 2 / 3, 0.5];
+    let steps = 0;
+    for (let img = 0; img < 250; img++) {
+      const W = 1 + Math.floor(rand() * (rand() < 0.1 ? 40 : 8000));
+      const H = 1 + Math.floor(rand() * (rand() < 0.1 ? 40 : 8000));
+      let ratio = ratios[Math.floor(rand() * ratios.length)];
+      const bw = 100 + rand() * 900;
+      const bh = 100 + rand() * 700;
+      let r = normalizeInitial(rand() < 0.3 ? null : { x: rand(), y: rand(), width: rand() * 1.2, height: rand() * 1.2 }, { W, H, ratio });
+      for (let i = 0; i < 40; i++, steps++) {
+        const frame = panFrame(bw, bh, ratio);
+        const o = { ratio, W, H, frameW: frame.w };
+        const scale = frame.w / r.w;
+        const op = Math.floor(rand() * 4);
+        if (op === 0) r = panBy(r, (rand() - 0.5) * bw * 3, (rand() - 0.5) * bh * 3, scale, W, H);
+        else if (op === 1) r = panZoom(r, 0.05 + rand() * 4, { x: rand() * W, y: rand() * H }, o);
+        else if (op === 2) r = panPinch(r, 0.2 + rand() * 3, { x: rand() * W, y: rand() * H }, { x: (rand() - 0.5) * bw, y: (rand() - 0.5) * bh }, frame.w, o);
+        else {
+          const next = ratios[Math.floor(rand() * ratios.length)];
+          r = panRatio(r, ratio, next, W, H);
+          ratio = next;
+        }
+        const tag = `#${img}.${i} op ${op} ${W}×${H} ${JSON.stringify(r)}`;
+        assert.ok(inside(r, W, H), `inside ${tag}`);
+        assert.ok(r.w > 0 && r.h > 0 && !ratioMismatch(r.w, r.h, ratio, 1, 1e-9), `ratio ${tag}`);
+        const f = panFit(r, panFrame(bw, bh, ratio), W, H);
+        assert.ok(f.scale > 0 && Number.isFinite(f.x) && Number.isFinite(f.w), `fit ${tag}`);
+        const out = toOutput(r, { W, H, pixelsKnown: true, ratio, square: ratio === 1 });
+        const n = out.normalized;
+        assert.ok(parseCrop(JSON.stringify({ v: 1, x: n.x, y: n.y, width: n.width, height: n.height })), `parseCrop ${tag}`);
+        assert.ok(n.x + n.width <= 1 + 1e-9 && n.y + n.height <= 1 + 1e-9, `≤ 1 ${tag}`);
+        const p = out.pixels;
+        assert.ok(p.x >= 0 && p.y >= 0 && p.width >= 1 && p.height >= 1 && p.x + p.width <= W && p.y + p.height <= H, `px ${tag}`);
+        if (ratio === 1) assert.equal(p.width, p.height, `square ${tag}`);
+      }
+    }
+    assert.equal(steps, 10000);
+  });
 });

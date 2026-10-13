@@ -91,6 +91,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.70.0: `td-tabs` số đếm có màu cạnh nhãn (`count`, `tone`, `setTabCount` cập nhật tại chỗ) — yêu cầu K9 của dsuite; plan [v0.70.0-tabs-counts](plans/v0.70.0-tabs-counts.md); [ADR 0035](decisions/0035-tabs-count-pill.md)
 - `done` v0.71.0: `td-media-field` token `--td-media-field-frame-w` (bề rộng riêng của khung ảnh; nhãn / nút / lỗi giữ bề rộng ô) + `td-table` cuộn ngang canh thông báo rỗng theo vùng nhìn thấy (sticky + `100cqi`) + test `td-drawer` bớt flake — yêu cầu K10 / K11 của dsuite; plan [v0.71.0-field-frame-table-empty](plans/v0.71.0-field-frame-table-empty.md)
 - `done` v0.72.0: `td-media-picker` `autoSelectFirst` mặc định **theo chế độ** — bật cho picker một ảnh, tắt cho `multiple` (album, gallery); giá trị tường minh vẫn thắng — owner "ko nhé" (2026-10-12); plan [v0.72.0-auto-select-single-only](plans/v0.72.0-auto-select-single-only.md); ADR 0013 § Bổ sung v0.72
+- `done` v0.73.0 (M1, chờ Codex impl-review): `td-cropper` kiểu `mode="pan"` — khung cố định, kéo / phóng **ảnh** bên dưới (avatar); `shape="circle"` (chỉ vẽ, chỉ ở pan + 1:1), thanh trượt zoom dùng lại `td-slider`, trần hiển thị 8×, token `--td-cropper-pan-inset`; kiểu `box` không đổi. M2 (v0.74.0: hộp thoại / media field / gallery / picker / PHP) chưa làm — owner, 2026-10-14; plan [v0.73.0-cropper-pan-mode](plans/v0.73.0-cropper-pan-mode.md); [ADR 0036](decisions/0036-cropper-pan-mode.md)
 
 ## Chờ nhu cầu (owner 2026-10-08: chỉ làm khi có site cần)
 

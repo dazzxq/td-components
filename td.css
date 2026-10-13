@@ -17005,10 +17005,17 @@
  * CSSOM (JS, on the host, display px): --_tdc-img-x/y/w/h (image rect in the stage padding box), --_tdc-box-x/y/w/h
  * (relative to the image), --_tdc-focal-x/y (relative to the image). Physical coordinates (left / top) also under RTL.
  * Dialog: root .td-modal.td-modal--lg.td-crop-dialog — lg box from 720 px; full viewport below 720 px and when short.
+ * v0.73.0 pan mode (plan cropper-pan-mode M1): host [data-mode="pan"] (the frame stands still, the image moves under it)
+ * and [data-shape="circle"] — constants set by JS, absent in box mode, so every rule of them is at the end of this file
+ * and no older rule changes. Same CSSOM properties: the image rect is larger than the stage, the box sits inside it.
  */
 @layer td.tokens {
 	:root {
 		--td-cropper-h: min(60vh, 32rem);        /* stage height of an inline cropper */
+	}
+
+	:root {
+		--td-cropper-pan-inset: 24px;            /* v0.73.0 pan mode: least distance from the stage edge to the frame */
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
@@ -17547,6 +17554,51 @@
 		.td-cropper__ratio:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
 		}
+	}
+}
+
+/* ===== v0.73.0 pan mode: a fixed frame, the image is dragged / zoomed under it (plan cropper-pan-mode M1) ===== */
+@layer td.component {
+	/* the frame = the content box of the stage; (0,2,1) also beats the coarse-pointer padding above */
+	td-cropper[data-mode="pan"] .td-cropper__stage {
+		--_tdc-pad: var(--td-cropper-pan-inset);
+	}
+
+	/* the whole stage drags the image — only when it can (loading / error / disabled keep the default cursor) */
+	td-cropper[data-mode="pan"][data-state="ready"]:not([disabled]) .td-cropper__stage {
+		cursor: grab;
+	}
+
+	td-cropper[data-mode="pan"][data-state="ready"][data-dragging]:not([disabled]) .td-cropper__stage {
+		cursor: grabbing;
+	}
+
+	td-cropper[data-mode="pan"] .td-cropper__box {
+		cursor: inherit;
+	}
+
+	/* no handles: out of the Tab order and of the accessibility tree */
+	td-cropper[data-mode="pan"] .td-cropper__handle {
+		display: none;
+	}
+
+	/* zoom slider (td-slider, created by JS in pan only) between − and +: shrinks with the toolbar (the slider itself
+	   is `max-width: 100%` of this flex item, so no slider variable is set here) */
+	td-cropper[data-mode="pan"] .td-cropper__zoom {
+		flex: 1 1 6rem;
+		align-self: center;
+		min-inline-size: 4rem;
+		max-inline-size: 10rem;
+	}
+
+	/* display only: the line, the contrast line, the dim and the focus ring all follow the radius */
+	td-cropper[data-shape="circle"] .td-cropper__box,
+	td-cropper[data-shape="circle"] .td-cropper__grid {
+		border-radius: 50%;
+	}
+
+	td-cropper[data-shape="circle"] .td-cropper__grid {
+		overflow: hidden;
 	}
 }
 

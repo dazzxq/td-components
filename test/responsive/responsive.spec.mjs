@@ -871,6 +871,48 @@ async function runConfig(browser, c) {
       return errs;
     });
     check(tag, 'label-position start (v0.59.1)', v0591Err);
+    // v0.73.0: td-cropper mode="pan" (inline + the 280 px column): nothing overflows sideways, the frame stands inside the
+    // stage, the toolbar (ratios, − / zoom slider / + / reset) stays inside the host, the slider keeps a usable width
+    await page.locator('#rsp-cropper-pan[data-state="ready"]').waitFor();
+    await page.locator('#rsp-cropper-pan-narrow[data-state="ready"]').waitFor();
+    const panErr = await page.evaluate(() => {
+      const errs = [];
+      const coarse = matchMedia('(pointer: coarse)').matches;
+      const doc = document.documentElement;
+      if (doc.scrollWidth > doc.clientWidth + 1) errs.push(`page scrolls sideways ${doc.scrollWidth} > ${doc.clientWidth}`);
+      for (const id of ['rsp-cropper-pan', 'rsp-cropper-pan-narrow']) {
+        const el = document.getElementById(id);
+        const h = el.getBoundingClientRect();
+        const wrap = (el.closest('.rsp-narrow') || el.parentElement).getBoundingClientRect();
+        // 3 px of slack: under 480 px the ratio scroller (box mode too) has `margin: -3px; padding: 3px` for its focus ring
+        if (el.scrollWidth > el.clientWidth + 3.5) errs.push(`#${id}: overflows ${el.scrollWidth} > ${el.clientWidth}`);
+        if (h.left < wrap.left - 0.5 || h.right > wrap.right + 0.5) errs.push(`#${id}: outside its column`);
+        const st = el.querySelector('.td-cropper__stage').getBoundingClientRect();
+        const box = el.querySelector('.td-cropper__box').getBoundingClientRect();
+        if (box.left < st.left - 0.5 || box.right > st.right + 0.5 || box.top < st.top - 0.5 || box.bottom > st.bottom + 0.5) {
+          errs.push(`#${id}: frame outside the stage (frame ${box.left.toFixed(1)}–${box.right.toFixed(1)} × ${box.top.toFixed(1)}–${box.bottom.toFixed(1)}, stage ${st.left.toFixed(1)}–${st.right.toFixed(1)} × ${st.top.toFixed(1)}–${st.bottom.toFixed(1)})`);
+        }
+        if (box.width < 40 || box.height < 40) errs.push(`#${id}: frame squeezed to ${box.width.toFixed(1)}×${box.height.toFixed(1)}`);
+        const tb = el.querySelector('.td-cropper__toolbar').getBoundingClientRect();
+        const tools = el.querySelector('.td-cropper__tools').getBoundingClientRect();
+        if (tools.right > h.right + 0.5 || tools.left < h.left - 0.5) errs.push(`#${id}: tools row outside the host`);
+        if (el.querySelector('.td-cropper__toolbar').scrollWidth > el.querySelector('.td-cropper__toolbar').clientWidth + 3.5) errs.push(`#${id}: toolbar overflows`);
+        for (const n of el.querySelectorAll('.td-cropper__toolbar button, .td-cropper__zoom')) {
+          const r = n.getBoundingClientRect();
+          if (!r.width) continue;
+          if (n.closest('.td-cropper__ratios')) continue; // the ratio row scrolls sideways by design
+          if (r.left < tb.left - 0.5 || r.right > tb.right + 0.5) errs.push(`#${id}: ${n.className.split(' ').pop()} outside the toolbar (${r.left.toFixed(1)}–${r.right.toFixed(1)} vs ${tb.left.toFixed(1)}–${tb.right.toFixed(1)})`);
+          if (coarse && n.localName === 'button' && (r.width < 43.5 || r.height < 43.5)) errs.push(`#${id}: ${n.className.split(' ').pop()} ${r.width.toFixed(1)}×${r.height.toFixed(1)} < 44 on touch`);
+        }
+        const z = el.querySelector('.td-cropper__zoom');
+        if (!z) errs.push(`#${id}: no zoom slider`);
+        else if (z.getBoundingClientRect().width < 56) errs.push(`#${id}: zoom slider squeezed to ${z.getBoundingClientRect().width.toFixed(1)} px`);
+      }
+      const circle = document.getElementById('rsp-cropper-pan');
+      if (circle.getAttribute('data-shape') !== 'circle') errs.push('#rsp-cropper-pan: data-shape="circle" missing');
+      return errs;
+    });
+    check(tag, 'cropper mode pan (v0.73.0)', panErr);
     if (errors.length) check(tag, 'page errors', errors);
 
     if (!c.fallback) await runOverlays(page, c, tag, shot);

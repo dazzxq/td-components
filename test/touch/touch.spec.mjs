@@ -1223,6 +1223,48 @@ async function chromiumSemantics(browser) {
       expect(n <= 2 && last === 'pointer', `after the cancel: ${await page.evaluate(() => window.__crop.join(','))}`);
     });
 
+    // v0.73.0 cropper mode="pan" (CDP, real fingers): one finger drags the IMAGE (the frame stands still), two fingers
+    // zoom around / with their midpoint (one crop-change, source pinch), touchcancel ends cleanly
+    await it(tag, 'cropper pan: one finger drags the image under a still frame; two fingers apart zoom in (one pinch change); touchcancel ends cleanly', async () => {
+      await load(page);
+      await page.locator('#rsp-cropper-pan[data-state="ready"]').waitFor();
+      await page.evaluate(() => {
+        window.__crop = [];
+        document.querySelector('#rsp-cropper-pan').addEventListener('crop-change', (e) => window.__crop.push(e.detail.source));
+      });
+      const frame = () => page.evaluate(() => { const r = document.querySelector('#rsp-cropper-pan .td-cropper__box').getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; });
+      const crop = () => page.evaluate(() => document.querySelector('#rsp-cropper-pan').crop.pixels);
+      const c = await centre(page, '#rsp-cropper-pan .td-cropper__box'); // scrolls it into view first
+      const f0 = await frame();
+      // the fixture photo is 3:2 and the frame 1:1, so the image can slide sideways: drag one finger left by 20 px
+      const p0 = await crop();
+      await touchDrag(cdp, [c, { x: c.x - 20, y: c.y }], { durationMs: 160 });
+      await frames(page, 3);
+      const p1 = await crop();
+      expect(p1.x > p0.x, `the image did not follow the finger (x ${p0.x} → ${p1.x})`);
+      const f1 = await frame();
+      expect(f1.every((v, i) => Math.abs(v - f0[i]) <= 0.5), `the frame moved ${f0.map((v) => v.toFixed(1))} → ${f1.map((v) => v.toFixed(1))}`);
+      expect((await page.evaluate(() => window.__crop)).join(',') === 'pointer', `drag events: ${await page.evaluate(() => window.__crop.join(','))}`);
+      await page.evaluate(() => { window.__crop = []; });
+      const before = (await crop()).width;
+      await pinch(cdp, c, 40, 110, { durationMs: 200 }); // fingers apart = zoom in = a smaller crop rect
+      await frames(page, 3);
+      const after = (await crop()).width;
+      const srcs = await page.evaluate(() => window.__crop);
+      expect(srcs.length === 1 && srcs[0] === 'pinch', `crop-change ${srcs.join(',')}`);
+      expect(after < before - 3, `the crop did not shrink (${before} → ${after})`);
+      const f2 = await frame();
+      expect(f2.every((v, i) => Math.abs(v - f0[i]) <= 0.5), `the frame moved during the pinch ${f2.map((v) => v.toFixed(1))}`);
+      await pinch(cdp, c, 40, 80, { durationMs: 120, end: false });
+      await touchCancel(cdp);
+      await frames(page, 3);
+      const n = await page.evaluate(() => window.__crop.length);
+      await touchDrag(cdp, [c, { x: c.x + 15, y: c.y }], { durationMs: 120 });
+      await frames(page, 3);
+      const last = await page.evaluate(() => window.__crop[window.__crop.length - 1]);
+      expect(n <= 2 && last === 'pointer', `after the cancel: ${await page.evaluate(() => window.__crop.join(','))}`);
+    });
+
     if (errors.length) failures.push(`${tag}: page errors — ${errors.slice(0, 3).join(' | ')}`);
   } finally {
     await context.close();

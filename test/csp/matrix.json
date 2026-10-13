@@ -5352,6 +5352,72 @@
       ],
       "settle": 400,
       "selectorNote": "v0.35: natural-* 1:1 vs a 16:9 image ⇒ error ratio (fail closed)"
+    },
+    {
+      "state": "pan",
+      "markup": "<td-cropper src=\"/test/fixtures/crop-16x9.svg\" natural-width=\"1600\" natural-height=\"900\" alt=\"Ảnh mẫu 16:9\" mode=\"pan\"></td-cropper>",
+      "selectors": [
+        "td-cropper",
+        ".td-cropper__toolbar",
+        ".td-cropper__ratios",
+        ".td-cropper__ratio[aria-checked=\"true\"]",
+        ".td-cropper__ratio[aria-checked=\"false\"]",
+        ".td-cropper__tools",
+        ".td-cropper__zoom-out",
+        ".td-cropper__zoom",
+        ".td-cropper__zoom .td-slider__track",
+        ".td-cropper__zoom .td-slider__thumb",
+        ".td-cropper__zoom-in",
+        ".td-cropper__focal-toggle",
+        ".td-cropper__reset",
+        ".td-cropper__stage",
+        ".td-cropper__area",
+        ".td-cropper__img",
+        ".td-cropper__box",
+        ".td-cropper__handle--corner",
+        ".td-cropper__handle--edge",
+        ".td-cropper__focal",
+        ".td-cropper__message"
+      ],
+      "settle": 400,
+      "selectorNote": "v0.73: mode=pan - fixed frame, 1:1 by default, no handles / focal tool, zoom slider between - and +; geometry via --_tdc-* CSSOM",
+      "excludeProps": [
+        "margin-left"
+      ],
+      "excludeNote": "the tools row is pushed to the inline end with margin-left:auto, whose used px value depends on the page font's text widths (macOS vs Linux CI); position is covered by the cropper geometry tests"
+    },
+    {
+      "state": "pan-circle",
+      "markup": "<td-cropper src=\"/test/fixtures/crop-16x9.svg\" natural-width=\"1600\" natural-height=\"900\" alt=\"Ảnh mẫu 16:9\" mode=\"pan\" shape=\"circle\"></td-cropper>",
+      "selectors": [
+        "td-cropper",
+        ".td-cropper__toolbar",
+        ".td-cropper__ratios",
+        ".td-cropper__ratio[aria-checked=\"true\"]",
+        ".td-cropper__ratio[aria-checked=\"false\"]",
+        ".td-cropper__tools",
+        ".td-cropper__zoom-out",
+        ".td-cropper__zoom",
+        ".td-cropper__zoom .td-slider__track",
+        ".td-cropper__zoom .td-slider__thumb",
+        ".td-cropper__zoom-in",
+        ".td-cropper__focal-toggle",
+        ".td-cropper__reset",
+        ".td-cropper__stage",
+        ".td-cropper__area",
+        ".td-cropper__img",
+        ".td-cropper__box",
+        ".td-cropper__handle--corner",
+        ".td-cropper__handle--edge",
+        ".td-cropper__focal",
+        ".td-cropper__message"
+      ],
+      "settle": 400,
+      "selectorNote": "v0.73: mode=pan + shape=circle (1:1) - the frame is drawn round (data-shape=circle), output still the bounding square",
+      "excludeProps": [
+        "margin-left"
+      ],
+      "excludeNote": "the tools row is pushed to the inline end with margin-left:auto, whose used px value depends on the page font's text widths (macOS vs Linux CI); position is covered by the cropper geometry tests"
     }
   ],
   "td-action-button": [

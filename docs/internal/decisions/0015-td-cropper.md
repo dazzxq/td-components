@@ -76,3 +76,4 @@ Phần thật sự cần (khung, 8 tay nắm, zoom, bàn phím, pinch) nhỏ, v�
   cộng dồn theo frame, mỗi frame một bước zoom kẹp ± 10 % (`dampedWheelFactor`, `WHEEL_FRAME_CAP`); nấc chuột (≥ 50 px
   hoặc `deltaMode` dòng / trang) giữ bước `wheelFactor` như QĐ 6. Chỉ chặn cuộn trang khi con trỏ trên stage.
 - Docs người dùng: [components/cropper.md](../../components/cropper.md).
+- Bổ sung bởi [ADR 0036](0036-cropper-pan-mode.md) (v0.73.0): kiểu `mode="pan"` (khung cố định, ảnh di chuyển) vẽ cùng model rect theo cách khác; "zoom = cỡ khung" vẫn đúng ở tầng model.

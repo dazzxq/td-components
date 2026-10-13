@@ -2132,7 +2132,8 @@
     "--td-alert-icon-box": {"light": "1.75rem", "dark": "1.75rem", "why": "v0.62.0 (plan A): td-alert density / icon-tile token — side of the icon tile"},
     "--td-alert-icon-radius": {"light": "8px", "dark": "8px", "why": "v0.62.0 (plan A): td-alert density / icon-tile token — tile radius (= --td-radius-md)"},
     "--td-alert-tile-mix": {"light": "8%", "dark": "8%", "why": "v0.62.0 (plan A): td-alert density / icon-tile token — share of the icon colour in the tile fill"},
-    "--td-media-field-frame-w": {"light": "100%", "dark": "100%", "why": "v0.71.0 (K10 of dsuite): td-media-field — inline size of the image FRAME alone; the label, buttons, helper and error keep the host width"}
+    "--td-media-field-frame-w": {"light": "100%", "dark": "100%", "why": "v0.71.0 (K10 of dsuite): td-media-field — inline size of the image FRAME alone; the label, buttons, helper and error keep the host width"},
+    "--td-cropper-pan-inset": {"light": "24px", "dark": "24px", "why": "v0.73.0: td-cropper mode=pan — the dim margin around the fixed frame (padding of the stage; the frame is the largest rect of the ratio inside it)"}
   },
   "lightDeltas": {
     "--td-table-check-border": {

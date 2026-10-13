@@ -6,6 +6,10 @@
  * renders the result with CSSOM. Output is numbers only — this module (like the element and the dialog) never creates
  * pixels (no canvas, no blob, no network; guard test in crop-geometry.test.js).
  *
+ * v0.73.0 (plan cropper-pan-mode M1): `mode="pan"` keeps the SAME model rect — the frame stands still on screen and the
+ * image is laid out under it (`panFrame` / `panFit`); input maps through `panBy` / `panZoom` / `panPinch` / `panRatio`,
+ * the zoom slider through `panZoomToT` / `panTToWidth`.
+ *
  * @module utils/crop-geometry
  */
 
@@ -15,6 +19,11 @@ export const MIN_PX = 16;
 export const RATIO_TOL = 0.01;
 /** Zoom step (decision 13): "zoom in" shrinks the box × 0.9, "zoom out" grows it × 1/0.9. */
 export const ZOOM_STEP = 0.9;
+/**
+ * v0.73.0 pan mode: display ceiling — one image pixel is drawn on at most 8 screen px (the crop is never narrower than
+ * `frameW / 8`). It bounds the SIZE of the image element, it is not a quality limit. Not public API.
+ */
+export const PAN_MAX_UPSCALE = 8;
 
 /** @typedef {{ x: number, y: number, w: number, h: number }} Rect */
 /** @typedef {{ x: number, y: number, width: number, height: number }} CropBox */
@@ -230,8 +239,10 @@ export function stepFor(size, big) {
  * computed FROM those integers with `q()` and `x + width ≤ 1` guaranteed (so every result passes `parseCrop`, JS + PHP),
  * whole image ⇒ exactly 0 / 1. `pixelsKnown = false` ⇒ no `pixels` key (the size may be a thumbnail's).
  * `aspectRatio` = the locked ratio (4 decimals) or `round4(px.w / px.h)`.
+ * `square` (v0.73.0, only passed by pan mode with a 1:1 ratio): integer pixels are forced square — the SMALLER side wins
+ * (a square rect on the image edge with a `.5` fraction otherwise rounds to `50 × 51`). Absent ⇒ unchanged.
  * @param {Rect} r
- * @param {{ W: number, H: number, pixelsKnown?: boolean, ratio?: number|null }} o
+ * @param {{ W: number, H: number, pixelsKnown?: boolean, ratio?: number|null, square?: boolean }} o
  * @returns {CropValue}
  */
 export function toOutput(r, o) {
@@ -239,8 +250,9 @@ export function toOutput(r, o) {
   const H = Math.max(1, Math.round(o.H));
   const px = clamp(Math.round(r.x), 0, W - 1);
   const py = clamp(Math.round(r.y), 0, H - 1);
-  const pw = Math.max(1, Math.min(Math.round(r.w), W - px));
-  const ph = Math.max(1, Math.min(Math.round(r.h), H - py));
+  let pw = Math.max(1, Math.min(Math.round(r.w), W - px));
+  let ph = Math.max(1, Math.min(Math.round(r.h), H - py));
+  if (o.square && pw !== ph) pw = ph = Math.min(pw, ph);
   const nx = q(px / W);
   const ny = q(py / H);
   const out = {
@@ -353,6 +365,117 @@ export const WHEEL_FRAME_CAP = 1.1;
 export function dampedWheelFactor(accPx) {
   if (!fin(accPx) || accPx === 0) return 1;
   return clamp(Math.exp(accPx * 0.002), 1 / WHEEL_FRAME_CAP, WHEEL_FRAME_CAP);
+}
+
+// --- v0.73.0 pan mode (plan cropper-pan-mode M1): a fixed frame on screen, the image moves / zooms under it ---
+
+/**
+ * The frame of pan mode: the largest rect of `ratio` centred in the `bw × bh` content box of the stage (display px).
+ * Width and position are whole pixels (the frame line never shimmers), the height follows the ratio exactly.
+ * Invalid input ⇒ a zero rect.
+ * @param {number} bw @param {number} bh @param {number} ratio w / h
+ * @returns {Rect}
+ */
+export function panFrame(bw, bh, ratio) {
+  if (!okRatio(ratio)) return { x: 0, y: 0, w: 0, h: 0 };
+  const w = Math.floor(containFit(ratio, 1, bw, bh).w);
+  if (!(w > 0)) return { x: 0, y: 0, w: 0, h: 0 };
+  const h = w / ratio;
+  return { x: Math.round((bw - w) / 2), y: Math.round((bh - h) / 2), w, h };
+}
+
+/**
+ * Where the WHOLE image goes so that `rect` lies exactly under `frame`: `{ scale, x, y, w, h }` (display px, same space
+ * as `frame`; the image is usually larger than the stage and starts at negative coordinates). Invalid input ⇒ scale 0.
+ * @param {Rect} rect @param {Rect} frame @param {number} W @param {number} H
+ */
+export function panFit(rect, frame, W, H) {
+  if (!(rect && rect.w > 0 && frame && frame.w > 0 && W > 0 && H > 0)) return { scale: 0, x: 0, y: 0, w: 0, h: 0 };
+  const scale = frame.w / rect.w;
+  return { scale, x: frame.x - rect.x * scale, y: frame.y - rect.y * scale, w: W * scale, h: H * scale };
+}
+
+/**
+ * Drag the IMAGE by `(dx, dy)` display px: the rect goes the opposite way in model px (size unchanged, clamped inside).
+ * @param {Rect} rect @param {number} dx @param {number} dy @param {number} scale display / model
+ * @param {number} W @param {number} H @returns {Rect}
+ */
+export function panBy(rect, dx, dy, scale, W, H) {
+  if (!(fin(scale) && scale > 0)) return { ...rect };
+  return moveBy(rect, -(fin(dx) ? dx : 0) / scale, -(fin(dy) ? dy : 0) / scale, W, H);
+}
+
+/**
+ * The narrowest crop pan mode zooms IN to: the interaction minimum (`minSize`) or the display ceiling
+ * (`frameW / PAN_MAX_UPSCALE`), whichever is larger — never above the largest rect of the ratio.
+ * @param {{ W: number, H: number, ratio?: number|null, frameW?: number }} o
+ * @returns {number} model px
+ */
+export function panMinWidth(o) {
+  const ratio = okRatio(o.ratio) ? o.ratio : null;
+  const cap = fin(o.frameW) && o.frameW > 0 ? o.frameW / PAN_MAX_UPSCALE : 0;
+  return Math.min(Math.max(minSize(o.W, o.H, ratio).w, cap), fitLargest(o.W, o.H, ratio).w);
+}
+
+/**
+ * Every zoom of pan mode (buttons, keys, wheel, pinch, slider): `scaleAround` plus the display ceiling. The ceiling only
+ * stops zooming IN — a rect already narrower than it (an initial crop, a stage that just grew) is kept as it is and
+ * merely cannot shrink further, so a stage resize never changes the output.
+ * @param {Rect} r @param {number} k @param {{ x: number, y: number }} anchor
+ * @param {{ ratio?: number|null, W: number, H: number, frameW?: number }} o
+ * @returns {Rect}
+ */
+export function panZoom(r, k, anchor, o) {
+  if (!fin(k) || k <= 0) return { ...r };
+  const cap = fin(o.frameW) && o.frameW > 0 ? o.frameW / PAN_MAX_UPSCALE : 0;
+  return scaleAround(r, Math.max(k, Math.min(1, cap / r.w)), anchor, o);
+}
+
+/**
+ * A pinch in pan mode: zoom by `k` around `anchor` (the model point under the first midpoint), then follow the midpoint
+ * of the two fingers (`dMid`, display px since the pinch began) — pinching while dragging moves the image along.
+ * @param {Rect} rect0 @param {number} k @param {{ x: number, y: number }} anchor
+ * @param {{ x: number, y: number }} dMid @param {number} frameW
+ * @param {{ ratio?: number|null, W: number, H: number }} o
+ * @returns {Rect}
+ */
+export function panPinch(rect0, k, anchor, dMid, frameW, o) {
+  const z = panZoom(rect0, k, anchor, { ratio: o.ratio, W: o.W, H: o.H, frameW });
+  return panBy(z, dMid?.x, dMid?.y, frameW / z.w, o.W, o.H);
+}
+
+/**
+ * Change the ratio in pan mode keeping the CENTRE and the RELATIVE zoom (`largest rect of the ratio / rect`): unlike
+ * `applyPreset` the user does not fall back to the widest view. Never below `minSize`, clamped inside the image.
+ * @param {Rect} rect @param {number} oldRatio @param {number} newRatio @param {number} W @param {number} H
+ * @returns {Rect}
+ */
+export function panRatio(rect, oldRatio, newRatio, W, H) {
+  if (!okRatio(oldRatio) || !okRatio(newRatio) || !(rect.w > 0)) return { ...rect };
+  const big = fitLargest(W, H, newRatio);
+  const z = Math.max(1, fitLargest(W, H, oldRatio).w / rect.w);
+  const w = Math.min(big.w, Math.max(big.w / z, minSize(W, H, newRatio).w));
+  const h = w / newRatio;
+  return clampRect({ x: rect.x + rect.w / 2 - w / 2, y: rect.y + rect.h / 2 - h / 2, w, h }, W, H);
+}
+
+/**
+ * Zoom slider (pan mode), LOG scale: crop width → position `t` in [0, 1] (0 = `wMax`, the widest view; 1 = `wMin`, the
+ * closest). A degenerate range ⇒ 0.
+ * @param {number} w @param {number} wMin @param {number} wMax @returns {number}
+ */
+export function panZoomToT(w, wMin, wMax) {
+  if (!(wMin > 0 && wMax > wMin && w > 0)) return 0;
+  return clamp(Math.log(w / wMax) / Math.log(wMin / wMax), 0, 1);
+}
+
+/**
+ * Inverse of `panZoomToT`: `wMax · (wMin / wMax)^t`; the two ends are returned exactly (no float drift at 0 / 1).
+ * @param {number} t @param {number} wMin @param {number} wMax @returns {number}
+ */
+export function panTToWidth(t, wMin, wMax) {
+  if (!(wMin > 0 && wMax > wMin) || !(t > 0)) return wMax;
+  return t >= 1 ? wMin : wMax * (wMin / wMax) ** t;
 }
 
 /** @param {CropValue|CropBox|null|undefined} c @returns {CropBox} null ⇒ the whole image */

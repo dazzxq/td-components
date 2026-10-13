@@ -10,7 +10,18 @@
  * Attributes (scalar): `src` (safeMediaUrl — never `blob:` / `data:`; refused ⇒ error `src`, the `<img>` gets no src),
  * `alt`, `natural-width` / `natural-height` (integers 1–100000; both or neither), `aspect-ratio` (`W/H` | `W:H` | number
  * ⇒ LOCKED, the ratio presets are hidden), `crop` (JSON v1 `{"v":1,"x","y","width","height"}`), `focal-point` (boolean:
- * the focal-point tool), `focal` (JSON v1 `{"v":1,"x","y"}`), `disabled`.
+ * the focal-point tool), `focal` (JSON v1 `{"v":1,"x","y"}`), `disabled`, `mode` (`box` default | `pan`), `shape` (`rect`
+ * default | `circle`).
+ *
+ * v0.73.0 (plan docs/internal/plans/v0.73.0-cropper-pan-mode.md M1) — two ways to work on the SAME model rect:
+ * `mode="box"` (default, unchanged): the image is contain-fitted and stands still, the box moves / resizes over it.
+ * `mode="pan"`: the frame stands still in the middle of the stage (`--td-cropper-pan-inset` from its edges) and the user
+ * drags / zooms the IMAGE under it (avatars). Only the way `_fit` is computed differs (`panFit`), so the same CSSOM
+ * properties are written and no node is added to the shell. Pan always has a ratio (`aspect-ratio` → the selected
+ * preset → 1; presets with `ratio: null` are not offered), no handles, no focal-point tool (an existing focal value is
+ * kept and still returned), a zoom slider (`<td-slider class="td-cropper__zoom">`, created only in pan, between − and +)
+ * and square integer pixels for a 1:1 crop. `shape="circle"` rounds the frame (display only — the output stays the
+ * bounding square) while the mode is pan and the ratio in force is 1:1. Unknown values = the default, silently.
  * Properties: `crop` (get `CropValue | null`; set `{ normalized } | { x, y, width, height } | null` — silently),
  * `focalPoint` (`{ x, y } | null`, silently), `presets` (`{ label, ratio: number | null }[]`, default
  * `TdCropper.presets`), `reset()` (silent), `getResult()` → `{ crop, focalPoint }`.
@@ -25,14 +36,15 @@
  *
  * State: host `data-state="loading|ready|error"` (+ `data-error="<kind>"`), `data-locked` (a ratio is in force: 4 corner
  * handles only), `data-dragging` (rule-of-thirds grid), `data-small-box` (displayed box < 88 px: CSS hides the edge
- * handles on coarse pointers). CSSOM (display px, removed on disconnect): `--_tdc-img-x/y/w/h`, `--_tdc-box-x/y/w/h`,
+ * handles on coarse pointers; never in pan), `data-mode="pan"` / `data-shape="circle"` (v0.73.0: constants set by JS
+ * after the attribute matched the allowlist — absent in box mode / for a rectangle). CSSOM (display px, removed on disconnect): `--_tdc-img-x/y/w/h`, `--_tdc-box-x/y/w/h`,
  * `--_tdc-focal-x/y`.
  *
  * DOM (built once; every text through textContent / setAttribute):
  *   <div class="td-cropper__toolbar" role="group">
  *     <div class="td-cropper__ratios" role="radiogroup">button.td-cropper__ratio[role=radio]…</div>
- *     <div class="td-cropper__tools">button.td-cropper__zoom-out · .td-cropper__zoom-in · .td-cropper__focal-toggle
- *       [aria-pressed] · .td-cropper__reset</div>
+ *     <div class="td-cropper__tools">button.td-cropper__zoom-out · [pan only: td-slider.td-cropper__zoom] ·
+ *       .td-cropper__zoom-in · .td-cropper__focal-toggle [aria-pressed] · .td-cropper__reset</div>
  *   </div>
  *   <div class="td-cropper__stage" role="group" aria-label="Cắt ảnh: {alt}">
  *     <div class="td-cropper__area"><img class="td-cropper__img">
@@ -57,13 +69,16 @@ let warnedRatio = false;
 import {
   ZOOM_STEP, moveBy, resizeFrom, scaleAround, applyPreset, normalizeInitial, stepFor, toOutput, clampFocal,
   ratioMismatch, containFit, wheelFactor, isTrackpadDelta, dampedWheelFactor, modelToDisplay, focalChanged,
+  fitLargest, panFrame, panFit, panBy, panPinch, panZoom, panRatio, panMinWidth, panZoomToT, panTToWidth,
 } from '../utils/crop-geometry.js';
 import { openCropDialog } from '../feedback/crop-dialog.js';
+import './td-slider.js'; // v0.73.0: the zoom slider of pan mode (created only there)
 
 /** @typedef {import('../utils/crop-geometry.js').CropValue} CropValue */
 /** @typedef {import('../utils/crop-geometry.js').Rect} Rect */
 
-const OBSERVED = ['src', 'alt', 'natural-width', 'natural-height', 'aspect-ratio', 'crop', 'focal-point', 'focal', 'disabled'];
+const OBSERVED = ['src', 'alt', 'natural-width', 'natural-height', 'aspect-ratio', 'crop', 'focal-point', 'focal', 'disabled',
+  'mode', 'shape'];
 const VARS = ['--_tdc-img-x', '--_tdc-img-y', '--_tdc-img-w', '--_tdc-img-h', '--_tdc-box-x', '--_tdc-box-y',
   '--_tdc-box-w', '--_tdc-box-h', '--_tdc-focal-x', '--_tdc-focal-y'];
 /** Corner handles in Tab order (decision 15): top-left → top-right → bottom-right → bottom-left. */
@@ -75,12 +90,16 @@ const TAP_PX = 4;
 const LIVE_MS = 400;
 /** Displayed box below 2 × 44 px ⇒ `data-small-box` (edge handles hidden on coarse pointers, decision 20). */
 const SMALL_BOX = 88;
+/** Zoom slider of pan mode: positions 0 … ZOOM_STEPS on a log scale (0 = the widest view). */
+const ZOOM_STEPS = 100;
 let uid = 0;
 
 const fmt = (s, p) => String(s ?? '').replace(/\{(\w+)\}/g, (m, k) => (Object.hasOwn(p, k) ? String(p[k]) : m));
 const pct = (v) => Math.round(v * 100);
 const px = (v) => `${Math.round(v * 100) / 100}px`;
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
+/** Scalar enum attribute: trimmed, lower-cased — only ever COMPARED with constants, never written anywhere. */
+const word = (v) => (typeof v === 'string' ? v.trim().toLowerCase() : '');
 /** Strict integer attribute 1–100000 (decision 33), else null. @param {string|null} v */
 const intAttr = (v) => (typeof v === 'string' && /^[1-9][0-9]{0,5}$/.test(v) && Number(v) <= 100000 ? Number(v) : null);
 const sameRect = (a, b) => !!a && !!b && Math.abs(a.x - b.x) < 1e-9 && Math.abs(a.y - b.y) < 1e-9
@@ -156,6 +175,9 @@ export class TdCropper extends TdBaseElement {
     sw: 'Góc dưới trái',
     focalPoint: 'Điểm trọng tâm',
     boxHelp: 'Mũi tên: di chuyển khung, Shift + mũi tên: bước lớn, + / −: phóng to / thu nhỏ.',
+    // pan mode (v0.73.0)
+    zoom: 'Thu phóng ảnh',
+    panHelp: 'Mũi tên: dịch ảnh dưới khung, Shift + mũi tên: bước lớn, + / −: phóng to / thu nhỏ ảnh.',
     cornerHelp: 'Mũi tên: đổi cỡ khung từ góc này, Shift + mũi tên: bước lớn.',
     focalHelp: 'Mũi tên: di chuyển điểm 1 %, Shift + mũi tên: 10 %.',
     valuePx: 'Vùng cắt {w} × {h} px, cách trái {x} px, cách trên {y} px',
@@ -221,6 +243,14 @@ export class TdCropper extends TdBaseElement {
     this._lock = null;
     /** @type {{scale:number,x:number,y:number,w:number,h:number}|null} image rect in the stage (display px) */
     this._fit = null;
+    /** @type {{pl:number,pt:number,bw:number,bh:number}|null} content box of the stage (pan: the frame is derived from it) */
+    this._box = null;
+    /** @type {any} the zoom slider (pan mode only) */
+    this._zoomEl = null;
+    /** @type {{rect0:Rect,last:Rect,v0:number,wMin:number,wMax:number,busy:boolean}|null} one gesture on the zoom slider: its scale is frozen */
+    this._zg = null;
+    this._zv = 0;
+    this._warnedShape = false;
     /** @type {any} the current gesture */
     this._g = null;
     /** @type {Map<number, {x:number,y:number}>} active touch pointers */
@@ -264,11 +294,10 @@ export class TdCropper extends TdBaseElement {
 
   disconnectedCallback() {
     if (this._g) this._finish(false);
+    this._endZoom(false);
     if (this._raf) cancelAnimationFrame(this._raf);
     this._raf = 0;
-    if (this._wheelRaf) cancelAnimationFrame(this._wheelRaf);
-    this._wheelRaf = 0;
-    this._wheelAcc = 0;
+    this._dropWheel();
     if (this._liveTimer) clearTimeout(this._liveTimer);
     this._liveTimer = 0;
     this._touches.clear();
@@ -295,16 +324,23 @@ export class TdCropper extends TdBaseElement {
       case 'alt':
         this._syncLabels();
         break;
-      case 'aspect-ratio':
+      case 'aspect-ratio': {
+        const was = this._ratio();
         this._readLock();
         this._syncPresetUi();
         if (this._ready()) {
-          const r = this._ratio();
-          if (r) this._rect = applyPreset(/** @type {Rect} */ (this._rect), r, this._W, this._H);
+          this._reratio(this._ratio(), was);
           this._renderVars();
           this._syncDesc();
         }
         this._syncLocked();
+        break;
+      }
+      case 'mode':
+        this._syncMode();
+        break;
+      case 'shape':
+        this._syncShape();
         break;
       case 'crop':
         this._cropIn = boxOf(parseCrop(newVal)?.crop ?? null);
@@ -324,6 +360,7 @@ export class TdCropper extends TdBaseElement {
         break;
       case 'disabled':
         if (newVal !== null && this._g) this._finish(false);
+        if (newVal !== null) { this._endZoom(false); this._dropWheel(); }
         this._syncDisabled();
         break;
       default:
@@ -339,7 +376,9 @@ export class TdCropper extends TdBaseElement {
    */
   get crop() {
     if (!this._ready()) return null;
-    return toOutput(/** @type {Rect} */ (this._rect), { W: this._W, H: this._H, pixelsKnown: this._pixelsKnown, ratio: this._ratio() });
+    const o = { W: this._W, H: this._H, pixelsKnown: this._pixelsKnown, ratio: this._ratio() };
+    if (o.ratio === 1 && this._pan()) /** @type {any} */ (o).square = true; // pan 1:1: integer pixels exactly square
+    return toOutput(/** @type {Rect} */ (this._rect), o);
   }
 
   set crop(v) {
@@ -364,14 +403,14 @@ export class TdCropper extends TdBaseElement {
   get presets() { return this._presets().map((p) => ({ ...p })); }
 
   set presets(v) {
+    const was = this._ratio();
     const list = cleanPresets(v);
     this._presetList = list.length ? list : null;
     this._presetIdx = this._defaultPresetIdx();
     if (!this._els) return;
     this._renderPresets();
     if (this._ready()) {
-      const r = this._ratio();
-      if (r) this._rect = applyPreset(/** @type {Rect} */ (this._rect), r, this._W, this._H);
+      this._reratio(this._ratio(), was);
       this._renderVars();
       this._syncDesc();
     }
@@ -440,6 +479,7 @@ export class TdCropper extends TdBaseElement {
       }
       this._presetIdx = this._defaultPresetIdx();
     }
+    this._syncMode(true);
     this._syncLabels();
     this._renderPresets();
     this._syncFocalUi();
@@ -458,6 +498,10 @@ export class TdCropper extends TdBaseElement {
     this.listen(stage, 'keydown', (e) => this._onKey(e));
     this.listen(stage, 'dragstart', (e) => e.preventDefault());
     this.listen(toolbar, 'click', (e) => this._onToolClick(e));
+    this.listen(toolbar, 'input', (e) => this._onZoomSlide(e, false));
+    this.listen(toolbar, 'change', (e) => this._onZoomSlide(e, true));
+    // a pointer the browser takes back never sends `change`: commit what the slider did, like a cancelled pointer on the stage
+    this.listen(toolbar, 'pointercancel', (e) => { if (this._zoomEl && this._zoomEl.contains(/** @type {Node} */ (e.target))) this._endZoom(true); });
     this.listen(ratios, 'keydown', (e) => this._onRatioKey(e));
     if (typeof ResizeObserver === 'function') {
       const ro = new ResizeObserver(() => this._measure());
@@ -558,23 +602,62 @@ export class TdCropper extends TdBaseElement {
   /** @private */
   _interactive() { return this._ready() && !this.hasAttribute('disabled'); }
 
-  /** @private */
-  _focalTool() { return this.hasAttribute('focal-point'); }
+  /** @private v0.73.0: is the mode `pan` (the frame stands still, the image moves)? Anything else = `box`. */
+  _pan() { return word(this.getAttribute('mode')) === 'pan'; }
+
+  /** @private pan has no focal-point tool (the frame is the subject); an existing focal value is kept as it is */
+  _focalTool() { return this.hasAttribute('focal-point') && !this._pan(); }
 
   /** @private */
   _presets() { return this._presetList || cleanPresets(TdCropper.presets); }
 
-  /** @private index of the free preset (or 0) */
+  /** @private the presets OFFERED (`_presetIdx` indexes this list): pan always has a ratio, so no free entry there */
+  _choices(pan = this._pan()) {
+    const list = this._presets();
+    return pan ? list.filter((p) => p.ratio != null) : list;
+  }
+
+  /** @private index of the free preset (or 0); pan: of the 1:1 preset (or 0) */
   _defaultPresetIdx() {
-    const i = this._presets().findIndex((p) => p.ratio == null);
+    const i = this._pan() ? this._choices().findIndex((p) => Math.abs(/** @type {number} */ (p.ratio) - 1) < 1e-4)
+      : this._presets().findIndex((p) => p.ratio == null);
     return i < 0 ? 0 : i;
   }
 
-  /** @private the ratio in force: the `aspect-ratio` lock, else the selected preset's (null = free) */
+  /** @private the ratio in force: the `aspect-ratio` lock, else the selected preset's (null = free; pan: 1) */
   _ratio() {
     if (this._lock) return this._lock;
-    const p = this._presets()[this._presetIdx];
-    return p && p.ratio ? p.ratio : null;
+    const pan = this._pan();
+    const p = this._choices(pan)[this._presetIdx];
+    if (p && p.ratio) return p.ratio;
+    return pan ? 1 : null;
+  }
+
+  /**
+   * @private a ratio was applied. Box: `ratio` (null = free: unchanged) ⇒ the largest rect of it around the centre.
+   * Pan: the ratio in force (`was` = before the change) ⇒ same centre AND same relative zoom; the frame changes shape.
+   * @param {number|null} ratio @param {number|null} was
+   */
+  _reratio(ratio, was) {
+    const rect = /** @type {Rect} */ (this._rect);
+    if (!this._pan()) {
+      if (ratio) this._rect = applyPreset(rect, ratio, this._W, this._H);
+      return;
+    }
+    const r = /** @type {number} */ (this._ratio());
+    if (r !== was) this._rect = was ? panRatio(rect, was, r, this._W, this._H) : applyPreset(rect, r, this._W, this._H);
+  }
+
+  /** @private pan: width of the frame on screen (display px; 0 before the first measure) */
+  _frameW() {
+    const b = this._box;
+    return b ? panFrame(b.bw, b.bh, /** @type {number} */ (this._ratio())).w : 0;
+  }
+
+  /** @private zoom `r` by `k` around `anchor` (model px): pan adds the display ceiling */
+  _scale(r, k, anchor) {
+    const o = { ratio: this._ratio(), W: this._W, H: this._H };
+    return this._pan() ? panZoom(r, k, anchor, { ...o, frameW: this._frameW() }) : scaleAround(r, k, anchor, o);
   }
 
   /** @private */
@@ -615,13 +698,32 @@ export class TdCropper extends TdBaseElement {
     const pt = parseFloat(cs.paddingTop) || 0;
     const bw = st.clientWidth - pl - (parseFloat(cs.paddingRight) || 0);
     const bh = st.clientHeight - pt - (parseFloat(cs.paddingBottom) || 0);
-    const f = containFit(this._W, this._H, bw, bh);
-    this._fit = f.scale ? { scale: f.scale, x: f.x + pl, y: f.y + pt, w: f.w, h: f.h } : null;
+    this._box = { pl, pt, bw, bh };
+    if (!this._pan()) {
+      const f = containFit(this._W, this._H, bw, bh);
+      this._fit = f.scale ? { scale: f.scale, x: f.x + pl, y: f.y + pt, w: f.w, h: f.h } : null;
+    }
     this._renderVars();
+  }
+
+  /**
+   * @private pan: the image rect that puts the crop under the frame. Computed on EVERY render — the frame follows the
+   * ratio in force, and the ratio paths (preset, `aspect-ratio`, `presets`, reset) only call _renderVars().
+   */
+  _panFit() {
+    const b = this._box;
+    if (!b || !this._ready()) return null;
+    const f = panFit(/** @type {Rect} */ (this._rect), panFrame(b.bw, b.bh, /** @type {number} */ (this._ratio())), this._W, this._H);
+    return f.scale ? { scale: f.scale, x: f.x + b.pl, y: f.y + b.pt, w: f.w, h: f.h } : null;
   }
 
   /** @private */
   _renderVars() {
+    const pan = this._pan();
+    if (pan) {
+      this._fit = this._panFit();
+      this._syncZoom();
+    }
     const f = this._fit;
     if (!this._els || !f || !this._ready()) return;
     const set = (k, v) => this.style.setProperty(k, px(v));
@@ -634,7 +736,7 @@ export class TdCropper extends TdBaseElement {
     set('--_tdc-box-y', d.y);
     set('--_tdc-box-w', d.w);
     set('--_tdc-box-h', d.h);
-    this.toggleAttribute('data-small-box', d.w < SMALL_BOX || d.h < SMALL_BOX);
+    this.toggleAttribute('data-small-box', !pan && (d.w < SMALL_BOX || d.h < SMALL_BOX)); // pan: no handles to hide
     if (this._focal) {
       set('--_tdc-focal-x', this._focal.x * f.w);
       set('--_tdc-focal-y', this._focal.y * f.h);
@@ -672,6 +774,7 @@ export class TdCropper extends TdBaseElement {
       c.setAttribute('aria-roledescription', L.handleRole);
     }
     e.focal.setAttribute('aria-label', L.focalPoint);
+    if (this._zoomEl) this._zoomEl.setAttribute('aria-label', L.zoom);
     e.cornerDesc.textContent = L.cornerHelp;
     this._syncDesc();
   }
@@ -679,7 +782,7 @@ export class TdCropper extends TdBaseElement {
   /** @private one radio per preset (roving tabindex) */
   _renderPresets() {
     const { ratios } = this._els;
-    const list = this._presets();
+    const list = this._choices();
     if (this._presetIdx >= list.length) this._presetIdx = this._defaultPresetIdx();
     ratios.replaceChildren(...list.map((p, i) => {
       const b = document.createElement('button');
@@ -696,7 +799,7 @@ export class TdCropper extends TdBaseElement {
   /** @private */
   _syncPresetUi() {
     const { ratios } = this._els;
-    ratios.hidden = !!this._lock;
+    ratios.hidden = !!this._lock || (this._pan() && !this._choices().length);
     const on = this._interactive();
     for (const b of /** @type {NodeListOf<HTMLButtonElement>} */ (ratios.querySelectorAll('.td-cropper__ratio'))) {
       const sel = Number(b.getAttribute('data-index')) === this._presetIdx;
@@ -707,7 +810,165 @@ export class TdCropper extends TdBaseElement {
   }
 
   /** @private */
-  _syncLocked() { this.toggleAttribute('data-locked', this._ratio() != null); }
+  _syncLocked() {
+    this.toggleAttribute('data-locked', this._ratio() != null);
+    this._syncShape();
+  }
+
+  /**
+   * @private v0.73.0 `mode` → host `data-mode="pan"` (a constant; box mode has no such attribute) + the zoom slider.
+   * A change at run time is silent like every attribute: the gesture in progress is cancelled, the selected ratio is
+   * kept when the new preset list still has it, and the box is fitted again.
+   * @param {boolean} [init] first sync (from _build): the presets / box are set up by the normal first-load path
+   */
+  _syncMode(init) {
+    if (!this._els) return;
+    const pan = this._pan();
+    const flip = pan !== this.hasAttribute('data-mode');
+    if (flip && !init) { // nothing of the mode we leave may land in the new one
+      if (this._g) this._finish(false);
+      this._endZoom(false);
+      this._dropWheel();
+    }
+    if (flip && pan) this.setAttribute('data-mode', 'pan');
+    else if (flip) this.removeAttribute('data-mode');
+    this._syncZoomEl();
+    // pan has no handle and no focal point: their help texts must not be read either (box: no `hidden`, as before)
+    this._els.cornerDesc.hidden = this._els.focalDesc.hidden = pan;
+    if (init || !flip) return;
+    const prev = this._choices(!pan)[this._presetIdx]; // `_presetIdx` still indexes the list of the mode we leave
+    const was = this._lock || (prev && prev.ratio) || (pan ? null : 1);
+    const keep = prev ? this._choices(pan).findIndex((p) => p.ratio === prev.ratio) : -1;
+    this._presetIdx = keep < 0 ? this._defaultPresetIdx() : keep;
+    this._renderPresets();
+    if (this._ready()) {
+      // into pan from another ratio (or a free box): the largest rect of the new one — there is no zoom level to keep
+      const r = this._ratio();
+      if (pan && r && r !== was) this._rect = applyPreset(/** @type {Rect} */ (this._rect), r, this._W, this._H);
+      this._measure(); // the stage padding differs (--td-cropper-pan-inset); pan also drops data-small-box
+    }
+    this._syncDisabled();
+    this._syncFocalUi();
+    this._syncLocked();
+  }
+
+  /**
+   * @private v0.73.0 `shape` → host `data-shape="circle"` only while the mode is pan AND the ratio in force is 1:1
+   * (display only: the output stays the bounding square). A static misconfiguration (not pan, or an `aspect-ratio` lock
+   * that is not 1:1) warns once per element; a user picking another preset is silent.
+   */
+  _syncShape() {
+    const want = word(this.getAttribute('shape')) === 'circle';
+    const pan = this._pan();
+    const r = this._ratio();
+    // exactly 1, the same test as the square pixels of the output (`crop`): a near-square frame is not drawn round
+    if (want && pan && r === 1) this.setAttribute('data-shape', 'circle');
+    else this.removeAttribute('data-shape');
+    if (want && !this._warnedShape && (!pan || (!!this._lock && this._lock !== 1))) {
+      this._warnedShape = true; // bounded: the attribute values are not echoed
+      console.warn('td-cropper: shape="circle" needs mode="pan" and a 1:1 ratio — ignored, the frame is a rectangle.');
+    }
+  }
+
+  /** @private v0.73.0 the zoom slider exists only in pan (the shell and the DOM of box mode are unchanged) */
+  _syncZoomEl() {
+    const { zoomIn } = this._els;
+    if (!this._pan()) {
+      if (this._zoomEl) this._zoomEl.remove();
+      this._zoomEl = null;
+      return;
+    }
+    if (this._zoomEl) return;
+    const z = document.createElement('td-slider');
+    z.className = 'td-cropper__zoom';
+    for (const [k, v] of [['size', 'sm'], ['min', '0'], ['max', String(ZOOM_STEPS)], ['step', '1'], ['value', '0'],
+      ['aria-label', TdCropper.labels.zoom], ['disabled', '']]) z.setAttribute(k, v); // no `name`: never in FormData
+    this._zoomEl = z;
+    zoomIn.before(z);
+  }
+
+  /**
+   * @private the widths the zoom slider spans (model px). A rect already narrower than the zoom-in limit (an initial
+   * crop, a stage that grew) becomes the lower end itself: the slider then stands at the end and maps back to that rect.
+   */
+  _zoomRange() {
+    const r = /** @type {Rect} */ (this._rect);
+    const o = { ratio: this._ratio(), W: this._W, H: this._H, frameW: this._frameW() };
+    return { wMin: Math.min(panMinWidth(o), r.w), wMax: fitLargest(o.W, o.H, o.ratio).w };
+  }
+
+  /**
+   * @private rect → slider, WITHOUT an event (every change that does not come from the slider: wheel, pinch, buttons,
+   * keys, preset, reset, resize, programmatic). A slider gesture in progress keeps its frozen scale through a render that
+   * does not change the rect (its own, a stage resize); any other change of the rect ends it.
+   */
+  _syncZoom() {
+    const z = this._zoomEl;
+    const g = this._zg;
+    if (!z || (g && (g.busy || sameRect(this._rect, g.last)))) return;
+    this._zg = null;
+    const range = this._ready() ? this._zoomRange() : null;
+    const span = !!range && range.wMin < range.wMax;
+    const off = !(span && this._interactive());
+    if (z.hasAttribute('disabled') !== off) z.toggleAttribute('disabled', off);
+    const v = String(span ? Math.round(panZoomToT(/** @type {Rect} */ (this._rect).w, range.wMin, range.wMax) * ZOOM_STEPS) : 0);
+    this._zv = Number(v); // where a slider gesture starts from
+    if (z.getAttribute('value') !== v) z.setAttribute('value', v);
+  }
+
+  /**
+   * @private `input` / `change` of the zoom slider (td-slider CustomEvents, stopped here) → `crop-input` / `crop-change`
+   * with source `button`. One gesture (first `input` … `change`) zooms absolutely from its first rect on a frozen scale,
+   * so a value always means the same width inside it and coming back to the start gives the start rect back.
+   * @param {Event} e @param {boolean} commit
+   */
+  _onZoomSlide(e, commit) {
+    const z = this._zoomEl;
+    if (!z || e.target !== z) return;
+    e.stopPropagation();
+    if (!this._interactive() || this._g) { this._syncZoom(); return; }
+    const rect = /** @type {Rect} */ (this._rect);
+    const g = this._zg || (this._zg = { rect0: { ...rect }, last: rect, v0: this._zv, ...this._zoomRange(), busy: false });
+    const r0 = g.rect0;
+    const v = z.getValue();
+    const w = panTToWidth(v / ZOOM_STEPS, g.wMin, g.wMax);
+    // the position the gesture started at is its first rect itself (a slider step is coarser than the rect)
+    const next = v === g.v0 ? r0 : this._scale(r0, w / r0.w, { x: r0.x + r0.w / 2, y: r0.y + r0.h / 2 });
+    if (!sameRect(next, rect)) {
+      this._rect = g.last = next;
+      g.busy = true; // our own render: the slider keeps the value the user gave it
+      this._renderVars();
+      g.busy = false;
+      this.emit('crop-input', { crop: this.crop, source: 'button' });
+    }
+    if (commit) this._endZoom(true);
+  }
+
+  /**
+   * @private v0.73.0 ends the slider gesture in progress, if any: commit (`crop-change` when the rect moved) or cancel
+   * (back to its first rect without an event, like a cancelled drag — a mode change, `disabled`, a disconnect).
+   * @param {boolean} commit
+   */
+  _endZoom(commit) {
+    const g = this._zg;
+    if (!g) return;
+    this._zg = null;
+    const moved = !sameRect(this._rect, g.rect0);
+    if (moved && commit) this._changed('button');
+    else if (moved) {
+      this._rect = g.rect0;
+      this._renderVars(); // also puts the slider back
+      return;
+    }
+    this._syncZoom(); // the scale is computed again from the rect in force
+  }
+
+  /** @private drops a trackpad step that is waiting for its frame */
+  _dropWheel() {
+    if (this._wheelRaf) cancelAnimationFrame(this._wheelRaf);
+    this._wheelRaf = 0;
+    this._wheelAcc = 0;
+  }
 
   /** @private */
   _syncDisabled() {
@@ -717,11 +978,13 @@ export class TdCropper extends TdBaseElement {
     for (const b of [e.zoomOut, e.zoomIn, e.focalBtn, e.reset]) b.disabled = !on;
     const ti = on ? 0 : -1;
     e.box.tabIndex = ti;
-    for (const c of e.corners) c.tabIndex = ti;
+    const cti = this._pan() ? -1 : ti; // pan: no handles (hidden by CSS too)
+    for (const c of e.corners) c.tabIndex = cti;
     e.focal.tabIndex = ti;
     if (on) e.box.removeAttribute('aria-disabled');
     else e.box.setAttribute('aria-disabled', 'true');
     this._syncPresetUi();
+    this._syncZoom();
   }
 
   /** @private */
@@ -740,7 +1003,8 @@ export class TdCropper extends TdBaseElement {
     if (!this._els) return;
     const L = TdCropper.labels;
     const s = this._cropSentence();
-    this._els.desc.textContent = s ? `${s}. ${L.boxHelp}` : L.boxHelp;
+    const help = this._pan() ? L.panHelp : L.boxHelp;
+    this._els.desc.textContent = s ? `${s}. ${help}` : help;
     this._els.focalDesc.textContent = `${this._focalSentence()}. ${L.focalHelp}`;
   }
 
@@ -808,7 +1072,7 @@ export class TdCropper extends TdBaseElement {
   /** @private zoom around the box centre (decision 13) */
   _zoom(k, source) {
     const r = /** @type {Rect} */ (this._rect);
-    return this._apply(scaleAround(r, k, { x: r.x + r.w / 2, y: r.y + r.h / 2 }, { ratio: this._ratio(), W: this._W, H: this._H }), source);
+    return this._apply(this._scale(r, k, { x: r.x + r.w / 2, y: r.y + r.h / 2 }), source);
   }
 
   /** @private */
@@ -834,14 +1098,15 @@ export class TdCropper extends TdBaseElement {
 
   /** @private @param {number} i @param {boolean} user */
   _selectPreset(i, user) {
-    const list = this._presets();
+    const list = this._choices();
     if (!(i >= 0 && i < list.length) || i === this._presetIdx) return;
+    const was = this._ratio();
     this._presetIdx = i;
     this._syncPresetUi();
     this._syncLocked();
     if (!this._ready()) return;
     const r = list[i].ratio;
-    if (r) this._rect = applyPreset(/** @type {Rect} */ (this._rect), r, this._W, this._H);
+    this._reratio(r, was);
     this._renderVars();
     this._syncDesc();
     if (!user) return;
@@ -889,7 +1154,7 @@ export class TdCropper extends TdBaseElement {
   /** @private radiogroup: arrows follow the writing direction (the toolbar is RTL-aware), Home / End */
   _onRatioKey(e) {
     if (e.ctrlKey || e.metaKey || e.altKey || !this._interactive()) return;
-    const n = this._presets().length;
+    const n = this._choices().length;
     const rtl = getComputedStyle(this).direction === 'rtl';
     let i = this._presetIdx;
     if (e.key === 'ArrowDown' || e.key === (rtl ? 'ArrowLeft' : 'ArrowRight')) i = (i + 1) % n;
@@ -932,6 +1197,13 @@ export class TdCropper extends TdBaseElement {
       this._setFocal(clampFocal({ x: this._focal.x + ux * s, y: this._focal.y + uy * s }), 'keyboard');
       return;
     }
+    if (this._pan()) {
+      // pan: the arrow moves the IMAGE that way (the rect goes the other way), 1 % of the FRAME side in model px
+      if (t !== box) return;
+      e.preventDefault();
+      this._apply(moveBy(r, -stepFor(r.w, big) * ux, -stepFor(r.h, big) * uy, this._W, this._H), 'keyboard');
+      return;
+    }
     const sx = stepFor(this._W, big) * ux;
     const sy = stepFor(this._H, big) * uy;
     const handle = t instanceof Element && t.classList.contains('td-cropper__handle--corner') ? t.getAttribute('data-handle') : null;
@@ -965,7 +1237,7 @@ export class TdCropper extends TdBaseElement {
           if (k === 1 || !this._interactive() || this._g) return;
           const at = this._wheelAt;
           const anchor = this._clientToModel(at.x, at.y);
-          this._apply(scaleAround(/** @type {Rect} */ (this._rect), k, anchor, { ratio: this._ratio(), W: this._W, H: this._H }), 'wheel');
+          this._apply(this._scale(/** @type {Rect} */ (this._rect), k, anchor), 'wheel');
         });
       }
       return;
@@ -973,7 +1245,7 @@ export class TdCropper extends TdBaseElement {
     const k = wheelFactor(e.deltaY, e.deltaMode);
     if (k === 1) return;
     const anchor = this._clientToModel(e.clientX, e.clientY);
-    this._apply(scaleAround(/** @type {Rect} */ (this._rect), k, anchor, { ratio: this._ratio(), W: this._W, H: this._H }), 'wheel');
+    this._apply(this._scale(/** @type {Rect} */ (this._rect), k, anchor), 'wheel');
   }
 
   // --- pointer (decision 14): Pointer Events + capture, one update per animation frame ---
@@ -1002,7 +1274,9 @@ export class TdCropper extends TdBaseElement {
     const { box, focal } = this._els;
     const h = t ? t.closest('[data-handle]') : null;
     let kind;
-    if (h && box.contains(h)) kind = 'resize';
+    // pan: anywhere in the stage drags the image; no tap action there, so no drag threshold (the image follows at once)
+    if (this._pan()) kind = 'pan';
+    else if (h && box.contains(h)) kind = 'resize';
     else if (t && !focal.hidden && focal.contains(t)) kind = 'focal';
     else if (t && box.contains(t)) kind = 'move';
     else if (this._focalTool() && this._onImage(e.clientX, e.clientY)) kind = 'tap'; // review R1 #6: never the letterbox / padding
@@ -1010,7 +1284,7 @@ export class TdCropper extends TdBaseElement {
     e.preventDefault();
     const handle = kind === 'resize' ? /** @type {Element} */ (h).getAttribute('data-handle') : null;
     const target = kind === 'resize' ? (CORNERS.includes(/** @type {string} */ (handle)) ? h : box)
-      : kind === 'focal' ? focal : kind === 'move' ? box : null;
+      : kind === 'focal' ? focal : kind === 'move' || kind === 'pan' ? box : null;
     if (target instanceof HTMLElement) {
       try { target.focus({ preventScroll: true }); } catch { /* ignore */ }
     }
@@ -1054,6 +1328,7 @@ export class TdCropper extends TdBaseElement {
       touch: true,
       source: 'pinch',
       d0: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+      mid0: mid,
       anchor: this._clientToModel(mid.x, mid.y),
       rect0: { .../** @type {Rect} */ (this._rect) },
       origin: g.origin,
@@ -1107,7 +1382,11 @@ export class TdCropper extends TdBaseElement {
       const [a, b] = g.ids.map((id) => this._touches.get(id));
       if (!a || !b) return;
       const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
-      next = scaleAround(g.rect0, g.d0 / d, g.anchor, { ratio: this._ratio(), W, H });
+      const o = { ratio: this._ratio(), W, H };
+      if (this._pan()) { // pan: the image also follows the midpoint of the two fingers
+        const dMid = { x: (a.x + b.x) / 2 - g.mid0.x, y: (a.y + b.y) / 2 - g.mid0.y };
+        next = panPinch(g.rect0, g.d0 / d, g.anchor, dMid, this._frameW(), o);
+      } else next = scaleAround(g.rect0, g.d0 / d, g.anchor, o);
     } else {
       const dxp = g.last.x - g.start.x;
       const dyp = g.last.y - g.start.y;
@@ -1115,11 +1394,12 @@ export class TdCropper extends TdBaseElement {
         if (dxp === 0 && dyp === 0) return;
         if (g.threshold && Math.hypot(dxp, dyp) <= TAP_PX) return;
         g.moved = true;
-        if (g.kind === 'move' || g.kind === 'resize') this.setAttribute('data-dragging', '');
+        if (g.kind === 'move' || g.kind === 'resize' || g.kind === 'pan') this.setAttribute('data-dragging', '');
       }
       const dx = dxp / s;
       const dy = dyp / s;
-      if (g.kind === 'move') next = moveBy(g.rect0, dx, dy, W, H);
+      if (g.kind === 'pan') next = panBy(g.rect0, dxp, dyp, s, W, H);
+      else if (g.kind === 'move') next = moveBy(g.rect0, dx, dy, W, H);
       else if (g.kind === 'resize') next = resizeFrom(g.handle, g.rect0, { dx, dy }, { ratio: this._ratio(), W, H });
       else if (g.kind === 'focal' && g.focal0) {
         this._focal = clampFocal({ x: g.focal0.x + dx / W, y: g.focal0.y + dy / H });

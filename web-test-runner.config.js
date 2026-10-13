@@ -41,7 +41,9 @@ const POINTER_FILES = ['src/display/td-v031-sortable.engines.browser-test.js', '
   'src/styles/td-v036-solid-colours.engines.browser-test.js',
   'src/feedback/td-v036-toast-placement.engines.browser-test.js',
   // v0.69.0: real :hover / :active on a plain button (label colour only) — its own browser instances, same reason
-  'src/form/td-v069-button-plain.engines.browser-test.js'];
+  'src/form/td-v069-button-plain.engines.browser-test.js',
+  // v0.73.0: td-cropper mode="pan" — real mouse drags on the stage and on the zoom slider, synthetic pinch, wheel
+  'src/form/td-v073-cropper-pan.engines.browser-test.js'];
 
 /** All src stories (for src/stories-dom.browser-test.js). */
 function storyFiles(dir = 'src', out = []) {

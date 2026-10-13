@@ -207,6 +207,8 @@ export function mountResponsiveFixture(root) {
   </section>
   <section class="rsp-section" data-section="cropper"><h2>Cắt ảnh</h2>
     <td-cropper id="rsp-cropper" src="/test/fixtures/photo.svg" natural-width="1200" natural-height="800" alt="Ảnh phong cảnh" focal-point focal='{"v":1,"x":0.3,"y":0.4}'></td-cropper>
+    <td-cropper id="rsp-cropper-pan" src="/test/fixtures/photo.svg" natural-width="1200" natural-height="800" alt="Ảnh đại diện" mode="pan" shape="circle"></td-cropper>
+    <div class="rsp-narrow"><td-cropper id="rsp-cropper-pan-narrow" src="/test/fixtures/photo.svg" natural-width="1200" natural-height="800" alt="Ảnh đại diện (cột hẹp)" mode="pan"></td-cropper></div>
     <td-media-field name="og" label="Ảnh chia sẻ (OG)" usage croppable focal-point aspect-ratio="1.91" value="m1" preview-src="/test/fixtures/1.svg" crop='{"v":1,"x":0,"y":0.1,"width":1,"height":0.785}'></td-media-field>
   </section>
   <section class="rsp-section" data-section="media-gallery"><h2>Gallery ảnh</h2>

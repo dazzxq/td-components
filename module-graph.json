@@ -386,6 +386,7 @@
     "src/form/td-cropper.js": [
       "src/base/td-base-element.js",
       "src/feedback/crop-dialog.js",
+      "src/form/td-slider.js",
       "src/icons/td-icon.js",
       "src/utils/crop-geometry.js",
       "src/utils/media-field-model.js",

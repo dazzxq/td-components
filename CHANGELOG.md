@@ -2,6 +2,34 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.73.0
+
+**`td-cropper` kiểu `mode="pan"`: khung cố định, kéo / phóng ảnh bên dưới (avatar) — mốc M1; kiểu cũ `box` không đổi** (owner kit, 2026-10-14;
+[plan](docs/internal/plans/v0.73.0-cropper-pan-mode.md), [ADR 0036](docs/internal/decisions/0036-cropper-pan-mode.md)). Option cho hộp thoại, media field / gallery / picker và PHP là mốc M2 (0.74.0), **chưa có**.
+
+### Added
+
+- **`mode`** (`box` mặc định | `pan`): `pan` đặt khung cố định giữa vùng cắt (cách mép `--td-cropper-pan-inset`) và người dùng kéo / phóng **ảnh**. Luôn có tỉ lệ (`aspect-ratio` → preset đang chọn, bỏ mục
+  "Tự do" → 1:1), không tay nắm, không bao giờ cắt tự do. Kéo ảnh ở bất kỳ đâu trên vùng cắt (không ngưỡng kéo), wheel quanh con trỏ, pinch phóng quanh và theo trung điểm, phím mũi tên dịch ảnh,
+  nút − / +, "Đặt lại". Đổi tỉ lệ giữ tâm + zoom tương đối. Giá trị lạ = `box`, im lặng.
+- **Thanh trượt zoom** `<td-slider class="td-cropper__zoom">` (dùng lại `td-slider`, chỉ tạo ở `pan`) cùng hàng giữa nút − và +; thang logarit; `crop-input` / `crop-change` với `source: 'button'`.
+- **`shape`** (`rect` mặc định | `circle`): vẽ khung tròn, chỉ khi `mode="pan"` và tỉ lệ đang áp dụng 1:1; kết quả vẫn là hình vuông bao. Cấu hình tĩnh sai ⇒ một cảnh báo mỗi element.
+- **Trần phóng to 8×** ở `pan` (một pixel ảnh vẽ tối đa 8 pixel màn hình): trần kích thước phần tử, không phải trần chất lượng; chỉ chặn chiều phóng to.
+- **1:1 ở `pan` ra pixel vuông tuyệt đối** (`pixels.width === pixels.height`); output của `box` không đổi một byte.
+- Token `--td-cropper-pan-inset` (`24px`); nhãn `TdCropper.labels.zoom` ("Thu phóng ảnh") và `panHelp`; attribute trạng thái `data-mode="pan"` / `data-shape="circle"` do JS đặt (kiểu `box` không có);
+  `pan` tắt công cụ điểm trọng tâm (giá trị `focal` có sẵn vẫn được giữ và trả ra).
+- Story: "Avatar: khung cố định 1:1", "Avatar tròn", "Pan + preset tỉ lệ", "Pan: ảnh lớn 4000 × 3000" (ảnh mẫu `test/fixtures/crop-large.png`).
+- Cổng trợ năng `test/engines/cropper-pan-a11y.spec.mjs` (cây trợ năng của `pan` trên Chromium / Firefox / WebKit, kiểu `box` làm đối chứng). Ở `pan`, câu trợ giúp của tay nắm và điểm trọng tâm
+  (không có ở kiểu này) được ẩn khỏi trình đọc màn hình.
+- Cử chỉ bị cắt ngang ở `pan`: đổi `mode`, `disabled` hoặc gỡ element khi đang kéo thanh trượt ⇒ về khung lúc bắt đầu, không event (như kéo bị huỷ); `pointercancel` trên thanh trượt ⇒ chốt (`crop-change`).
+
+### Ghi chú
+
+- Vắng `mode` / `shape`: DOM, CSS hiệu lực và hành vi giống 0.72.0 (7 baseline CSP liên quan crop không đổi một byte; thêm state `td-cropper.pan`, `td-cropper.pan-circle`). Site tự đặt attribute tên `mode` /
+  `shape` lên `<td-cropper>` cho việc riêng sẽ bị ảnh hưởng (rủi ro rất thấp).
+- `td-cropper.js` nay import `td-slider.js` (`module-graph.json` đổi); site dùng `td.css` đã có CSS slider.
+- Trợ năng: dịch ảnh (và dịch khung ở `box`) chỉ bằng kéo hoặc bàn phím — chưa đạt WCAG 2.5.7 cho phần dịch, ghi trong [accessibility](docs/guides/accessibility.md). Docs: [cropper.md › Hai kiểu thao tác](docs/components/cropper.md#hai-kiểu-thao-tác--mode-0730).
+
 ## 0.72.0
 
 **`td-media-picker`: `autoSelectFirst` mặc định chỉ bật cho picker chọn MỘT ảnh — picker `multiple` (album, `td-media-gallery`) mở ra chưa chọn gì** (owner kit: "ko nhé";
