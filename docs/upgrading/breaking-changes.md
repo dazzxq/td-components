@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.72.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.74.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.74.0](#0740) | **Đổi giao diện**: `td-media-picker` có album — bìa `contain`, thẻ album "chồng ảnh", tiêu đề "Album n" / "Ảnh n" | Không phải sửa code (API / adapter không đổi). CSS site ghi đè viền / nền / bóng của `.td-media-picker__coll` cần chuyển sang `.td-media-picker__coll-cover`. |
 | [0.72.0](#0720) | **Đổi hành vi**: `autoSelectFirst` của `td-media-picker` mặc định chỉ bật cho picker chọn một ảnh | Picker `multiple` (album, `td-media-gallery`) mở ra chưa chọn gì, "Chèn" tắt tới khi người dùng chọn. Muốn chọn sẵn: `autoSelectFirst: true` cho lần mở đó. Site còn `configureDefaults({ autoSelectFirst: true })` (từ 0.67) thì bỏ dòng đó, nếu không `multiple` vẫn chọn sẵn. Test của site dựa vào "`multiple` mở ra đã có ảnh" phải bật tường minh. |
 | [0.71.0](#0710) | Không phá vỡ: `td-media-field` thêm token `--td-media-field-frame-w` (opt-in); `td-table` cuộn ngang canh thông báo rỗng theo vùng nhìn thấy (sửa lỗi) | Không phải sửa code. Ô logo nhỏ: đặt `--td-media-field-frame-w` thay vì thu `--td-media-field-w` rồi bỏ CSS vòng. Thông báo rỗng của bảng cuộn ngang tự hiện đúng chỗ; bảng không cuộn giống 0.70. |
 | [0.70.0](#0700) | Không phá vỡ: `td-tabs` thêm số đếm (`count`, `tone`, `setTabCount`) (opt-in) | Không phải sửa code. Muốn dải lọc có số đếm: thêm `count` / `tone` vào mục `tabs`, cập nhật số bằng `td.setTabCount(id, n, tone?)` (không dựng lại thanh). Không dùng thì giống từng byte 0.69. |
@@ -97,6 +98,20 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.74.0
+
+**Đổi giao diện (chỉ `td-media-picker` có album).** API, adapter, request, event không đổi; phiên không có bộ sưu tập giống từng byte 0.73.0.
+
+- Bìa album `object-fit: contain` (không cắt ảnh); thẻ album kiểu "chồng ảnh một lớp"; tiêu đề "Album n" đổi từ chữ mờ sang `--td-color-text`, thêm tiêu đề "Ảnh n" trước lưới (chỉ khi dải album hiện).
+- Markup thêm `h4.td-media-picker__items-heading` và `span.td-media-picker__section-count`.
+
+Việc site cần làm:
+
+- CSS site đang nhắm vào viền / nền / bóng / `overflow` của `.td-media-picker__coll` không còn tác dụng: nút này trong suốt, viền + bo góc nằm ở `.td-media-picker__coll-cover`.
+- Muốn tiêu đề khu lưới là "Media" thay vì "Ảnh": `messages: { itemsHeading: 'Media' }`.
 
 ---
 

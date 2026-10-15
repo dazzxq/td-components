@@ -194,6 +194,9 @@ const PRESS_TYPES = [
   // the card's media opener is the innermost control under the finger: its ::after tints the image
   { name: 'picker card', sel: '.td-media-picker__card .td-media-grid__open', token: '--td-color-pressed', pseudo: '::after',
     open: async (page) => { await page.evaluate(() => { window.__openers.picker(); }); await page.locator('.td-media-picker__card').first().waitFor(); await settle(page, '.td-media-picker'); } },
+  // v0.74.0: an album card — the pressed state is on the button, the tint is the ::after of its cover (`look`); a tap enters the album
+  { name: 'picker collection', sel: '.td-media-picker__coll', look: '.td-media-picker__coll .td-media-picker__coll-cover', token: '--td-color-pressed', pseudo: '::after',
+    open: async (page) => { await page.evaluate(() => { window.__openers.pickerCollections(); }); await page.locator('.td-media-picker__coll').first().waitFor(); await settle(page, '.td-media-picker'); } },
   // v0.36.2 review ISSUE-1: tap-to-act surfaces (a tap opens the file picker / dismisses) — pressed only (noTap)
   // the zone's top padding (its centre holds the browse button, a control of its own)
   { name: 'dropzone', sel: 'td-dropzone .td-dropzone__zone', token: '--td-dropzone-bg-pressed', noTap: true, top: true },
@@ -217,11 +220,11 @@ async function controlMatrix(tag, page, input) {
       await load(page);
       if (t.open) await t.open(page);
       const pt = await centre(page, t.sel);
-      if (t.name === 'picker card') { await input.down(pt); await input.cancel(); } // a tap would open the detail
+      if (t.name === 'picker card' || t.name === 'picker collection') { await input.down(pt); await input.cancel(); } // a tap would open the detail / the album
       else await input.tap(pt);
       await quiet(page, t.sel);
       const after = await lookOf(page, t);
-      const h = await centre(page, t.name === 'picker card' ? '.td-media-picker .td-modal__title' : '#root h2');
+      const h = await centre(page, t.name === 'picker card' || t.name === 'picker collection' ? '.td-media-picker .td-modal__title' : '#root h2');
       await input.tap(h);
       await quiet(page, t.sel);
       const away = await lookOf(page, t);
@@ -390,15 +393,15 @@ const bgOf = (page, sel, pseudo = null) => page.evaluate(([s, ps]) => {
  */
 const lookOf = (page, t) => (t.prop
   ? page.evaluate(([s, p]) => { const cs = getComputedStyle(document.querySelector(s)); return `${cs[p]} | ${cs.backgroundColor} | ${cs.boxShadow}`; }, [t.sel, t.prop])
-  : bgOf(page, t.sel, t.pseudo));
+  : bgOf(page, t.look || t.sel, t.pseudo));
 
 async function pressedMatches(page, t) {
   const want = await tokenColour(page, t.token);
-  const got = await page.evaluate(([s, ps, prop]) => {
+  const got = await page.evaluate(([s, ps, prop, look]) => {
     const el = document.querySelector(s);
-    const cs = getComputedStyle(el, ps);
+    const cs = getComputedStyle(look ? document.querySelector(look) : el, ps);
     return { attr: el.hasAttribute('data-td-pressed'), bg: cs.backgroundColor, img: cs.backgroundImage, prop: prop ? cs[prop] : null, shadow: cs.boxShadow };
-  }, [t.sel, t.pseudo || null, t.prop || null]);
+  }, [t.sel, t.pseudo || null, t.prop || null, t.look || null]);
   // a type without a fill: the pressed look is `prop` (the label colour) and NOTHING else — no wash, no shadow
   if (t.prop) return { want, got, ok: got.attr && got.prop === want && got.bg === 'rgba(0, 0, 0, 0)' && got.shadow === 'none' };
   return { want, got, ok: got.attr && got.bg === want };

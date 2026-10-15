@@ -27,7 +27,7 @@ Owner muốn thêm kiểu khung cố định, ảnh di chuyển bên dưới, ch
 6. **Thanh trượt zoom dùng lại `td-slider`**, tạo bằng JS chỉ ở `pan`, cùng hàng giữa nút − và + (đổi so với dự kiến "xuống hàng riêng": co theo toolbar 4rem–10rem là đủ, không tràn). Thang logarit
    (`panZoomToT` / `panTToWidth`), zoom quanh tâm khung, thang đóng băng trong một cử chỉ; rect dưới trần thì cận dưới hiệu lực là chính rect đó. Event của slider bị chặn và đổi thành `crop-input` /
    `crop-change` với `source: 'button'` (không thêm giá trị `source`). Phương án bác: control mới tự viết (lặp lại bàn phím, vùng chạm, hình nhấn, theme đã có ở `td-slider`).
-7. **Hai bản phát hành.** v0.73.0 = M1 (`<td-cropper mode="pan">`); v0.74.0 = M2 (option ở hộp thoại, media field / gallery / picker, helper PHP). M2 chạm input người dùng nên cần security review riêng.
+7. **Hai bản phát hành.** v0.73.0 = M1 (`<td-cropper mode="pan">`); v0.75.0 = M2 (dời sang 0.75.0 vì 0.74.0 dành cho picker; option ở hộp thoại, media field / gallery / picker, helper PHP). M2 chạm input người dùng nên cần security review riêng.
 
 ## Hệ quả
 

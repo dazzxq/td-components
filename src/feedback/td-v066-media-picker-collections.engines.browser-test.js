@@ -262,7 +262,9 @@ describe('v0.66.0 media picker collections — the strip (cases 2, 3, 6c, 6d, 9,
     expect(req.signal instanceof AbortSignal).to.equal(true);
     await until(() => stripShown(), 3000, 'strip shown');
     expect(cardIds()).to.deep.equal(['c1', 'c2', 'c3', 'c4']);
-    expect(q('.td-media-picker__colls-heading').textContent).to.equal('Album');
+    // v0.74.0: the heading is the text "Album" + a muted count span
+    expect(q('.td-media-picker__colls-heading').firstChild.nodeValue).to.equal('Album');
+    expect(q('.td-media-picker__colls-heading .td-media-picker__section-count').textContent).to.equal('4');
     expect(stripList().getAttribute('role')).to.equal('list');
     expect(cards().every((b) => b.parentElement.getAttribute('role') === 'listitem')).to.equal(true);
     expect(card('c1').getAttribute('aria-label')).to.equal('Bộ sưu tập 1, 15 ảnh');
@@ -368,6 +370,7 @@ describe('v0.66.0 media picker collections — the strip (cases 2, 3, 6c, 6d, 9,
     const hint = q('.td-media-picker__colls-hint');
     expect(hint.hidden).to.equal(false);
     expect(hint.textContent).to.equal('Gõ thêm để thu hẹp');
+    expect(q('.td-media-picker__colls-heading .td-media-picker__section-count').textContent, 'truncated → n+').to.equal('20+');
     await closeAll();
     const errors = opErrors();
     const ad = createMockAdapter({ collections: true });

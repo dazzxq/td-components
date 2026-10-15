@@ -235,7 +235,9 @@ for (const state of ['empty', 'filled', 'broken', 'limits']) CASES.push({ kind: 
 // v0.33.0 (dcms2 parity): the picker card state borders (hover / viewing / checked tokens) ≥ 3:1 vs the card surface and
 // the list background (WCAG 1.4.11), card name + meta text, the `.td-media-picker__label` muted label, the cursor page info,
 // the footer count, the `td-pagination` "Hiển thị…" text ('pages' mode) and the upload dialog dropzone texts + badges ≥ 4.7.
-for (const v of ['cards', 'pages', 'upload']) CASES.push({ kind: 'media-picker', v, state: 'rest', pageOnly: true });
+// v0.74.0: the album strip's section headings ("Album n" / "Ảnh n"): the heading text and the muted count ≥ 4.5 / 4.7 on the
+// list background (the count is `--td-text-sm`), the card count line likewise — computed colours; the stacked layer + hairline are decorative.
+for (const v of ['cards', 'pages', 'upload', 'collections']) CASES.push({ kind: 'media-picker', v, state: 'rest', pageOnly: true });
 // v0.35.0: td-cropper over the worst-case images (flat white / flat black): the frame line and the handle fill vs the
 // DIMMED image right outside the box, the handle edge (fill or dark border, whichever faces the image) and the focal ring
 // (white ring or its dark contrast line) vs the image, the keyboard focus outline vs the dimmed image — ≥ 3:1 (WCAG
@@ -826,9 +828,9 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     };
   } else if (c.kind === 'media-picker') {
     const pages = c.v === 'pages';
-    const ad = createMockAdapter({ count: 40, pagination: pages ? 'pages' : 'cursor' });
+    const ad = createMockAdapter({ count: 40, pagination: pages ? 'pages' : 'cursor', ...(c.v === 'collections' ? { collections: true } : {}) });
     TdMediaPicker.open({
-      adapter: ad, pagination: pages ? 'pages' : 'cursor', selection: { mode: 'multiple', maxItems: 5 },
+      adapter: ad, ...(c.v === 'collections' ? { initialQuery: 'anh' } : {}), pagination: pages ? 'pages' : 'cursor', selection: { mode: 'multiple', maxItems: 5 },
       upload: { accept: 'image/*', maxSize: '5MB' },
       autoSelectFirst: false, // v0.68.0: ON by default; the gate ticks m40 / m39 itself (checked / viewing / rest cards)
     });
@@ -896,6 +898,22 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
         { what: 'footer count vs footer', fg: getComputedStyle(count).color, bg: bgOf(count), min: 4.7 },
       ];
       box = root.querySelector('.td-media-picker__dialog').getBoundingClientRect();
+    } else if (c.v === 'collections') {
+      await wait(() => root.querySelector('.td-media-picker__coll') && root.querySelector('.td-media-picker__items-heading:not([hidden]) .td-media-picker__section-count:not([hidden])'), 'album strip + headings');
+      await new Promise((r) => setTimeout(r, 450));
+      const listBg = bgOf(root.querySelector('.td-media-picker__results'));
+      const ah = root.querySelector('.td-media-picker__colls-heading');
+      const ih = root.querySelector('.td-media-picker__items-heading');
+      const cnt = ah.querySelector('.td-media-picker__section-count');
+      const ccount = root.querySelector('.td-media-picker__coll-count');
+      pairs = [
+        { what: 'section heading (Album) vs list bg', fg: getComputedStyle(ah).color, bg: listBg, min: 4.7 },
+        { what: 'section heading (Ảnh) vs list bg', fg: getComputedStyle(ih).color, bg: listBg, min: 4.7 },
+        { what: 'section-count (muted, --td-text-sm) vs list bg', fg: getComputedStyle(cnt).color, bg: listBg, min: 4.5 },
+        { what: 'card name vs list bg', fg: getComputedStyle(root.querySelector('.td-media-picker__coll-name')).color, bg: listBg, min: 4.7 },
+        { what: 'card count line vs list bg', fg: getComputedStyle(ccount).color, bg: listBg, min: 4.5 },
+      ];
+      box = ah.getBoundingClientRect();
     } else if (c.v === 'pages') {
       await wait(() => root.querySelector('.td-media-picker__pager .td-pagination__info'), 'td-pagination');
       await new Promise((r) => setTimeout(r, 450));

@@ -828,8 +828,22 @@ Phía server, `collectionId` ánh xạ 1:1 sang bộ lọc "thuộc album này";
 - **Lỗi hoặc không có thẻ** → dải ẩn. Lỗi phát `operation-error { operation: 'collections', code, retryable }`; lưới ảnh
   **không bao giờ** bị chặn.
 - **Bố cục**: nằm trong vùng kết quả, ngay trước lưới (cuộn cùng lưới). Luôn **một hàng**, tràn thì cuộn ngang ở mọi bề rộng.
-  Thẻ rộng 120–160 px, ảnh bìa 4:3, tên một dòng cắt bằng dấu "…", số ảnh màu phụ. Theo
+  Thẻ rộng 120–160 px kiểu **"chồng ảnh"** (0.74.0): ảnh bìa 4:3 có viền mảnh, `object-fit: contain` (**không cắt** ảnh, ảnh nền
+  trắng hay dọc / ngang đều thấy trọn; phần thừa là nền `--td-color-surface-muted`), MỘT lớp mỏng lệch lên trên sau bìa (pseudo-element,
+  viền `--td-color-border-strong`), tên một dòng cắt bằng dấu "…" và số ảnh màu phụ nằm **dưới** bìa. Nút `.td-media-picker__coll` không
+  còn viền / nền / bóng — viền và bo góc nằm ở `.td-media-picker__coll-cover`. Theo
   [minimal surfaces](../internal/design/liquid-glass.md) và [chuẩn cảm ứng](../guides/touch.md).
+- **Tiêu đề hai khu** (0.74.0): khi dải hiện, vùng kết quả có hai tiêu đề `h4` cùng kiểu (chữ `--td-text-sm`, `--td-fw-medium`,
+  `--td-color-text`; số đếm `span.td-media-picker__section-count` màu phụ, weight thường): "Album n" phía trên dải và "Ảnh n"
+  (`h4.td-media-picker__items-heading`) ngay trước lưới, có đường kẻ mảnh `1px solid var(--td-color-border)` phía trên.
+  - Tiêu đề "Ảnh" **chỉ hiện khi dải hiện** (không có album thì lưới đứng một mình như trước; trong một album thì dải ẩn nên cả hai tiêu đề
+    ẩn, breadcrumb cho biết vị trí). Lưới rỗng khi dải đang hiện → "Ảnh 0"; lỗi tải list → "Ảnh" không số.
+  - Số khu Album = số thẻ đang hiện, hoặc `n+` (`labels.collectionsMore`) khi `truncated`. Số khu Ảnh = `total` của `list()` (cho đúng
+    query + bộ lọc, không phải số ảnh của trang); không có `total` thì bằng số ảnh đang hiện nếu chỉ có một trang; còn lại (cursor, không
+    `total`, còn trang sau) và lúc đang tải thì **không có số**, tiêu đề vẫn còn.
+  - Chữ tiêu đề "Ảnh": picker chỉ `kinds: ['video']` → "Video", chỉ `['file']` → "File"; mọi trường hợp khác (`['image']`, nhiều loại,
+    không đặt) → `labels.itemsHeading` ("Ảnh"). Site muốn "Media" thì đặt `messages: { itemsHeading: 'Media' }`.
+  - Không đổi live region; `td-media-grid` giữ `label` riêng.
 - Bấm một thẻ đã bị gỡ khỏi DOM (thẻ cũ của request trước) thì không làm gì.
 
 ### Vào bộ sưu tập và Quay lại
@@ -898,6 +912,8 @@ await TdMediaPicker.open({
 | `collectionCount` | "{n} ảnh" | Số ảnh trên thẻ |
 | `collectionName` | "{label}, {n} ảnh" | Tên truy cập của nút thẻ (không có `count` → chỉ `label`) |
 | `collectionsTruncated` | "Gõ thêm để thu hẹp" | Gợi ý khi `truncated` |
+| `collectionsMore` (0.74) | "{n}+" | Số đếm cạnh tiêu đề "Album" khi `truncated` |
+| `itemsHeading` (0.74) | "Ảnh" | Tiêu đề khu lưới khi dải hiện (picker chỉ video / chỉ file dùng `kind.video` / `kind.file`) |
 | `collectionEntered` | "{label}: {n} kết quả" | Live region khi vào |
 | `collectionLeft` | "Tất cả: {n} kết quả" | Live region khi quay lại |
 
@@ -1144,6 +1160,7 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `collections` · `allItems` · `location` (0.66) | "Album" · "Tất cả" · "Vị trí" |
 | `collectionCount` · `collectionName` (0.66) | "{n} ảnh" · "{label}, {n} ảnh" |
 | `collectionsTruncated` · `collectionEntered` · `collectionLeft` (0.66) | "Gõ thêm để thu hẹp" · "{label}: {n} kết quả" · "Tất cả: {n} kết quả" |
+| `collectionsMore` · `itemsHeading` (0.74) | "{n}+" · "Ảnh" |
 | `autoSelected` (0.67) | "Đã chọn sẵn: {name}" |
 | `empty` · `emptyHint` · `retry` · `back` | "Không có media nào" · "Thử từ khoá khác" · "Thử lại" · "Quay lại" |
 | `detail` · `detailEmpty` · `detailEmptyHint` · `fileName` | "Chi tiết" · "Chọn một ảnh để xem chi tiết" · "Bấm vào ảnh trong danh sách bên trái" · "Tên file" |
@@ -1338,17 +1355,19 @@ Ghi nhớ khi viết adapter:
             span.td-media-picker__crumb-current[aria-current=page] · td-button.td-media-picker__coll-back ("Quay lại")
           </nav>
           <div class="td-media-picker__colls" hidden>
-            <h4 class="td-media-picker__colls-heading">Album</h4>
+            <h4 class="td-media-picker__colls-heading">Album <span class="td-media-picker__section-count">4</span></h4>
             <div class="td-media-picker__collections" role="list" aria-labelledby="…-ch">
               <div class="td-media-picker__coll-item" role="listitem">
                 <button class="td-media-picker__coll" data-id aria-label="REDMI Turbo 4, 12 ảnh" [title=description]>
-                  <span class="td-media-picker__coll-cover" aria-hidden><img> | <span class="td-media-picker__coll-icon"></span>
+                  <span class="td-media-picker__coll-cover" aria-hidden>   <!-- 0.74: viền + ::before (lớp lệch) -->
+                    <img> | <span class="td-media-picker__coll-icon"></span></span>
                   <span class="td-media-picker__coll-name" aria-hidden> · <span class="td-media-picker__coll-count" aria-hidden>
                 </button>
               </div> …
             </div>
             <p class="td-media-picker__colls-hint" hidden>Gõ thêm để thu hẹp</p>
           </div>
+          <h4 class="td-media-picker__items-heading" hidden>Ảnh <span class="td-media-picker__section-count">50</span></h4>  <!-- 0.74, chỉ khi dải hiện -->
           <td-media-grid class="td-media-picker__grid" select-mode="tick">.td-media-picker__card …</td-media-grid>
           .td-media-picker__skeleton | td-empty-state.td-media-picker__empty | .td-media-picker__error[role=alert] + .td-media-picker__retry
         </section>

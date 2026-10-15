@@ -596,6 +596,9 @@ export function mountResponsiveFixture(root) {
       return TdMediaPicker.open({ adapter, ...(pages ? { pagination: 'pages' } : {}), autoSelectFirst: false,
         selection: multiple ? { mode: 'multiple', maxItems: 5 } : { mode: 'single' } });
     },
+    // v0.74.0: the album strip above the grid (Album / Ảnh headings, stacked-photo cards)
+    pickerCollections: () => TdMediaPicker.open({ adapter: createMockAdapter({ latency: 0, collections: { count: 8 } }), initialQuery: 'anh',
+      autoSelectFirst: false, selection: { mode: 'multiple', maxItems: 5 } }),
     // v0.44.0: type-to-confirm with a 60-character phrase without spaces (must wrap, never overflow)
     modalTypeConfirm: () => { TdModal.confirm({ title: 'Xoá vĩnh viễn đơn hàng', message: 'Không thể hoàn tác.', confirmVariant: 'danger',
       typeToConfirm: 'XOA-VINH-VIEN-DON-HANG-DH10240-VA-TOAN-BO-LICH-SU-THANH-TOAN' }); },

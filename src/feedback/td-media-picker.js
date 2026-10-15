@@ -51,6 +51,9 @@
  * `initialCollection`) also builds, inside the results section before the grid, a breadcrumb
  * `<nav class="td-media-picker__crumbs">` and the collection strip `.td-media-picker__colls` (heading, `role=list` of
  * `button.td-media-picker__coll`, the truncated hint). Other sessions keep the v0.65 DOM and requests exactly.
+ * v0.74.0: the two sections of that outer level share one heading style, each `h4` with a `span.td-media-picker__section-count`
+ * — "Album n" (`.td-media-picker__colls-heading`) and, right before the grid, "Ảnh n" (`h4.td-media-picker__items-heading`,
+ * shown ONLY while the strip is shown). Each card's cover (`.td-media-picker__coll-cover`) carries the stacked-photos layer.
  *
  * @element td-media-picker
  * @property {object} options - OpenMediaPickerOptions (merged over TdMediaPicker.defaults at open())
@@ -242,6 +245,9 @@ export class TdMediaPicker extends HTMLElement {
     blockedMore: '… và {k} nơi khác',
     /** v0.66.0 (K8): collections (albums) */
     collections: 'Album',
+    /** v0.74.0: the album count while the list is cut ('{n}+'); the grid heading next to a visible strip (video / file pickers use `kind.*`) */
+    collectionsMore: '{n}+',
+    itemsHeading: 'Ảnh',
     allItems: 'Tất cả',
     location: 'Vị trí',
     collectionCount: '{n} ảnh',
@@ -668,7 +674,11 @@ export class TdMediaPicker extends HTMLElement {
     const heading = document.createElement('h4');
     heading.className = 'td-media-picker__colls-heading';
     heading.id = `${s.id}-ch`;
-    heading.textContent = t('collections');
+    heading.append(document.createTextNode(t('collections')), document.createTextNode(' ')); // the space keeps the name "Album 4"
+    const collsCount = document.createElement('span');
+    collsCount.className = 'td-media-picker__section-count';
+    collsCount.hidden = true;
+    heading.appendChild(collsCount);
     const list = document.createElement('div');
     list.className = 'td-media-picker__collections';
     list.setAttribute('role', 'list');
@@ -678,9 +688,21 @@ export class TdMediaPicker extends HTMLElement {
     hint.textContent = t('collectionsTruncated');
     hint.hidden = true;
     box.append(heading, list, hint);
+    // v0.74.0: the grid's own heading, shown only while the strip is (see _syncSectionHeads)
+    const itemsHead = document.createElement('h4');
+    itemsHead.className = 'td-media-picker__items-heading';
+    itemsHead.id = `${s.id}-ih`;
+    itemsHead.hidden = true;
+    itemsHead.append(document.createTextNode(''), document.createTextNode(' '));
+    const itemsCount = document.createElement('span');
+    itemsCount.className = 'td-media-picker__section-count';
+    itemsCount.hidden = true;
+    itemsHead.appendChild(itemsCount);
     e.results.insertBefore(crumbs, e.grid);
     e.results.insertBefore(box, e.grid);
-    Object.assign(e, { crumbs, crumbAll: all, crumbCurrent: current, collBack: back, colls: box, collList: list, collHint: hint });
+    e.results.insertBefore(itemsHead, e.grid);
+    Object.assign(e, { crumbs, crumbAll: all, crumbCurrent: current, collBack: back, colls: box, collList: list, collHint: hint,
+      collsCount, itemsHead, itemsCount });
     this._renderCrumbs();
   }
 
@@ -717,6 +739,51 @@ export class TdMediaPicker extends HTMLElement {
     e.colls.hidden = true;
     e.collHint.hidden = true;
     e.collList.replaceChildren();
+    this._syncSectionHeads();
+  }
+
+  /**
+   * @private v0.74.0: the number next to "Ảnh" — the total of the current query + filters when the adapter gave one, the
+   * items shown when a single page is all there is, else null (unknown: no number). null too while loading / on an error.
+   * @returns {number|null}
+   */
+  _itemsCount() {
+    const s = this._s;
+    const e = s.els;
+    if (!e.skeleton.hidden || !e.error.hidden) return null;
+    const ps = s.pages;
+    if (Number.isInteger(ps.total)) return ps.total;
+    if (ps.page === 1 && !ps.hasNext) return s.items.size;
+    return null;
+  }
+
+  /**
+   * @private v0.74.0 (idempotent): "Ảnh" shows ⇔ the strip does; refresh its text + count and the album count. Cheap — safe to
+   * call from every place that shows / hides the strip or changes the grid state.
+   */
+  _syncSectionHeads() {
+    const s = this._s;
+    const e = s.els;
+    if (!e.itemsHead) return;
+    const shown = !e.colls.hidden;
+    e.itemsHead.hidden = !shown;
+    if (!shown) return;
+    const cards = s.collCards;
+    if (cards) {
+      const n = cards.items.length;
+      e.collsCount.textContent = cards.truncated ? this._t('collectionsMore', { n }) : String(n);
+      e.collsCount.hidden = false;
+    } else {
+      e.collsCount.hidden = true;
+      e.collsCount.textContent = '';
+    }
+    const k = s.kinds;
+    const only = Array.isArray(k) && k.length === 1 ? k[0] : '';
+    const text = only === 'video' || only === 'file' ? this._t(`kind.${only}`) : this._t('itemsHeading');
+    if (e.itemsHead.firstChild.nodeValue !== text) e.itemsHead.firstChild.nodeValue = text;
+    const n = this._itemsCount();
+    e.itemsCount.hidden = n === null;
+    e.itemsCount.textContent = n === null ? '' : String(n);
   }
 
   /**
@@ -808,6 +875,7 @@ export class TdMediaPicker extends HTMLElement {
     }
     e.collHint.hidden = !cards.truncated;
     e.colls.hidden = false;
+    this._syncSectionHeads();
   }
 
   /**
@@ -1251,6 +1319,7 @@ export class TdMediaPicker extends HTMLElement {
     s.els.empty.hidden = true;
     s.els.grid.hidden = true;
     s.els.error.hidden = false;
+    if (s.els.itemsHead) this._syncSectionHeads();
   }
 
   /** @private skeleton cards while a page loads */
@@ -1260,6 +1329,7 @@ export class TdMediaPicker extends HTMLElement {
     e.empty.hidden = true;
     e.grid.hidden = true;
     e.skeleton.hidden = false;
+    if (e.itemsHead) this._syncSectionHeads();
   }
 
   /** @private */
@@ -1308,6 +1378,7 @@ export class TdMediaPicker extends HTMLElement {
       if (auto) text = `${text}. ${this._t('autoSelected', { name: auto.name || auto.id })}`; // one message: the last wins
       this._announce(text);
     }
+    if (s.els.itemsHead) this._syncSectionHeads();
     this._autoPreview(page);
   }
 

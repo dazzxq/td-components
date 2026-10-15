@@ -2,10 +2,37 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.74.0
+
+**`td-media-picker`: hai khu "Album" và "Ảnh" ở cấp ngoài nhận ra ngay, bìa album không bị cắt, thẻ album kiểu "chồng ảnh"** (yêu cầu từ site dsuite, owner kit đã duyệt phương án B;
+[plan](docs/internal/plans/v0.74.0-media-picker-album-sections.md)). Không đổi API JS, adapter, request hay event.
+
+### Changed
+
+- **Bìa album `object-fit: contain`** (trước là `cover`): ảnh sản phẩm nền trắng không còn bị cắt; phần thừa là nền `--td-color-surface-muted`.
+- **Thẻ album kiểu "chồng ảnh một lớp"**: bìa 4:3 có viền 1px (`--td-color-border`) và bo góc `--td-radius-md`; MỘT lớp mỏng lệch lên trên sau bìa (`::before`,
+  viền `--td-color-border-strong`, không thêm phần tử HTML); tên + số ảnh nằm dưới bìa. Nút `.td-media-picker__coll` **không còn** viền / nền / bóng / `overflow: hidden` —
+  viền, bo góc và hình nhấn chuyển sang `.td-media-picker__coll-cover` (hover và nhấn đổi viền bìa sang accent; lớp tint nhấn là `::after` của bìa, chỉ có khi đang nhấn).
+  Site đang ghi đè các thuộc tính đó trên nút cần chuyển sang bìa.
+- **Tiêu đề hai khu cùng kiểu** (chữ `--td-text-sm`, `--td-fw-medium`, `--td-color-text`; số đếm màu phụ, weight thường): "Album n" (heading cũ, trước là chữ mờ) và **"Ảnh n"** mới
+  ngay trước lưới, có đường kẻ `1px solid var(--td-color-border)` phía trên. "Ảnh" chỉ hiện khi dải album hiện. Số khu Album = số thẻ (`n+` khi `truncated`); số khu Ảnh = `total`
+  của `list()`, hoặc số ảnh đang hiện khi chỉ có một trang, hoặc không có số (cursor không `total`, đang tải, lỗi).
+
+### Added
+
+- Nhãn `collectionsMore` (`'{n}+'`) và `itemsHeading` (`'Ảnh'`; picker chỉ `kinds: ['video']` / `['file']` dùng `kind.video` / `kind.file`).
+- Phần tử `h4.td-media-picker__items-heading` và `span.td-media-picker__section-count` (chỉ ở phiên có bộ sưu tập). State CSP `td-media-picker.collections`; ca test engines
+  `td-v074-media-picker-album-sections`, ca responsive `media-picker-collections` (360 / 768 / 1280), hàng `picker collection` ở `test:touch`, cặp contrast `section-count`.
+
+### Ghi chú
+
+- Không phá vỡ: API / adapter / request / event giữ nguyên; phiên không có bộ sưu tập có DOM giống từng byte 0.73.0; không token mới (golden không đổi).
+- Cropper M2 (option cho hộp thoại / media field / gallery / picker / PHP) dời sang **0.75.0** vì 0.74.0 dành cho picker.
+
 ## 0.73.0
 
 **`td-cropper` kiểu `mode="pan"`: khung cố định, kéo / phóng ảnh bên dưới (avatar) — mốc M1; kiểu cũ `box` không đổi** (owner kit, 2026-10-14;
-[plan](docs/internal/plans/v0.73.0-cropper-pan-mode.md), [ADR 0036](docs/internal/decisions/0036-cropper-pan-mode.md)). Option cho hộp thoại, media field / gallery / picker và PHP là mốc M2 (0.74.0), **chưa có**.
+[plan](docs/internal/plans/v0.73.0-cropper-pan-mode.md), [ADR 0036](docs/internal/decisions/0036-cropper-pan-mode.md)). Option cho hộp thoại, media field / gallery / picker và PHP là mốc M2 (0.75.0, dời sang 0.75.0 vì 0.74.0 dành cho picker), **chưa có**.
 
 ### Added
 

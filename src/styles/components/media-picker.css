@@ -1036,11 +1036,33 @@
 		min-width: 0;
 	}
 
-	.td-media-picker__colls-heading {
+	/* v0.74.0: the two section headings (Album / Ảnh) share one style; the count is the muted, regular-weight part */
+	.td-media-picker__colls-heading,
+	.td-media-picker__items-heading {
 		margin: 0;
 		font-size: var(--td-text-sm);
-		font-weight: 500;
+		font-weight: var(--td-fw-medium);
+		color: var(--td-color-text);
+	}
+
+	.td-media-picker__section-count {
+		font-weight: 400;
 		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker__section-count[hidden] {
+		display: none;
+	}
+
+	/* the grid's heading: a hairline above it, the gap of `results` pulled back so it sits close to its grid (as Album does) */
+	.td-media-picker__items-heading {
+		padding-block-start: var(--td-space-md);
+		margin-block: var(--td-space-xs) calc(var(--td-space-xs) - var(--td-media-picker-gap));
+		border-block-start: 1px solid var(--td-color-border);
+	}
+
+	.td-media-picker__items-heading[hidden] {
+		display: none;
 	}
 
 	.td-media-picker__collections {
@@ -1059,27 +1081,31 @@
 		flex: none;
 	}
 
+	/*
+	 * v0.74.0: "stacked photos" card. The button is bare (no border / fill / shadow); the cover carries the 1px border + the
+	 * radius, and ONE offset layer peeks out above it (`::before`, 6px up, 10px in each side). `padding-block-start: 7px`
+	 * keeps that layer inside the button so the strip's `overflow` cannot clip it; `isolation` keeps its `z-index: -1` above
+	 * the strip's background.
+	 */
 	.td-media-picker__coll {
 		display: flex;
 		flex-direction: column;
 		box-sizing: border-box;
 		width: 160px;
-		padding: 0;
-		overflow: hidden;
+		padding: 7px 0 0;
 		font: inherit;
 		color: inherit;
 		text-align: start;
 		cursor: pointer;
-		background: var(--td-color-surface);
-		border: 2px solid transparent;
-		border-radius: var(--td-media-picker-card-radius);
-		box-shadow: var(--td-media-picker-card-shadow);
-		transition: border-color var(--td-dur-fast) var(--td-ease);
+		background: none;
+		border: 0;
+		border-radius: var(--td-radius-md);
+		isolation: isolate;
 		-webkit-tap-highlight-color: transparent;
 	}
 
 	@media (hover: hover) and (pointer: fine) {
-		.td-media-picker__coll:hover {
+		.td-media-picker__coll:hover .td-media-picker__coll-cover {
 			border-color: var(--td-media-picker-card-hover);
 		}
 	}
@@ -1089,24 +1115,52 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
-	.td-media-picker__coll:is(:active, [data-td-pressed]) {
+	.td-media-picker__coll:is(:active, [data-td-pressed]) .td-media-picker__coll-cover {
 		border-color: var(--td-media-picker-card-hover);
-		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
 		transition-duration: 0s;
 	}
 
+	/* the press tint exists ONLY while pressed, over the image */
+	.td-media-picker__coll:is(:active, [data-td-pressed]) .td-media-picker__coll-cover::after {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		content: "";
+		background: var(--td-color-pressed);
+		border-radius: inherit;
+	}
+
 	.td-media-picker__coll-cover {
+		position: relative;
 		display: block;
 		aspect-ratio: 4 / 3;
-		overflow: hidden;
 		background: var(--td-color-surface-muted);
+		border: 1px solid var(--td-color-border);
+		border-radius: var(--td-radius-md);
+		transition: border-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-media-picker__coll-cover::before {
+		position: absolute;
+		z-index: -1;
+		inset: -6px 10px auto;
+		height: 50%;
+		pointer-events: none;
+		content: "";
+		background: var(--td-color-surface-muted);
+		border: 1px solid var(--td-color-border-strong);
+		border-radius: var(--td-radius-md);
 	}
 
 	.td-media-picker__coll-cover img {
+		position: absolute;
+		inset: 0;
 		display: block;
 		width: 100%;
+		max-width: none; /* never the host reset's max-width (Tailwind preflight) */
 		height: 100%;
-		object-fit: cover;
+		object-fit: contain;
+		border-radius: inherit;
 	}
 
 	.td-media-picker__coll-icon {
@@ -1119,7 +1173,7 @@
 	}
 
 	.td-media-picker__coll-name {
-		padding: 0.375rem 0.5rem 0;
+		padding: 0.375rem 0.25rem 0;
 		overflow: hidden;
 		font-size: var(--td-text-sm);
 		font-weight: 500;
@@ -1129,7 +1183,7 @@
 	}
 
 	.td-media-picker__coll-count {
-		padding: 0 0.5rem 0.375rem;
+		padding: 0 0.25rem 0.375rem;
 		font-size: var(--td-text-xs);
 		color: var(--td-color-text-muted);
 	}
@@ -1151,18 +1205,23 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.td-media-picker__coll {
+		.td-media-picker__coll-cover {
 			transition: none;
 		}
 	}
 
 	@media (forced-colors: active) {
-		.td-media-picker__coll {
+		.td-media-picker__coll-cover {
+			border-color: CanvasText;
+		}
+
+		.td-media-picker__coll-cover::before {
+			background: Canvas;
 			border-color: CanvasText;
 		}
 
 		@media (hover: hover) and (pointer: fine) {
-			.td-media-picker__coll:hover {
+			.td-media-picker__coll:hover .td-media-picker__coll-cover {
 				border-color: Highlight;
 			}
 		}

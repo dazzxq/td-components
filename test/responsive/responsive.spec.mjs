@@ -138,6 +138,8 @@ const SCENARIOS = [
   { name: 'media-picker', act: (p) => p.evaluate(() => { window.__openers.picker(); }), panel: '.td-media-picker .td-modal__dialog', ready: '.td-media-picker__card', picker: true, see: ['.td-media-picker .td-modal__close', '.td-media-picker__confirm'] },
   { name: 'media-picker-multiple', act: (p) => p.evaluate(() => { window.__openers.picker(true); }), panel: '.td-media-picker .td-modal__dialog', ready: '.td-media-picker__card', picker: true, see: ['.td-media-picker .td-modal__close', '.td-media-picker__confirm'] },
   { name: 'media-picker-pages', act: (p) => p.evaluate(() => { window.__openers.picker(false, true); }), panel: '.td-media-picker .td-modal__dialog', ready: '.td-media-picker__card', picker: true, pages: true, see: ['.td-media-picker .td-modal__close'] },
+  // v0.74.0: the album strip (8 cards = overflows at every width) + the two section headings above / below it
+  { name: 'media-picker-collections', act: (p) => p.evaluate(() => { window.__openers.pickerCollections(); }), panel: '.td-media-picker .td-modal__dialog', ready: '.td-media-picker__coll', picker: true, collections: true, see: ['.td-media-picker .td-modal__close'] },
   // v0.35.0: the crop dialog (overlay ⇒ @media: box from 720, full viewport below, short band) and the picker crop step
   { name: 'crop-dialog', act: (p) => p.evaluate(() => { window.__openers.cropDialog(); }), panel: '.td-crop-dialog .td-modal__dialog', ready: '.td-crop-dialog td-cropper[data-state="ready"]', crop: true, see: ['.td-crop-dialog__confirm', '.td-crop-dialog__cancel'] },
   { name: 'picker-crop', act: async (p) => { await p.evaluate(() => { window.__openers.pickerCrop(); }); await p.locator('.td-media-picker__card').first().click(); await p.click('.td-media-picker__confirm'); }, panel: '.td-crop-dialog .td-modal__dialog', ready: '.td-crop-dialog td-cropper[data-state="ready"]', crop: true, see: ['.td-crop-dialog__confirm', '.td-crop-dialog__cancel'] },
@@ -1035,8 +1037,31 @@ async function runOverlays(page, c, tag, shot) {
           return Math.min(g.getBoundingClientRect().bottom, r.getBoundingClientRect().bottom, window.innerHeight)
             - Math.max(g.getBoundingClientRect().top, r.getBoundingClientRect().top, 0);
         });
-        if (gridH < 112) err.push(`visible grid height ${Math.round(gridH)}px < 112 (one row of cards)`);
+        // v0.74.0: with the album strip up in a short band (≤ 500 tall) the grid sits below the strip inside the scroller — reached by scrolling
+        if (gridH < 112 && !(s.collections && vp.h <= 500)) err.push(`visible grid height ${Math.round(gridH)}px < 112 (one row of cards)`);
         check(tag, `${s.name}: viewport dialog + inner layout`, err);
+      }
+      if (s.collections) {
+        // v0.74.0: cards are 120px < 720 (160 from 720), the strip scrolls inline inside the results, both headings fit their line,
+        // nothing makes the results (or the page) scroll sideways
+        await page.locator('.td-media-picker__items-heading').waitFor({ state: 'visible' });
+        const c = await page.evaluate(() => {
+          const r = (sel) => document.querySelector(sel);
+          const list = r('.td-media-picker__collections');
+          const res = r('.td-media-picker__results');
+          const heads = ['.td-media-picker__colls-heading', '.td-media-picker__items-heading'].map((sel) => r(sel));
+          return { card: r('.td-media-picker__coll').getBoundingClientRect().width, listScroll: list.scrollWidth - list.clientWidth,
+            resOverflow: res.scrollWidth - res.clientWidth, docOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            headFit: heads.every((h) => h.scrollWidth <= h.clientWidth + 1), headOrder: heads[0].compareDocumentPosition(heads[1]) & Node.DOCUMENT_POSITION_FOLLOWING ? 1 : 0 };
+        });
+        const err = [];
+        if (Math.abs(c.card - (vp.w < 720 ? 120 : 160)) > 1) err.push(`card ${Math.round(c.card)}px`);
+        if (c.listScroll <= 0) err.push('the 8-card strip does not scroll inline');
+        if (c.resOverflow > 1) err.push(`results scroll sideways (+${c.resOverflow}px)`);
+        if (c.docOverflow > 1) err.push(`page scrolls sideways (+${c.docOverflow}px)`);
+        if (!c.headFit) err.push('a section heading is cut');
+        if (!c.headOrder) err.push('Album heading is not before the Ảnh heading');
+        check(tag, `${s.name}: strip + section headings`, err);
       }
       if (s.crop) {
         // v0.35.0 (plan decision 21): the crop stage keeps ≥ 200 px of height, even in the short band (≤ 500 tall)

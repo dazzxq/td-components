@@ -5104,6 +5104,50 @@
       ],
       "settle": 600,
       "selectorNote": "v0.35: crop step (nested td-crop-dialog over the picker), locked 1.91:1, focal tool; footer Quay lại / Chèn"
+    },
+    {
+      "state": "collections",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const ad = createMockAdapter({ count: 12, collections: true }); TdMediaPicker.open({ autoSelectFirst: false, adapter: ad, initialQuery: 'anh' }); await w(600);",
+      "selectors": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker__content",
+        ".td-media-picker__results",
+        ".td-media-picker__colls",
+        ".td-media-picker__colls-heading",
+        ".td-media-picker__items-heading",
+        ".td-media-picker__section-count",
+        ".td-media-picker__collections",
+        ".td-media-picker__coll-item",
+        ".td-media-picker__coll",
+        ".td-media-picker__coll-cover",
+        ".td-media-picker__coll-cover img",
+        ".td-media-picker__coll-name",
+        ".td-media-picker__coll-count",
+        ".td-media-picker__colls-hint",
+        ".td-media-picker__grid"
+      ],
+      "portal": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker__content",
+        ".td-media-picker__results",
+        ".td-media-picker__colls",
+        ".td-media-picker__colls-heading",
+        ".td-media-picker__items-heading",
+        ".td-media-picker__section-count",
+        ".td-media-picker__collections",
+        ".td-media-picker__coll-item",
+        ".td-media-picker__coll",
+        ".td-media-picker__coll-cover",
+        ".td-media-picker__coll-cover img",
+        ".td-media-picker__coll-name",
+        ".td-media-picker__coll-count",
+        ".td-media-picker__colls-hint",
+        ".td-media-picker__grid"
+      ],
+      "settle": 600,
+      "selectorNote": "v0.74: the collection strip above the grid (initialQuery) — Album / Ảnh headings + counts, stacked-photo cards (cover border, contain img, name, count); pseudo-elements are covered by the engines tests"
     }
   ],
   "td-media-field": [
