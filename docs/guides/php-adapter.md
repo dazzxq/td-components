@@ -124,7 +124,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.74.0/
+public/assets/vendor/td-components/0.75.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
   dist/  module-graph.json                    (0.64.0+: bản minify + đồ thị preload)
 ```
@@ -133,7 +133,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.74.0';
+const TD_VERSION = '0.75.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -1386,11 +1386,12 @@ serialize: adapter là JS của site ([Media picker](../components/media-picker.
 | `crop` | mảng `['x' => …, 'y' => …, 'width' => …, 'height' => …]` (số, chuẩn hoá 0..1) **hoặc** chuỗi JSON v1 (`{"v":1,…}` — nên in lại được nguyên `$_POST['og']['crop']` sau lỗi validate). `null` / `''` / `'null'` → `null` im lặng; sai (thiếu / thừa key, ngoài 0..1, `x + width > 1`…) → `null` + một `E_USER_WARNING` |
 | `croppable` (0.35.0) | `true` → in nút "Cắt ảnh" `.td-media-field__crop-btn` (ẩn tới khi JS chạy, như Đổi / Gỡ) + `span.td-media-field__status` (`role="status"`, báo lỗi nguồn ảnh). Bốn option 0.35 cần `usage`: thiếu → bỏ cả bốn + một `E_USER_WARNING` (fail closed) |
 | `crop_ratio` (0.35.0) | `'1.91'` \| `'16/9'` \| `'16:9'` \| `'free'` → thuộc tính `crop-ratio`. Vắng → JS theo `aspect_ratio`, rồi tự do. Sai hoặc tỉ lệ ngoài **[0.01, 100]** → bỏ + một `E_USER_WARNING` (bảng `CROP_RATIO_CASES` JS = PHP) |
+| `crop_mode`, `crop_shape` (0.75.0) | chuỗi `pan` / `circle` (cắt khoảng trắng kiểu JS, không phân biệt hoa thường) → in hằng `crop-mode="pan"` / `crop-shape="circle"`; mọi giá trị khác (`box`, `rect`, lạ, không phải chuỗi) → không in gì, im lặng (bảng `CROP_MODE_CASES` / `CROP_SHAPE_CASES` JS = PHP). Cần `usage` (thiếu → bỏ + cùng `E_USER_WARNING`) |
 | `focal_point` (0.35.0) | `true` (+ `usage`) → in hidden `input.td-media-field__focal` `name="og[focal]"` (mục thứ tư, sau `og[crop]`) |
 | `focal` (0.35.0) | mảng `['x' => …, 'y' => …]` (0..1) **hoặc** chuỗi JSON v1 `{"v":1,"x","y"}` (in lại được nguyên `$_POST['og']['focal']`). `null` / `''` / `'null'` → `null` im lặng; sai → `null` + một `E_USER_WARNING` |
 | `id` | id của **host**; id con suy ra: `{id}-label`, `{id}-state`, `{id}-alt`, `{id}-help`, `{id}-error`. Không có → id duy nhất trong request (`td-{name}-{n}`) |
 | `class` | class thêm trên host (sau `td-media-field`) |
-| `attrs` | attribute thêm trên host (allowlist chung + `data-*`). Tên component tự đọc (`id` `class` `name` `label` `aspect-ratio` `preview-fit` `accept-kind` `usage` `required` `disabled` `value` `preview-src` `preview-alt` `kind` `alt` `crop` `prompt` `helper-text` `error-text`; 0.35: `croppable` `crop-ratio` `focal-point` `focal`) và mọi `data-td-*` bị bỏ |
+| `attrs` | attribute thêm trên host (allowlist chung + `data-*`). Tên component tự đọc (`id` `class` `name` `label` `aspect-ratio` `preview-fit` `accept-kind` `usage` `required` `disabled` `value` `preview-src` `preview-alt` `kind` `alt` `crop` `prompt` `helper-text` `error-text`; 0.35: `croppable` `crop-ratio` `focal-point` `focal`; 0.75: `crop-mode` `crop-shape`) và mọi `data-td-*` bị bỏ |
 
 Nhãn in sẵn là **tiếng Việt mặc định** (`Td::MEDIA_FIELD_LABELS`, giống `TdMediaField.labels`). Site đổi
 `TdMediaField.labels` trong JS → chữ in sẵn không khớp `render()` → lúc nâng cấp field **render lại an toàn** (không nhận
@@ -1464,6 +1465,7 @@ Không in endpoint, quyền hay asset serialize.
 | `caption` (0.51) | `true` / `'line'` (ô một dòng) / `'multiline'` (textarea) → `name[i][caption]` sau `[alt]`; giá trị khác → `'line'` + một `E_USER_WARNING`; không có `usage` → bỏ + warning. Tắt → không gửi khoá (server **giữ** chú thích; `''` = null). Line in bản đã gộp xuống dòng thành dấu cách, `items` giữ chữ gốc |
 | `alt_maxlength`, `caption_maxlength` (0.51) | giới hạn mềm: `int` hoặc chuỗi đúng `^[1-9][0-9]{0,6}$`, trong 1…500 / 1…1000 (không dùng `Td::intOpt`: `'255 '`, `'2.5e2'`, `true`, `255.0` đều sai) → sai / thiếu `usage` / thiếu `caption` = tắt + một warning (không in giá trị). In bộ đếm `{count}/{max}` từ 80 % + dòng lỗi + `aria-invalid` khi vượt — **không cắt**, form no-JS vẫn gửi đủ chữ (server 422) |
 | `croppable`, `crop_ratio`, `focal_point` | cần `usage` (thiếu → bỏ + một `E_USER_WARNING`); `crop_ratio` như field (`free`, `W/H`… trong [0.01, 100]) |
+| `crop_mode`, `crop_shape` (0.75.0) | như field: chỉ `pan` / `circle` được in (`crop-mode` / `crop-shape`), giá trị khác im lặng không in; cần `usage` |
 | `cover` | badge "Ảnh bìa" trên ô đầu |
 | `aspect_ratio`, `preview_fit`, `accept_kind` | tỉ lệ ô (mặc định 1:1), `cover`/`contain`, loại nhận (chữ "ảnh" / "video" / "file") |
 | `id`, `class`, `attrs` | host id (id con suy ra từ nó), class thêm, `attrs` theo allowlist (tên của component + `data-td-*` bị chặn) |

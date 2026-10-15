@@ -30,7 +30,7 @@ import { LAYERS } from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { TdCropper } from '../form/td-cropper.js';
 import { cropChanged, focalChanged, isWholeImage, clampFocal, round4 } from '../utils/crop-geometry.js';
-import { cropRatioInRange } from '../utils/media-field-model.js';
+import { cropRatioInRange, parseCropMode, parseCropShape } from '../utils/media-field-model.js';
 
 let warnedRatio = false;
 function warnRatioOnce() {
@@ -112,6 +112,9 @@ function boxOpt(v) {
  * @param {number} [opts.naturalWidth] original size (integers 1–100000, both or neither; omit ⇒ no `pixels`)
  * @param {number} [opts.naturalHeight]
  * @param {number|null} [opts.aspectRatio=null] a number ⇒ locked (title "Cắt ảnh · 16:9"); null ⇒ free + presets
+ * @param {'box'|'pan'} [opts.mode='box'] v0.75.0: `pan` ⇒ `<td-cropper mode="pan">` (frame still, image moves — avatars);
+ *   same grammar as the attribute (trimmed, case-insensitive; anything else = `box`, no attribute set)
+ * @param {'rect'|'circle'} [opts.shape='rect'] v0.75.0: `circle` ⇒ `shape="circle"` (the cropper ignores it unless pan + 1:1)
  * @param {{x:number,y:number,width:number,height:number}|null} [opts.crop=null] normalised start crop
  * @param {{x:number,y:number}|null} [opts.focalPoint=null]
  * @param {boolean} [opts.allowFocalPoint=false] show the focal-point tool
@@ -185,6 +188,9 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
   const cropper = /** @type {TdCropper} */ (document.createElement('td-cropper'));
   cropper.className = 'td-crop-dialog__cropper';
   if (lock) cropper.setAttribute('aspect-ratio', ratioAttr(lock));
+  // v0.75.0: only the allowlisted constants are ever set (absent option ⇒ no attribute, the 0.74 DOM)
+  if (parseCropMode(o.mode) === 'pan') cropper.setAttribute('mode', 'pan');
+  if (parseCropShape(o.shape) === 'circle') cropper.setAttribute('shape', 'circle');
   const nw = sizeAttr(o.naturalWidth);
   const nh = sizeAttr(o.naturalHeight);
   if (nw && nh) {

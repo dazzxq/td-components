@@ -2,6 +2,31 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.75.0
+
+**Cropper `pan` (M2): `mode` / `shape` đi qua mọi nơi nhúng `td-cropper` — hộp thoại, `td-media-field`, `td-media-gallery`, media picker và helper PHP**
+(owner kit, 2026-10-14; [plan](docs/internal/plans/v0.73.0-cropper-pan-mode.md), [ADR 0036](docs/internal/decisions/0036-cropper-pan-mode.md)). Ví dụ avatar tròn:
+`<td-media-field usage croppable crop-ratio="1" crop-mode="pan" crop-shape="circle">`. Hoàn toàn opt-in: vắng tham số thì `<td-cropper>` trong hộp thoại
+không có attribute `mode` / `shape` (DOM và hành vi giống từng byte 0.74.0).
+
+### Added
+
+- **`TdCropper.openDialog({ mode, shape })`** (= `openCropDialog`): `mode: 'pan'` ⇒ `<td-cropper mode="pan">`, `shape: 'circle'` ⇒ `shape="circle"`. Chỉ hằng `pan` / `circle` được đặt lên cropper;
+  mọi giá trị khác (`box`, `rect`, lạ, rỗng, không phải chuỗi) ⇒ không đặt attribute.
+- **`<td-media-field crop-mode crop-shape>`** (cần `usage` + `croppable`): áp cho cả nút "Cắt ảnh" lẫn bước cắt của picker (field luôn đặt `crop` ở `open()`, nên thắng `pickerOptions.crop` /
+  `configureDefaults({ crop })`). Chỉ giá trị khác mặc định mới được đưa vào object `crop` (vắng ⇒ object y như 0.74.0). Thiếu `usage` ⇒ cùng cảnh báo một lần với `croppable`.
+- **`<td-media-gallery crop-mode crop-shape>`** (cần `usage`): áp cho hộp cắt của mọi ô; thêm vào `observedAttributes` và danh sách attribute host nhận lại từ SSR.
+- **`TdMediaPicker.open({ crop: { mode, shape } })`** / `configureDefaults`: `resolveOptions` chuẩn hoá thành `cropResolved = { aspectRatio, allowFocalPoint, mode: 'box' | 'pan', shape: 'rect' | 'circle' }`.
+- **PHP `td_media_field` / `td_media_gallery`: option `crop_mode`, `crop_shape`** in `crop-mode="pan"` / `crop-shape="circle"` (chỉ hằng của kit, không in lại chuỗi của site); hai tên thêm vào danh sách
+  attribute dành riêng của `attrs`. Giá trị khác im lặng không in; thiếu `usage` ⇒ bỏ + một `E_USER_WARNING`.
+- `parseCropMode()` / `parseCropShape()` trong `src/utils/media-field-model.js` (văn phạm của attribute `td-cropper`: `trim().toLowerCase()`, danh sách trắng) và bảng parity `CROP_MODE_CASES` /
+  `CROP_SHAPE_CASES` (JS = PHP). Test engines `td-v075-cropper-pan-embeds` (3 engine), test node cho model, `resolveOptions` và hai helper PHP.
+
+### Ghi chú
+
+- Không phá vỡ: không token, CSS, nhãn, event hay state CSP mới; ảnh xem trước tròn của field / gallery là CSS của site (recipe trong [media-field.md](docs/components/media-field.md#avatar-tròn-0750)).
+- `cropResolved` của `resolveOptions` giờ luôn có `mode` / `shape` (test node của 0.35 cập nhật theo); API công khai của picker không đổi.
+
 ## 0.74.0
 
 **`td-media-picker`: hai khu "Album" và "Ảnh" ở cấp ngoài nhận ra ngay, bìa album không bị cắt, thẻ album kiểu "chồng ảnh"** (yêu cầu từ site dsuite, owner kit đã duyệt phương án B;
@@ -32,7 +57,7 @@ All notable changes to **td-components** are documented here.
 ## 0.73.0
 
 **`td-cropper` kiểu `mode="pan"`: khung cố định, kéo / phóng ảnh bên dưới (avatar) — mốc M1; kiểu cũ `box` không đổi** (owner kit, 2026-10-14;
-[plan](docs/internal/plans/v0.73.0-cropper-pan-mode.md), [ADR 0036](docs/internal/decisions/0036-cropper-pan-mode.md)). Option cho hộp thoại, media field / gallery / picker và PHP là mốc M2 (0.75.0, dời sang 0.75.0 vì 0.74.0 dành cho picker), **chưa có**.
+[plan](docs/internal/plans/v0.73.0-cropper-pan-mode.md), [ADR 0036](docs/internal/decisions/0036-cropper-pan-mode.md)). Option cho hộp thoại, media field / gallery / picker và PHP là mốc M2, xong ở [0.75.0](#0750) (dời sang 0.75.0 vì 0.74.0 dành cho picker).
 
 ### Added
 

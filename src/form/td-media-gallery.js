@@ -10,7 +10,7 @@ import { safeMediaUrl } from '../utils/media-url.js';
 import { SortableController, SORTABLE_LABELS } from '../utils/sortable-controller.js';
 import { OrderedCollectionModel } from '../utils/ordered-collection.js';
 import {
-  parseAspectRatio, parseCrop, parseFocal, parseKinds, parseCropRatio, serializeCrop, serializeFocal,
+  parseAspectRatio, parseCrop, parseFocal, parseKinds, parseCropRatio, parseCropMode, parseCropShape, serializeCrop, serializeFocal,
   cropRatioInRange, cropPreviewVars, galleryEntries, validateItems, parseItems, encodeGalleryState, decodeGalleryState,
   GALLERY_MAX_ITEMS, GALLERY_ALT_MAX, GALLERY_CAPTION_MAX, normCaption, captionValue, limitCount, limitState, parseLimit,
 } from '../utils/media-field-model.js';
@@ -22,7 +22,7 @@ const CROP_VARS = ['--_td-mg-crop-x', '--_td-mg-crop-y', '--_td-mg-crop-w', '--_
 /** Attributes the no-JS hidden inputs of php/td.php td_media_gallery() may carry. */
 const HIDDEN_ATTRS = ['type', 'class', 'name', 'value', 'disabled'];
 /** Host attributes an adopted server gallery may carry (owned names + the PHP `attrs` allowlist + aria-* / data-*). */
-const HOST_ATTRS = new Set(['data-td-ssr', 'name', 'label', 'items', 'usage', 'croppable', 'crop-ratio', 'focal-point', 'cover',
+const HOST_ATTRS = new Set(['data-td-ssr', 'name', 'label', 'items', 'usage', 'croppable', 'crop-ratio', 'crop-mode', 'crop-shape', 'focal-point', 'cover',
   'aspect-ratio', 'preview-fit', 'accept-kind', 'min', 'max', 'required', 'disabled', 'prompt', 'helper-text', 'error-text',
   'caption', 'alt-maxlength', 'caption-maxlength']);
 const ROLES = {
@@ -75,7 +75,7 @@ const LOAD_BOUND = new WeakSet();
  *   and FormData is still sent (the server answers 422).
  *
  * DOM contract (JS render() = PHP; see php/td.php td_media_gallery() for the full tree):
- *   <td-media-gallery class="td-media-gallery" name label [items] [usage] [croppable] [crop-ratio] [focal-point] [cover]
+ *   <td-media-gallery class="td-media-gallery" name label [items] [usage] [croppable] [crop-ratio] [crop-mode] [crop-shape] [focal-point] [cover]
  *     [aspect-ratio] [preview-fit] [accept-kind] [min] [max] [required] [disabled] [prompt] [helper-text] [error-text]>
  *     div.td-media-gallery__head > span.td-media-gallery__label#{id}-label + span.td-media-gallery__count#{id}-count
  *     ul.td-media-gallery__list[role=list] > li.td-media-gallery__item[data-kind] >
@@ -91,6 +91,8 @@ const LOAD_BOUND = new WeakSet();
  * @element td-media-gallery
  * @attr {string} name @attr {string} label @attr {string} items - JSON (default / reset)
  * @attr {boolean} usage @attr {boolean} croppable @attr {string} crop-ratio @attr {boolean} focal-point
+ * @attr {string} crop-mode - v0.75.0: `pan` (the crop dialog keeps its frame still, the image moves — avatars) | `box` (default)
+ * @attr {string} crop-shape - v0.75.0: `circle` (round frame; only with `crop-mode="pan"` and a 1:1 crop) | `rect` (default)
  * @attr {boolean} cover - the first item is the cover (badge + name suffix)
  * @attr {string} aspect-ratio - the tile ratio (default 1:1) @attr {string} preview-fit - cover | contain
  * @attr {string} accept-kind @attr {number} min @attr {number} max - 1…100 (default 100)
@@ -157,7 +159,7 @@ export class TdMediaGallery extends TdFormElement {
   };
 
   static get observedAttributes() {
-    return [...super.observedAttributes, 'label', 'items', 'usage', 'croppable', 'crop-ratio', 'focal-point', 'cover',
+    return [...super.observedAttributes, 'label', 'items', 'usage', 'croppable', 'crop-ratio', 'crop-mode', 'crop-shape', 'focal-point', 'cover',
       'aspect-ratio', 'preview-fit', 'accept-kind', 'min', 'max', 'prompt', 'error-text', 'caption',
       'alt-maxlength', 'caption-maxlength'];
   }
@@ -421,11 +423,11 @@ export class TdMediaGallery extends TdFormElement {
     return field === 'alt' ? it.alt : captionValue(it.caption, this._captionMode());
   }
 
-  /** @private croppable / crop-ratio / focal-point need usage (warned once, ignored) */
+  /** @private croppable / crop-ratio / crop-mode / crop-shape / focal-point need usage (warned once, ignored) */
   _usageOn() {
     const usage = this.hasAttribute('usage');
-    if (!usage && ['croppable', 'crop-ratio', 'focal-point'].some((a) => this.hasAttribute(a))) {
-      this._warnOnce('usage', 'td-media-gallery: croppable / crop-ratio / focal-point need the usage attribute — ignored.');
+    if (!usage && ['croppable', 'crop-ratio', 'crop-mode', 'crop-shape', 'focal-point'].some((a) => this.hasAttribute(a))) {
+      this._warnOnce('usage', 'td-media-gallery: croppable / crop-ratio / crop-mode / crop-shape / focal-point need the usage attribute — ignored.');
     }
     return usage;
   }
@@ -1342,6 +1344,8 @@ export class TdMediaGallery extends TdFormElement {
         else this._syncForm();
         return;
       case 'crop-ratio':
+      case 'crop-mode':
+      case 'crop-shape':
       case 'preview-fit':
         return; // read when the dialog opens / CSS only
       case 'alt-maxlength':
@@ -1692,6 +1696,8 @@ export class TdMediaGallery extends TdFormElement {
         themeRoot: this,
         alt: it.alt || it.previewAlt,
         aspectRatio: this._cropRatio(),
+        mode: parseCropMode(this.getAttribute('crop-mode')), // v0.75.0: `pan` only reaches the cropper
+        shape: parseCropShape(this.getAttribute('crop-shape')),
         crop: crop ? { ...crop } : null,
         focalPoint: focal ? { ...focal } : null,
         allowFocalPoint: focalOn,

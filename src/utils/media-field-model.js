@@ -134,6 +134,24 @@ export function cropRatioInRange(r) {
 }
 
 /**
+ * v0.75.0 (cropper-pan M2) — `crop-mode` / `crop.mode` / PHP `crop_mode`: the SAME grammar as `<td-cropper mode>`
+ * (trim + lower-case, allowlist): `pan` ⇒ `'pan'`; anything else (absent, `box`, unknown, empty, a non-string) ⇒ `'box'`.
+ * @param {unknown} v @returns {'box'|'pan'}
+ */
+export function parseCropMode(v) {
+  return typeof v === 'string' && v.trim().toLowerCase() === 'pan' ? 'pan' : 'box';
+}
+
+/**
+ * v0.75.0 — `crop-shape` / `crop.shape` / PHP `crop_shape`, same grammar as `<td-cropper shape>`: `circle` ⇒ `'circle'`,
+ * anything else ⇒ `'rect'`. Only a hint: the cropper itself ignores `circle` unless the mode is pan and the ratio is 1:1.
+ * @param {unknown} v @returns {'rect'|'circle'}
+ */
+export function parseCropShape(v) {
+  return typeof v === 'string' && v.trim().toLowerCase() === 'circle' ? 'circle' : 'rect';
+}
+
+/**
  * v0.35 (decision 27) — `crop-ratio` attribute: `free` (any case) ⇒ `'free'`; a ratio (`parseAspectRatio` rules) whose
  * `w / h` is in [0.01, 100] ⇒ that number; absent / invalid / out of range ⇒ null (the field warns, then falls back to
  * `aspect-ratio`, then free).
@@ -301,6 +319,17 @@ export const CROP_RATIO_CASES = Object.freeze([
   ['1:101', null],
   ['101/1', null],
   ['10000/1', null],
+]);
+
+/** v0.75.0 parity tables (JS + PHP): [raw string, parseCropMode()] / [raw string, parseCropShape()]. PHP prints the
+ * attribute only for the non-default result (the canonical word), so `box` / `rect` print nothing. */
+export const CROP_MODE_CASES = Object.freeze([
+  ['pan', 'pan'], ['PAN', 'pan'], [' Pan\t', 'pan'], ['\n pan \n', 'pan'], ['\u00a0pan\u00a0', 'pan'], ['\ufeffpan', 'pan'], ['\u200bpan', 'box'],
+  ['box', 'box'], ['', 'box'], ['   ', 'box'], ['pan2', 'box'], ['pa n', 'box'], ['panning', 'box'], ['free', 'box'],
+]);
+export const CROP_SHAPE_CASES = Object.freeze([
+  ['circle', 'circle'], ['CIRCLE', 'circle'], [' Circle ', 'circle'], ['\tcircle\n', 'circle'], ['\u00a0circle', 'circle'], ['\u2003circle\u2003', 'circle'], ['cir\u0000cle', 'rect'],
+  ['rect', 'rect'], ['', 'rect'], ['   ', 'rect'], ['round', 'rect'], ['circles', 'rect'], ['cir cle', 'rect'],
 ]);
 
 // --- v0.43.0 <td-media-gallery> (plan v0.43.0-media-gallery decisions 14-17, ADR 0021) ---

@@ -8,7 +8,7 @@ import { openCropDialog } from '../feedback/crop-dialog.js';
 import { isAdapter, normalizeAsset, normalizeError, LatestRequest } from '../utils/media-picker-core.js';
 import { safeMediaUrl } from '../utils/media-url.js';
 import {
-  KINDS, parseAspectRatio, parseCrop, parseFocal, parseKinds, parseCropRatio, serializeCrop, serializeFocal, cropRatioInRange,
+  KINDS, parseAspectRatio, parseCrop, parseFocal, parseKinds, parseCropRatio, parseCropMode, parseCropShape, serializeCrop, serializeFocal, cropRatioInRange,
   cropPreviewVars, fieldEntries, encodeState, decodeState,
 } from '../utils/media-field-model.js';
 
@@ -108,6 +108,8 @@ const fill = (t, params) => String(t ?? '').replace(/\{(\w+)\}/g, (m, k) => (k i
  * @attr {string} alt @attr {string} crop - JSON v1 (kept as is)
  * @attr {boolean} croppable - v0.35 (usage only): "Cắt ảnh" button + the picker's crop step
  * @attr {string} crop-ratio - v0.35: `W/H` | `W:H` | number | `free` (absent → aspect-ratio, then free)
+ * @attr {string} crop-mode - v0.75.0 (usage only): `pan` (the crop dialog keeps its frame still, the image moves — avatars) | `box` (default)
+ * @attr {string} crop-shape - v0.75.0 (usage only): `circle` (round frame; only with `crop-mode="pan"` and a 1:1 crop) | `rect` (default)
  * @attr {boolean} focal-point - v0.35 (usage only): submit `name[focal]` (+ edited in the crop dialog when croppable)
  * @attr {string} focal - v0.35: JSON v1 `{"v":1,"x","y"}` (kept as is)
  * @attr {string} prompt @attr {string} helper-text @attr {string} error-text
@@ -139,7 +141,7 @@ export class TdMediaField extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'value', 'label', 'aspect-ratio', 'preview-fit', 'accept-kind', 'usage',
       'preview-src', 'preview-alt', 'kind', 'alt', 'crop', 'prompt', 'error-text',
-      'croppable', 'crop-ratio', 'focal-point', 'focal'];
+      'croppable', 'crop-ratio', 'crop-mode', 'crop-shape', 'focal-point', 'focal'];
   }
 
   static get booleanAttributes() { return [...super.booleanAttributes, 'usage', 'croppable', 'focal-point']; }
@@ -323,8 +325,8 @@ export class TdMediaField extends TdFormElement {
    */
   _usageFor35() {
     const usage = this.hasAttribute('usage');
-    if (!usage && ['croppable', 'crop-ratio', 'focal-point', 'focal'].some((a) => this.hasAttribute(a))) {
-      this._warnOnce('v035-usage', 'td-media-field: croppable / crop-ratio / focal-point / focal need the usage attribute — ignored.');
+    if (!usage && ['croppable', 'crop-ratio', 'crop-mode', 'crop-shape', 'focal-point', 'focal'].some((a) => this.hasAttribute(a))) {
+      this._warnOnce('v035-usage', 'td-media-field: croppable / crop-ratio / crop-mode / crop-shape / focal-point / focal need the usage attribute — ignored.');
     }
     return usage;
   }
@@ -859,6 +861,8 @@ export class TdMediaField extends TdFormElement {
         this._syncForm();
         return;
       case 'crop-ratio':
+      case 'crop-mode':
+      case 'crop-shape':
         return; // read when the picker / crop dialog opens
       case 'preview-fit':
         return; // CSS only
@@ -890,7 +894,12 @@ export class TdMediaField extends TdFormElement {
       // v0.35 decision 28 (review R2 #7): ALWAYS the highest priority — a site's pickerOptions.crop / configureDefaults
       // ({ crop }) never opens the crop step for a field that is not croppable
       crop: this._croppable()
-        ? { enabled: true, aspectRatio: this._cropRatio(), allowFocalPoint: this._focalOn() }
+        ? {
+          enabled: true, aspectRatio: this._cropRatio(), allowFocalPoint: this._focalOn(),
+          // v0.75.0: only a non-default value is passed (absent attributes ⇒ the exact 0.74 `crop` object)
+          ...(parseCropMode(this.getAttribute('crop-mode')) === 'pan' ? { mode: 'pan' } : {}),
+          ...(parseCropShape(this.getAttribute('crop-shape')) === 'circle' ? { shape: 'circle' } : {}),
+        }
         : { enabled: false },
     };
     const label = this.getAttribute('label');
@@ -1106,6 +1115,8 @@ export class TdMediaField extends TdFormElement {
         themeRoot: this, // v0.42.0 (ADR 0020)
         alt: this._alt || this._previewAlt,
         aspectRatio: ratio,
+        mode: parseCropMode(this.getAttribute('crop-mode')), // v0.75.0: `pan` only reaches the cropper
+        shape: parseCropShape(this.getAttribute('crop-shape')),
         crop: crop ? { ...crop } : null,
         focalPoint: focal ? { ...focal } : null,
         allowFocalPoint: focalOn,

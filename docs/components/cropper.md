@@ -120,8 +120,12 @@ Trong `pan`:
   pan` mà tỉ lệ đổi thì về khung lớn nhất của tỉ lệ đó quanh tâm cũ (chưa có mức zoom nào để giữ).
 
 Giá trị lạ / rỗng của `mode` = `box`, của `shape` = `rect` (so khớp sau `trim().toLowerCase()`, không cảnh báo). Mọi giá
-trị chỉ được **so sánh** với danh sách trắng; không chép vào DOM hay CSS. Option cho hộp thoại, media field, gallery, picker
-và PHP **chưa có** ở bản này.
+trị chỉ được **so sánh** với danh sách trắng; không chép vào DOM hay CSS. Từ **0.75.0** (M2) cùng hai tham số này đi qua
+mọi nơi nhúng `<td-cropper>`: option `mode` / `shape` của [hộp thoại](#hộp-thoại--tdcropperopendialogopts), attribute
+`crop-mode` / `crop-shape` của [`td-media-field`](media-field.md#9-cắt-ảnh--croppable-0350) và
+[`td-media-gallery`](media-gallery.md), `crop.mode` / `crop.shape` của [media picker](media-picker.md), `crop_mode` /
+`crop_shape` của hai helper PHP. Ví dụ avatar tròn: `<td-media-field usage croppable crop-ratio="1" crop-mode="pan"
+crop-shape="circle">`. Vắng tham số ⇒ `<td-cropper>` trong hộp thoại **không có** attribute `mode` / `shape` (giống từng byte 0.74.0).
 
 ## Cách dùng
 
@@ -316,7 +320,8 @@ TdCropper.openDialog(opts: {
   alt?: string;                    // nhãn của vùng cắt
   naturalWidth?: number; naturalHeight?: number;   // kích thước gốc (cả hai) ⇒ có pixels + kiểm tỉ lệ
   aspectRatio?: number | null;     // số w/h ⇒ khoá; null / thiếu ⇒ tự do (có bộ chọn preset)
-                                   // (0.73.0: option mode / shape của hộp thoại chưa có — hộp thoại luôn là kiểu box)
+  mode?: 'box' | 'pan';            // 0.75.0: 'pan' ⇒ <td-cropper mode="pan"> (khung cố định, kéo / phóng ảnh — avatar); mặc định 'box'
+  shape?: 'rect' | 'circle';       // 0.75.0: 'circle' ⇒ shape="circle"; cropper chỉ vẽ tròn khi pan + tỉ lệ 1:1, ngoài ra bỏ qua
   crop?: CropBox | null;           // normalized hiện tại (null ⇒ khung mặc định)
   focalPoint?: FocalPoint;         // điểm hiện tại
   allowFocalPoint?: boolean;       // bật công cụ điểm trọng tâm
@@ -331,6 +336,10 @@ TdCropper.openDialog(opts: {
 >;
 ```
 
+- **`mode` / `shape` (0.75.0)** theo đúng văn phạm của attribute: cắt khoảng trắng đầu / cuối, không phân biệt hoa thường; chỉ
+  `pan` / `circle` mới đặt attribute lên cropper (hằng của kit, không chép chuỗi của site); mọi giá trị khác (`box`, `rect`, lạ,
+  rỗng, không phải chuỗi) = không đặt attribute. Hộp thoại `pan` nên có `aspectRatio: 1` cho avatar; thiếu khoá tỉ lệ thì cropper
+  `pan` mặc định 1:1 nhưng cho đổi preset. `shape: 'circle'` mà không `pan` hoặc tỉ lệ ≠ 1 ⇒ cropper cảnh báo một lần và vẽ khung chữ nhật.
 - **Huỷ resolve**, không reject (Escape / × / "Huỷ" / `signal` abort ⇒ `{ status: 'cancelled' }`). Promise **chỉ reject**
   khi đã có một hộp cắt khác đang mở (một hộp một lúc — picker và field dùng chung).
 - `crop = null` khi khung phủ toàn ảnh. `changed = false` khi kết quả lệch giá trị đầu vào **không quá 1 pixel ảnh gốc** mỗi trục (`null` đầu vào = toàn ảnh) và focal không đổi (sai số

@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.74.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.75.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.75.0](#0750) | Không phá vỡ: `mode` / `shape` của `td-cropper` (0.73.0) đi qua hộp thoại, `td-media-field` / `td-media-gallery` (`crop-mode`, `crop-shape`), media picker (`crop.mode`, `crop.shape`) và PHP (`crop_mode`, `crop_shape`) (opt-in) | Không phải sửa code. Muốn avatar tròn: `crop-ratio="1" crop-mode="pan" crop-shape="circle"`. Site tự đặt attribute tên `mode` / `shape` lên `<td-cropper>` cho việc riêng (từ 0.73.0) hoặc tự dùng `crop-mode` / `crop-shape` trên field / gallery cho việc khác thì đổi tên. |
 | [0.74.0](#0740) | **Đổi giao diện**: `td-media-picker` có album — bìa `contain`, thẻ album "chồng ảnh", tiêu đề "Album n" / "Ảnh n" | Không phải sửa code (API / adapter không đổi). CSS site ghi đè viền / nền / bóng của `.td-media-picker__coll` cần chuyển sang `.td-media-picker__coll-cover`. |
 | [0.72.0](#0720) | **Đổi hành vi**: `autoSelectFirst` của `td-media-picker` mặc định chỉ bật cho picker chọn một ảnh | Picker `multiple` (album, `td-media-gallery`) mở ra chưa chọn gì, "Chèn" tắt tới khi người dùng chọn. Muốn chọn sẵn: `autoSelectFirst: true` cho lần mở đó. Site còn `configureDefaults({ autoSelectFirst: true })` (từ 0.67) thì bỏ dòng đó, nếu không `multiple` vẫn chọn sẵn. Test của site dựa vào "`multiple` mở ra đã có ảnh" phải bật tường minh. |
 | [0.71.0](#0710) | Không phá vỡ: `td-media-field` thêm token `--td-media-field-frame-w` (opt-in); `td-table` cuộn ngang canh thông báo rỗng theo vùng nhìn thấy (sửa lỗi) | Không phải sửa code. Ô logo nhỏ: đặt `--td-media-field-frame-w` thay vì thu `--td-media-field-w` rồi bỏ CSS vòng. Thông báo rỗng của bảng cuộn ngang tự hiện đúng chỗ; bảng không cuộn giống 0.70. |
@@ -98,6 +99,18 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.75.0
+
+**Không phá vỡ.** Hoàn tất `td-cropper` kiểu `pan` (mốc M2 của 0.73.0): cùng hai tham số `mode` / `shape` giờ đi qua mọi nơi nhúng cropper. Hoàn toàn opt-in: vắng tham số thì
+`<td-cropper>` trong hộp thoại **không có** attribute `mode` / `shape` (DOM giống từng byte 0.74.0); không token, CSS hay nhãn mới.
+
+- `TdCropper.openDialog({ mode, shape })`, `<td-media-field crop-mode crop-shape>`, `<td-media-gallery crop-mode crop-shape>`, `TdMediaPicker.open({ crop: { mode, shape } })`
+  (`resolveOptions().cropResolved` có thêm `mode` / `shape`), PHP `td_media_field` / `td_media_gallery` option `crop_mode` / `crop_shape`.
+- Văn phạm giống attribute của `td-cropper`: cắt khoảng trắng, không phân biệt hoa thường, chỉ `pan` / `circle` có hiệu lực, giá trị khác = mặc định, im lặng.
+- `crop-mode` / `crop-shape` / `crop_mode` / `crop_shape` thành tên attribute / option của kit: `attrs` của PHP không đặt được hai attribute này nữa (tên dành riêng, như `crop-ratio`).
 
 ---
 

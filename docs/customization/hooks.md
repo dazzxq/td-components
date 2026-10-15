@@ -527,7 +527,7 @@ field gọi `adapter.get` lười. Event `input` / `change` (`{ value, selection
 (không có ảnh xem trước)" · `video` "Video" · `required` "Vui lòng chọn {kind}." · `kinds.{image|video|file}` "ảnh / video / file" (điền
 `{kind}`). PHP `td_media_field()` in nhãn mặc định — đổi nhãn → field render lại an toàn lúc nâng cấp.
 
-**Cắt ảnh (0.35.0)** — option `crop: { enabled, aspectRatio?, allowFocalPoint? }` của `open()` / `configureDefaults` bật
+**Cắt ảnh (0.35.0)** — option `crop: { enabled, aspectRatio?, allowFocalPoint?, mode?, shape? }` (0.75.0: `mode: 'pan'` khung cố định kéo / phóng ảnh, `shape: 'circle'` khung tròn khi `pan` + tỉ lệ 1:1; field: `crop-mode` / `crop-shape`; hộp thoại `TdCropper.openDialog({ mode, shape })`) của `open()` / `configureDefaults` bật
 bước cắt sau "Chèn" ([media-picker.md › Cắt ảnh](../components/media-picker.md#cắt-ảnh--option-crop-0350)); field
 `croppable` luôn tự đặt `crop` ở `open()` (không `croppable` → `{ enabled: false }`). `TdCropper` ([cropper.md](../components/cropper.md)):
 `TdCropper.presets` (preset toàn site, `{ label, ratio: number | null }[]`), `TdCropper.labels`, `TdCropper.openDialog(opts)`

@@ -301,6 +301,8 @@ Gửi form: `og[id]=a_9f2c`, `og[alt]=…`, `og[crop]={"v":1,…}`, `og[focal]={
 | Thuộc tính | Tác dụng |
 |---|---|
 | `croppable` | Bật cắt ảnh: nút **"Cắt ảnh"** + bước cắt khi chọn ảnh qua picker |
+| `crop-mode` | 0.75.0: `pan` \| `box` (mặc định). `pan` = hộp cắt giữ khung cố định, người dùng kéo / phóng **ảnh** (avatar) — xem [Cropper › mode](cropper.md#hai-kiểu-thao-tác--mode-0730). Cắt khoảng trắng, không phân biệt hoa thường; giá trị lạ = `box`, im lặng. Áp cho cả nút "Cắt ảnh" và bước cắt của picker (thắng `pickerOptions.crop`). Cần `usage` + `croppable` |
+| `crop-shape` | 0.75.0: `circle` \| `rect` (mặc định). `circle` = khung tròn trong hộp cắt; chỉ có tác dụng khi `crop-mode="pan"` **và** tỉ lệ cắt đang là 1:1 (ví dụ `crop-ratio="1"`), ngoài ra cropper cảnh báo một lần và vẽ khung chữ nhật. Chỉ đổi hình khung; ảnh xem trước và `name[crop]` không đổi (vẫn hình vuông) — muốn avatar tròn, bo tròn ảnh xem trước bằng CSS của site (xem dưới). Giá trị lạ = `rect` |
 | `crop-ratio` | Tỉ lệ khung cắt: `W/H` \| `W:H` \| số \| `free`; tỉ lệ phải trong **[0.01, 100]**. **Vắng** (hoặc sai / ngoài khoảng: một cảnh báo) → theo `aspect-ratio` của khung (khung ngoài [0.01, 100] → tự do + cảnh báo); vắng cả hai → tự do (như dcms2 tách tỉ lệ cắt khỏi tỉ lệ hiển thị) |
 | `focal-point` | Bật điểm trọng tâm: công cụ trong hộp cắt (khi `croppable`) + mục thứ tư `name[focal]` |
 | `focal` | Điểm trọng tâm mặc định, JSON v1 `{"v":1,"x","y"}` (0..1). Sai → `null` |
@@ -359,6 +361,17 @@ phát event, nên `detail.selection` luôn là state mới.
 Chỉ crop do **UI cắt** tạo ra (bước cắt của picker, "Áp dụng") đi qua bộ chuẩn hoá (6 chữ số thập phân, luôn hợp lệ với
 `parseCrop`); mọi đường khác giữ đúng ngữ nghĩa 0.34.
 
+#### Avatar tròn (0.75.0)
+
+```html
+<td-media-field name="avatar" usage croppable crop-ratio="1" crop-mode="pan" crop-shape="circle" preview-fit="cover"></td-media-field>
+```
+
+Hộp cắt là khung tròn cố định giữa vùng cắt, người dùng kéo / phóng ảnh phía dưới; kết quả vẫn là `name[crop]` hình vuông.
+Kit **không** bo tròn ảnh xem trước của field (đó là CSS của site; chọn tự làm tròn là quyết định riêng). Recipe cho
+khung 1:1 (`aspect-ratio="1"`): `td-media-field[name="avatar"] :is(.td-media-field__frame, .td-media-field__open) { border-radius: 50%; }` — nút
+`.td-media-field__open` chứa ảnh và đã cắt phần thừa (`overflow: hidden`); khung chỉ cần bo cùng để viền tròn theo. Kiểm tra bằng mắt trên site của bạn.
+
 #### PHP
 
 ```php
@@ -366,6 +379,7 @@ Chỉ crop do **UI cắt** tạo ra (bước cắt của picker, "Áp dụng") �
     'label' => 'Ảnh chia sẻ (OG)', 'aspect_ratio' => '1.91', 'usage' => true,
     'croppable'   => true,                       // in nút "Cắt ảnh" (ẩn tới khi JS chạy, như Đổi / Gỡ)
     'crop_ratio'  => '1.91',                     // tuỳ chọn; vắng → theo aspect_ratio; 'free' → tự do
+    // 'crop_mode' => 'pan', 'crop_shape' => 'circle',  // 0.75.0, tuỳ chọn: in crop-mode="pan" / crop-shape="circle"
     'focal_point' => true,                       // in hidden og[focal]
     'alt'   => $seo->og_alt,
     'crop'  => $seo->og_crop,                    // mảng x/y/width/height | JSON v1 | null — in như 0.34
@@ -375,7 +389,7 @@ Chỉ crop do **UI cắt** tạo ra (bước cắt của picker, "Áp dụng") �
 ]) ?>
 ```
 
-`focal` / `crop_ratio` sai → bỏ + một `E_USER_WARNING`. Phần in crop **không đổi** so với 0.34 (cùng byte). Bốn option
+`focal` / `crop_ratio` sai → bỏ + một `E_USER_WARNING`. `crop_mode` / `crop_shape` (0.75.0): chuỗi bằng `pan` / `circle` sau khi cắt khoảng trắng và hạ chữ thường thì in đúng hằng `crop-mode="pan"` / `crop-shape="circle"` (không in lại chuỗi của site); mọi giá trị khác (`box`, `rect`, lạ, không phải chuỗi) → không in gì, im lặng; thiếu `usage` → bỏ + cùng cảnh báo với `crop_ratio`. Phần in crop **không đổi** so với 0.34 (cùng byte). Bốn option
 0.35 thiếu `usage` → bỏ cả bốn + một `E_USER_WARNING`. Không có JS: hidden `og[crop]` / `og[focal]` gửi lại đúng giá trị server in ra; nút "Cắt ảnh" ẩn.
 Bảng option đầy đủ: [Adapter PHP › td_media_field](../guides/php-adapter.md#td_media_field-0320).
 
@@ -406,6 +420,8 @@ query (Chrome / Edge 102–104): dự phòng theo viewport < 360px. Muốn khung
 | `crop` | JSON v1 | — | Crop mặc định (usage); sai định dạng → coi như `null` |
 | `croppable` | boolean | — | 0.35: nút "Cắt ảnh" + bước cắt khi chọn (cần `usage`) |
 | `crop-ratio` | `W/H` \| `W:H` \| số \| `free` | theo `aspect-ratio` | 0.35: tỉ lệ khung cắt |
+| `crop-mode` | `box` \| `pan` | `box` | 0.75.0: kiểu thao tác của hộp cắt (cần `usage` + `croppable`) |
+| `crop-shape` | `rect` \| `circle` | `rect` | 0.75.0: hình khung của hộp cắt; tròn chỉ khi `pan` + tỉ lệ 1:1 |
 | `focal-point` | boolean | — | 0.35: điểm trọng tâm + mục `name[focal]` (cần `usage`) |
 | `focal` | JSON v1 `{"v":1,"x","y"}` | — | 0.35: focal mặc định; sai → `null` |
 | `prompt` | string | theo `accept-kind` | Chữ trong khung rỗng |

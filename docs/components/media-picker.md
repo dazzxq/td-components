@@ -23,7 +23,7 @@ chọn → [`<td-media-grid>`](media-grid.md) là đủ.
 | Import | `import '@dazzxq/td-components/media-picker'` (class: `import { TdMediaPicker } from '@dazzxq/td-components'`) |
 | Loại | API JS tĩnh (`TdMediaPicker.open()`) + custom element khai báo `<td-media-picker>` |
 | Form-associated | không (ô form là [`<td-media-field>`](media-field.md)) |
-| Từ phiên bản | 0.32.0 (cần `td.css`); 0.33.0 bố cục dcms2, tải từ URL, xoá, tải về, copy link, phân trang số; 0.35.0 bước cắt ảnh (option [`crop`](#cắt-ảnh--option-crop-0350)); 0.66.0 [bộ sưu tập](#bộ-sưu-tập-0660) (album, tuỳ chọn) |
+| Từ phiên bản | 0.32.0 (cần `td.css`); 0.33.0 bố cục dcms2, tải từ URL, xoá, tải về, copy link, phân trang số; 0.35.0 bước cắt ảnh (option [`crop`](#cắt-ảnh--option-crop-0350)); 0.66.0 [bộ sưu tập](#bộ-sưu-tập-0660) (album, tuỳ chọn); 0.75.0 `crop.mode` / `crop.shape` |
 
 ## Ví dụ nhanh
 
@@ -446,7 +446,7 @@ const outcome = await TdMediaPicker.open({
 | `initialCollection` | `{ id: string, label: string }` \| `null` | `null` | 0.66.0: mở **thẳng vào** bộ sưu tập này (breadcrumb + `collectionId` ngay từ request đầu). `capabilities: { collections: false }` của site thắng: khi đó `initialCollection` bị bỏ qua và phiên chạy như phiên thường. `id` ≤ 512 ký tự, `label` cắt còn 200 code point; sai hình dạng → `TypeError`; `null` = không có. **Không** lấy từ defaults. Focus vẫn ở ô tìm. Xem [Bộ sưu tập](#bộ-sưu-tập-0660) |
 | `collections` | `{ showWithoutQuery?: boolean }` | `{ showWithoutQuery: false }` | 0.66.0: `true` → dải bộ sưu tập hiện cả khi chưa gõ tìm. Không phải object → `TypeError`; `null` = bỏ qua |
 | `autoSelectFirst` | `boolean` | theo chế độ | 0.67.0 (opt-in) → bật mặc định từ 0.68.0 → **từ 0.72.0 mặc định chỉ bật cho picker chọn MỘT ảnh (`selection.mode: 'single'`), tắt cho `multiple`**: chọn sẵn asset đầu tiên chọn được của lần tải danh sách đầu — [Tự chọn ảnh đầu](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670). Giá trị đã đặt thắng ở cả hai chế độ: chỉ boolean `false` mới tắt, mọi giá trị khác có mặt (kể cả `true`) bật; `null` / vắng = mặc định theo chế độ; lấy được từ defaults; `open({ autoSelectFirst: false })` tắt riêng lần mở, `open({ autoSelectFirst: true, selection: { mode: 'multiple' } })` bật cho picker nhiều ảnh |
-| `crop` | `{ enabled, aspectRatio?, allowFocalPoint? }` | — | 0.35.0: `enabled: true` + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `[0.01, 100]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
+| `crop` | `{ enabled, aspectRatio?, allowFocalPoint?, mode?, shape? }` | — | 0.35.0 (`mode` / `shape`: 0.75.0): `enabled: true` + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `[0.01, 100]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
 
 - **Một picker một lúc**: gọi `open()` khi đã có picker mở → resolve ngay `{ status: 'cancelled', reason:
   'programmatic' }` + cảnh báo một lần (không chồng picker).
@@ -513,6 +513,12 @@ Luồng (giống dcms2: cắt **sau khi chọn**):
 
 - **Toàn ảnh = `null`**: khung phủ toàn ảnh ⇒ `usage.crop = null` ("dùng nguyên ảnh", như dcms2 dùng ảnh gốc khi không
   cắt).
+- **`crop.mode` / `crop.shape` (0.75.0)**: `mode: 'pan'` làm bước cắt thành kiểu avatar (khung cố định, kéo / phóng ảnh bên dưới —
+  [Cropper › mode](cropper.md#hai-kiểu-thao-tác--mode-0730)); `shape: 'circle'` vẽ khung tròn, chỉ khi `pan` **và** `aspectRatio: 1`
+  (ngoài ra cropper cảnh báo một lần và vẽ chữ nhật). `resolveOptions` chuẩn hoá thành `'box' | 'pan'` / `'rect' | 'circle'`:
+  cắt khoảng trắng, không phân biệt hoa thường, giá trị lạ hay không phải chuỗi = `box` / `rect`, im lặng. Vắng = như 0.74.0. Kết quả
+  (`usage.crop`) vẫn là hình chữ nhật/vuông theo toạ độ ảnh gốc; `circle` chỉ là hình khung. [Media field](media-field.md) tự đặt hai
+  key này từ `crop-mode` / `crop-shape`.
 - `usage.focalPoint` chỉ có khi `allowFocalPoint: true` và người dùng bật điểm trọng tâm.
 - `selection.mode = 'multiple'` + `crop` → cảnh báo console **một lần**, bỏ crop (như dcms2: chọn nhiều không crop).
 - `aspectRatio` không phải số hữu hạn trong `[0.01, 100]` (gồm hai đầu) → bị từ chối + cảnh báo một lần, cắt **tự do**. Muốn nhập `"16:9"` thì tự đổi

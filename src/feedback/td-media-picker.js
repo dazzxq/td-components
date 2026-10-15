@@ -2647,6 +2647,8 @@ export class TdMediaPicker extends HTMLElement {
         naturalWidth: known ? naturalWidth : undefined,
         naturalHeight: known ? naturalHeight : undefined,
         aspectRatio: cfg.aspectRatio,
+        mode: cfg.mode, // v0.75.0: resolved ('box' | 'pan'), the dialog sets the attribute only for `pan`
+        shape: cfg.shape,
         crop: null,
         focalPoint: null,
         allowFocalPoint: cfg.allowFocalPoint,

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {
   parseAspectRatio, parseCrop, fieldEntries, encodeState, decodeState, parseKinds, ASPECT_CASES, CROP_CASES,
   parseFocal, serializeCrop, serializeFocal, parseCropRatio, cropPreviewVars, FOCAL_CASES, CROP_RATIO_CASES,
+  parseCropMode, parseCropShape, CROP_MODE_CASES, CROP_SHAPE_CASES,
   CROP_RATIO_MIN, CROP_RATIO_MAX, cropRatioInRange,
 } from './media-field-model.js';
 
@@ -219,5 +220,24 @@ describe('v0.35 review R1 #5: public crop ratio range [0.01, 100]', () => {
   });
   it('the shared parity table (PHP runs the same cases)', () => {
     for (const [input, want] of CROP_RATIO_CASES) assert.equal(parseCropRatio(input), want, String(input));
+  });
+});
+
+describe('v0.75.0 parseCropMode / parseCropShape (the <td-cropper mode / shape> grammar)', () => {
+  it('the shared parity table (PHP runs the same cases)', () => {
+    for (const [input, want] of CROP_MODE_CASES) assert.equal(parseCropMode(input), want, JSON.stringify(input));
+    for (const [input, want] of CROP_SHAPE_CASES) assert.equal(parseCropShape(input), want, JSON.stringify(input));
+  });
+  it('anything that is not the exact word is the default; non-strings never throw', () => {
+    for (const bad of [undefined, null, 0, 1, NaN, true, false, {}, [], ['pan'], () => 'pan', Symbol('pan'), 10n, { toString: () => 'pan' }]) {
+      assert.equal(parseCropMode(bad), 'box');
+      assert.equal(parseCropShape(bad), 'rect');
+    }
+    assert.equal(parseCropMode('pan'), 'pan');
+    assert.equal(parseCropShape('circle'), 'circle');
+    assert.equal(parseCropMode('circle'), 'box');
+    assert.equal(parseCropShape('pan'), 'rect');
+    assert.equal(parseCropMode('pan\u0000'), 'box');
+    assert.equal(parseCropMode('pan;x'), 'box');
   });
 });

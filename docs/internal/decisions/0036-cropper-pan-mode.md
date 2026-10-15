@@ -1,6 +1,6 @@
 # ADR 0036 — `td-cropper` kiểu `pan`: một model rect, hai cách hiển thị; trần hiển thị 8×; tròn chỉ ở `pan`; thanh trượt dùng lại `td-slider`
 
-Trạng thái: **chấp nhận** — 2026-10-14 (v0.73.0, mốc M1). Plan [v0.73.0-cropper-pan-mode](../plans/v0.73.0-cropper-pan-mode.md); Codex plan-review APPROVE (4 vòng); owner chốt hai bản phát hành, trần 8×, tròn chỉ ở `pan`, có thanh trượt zoom.
+Trạng thái: **chấp nhận** — 2026-10-14 (v0.73.0, mốc M1; mốc M2 — tham số `mode` / `shape` qua hộp thoại, field, gallery, picker, PHP — v0.75.0, không thêm quyết định kiến trúc). Plan [v0.73.0-cropper-pan-mode](../plans/v0.73.0-cropper-pan-mode.md); Codex plan-review APPROVE (4 vòng); owner chốt hai bản phát hành, trần 8×, tròn chỉ ở `pan`, có thanh trượt zoom.
 Liên quan: [ADR 0015](0015-td-cropper.md) (bổ sung bởi ADR này, không sửa), [0011](0011-minimal-surfaces.md), [0014](0014-breakpoints-container-queries.md), [0019](0019-touch-standard.md).
 
 ## Bối cảnh

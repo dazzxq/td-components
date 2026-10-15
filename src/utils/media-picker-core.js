@@ -174,7 +174,8 @@
  * @property {FieldDescriptor[]} [uploadFields]
  * @property {{ mode: 'single'|'multiple', maxItems?: number, initialIds?: string[],
  *   kinds?: Array<'image'|'video'|'file'> }} selection
- * @property {{ enabled: boolean, aspectRatio?: number, allowFocalPoint?: boolean }} [crop] v0.35: single mode + an image ⇒
+ * @property {{ enabled: boolean, aspectRatio?: number, allowFocalPoint?: boolean, mode?: 'box'|'pan',
+ *   shape?: 'rect'|'circle' }} [crop] v0.35 (`mode` / `shape`: v0.75.0 — `pan` keeps the crop frame still and moves the image, `circle` rounds it; see `<td-cropper>`): single mode + an image ⇒
  *   "Chèn" opens the crop step (`td-cropper`); `usage.crop` / `focalPoint` are then filled (`resolveOptions` → `cropResolved`)
  * @property {string} [initialQuery]
  * @property {Record<string, FilterValue>} [initialFilters]
@@ -607,6 +608,9 @@ export function isAdapter(a) {
     && typeof /** @type {any} */ (a).get === 'function';
 }
 
+/** v0.75.0: the `crop.mode` / `crop.shape` grammar of media-field-model `parseCropMode` / `parseCropShape` (kept inline —
+ * this core imports nothing; a node test locks the two together): trimmed, case-insensitive allowlist, else the default. */
+const cropWord = (v, word) => typeof v === 'string' && v.trim().toLowerCase() === word;
 const CROP_RATIO_MIN = 0.01; // review R1 #5: public range [0.01, 100] (= media-field-model CROP_RATIO_MIN / MAX)
 const CROP_RATIO_MAX = 100;
 let warnedCropRatio = false;
@@ -616,7 +620,7 @@ let warnedCropMultiple = false;
  * Resolve the options of one open (decision 6): `defaults`, then each layer in INCREASING priority (shallow merge per
  * key; an `undefined` value never overrides). `selection` never comes from `defaults`. Normalises `selection`,
  * `pageSize` (1-100, default 30), `pagination` ('cursor' | 'pages', invalid → warned + 'cursor'), `upload` (+ text
- * `acceptLabel`), `messages`, `crop` (v0.35 decision 23 → `cropResolved = { aspectRatio, allowFocalPoint } | null`: a bad
+ * `acceptLabel`), `messages`, `crop` (v0.35 decision 23 → `cropResolved = { aspectRatio, allowFocalPoint, mode, shape } | null` (v0.75.0: `mode` 'box'|'pan', `shape` 'rect'|'circle', unknown → the default): a bad
  * `aspectRatio` warns once ⇒ free; `selection.mode = 'multiple'` warns once ⇒ no crop; unknown keys ignored). No valid adapter → TypeError (a
  * programming error). v0.66.0 (K8): `initialCollection` (never from `defaults`; `{ id, label }` | null, a bad shape →
  * TypeError) and `collections` (→ `{ showWithoutQuery }`, a non-object → TypeError); `null` for either = absent (like
@@ -625,7 +629,7 @@ let warnedCropMultiple = false;
  * the two keys above).
  * @param {object|null|undefined} defaults
  * @param {...(object|null|undefined)} layers last argument may be `{ warn }` only when it is the sole key
- * @returns {OpenMediaPickerOptions & { cropResolved: { aspectRatio: number|null, allowFocalPoint: boolean } | null,
+ * @returns {OpenMediaPickerOptions & { cropResolved: { aspectRatio: number|null, allowFocalPoint: boolean, mode: 'box'|'pan', shape: 'rect'|'circle' } | null,
  *   capabilitiesResolved: MediaCapabilities, initialCollection: { id: string, label: string } | null,
  *   collections: { showWithoutQuery: boolean }, autoSelectFirst: boolean }}
  */
@@ -682,7 +686,12 @@ export function resolveOptions(defaults, ...layers) {
           try { warn('td-media-picker: crop.aspectRatio must be a number in [0.01, 100] — rejected, the crop step is free.'); } catch { /* ignore */ }
         }
       }
-      cropResolved = { aspectRatio, allowFocalPoint: merged.crop.allowFocalPoint === true };
+      cropResolved = {
+        aspectRatio,
+        allowFocalPoint: merged.crop.allowFocalPoint === true,
+        mode: cropWord(merged.crop.mode, 'pan') ? 'pan' : 'box',
+        shape: cropWord(merged.crop.shape, 'circle') ? 'circle' : 'rect',
+      };
     }
   }
   let pagination = 'cursor';

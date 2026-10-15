@@ -14,7 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { HAS_PHP, PHP_BIN, ROOT } from './php.mjs';
 import { MEDIA_FIELD_FIXTURES, MEDIA_FIELD_FIXTURE_FILE, renderMediaFieldFixture } from '../ssr/ssr.mjs';
-import { ASPECT_CASES, CROP_CASES, FOCAL_CASES, CROP_RATIO_CASES, parseKinds, parseFocal, parseCropRatio } from '../../src/utils/media-field-model.js';
+import { ASPECT_CASES, CROP_CASES, FOCAL_CASES, CROP_RATIO_CASES, CROP_MODE_CASES, CROP_SHAPE_CASES, parseKinds, parseFocal, parseCropRatio, parseCropMode, parseCropShape } from '../../src/utils/media-field-model.js';
 
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
 const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
@@ -318,6 +318,54 @@ describe('php/td.php — td_media_field (v0.32.0, contract media-field@1)', opts
       assert.equal(hostAttr(out[i].html, 'crop-ratio'), valid ? esc(input) : null, input);
       assert.equal(out[i].warns, valid || input === '' ? 0 : 1, input);
     });
+  });
+
+  test('v0.75 crop_mode / crop_shape parity with parseCropMode() / parseCropShape(): only the canonical word is printed, silently', () => {
+    const modes = [...CROP_MODE_CASES.map(([i]) => i), 'Pan', 'x" onclick="1', '<pan>', ' pan', 'pan ', 'panx'];
+    const shapes = [...CROP_SHAPE_CASES.map(([i]) => i), 'x" onclick="1', '<circle>', 'Circle'];
+    const out = run([
+      ...modes.map((m) => ['r', 'm1', { usage: true, croppable: true, crop_mode: m }]),
+      ...shapes.map((v) => ['r', 'm1', { usage: true, croppable: true, crop_shape: v }]),
+    ]);
+    modes.forEach((input, i) => {
+      assert.equal(hostAttr(out[i].html, 'crop-mode'), parseCropMode(input) === 'pan' ? 'pan' : null, JSON.stringify(input));
+      assert.equal(hostAttr(out[i].html, 'crop-shape'), null);
+      assert.equal(out[i].warns, 0);
+      assert.ok(!out[i].html.includes('onclick'), out[i].html);
+    });
+    shapes.forEach((input, i) => {
+      const o = out[modes.length + i];
+      assert.equal(hostAttr(o.html, 'crop-shape'), parseCropShape(input) === 'circle' ? 'circle' : null, JSON.stringify(input));
+      assert.equal(hostAttr(o.html, 'crop-mode'), null);
+      assert.equal(o.warns, 0);
+      assert.ok(!o.html.includes('onclick'), o.html);
+    });
+    // non-strings are dropped silently
+    const bad = run([null, true, 1, [], { a: 1 }].map((v) => ['r', 'm1', { usage: true, croppable: true, crop_mode: v, crop_shape: v }]));
+    for (const b of bad) assert.ok(hostAttr(b.html, 'crop-mode') === null && hostAttr(b.html, 'crop-shape') === null && b.warns === 0, b.html);
+    // both together; `attrs` cannot set the owned names (any case)
+    const [both, spoof, plain] = run([
+      ['r', 'm1', { usage: true, croppable: true, crop_ratio: '1', crop_mode: 'pan', crop_shape: 'circle' }],
+      ['r', 'm1', { usage: true, croppable: true, attrs: { 'crop-mode': 'pan', 'CROP-SHAPE': 'circle' } }],
+      ['r', 'm1', { usage: true, croppable: true, crop_mode: 'box', crop_shape: 'rect' }],
+    ]);
+    assert.equal(hostAttr(both.html, 'crop-mode'), 'pan');
+    assert.equal(hostAttr(both.html, 'crop-shape'), 'circle');
+    assert.equal(hostAttr(spoof.html, 'crop-mode'), null);
+    assert.equal(hostAttr(spoof.html, 'crop-shape'), null);
+    assert.ok(!/crop-(mode|shape)/i.test(plain.html), 'box / rect print nothing');
+  });
+
+  test('v0.75 crop_mode / crop_shape without usage: dropped + ONE warning (like crop_ratio); box / rect never warn', () => {
+    const [a, b, c] = run([
+      ['n', 'm1', { croppable: true, crop_mode: 'pan', crop_shape: 'circle', preview_src: '/a.jpg' }],
+      ['n', 'm1', { crop_mode: 'pan' }],
+      ['n', 'm1', { crop_mode: 'box', crop_shape: 'rect' }],
+    ]);
+    assert.equal(a.warns, 1);
+    assert.equal(b.warns, 1);
+    assert.equal(c.warns, 0);
+    for (const x of [a, b, c]) assert.ok(!/crop-(mode|shape)/.test(x.html), x.html);
   });
 
   test('v0.35 without usage: croppable / crop_ratio / focal_point / focal dropped (no button, no focal input) + ONE warning', () => {

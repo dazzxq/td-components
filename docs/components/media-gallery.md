@@ -15,7 +15,7 @@ Chỉ cần **một** ảnh → dùng [Media field](media-field.md). Hiển th�
 | Import | `import '@dazzxq/td-components/media-gallery'` (class: `import { TdMediaGallery } from '@dazzxq/td-components'`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.43.0 (cần `td.css`; cần một adapter — xem [media picker](media-picker.md#cấu-hình-mặc-định--configuredefaults)). Quyết định: [ADR 0021](../internal/decisions/0021-media-gallery-form-shape.md). Chú thích + giới hạn độ dài: 0.51.0 |
+| Từ phiên bản | 0.43.0 (cần `td.css`; cần một adapter — xem [media picker](media-picker.md#cấu-hình-mặc-định--configuredefaults)). Quyết định: [ADR 0021](../internal/decisions/0021-media-gallery-form-shape.md). Chú thích + giới hạn độ dài: 0.51.0; `crop-mode` / `crop-shape`: 0.75.0 |
 
 ## Ví dụ nhanh
 
@@ -295,6 +295,10 @@ Cần `usage` (thiếu → bỏ + một cảnh báo). Nút **Cắt** trên ô �
   `adapter.get(id)` (nút `aria-busy` trong lúc chờ) → `urls.preview` + `width` / `height`; không adapter → `src` của item
   (chỉ khi do server / code đặt, không phải do adapter tạo).
 - `crop-ratio` là **một** tỉ lệ cho cả gallery: vắng → `aspect-ratio` → tự do.
+- **`crop-mode="pan"` / `crop-shape="circle"` (0.75.0)** áp cho hộp cắt của **mọi** ô: khung cố định giữa vùng cắt, kéo / phóng ảnh
+  bên dưới ([Cropper › mode](cropper.md#hai-kiểu-thao-tác--mode-0730)); `circle` chỉ vẽ tròn khi `pan` và tỉ lệ cắt đang là 1:1
+  (`crop-ratio="1"` hoặc gallery `aspect-ratio` 1:1). Cắt khoảng trắng, không phân biệt hoa thường, giá trị lạ = mặc định
+  (`box` / `rect`). Đọc lúc mở hộp (đổi giữa chừng → hộp kế tiếp theo); cần `usage` (thiếu → cùng cảnh báo với `croppable`).
 - "Áp dụng" có đổi → `input` + `change` (`reason: 'crop'`). Huỷ / không đổi → giữ chuỗi gốc **đúng từng byte**.
 - Ô ảnh xem trước đúng vùng cắt khi tỉ lệ vùng cắt khớp tỉ lệ ô (± 2 %), như field.
 - **Một luồng cắt mỗi gallery.** Luồng bị huỷ im lặng (không mở hộp / không áp kết quả) khi ảnh đó bị gỡ, id đổi
@@ -375,6 +379,7 @@ echo td_media_gallery('gallery', $product->galleryItems(), [
 ]);
 // $items: [['id' => 'a_9f2c', 'src' => $thumbUrl, 'name' => 'ao.jpg', 'alt' => '…', 'caption' => '…', 'crop' => [...] | '{"v":1,…}' | null], …]
 // 0.51: 'caption' => true | 'line' | 'multiline', 'alt_maxlength' => 255, 'caption_maxlength' => 500
+// 0.75: 'crop_mode' => 'pan', 'crop_shape' => 'circle' (in crop-mode="pan" crop-shape="circle"; giá trị khác → không in)
 ```
 
 In host `<td-media-gallery data-td-ssr="media-gallery@1">` + đúng cây `render()` + hidden input gửi đúng FormData ở
@@ -403,6 +408,8 @@ từng byte). Chi tiết option: [PHP adapter › td_media_gallery](../guides/ph
 | `caption-maxlength` | 1…1000 | — | (0.51, cần `caption`) giới hạn mềm của chú thích |
 | `croppable` | boolean | — | (cần `usage`) nút Cắt từng ảnh |
 | `crop-ratio` | `W/H` · `W:H` · số · `free` | `aspect-ratio`, rồi tự do | Một tỉ lệ cho cả gallery, [0.01, 100] |
+| `crop-mode` | `box` · `pan` | `box` | (0.75.0, cần `usage`) `pan` = khung cố định, kéo / phóng ảnh (avatar) |
+| `crop-shape` | `rect` · `circle` | `rect` | (0.75.0, cần `usage`) `circle` = khung tròn; chỉ khi `pan` + tỉ lệ cắt 1:1 |
 | `focal-point` | boolean | — | (cần `usage`) gửi `name[i][focal]` + chọn trong hộp cắt |
 | `cover` | boolean | — | Badge "Ảnh bìa" trên ô đầu |
 | `aspect-ratio` | `W/H` · `W:H` · số | `1:1` | Tỉ lệ ô |

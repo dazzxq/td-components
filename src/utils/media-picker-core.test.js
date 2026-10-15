@@ -12,6 +12,7 @@ import {
   PageState, PAGE_SIZE_DEFAULT, REMOTE_URL_MAX, _resetCoreWarnings, normalizeCollections,
 } from './media-picker-core.js';
 import { safeMediaUrl } from './media-url.js';
+import { parseCropMode, parseCropShape, CROP_MODE_CASES, CROP_SHAPE_CASES } from './media-field-model.js';
 // Wall-clock budgets guard against super-linear blow-ups, not micro-speed: on a shared host (CI, several suites at
 // once) they get 20× slack, which still catches quadratic behaviour; TD_PERF_STRICT=1 enforces the raw budget.
 const PERF_SLACK = process.env.TD_PERF_STRICT ? 1 : 20;
@@ -266,7 +267,7 @@ describe('resolveOptions + DefaultsRegistry (decision 6)', () => {
     assert.equal(o.selection.maxItems, 1);
     assert.deepEqual(o.selection.kinds, ['video']);
     assert.deepEqual(o.upload, { accept: 'image/*', maxSize: '', multiple: false, acceptLabel: '' });
-    assert.deepEqual(o.cropResolved, { aspectRatio: null, allowFocalPoint: false });
+    assert.deepEqual(o.cropResolved, { aspectRatio: null, allowFocalPoint: false, mode: 'box', shape: 'rect' });
     assert.ok(!warns.some((w) => /v0\.35/.test(w)), 'v0.35: the "ships in v0.35" warning is gone');
     assert.ok(!warns.some((w) => /v0\.33/.test(w)));
     const m = resolveOptions({ adapter: adapter() }, { selection: { mode: 'multiple', maxItems: 2, initialIds: ['a', 'b', 'c'] } });
@@ -1316,15 +1317,15 @@ describe('v0.33 resolveOptions: pagination + upload.acceptLabel (decisions 13, 2
     assert.equal(r(undefined), null);
     assert.equal(r({ enabled: false, aspectRatio: 2 }), null);
     assert.equal(r({ aspectRatio: 2 }), null);
-    assert.deepEqual(r({ enabled: true, aspectRatio: 1.91, allowFocalPoint: true }), { aspectRatio: 1.91, allowFocalPoint: true });
-    assert.deepEqual(r({ enabled: true, aspectRatio: 1.5, minWidth: 1200, presets: [] }), { aspectRatio: 1.5, allowFocalPoint: false });
+    assert.deepEqual(r({ enabled: true, aspectRatio: 1.91, allowFocalPoint: true }), { aspectRatio: 1.91, allowFocalPoint: true, mode: 'box', shape: 'rect' });
+    assert.deepEqual(r({ enabled: true, aspectRatio: 1.5, minWidth: 1200, presets: [] }), { aspectRatio: 1.5, allowFocalPoint: false, mode: 'box', shape: 'rect' });
     assert.equal(warns.length, 0);
     // review R1 #5: the public range is [0.01, 100] (boundaries included)
-    assert.deepEqual(r({ enabled: true, aspectRatio: 0.01 }), { aspectRatio: 0.01, allowFocalPoint: false });
-    assert.deepEqual(r({ enabled: true, aspectRatio: 100 }), { aspectRatio: 100, allowFocalPoint: false });
+    assert.deepEqual(r({ enabled: true, aspectRatio: 0.01 }), { aspectRatio: 0.01, allowFocalPoint: false, mode: 'box', shape: 'rect' });
+    assert.deepEqual(r({ enabled: true, aspectRatio: 100 }), { aspectRatio: 100, allowFocalPoint: false, mode: 'box', shape: 'rect' });
     assert.equal(warns.length, 0);
     for (const bad of [0, -1, 0.0099, 100.01, 10001, NaN, Infinity, '16/9']) {
-      assert.deepEqual(r({ enabled: true, aspectRatio: bad }), { aspectRatio: null, allowFocalPoint: false }, String(bad));
+      assert.deepEqual(r({ enabled: true, aspectRatio: bad }), { aspectRatio: null, allowFocalPoint: false, mode: 'box', shape: 'rect' }, String(bad));
     }
     assert.equal(warns.length, 1, 'bad ratio warns once');
     assert.match(warns[0], /aspectRatio/);
@@ -1335,6 +1336,19 @@ describe('v0.33 resolveOptions: pagination + upload.acceptLabel (decisions 13, 2
     assert.equal(warns.length, 2, 'multiple warns once');
     assert.match(warns[1], /single/);
     assert.ok(!warns.some((m) => /v0\.35/.test(m)));
+    // v0.75.0: crop.mode / crop.shape — the grammar of the cropper attribute (= parseCropMode / parseCropShape)
+    const ms = (mode, shape) => { const c = r({ enabled: true, mode, shape }); return [c.mode, c.shape]; };
+    assert.deepEqual(ms('pan', 'circle'), ['pan', 'circle']);
+    assert.deepEqual(ms(' PAN\n', '\tCircle '), ['pan', 'circle']);
+    assert.deepEqual(ms('box', 'rect'), ['box', 'rect']);
+    assert.deepEqual(ms(undefined, undefined), ['box', 'rect']);
+    for (const bad of [null, 0, 1, true, {}, [], ['pan'], 'pans', 'p an', '', '  ', 'free', 'round', { toString: () => 'pan' }]) {
+      assert.deepEqual(ms(bad, bad), ['box', 'rect'], String(typeof bad));
+    }
+    for (const [input] of CROP_MODE_CASES) assert.equal(ms(input, undefined)[0], parseCropMode(input), JSON.stringify(input));
+    for (const [input] of CROP_SHAPE_CASES) assert.equal(ms(undefined, input)[1], parseCropShape(input), JSON.stringify(input));
+    assert.equal(r({ enabled: false, mode: 'pan', shape: 'circle' }), null, 'enabled: false stays null');
+    assert.equal(r({ enabled: true, mode: 'pan' }, { mode: 'multiple' }), null);
     // A defaults layer can enable crop; a higher layer can switch it off (the media field always passes `crop`).
     assert.equal(resolveOptions({ adapter: adapter(), crop: { enabled: true } }, { crop: { enabled: false } }).cropResolved, null);
   });

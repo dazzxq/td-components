@@ -18,7 +18,9 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { HAS_PHP, PHP_BIN, ROOT } from './php.mjs';
 import { MEDIA_GALLERY_FIXTURES, MEDIA_GALLERY_FIXTURE_FILE, renderMediaGalleryFixture } from '../ssr/ssr.mjs';
-import { GALLERY_CASES, GALLERY_MAX_ITEMS } from '../../src/utils/media-field-model.js';
+import {
+  GALLERY_CASES, GALLERY_MAX_ITEMS, CROP_MODE_CASES, CROP_SHAPE_CASES, parseCropMode, parseCropShape,
+} from '../../src/utils/media-field-model.js';
 
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
 const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
@@ -129,6 +131,53 @@ describe('php/td.php — td_media_gallery (v0.43.0, contract media-gallery@1)', 
     assert.ok(!noUsage.html.includes('td-media-gallery__crop') && hostAttr(noUsage.html, 'croppable') === null, noUsage.html);
     assert.equal(noUsage.warns.length, 1);
     assert.ok(vid.html.includes('<span class="td-media-gallery__badge">Video</span>'), vid.html);
+  });
+
+  test('v0.75 crop_mode / crop_shape parity with parseCropMode() / parseCropShape(): only the canonical word is printed, silently', () => {
+    const items = [{ id: 'm1', src: '/a.jpg' }];
+    const modes = [...CROP_MODE_CASES.map(([i]) => i), 'x" onclick="1', '<pan>'];
+    const shapes = [...CROP_SHAPE_CASES.map(([i]) => i), 'x" onclick="1', '<circle>'];
+    const out = run([
+      ...modes.map((m) => ['c', items, { usage: true, croppable: true, crop_mode: m }]),
+      ...shapes.map((v) => ['c', items, { usage: true, croppable: true, crop_shape: v }]),
+    ]);
+    modes.forEach((input, i) => {
+      assert.equal(hostAttr(out[i].html, 'crop-mode'), parseCropMode(input) === 'pan' ? 'pan' : null, JSON.stringify(input));
+      assert.equal(hostAttr(out[i].html, 'crop-shape'), null);
+      assert.deepEqual(out[i].warns, []);
+      assert.ok(!out[i].html.includes('onclick'), out[i].html);
+    });
+    shapes.forEach((input, i) => {
+      const o = out[modes.length + i];
+      assert.equal(hostAttr(o.html, 'crop-shape'), parseCropShape(input) === 'circle' ? 'circle' : null, JSON.stringify(input));
+      assert.equal(hostAttr(o.html, 'crop-mode'), null);
+      assert.deepEqual(o.warns, []);
+      assert.ok(!o.html.includes('onclick'), o.html);
+    });
+    const bad = run([null, true, 1, [], { a: 1 }].map((v) => ['c', items, { usage: true, croppable: true, crop_mode: v, crop_shape: v }]));
+    for (const b of bad) assert.ok(hostAttr(b.html, 'crop-mode') === null && hostAttr(b.html, 'crop-shape') === null && b.warns.length === 0, b.html);
+    const [both, spoof, plain] = run([
+      ['c', items, { usage: true, croppable: true, crop_ratio: '1', crop_mode: 'pan', crop_shape: 'circle' }],
+      ['c', items, { usage: true, croppable: true, attrs: { 'crop-mode': 'pan', 'CROP-SHAPE': 'circle' } }],
+      ['c', items, { usage: true, croppable: true, crop_mode: 'box', crop_shape: 'rect' }],
+    ]);
+    assert.equal(hostAttr(both.html, 'crop-mode'), 'pan');
+    assert.equal(hostAttr(both.html, 'crop-shape'), 'circle');
+    assert.equal(hostAttr(spoof.html, 'crop-mode'), null);
+    assert.equal(hostAttr(spoof.html, 'crop-shape'), null);
+    assert.ok(!/crop-(mode|shape)/i.test(plain.html), 'box / rect print nothing');
+  });
+
+  test('v0.75 crop_mode / crop_shape without usage: dropped + ONE warning; box / rect never warn', () => {
+    const [a, b, c] = run([
+      ['c', [{ id: 'm1', src: '/a.jpg' }], { croppable: true, crop_mode: 'pan', crop_shape: 'circle' }],
+      ['c', [{ id: 'm1' }], { crop_shape: 'circle' }],
+      ['c', [{ id: 'm1' }], { crop_mode: 'box', crop_shape: 'rect' }],
+    ]);
+    assert.equal(a.warns.length, 1);
+    assert.equal(b.warns.length, 1);
+    assert.equal(c.warns.length, 0);
+    for (const x of [a, b, c]) assert.ok(!/crop-(mode|shape)/.test(x.html), x.html);
   });
 
   test('kinds: video → poster + "Video" badge (never <video>); file → icon + name; no src → "Không có ảnh xem trước"', () => {
