@@ -45,3 +45,12 @@ Giá trị mặc định (light / dark): `--td-glass-bg` `rgb(255 255 255 / 90%)
 - Token gate kiểm theo **từng selector** (đặc / blur / lightbox / nút, không `background-image`, không rim);
   contrast gate giữ ngưỡng. Baseline CSP của các component đổi giao diện được chụp lại.
 - Luật cho UI mới: [liquid-glass.md](../design/liquid-glass.md) ("Minimal surfaces").
+
+## Bổ sung v0.76
+
+Badge (v0.76.0) là chỗ **duy nhất** luật này cho phép kính mờ ở tầng nội dung, và chỉ **opt-in**: mặc định badge là
+tinted (nền ~200 + chữ ~800 + bóng mềm), `.td-badge--glass` mới có `backdrop-filter`. Lý do cho phép: badge nhỏ, không
+tương tác, thường nằm trên ảnh / gradient nơi tint đặc trông nặng; chủ sở hữu duyệt preview C + D. Ràng buộc: fallback
+tint đặc không blur khi thiếu `backdrop-filter` / `color-mix()`, `prefers-reduced-transparency`,
+`data-td-glass="off"`, `prefers-contrast: more`, `forced-colors`; chữ glass dùng token `-glass-fg` đo trên cả tint đặc
+lẫn tint trộn alpha trên đen / trắng; glass kèm outline / stamp thì không tác dụng. Các luật còn lại không đổi.

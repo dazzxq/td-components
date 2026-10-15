@@ -47,22 +47,31 @@ describe('v0.36.0 solid semantic buttons (QĐ 19, 24)', () => {
   }
 });
 
-describe('v0.36.0 badges (QĐ 21–22)', () => {
-  const BORDER = { neutral: '#ababac', accent: '#99a4b2', success: '#0f5a2b', danger: '#9a1b1b', warning: '#ac6f08', info: '#1a45a5' };
+describe('v0.76.0 badges (tinted; supersedes the v0.36.0 solid badges, QĐ 21–22)', () => {
+  const TINT = { neutral: ['#e4e4e7', '#3f3f46'], accent: ['#cfe0fd', '#1e3f8f'], success: ['#bbf7d0', '#166534'], danger: ['#fecaca', '#991b1b'], warning: ['#fed7aa', '#9a3412'], info: ['#bfdbfe', '#1e40af'] };
   const INK = { success: '#15803d', danger: '#b91c1c', warning: '#b45309', info: '#2563eb' };
-  for (const [v, border] of Object.entries(BORDER)) {
-    it(`${v}: 1px edge ${border} + soft shadow; outline / stamp: no shadow, page ink`, () => {
+  for (const [v, [bg, fg]] of Object.entries(TINT)) {
+    it(`${v}: tinted fill + label, transparent 1px edge + soft shadow; outline / stamp: no shadow, page ink`, () => {
       host.insertAdjacentHTML('beforeend', `<span class="td-badge td-badge--${v}">Đã duyệt</span>`
         + `<span class="td-badge td-badge--${v} td-badge--outline">A</span><span class="td-badge td-badge--${v} td-badge--stamp">B</span>`);
       const [soft, outline, stamp] = host.querySelectorAll('.td-badge');
       const cs = getComputedStyle(soft);
       expect(cs.borderTopWidth).to.equal('1px');
       expect(cs.borderTopStyle).to.equal('solid');
-      expect(cs.borderTopColor).to.equal(rgb(border));
-      expect(cs.boxShadow).to.match(/rgba\(0, 0, 0, 0\.12\) 0px 1px 2px/);
-      if (SOLID[v]) {
-        expect(cs.backgroundColor).to.equal(rgb(SOLID[v][0]));
-        expect(cs.color).to.equal(rgb(SOLID[v][1]));
+      expect(cs.borderTopColor).to.equal('rgba(0, 0, 0, 0)');
+      expect(cs.boxShadow).to.match(/rgba\(0, 0, 0, 0\.1\) 0px 1px 2px/);
+      expect(cs.boxShadow).to.match(/0px 2px 6px -1px/);
+      if (v === 'accent') {
+        // follows the site accent through color-mix() (the static #cfe0fd / #1e3f8f only where color-mix is missing)
+        const probe = document.createElement('span');
+        host.appendChild(probe);
+        probe.style.setProperty('background-color', 'var(--td-badge-accent-bg)');
+        probe.style.setProperty('color', 'var(--td-badge-accent-fg)');
+        expect(cs.backgroundColor).to.equal(getComputedStyle(probe).backgroundColor);
+        expect(cs.color).to.equal(getComputedStyle(probe).color);
+      } else {
+        expect(cs.backgroundColor).to.equal(rgb(bg));
+        expect(cs.color).to.equal(rgb(fg));
       }
       for (const b of [outline, stamp]) {
         const s = getComputedStyle(b);
@@ -73,14 +82,6 @@ describe('v0.36.0 badges (QĐ 21–22)', () => {
       }
     });
   }
-
-  it('a badge on a fill of its own colour still shows an edge (border ≠ fill)', () => {
-    host.insertAdjacentHTML('beforeend', '<div class="probe"><span class="td-badge td-badge--success">Xong</span></div>');
-    const probe = host.querySelector('.probe');
-    probe.style.setProperty('background', '#15803d');
-    const cs = getComputedStyle(host.querySelector('.td-badge'));
-    expect(cs.borderTopColor).to.not.equal(getComputedStyle(probe).backgroundColor);
-  });
 });
 
 describe('v0.36.0 alerts (QĐ 26) — v0.62.0: no side stripe (ADR 0033)', () => {

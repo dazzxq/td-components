@@ -903,7 +903,7 @@ mv td-theme.css "public/assets/td-theme.$h.css" && echo "td-theme.$h.css"
 <link rel="stylesheet" href="/assets/site.css">
 ```
 
-Header của file ghi phiên bản thuật toán + hợp đồng (`palette algorithm 4, THEME_TOKENS v1`) và seed đã chuẩn hoá về
+Header của file ghi phiên bản thuật toán + hợp đồng (`palette algorithm 5, THEME_TOKENS v1`) và seed đã chuẩn hoá về
 hex. **Sinh lại khi nâng `td-components`** (so header với `npx td-theme --version`); không sửa tay file sinh.
 Thuật toán 2 (0.42.1) chỉ thêm một dòng `--td-form-summary-pressed-bg` (= `--td-color-pressed` của palette), mọi giá trị
 khác như thuật toán 1; file thuật toán 1 vẫn chạy đúng (thiếu token → mặc định `var(--td-color-pressed)` của kit).
@@ -1140,7 +1140,7 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | td-pagination | `--td-pagination-*` | `:root` (có `@media (pointer: coarse)`) | [pagination.md](../components/pagination.md) |
 | td-empty-state | `--td-empty-state-*` | `:root` (`--sm` / `--lg` / `--compact` đặt lại `-pad` / `-gap` trên phần tử) | [empty-state.md](../components/empty-state.md) |
 | Icon | `--td-icon-*` (bảng trên) | `:root` | [icons.md](../components/icons.md) |
-| Badge (`.td-badge`) | `--td-badge-*` — 0.36.0: nền đặc ngữ nghĩa, `-ink` (outline / stamp), `-border` (viền hex tính sẵn), `--td-badge-shadow`; gồm font `--td-badge-font-family` (mặc định `var(--td-font-sans)`) và `--td-badge-stamp-font-family` (mặc định `var(--td-font-mono)`, 0.19.0). Ghi đè `--td-badge-*-fg` / `-bg` thì site tự kiểm tương phản (gate chỉ đo mặc định) | `:root` | [badge.md](../components/badge.md) |
+| Badge (`.td-badge`) | `--td-badge-*` — 0.76.0: nền tinted + chữ đậm, `-ink` (outline / stamp), `-border` (trong suốt), `--td-badge-shadow`, opt-in `.td-badge--glass` (`-glass-fg`, `--td-badge-glass-{alpha,blur,edge,highlight}`); gồm font `--td-badge-font-family` (mặc định `var(--td-font-sans)`) và `--td-badge-stamp-font-family` (mặc định `var(--td-font-mono)`, 0.19.0). Ghi đè `--td-badge-*-fg` / `-bg` thì site tự kiểm tương phản (gate chỉ đo mặc định) | `:root` | [badge.md](../components/badge.md) |
 | td-drawer | `--td-drawer-*` (per-instance `--td-drawer-w`: trên host, chép sang root lúc mở) | `:root` | [drawer.md](../components/drawer.md) |
 | Skeleton (`.td-skeleton`) | `--td-skeleton-*` (bảng trên) | `:root` (riêng `--td-skeleton-lines` trên phần tử) | [loading.md](../components/loading.md#skeleton-khối-giữ-chỗ-thuần-css) |
 

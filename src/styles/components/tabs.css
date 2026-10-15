@@ -159,7 +159,7 @@
 		pointer-events: none;
 	}
 
-	/* v0.70.0 (K9, plan v0.70.0-tabs-counts): a count pill after the label. Its colours are the td-badge SOLID pairs of its tone,
+	/* v0.70.0 (K9, plan v0.70.0-tabs-counts): a count pill after the label. Its colours are the td-badge tinted pairs (v0.76.0; solid before) of its tone,
 	   read through PRIVATE custom properties (no new public token: a site recolours it with --td-badge-{tone}-bg / -fg / -border,
 	   which already re-resolve per theme scope and whose contrast the gates measure). A pill carries its own fill, so it does not
 	   follow the tab's selected / hover colour. It never wraps or shrinks (a wide count widens the tab and may switch the row to the

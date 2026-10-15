@@ -2,6 +2,55 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.76.0
+
+**`td-badge` đổi kiểu mặc định sang "tinted" (nền pastel đậm vừa, chữ đậm, không viền nhìn thấy, bóng đổ mềm hai lớp) và thêm biến thể kính `--glass` (opt-in)**
+(owner kit, 2026-10-16; [plan](docs/internal/plans/v0.76.0-badge-tinted-glass.md), [ADR 0011 › Bổ sung v0.76](docs/internal/decisions/0011-minimal-surfaces.md)). Badge success / warning / danger / info
+trước đây là nền đặc (`--td-solid-*`, chữ trắng, warning chữ đen trên amber `#f59e0b`); nay là nền ~200 + chữ ~800 (tối: nền ~900 + chữ ~200). Chữ trắng trên cam `#f97316` chỉ đạt 2.8:1
+nên không làm kiểu "đặc + chữ trắng" nữa. Mọi cặp chữ / nền vẫn ≥ 4.7:1, sáng và tối.
+
+### Changed
+
+- **Kiểu mặc định của `.td-badge--{neutral,accent,success,warning,danger,info}`**: nền tint, chữ đậm, `--td-badge-{v}-border` mặc định `transparent` (viền 1px vẫn chiếm chỗ nên kích thước badge không đổi),
+  `--td-badge-shadow` thành `0 1px 2px rgb(0 0 0 / 10%), 0 2px 6px -1px rgb(0 0 0 / 10%)` (tối có giá trị riêng `… 50%, … 45%`). `--td-badge-{v}-bg` / `-fg` đổi **giá trị** (tên token giữ nguyên);
+  neutral không còn đọc `--td-color-fill` / `--td-color-on-fill` (token chung không đổi). `--td-solid-*` và nút không đổi. `--outline` / `--stamp` không đổi.
+- **Badge accent theo accent của site đậm hơn**: nền `accent 22 % + #fff` (tối `accent 40 % + #111113`), chữ `accent 62 % + #000` (tối `accent 30 % + #fff`). Bộ sinh theme (`palette.js`) đổi
+  shade `0.14 / 0.26` thành `0.22 / 0.40`; **`ALGORITHM_VERSION` 4 → 5** (cùng seed cho ra `--td-badge-accent-bg` khác: sinh lại file theme bằng `npx td-theme`).
+- Token badge nay có giá trị riêng theo giao diện tối nên được đăng ký trong `SCHEME_TOKENS` của bộ sinh theme (palette sinh ra ở chế độ tối nhận đúng màu tối): `--td-badge-{neutral,success,warning,danger,info}-{bg,fg}`,
+  `--td-badge-shadow`, `--td-badge-{v}-glass-fg`, `--td-badge-glass-edge`, `--td-badge-glass-highlight`. Không phải token hợp đồng (`THEME_TOKENS_VERSION` không đổi).
+
+Site đang dựa vào badge đặc kiểu cũ thì đặt lại token (không cần sửa markup):
+
+```css
+/* khôi phục badge đặc của 0.36 → 0.75 */
+:root {
+  --td-badge-success-bg: var(--td-solid-success-bg);   --td-badge-success-fg: var(--td-solid-success-fg);
+  --td-badge-warning-bg: var(--td-solid-warning-bg);   --td-badge-warning-fg: var(--td-solid-warning-fg);
+  --td-badge-danger-bg:  var(--td-solid-danger-bg);    --td-badge-danger-fg:  var(--td-solid-danger-fg);
+  --td-badge-info-bg:    var(--td-solid-info-bg);      --td-badge-info-fg:    var(--td-solid-info-fg);
+  --td-badge-neutral-bg: var(--td-color-fill);         --td-badge-neutral-fg: var(--td-color-on-fill);
+  --td-badge-success-border: #0f5a2b;  --td-badge-warning-border: #ac6f08;
+  --td-badge-danger-border:  #9a1b1b;  --td-badge-info-border:    #1a45a5;  --td-badge-neutral-border: #ababac;
+  --td-badge-shadow: 0 1px 2px rgb(0 0 0 / 12%);
+}
+```
+
+### Added
+
+- **`.td-badge--glass`** (opt-in): cùng bảng màu nhưng nền trong suốt 85 % (`color-mix`) + `backdrop-filter: blur(12px) saturate(160%)`, viền trắng mảnh và vệt sáng mép trên; nên dùng khi badge nằm trên ảnh / nền màu.
+  Chữ kính riêng `--td-badge-{v}-glass-fg` (đậm hơn một nấc: ≥ 4.7:1 trên **mọi** nền phía sau ở alpha 85 %). Token: `--td-badge-glass-alpha` (85 %), `--td-badge-glass-blur` (12px), `--td-badge-glass-edge`,
+  `--td-badge-glass-highlight` (+ 6 token `-glass-fg`). Đi cùng `--outline` / `--stamp` thì không có tác dụng.
+- **Dự phòng đặc** (nền tint, không blur): trình duyệt thiếu `backdrop-filter` / `color-mix`, `prefers-reduced-transparency`, **`<html data-td-glass="off">`** (cùng công tắc với `glass.css`; đường duy nhất trên Safari / iOS),
+  `prefers-contrast: more`, `forced-colors`.
+- **PHP `td_badge($text, ['glass' => true])`** in thêm class `td-badge--glass`.
+- Story Glass (trên nền gradient); test engines `td-v076-badge-tinted` (3 engine), cặp tương phản `--glass` (chữ trên tint pha 85 % lên nền đen / trắng và trên nền đặc) trong `test:contrast`,
+  state CSP `td-badge.glass`.
+
+### Ghi chú
+
+- Đổi giao diện, không đổi API; nhóm "đổi giao diện" trong [breaking-changes](docs/upgrading/breaking-changes.md#0760). Pill đếm của `td-tabs` (0.70.0) dùng token `--td-badge-*` nên đổi theo.
+- Baseline `td-badge.*` của gate CSP chụp lại có chủ đích; `golden.json` ghi các delta badge (sáng + tối) và các token mới.
+
 ## 0.75.0
 
 **Cropper `pan` (M2): `mode` / `shape` đi qua mọi nơi nhúng `td-cropper` — hộp thoại, `td-media-field`, `td-media-gallery`, media picker và helper PHP**

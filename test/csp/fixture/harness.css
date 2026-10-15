@@ -1,3 +1,5 @@
 /* CSP harness page reset for the td-only profile: match the Tailwind page environment (preflight body margin 0) so
    width-dependent snapshots of block components are comparable across profiles. Test-only. */
 body { margin: 0; }
+/* v0.76.0: colourful backdrop for the td-badge.glass state (translucent fill + backdrop-filter over a gradient). */
+.csp-backdrop { padding: 16px; background: linear-gradient(135deg, #5b8def 0%, #a46bf5 45%, #f59e7a 100%); }

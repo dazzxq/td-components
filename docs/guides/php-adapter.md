@@ -124,7 +124,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.75.0/
+public/assets/vendor/td-components/0.76.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
   dist/  module-graph.json                    (0.64.0+: bản minify + đồ thị preload)
 ```
@@ -133,7 +133,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.75.0';
+const TD_VERSION = '0.76.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -857,6 +857,7 @@ registerIcons(JSON.parse(document.getElementById('site-icons').textContent));
 | `variant` | `neutral` `accent` `success` `warning` `danger` `info` (mặc định `neutral`) |
 | `outline` | `true` → `td-badge--outline` |
 | `stamp` | `true` → `td-badge--stamp` (con dấu: in hoa, viền đôi, nghiêng) |
+| `glass` | `true` → `td-badge--glass` (0.76.0; kính mờ opt-in, không tác dụng khi cùng `outline` / `stamp`) |
 | `icon` (0.25.0) | tên icon registry (core, alias như `x`, hoặc icon site `site-*` đã `registerIcons`) → icon trang trí cỡ `s` trước nhãn. Tên lạ → **bỏ icon, giữ nhãn** (không span rỗng; markup y như không có `icon`) |
 | `id`, `class`, `attrs` | trên `<span>` |
 

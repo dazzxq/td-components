@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.75.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.76.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.76.0](#0760) | **Đổi giao diện**: `td-badge` mặc định kiểu "tinted" (nền pastel, chữ đậm, không viền nhìn thấy, bóng đổ mềm) thay cho nền đặc; thêm `--glass` (opt-in) | Không phải sửa code (class, PHP, token giữ nguyên). Muốn badge đặc như 0.36 → 0.75: đặt lại `--td-badge-{v}-bg` / `-fg` / `-border` / `--td-badge-shadow` (đoạn CSS mẫu dưới). CSS site ghi đè `--td-badge-*` cũ vẫn được tôn trọng |
 | [0.75.0](#0750) | Không phá vỡ: `mode` / `shape` của `td-cropper` (0.73.0) đi qua hộp thoại, `td-media-field` / `td-media-gallery` (`crop-mode`, `crop-shape`), media picker (`crop.mode`, `crop.shape`) và PHP (`crop_mode`, `crop_shape`) (opt-in) | Không phải sửa code. Muốn avatar tròn: `crop-ratio="1" crop-mode="pan" crop-shape="circle"`. Site tự đặt attribute tên `mode` / `shape` lên `<td-cropper>` cho việc riêng (từ 0.73.0) hoặc tự dùng `crop-mode` / `crop-shape` trên field / gallery cho việc khác thì đổi tên. |
 | [0.74.0](#0740) | **Đổi giao diện**: `td-media-picker` có album — bìa `contain`, thẻ album "chồng ảnh", tiêu đề "Album n" / "Ảnh n" | Không phải sửa code (API / adapter không đổi). CSS site ghi đè viền / nền / bóng của `.td-media-picker__coll` cần chuyển sang `.td-media-picker__coll-cover`. |
 | [0.72.0](#0720) | **Đổi hành vi**: `autoSelectFirst` của `td-media-picker` mặc định chỉ bật cho picker chọn một ảnh | Picker `multiple` (album, `td-media-gallery`) mở ra chưa chọn gì, "Chèn" tắt tới khi người dùng chọn. Muốn chọn sẵn: `autoSelectFirst: true` cho lần mở đó. Site còn `configureDefaults({ autoSelectFirst: true })` (từ 0.67) thì bỏ dòng đó, nếu không `multiple` vẫn chọn sẵn. Test của site dựa vào "`multiple` mở ra đã có ảnh" phải bật tường minh. |
@@ -99,6 +100,34 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.76.0
+
+**Đổi giao diện (chỉ `td-badge`).** API, class, PHP và tên token giữ nguyên; chỉ **giá trị mặc định** đổi.
+
+- Success / warning / danger / info / neutral / accent: nền pastel ~200 + chữ đậm ~800 (tối: nền ~900 + chữ ~200), không viền nhìn thấy (`--td-badge-{v}-border: transparent`, vẫn chiếm 1px), bóng đổ hai lớp.
+- Pill đếm của `td-tabs` (0.70.0) dùng token badge nên đổi theo. `--outline` / `--stamp` không đổi.
+- Mới, opt-in: `.td-badge--glass` (PHP `'glass' => true`).
+- Bộ sinh theme: `ALGORITHM_VERSION` 4 → 5 (shade badge accent 0.14 / 0.26 → 0.22 / 0.40, thêm token badge vào `SCHEME_TOKENS`). File theme sinh sẵn cũ vẫn chạy; sinh lại bằng `npx td-theme` để nhận giá trị mới.
+
+Việc site cần làm: không có. Muốn lại nền đặc của 0.36 → 0.75:
+
+```css
+:root {
+  --td-badge-success-bg: var(--td-solid-success-bg);   --td-badge-success-fg: var(--td-solid-success-fg);
+  --td-badge-warning-bg: var(--td-solid-warning-bg);   --td-badge-warning-fg: var(--td-solid-warning-fg);
+  --td-badge-danger-bg:  var(--td-solid-danger-bg);    --td-badge-danger-fg:  var(--td-solid-danger-fg);
+  --td-badge-info-bg:    var(--td-solid-info-bg);      --td-badge-info-fg:    var(--td-solid-info-fg);
+  --td-badge-neutral-bg: var(--td-color-fill);         --td-badge-neutral-fg: var(--td-color-on-fill);
+  --td-badge-success-border: #0f5a2b;  --td-badge-warning-border: #ac6f08;
+  --td-badge-danger-border:  #9a1b1b;  --td-badge-info-border:    #1a45a5;  --td-badge-neutral-border: #ababac;
+  --td-badge-shadow: 0 1px 2px rgb(0 0 0 / 12%);
+}
+```
+
+Site tự đặt `--td-badge-*-fg` / `-bg` phải tự kiểm tương phản (gate chỉ đo giá trị mặc định); hạ `--td-badge-glass-alpha` xuống dưới 85 % làm chữ kính có thể rớt dưới 4.7:1.
 
 ---
 

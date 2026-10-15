@@ -100,6 +100,7 @@ const CASES = {
   'badge default neutral': ['td_badge', 'Mới'],
   'badge success outline + id/class/attrs': ['td_badge', 'Đã duyệt', { variant: 'success', outline: true, id: 'b1', class: 'app-x', attrs: { title: 'Duyệt' } }],
   'badge danger stamp': ['td_badge', 'Huỷ', { variant: 'danger', stamp: true }],
+  'badge info glass (v0.76.0)': ['td_badge', 'Mới', { variant: 'info', glass: true, class: 'app-x' }],
   'badge bad variant → neutral': ['td_badge', 'x', { variant: 'evil"' }],
   'alert default info': ['td_alert', 'Đã gửi yêu cầu.'],
   'alert success heading dismissible': ['td_alert', 'Đã lưu thay đổi.', { variant: 'success', heading: 'Thành công', dismissible: true, id: 'flash', class: 'app-flash' }],
@@ -385,10 +386,17 @@ describe('php/td.php', opts, () => {
       { fn: 'td_badge', args: ['Mới'] },
       ...variants.map((v) => ({ fn: 'td_badge', args: ['x', { variant: v }] })),
       { fn: 'td_badge', args: ['<b>1</b> & 2', { variant: 'info', outline: true, stamp: true }] },
+      // v0.76.0 `glass`: one fixed class (bool); falsy / absent prints nothing; glass + outline keeps both (CSS: outline wins)
+      { fn: 'td_badge', args: ['g', { variant: 'success', glass: true }] },
+      { fn: 'td_badge', args: ['g', { variant: 'success', glass: false }] },
+      { fn: 'td_badge', args: ['g', { variant: 'success', glass: 'evil" onclick="x', outline: true }] },
     ]).map((r) => r.out);
     assert.equal(res[0], '<span class="td-badge td-badge--neutral">Mới</span>');
     variants.forEach((v, i) => assert.equal(res[i + 1], `<span class="td-badge td-badge--${v}">x</span>`));
     assert.equal(res[7], '<span class="td-badge td-badge--info td-badge--outline td-badge--stamp">&lt;b&gt;1&lt;/b&gt; &amp; 2</span>');
+    assert.equal(res[8], '<span class="td-badge td-badge--success td-badge--glass">g</span>');
+    assert.equal(res[9], '<span class="td-badge td-badge--success">g</span>');
+    assert.equal(res[10], '<span class="td-badge td-badge--success td-badge--outline td-badge--glass">g</span>');
   });
 
   test('td_alert: ONE SSR contract — host + full styled markup, role by variant, no close button (F5)', () => {

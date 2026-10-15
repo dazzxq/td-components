@@ -108,6 +108,11 @@ export const SCHEME_TOKENS = Object.freeze([
   '--td-dropzone-bg-active', '--td-dropzone-bg-pressed',
   '--td-badge-accent-bg', '--td-badge-accent-fg', '--td-badge-success-ink', '--td-badge-warning-ink',
   '--td-badge-danger-ink', '--td-badge-info-ink',
+  // v0.76.0 td-badge tinted: dark gets its own fills / labels / shadow; --glass labels + edge / highlight
+  ...['neutral', 'success', 'warning', 'danger', 'info'].flatMap((v) => [`--td-badge-${v}-bg`, `--td-badge-${v}-fg`]),
+  '--td-badge-shadow',
+  ...['neutral', 'accent', 'success', 'warning', 'danger', 'info'].map((v) => `--td-badge-${v}-glass-fg`),
+  '--td-badge-glass-edge', '--td-badge-glass-highlight',
   '--td-filter-chip-remove-fg',
   '--td-diff-added-bg', '--td-diff-removed-bg', // v0.46.0 td-diff cell tints
 ]);

@@ -140,10 +140,10 @@ describe('v0.21.0 P1 → v0.36.0 solid semantic buttons', () => {
     expect(near(rgb(getComputedStyle(b).backgroundColor), [46 * 0.92, 125 * 0.92, 50 * 0.92], 3)).to.equal(true);
   });
 
-  it('v0.36.0: semantic badges are solid too (warning: amber fill, dark label)', () => {
+  it('v0.76.0: semantic badges are tinted (warning: orange-200 fill, orange-800 label; was solid amber in v0.36.0)', () => {
     const badge = mount('<span class="td-badge td-badge--warning">Chờ</span>');
-    expect(near(rgb(getComputedStyle(badge).backgroundColor), hex('#f59e0b'))).to.equal(true);
-    expect(near(rgb(getComputedStyle(badge).color), hex('#18181b'))).to.equal(true);
+    expect(near(rgb(getComputedStyle(badge).backgroundColor), hex('#fed7aa'))).to.equal(true);
+    expect(near(rgb(getComputedStyle(badge).color), hex('#9a3412'))).to.equal(true);
   });
 });
 

@@ -38,7 +38,7 @@ import { TdMenu } from '/src/feedback/td-menu.js'; // v0.53.0
 import { TdMediaPicker } from '/src/feedback/td-media-picker.js';
 import { createMockAdapter } from '/test/fixtures/media-adapter.js';
 // v0.41.0 (M0): ONE colour parser for every pair below — understands color(srgb …) (0..1 channels) next to rgb()/rgba()
-import { over as overRgb, contrast as contrastRgb } from '/test/tokens/color-parse.js';
+import { over as overRgb, contrast as contrastRgb, parseColor as parseCssColor } from '/test/tokens/color-parse.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
 const TOASTS = ['success', 'error', 'warning', 'info'];
@@ -1429,10 +1429,23 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       stage.appendChild(target);
       const cs = getComputedStyle(target);
       pairs = [{ what: 'badge label vs fill', fg: cs.color, bg: cs.backgroundColor, min: 4.7 }];
-      if (theme !== 'dark') {
-        pairs.push({ what: 'badge edge vs its fill', fg: cs.borderTopColor, bg: cs.backgroundColor, min: 1.6 },
-          { what: 'badge edge vs white', fg: cs.borderTopColor, bg: 'rgb(255, 255, 255)', min: 1.6 },
-          { what: 'badge edge vs #f4f4f5', fg: cs.borderTopColor, bg: 'rgb(244, 244, 245)', min: 1.6 });
+      // v0.76.0: the edge is transparent by default (tinted, no visible border) — a visible edge is no longer measured.
+      // --glass: the glass label on the tint at --td-badge-glass-alpha over the two backdrop poles (pure black / pure white
+      // cover every backdrop: the composite luminance is monotonic in the backdrop's) and on the solid tint (the
+      // fallback: reduced transparency / data-td-glass="off" / increased contrast / no backdrop-filter).
+      {
+        const glass = document.createElement('span');
+        glass.className = `td-badge td-badge--${c.v} td-badge--glass`;
+        glass.textContent = 'Đã duyệt';
+        stage.appendChild(glass);
+        const gcs = getComputedStyle(glass);
+        const tint = tok(`--td-badge-${c.v}-bg`);
+        const a = parseFloat(tok('--td-badge-glass-alpha')) / 100 || 0.85;
+        const t = parseCssColor(tint);
+        const mixed = (base) => over(`rgba(${t.r}, ${t.g}, ${t.b}, ${a})`, base);
+        pairs.push({ what: 'badge --glass label vs solid tint (fallback)', fg: gcs.color, bg: tint, min: 4.7 },
+          { what: 'badge --glass label vs tint over black', fg: gcs.color, bg: mixed('rgb(0, 0, 0)'), min: 4.7 },
+          { what: 'badge --glass label vs tint over white', fg: gcs.color, bg: mixed('rgb(255, 255, 255)'), min: 4.7 });
       }
       if (!['neutral', 'accent'].includes(c.v)) {
         const ink = document.createElement('span');

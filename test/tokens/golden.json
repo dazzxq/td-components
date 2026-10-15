@@ -2133,7 +2133,17 @@
     "--td-alert-icon-radius": {"light": "8px", "dark": "8px", "why": "v0.62.0 (plan A): td-alert density / icon-tile token — tile radius (= --td-radius-md)"},
     "--td-alert-tile-mix": {"light": "8%", "dark": "8%", "why": "v0.62.0 (plan A): td-alert density / icon-tile token — share of the icon colour in the tile fill"},
     "--td-media-field-frame-w": {"light": "100%", "dark": "100%", "why": "v0.71.0 (K10 of dsuite): td-media-field — inline size of the image FRAME alone; the label, buttons, helper and error keep the host width"},
-    "--td-cropper-pan-inset": {"light": "24px", "dark": "24px", "why": "v0.73.0: td-cropper mode=pan — the dim margin around the fixed frame (padding of the stage; the frame is the largest rect of the ratio inside it)"}
+    "--td-cropper-pan-inset": {"light": "24px", "dark": "24px", "why": "v0.73.0: td-cropper mode=pan — the dim margin around the fixed frame (padding of the stage; the frame is the largest rect of the ratio inside it)"},
+    "--td-badge-accent-glass-fg": {"light": "rgb(17, 45, 106)", "dark": "rgb(219, 234, 254)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-accent-glass-fg"},
+    "--td-badge-danger-glass-fg": {"light": "rgb(127, 29, 29)", "dark": "rgb(254, 226, 226)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-danger-glass-fg"},
+    "--td-badge-glass-alpha": {"light": "85%", "dark": "85%", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-glass-alpha"},
+    "--td-badge-glass-blur": {"light": "12px", "dark": "12px", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-glass-blur"},
+    "--td-badge-glass-edge": {"light": "rgba(255, 255, 255, 0.55)", "dark": "rgba(255, 255, 255, 0.16)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-glass-edge"},
+    "--td-badge-glass-highlight": {"light": "rgba(255, 255, 255, 0.6)", "dark": "rgba(255, 255, 255, 0.12)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-glass-highlight"},
+    "--td-badge-info-glass-fg": {"light": "rgb(30, 58, 138)", "dark": "rgb(219, 234, 254)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-info-glass-fg"},
+    "--td-badge-neutral-glass-fg": {"light": "rgb(39, 39, 42)", "dark": "rgb(244, 244, 245)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-neutral-glass-fg"},
+    "--td-badge-success-glass-fg": {"light": "rgb(20, 83, 45)", "dark": "rgb(220, 252, 231)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-success-glass-fg"},
+    "--td-badge-warning-glass-fg": {"light": "rgb(124, 45, 18)", "dark": "rgb(255, 237, 213)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-warning-glass-fg"}
   },
   "lightDeltas": {
     "--td-table-check-border": {
@@ -2143,6 +2153,74 @@
     "--td-focus-ring": {
       "to": "rgb(255, 255, 255) 0px 0px 0px 1px, rgb(37, 99, 235) 0px 0px 0px 3px",
       "why": "owner-authorised: focus ring ≥ 3:1 (WCAG 2.4.11/1.4.11) — solid 2px --td-focus ring behind a 1px surface gap, same 3px footprint (was a 35 % / 45 % translucent 3px ring, ≈ 1.7:1 on white)"
+    },
+    "--td-badge-accent-bg": {
+      "to": "rgb(207, 221, 251)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-accent-border": {
+      "to": "rgba(0, 0, 0, 0)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-danger-bg": {
+      "to": "rgb(254, 202, 202)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-danger-border": {
+      "to": "rgba(0, 0, 0, 0)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-danger-fg": {
+      "to": "rgb(153, 27, 27)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-info-bg": {
+      "to": "rgb(191, 219, 254)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-info-border": {
+      "to": "rgba(0, 0, 0, 0)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-info-fg": {
+      "to": "rgb(30, 64, 175)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-neutral-bg": {
+      "to": "rgb(228, 228, 231)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-neutral-border": {
+      "to": "rgba(0, 0, 0, 0)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-shadow": {
+      "to": "rgba(0, 0, 0, 0.1) 0px 1px 2px 0px, rgba(0, 0, 0, 0.1) 0px 2px 6px -1px",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-success-bg": {
+      "to": "rgb(187, 247, 208)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-success-border": {
+      "to": "rgba(0, 0, 0, 0)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-success-fg": {
+      "to": "rgb(22, 101, 52)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-warning-bg": {
+      "to": "rgb(254, 215, 170)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-warning-border": {
+      "to": "rgba(0, 0, 0, 0)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-warning-fg": {
+      "to": "rgb(154, 52, 18)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
     }
   },
   "darkDeltas": {
@@ -2155,12 +2233,12 @@
       "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
     },
     "--td-badge-accent-bg": {
-      "to": "rgb(32, 49, 79)",
-      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+      "to": "rgb(40, 67, 111)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow | v0.76.0: td-badge tinted accent (shade 0.40 over the dark surface)"
     },
     "--td-badge-accent-fg": {
-      "to": "rgb(183, 209, 252)",
-      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+      "to": "rgb(201, 221, 253)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow | v0.76.0: td-badge tinted accent (shade 0.40 over the dark surface)"
     },
     "--td-btn-ghost-fg": {
       "to": "rgb(75, 141, 248)",
@@ -2469,6 +2547,70 @@
     "--td-chip-remove-hover": {
       "to": "rgba(255, 255, 255, 0.13)",
       "why": "v0.42.1: dark pressed pairs ≥ 4.7 — chip-input remove pressed (wash twice) 4.22 → 4.88; hover 6.22 → 6.83"
+    },
+    "--td-badge-accent-border": {
+      "to": "rgba(0, 0, 0, 0)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-danger-bg": {
+      "to": "rgb(127, 29, 29)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-danger-border": {
+      "to": "rgba(0, 0, 0, 0)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-danger-fg": {
+      "to": "rgb(254, 202, 202)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-info-bg": {
+      "to": "rgb(30, 58, 138)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-info-border": {
+      "to": "rgba(0, 0, 0, 0)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-info-fg": {
+      "to": "rgb(191, 219, 254)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-neutral-bg": {
+      "to": "rgb(63, 63, 70)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-neutral-border": {
+      "to": "rgba(0, 0, 0, 0)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-shadow": {
+      "to": "rgba(0, 0, 0, 0.5) 0px 1px 2px 0px, rgba(0, 0, 0, 0.45) 0px 2px 6px -1px",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-success-bg": {
+      "to": "rgb(20, 83, 45)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-success-border": {
+      "to": "rgba(0, 0, 0, 0)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-success-fg": {
+      "to": "rgb(187, 247, 208)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-warning-bg": {
+      "to": "rgb(124, 45, 18)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-warning-border": {
+      "to": "rgba(0, 0, 0, 0)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
+    },
+    "--td-badge-warning-fg": {
+      "to": "rgb(254, 215, 170)",
+      "why": "v0.76.0 td-badge tinted: ~200 pastel fill, ~800 label, no visible edge, two-layer soft shadow (plan v0.76.0-badge-tinted-glass, owner-approved preview C)"
     }
   }
 }

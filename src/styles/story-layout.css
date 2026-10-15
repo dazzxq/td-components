@@ -36,3 +36,9 @@ form.sb-stack.sb-narrow { align-items: stretch; }
 .sb-side140 { width: 140px; }
 /* v0.71.0: td-media-field small square logo frame — the token sizes the frame alone; the label, buttons and error keep the field's width */
 .sb-logo-frame { --td-media-field-frame-w: 7.5rem; }
+/* v0.76.0: colourful backdrop for the td-badge glass story (glass needs something behind it to blur) */
+.sb-backdrop { padding: 20px; border-radius: 12px; background:
+  radial-gradient(circle at 15% 30%, #ffd166 0 22%, transparent 23%),
+  radial-gradient(circle at 70% 65%, #06d6a0 0 26%, transparent 27%),
+  radial-gradient(circle at 45% 95%, #ef476f 0 20%, transparent 21%),
+  linear-gradient(135deg, #118ab2, #073b4c); }

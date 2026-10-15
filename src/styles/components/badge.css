@@ -1,19 +1,25 @@
 /*
  * .td-badge — CSS-only badge / rubber stamp (v0.18.0 F5; PHP td_badge()). No JS, no custom element.
- * Content layer → SOLID tinted fill, never glass (liquid-glass R1).
  *   <span class="td-badge td-badge--success">Đã duyệt</span>
  * Variants: --neutral (default) | --accent | --success | --warning | --danger | --info.
  * Modifiers: --outline (transparent, currentColor border) · --stamp (uppercase, double border, slight tilt like the
- * 135 `td-stamp`; tilt token `--td-badge-stamp-rotate: 0deg` turns it off, colours follow the variant tokens).
- * v0.36.0 (plan QĐ 21–22): success / warning / danger / info are SOLID (--td-solid-*: white label, warning dark). A
- * filled badge has a 1px edge (--td-badge-{v}-border = the fill mixed with 30 % black, PRECOMPUTED hex — no color-mix,
- * Chrome 102) + a soft shadow (--td-badge-shadow), so a badge on a background of its own colour keeps its outline.
- * Outline / stamp (transparent) use the page ink --td-badge-{v}-ink (a white -fg would vanish) and no shadow.
- * The label is ≥ 4.7:1 on its fill and the ink on the page; the edge ≥ 1.6:1 vs its fill / white / #f4f4f5 (badges are
- * not interactive — the text carries the information) — light + dark (test/tokens/contrast.spec.mjs).
+ * 135 `td-stamp`; tilt token `--td-badge-stamp-rotate: 0deg` turns it off, colours follow the variant tokens) ·
+ * --glass (v0.76.0, OPT-IN: translucent tint + backdrop blur, for badges on a photo / coloured surface).
+ * v0.76.0 (plan v0.76.0-badge-tinted-glass): the default is TINTED — a ~200 pastel fill, ~800 label, NO visible edge
+ * (--td-badge-{v}-border = transparent: the 1px edge still takes its space, so the badge keeps its size) and a soft
+ * two-layer shadow (--td-badge-shadow). Dark theme: ~900 fill, ~200 label. v0.36.0–v0.75 was SOLID (--td-solid-*); a site
+ * that wants that back sets --td-badge-{v}-bg / -fg / -border (docs/components/badge.md, CHANGELOG 0.76.0).
+ * Outline / stamp (transparent) use the page ink --td-badge-{v}-ink and no shadow; --glass next to either has no effect.
+ * --glass: fill = the tint at --td-badge-glass-alpha (85 %) + blur(--td-badge-glass-blur) saturate(160%), a thin light
+ * edge and an inset top highlight; its label is --td-badge-{v}-glass-fg (one step darker / lighter than the tint label:
+ * ≥ 4.7:1 over ANY backdrop at 85 %). Opaque tint fill (no blur) when backdrop-filter / color-mix is unsupported,
+ * prefers-reduced-transparency, :root[data-td-glass="off"] (the same switch as src/styles/glass.css), prefers-contrast:
+ * more and forced-colors.
+ * Every label ≥ 4.7:1 on its fill and the ink on the page, light + dark (test/tokens/contrast.spec.mjs). A site
+ * overriding --td-badge-*-fg / -bg / --td-badge-glass-alpha must check the contrast itself (the gate measures defaults).
  * `prefers-contrast: more` → currentColor edge, no shadow.
  * Fonts (v0.19.0 G4): --td-badge-font-family (default the sans stack) and --td-badge-stamp-font-family (default the
- * mono stack). A site overriding --td-badge-*-fg / -bg must check the contrast itself (the gate measures defaults).
+ * mono stack).
  */
 @layer td.tokens {
 	:root {
@@ -24,57 +30,129 @@
 		--td-badge-stamp-rotate: -4deg;
 		--td-badge-stamp-border: 3px;
 		--td-badge-stamp-radius: var(--td-radius-sm);
+		--td-badge-glass-alpha: 85%;
+		--td-badge-glass-blur: 12px;
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
 	:root, [data-td-theme] {
-		--td-badge-neutral-bg: var(--td-color-fill);
-		--td-badge-neutral-fg: var(--td-color-on-fill);
-		/* accent: static fallback (= info) without color-mix(); @supports below follows the site accent */
-		--td-badge-accent-bg: #dbeafe;
-		--td-badge-accent-fg: #1e40af;
-		/* v0.36.0: the semantic badges are solid (tokens.css --td-solid-*); -ink = outline / stamp text on the page */
-		--td-badge-success-bg: var(--td-solid-success-bg);
-		--td-badge-success-fg: var(--td-solid-success-fg);
+		/* v0.76.0: tinted — ~200 fill, ~800 label (ratios: plan v0.76.0-badge-tinted-glass) */
+		--td-badge-neutral-bg: #e4e4e7;
+		--td-badge-neutral-fg: #3f3f46;
+		/* accent: static fallback without color-mix(); @supports below follows the site accent */
+		--td-badge-accent-bg: #cfe0fd;
+		--td-badge-accent-fg: #1e3f8f;
+		--td-badge-success-bg: #bbf7d0;
+		--td-badge-success-fg: #166534;
+		--td-badge-warning-bg: #fed7aa;
+		--td-badge-warning-fg: #9a3412;
+		--td-badge-danger-bg: #fecaca;
+		--td-badge-danger-fg: #991b1b;
+		--td-badge-info-bg: #bfdbfe;
+		--td-badge-info-fg: #1e40af;
+		/* -ink = outline / stamp text on the page */
 		--td-badge-success-ink: var(--td-color-success);
-		--td-badge-warning-bg: var(--td-solid-warning-bg);
-		--td-badge-warning-fg: var(--td-solid-warning-fg);
 		--td-badge-warning-ink: var(--td-color-warning);
-		--td-badge-danger-bg: var(--td-solid-danger-bg);
-		--td-badge-danger-fg: var(--td-solid-danger-fg);
 		--td-badge-danger-ink: var(--td-color-error);
-		--td-badge-info-bg: var(--td-solid-info-bg);
-		--td-badge-info-fg: var(--td-solid-info-fg);
 		--td-badge-info-ink: #2563eb;
-		/* edge = fill + 30 % black, precomputed (accent: of the static #dbeafe fill) */
-		--td-badge-neutral-border: #ababac;
-		--td-badge-accent-border: #99a4b2;
-		--td-badge-success-border: #0f5a2b;
-		--td-badge-danger-border: #9a1b1b;
-		--td-badge-warning-border: #ac6f08;
-		--td-badge-info-border: #1a45a5;
-		--td-badge-shadow: 0 1px 2px rgb(0 0 0 / 12%);
+		/* v0.76.0: no visible edge (the 1px still takes its space) */
+		--td-badge-neutral-border: transparent;
+		--td-badge-accent-border: transparent;
+		--td-badge-success-border: transparent;
+		--td-badge-danger-border: transparent;
+		--td-badge-warning-border: transparent;
+		--td-badge-info-border: transparent;
+		--td-badge-shadow: 0 1px 2px rgb(0 0 0 / 10%), 0 2px 6px -1px rgb(0 0 0 / 10%);
+		/* --glass (v0.76.0): label one step stronger than -fg (≥ 4.7:1 over any backdrop at the 85 % alpha) */
+		--td-badge-neutral-glass-fg: #27272a;
+		--td-badge-accent-glass-fg: #172554;
+		--td-badge-success-glass-fg: #14532d;
+		--td-badge-warning-glass-fg: #7c2d12;
+		--td-badge-danger-glass-fg: #7f1d1d;
+		--td-badge-info-glass-fg: #1e3a8a;
+		--td-badge-glass-edge: rgb(255 255 255 / 55%);
+		--td-badge-glass-highlight: rgb(255 255 255 / 60%);
 	}
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
-		--td-badge-accent-bg: #172554;
+		--td-badge-neutral-bg: #3f3f46;
+		--td-badge-neutral-fg: #e4e4e7;
+		--td-badge-accent-bg: #1e3a8a;
 		--td-badge-accent-fg: #bfdbfe;
+		--td-badge-success-bg: #14532d;
+		--td-badge-success-fg: #bbf7d0;
+		--td-badge-warning-bg: #7c2d12;
+		--td-badge-warning-fg: #fed7aa;
+		--td-badge-danger-bg: #7f1d1d;
+		--td-badge-danger-fg: #fecaca;
+		--td-badge-info-bg: #1e3a8a;
+		--td-badge-info-fg: #bfdbfe;
 		/* v0.36.0: outline / stamp ink on the DARK page (the light-theme ~700 inks are too dark there) */
 		--td-badge-success-ink: #86efac;
 		--td-badge-warning-ink: #fcd34d;
 		--td-badge-danger-ink: #fca5a5;
 		--td-badge-info-ink: #93c5fd;
+		--td-badge-shadow: 0 1px 2px rgb(0 0 0 / 50%), 0 2px 6px -1px rgb(0 0 0 / 45%);
+		--td-badge-neutral-glass-fg: #f4f4f5;
+		--td-badge-accent-glass-fg: #dbeafe;
+		--td-badge-success-glass-fg: #dcfce7;
+		--td-badge-warning-glass-fg: #ffedd5;
+		--td-badge-danger-glass-fg: #fee2e2;
+		--td-badge-info-glass-fg: #dbeafe;
+		--td-badge-glass-edge: rgb(255 255 255 / 16%);
+		--td-badge-glass-highlight: rgb(255 255 255 / 12%);
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
 		:root, [data-td-theme] {
-			--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 14%, #fff);
+			--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 22%, #fff);
 			--td-badge-accent-fg: color-mix(in srgb, var(--td-accent) 62%, #000);
+			--td-badge-accent-glass-fg: color-mix(in srgb, var(--td-accent) 45%, #000);
 		}
 
 		:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
-			--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 26%, #111113);
-			--td-badge-accent-fg: color-mix(in srgb, var(--td-accent) 40%, #fff);
+			--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 40%, #111113);
+			--td-badge-accent-fg: color-mix(in srgb, var(--td-accent) 30%, #fff);
+			--td-badge-accent-glass-fg: #dbeafe;
+		}
+	}
+
+	/* --glass fallbacks: PRIVATE tokens, !important in the first layer (a site token override cannot defeat them) —
+	   the same contract as glass.css: reduced transparency (Chromium), :root[data-td-glass="off"] (the only way on
+	   WebKit), increased contrast, forced colours. All → the opaque tint (alpha 100 %), no blur. */
+	@media (prefers-reduced-transparency: reduce) {
+		.td-badge--glass {
+			--_td-badge-glass-alpha: 100% !important;
+			--_td-badge-glass-filter: none !important;
+			--_td-badge-glass-line: transparent !important;
+			--_td-badge-glass-hl: transparent !important;
+		}
+	}
+
+	:root[data-td-glass="off"] .td-badge--glass {
+		--_td-badge-glass-alpha: 100% !important;
+		--_td-badge-glass-filter: none !important;
+		--_td-badge-glass-line: transparent !important;
+		--_td-badge-glass-hl: transparent !important;
+	}
+
+	@media (prefers-contrast: more) {
+		.td-badge--glass {
+			--_td-badge-glass-alpha: 100% !important;
+			--_td-badge-glass-filter: none !important;
+			--_td-badge-glass-line: currentcolor !important;
+			--_td-badge-glass-hl: transparent !important;
+			--_td-badge-glass-lift: 0 0 0 0 transparent !important;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-badge--glass {
+			--_td-badge-glass-alpha: 100% !important;
+			--_td-badge-glass-filter: none !important;
+			--_td-badge-glass-line: CanvasText !important;
+			--_td-badge-glass-hl: transparent !important;
+			--_td-badge-glass-lift: 0 0 0 0 transparent !important;
 		}
 	}
 }
@@ -145,6 +223,30 @@
 		transform: rotate(var(--td-badge-stamp-rotate));
 	}
 
+	/* --glass (v0.76.0, opt-in; outline / stamp win). The label colour applies even without blur (the opaque fallback). */
+	.td-badge--glass:not(.td-badge--outline, .td-badge--stamp) { color: var(--td-badge-neutral-glass-fg); }
+	.td-badge--accent.td-badge--glass:not(.td-badge--outline, .td-badge--stamp) { color: var(--td-badge-accent-glass-fg); }
+	.td-badge--success.td-badge--glass:not(.td-badge--outline, .td-badge--stamp) { color: var(--td-badge-success-glass-fg); }
+	.td-badge--warning.td-badge--glass:not(.td-badge--outline, .td-badge--stamp) { color: var(--td-badge-warning-glass-fg); }
+	.td-badge--danger.td-badge--glass:not(.td-badge--outline, .td-badge--stamp) { color: var(--td-badge-danger-glass-fg); }
+	.td-badge--info.td-badge--glass:not(.td-badge--outline, .td-badge--stamp) { color: var(--td-badge-info-glass-fg); }
+
+	@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) and (color: color-mix(in srgb, red 50%, blue)) {
+		.td-badge--glass:not(.td-badge--outline, .td-badge--stamp) {
+			background-color: color-mix(in srgb, var(--td-badge-neutral-bg) var(--_td-badge-glass-alpha, var(--td-badge-glass-alpha)), transparent);
+			border-color: var(--_td-badge-glass-line, var(--td-badge-glass-edge));
+			box-shadow: inset 0 1px 0 var(--_td-badge-glass-hl, var(--td-badge-glass-highlight)), var(--_td-badge-glass-lift, var(--td-badge-shadow));
+			-webkit-backdrop-filter: var(--_td-badge-glass-filter, blur(var(--td-badge-glass-blur)) saturate(160%));
+			backdrop-filter: var(--_td-badge-glass-filter, blur(var(--td-badge-glass-blur)) saturate(160%));
+		}
+
+		.td-badge--accent.td-badge--glass:not(.td-badge--outline, .td-badge--stamp) { background-color: color-mix(in srgb, var(--td-badge-accent-bg) var(--_td-badge-glass-alpha, var(--td-badge-glass-alpha)), transparent); }
+		.td-badge--success.td-badge--glass:not(.td-badge--outline, .td-badge--stamp) { background-color: color-mix(in srgb, var(--td-badge-success-bg) var(--_td-badge-glass-alpha, var(--td-badge-glass-alpha)), transparent); }
+		.td-badge--warning.td-badge--glass:not(.td-badge--outline, .td-badge--stamp) { background-color: color-mix(in srgb, var(--td-badge-warning-bg) var(--_td-badge-glass-alpha, var(--td-badge-glass-alpha)), transparent); }
+		.td-badge--danger.td-badge--glass:not(.td-badge--outline, .td-badge--stamp) { background-color: color-mix(in srgb, var(--td-badge-danger-bg) var(--_td-badge-glass-alpha, var(--td-badge-glass-alpha)), transparent); }
+		.td-badge--info.td-badge--glass:not(.td-badge--outline, .td-badge--stamp) { background-color: color-mix(in srgb, var(--td-badge-info-bg) var(--_td-badge-glass-alpha, var(--td-badge-glass-alpha)), transparent); }
+	}
+
 	@media (prefers-contrast: more) {
 		.td-badge {
 			border-color: currentcolor;
@@ -153,7 +255,8 @@
 	}
 
 	@media (forced-colors: active) {
-		.td-badge {
+		.td-badge,
+		.td-badge.td-badge--glass:not(.td-badge--outline, .td-badge--stamp) {
 			color: CanvasText;
 			border-color: CanvasText;
 		}

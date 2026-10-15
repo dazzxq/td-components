@@ -38,7 +38,7 @@ import { THEME_NAME_RE, RESERVED_THEME_NAMES } from './selectors.js';
 import { PRESETS, SCHEME_SHADOWS, FOCUS_RING } from './presets.js';
 
 /** Bump when the same seeds produce different output (the CSS header carries it → stale-file detection). */
-export const ALGORITHM_VERSION = 4;
+export const ALGORITHM_VERSION = 5;
 export { THEME_TOKENS_VERSION };
 
 /** WCAG 2.x gate (QĐ9): text 4.7 (a margin over 4.5), icons 3.2, non-text 3.0, disabled 2.2; 7 = preferred body text. */
@@ -649,8 +649,23 @@ export function generatePalette(seeds, options = {}) {
     set('--td-dropzone-bg-pressed', q(over(alpha(pole, alphaKeep(pole, isLight ? 0.045 : 0.08, ctrl,
       (k) => contrast(V.get('--td-color-text-muted'), k) >= SAFE && contrast(accent, k) >= GATE.nonText + DESIGN.margin)), ctrl)));
     need('--td-color-text-muted', [...mutedBgs, ...['--td-dropzone-bg-active', '--td-dropzone-bg-pressed'].map(named)], GATE.text, 'text');
-    set('--td-badge-accent-bg', shade(accent, isLight ? 0.14 : 0.26, surface));
+    set('--td-badge-accent-bg', shade(accent, isLight ? 0.22 : 0.40, surface));
     ink('--td-badge-accent-fg', srgbToOklch(accent), [named('--td-badge-accent-bg')], textMins(GATE.text), GATE.text, 'text');
+    // v0.76.0 --glass label: the tint at 85 % over the two backdrop poles (black / white) and solid (the fallback)
+    {
+      const tint = V.get('--td-badge-accent-bg');
+      const glassBgs = [{ name: 'accent badge solid', color: tint },
+        { name: 'accent badge glass over black', color: over(alpha(tint, 0.85), BLACK) },
+        { name: 'accent badge glass over white', color: over(alpha(tint, 0.85), WHITE) }];
+      // solved against all three; the registered gate claim is the solid tint (the other two are pole composites that
+      // are not tokens — the rendered pairs are measured by test/tokens/contrast.spec.mjs)
+      ink('--td-badge-accent-glass-fg', srgbToOklch(accent), glassBgs, textMins(GATE.text), null, 'text');
+      need('--td-badge-accent-glass-fg', [named('--td-badge-accent-bg')], GATE.text, 'text');
+    }
+    // fixed-hue status badges + glass chrome: the kit literals of THIS scheme (a dark-scheme palette gets the dark ones)
+    for (const t of SCHEME_TOKENS) {
+      if (/^--td-badge-(neutral|success|warning|danger|info)-(bg|fg|glass-fg)$|^--td-badge-(shadow|glass-edge|glass-highlight)$/.test(t)) set(t, PRESETS[scheme][t]);
+    }
     set('--td-badge-success-ink', V.get('--td-color-success'));
     set('--td-badge-warning-ink', warn);
     set('--td-badge-danger-ink', err);

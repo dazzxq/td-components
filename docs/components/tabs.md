@@ -158,7 +158,7 @@ tabs.setTabCount('done', null);            // chưa biết: xoá viên thuốc (
   khi danh sách thẻ đổi.
 - **Tên truy cập là "Hoàn tất, 12"**: dấu phẩy nằm trong chính nội dung nút (một `span.td-tabs__count-sep` ẩn bằng cách cắt, không `display: none`
   nên vẫn nằm trong tên), không dùng `aria-label`. Màu không là tín hiệu duy nhất: luôn có chữ của thẻ và số.
-- **Màu** dùng lại cặp màu đặc của [badge](badge.md) (`--td-badge-{tone}-bg` / `-fg` / `-border`, đã theo vùng theme sáng / tối và đã được cổng tương phản
+- **Màu** dùng lại cặp màu (tinted từ 0.76.0) của [badge](badge.md) (`--td-badge-{tone}-bg` / `-fg` / `-border`, đã theo vùng theme sáng / tối và đã được cổng tương phản
   đo): không có token mới. Site đổi màu bằng chính token của badge. Viên thuốc có màu riêng nên không đổi theo thẻ đang chọn / hover. Forced colors:
   viền `ButtonText`.
 - **Bố cục**: viên thuốc nằm cùng hàng với nhãn, không bao giờ xuống dòng hay co lại, chữ số dùng `tabular-nums`, và **không làm thẻ cao hơn**

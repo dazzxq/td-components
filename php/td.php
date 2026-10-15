@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.75.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.75.0', __DIR__ . '/public/assets/vendor/td-components/0.75.0');
+ *   require_once '/path/to/vendor/td-components/0.76.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.76.0', __DIR__ . '/public/assets/vendor/td-components/0.76.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -445,7 +445,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.75.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.76.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool, assets?: string} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -2129,7 +2129,8 @@ namespace {
     /**
      * CSS-only badge `span.td-badge.td-badge--{variant}` (v0.18.0 F5; no JS, no custom element).
      * Options: variant neutral|accent|success|warning|danger|info (default neutral), outline (bool), stamp (bool — the
-     * uppercase double-border rubber stamp), icon (v0.25.0: registry name → `span.td-badge__icon` + `span.td-badge__label`;
+     * uppercase double-border rubber stamp), glass (v0.76.0, bool: opt-in `td-badge--glass` — translucent tint + blur for
+     * badges on a photo / coloured surface; no effect together with outline / stamp, those win in CSS), icon (v0.25.0: registry name → `span.td-badge__icon` + `span.td-badge__label`;
      * unknown → no icon), id, class, attrs (span).
      */
     function td_badge(string $text, array $o = []): string
@@ -2137,7 +2138,8 @@ namespace {
         $variants = ['neutral', 'accent', 'success', 'warning', 'danger', 'info'];
         $variant = in_array($o['variant'] ?? null, $variants, true) ? $o['variant'] : 'neutral';
         $class = 'td-badge td-badge--' . $variant . (!empty($o['outline']) ? ' td-badge--outline' : '')
-            . (!empty($o['stamp']) ? ' td-badge--stamp' : '') . Td::classTokens($o['class'] ?? null);
+            . (!empty($o['stamp']) ? ' td-badge--stamp' : '') . (!empty($o['glass']) ? ' td-badge--glass' : '')
+            . Td::classTokens($o['class'] ?? null);
         // v0.25.0 `icon`: decorative registry icon (core, alias or registerIcons() site-*) before the label; an unknown
         // name prints no icon (no empty span) — the badge is then exactly the icon-less markup.
         $svg = isset($o['icon']) && is_string($o['icon']) && $o['icon'] !== '' ? Td::icon($o['icon'], 's') : '';

@@ -3737,7 +3737,20 @@
         ".td-badge--warning",
         ".td-badge--info"
       ],
-      "selectorNote": "v0.36.0 (QĐ 21–22): solid fill + 1px precomputed edge + --td-badge-shadow"
+      "selectorNote": "v0.76.0: tinted fill + transparent 1px border + --td-badge-shadow"
+    },
+    {
+      "state": "glass",
+      "markup": "<div class=\"csp-backdrop\"><span class=\"td-badge td-badge--neutral td-badge--glass\">neutral</span> <span class=\"td-badge td-badge--accent td-badge--glass\">accent</span> <span class=\"td-badge td-badge--success td-badge--glass\">success</span> <span class=\"td-badge td-badge--warning td-badge--glass\">warning</span> <span class=\"td-badge td-badge--danger td-badge--glass\">danger</span> <span class=\"td-badge td-badge--info td-badge--glass\">info</span></div>",
+      "selectors": [
+        ".td-badge--neutral.td-badge--glass",
+        ".td-badge--accent.td-badge--glass",
+        ".td-badge--success.td-badge--glass",
+        ".td-badge--warning.td-badge--glass",
+        ".td-badge--danger.td-badge--glass",
+        ".td-badge--info.td-badge--glass"
+      ],
+      "selectorNote": "v0.76.0: opt-in glass over a gradient (.csp-backdrop, test/csp/fixture/harness.css): 85% alpha fill, backdrop-filter blur, edge, inset highlight"
     }
   ],
   "td-media-grid": [
