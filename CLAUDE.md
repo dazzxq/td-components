@@ -44,3 +44,4 @@ nâng cấp). Tài liệu nội bộ (vision, roadmap, architecture, conventions
 
 Roadmap: [docs/internal/roadmap.md](docs/internal/roadmap.md) — update status + CHANGELOG with every change. Không dùng GSD.
 Quyết định kiến trúc mới → thêm ADR trong `docs/internal/decisions/`.
+Workflow đặt tên (`lanes`, `docs-drift`): [docs/internal/agent-workflows.md](docs/internal/agent-workflows.md).

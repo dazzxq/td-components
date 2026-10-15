@@ -4,3 +4,4 @@ storybook-static/
 .codex-review/
 .claude/worktrees/
 test/responsive/__out__/
+.claude/scheduled_tasks.lock

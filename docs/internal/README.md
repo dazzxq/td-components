@@ -8,6 +8,7 @@ Tài liệu cho người **phát triển kit**, không phải người dùng kit
 | [vision.md](vision.md) | Mục tiêu, giá trị cốt lõi, ràng buộc, những gì không làm |
 | [architecture.md](architecture.md) | Base class, mô hình style CSP, render/cleanup, sơ đồ phụ thuộc |
 | [conventions.md](conventions.md) | Cấu trúc file, đặt tên, escaping, test, quy trình release |
+| [agent-workflows.md](agent-workflows.md) | Workflow đặt tên của agent (`.claude/workflows/`): `lanes` (việc song song trong worktree), `docs-drift` (docs lệch code + hub-spoke) |
 | [security-model.md](security-model.md) | Mô hình XSS theo ngữ cảnh, cam kết CSP, raw-HTML hatch (cam kết của lõi) |
 | [design/liquid-glass.md](design/liquid-glass.md) | Bộ luật **Minimal surfaces** (thay Liquid Glass từ 0.20.0, ADR 0011) — **bắt buộc cho UI mới** |
 | [decisions/](decisions/README.md) | ADR: các quyết định kiến trúc |
