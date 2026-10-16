@@ -2,6 +2,39 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.77.0
+
+**`td-media-field`: khung xem trước luôn là ô vuông 1:1, ảnh `contain` bên trong (mặc định mới); tắt bằng `preview-shape="ratio"`**
+(owner qua dsuite, 2026-10-16; [plan](docs/internal/plans/v0.77.0-media-field-square.md)). Mẫu là placeholder của dcms2 media picker
+(`aspectRatio` mặc định `1/1`, ảnh `object-contain`). Trước đây khung theo `aspect-ratio` (hoặc theo tỉ lệ ảnh khi không đặt) và ảnh `cover`.
+
+### Changed
+
+- **Mặc định cho mọi site**: `.td-media-field__frame` / `.td-media-field__open` vuông 1:1 cả lúc trống lẫn có ảnh, kể cả khi có `aspect-ratio` (banner `16/7`
+  cũng vuông). Ảnh `object-fit: contain`, căn giữa (ảnh dọc / ngang có khoảng trống hai bên). Cạnh = `min(--td-media-field-frame-w, 100% ô, --td-media-field-max-h)`;
+  `--td-media-field-max-h` (24rem) nay là cạnh tối đa của ô vuông. Site muốn ô to hơn thì tăng token đó.
+- `aspect-ratio` vẫn dùng cho tỉ lệ khung cắt (`crop-ratio` mặc định theo nó) và chữ tỉ lệ (`16:7`) trong ô trống; SVG sizer vẫn được in (JS + PHP) nhưng bị ẩn ở chế độ vuông.
+- `croppable` có crop: ô vuông hiện **đúng vùng đã cắt** (contain trong ô), qua `span.td-media-field__view` mới (CSSOM `--_td-mf-view-w` / `-h`), kể cả crop tự do (không `aspect-ratio`).
+  Chưa có crop hoặc chưa biết kích thước ảnh: ảnh gốc contain.
+- `preview-fit` chỉ còn tác dụng ở `preview-shape="ratio"` (chế độ vuông luôn contain).
+
+### Added
+
+- Attribute `preview-shape="ratio"` (không phân biệt hoa thường, khớp nguyên văn: ` ratio ` có khoảng trắng KHÔNG phải opt-out) = đúng hành vi 0.76.0 (khung theo `aspect-ratio`,
+  không có thì theo tỉ lệ ảnh; `preview-fit`; xem trước vùng cắt 2 %). PHP `td_media_field(…, ['preview_shape' => 'ratio'])` in `preview-shape="ratio"` (trim + không phân biệt hoa thường; giá trị khác không in gì).
+
+Giữ kiểu cũ:
+
+```html
+<td-media-field name="hero" aspect-ratio="3/2" preview-shape="ratio"></td-media-field>
+```
+
+```php
+<?= td_media_field('hero', $id, ['aspect_ratio' => '3/2', 'preview_shape' => 'ratio']) ?>
+```
+
+Không ảnh hưởng: `td-media-gallery` (ô gallery vốn vuông), `td-media-picker`, `td-cropper`.
+
 ## 0.76.0
 
 **`td-badge` đổi kiểu mặc định sang "tinted" (nền pastel đậm vừa, chữ đậm, không viền nhìn thấy, bóng đổ mềm hai lớp) và thêm biến thể kính `--glass` (opt-in)**

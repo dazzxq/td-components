@@ -14,7 +14,7 @@
   "styles": {
     ".td-media-field": {
       "width": "1280px",
-      "height": "919px",
+      "height": "449px",
       "min-height": "0px",
       "max-height": "none",
       "padding-top": "0px",
@@ -181,8 +181,8 @@
       "--_td-toast-seq": ""
     },
     ".td-media-field__frame": {
-      "width": "1280px",
-      "height": "854px",
+      "width": "384px",
+      "height": "384px",
       "min-height": "0px",
       "max-height": "none",
       "padding-top": "0px",
@@ -238,12 +238,12 @@
       "outline-width": "3px",
       "outline-color": "rgb(28, 28, 30)",
       "outline-offset": "0px",
-      "grid-template-columns": "1278px",
+      "grid-template-columns": "382px",
       "column-gap": "normal",
       "row-gap": "normal",
       "touch-action": "auto",
       "max-width": "none",
-      "aspect-ratio": "auto",
+      "aspect-ratio": "1 / 1",
       "object-fit": "fill",
       "--td-mg-w": "",
       "--td-mg-sub": "",
@@ -265,8 +265,8 @@
       "--_td-toast-seq": ""
     },
     ".td-media-field__open": {
-      "width": "1278px",
-      "height": "852px",
+      "width": "382px",
+      "height": "382px",
       "min-height": "0px",
       "max-height": "none",
       "padding-top": "0px",
@@ -349,8 +349,8 @@
       "--_td-toast-seq": ""
     },
     ".td-media-field__img": {
-      "width": "1278px",
-      "height": "852px",
+      "width": "382px",
+      "height": "382px",
       "min-height": "0px",
       "max-height": "none",
       "padding-top": "0px",
@@ -412,7 +412,7 @@
       "touch-action": "auto",
       "max-width": "none",
       "aspect-ratio": "auto",
-      "object-fit": "cover",
+      "object-fit": "contain",
       "--td-mg-w": "",
       "--td-mg-sub": "",
       "--td-mg-k": "",
@@ -685,9 +685,9 @@
       "--_td-toast-seq": ""
     },
     ".td-media-field__sizer": {
-      "width": "1278px",
-      "height": "852px",
-      "min-height": "auto",
+      "width": "100%",
+      "height": "auto",
+      "min-height": "0px",
       "max-height": "none",
       "padding-top": "0px",
       "padding-bottom": "0px",
@@ -696,7 +696,7 @@
       "margin-top": "0px",
       "margin-bottom": "0px",
       "margin-left": "0px",
-      "display": "block",
+      "display": "none",
       "position": "static",
       "top": "auto",
       "left": "auto",

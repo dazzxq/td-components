@@ -152,6 +152,19 @@ giá trị form ai cũng sửa được.
 
 ### 2. Khung, tỉ lệ và cách ảnh nằm trong khung
 
+**Mặc định (từ 0.77.0): ô xem trước luôn là hình vuông 1:1**, ảnh `object-fit: contain` căn giữa (ảnh ngang / dọc có khoảng trống), cả lúc trống lẫn có ảnh,
+kể cả khi có `aspect-ratio` (banner `16/7` cũng vuông). Cạnh = `min(--td-media-field-frame-w, bề rộng ô, --td-media-field-max-h)`; `--td-media-field-max-h` (24rem) là
+cạnh tối đa, tăng nó nếu cần ô to hơn. `aspect-ratio` vẫn cho tỉ lệ khung cắt (`crop-ratio` mặc định theo nó) và chữ tỉ lệ ("16:7") trong ô trống. Có `croppable` + crop (và biết kích thước ảnh):
+ô vuông hiện **đúng vùng đã cắt**, contain trong ô (`span.td-media-field__view` bọc `<img>`, kích thước qua CSSOM), kể cả crop tự do; chưa có crop → ảnh gốc contain. `preview-fit` không tác dụng ở chế độ này.
+
+**Muốn khung theo tỉ lệ như trước 0.77.0** (`preview-shape="ratio"`, PHP `'preview_shape' => 'ratio'`): bảng dưới là hành vi đó. `ratio` không phân biệt hoa thường; mọi giá trị khác (kể cả ` ratio ` có khoảng trắng) là ô vuông.
+
+```html
+<td-media-field name="hero" aspect-ratio="16/7" preview-shape="ratio"></td-media-field>
+```
+
+Hành vi với `preview-shape="ratio"`:
+
 | Thuộc tính | Khung rỗng | Khung có ảnh |
 |---|---|---|
 | `aspect-ratio="3/2"` (hoặc `3:2`) | Theo tỉ lệ, chữ "3:2" dưới lời nhắc | Theo tỉ lệ, ảnh **phủ kín** (`object-fit: cover`, có thể bị cắt mép) |
@@ -165,7 +178,7 @@ giá trị form ai cũng sửa được.
   xô lệch khi JS tải.
 - Khung theo tỉ lệ chỉ là **khung xem trước**: kit không cắt ảnh. Cắt thật (theo `crop` hoặc theo tỉ lệ) là việc của
   server / CDN khi render trang công khai.
-- **Xem trước vùng cắt** (0.35.0, field `croppable`, chỉ khi có JS): có crop + khung có `aspect-ratio` + tỉ lệ pixel của crop khớp tỉ lệ
+- **Xem trước vùng cắt** (0.35.0, field `croppable`, chỉ khi có JS; **chế độ `preview-shape="ratio"`**, chế độ vuông xem ở đầu mục này): có crop + khung có `aspect-ratio` + tỉ lệ pixel của crop khớp tỉ lệ
   khung (lệch ≤ 2 %) → khung hiện **đúng vùng đã cắt** (CSSOM, không `style="…"`); còn lại `object-fit: cover` như cũ.
   Cần kích thước gốc: `asset.width/height`, không có thì kích thước ảnh xem trước (cùng tỉ lệ gốc theo
   [hợp đồng nguồn ảnh](#nguồn-ảnh-cho-hộp-cắt)). SSR / chưa có JS: cover như cũ, khung không xô lệch.
@@ -186,8 +199,8 @@ cả ô bằng `--td-media-field-w` (nhãn, nút và lỗi bị ép vào cùng b
 - Giá trị là **độ dài hoặc phần trăm** (phần trăm tính theo bề rộng của ô, vd `50%`). Giá trị khác (vd `fit-content`, `max-content`) không dùng được: khung rộng bằng ô.
   Mặc định `100%` (khung rộng bằng ô, như trước 0.71.0). Khung không bao giờ rộng hơn ô: token lớn hơn ô (vd `900px` trong ô 300px) bị chặn ở `100%` của ô.
 - Token là custom property nên **kế thừa**: đặt trên cha (`.logo-field`, `:root`, một `<form>`) là đủ. Khung nằm ở mép đầu của ô.
-- Với `aspect-ratio`, khung nhỏ lại vẫn giữ tỉ lệ (ô `1/1` thành hình vuông đúng bề rộng token); xem trước vùng cắt co theo khung. Không có `aspect-ratio`,
-  chiều cao khung rỗng vẫn là `--td-media-field-empty-h`.
+- Mặc định (ô vuông, 0.77.0): khung là hình vuông cạnh bằng token (tối đa `--td-media-field-max-h`). Với `preview-shape="ratio"` và `aspect-ratio`, khung nhỏ lại vẫn giữ tỉ lệ
+  (ô `1/1` thành hình vuông đúng bề rộng token); xem trước vùng cắt co theo khung. Không có `aspect-ratio`, chiều cao khung rỗng vẫn là `--td-media-field-empty-h`.
 - Ngưỡng xếp dọc hai nút (< 360px, mục [Responsive](#responsive-0340)) vẫn tính theo **bề rộng của ô**, không theo khung: ô 400px có khung 120px thì hai nút vẫn nằm cạnh nhau.
 - Chỉ đặt bằng CSS: helper PHP `td_media_field` không có tuỳ chọn bề rộng.
 
@@ -414,7 +427,8 @@ query (Chrome / Edge 102–104): dự phòng theo viewport < 360px. Muốn khung
 | `kind` | `image` \| `video` \| `file` | `image` | Loại của asset đang chọn |
 | `accept-kind` | danh sách | `image` | Loại được chọn trong picker |
 | `aspect-ratio` | `W/H` \| `W:H` \| số | — | Tỉ lệ khung |
-| `preview-fit` | `cover` \| `contain` | `cover` | Cách ảnh nằm trong khung có tỉ lệ |
+| `preview-fit` | `cover` \| `contain` | `cover` | Cách ảnh nằm trong khung có tỉ lệ (chỉ khi `preview-shape="ratio"`; ô vuông luôn contain) |
+| `preview-shape` | `ratio` | — (vuông) | 0.77.0: vắng = ô xem trước vuông 1:1, ảnh contain; `ratio` (không phân biệt hoa thường) = khung theo `aspect-ratio` / tỉ lệ ảnh như trước 0.77.0. Giá trị khác = vuông |
 | `usage` | boolean | — | Dạng gửi usage (ô alt + `[id]` / `[alt]` / `[crop]`, + `[focal]` khi `focal-point`) |
 | `alt` | string | `''` | Alt mặc định (usage) |
 | `crop` | JSON v1 | — | Crop mặc định (usage); sai định dạng → coi như `null` |
@@ -474,8 +488,8 @@ phát event.
 |---|---|---|
 | `--td-media-field-w` | `100%` | Bề rộng host (nhãn, nút, gợi ý, lỗi và khung nằm trong bề rộng này) |
 | `--td-media-field-frame-w` | `100%` | Bề rộng của **riêng khung ảnh**: độ dài hoặc phần trăm của host, tối đa bằng host (0.71.0). Xem [khung nhỏ trong ô rộng](#khung-nhỏ-trong-ô-rộng---td-media-field-frame-w-0710) |
-| `--td-media-field-empty-h` | `10rem` | Chiều cao khung rỗng khi **không** có `aspect-ratio` |
-| `--td-media-field-max-h` | `24rem` | Chiều cao tối đa của ảnh khi **không** có `aspect-ratio` |
+| `--td-media-field-empty-h` | `10rem` | Chiều cao khung rỗng khi **không** có `aspect-ratio` (chỉ `preview-shape="ratio"`) |
+| `--td-media-field-max-h` | `24rem` | Cạnh tối đa của ô vuông xem trước (0.77.0); với `preview-shape="ratio"`: chiều cao tối đa của ảnh khi **không** có `aspect-ratio` |
 
 Khung rỗng: viền 1px dashed `--td-color-text-muted` (≥ 3.2:1 trên nền khung rỗng), nền `--td-color-surface-muted`; có ảnh: viền liền
 `--td-color-border`, nền `--td-color-surface`; lỗi: viền `--td-field-error`. Trên màn cảm ứng
@@ -494,6 +508,8 @@ các nút ≥ 44px.
         <span class="td-media-field__prompt">Chọn ảnh</span><span class="td-media-field__ratio">3:2</span></span>
       <!-- có ảnh: <img class="td-media-field__img" src alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">
            [+ <span class="td-media-field__badge">Video</span>] | file: icon + <span class="td-media-field__name"> -->
+      <!-- 0.77.0, ô vuông + croppable + crop: <span class="td-media-field__view"><img class="td-media-field__img" …></span>
+           (JS thêm / gỡ; style chỉ là CSSOM --_td-mf-view-w / -h; `preview-shape="ratio"` không có span này) -->
       <span class="td-sr-only" id="{id}-state">Chưa chọn</span>
     </button>
   </div>

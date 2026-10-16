@@ -64,7 +64,8 @@ document.body.appendChild(box);
 function mk(attrs = {}, { adapter = ad } = {}) {
   const form = document.createElement('form');
   const el = document.createElement('td-media-field');
-  for (const [k, v] of Object.entries(attrs)) if (v !== false && v != null) el.setAttribute(k, v === true ? '' : v);
+  // v0.77.0: this file measures the ratio-shaped frame (pre-0.77 behaviour) → preview-shape="ratio" (the square default: td-v077-media-field-square)
+  for (const [k, v] of Object.entries({ 'preview-shape': 'ratio', ...attrs })) if (v !== false && v != null) el.setAttribute(k, v === true ? '' : v);
   if (adapter) el.adapter = adapter;
   form.appendChild(el);
   box.appendChild(form);

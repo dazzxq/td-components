@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1200" viewBox="0 0 800 1200">
+  <!-- Portrait 2:3 fixture (td-media-grid justified tests / demo). -->
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a9d8f"/><stop offset="1" stop-color="#264653"/></linearGradient></defs>
+  <rect width="800" height="1200" fill="url(#g)"/>
+  <circle cx="400" cy="420" r="170" fill="#e9c46a"/>
+  <path d="M0 900 L260 700 L520 860 L800 680 L800 1200 L0 1200 Z" fill="#1d3557"/>
+</svg>

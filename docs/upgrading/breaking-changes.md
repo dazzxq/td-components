@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.76.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.77.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.77.0](#0770) | **Đổi giao diện**: `td-media-field` xem trước luôn là ô vuông 1:1, ảnh `contain` (kể cả khi có `aspect-ratio`); thêm `preview-shape="ratio"` | Không phải sửa code. Muốn khung theo tỉ lệ như 0.76: `preview-shape="ratio"` / PHP `'preview_shape' => 'ratio'`. Ô to hơn 24rem: tăng `--td-media-field-max-h` |
 | [0.76.0](#0760) | **Đổi giao diện**: `td-badge` mặc định kiểu "tinted" (nền pastel, chữ đậm, không viền nhìn thấy, bóng đổ mềm) thay cho nền đặc; thêm `--glass` (opt-in) | Không phải sửa code (class, PHP, token giữ nguyên). Muốn badge đặc như 0.36 → 0.75: đặt lại `--td-badge-{v}-bg` / `-fg` / `-border` / `--td-badge-shadow` (đoạn CSS mẫu dưới). CSS site ghi đè `--td-badge-*` cũ vẫn được tôn trọng |
 | [0.75.0](#0750) | Không phá vỡ: `mode` / `shape` của `td-cropper` (0.73.0) đi qua hộp thoại, `td-media-field` / `td-media-gallery` (`crop-mode`, `crop-shape`), media picker (`crop.mode`, `crop.shape`) và PHP (`crop_mode`, `crop_shape`) (opt-in) | Không phải sửa code. Muốn avatar tròn: `crop-ratio="1" crop-mode="pan" crop-shape="circle"`. Site tự đặt attribute tên `mode` / `shape` lên `<td-cropper>` cho việc riêng (từ 0.73.0) hoặc tự dùng `crop-mode` / `crop-shape` trên field / gallery cho việc khác thì đổi tên. |
 | [0.74.0](#0740) | **Đổi giao diện**: `td-media-picker` có album — bìa `contain`, thẻ album "chồng ảnh", tiêu đề "Album n" / "Ảnh n" | Không phải sửa code (API / adapter không đổi). CSS site ghi đè viền / nền / bóng của `.td-media-picker__coll` cần chuyển sang `.td-media-picker__coll-cover`. |
@@ -100,6 +101,29 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.77.0
+
+**Đổi giao diện (`td-media-field`).** API, DOM của chế độ ratio và hợp đồng form giữ nguyên.
+
+- Khung xem trước (`.td-media-field__frame` / `__open`) luôn vuông 1:1, ảnh `object-fit: contain`, kể cả khi đặt `aspect-ratio` (16/7, OG 1200/630…) hoặc không đặt gì (trước đây theo tỉ lệ ảnh). Cạnh tối đa `--td-media-field-max-h` (24rem).
+- `aspect-ratio` chỉ còn quyết định tỉ lệ khung cắt và chữ tỉ lệ trong ô trống. `preview-fit` chỉ có tác dụng với `preview-shape="ratio"`.
+- Có crop (`croppable`): ô vuông hiện vùng đã cắt qua `span.td-media-field__view` (mới) bọc `<img>`. CSS site nhắm `.td-media-field__open > .td-media-field__img` (con trực tiếp) sẽ không khớp lúc đó: dùng `.td-media-field__img`.
+- Mới: `preview-shape="ratio"` (PHP `preview_shape => 'ratio'`) trả đúng hành vi 0.76.0.
+
+Việc site cần làm: không có. Muốn giữ khung theo tỉ lệ:
+
+```html
+<td-media-field name="hero" aspect-ratio="16/7" preview-shape="ratio"></td-media-field>
+```
+
+```php
+<?= td_media_field('hero', $id, ['aspect_ratio' => '16/7', 'preview_shape' => 'ratio']) ?>
+```
+
+Muốn ô vuông to hơn 24rem: `td-media-field { --td-media-field-max-h: 32rem; }` (hoặc `--td-media-field-frame-w` để thu nhỏ).
 
 ---
 

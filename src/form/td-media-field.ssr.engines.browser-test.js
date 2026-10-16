@@ -30,7 +30,8 @@ const fd = (form) => [...new FormData(form)].map(([k, v]) => [k, String(v)]);
 const vis = (el) => getComputedStyle(el).visibility;
 /** v0.35: the only inline style allowed = the crop preview's CSSOM custom properties on the image (decision 30). */
 const foreignStyle = (n) => n.hasAttribute('style')
-  && !(n.classList.contains('td-media-field__img') && [...n.style].every((p) => p.startsWith('--_td-mf-crop-')));
+  && !(n.classList.contains('td-media-field__img') && [...n.style].every((p) => p.startsWith('--_td-mf-crop-')))
+  && !(n.classList.contains('td-media-field__view') && [...n.style].every((p) => p.startsWith('--_td-mf-view-'))); // v0.77.0 square crop view
 
 // Hand-written mismatches of the usage case (must render, never adopt) — the alt being typed + the focus must survive.
 const usageHost = hostHtml('usage-full');
@@ -170,6 +171,30 @@ describe('td-media-field SSR (media-field@1) — adopted in place', () => {
     const r = img.getBoundingClientRect();
     expect(Math.abs(r.width - btn.width * 2) <= 1 && Math.abs(r.left - (btn.left - btn.width * 0.5)) <= 1, `${r.left},${r.width} vs ${btn.left},${btn.width}`).to.equal(true);
     expect(Math.abs(r.height - btn.height * 2) <= 1 && Math.abs(r.top - (btn.top - btn.height * 0.5)) <= 1).to.equal(true);
+  });
+
+  it('v0.77.0 square (default) SSR: already 1:1 before define, no layout shift; the crop wraps the SAME img in span.td-media-field__view', async () => {
+    const host = hostOf('square-crop');
+    const b = before['square-crop'];
+    const frame = host.querySelector('.td-media-field__frame').getBoundingClientRect();
+    expect(Math.abs(frame.width - frame.height) <= 1, `${frame.width}×${frame.height}`).to.equal(true);
+    const img = host.querySelector('img');
+    expect(img === b.img, 'img kept').to.equal(true);
+    host.scrollIntoView();
+    if (!img.complete || !img.naturalWidth) await new Promise((r) => { img.addEventListener('load', r, { once: true }); });
+    await new Promise((r) => requestAnimationFrame(() => r()));
+    const view = host.querySelector('.td-media-field__open > span.td-media-field__view');
+    expect(view, 'crop view').to.not.equal(null);
+    expect(img.parentElement === view).to.equal(true);
+    expect(getComputedStyle(img).position).to.equal('absolute');
+    expect([...host.querySelectorAll('*')].some(foreignStyle)).to.equal(false);
+  });
+
+  it('v0.77.0 preview-shape=" RATIO " (PHP canonicalizes) → the host carries preview-shape="ratio", the frame keeps 16:7', () => {
+    const host = hostOf('ratio-attr');
+    expect(host.getAttribute('preview-shape')).to.equal('ratio');
+    const f = host.querySelector('.td-media-field__frame').getBoundingClientRect();
+    expect(Math.abs(f.width / f.height - 16 / 7) < 0.05, `${f.width}×${f.height}`).to.equal(true);
   });
 
   it('v0.35 croppable empty: crop button adopted hidden; focal null submitted; crop-no-usage: nothing v0.35', () => {

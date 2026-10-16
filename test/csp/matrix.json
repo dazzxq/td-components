@@ -5321,6 +5321,132 @@
       ],
       "settle": 400,
       "selectorNote": "v0.35: croppable usage field — Cắt ảnh button, crop preview via --_td-mf-crop-* on the img"
+    },
+    {
+      "state": "ratio-empty",
+      "markup": "<td-media-field preview-shape=\"ratio\" name=\"hero\" label=\"Ảnh đại diện\" aspect-ratio=\"3/2\" helper-text=\"Ảnh ngang 3:2\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__empty",
+        ".td-media-field__icon",
+        ".td-media-field__prompt",
+        ".td-media-field__ratio",
+        ".td-media-field__sizer",
+        ".td-media-field__help"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"empty\" (must match its v0.76 baseline)"
+    },
+    {
+      "state": "ratio-filled",
+      "markup": "<td-media-field preview-shape=\"ratio\" name=\"hero\" label=\"Ảnh đại diện\" aspect-ratio=\"3/2\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__img",
+        ".td-media-field__actions",
+        ".td-media-field__replace",
+        ".td-media-field__remove",
+        ".td-media-field__sizer"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"filled\" (must match its v0.76 baseline)"
+    },
+    {
+      "state": "ratio-contain",
+      "markup": "<td-media-field preview-shape=\"ratio\" name=\"hero\" label=\"Ảnh đại diện\" aspect-ratio=\"16/9\" preview-fit=\"contain\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__img",
+        ".td-media-field__actions",
+        ".td-media-field__replace",
+        ".td-media-field__remove"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"contain\" (must match its v0.76 baseline)"
+    },
+    {
+      "state": "ratio-free",
+      "markup": "<td-media-field preview-shape=\"ratio\" name=\"hero\" label=\"Ảnh đại diện\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__img",
+        ".td-media-field__actions",
+        ".td-media-field__replace",
+        ".td-media-field__remove"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"free\" (must match its v0.76 baseline)"
+    },
+    {
+      "state": "ratio-ssr",
+      "markup": "<td-media-field preview-shape=\"ratio\" data-td-ssr=\"media-field@1\" id=\"td-cover-3\" class=\"td-media-field\" name=\"cover\" label=\"Ảnh bìa\" aspect-ratio=\"3/2\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\" helper-text=\"JPG, PNG, tối đa 5 MB\"><span class=\"td-media-field__label\" id=\"td-cover-3-label\">Ảnh bìa</span><div class=\"td-media-field__frame\" data-state=\"filled\" data-kind=\"image\"><svg class=\"td-media-field__sizer\" viewBox=\"0 0 3 2\" aria-hidden=\"true\" focusable=\"false\"></svg><button type=\"button\" class=\"td-media-field__open\" aria-haspopup=\"dialog\" aria-labelledby=\"td-cover-3-label td-cover-3-state\" aria-describedby=\"td-cover-3-help\"><img class=\"td-media-field__img\" src=\"/test/fixtures/1.svg\" alt=\"\" loading=\"lazy\" decoding=\"async\" referrerpolicy=\"no-referrer\"><span class=\"td-sr-only\" id=\"td-cover-3-state\">Đã chọn: Ảnh 1</span></button></div><div class=\"td-media-field__actions\"><button type=\"button\" class=\"td-btn td-btn--secondary td-btn--sm td-media-field__replace\" aria-haspopup=\"dialog\">Đổi ảnh</button><button type=\"button\" class=\"td-btn td-btn--ghost td-btn--sm td-media-field__remove\">Gỡ</button></div><input type=\"hidden\" class=\"td-media-field__value\" name=\"cover\" value=\"m1\"><span class=\"td-media-field__help\" id=\"td-cover-3-help\">JPG, PNG, tối đa 5 MB</span></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__img",
+        ".td-media-field__actions",
+        ".td-media-field__replace",
+        ".td-media-field__remove"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"ssr\" (must match its v0.76 baseline)"
+    },
+    {
+      "state": "ratio-croppable",
+      "markup": "<td-media-field preview-shape=\"ratio\" name=\"og\" label=\"Ảnh chia sẻ\" usage croppable focal-point aspect-ratio=\"3/2\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" crop='{\"v\":1,\"x\":0.25,\"y\":0.25,\"width\":0.5,\"height\":0.5}'></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__frame",
+        ".td-media-field__img",
+        ".td-media-field__actions",
+        ".td-media-field__replace",
+        ".td-media-field__crop-btn",
+        ".td-media-field__remove"
+      ],
+      "settle": 400,
+      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"croppable\" (must match its v0.76 baseline)"
+    },
+    {
+      "state": "square-portrait",
+      "markup": "<td-media-field name=\"hero\" label=\"Ảnh đại diện\" aspect-ratio=\"16/7\" value=\"m1\" preview-src=\"/test/fixtures/portrait.svg\" preview-alt=\"Ảnh dọc\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__img",
+        ".td-media-field__sizer"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.77.0: default square preview — a portrait image contained in the 1:1 frame, the sizer hidden"
+    },
+    {
+      "state": "square-crop",
+      "markup": "<td-media-field name=\"og\" label=\"Ảnh chia sẻ\" usage croppable focal-point value=\"m1\" preview-src=\"/test/fixtures/1.svg\" crop='{\"v\":1,\"x\":0.25,\"y\":0.25,\"width\":0.5,\"height\":0.5}'></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__view",
+        ".td-media-field__img",
+        ".td-media-field__actions"
+      ],
+      "settle": 400,
+      "selectorNote": "v0.77.0: square croppable (no aspect-ratio) with a crop — the img sits in span.td-media-field__view (--_td-mf-view-w/-h) and shows the cropped area"
     }
   ],
   "td-cropper": [

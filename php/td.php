@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.76.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.76.0', __DIR__ . '/public/assets/vendor/td-components/0.76.0');
+ *   require_once '/path/to/vendor/td-components/0.77.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.77.0', __DIR__ . '/public/assets/vendor/td-components/0.77.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -445,7 +445,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.76.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.77.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool, assets?: string} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -2801,7 +2801,9 @@ namespace {
      * control); it adopts the markup IN PLACE. $assetId is the opaque id (identity + form value); the preview URL is
      * display only. `required` cannot be checked by the browser without JS (hidden input): validate on the server.
      * Options: label, helper_text, error_text, required, disabled, aspect_ratio (`W/H`, `W:H` or one number; invalid →
-     * dropped + one E_USER_WARNING), preview_fit (cover|contain), preview_src (Td::safeUrl, then only https: / allowed
+     * dropped + one E_USER_WARNING), preview_fit (cover|contain; only with preview_shape ratio), preview_shape (v0.77.0:
+     * `ratio` → prints `preview-shape="ratio"` = the pre-0.77 frame by aspect_ratio / image ratio; trimmed + case-insensitive;
+     * anything else prints nothing = the default square 1:1 preview with the image contained), preview_src (Td::safeUrl, then only https: / allowed
      * http: / relative — mailto: / tel: / data: refused → no image), preview_alt (file name / description shown), kind
      * (image|video|file of $assetId), accept_kind (string list or array; default image), usage (bool), alt (max 500),
      * crop (array x / y / width / height in 0..1, or the JSON v1 string → printed / submitted as JSON v1; invalid → null +
@@ -2844,6 +2846,7 @@ namespace {
             trigger_error('td_media_field: aspect_ratio is not W/H, W:H or a positive number (≤ 10000, ≤ 4 decimals) — ignored', E_USER_WARNING);
         }
         $fit = in_array($o['preview_fit'] ?? null, ['cover', 'contain'], true) ? $o['preview_fit'] : null;
+        $previewShape = td__media_crop_word($o['preview_shape'] ?? null, 'ratio');
         $kindOpt = in_array($o['kind'] ?? null, ['image', 'video', 'file'], true) ? $o['kind'] : null;
         $src = td__media_url($o['preview_src'] ?? null);
         $pAlt = isset($o['preview_alt']) && is_scalar($o['preview_alt']) && !is_bool($o['preview_alt']) ? (string) $o['preview_alt'] : '';
@@ -2914,6 +2917,7 @@ namespace {
             'label' => $label !== '' ? $label : null,
             'aspect-ratio' => $ratio !== null ? $ratioRaw : null,
             'preview-fit' => $fit,
+            'preview-shape' => $previewShape,
             'accept-kind' => array_key_exists('accept_kind', $o) && $o['accept_kind'] !== null ? implode(' ', $kinds) : null,
             'usage' => $usage,
             'required' => $required,
@@ -2935,7 +2939,7 @@ namespace {
             'error-text' => $error,
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
-        $taken = td__reserve(['id', 'class', 'name', 'label', 'aspect-ratio', 'preview-fit', 'accept-kind', 'usage', 'required',
+        $taken = td__reserve(['id', 'class', 'name', 'label', 'aspect-ratio', 'preview-fit', 'preview-shape', 'accept-kind', 'usage', 'required',
             'disabled', 'value', 'preview-src', 'preview-alt', 'kind', 'alt', 'crop', 'prompt', 'helper-text', 'error-text',
             'croppable', 'crop-ratio', 'crop-mode', 'crop-shape', 'focal-point', 'focal'], $extra, $taken);
         return $html . Td::attrs($extra, $taken) . '>'

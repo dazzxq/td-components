@@ -67,7 +67,7 @@ const fill = (t, params) => String(t ?? '').replace(/\{(\w+)\}/g, (m, k) => (k i
  *   crop's pixel ratio is within 2 % of the frame's; else `object-fit: cover`.
  *
  * DOM contract (JS render() = PHP):
- *   <td-media-field class="td-media-field" name label [aspect-ratio] [preview-fit] [accept-kind] [usage] [required]
+ *   <td-media-field class="td-media-field" name label [aspect-ratio] [preview-fit] [preview-shape] [accept-kind] [usage] [required]
  *                   [disabled] [value] [preview-src] [preview-alt] [kind] [alt] [crop] [prompt] [helper-text] [error-text]>
  *     <span class="td-media-field__label" id="{id}-label">label[<span class="td-field__required" aria-hidden="true"> *</span>]</span>
  *     <div class="td-media-field__frame" data-state="empty|filled" data-kind="image|video|file">
@@ -101,7 +101,8 @@ const fill = (t, params) => String(t ?? '').replace(/\{(\w+)\}/g, (m, k) => (k i
  * @attr {string} label
  * @attr {string} value - default assetId
  * @attr {string} aspect-ratio - `W/H`, `W:H` or one number (1.91 → 1.91:1); absent / invalid → the natural ratio
- * @attr {string} preview-fit - cover (default) | contain
+ * @attr {string} preview-fit - cover (default) | contain (only with `preview-shape="ratio"`)
+ * @attr {string} preview-shape - v0.77.0: omitted = a square 1:1 preview, image contained; `ratio` = the pre-v0.77 frame (aspect-ratio / image ratio)
  * @attr {string} accept-kind - image | video | file list (default image)
  * @attr {boolean} usage - submit `name[id]`, `name[alt]`, `name[crop]` + show the alt input
  * @attr {string} preview-src @attr {string} preview-alt @attr {string} kind
@@ -141,7 +142,7 @@ export class TdMediaField extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'value', 'label', 'aspect-ratio', 'preview-fit', 'accept-kind', 'usage',
       'preview-src', 'preview-alt', 'kind', 'alt', 'crop', 'prompt', 'error-text',
-      'croppable', 'crop-ratio', 'crop-mode', 'crop-shape', 'focal-point', 'focal'];
+      'croppable', 'crop-ratio', 'crop-mode', 'crop-shape', 'focal-point', 'focal', 'preview-shape'];
   }
 
   static get booleanAttributes() { return [...super.booleanAttributes, 'usage', 'croppable', 'focal-point']; }
@@ -654,7 +655,9 @@ export class TdMediaField extends TdFormElement {
       replace: ':scope > .td-media-field__actions > button.td-media-field__replace',
       crop: ':scope > .td-media-field__actions > button.td-media-field__crop-btn',
       status: ':scope > span.td-media-field__status',
-      img: ':scope > .td-media-field__frame > button.td-media-field__open > img.td-media-field__img',
+      img: ':scope > .td-media-field__frame > button.td-media-field__open > img.td-media-field__img, '
+        + ':scope > .td-media-field__frame > button.td-media-field__open > span.td-media-field__view > img.td-media-field__img',
+      view: ':scope > .td-media-field__frame > button.td-media-field__open > span.td-media-field__view',
       remove: ':scope > .td-media-field__actions > button.td-media-field__remove',
       alt: ':scope > .td-media-field__usage > input.td-media-field__alt',
       frame: ':scope > div.td-media-field__frame',
@@ -730,8 +733,26 @@ export class TdMediaField extends TdFormElement {
     if (btn.hidden !== hide) btn.hidden = hide;
   }
 
+  /**
+   * @private v0.77.0: square preview (default) unless `preview-shape` is "ratio". Matches the CSS selector
+   * `[preview-shape="ratio" i]` exactly: no trim, case-insensitive (` ratio ` = square in both).
+   */
+  _square() {
+    return (this.getAttribute('preview-shape') ?? '').toLowerCase() !== 'ratio';
+  }
+
+  /** @private drop the square-mode crop view wrapper (the <img> goes back to the opener) */
+  _unwrapView() {
+    const view = this._part('view');
+    if (!view) return;
+    const img = view.querySelector(':scope > img.td-media-field__img');
+    if (img) view.replaceWith(img);
+    else view.remove();
+  }
+
   /** @private */
   _clearCropPreview() {
+    this._unwrapView();
     const img = this._part('img');
     if (!img || !img.hasAttribute('style')) return;
     for (const v of CROP_VARS) img.style.removeProperty(v);
@@ -742,19 +763,31 @@ export class TdMediaField extends TdFormElement {
    * @private decision 30: croppable + a frame ratio + a crop whose pixel ratio is within 2 % of it → the `<img>` shows
    * exactly the cropped area (CSSOM custom properties, unitless); else plain `object-fit: cover` (vars removed). The
    * natural size = `asset.width/height`, else the decoded preview's (`load` → recomputed).
+   * v0.77.0, square mode (default): croppable + an image + a valid crop + a known natural size → the `<img>` sits in
+   * `span.td-media-field__view` (the cropped area, contained in the square: --_td-mf-view-w / -h) whatever the
+   * `aspect-ratio` (free crops too); else the plain contained image.
    */
   _syncCropPreview() {
     const img = this._part('img');
     if (!img) return;
-    const frameRatio = this._croppable() && this._kind === 'image' ? this._ratio() : null;
-    const crop = frameRatio && this._cropRaw ? parseCrop(this._cropRaw)?.crop : null;
+    const square = this._square();
+    const frameRatio = !square && this._croppable() && this._kind === 'image' ? this._ratio() : null;
+    const crop = square
+      ? (this._croppable() && this._kind === 'image' && this._cropRaw ? parseCrop(this._cropRaw)?.crop : null)
+      : (frameRatio && this._cropRaw ? parseCrop(this._cropRaw)?.crop : null);
     let vars = null;
+    let viewRatio = 0;
     if (crop) {
       const a = this._asset;
       const known = !!(a && posInt(a.width) && posInt(a.height));
       const W = known ? a.width : img.naturalWidth;
       const H = known ? a.height : img.naturalHeight;
-      vars = cropPreviewVars(crop, { W, H, frameRatio: frameRatio.w / frameRatio.h });
+      if (square) {
+        viewRatio = W > 0 && H > 0 && crop.width > 0 && crop.height > 0 ? (crop.width * W) / (crop.height * H) : 0;
+        vars = viewRatio > 0 ? cropPreviewVars(crop, { W, H, frameRatio: viewRatio }) : null;
+      } else {
+        vars = cropPreviewVars(crop, { W, H, frameRatio: frameRatio.w / frameRatio.h });
+      }
       if (!known && !(W > 0 && H > 0) && !LOAD_BOUND.has(img)) {
         LOAD_BOUND.add(img); // once per <img>: recompute when it has decoded
         img.addEventListener('load', () => { if (this._part('img') === img) this._syncCropPreview(); }, { once: true });
@@ -762,6 +795,19 @@ export class TdMediaField extends TdFormElement {
     }
     if (!vars) { this._clearCropPreview(); return; }
     const vals = [vars.x, vars.y, vars.w, vars.h];
+    if (square) {
+      let view = this._part('view');
+      if (!view) {
+        view = document.createElement('span');
+        view.className = 'td-media-field__view';
+        img.replaceWith(view);
+        view.appendChild(img);
+      }
+      view.style.setProperty('--_td-mf-view-w', String(Math.min(1, viewRatio)));
+      view.style.setProperty('--_td-mf-view-h', String(Math.min(1, 1 / viewRatio)));
+    } else {
+      this._unwrapView();
+    }
     CROP_VARS.forEach((v, i) => img.style.setProperty(v, String(vals[i])));
   }
 
@@ -866,6 +912,9 @@ export class TdMediaField extends TdFormElement {
         return; // read when the picker / crop dialog opens
       case 'preview-fit':
         return; // CSS only
+      case 'preview-shape':
+        this._syncCropPreview(); // CSS switches the shape; the crop view wrapper follows the mode
+        return;
       default:
         super.attributeChangedCallback(name, oldVal, newVal);
     }

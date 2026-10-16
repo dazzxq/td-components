@@ -368,6 +368,25 @@ describe('php/td.php — td_media_field (v0.32.0, contract media-field@1)', opts
     for (const x of [a, b, c]) assert.ok(!/crop-(mode|shape)/.test(x.html), x.html);
   });
 
+  test('v0.77 preview_shape: only the canonical `ratio` is printed (trim + any case), silently; rubbish / absent print nothing', () => {
+    const ok = run(['ratio', ' RATIO ', "\tRatio\n", 'ratio'].map((v) => ['r', 'm1', { aspect_ratio: '16/7', preview_shape: v }]));
+    for (const x of ok) {
+      assert.equal(x.warns, 0);
+      assert.equal(hostAttr(x.html, 'preview-shape'), 'ratio');
+      assert.equal((x.html.match(/preview-shape/g) || []).length, 1, x.html);
+      assert.ok(x.html.includes('class="td-media-field__sizer"'), 'the sizer is still printed');
+    }
+    const bad = run(['square', 'circle', 'rat io', '', 'ratio"><b>', null, true, 1, [], { a: 1 }].map((v) => ['r', 'm1', { preview_shape: v }]));
+    for (const x of bad) {
+      assert.equal(x.warns, 0);
+      assert.ok(!/preview-shape/.test(x.html), x.html);
+    }
+    assert.ok(!/preview-shape/.test(one('r', 'm1', {}).html), 'absent prints nothing (default = square)');
+    // an `attrs` spoof cannot print a second / different preview-shape
+    const spoof = one('r', 'm1', { attrs: { 'preview-shape': 'circle' } });
+    assert.ok(!/preview-shape/.test(spoof.html), spoof.html);
+  });
+
   test('v0.35 without usage: croppable / crop_ratio / focal_point / focal dropped (no button, no focal input) + ONE warning', () => {
     const [a, b, c] = run([
       ['n', 'm1', { croppable: true, focal_point: true, focal: { x: 0.5, y: 0.5 }, crop_ratio: '3/2', preview_src: '/a.jpg' }],

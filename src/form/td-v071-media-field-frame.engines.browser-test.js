@@ -40,7 +40,7 @@ async function mk({ hostW = 400, tokens = {}, on = 'host', attrs = {} } = {}) {
   const wrap = document.createElement('div');
   wrap.style.width = `${hostW}px`;
   const el = document.createElement('td-media-field');
-  const all = { name: 'logo', label: 'Logo', 'aspect-ratio': '1/1', 'helper-text': HELP, 'error-text': ERROR, ...attrs };
+  const all = { name: 'logo', label: 'Logo', 'preview-shape': 'ratio', 'aspect-ratio': '1/1', 'helper-text': HELP, 'error-text': ERROR, ...attrs };
   for (const [k, v] of Object.entries(all)) if (v !== false && v != null) el.setAttribute(k, v === true ? '' : v);
   for (const [k, v] of Object.entries(tokens)) (on === 'parent' ? wrap : el).style.setProperty(k, v);
   wrap.appendChild(el);

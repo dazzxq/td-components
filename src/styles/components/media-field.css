@@ -20,6 +20,11 @@
  * from the private unitless CSSOM properties --_td-mf-crop-x / -y / -w / -h (set by JS only when the crop's pixel ratio
  * is within 2 % of the frame's; absent → 0 / 0 / 1 / 1 = the plain cover box). Physical left / top: the crop is in
  * image coordinates (RTL too).
+ * v0.77.0 (plan v0.77.0-media-field-square): the preview is a 1:1 SQUARE by default (any `aspect-ratio`, any image), the image
+ * `object-fit: contain`; side = min(--td-media-field-frame-w, 100% of the host, --td-media-field-max-h) (min() inside
+ * inline-size, no max-*). The sizer is hidden; `aspect-ratio` still drives the crop ratio and the empty-state label.
+ * `td-media-field[preview-shape="ratio" i]` keeps every rule above (the pre-0.77 frame). A croppable field with a crop shows
+ * the cropped area contained in the square: `span.td-media-field__view` (--_td-mf-view-w / -h, unitless, set by JS).
  * CSP: classes / data / aria attributes only; per-instance values through CSSOM custom properties.
  */
 @layer td.tokens {
@@ -186,7 +191,7 @@
 		-webkit-user-drag: none;
 	}
 
-	.td-media-field__sizer + .td-media-field__open > .td-media-field__img {
+	td-media-field[preview-shape="ratio" i] .td-media-field__sizer + .td-media-field__open > .td-media-field__img {
 		position: absolute;
 		inset: 0;
 		block-size: 100%;
@@ -194,18 +199,67 @@
 		object-fit: cover;
 	}
 
-	td-media-field[preview-fit="contain" i] .td-media-field__sizer + .td-media-field__open > .td-media-field__img {
+	td-media-field[preview-shape="ratio" i][preview-fit="contain" i] .td-media-field__sizer + .td-media-field__open > .td-media-field__img {
 		object-fit: contain;
 	}
 
 	/* v0.35 decision 30: crop preview (vars absent → the same box as above) */
-	td-media-field[croppable] .td-media-field__sizer + .td-media-field__open > .td-media-field__img {
+	td-media-field[preview-shape="ratio" i][croppable] .td-media-field__sizer + .td-media-field__open > .td-media-field__img {
 		inset: auto;
 		top: calc(-100% * var(--_td-mf-crop-y, 0) / var(--_td-mf-crop-h, 1));
 		left: calc(-100% * var(--_td-mf-crop-x, 0) / var(--_td-mf-crop-w, 1));
 		inline-size: calc(100% / var(--_td-mf-crop-w, 1));
 		block-size: calc(100% / var(--_td-mf-crop-h, 1));
 		max-inline-size: none;
+	}
+
+	/* v0.77.0 square mode (default): a 1:1 frame, the image contained; ratio mode = td-media-field[preview-shape="ratio" i] above */
+	td-media-field:not([preview-shape="ratio" i]) .td-media-field__frame {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: minmax(0, 1fr);
+		aspect-ratio: 1 / 1;
+		inline-size: min(var(--td-media-field-frame-w, 100%), 100%, var(--td-media-field-max-h, 24rem));
+	}
+
+	td-media-field:not([preview-shape="ratio" i]) .td-media-field__sizer {
+		display: none;
+	}
+
+	td-media-field:not([preview-shape="ratio" i]) .td-media-field__open {
+		block-size: 100%;
+		min-block-size: 0;
+	}
+
+	td-media-field:not([preview-shape="ratio" i]) .td-media-field__open > .td-media-field__img {
+		position: absolute;
+		inset: 0;
+		inline-size: 100%;
+		block-size: 100%;
+		max-block-size: none;
+		object-fit: contain;
+	}
+
+	/* the cropped area contained in the square: view = the crop's ratio fitted in the frame, the img offset inside it */
+	td-media-field:not([preview-shape="ratio" i]) .td-media-field__view {
+		position: absolute;
+		inset: 0;
+		display: block;
+		margin: auto;
+		overflow: hidden;
+		inline-size: calc(100% * var(--_td-mf-view-w, 1));
+		block-size: calc(100% * var(--_td-mf-view-h, 1));
+	}
+
+	td-media-field:not([preview-shape="ratio" i]) .td-media-field__view > .td-media-field__img {
+		position: absolute;
+		inset: auto;
+		top: calc(-100% * var(--_td-mf-crop-y, 0) / var(--_td-mf-crop-h, 1));
+		left: calc(-100% * var(--_td-mf-crop-x, 0) / var(--_td-mf-crop-w, 1));
+		inline-size: calc(100% / var(--_td-mf-crop-w, 1));
+		block-size: calc(100% / var(--_td-mf-crop-h, 1));
+		max-inline-size: none;
+		max-block-size: none;
+		object-fit: fill;
 	}
 
 	/* free mode, filled: the image's natural ratio (no empty-frame minimum) */

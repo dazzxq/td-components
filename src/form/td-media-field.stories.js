@@ -51,7 +51,7 @@ function field(attrs, args = {}) {
     <p class="sb-note" id="${id}-out">Chọn / đổi / gỡ để xem event change + FormData.</p></form>`;
 }
 
-/** Empty 3:2 frame: the ratio text shows on the empty frame; click opens the picker (single). */
+/** Empty 3:2 field (square frame since v0.77.0): the ratio text shows on the empty frame; click opens the picker (single). */
 export const Empty = {
   render: (args) => field('aspect-ratio="3/2"', args),
   args: { label: 'Ảnh đại diện', prompt: '', helperText: 'JPG, PNG — tối đa 5 MB', errorText: '', required: false, disabled: false },
@@ -63,27 +63,58 @@ export const Filled = {
   args: { label: 'Ảnh bìa' },
 };
 
-/** preview-fit="contain": the whole image fits inside a 1:1 frame (logos). */
+/** v0.77.0 default: the preview is a 1:1 square, the image contained (landscape 3:2). */
+export const Square = {
+  render: (args) => field('aspect-ratio="3/2" value="m1" preview-src="/lightbox/1.svg" preview-alt="anh-1.jpg"', args),
+  args: { label: 'Vuông (mặc định)', helperText: 'aspect-ratio="3/2" vẫn vuông; ảnh nằm gọn trong ô.' },
+};
+
+/** v0.77.0 default: a portrait image contained in the square. */
+export const SquarePortrait = {
+  render: (args) => field('value="m5" preview-src="/lightbox/portrait.svg" preview-alt="anh-doc.jpg"', args),
+  args: { label: 'Ảnh dọc trong ô vuông' },
+};
+
+/** v0.77.0 default: a banner ratio (16/7) is still a square; the ratio label shows in the empty square. */
+export const SquareBanner = {
+  render: (args) => field('aspect-ratio="16/7"', args),
+  args: { label: 'Banner 16/7 (ô vuông)' },
+};
+
+/** v0.77.0 default + croppable: the square shows the cropped area, contained (span.td-media-field__view). */
+export const SquareCrop = {
+  render: (args) => field('usage croppable aspect-ratio="1.91" value="m1" preview-src="/lightbox/1.svg" preview-alt="anh-1.jpg"'
+    + ` crop="${esc('{"v":1,"x":0,"y":0.1,"width":1,"height":0.785340}')}"`, args),
+  args: { label: 'Vùng cắt trong ô vuông' },
+};
+
+/** preview-shape="ratio": the pre-0.77 frame (follows aspect-ratio; the image covers it). */
+export const RatioShape = {
+  render: (args) => field('preview-shape="ratio" aspect-ratio="16/7" value="m1" preview-src="/lightbox/1.svg" preview-alt="anh-1.jpg"', args),
+  args: { label: 'Tỉ lệ (preview-shape=ratio)' },
+};
+
+/** preview-fit="contain" (preview-shape="ratio"): the whole image fits inside a 1:1 frame (logos). */
 export const Contain = {
-  render: (args) => field('aspect-ratio="1/1" preview-fit="contain" value="m2" preview-src="/lightbox/2.svg" preview-alt="logo.png"', args),
+  render: (args) => field('preview-shape="ratio" aspect-ratio="1/1" preview-fit="contain" value="m2" preview-src="/lightbox/2.svg" preview-alt="logo.png"', args),
   args: { label: 'Logo' },
 };
 
 /** No aspect-ratio (dcms2 freeStyle): empty = --td-media-field-empty-h; filled = the image's natural ratio. */
 export const NoRatio = {
-  render: (args) => field('value="m3" preview-src="/lightbox/3.svg" preview-alt="anh-3.jpg"', args),
+  render: (args) => field('preview-shape="ratio" value="m3" preview-src="/lightbox/3.svg" preview-alt="anh-3.jpg"', args),
   args: { label: 'Ảnh tự do' },
 };
 
 /** Open Graph 1.91 → "1.91:1". */
 export const OpenGraph = {
-  render: (args) => field('aspect-ratio="1.91"', args),
+  render: (args) => field('preview-shape="ratio" aspect-ratio="1.91"', args),
   args: { label: 'Ảnh chia sẻ (OG)' },
 };
 
 /** Video = poster only + "Video" badge (no player in the field). */
 export const Video = {
-  render: (args) => field('aspect-ratio="16/9" accept-kind="video" kind="video" value="m4" preview-src="/lightbox/4.svg" preview-alt="video-4.mp4"', args),
+  render: (args) => field('preview-shape="ratio" aspect-ratio="16/9" accept-kind="video" kind="video" value="m4" preview-src="/lightbox/4.svg" preview-alt="video-4.mp4"', args),
   args: { label: 'Video giới thiệu' },
 };
 
@@ -122,7 +153,7 @@ export const WithError = {
  * the Đổi / Gỡ buttons, the helper text and the error keep the width of the field instead of being squeezed into the frame.
  */
 export const SmallFrame = {
-  render: (args) => field('class="sb-logo-frame" aspect-ratio="1/1" preview-fit="contain" value="m2" preview-src="/lightbox/2.svg" preview-alt="logo.png"', args),
+  render: (args) => field('class="sb-logo-frame" preview-shape="ratio" aspect-ratio="1/1" preview-fit="contain" value="m2" preview-src="/lightbox/2.svg" preview-alt="logo.png"', args),
   args: {
     label: 'Logo cửa hàng',
     helperText: 'PNG hoặc SVG, tối đa 2 MB.',
