@@ -96,3 +96,23 @@ hr { margin: 32px 0; border: none; border-top: 1px solid var(--td-color-border);
   margin-top: 12px;
   background: var(--td-color-surface);
 }
+
+/* demo catch-up (0.47–0.77) */
+/* 0.76.0: something colourful behind .td-badge--glass to blur */
+.demo-backdrop { padding: 16px; border-radius: 12px; background:
+  radial-gradient(circle at 15% 30%, #ffd166 0 22%, transparent 23%),
+  radial-gradient(circle at 70% 65%, #06d6a0 0 26%, transparent 27%),
+  linear-gradient(135deg, #118ab2, #073b4c); }
+/* 0.50.0 carousel slide cards + token overrides (site CSS) */
+.demo-card { display: flex; flex-direction: column; gap: 6px; padding: 16px; min-height: 120px; box-sizing: border-box; border: 1px solid var(--td-color-border); border-radius: 12px; background: var(--td-color-surface); color: var(--td-color-text); text-decoration: none; }
+.demo-carousel-responsive { --td-carousel-peek: 12%; --td-carousel-per-view-sm: 2; --td-carousel-per-view-lg: 4; }
+.demo-carousel-fixed { --td-carousel-slide-size: 220px; }
+/* icon gallery */
+.demo-icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; margin-top: 12px; }
+.demo-icon-cell { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; border: 1px solid var(--td-color-border); border-radius: 12px; font-size: 12px; }
+/* 0.77.0 square media-field previews side by side */
+.demo-mf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 16px; }
+/* 0.75.0 avatar recipe (docs/components/media-field.md "Avatar tròn"): rounding the preview is site CSS */
+td-media-field[name="avatar"] :is(.td-media-field__frame, .td-media-field__open) { border-radius: 50%; }
+/* 0.47.0 check matrix is an inline-size container: it takes its width from the column */
+.demo-cm > td-check-matrix { align-self: stretch; }
