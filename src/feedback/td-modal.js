@@ -5,7 +5,7 @@
  * DOM contract (one root per open dialog, portaled to <body>):
  *   <div id="{id}" class="td-modal td-modal--{xs|sm|md|lg|xl|2xl|3xl|4xl|5xl|full}[ td-modal--viewport]"
  *        data-state="opening|open|closing" [data-covered]>
- *     <div class="td-modal__backdrop" aria-hidden="true"></div>             ← scrim, never closes (ADR 0006)
+ *     <div class="td-modal__backdrop" aria-hidden="true"></div>             ← scrim, closes only with show({ backdropCloses }) (ADR 0006)
  *     <div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg"
  *          role="dialog|alertdialog" aria-modal="true" aria-labelledby="{id}-title" | aria-label (no header)
  *          [aria-describedby="{id}-message"] tabindex="-1"
@@ -173,7 +173,8 @@ export class TdModal {
     root.querySelector('.td-modal__title').id = `${id}-title`;
     root.querySelector('.td-modal__close').setAttribute('aria-label', TdModal.labels.close || 'Đóng');
     fillIconSlots(root);
-    // No backdrop-click close (ADR 0006). Keep focus in the dialog when the scrim is clicked.
+    // No backdrop-click close by default (ADR 0006; opt-in `backdropCloses`, v0.78.0). Keep focus in the dialog when the
+    // scrim is clicked.
     root.querySelector('.td-modal__backdrop').addEventListener('mousedown', (e) => e.preventDefault());
     return root;
   }
@@ -195,10 +196,13 @@ export class TdModal {
    * @param {string|null} [options.width=null] - Custom width (any valid CSS width without url()/var()).
    * @param {string|null} [options.height=null] - Custom height (same rule).
    * @param {boolean} [options.fullViewport=false] - Dialog fills the viewport (no bottom sheet).
-   * @param {boolean} [options.closable=true] - Show the X. The modal NEVER closes on backdrop click, nor on Escape
-   *   unless `escapeCloses`.
+   * @param {boolean} [options.closable=true] - Show the X. The modal never closes on backdrop click unless
+   *   `backdropCloses`, nor on Escape unless `escapeCloses`.
    * @param {boolean} [options.escapeCloses=false] - Escape closes the dialog (not while an action is busy). Only for
    *   dialogs whose close loses no user data (ADR 0006 addendum), e.g. pickers.
+   * @param {boolean} [options.backdropCloses=false] - v0.78.0: a click that starts AND ends on the scrim closes the
+   *   dialog (top dialog only; not while busy; through `beforeClose` with `reason: 'backdrop'`). Same rule as
+   *   `escapeCloses`: only for dialogs whose close loses no user data.
    * @param {boolean} [options.showHeader=true] - Without a header the title becomes the dialog's `aria-label`.
    * @param {boolean} [options.showFooter=true]
    * @param {Function|null} [options.onClose=null] - Called once on every close path, after focus is restored.
@@ -211,8 +215,9 @@ export class TdModal {
    * @param {string} [options.bodyOverflow] - visible | hidden | auto | scroll | clip.
    * @param {Element|null} [options.themeRoot=null] - v0.42.0 (ADR 0020): render in the theme scope
    *   (`[data-td-theme]`) of this element; without it the dialog follows the page theme.
-   * @param {(ctx: { reason: 'button'|'escape'|'action'|'request', value: * }) => (boolean|void|PromiseLike<boolean|void>)}
-   *   [options.beforeClose] - v0.44.0 guard of the USER close paths (X, Escape with `escapeCloses`, a closing action —
+   * @param {(ctx: { reason: 'button'|'escape'|'action'|'request'|'backdrop', value: * }) => (boolean|void|PromiseLike<boolean|void>)}
+   *   [options.beforeClose] - v0.44.0 guard of the USER close paths (X, Escape with `escapeCloses`, the scrim with
+   *   `backdropCloses`, a closing action —
    *   also "Lưu": call `tracker.markClean()` before it returns —, `requestClose()`). `false` (sync or resolved) keeps
    *   the dialog open, so does a throw / rejection (console.error); anything else closes. While it is pending, further
    *   attempts share it and actions do not run. `close()` / `closeById()` / `closeAll()` never run it.
@@ -254,6 +259,8 @@ export class TdModal {
     };
 
     TdModal._configureModal(root, opts, instance);
+    // v0.78.0 (ADR 0006 addendum): opt-in backdrop close, show() only (the Promise dialogs never take it)
+    if (!internal && opts.backdropCloses === true) TdModal._bindBackdropClose(instance);
     if (internal && internal.role) dialog.setAttribute('role', internal.role);
     if (internal && internal.message) {
       internal.message.id = `${id}-message`;
@@ -368,7 +375,7 @@ export class TdModal {
    * @private v0.44.0 (QĐ 12-15): the guarded close. Sync guard → closes (or not) synchronously; async → `guarding`
    * until it settles (further attempts get the same Promise); a code close meanwhile drops the result silently.
    * @param {object} inst
-   * @param {'button'|'escape'|'action'|'request'} reason
+   * @param {'button'|'escape'|'action'|'request'|'backdrop'} reason
    * @param {*} [value]
    * @returns {Promise<boolean>}
    */
@@ -415,6 +422,27 @@ export class TdModal {
     });
     inst.guarding = pending;
     return pending;
+  }
+
+  /**
+   * @private v0.78.0: `backdropCloses` — a click that STARTED and ENDED on this dialog's scrim asks to close
+   * (`reason: 'backdrop'`, through busy / beforeClose like Escape). A text selection dragged out of the dialog, a press
+   * that began before the dialog existed, or a dialog that is not on top never closes (lightbox precedent).
+   * @param {object} inst
+   */
+  static _bindBackdropClose(inst) {
+    const backdrop = inst.element.querySelector('.td-modal__backdrop');
+    let downOnBackdrop = false;
+    inst.element.addEventListener('pointerdown', (e) => {
+      downOnBackdrop = e.target === backdrop && e.isPrimary !== false && e.button === 0;
+    });
+    backdrop.addEventListener('click', (e) => {
+      const armed = downOnBackdrop;
+      downOnBackdrop = false;
+      if (!armed || e.target !== backdrop || inst.closed) return;
+      if (TdModalStackManager.getTop() !== inst || (inst.handle && !inst.handle.layer.isTop())) return;
+      TdModal._requestClose(inst, 'backdrop');
+    });
   }
 
   /** Close the top modal. */

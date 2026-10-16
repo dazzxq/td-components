@@ -2,6 +2,30 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.78.0
+
+**`TdModal.show({ backdropCloses: true })`: bấm nền mờ đóng modal — opt-in, mặc định tắt** (yêu cầu của dwp khi port sang td,
+2026-10-17; [plan](docs/internal/plans/v0.78.0-modal-backdrop-closes.md); [ADR 0006](docs/internal/decisions/0006-modal-no-backdrop-close.md) § Addendum v0.78.0).
+Mặc định không đổi: không có option thì bấm nền vẫn không bao giờ đóng.
+
+### Added
+
+- `backdropCloses` (boolean, mặc định `false`) của `TdModal.show()`. Chỉ cú bấm (chuột / chạm) **bắt đầu và kết thúc trên nền** của
+  chính dialog mới đóng: bôi chữ trong dialog rồi kéo ra nền, hay nhấn trên nền rồi nhả trong dialog, không đóng.
+- Đi chung đường với Escape (`escapeCloses`): không đóng khi action đang bận; chạy `beforeClose` với `reason: 'backdrop'` (kiểu `reason`
+  thêm giá trị này); chỉ modal trên cùng phản ứng. Hộp thoại Promise (`confirm` / `alert` / `prompt`) bỏ qua option.
+- Không đổi markup, CSS, token, PHP.
+
+### Tests
+
+- `src/feedback/td-v078-modal-backdrop.engines.browser-test.js` (Chromium / Firefox / WebKit, chuột thật): mặc định tắt, đóng một lần +
+  trả focus, kéo từ trong ra / từ nền vào không đóng, bận, guard, chồng hai modal, chạm, hộp thoại Promise.
+
+### Demo
+
+- `demo.html` bổ sung các component còn thiếu: Hint, Rating, Carousel, Icon, Media gallery, Check matrix, lưới media field 0.77
+  (ô vuông, crop, avatar tròn), cropper `pan`, badge kính; nút modal `backdropCloses`.
+
 ## 0.77.0
 
 **`td-media-field`: khung xem trước luôn là ô vuông 1:1, ảnh `contain` bên trong (mặc định mới); tắt bằng `preview-shape="ratio"`**

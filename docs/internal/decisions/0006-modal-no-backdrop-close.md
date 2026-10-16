@@ -41,3 +41,13 @@ Modal thường chứa form/thao tác dở. Click nhầm ra ngoài làm mất d�
 - Backdrop vẫn không bao giờ đóng; Escape vẫn chỉ với `escapeCloses`. `<td-drawer>` có cùng mô hình (property
   `beforeClose` + `requestClose()`, chạy trước event `before-close` v0.27 vốn giữ nguyên).
 
+
+## Addendum (2026-10-17, v0.78.0) — `backdropCloses`
+
+- Option mới `TdModal.show({ backdropCloses: true })` (mặc định `false`), yêu cầu của dwp khi port sang td (không được vá
+  bản vendor). Mặc định của ADR này giữ nguyên.
+- Chỉ đóng khi cú bấm **bắt đầu và kết thúc trên nền mờ của chính dialog** (`pointerdown` trên backdrop rồi `click` trên
+  backdrop), cùng mẫu với lightbox: kéo bôi chữ từ trong dialog ra nền, hay cú bấm bắt đầu trước khi dialog mở, không đóng.
+- Đi qua `_requestClose(…, 'backdrop')`: tôn trọng `busy`, `beforeClose` (`reason: 'backdrop'`) và guard đang chờ. Chỉ
+  dialog trên cùng (stack + layer) phản ứng. Hộp thoại Promise không nhận option.
+- Cùng luật dùng với `escapeCloses`: chỉ cho dialog mà đóng không mất dữ liệu người dùng.

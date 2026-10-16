@@ -15,7 +15,7 @@ cho thông báo thoáng qua (dùng [toast](toast.md)), cho trạng thái "đang 
 | Import | `import { TdModal } from '@dazzxq/td-components/modal'` · `import { TdModalStackManager } from '@dazzxq/td-components/modal-stack'` |
 | Loại | API JS tĩnh (không phải custom element, không đặt thẻ vào HTML) |
 | Form-associated | không |
-| Từ phiên bản | 0.1.0 (token-native từ 0.9.0, `escapeCloses` từ 0.10.0) |
+| Từ phiên bản | 0.1.0 (token-native từ 0.9.0, `escapeCloses` từ 0.10.0, `backdropCloses` từ 0.78.0) |
 
 Cần `td.css` đã được nạp (modal dùng style của `modal.css`, `button.css` và `spinner.css`, tất cả đã gộp trong
 `td.css`). Không cần gọi hàm khởi tạo nào: phần tử modal được tạo khi mở và gỡ khỏi DOM khi đóng.
@@ -278,7 +278,7 @@ const id = TdModal.show({
 | Action có đóng (kể cả "Lưu") | `'action'` (`value` = value của action) | Có — nhớ `markClean()` sau khi lưu thành công |
 | `TdModal.requestClose(id, value?)` | `'request'` | Có (cho footer tự dựng) |
 | `TdModal.close()` / `closeById()` / `closeAll()` | — | **Không** — code là ý định của app (đăng xuất, đổi route không được treo) |
-| Bấm nền | — | Không bao giờ đóng (ADR 0006) |
+| Bấm nền (chỉ khi `backdropCloses`, 0.78.0) | `'backdrop'` | Có — không bật thì bấm nền không bao giờ đóng (ADR 0006) |
 
 Trong lúc guard đang chờ (ví dụ hộp hỏi đang mở): bấm X / action / Escape / `requestClose` thêm đều dùng chung lần
 chờ đó (action không chạy), modal **không** hiện spinner. Modal bị đóng bằng code trong lúc chờ → kết quả guard bị bỏ
@@ -292,6 +292,23 @@ cancelBtn.addEventListener('click', async () => {
   if (await TdModal.requestClose(id)) console.log('đã đóng');
 });
 ```
+
+### 9. Bấm nền để đóng (`backdropCloses`, 0.78.0)
+
+Mặc định bấm ra nền mờ **không** đóng modal ([vì sao](#vì-sao-không-đóng-khi-click-nền-hoặc-escape)). Với hộp thoại mà
+đóng không mất gì (đăng nhập, xem ảnh, thông tin), bật `backdropCloses` (thường đi kèm `escapeCloses`):
+
+```js
+TdModal.show({
+  title: 'Đăng nhập',
+  body: loginForm,
+  backdropCloses: true, // cú bấm bắt đầu VÀ kết thúc trên nền mới đóng; kéo bôi chữ từ trong dialog ra nền không đóng
+  escapeCloses: true,
+  beforeClose: ({ reason }) => reason !== 'backdrop' || !loginForm.dataset.submitting, // tuỳ chọn: chặn khi đang gửi
+});
+```
+
+Chỉ modal trên cùng phản ứng; khi action đang bận thì không đóng. Hộp thoại Promise (`confirm` / `alert` / `prompt`) bỏ qua option này.
 
 ## Property & method
 
@@ -355,6 +372,7 @@ window.addEventListener('beforeunload', (e) => {
 | `fullViewport` | `boolean` | `false` | Dialog phủ kín màn hình, không bo góc, không thành bottom sheet trên điện thoại. `width`/`height` bị bỏ qua. Body mặc định không padding và `overflow: hidden`. Từ 0.33.0 có **safe area** (tai thỏ / thanh home): header / footer **cộng thêm** `env(safe-area-inset-*)` vào padding gốc, body chỉ nhận inset hai bên (khi không đặt `bodyPadding`); xem ghi chú dưới bảng class. |
 | `closable` | `boolean` | `true` | Hiện nút X. `false` chỉ **ẩn nút X** — người dùng phải chọn một nút footer. |
 | `escapeCloses` | `boolean` | `false` | Cho phép phím Escape đóng modal (trừ khi đang có action bận). Chỉ bật cho hộp thoại mà đóng không mất dữ liệu (ví dụ bộ chọn ngày). Xem [Vì sao không đóng khi click nền / Escape](#vì-sao-không-đóng-khi-click-nền-hoặc-escape). |
+| `backdropCloses` | `boolean` | `false` | 0.78.0: bấm vào nền mờ đóng modal. Chỉ tính cú bấm **bắt đầu và kết thúc trên nền** (bôi chữ trong dialog rồi kéo ra nền không đóng), chỉ modal trên cùng, không đóng khi đang có action bận, đi qua `beforeClose` (`reason: 'backdrop'`). Không áp dụng cho hộp thoại Promise (`confirm` / `alert` / `prompt`). Cùng luật với `escapeCloses`: chỉ bật cho hộp thoại mà đóng không mất dữ liệu. |
 | `showHeader` | `boolean` | `true` | `false` → ẩn header (cả nút X); `title` trở thành `aria-label` của dialog. |
 | `showFooter` | `boolean` | `true` | `false` → không render `footer`/`actions`. Footer cũng tự ẩn khi rỗng. |
 | `onClose` | `(value) => void` | `null` | Gọi **đúng một lần** cho mọi đường đóng (X, action, `close`/`closeById`/`closeAll`, Escape khi `escapeCloses`), **sau khi** focus đã được trả về. `value` = `value` của action đã bấm, còn lại là `undefined`. Lỗi bị bắt và `console.error`. |
@@ -365,7 +383,7 @@ window.addEventListener('beforeunload', (e) => {
 | `bodyPadding` | `string` | — | Padding của body (giá trị CSS `padding` hợp lệ, ví dụ `'0'`, `'2rem 1rem'`). Dùng chuỗi có đơn vị: số trần như `16` bị từ chối (chỉ `0` hợp lệ). |
 | `bodyOverflow` | `string` | — | `visible` \| `hidden` \| `auto` \| `scroll` \| `clip`. Giá trị khác → bỏ qua + `console.warn`. |
 | `themeRoot` | `Element` | — | 0.42.0: hiển thị theo theme của vùng `[data-td-theme]` chứa phần tử này ([theming › Theme theo vùng](../customization/theming.md#popup-mở-từ-trong-vùng), ADR 0020). Không truyền → theme của trang. |
-| `beforeClose` | `({ reason, value }) => boolean \| void \| PromiseLike<boolean \| void>` | — | 0.44.0: guard của các đường đóng do người dùng (X, Escape khi `escapeCloses`, action có đóng, `requestClose`). `false` / throw / reject → ở lại. Xem [Chặn đóng khi có thay đổi chưa lưu](#8-chặn-đóng-khi-có-thay-đổi-chưa-lưu-beforeclose-0440). |
+| `beforeClose` | `({ reason, value }) => boolean \| void \| PromiseLike<boolean \| void>` | — | 0.44.0: guard của các đường đóng do người dùng (X, Escape khi `escapeCloses`, bấm nền khi `backdropCloses`, action có đóng, `requestClose`). `false` / throw / reject → ở lại. Xem [Chặn đóng khi có thay đổi chưa lưu](#8-chặn-đóng-khi-có-thay-đổi-chưa-lưu-beforeclose-0440). |
 
 ### Action (nút footer)
 
@@ -585,6 +603,8 @@ trong `<template>` rồi truyền `template.content.cloneNode(true)` làm `body`
 - **Escape:** mặc định **không làm gì** nhưng bị modal "nuốt" — không lọt xuống lightbox hay lớp dưới. Với
   `escapeCloses: true`, Escape đóng modal (trừ khi đang bận). Nếu có lớp cao hơn đang mở bên trong modal (menu dropdown,
   tooltip) thì Escape đóng lớp đó trước.
+- **Bấm nền:** mặc định không đóng (focus vẫn ở trong dialog). Với `backdropCloses: true`, cú bấm (chuột hoặc chạm)
+  bắt đầu và kết thúc trên nền đóng modal trên cùng.
 - **Nền:** mọi thứ bên dưới (trang, modal thấp hơn, lightbox) bị `inert` — không click, không focus, trình đọc màn hình
   bỏ qua. Dropdown, menu, tooltip, toast mở ra từ bên trong modal vẫn dùng được.
 - **Đóng:** focus trả về phần tử đã mở modal (nếu modal này đang ở trên cùng), **trước** khi `onClose` chạy. Nếu phần tử
@@ -600,7 +620,8 @@ trong `<template>` rồi truyền `template.content.cloneNode(true)` làm `body`
 Đây là lựa chọn có chủ đích ([ADR 0006](../internal/decisions/0006-modal-no-backdrop-close.md)): modal thường chứa form
 đang nhập dở, và một cú click nhầm ra ngoài hay một lần bấm Escape sẽ làm mất dữ liệu. Vì vậy modal chỉ đóng qua nút X,
 nút footer, hoặc `close` / `closeById` / `closeAll`. `escapeCloses` là ngoại lệ cho những hộp thoại mà đóng không mất gì
-(bộ chọn ngày giờ dùng nó). Click nền **không bao giờ** đóng modal, kể cả khi bật `escapeCloses`. Ngược lại,
+(bộ chọn ngày giờ dùng nó). Từ 0.78.0, `backdropCloses: true` là ngoại lệ tương tự cho click nền (ví dụ hộp đăng nhập,
+hộp xem ảnh); không bật thì click nền **không bao giờ** đóng modal, kể cả khi bật `escapeCloses`. Ngược lại,
 [lightbox](lightbox.md) đóng khi click nền vì nó chỉ là trình xem ảnh.
 
 ## Bảo mật
