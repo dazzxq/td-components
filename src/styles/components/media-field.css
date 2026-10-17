@@ -227,6 +227,11 @@
 		display: none;
 	}
 
+	/* v0.79.2: hide-alt hides only the alt editor; the component (and a no-JS display:none input) still submits name[alt] */
+	td-media-field[hide-alt] > .td-media-field__usage {
+		display: none;
+	}
+
 	.td-media-field__name {
 		max-inline-size: 100%;
 		overflow-wrap: anywhere;

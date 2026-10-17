@@ -124,7 +124,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.79.1/
+public/assets/vendor/td-components/0.79.2/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
   dist/  module-graph.json                    (0.64.0+: bản minify + đồ thị preload)
 ```
@@ -133,7 +133,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.79.1';
+const TD_VERSION = '0.79.2';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -1396,11 +1396,12 @@ serialize: adapter là JS của site ([Media picker](../components/media-picker.
 | `crop_ratio` (0.35.0) | `'1.91'` \| `'16/9'` \| `'16:9'` \| `'free'` → thuộc tính `crop-ratio`. Vắng → JS theo `aspect_ratio`, rồi tự do. Sai hoặc tỉ lệ ngoài **[0.01, 100]** → bỏ + một `E_USER_WARNING` (bảng `CROP_RATIO_CASES` JS = PHP) |
 | `crop_mode`, `crop_shape` (0.75.0) | chuỗi `pan` / `circle` (cắt khoảng trắng kiểu JS, không phân biệt hoa thường) → in hằng `crop-mode="pan"` / `crop-shape="circle"`; mọi giá trị khác (`box`, `rect`, lạ, không phải chuỗi) → không in gì, im lặng (bảng `CROP_MODE_CASES` / `CROP_SHAPE_CASES` JS = PHP). Cần `usage` (thiếu → bỏ + cùng `E_USER_WARNING`) |
 | `hide_label`, `hide_hints` (0.79.0) | `true` → in attribute `hide-label` (nhãn ẩn khỏi mắt, vẫn là tên trợ năng) / `hide-hints` (ẩn `prompt` + chữ tỉ lệ). Thuần CSS, cây DOM không đổi. Xem [Media field › mục 10](../components/media-field.md#10-ẩn-nhãn-và-gợi-ý--hide-label-hide-hints-0790) |
+| `hide_alt` (0.79.2) | `true` → in attribute `hide-alt`: ô alt của `usage` ẩn (`display: none`) nhưng input `name[alt]` vẫn được in và vẫn gửi; truyền `alt` đã lưu để lưu lại không mất. Xem [Media field › mục 10](../components/media-field.md#10-ẩn-nhãn-và-gợi-ý--hide-label-hide-hints-0790) |
 | `focal_point` (0.35.0) | `true` (+ `usage`) → in hidden `input.td-media-field__focal` `name="og[focal]"` (mục thứ tư, sau `og[crop]`) |
 | `focal` (0.35.0) | mảng `['x' => …, 'y' => …]` (0..1) **hoặc** chuỗi JSON v1 `{"v":1,"x","y"}` (in lại được nguyên `$_POST['og']['focal']`). `null` / `''` / `'null'` → `null` im lặng; sai → `null` + một `E_USER_WARNING` |
 | `id` | id của **host**; id con suy ra: `{id}-label`, `{id}-state`, `{id}-alt`, `{id}-help`, `{id}-error`. Không có → id duy nhất trong request (`td-{name}-{n}`) |
 | `class` | class thêm trên host (sau `td-media-field`) |
-| `attrs` | attribute thêm trên host (allowlist chung + `data-*`). Tên component tự đọc (`id` `class` `name` `label` `aspect-ratio` `preview-fit` `accept-kind` `usage` `required` `disabled` `value` `preview-src` `preview-alt` `kind` `alt` `crop` `prompt` `helper-text` `error-text`; 0.35: `croppable` `crop-ratio` `focal-point` `focal`; 0.75: `crop-mode` `crop-shape`; 0.79: `hide-label` `hide-hints`) và mọi `data-td-*` bị bỏ |
+| `attrs` | attribute thêm trên host (allowlist chung + `data-*`). Tên component tự đọc (`id` `class` `name` `label` `aspect-ratio` `preview-fit` `accept-kind` `usage` `required` `disabled` `value` `preview-src` `preview-alt` `kind` `alt` `crop` `prompt` `helper-text` `error-text`; 0.35: `croppable` `crop-ratio` `focal-point` `focal`; 0.75: `crop-mode` `crop-shape`; 0.79: `hide-label` `hide-hints`; 0.79.2: `hide-alt`) và mọi `data-td-*` bị bỏ |
 
 Nhãn in sẵn là **tiếng Việt mặc định** (`Td::MEDIA_FIELD_LABELS`, giống `TdMediaField.labels`). Site đổi
 `TdMediaField.labels` trong JS → chữ in sẵn không khớp `render()` → lúc nâng cấp field **render lại an toàn** (không nhận

@@ -68,7 +68,7 @@ const fill = (t, params) => String(t ?? '').replace(/\{(\w+)\}/g, (m, k) => (k i
  *
  * DOM contract (JS render() = PHP):
  *   <td-media-field class="td-media-field" name label [aspect-ratio] [preview-fit] [preview-shape] [accept-kind] [usage] [required]
- *                   [disabled] [value] [preview-src] [preview-alt] [kind] [alt] [crop] [prompt] [helper-text] [error-text] [hide-label] [hide-hints]>
+ *                   [disabled] [value] [preview-src] [preview-alt] [kind] [alt] [crop] [prompt] [helper-text] [error-text] [hide-label] [hide-hints] [hide-alt]>
  *     <span class="td-media-field__label" id="{id}-label">label[<span class="td-field__required" aria-hidden="true"> *</span>]</span>
  *     <div class="td-media-field__frame" data-state="empty|filled" data-kind="image|video|file">
  *       [<svg class="td-media-field__sizer" viewBox="0 0 W H" aria-hidden="true" focusable="false"></svg>]
@@ -118,6 +118,7 @@ const fill = (t, params) => String(t ?? '').replace(/\{(\w+)\}/g, (m, k) => (k i
  * @attr {string} focal - v0.35: JSON v1 `{"v":1,"x","y"}` (kept as is)
  * @attr {boolean} hide-label - v0.79.0: the label is visually hidden (still the accessible name)
  * @attr {boolean} hide-hints - v0.79.0: hides the empty prompt and the ratio text
+ * @attr {boolean} hide-alt - v0.79.2 (usage): hides the alt editor only (CSS); name[alt] / usage.altText still carry the alt
  * @attr {string} prompt @attr {string} helper-text @attr {string} error-text
  * @attr {boolean} required @attr {boolean} disabled
  * @fires input - detail: { value, selection } (also on each alt keystroke)

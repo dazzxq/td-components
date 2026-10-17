@@ -257,7 +257,8 @@ Xem [Tự chọn ảnh đầu](media-picker.md#tự-chọn-ảnh-đầu-khi-mở
 
 Ô "Mô tả ảnh (alt)" (`maxlength="500"`) nằm dưới khung. Gõ → cập nhật FormData, host phát `input` mỗi lần gõ và `change`
 khi rời ô nếu đã đổi (event `input` / `change` native của ô bị chặn tại host, không bị trùng). Chọn ảnh mới trong picker
-→ alt = `usage.altText` (alt mặc định của asset); gán `.value =` bằng code → alt giữ nguyên.
+→ alt = `usage.altText` (alt mặc định của asset); gán `.value =` bằng code → alt giữ nguyên. Ô nhỏ không có chỗ cho ô alt:
+`hide-alt` (0.79.2, [mục 10](#10-ẩn-nhãn-và-gợi-ý--hide-label-hide-hints-0790)) ẩn ô nhưng vẫn gửi alt.
 
 ### 7. Đổi thuộc tính sau khi nâng cấp, reset, khôi phục, `required`
 
@@ -418,6 +419,7 @@ Form chỉ có ô ảnh (avatar, logo) thường không cần nhãn hiện ra ha
 |---|---|
 | `hide-label` / `'hide_label' => true` | Nhãn ẩn khỏi mắt (kiểu `td-sr-only`, 1px) nhưng **vẫn là tên trợ năng**: ô mở, nút X / cắt và tiêu đề picker vẫn dùng nó. Nhãn rỗng vẫn không hiện như trước |
 | `hide-hints` / `'hide_hints' => true` | Ẩn lời nhắc `prompt` trong khung rỗng và chữ tỉ lệ (`display: none`); hai thứ này không nằm trong tên trợ năng. `helper-text` / `error-text` **không** bị ẩn |
+| `hide-alt` / `'hide_alt' => true` (0.79.2, chế độ `usage`) | Ẩn ô "Mô tả ảnh (alt)" (`display: none`). **Chỉ ẩn ô sửa, không bỏ dữ liệu**: form vẫn gửi đủ `name[id]` / `name[alt]` / `name[crop]` (+ `name[focal]`), `name[alt]` = alt hiện có (attribute `alt`, hoặc alt mặc định của ảnh mới chọn), `selection[0].usage.altText` = đúng chuỗi đó. Nút cắt, crop, focal giữ nguyên. Muốn lưu lại không mất alt cũ: in alt đã lưu vào `alt` (PHP `'alt' => $stored`); không in thì `name[alt]` gửi rỗng |
 
 ```html
 <td-media-field name="avatar" label="Ảnh đại diện" hide-label hide-hints></td-media-field>
@@ -472,6 +474,7 @@ X / cắt là nút tròn nằm trong góc khung). Khung ảnh không bao giờ r
 | `helper-text` / `error-text` | string | — | Ghi chú / lỗi. 0.54.0: có lỗi thì ghi chú ẩn (và rời khỏi mô tả); đổi `helper-text` không render lại; `setHelper()` / `helperMessage`; nội dung giàu: `<td-hint>` con — [Hint](hint.md) |
 | `hide-label` | boolean | — | 0.79.0: nhãn ẩn khỏi mắt, vẫn là tên trợ năng ([mục 10](#10-ẩn-nhãn-và-gợi-ý--hide-label-hide-hints-0790)) |
 | `hide-hints` | boolean | — | 0.79.0: ẩn lời nhắc `prompt` và chữ tỉ lệ (`helper-text` / `error-text` vẫn hiện) |
+| `hide-alt` | boolean | — | 0.79.2: ẩn ô alt của `usage`, vẫn gửi `name[alt]` ([mục 10](#10-ẩn-nhãn-và-gợi-ý--hide-label-hide-hints-0790)) |
 | `required` / `disabled` | boolean | — | |
 
 ## Property & method

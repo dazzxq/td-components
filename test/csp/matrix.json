@@ -5232,6 +5232,19 @@
       "selectorNote": "v0.79.0: hide-label (label visually hidden, still named) + hide-hints (prompt and ratio display:none)"
     },
     {
+      "state": "hide-alt",
+      "markup": "<td-media-field name=\"og\" label=\"Ảnh OG\" aspect-ratio=\"3/2\" usage croppable hide-alt value=\"m1\" kind=\"image\" preview-src=\"/test/fixtures/1.svg\" alt=\"X\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__frame",
+        ".td-media-field__tools",
+        ".td-media-field__crop-btn",
+        ".td-media-field__usage"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.79.2: hide-alt — the usage alt editor display:none, the crop tool kept"
+    },
+    {
       "state": "contain",
       "markup": "<td-media-field name=\"hero\" label=\"Ảnh đại diện\" aspect-ratio=\"16/9\" preview-fit=\"contain\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\"></td-media-field>",
       "selectors": [

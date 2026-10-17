@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.79.1)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.79.2)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| 0.79.2 | Không phá vỡ: thêm `hide-alt` cho `td-media-field` | Không cần làm gì |
 | [0.79.1](#0791) | Chỉ hình (`td-media-field`): khung có ảnh cũng nét đứt; khung rỗng chỉ có icon, chữ gợi ý mặc định ẩn | Cần chữ gợi ý thì đặt `prompt="…"` (PHP `'prompt' => '…'`). CSS site đè `border-style` của khung có ảnh vẫn chạy. |
 | [0.79.0](#0790) | **Phá vỡ DOM (`td-media-field`)**: bỏ `.td-media-field__actions` / `__replace` (nút chữ "Đổi ảnh" / "Gỡ"); khung bấm được để đổi ảnh; X tròn đỏ + nút cắt dạng icon nằm trong `__frame > __tools`; chữ tỉ lệ `__ratio` ra dưới khung; marker SSR `media-field@2`; thêm `hide-label` / `hide-hints` + token mới | Xoá CSS đè `.td-media-field__actions` / `__replace`; CSS đè `__remove` / `__crop-btn` kiểu nút chữ viết lại theo token. HTML PHP cache cũ (`media-field@1`) vẫn chạy (render lại an toàn). Site đã tự ẩn nhãn / gợi ý / bo góc bằng CSS thì thay bằng `hide-label` / `hide-hints` / `--td-media-field-frame-radius`. |
 | [0.77.0](#0770) | **Đổi giao diện**: `td-media-field` xem trước luôn là ô vuông 1:1, ảnh `contain` (kể cả khi có `aspect-ratio`); thêm `preview-shape="ratio"` | Không phải sửa code. Muốn khung theo tỉ lệ như 0.76: `preview-shape="ratio"` / PHP `'preview_shape' => 'ratio'`. Ô to hơn 24rem: tăng `--td-media-field-max-h` |

@@ -338,6 +338,19 @@ describe('php/td.php — td_media_field (v0.32.0, contract media-field@2)', opts
     assert.ok(!/hide-label|hide-hints/.test(rsv), rsv);
   });
 
+  test('v0.79.2 hide_alt: boolean host attribute only; the usage alt input (name[alt]) is still printed; reserved in attrs', () => {
+    const [plain, hidden, rsv] = run([
+      ['og', 'm1', { id: 'a1', usage: true, croppable: true, alt: 'X', preview_src: '/1.svg' }],
+      ['og', 'm1', { id: 'a1', usage: true, croppable: true, alt: 'X', preview_src: '/1.svg', hide_alt: true }],
+      ['og', 'm1', { id: 'a1', usage: true, attrs: { 'hide-alt': '' } }],
+    ]).map((r) => r.html);
+    assert.equal(hostAttr(plain, 'hide-alt'), null);
+    assert.equal(hostAttr(hidden, 'hide-alt'), true);
+    assert.equal(hidden.replace(/ hide-alt/g, ''), plain);
+    assert.ok(/name="og\[alt\]" value="X"/.test(hidden), 'the alt input still submits');
+    assert.ok(!/hide-alt/.test(rsv), rsv);
+  });
+
   test('v0.35 crop_ratio parity with parseCropRatio(): free / ratios printed as given; invalid → dropped + one warning', () => {
     // review R1 #5: + the [0.01, 100] boundaries of the shared table
     const inputs = ['free', ' FREE ', '16:9', '1.91', '3/2', 'abc', '0', '1e9', '', ...CROP_RATIO_CASES.map(([i]) => i)];

@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.79.1/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.79.1', __DIR__ . '/public/assets/vendor/td-components/0.79.1');
+ *   require_once '/path/to/vendor/td-components/0.79.2/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.79.2', __DIR__ . '/public/assets/vendor/td-components/0.79.2');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -445,7 +445,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.79.1') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.79.2') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool, assets?: string} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -2820,6 +2820,7 @@ namespace {
      * the JSON v1 string `{"v":1,"x","y"}` → printed / submitted as JSON v1; invalid → null + one E_USER_WARNING). The
      * crop printing is unchanged (byte-identical to v0.34 without these options). v0.79.0: hide_label / hide_hints (bool)
      * print the host attributes `hide-label` / `hide-hints` (CSS only: label visually hidden / prompt + ratio hidden).
+     * v0.79.2: hide_alt (bool) prints `hide-alt` (CSS only: the usage alt editor hidden; its input still submits name[alt]).
      * Never prints adapter endpoints, permissions or serialized assets.
      */
     function td_media_field(string $name, mixed $assetId = null, array $o = []): string
@@ -2843,6 +2844,7 @@ namespace {
         $usage = !empty($o['usage']);
         $hideLabel = !empty($o['hide_label']);
         $hideHints = !empty($o['hide_hints']);
+        $hideAlt = !empty($o['hide_alt']);
         $kinds = td__media_kinds($o['accept_kind'] ?? null);
         $ratioRaw = isset($o['aspect_ratio']) && is_scalar($o['aspect_ratio']) && !is_bool($o['aspect_ratio']) ? (string) $o['aspect_ratio'] : null;
         $ratio = $ratioRaw !== null && $ratioRaw !== '' ? td__media_ratio($ratioRaw) : null;
@@ -2939,6 +2941,7 @@ namespace {
             'focal' => $focal,
             'hide-label' => $hideLabel,
             'hide-hints' => $hideHints,
+            'hide-alt' => $hideAlt,
             'prompt' => $prompt,
             'helper-text' => $help,
             'error-text' => $error,
@@ -2946,7 +2949,7 @@ namespace {
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['id', 'class', 'name', 'label', 'aspect-ratio', 'preview-fit', 'preview-shape', 'accept-kind', 'usage', 'required',
             'disabled', 'value', 'preview-src', 'preview-alt', 'kind', 'alt', 'crop', 'prompt', 'helper-text', 'error-text',
-            'croppable', 'crop-ratio', 'crop-mode', 'crop-shape', 'focal-point', 'focal', 'hide-label', 'hide-hints'], $extra, $taken);
+            'croppable', 'crop-ratio', 'crop-mode', 'crop-shape', 'focal-point', 'focal', 'hide-label', 'hide-hints', 'hide-alt'], $extra, $taken);
         return $html . Td::attrs($extra, $taken) . '>'
             . '<span class="td-media-field__label" id="' . $hid . '-label">' . Td::e($label)
             . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</span>'

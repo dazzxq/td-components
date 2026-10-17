@@ -2,6 +2,15 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.79.2
+
+**`td-media-field` `hide-alt`** (yêu cầu dsuite K-A5-5; hướng chốt qua Codex think-about; [plan](docs/internal/plans/v0.79.2-media-field-hide-alt.md)). Không phá vỡ.
+
+### Added
+
+- Attribute boolean `hide-alt` (PHP `'hide_alt' => true`): ở chế độ `usage`, ẩn ô "Mô tả ảnh (alt)" bằng CSS. DOM, marker `media-field@2`, FormData không đổi:
+  vẫn gửi `name[alt]` (alt hiện có), `selection[0].usage.altText` = chuỗi đã gửi; nút cắt / crop / focal giữ nguyên. Site in alt đã lưu vào `alt` để lưu lại không mất.
+
 ## 0.79.1
 
 **`td-media-field` y hệt dcms2** (owner 2026-10-18: "làm giống như bên dcms2 đi"; [plan](docs/internal/plans/v0.79.1-media-field-dcms2-exact.md)). Chỉ CSS: DOM, marker `media-field@2`, PHP, JS, API không đổi.

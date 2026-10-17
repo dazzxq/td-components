@@ -269,6 +269,26 @@ describe('v0.79.0 td-media-field placeholder — hide-label / hide-hints / frame
     expect(getComputedStyle(q(shown, '.td-media-field__prompt')).display).to.not.equal('none');
   });
 
+  it('v0.79.2 hide-alt: the alt editor is display:none; crop tool, [id]/[alt]/[crop]/[focal] and usage stay intact', async () => {
+    const CROP = '{"v":1,"x":0.1,"y":0,"width":0.5,"height":1}';
+    const FOCAL = '{"v":1,"x":0.25,"y":0.75}';
+    const { form, el } = await mk({ name: 'og', usage: true, croppable: true, 'focal-point': true, 'hide-alt': true, value: 'm1', kind: 'image',
+      'preview-src': '/test/fixtures/1.svg', alt: 'X', crop: CROP, focal: FOCAL });
+    expect(getComputedStyle(q(el, '.td-media-field__usage')).display).to.equal('none');
+    expect(q(el, '.td-media-field__tools').hidden, 'tools shown when filled').to.equal(false);
+    expect(q(el, '.td-media-field__crop-btn').hidden, 'crop tool kept').to.equal(false);
+    openBtn(el).focus();
+    expect(await until(() => opacity(q(el, '.td-media-field__crop-btn')) === 1), 'crop tool revealed on focus-within').to.equal(true);
+    expect([...new FormData(form)].map(([k, v]) => [k, String(v)])).to.deep.equal([['og[id]', 'm1'], ['og[alt]', 'X'], ['og[crop]', CROP], ['og[focal]', FOCAL]]);
+    const u = el.selection[0].usage;
+    expect(u.altText).to.equal('X');
+    expect(u.crop.normalized).to.deep.equal({ x: 0.1, y: 0, width: 0.5, height: 1 });
+    expect(u.focalPoint).to.deep.equal({ x: 0.25, y: 0.75 });
+    el.removeAttribute('hide-alt');
+    expect(getComputedStyle(q(el, '.td-media-field__usage')).display).to.not.equal('none');
+    expect(q(el, '.td-media-field__alt').value).to.equal('X');
+  });
+
   it('v0.79.1 like dcms2: the frame is dashed empty and filled; the empty state is icon-only unless prompt is set', async () => {
     const empty = (await mk({})).el;
     const filled = (await mk(FILLED)).el;
