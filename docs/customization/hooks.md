@@ -522,17 +522,15 @@ upload, pageSize })`: registry cấp module, mỗi lần gọi **thay toàn bộ
 field gọi `adapter.get` lười. Event `input` / `change` (`{ value, selection }`).
 
 `TdMediaPicker.labels` (bảng đủ ở [media-picker.md › Nhãn](../components/media-picker.md#nhãn--tdmediapickerlabels)) và
-`TdMediaField.labels`: `prompt.{image|video|file}` "Chọn ảnh / video / file" · `replace.{…}` "Đổi ảnh / video / file" ·
-`remove` "Gỡ" · `alt` "Mô tả ảnh (alt)" · `empty` "Chưa chọn" · `selected` "Đã chọn: {name}" · `noPreview` "Đã chọn
-(không có ảnh xem trước)" · `video` "Video" · `required` "Vui lòng chọn {kind}." · `kinds.{image|video|file}` "ảnh / video / file" (điền
-`{kind}`). PHP `td_media_field()` in nhãn mặc định — đổi nhãn → field render lại an toàn lúc nâng cấp.
+`TdMediaField.labels` (bảng đủ ở [media-field.md › Nhãn](../components/media-field.md#nhãn--tdmediafieldlabels)). PHP
+`td_media_field()` in nhãn mặc định — đổi nhãn → field render lại an toàn lúc nâng cấp.
 
 **Cắt ảnh (0.35.0)** — option `crop: { enabled, aspectRatio?, allowFocalPoint?, mode?, shape? }` (0.75.0: `mode: 'pan'` khung cố định kéo / phóng ảnh, `shape: 'circle'` khung tròn khi `pan` + tỉ lệ 1:1; field: `crop-mode` / `crop-shape`; hộp thoại `TdCropper.openDialog({ mode, shape })`) của `open()` / `configureDefaults` bật
 bước cắt sau "Chèn" ([media-picker.md › Cắt ảnh](../components/media-picker.md#cắt-ảnh--option-crop-0350)); field
 `croppable` luôn tự đặt `crop` ở `open()` (không `croppable` → `{ enabled: false }`). `TdCropper` ([cropper.md](../components/cropper.md)):
 `TdCropper.presets` (preset toàn site, `{ label, ratio: number | null }[]`), `TdCropper.labels`, `TdCropper.openDialog(opts)`
 (Promise `applied` / `cancelled`, không reject). Nhãn picker thêm `cropTitle` "Cắt ảnh" · `cropBack` "Quay lại" ·
-`cropConfirm` "Chèn" · `cropUnavailable`; field thêm `crop` "Cắt ảnh".
+`cropConfirm` "Chèn" · `cropUnavailable`; nhãn cắt của field: xem [media-field.md › Nhãn](../components/media-field.md#nhãn--tdmediafieldlabels).
 
 ---
 

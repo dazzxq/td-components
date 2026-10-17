@@ -406,7 +406,7 @@ khung 1:1 (`aspect-ratio="1"`): `td-media-field[name="avatar"] :is(.td-media-fie
 ]) ?>
 ```
 
-`focal` / `crop_ratio` sai → bỏ + một `E_USER_WARNING`. `crop_mode` / `crop_shape` (0.75.0): chuỗi bằng `pan` / `circle` sau khi cắt khoảng trắng và hạ chữ thường thì in đúng hằng `crop-mode="pan"` / `crop-shape="circle"` (không in lại chuỗi của site); mọi giá trị khác (`box`, `rect`, lạ, không phải chuỗi) → không in gì, im lặng; thiếu `usage` → bỏ + cùng cảnh báo với `crop_ratio`. Phần in crop **không đổi** so với 0.34 (cùng byte). Bốn option
+`focal` / `crop_ratio` sai → bỏ + một `E_USER_WARNING`. `crop_mode` / `crop_shape` (0.75.0) chỉ nhận `pan` / `circle`, luật chuẩn hoá đủ ở [Adapter PHP › td_media_field](../guides/php-adapter.md#td_media_field-0320). Phần in crop **không đổi** so với 0.34 (cùng byte). Bốn option
 0.35 thiếu `usage` → bỏ cả bốn + một `E_USER_WARNING`. Không có JS: hidden `og[crop]` / `og[focal]` gửi lại đúng giá trị server in ra; nút "Cắt ảnh" ẩn.
 Bảng option đầy đủ: [Adapter PHP › td_media_field](../guides/php-adapter.md#td_media_field-0320).
 
@@ -564,6 +564,7 @@ nhấn có trạng thái `data-td-pressed` (nền đậm hơn). Field `disabled`
     </div>
   </div>
   <!-- 0.79.0: chữ tỉ lệ DƯỚI khung, cả rỗng lẫn có ảnh, khi có aspect-ratio hợp lệ: <span class="td-media-field__ratio">3:2</span> -->
+  <!-- croppable + usage: <span class="td-media-field__status" role="status">{lỗi nguồn ảnh của hộp cắt}</span> -->
   <!-- usage: <div class="td-field td-media-field__usage"><label class="td-field__label" for="{id}-alt">Mô tả ảnh (alt)</label>
                <input type="text" class="td-field__control td-media-field__alt" id="{id}-alt" maxlength="500"></div> -->
   <!-- <span class="td-media-field__help" id="{id}-help">…</span> -->

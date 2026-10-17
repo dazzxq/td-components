@@ -278,6 +278,12 @@ td_tree_select(string $name, array $tree, string|int|array|null $selected = null
 td_number_input(string $name, mixed $value = null, array $opts = []): string   // 0.30.0
 td_masked_value(string $masked, array $opts = []): string   // 0.31.0 (luôn element, không có tham số giá trị thật)
 td_media_field(string $name, mixed $assetId = null, array $o = []): string    // 0.32.0 (luôn element; $assetId chỉ string | int)
+td_action_button(string $action, array $o = []): string   // 0.36.0 (xem docs/components/action-button.md)
+td_media_gallery(string $name, array $items = [], array $o = []): string   // 0.43.0 (luôn element)
+td_steps(array $steps, array $o = []): string        // 0.45.0 (luôn element)
+td_timeline(array $items, array $o = []): string     // 0.45.0 (luôn element)
+td_diff(array $items, array $o = []): string         // 0.46.0 (luôn element)
+td_diff_snapshots(string|\stdClass|array|null $before, string|\stdClass|array|null $after, array $o = []): string   // 0.46.0
 td_scan_input(string $name, array $o = []): string   // 0.38.0 (multiple: luôn element)
 td_filter_chips(array $items, array $o = []): string        // 0.39.0 (luôn element)
 td_datetime_range(string $name, ?string $start = null, ?string $end = null, array $o = []): string   // 0.40.0 (luôn element)
@@ -698,8 +704,8 @@ native** cộng hai thứ:
   **đúng một lần** với lựa chọn tại thời điểm blur, focus ở nguyên chỗ người dùng vừa chuyển tới.
 - Dấu lệch (`dropdown@2`…) hoặc không có dấu → hành vi 0.17 (nâng cấp ngay).
 - **`attrs` ở element mode**: không đặt được tên component đọc từ host (`required`, `disabled`, `name`, `value`,
-  `label`, `placeholder`, `searchable`, `allow-clear`, `create-label`, `aria-label`, `value-key`, `label-key`,
-  `max-height`, `error-text`, `id`, `class` — không phân biệt hoa thường) và `data-td-*` — dùng option tương ứng.
+  `label`, `placeholder`, `searchable`, `allow-clear`, `create-label`, `aria-label`, `aria-labelledby`, `value-key`, `label-key`,
+  `max-height`, `error-text`, `helper-text`, `id`, `class` — không phân biệt hoa thường) và `data-td-*` — dùng option tương ứng.
   `attrs['aria-label']` (khi không có option `aria_label`) đặt lên **select** (component chuyển lên host khi nâng cấp).
   Native mode giữ nguyên như cũ.
 - Id không đổi so với native: host = `id` (hoặc `dd-{name}-{n}`), select = `{id}-select`.
