@@ -2,9 +2,11 @@
 
 # Ô chọn ảnh — `<td-media-field>`
 
-Ô form chọn **một** ảnh / video / file từ thư viện media: khung theo tỉ lệ (`3:2`, `1.91:1`…) có chữ tỉ lệ khi rỗng,
-xem trước khi đã chọn, nút **Đổi** / **Gỡ** luôn hiện. Bấm khung → mở [media picker](media-picker.md) (chế độ đơn).
-Từ 0.35.0 (`croppable`): nút **Cắt ảnh** + bước cắt khi chọn ảnh — chỉ lưu toạ độ, không tạo file mới.
+Ô form chọn **một** ảnh / video / file từ thư viện media, giao diện **placeholder kiểu dcms2** (0.79.0): khung nét đứt khi rỗng
+(vòng tròn xám có icon + lời nhắc), xem trước khi đã chọn; **cả khung bấm được** để chọn / đổi ảnh (mở [media picker](media-picker.md),
+chế độ đơn); nút **X tròn đỏ** ở góc trên-cuối để gỡ, hiện khi rê chuột / Tab vào ô (màn cảm ứng: luôn hiện), chữ tỉ lệ (`3:2`, `1.91:1`…)
+nằm dưới khung. Không còn hai nút chữ "Đổi ảnh" / "Gỡ" dưới khung.
+Từ 0.35.0 (`croppable`): **nút icon cắt** cạnh X + bước cắt khi chọn ảnh — chỉ lưu toạ độ, không tạo file mới.
 Giá trị gửi form là **`assetId`** — không bao giờ là URL. Dùng cho ảnh đại diện bài viết, ảnh OG, logo thương hiệu,
 poster video, file đính kèm một-cái.
 
@@ -16,7 +18,7 @@ nhiều ảnh có thứ tự (gallery sản phẩm, ảnh bài viết) → [Medi
 | Import | `import '@dazzxq/td-components/media-field'` (class: `import { TdMediaField } from '@dazzxq/td-components'`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.32.0 (cần `td.css`; cần một adapter — xem [media picker](media-picker.md#cấu-hình-mặc-định--configuredefaults)); 0.35.0 cắt ảnh (`croppable`, `crop-ratio`, `focal-point`, `focal`) |
+| Từ phiên bản | 0.32.0 (cần `td.css`; cần một adapter — xem [media picker](media-picker.md#cấu-hình-mặc-định--configuredefaults)); 0.35.0 cắt ảnh (`croppable`, `crop-ratio`, `focal-point`, `focal`); 0.79.0 giao diện placeholder (bỏ nút Đổi / Gỡ, X góc, `hide-label`, `hide-hints`, DOM `media-field@2`) |
 
 ## Ví dụ nhanh
 
@@ -185,11 +187,11 @@ Hành vi với `preview-shape="ratio"`:
 
 #### Khung nhỏ trong ô rộng: `--td-media-field-frame-w` (0.71.0)
 
-Ô logo hay ảnh đại diện cần **khung nhỏ** (vd 7,5rem) nhưng nhãn, nút "Đổi ảnh" / "Gỡ", gợi ý và dòng lỗi vẫn phải rộng đủ đọc. Đừng thu
-cả ô bằng `--td-media-field-w` (nhãn, nút và lỗi bị ép vào cùng bề rộng đó); hãy đặt `--td-media-field-frame-w`, bề rộng của **riêng khung ảnh**:
+Ô logo hay ảnh đại diện cần **khung nhỏ** (vd 7,5rem) nhưng nhãn, gợi ý và dòng lỗi vẫn phải rộng đủ đọc. Đừng thu
+cả ô bằng `--td-media-field-w` (nhãn và lỗi bị ép vào cùng bề rộng đó); hãy đặt `--td-media-field-frame-w`, bề rộng của **riêng khung ảnh**:
 
 ```css
-.logo-field { --td-media-field-frame-w: 7.5rem; }   /* khung 120px; nhãn, nút, gợi ý và lỗi vẫn rộng bằng ô */
+.logo-field { --td-media-field-frame-w: 7.5rem; }   /* khung 120px; nhãn, gợi ý và lỗi vẫn rộng bằng ô */
 ```
 
 ```html
@@ -201,7 +203,6 @@ cả ô bằng `--td-media-field-w` (nhãn, nút và lỗi bị ép vào cùng b
 - Token là custom property nên **kế thừa**: đặt trên cha (`.logo-field`, `:root`, một `<form>`) là đủ. Khung nằm ở mép đầu của ô.
 - Mặc định (ô vuông, 0.77.0): khung là hình vuông cạnh bằng token (tối đa `--td-media-field-max-h`). Với `preview-shape="ratio"` và `aspect-ratio`, khung nhỏ lại vẫn giữ tỉ lệ
   (ô `1/1` thành hình vuông đúng bề rộng token); xem trước vùng cắt co theo khung. Không có `aspect-ratio`, chiều cao khung rỗng vẫn là `--td-media-field-empty-h`.
-- Ngưỡng xếp dọc hai nút (< 360px, mục [Responsive](#responsive-0340)) vẫn tính theo **bề rộng của ô**, không theo khung: ô 400px có khung 120px thì hai nút vẫn nằm cạnh nhau.
 - Chỉ đặt bằng CSS: helper PHP `td_media_field` không có tuỳ chọn bề rộng.
 
 ### 3. Video và file
@@ -214,13 +215,13 @@ cả ô bằng `--td-media-field-w` (nhãn, nút và lỗi bị ép vào cùng b
 
 ### 4. Chọn, đổi, gỡ
 
-- Bấm khung (hoặc "Đổi") → mở picker chế độ đơn, `initialIds = [value]` nếu đang có, tiêu đề = `label`. Bấm nhiều lần
+- Bấm khung (cả khi rỗng lẫn khi đã có ảnh = đổi ảnh) → mở picker chế độ đơn, `initialIds = [value]` nếu đang có, tiêu đề = `label`. Bấm nhiều lần
   trong lúc picker đang mở bị bỏ qua (khoá mở hai lần).
 - Chọn ảnh **khác** → `value` mới, xem trước = `urls.preview`, `preview-alt` = tên asset, `kind`, alt =
   `usage.altText` (alt mặc định của asset), crop = `null` (field `croppable`: crop / focal của bước cắt — [mục
   9](#9-cắt-ảnh--croppable-0350)); phát `input` rồi `change`. Chọn **lại đúng ảnh cũ** → chỉ làm mới ảnh xem trước, không
   event (field `croppable`: áp crop / focal mới, có event nếu đổi). Huỷ picker → không đổi gì.
-- "Gỡ" → `value = ''`, alt `''`, crop `null`, focal `null`, phát `input` + `change`, focus về nút mở.
+- **X** (nút "Gỡ {nhãn}" ở góc khung) → `value = ''`, alt `''`, crop `null`, focal `null`, phát `input` + `change`, focus về ô (nút mở).
 - Đóng picker → focus trở lại nút đã mở nó; nếu nút đó đã bị ẩn / gỡ → nút mở.
 - Field bị gỡ khỏi trang khi picker đang mở → kết quả bị bỏ.
 - Gán `field.value = 'a_123'` bằng code (im lặng, không event): ảnh xem trước, **crop và focal bị xoá** (thuộc ảnh cũ), **alt
@@ -286,12 +287,15 @@ khi rời ô nếu đã đổi (event `input` / `change` native của ô bị ch
 ### 8. Render phía server (PHP)
 
 `td_media_field('hero', $post->hero_media_id, ['label' => 'Ảnh đại diện', 'aspect_ratio' => '3/2', 'preview_src' =>
-$thumbUrl, 'preview_alt' => $name])` in host + markup đầy đủ (`data-td-ssr="media-field@1"`) + hidden input → khi chưa
-có JS, form vẫn gửi **đúng** hình dạng ở mục 1; nút mở / Đổi / Gỡ ẩn (`visibility: hidden`, giữ chỗ) tới khi module
+$thumbUrl, 'preview_alt' => $name])` in host + markup đầy đủ (`data-td-ssr="media-field@2"`) + hidden input → khi chưa
+có JS, form vẫn gửi **đúng** hình dạng ở mục 1; ô mở và các nút công cụ (X / cắt) ẩn (`visibility: hidden`, giữ chỗ) tới khi module
 tải. Module tải → nhận markup **tại chỗ** (không nháy, không xô lệch), gỡ hidden input, FormData giống từng byte. Chi
 tiết: [Adapter PHP › td_media_field](../guides/php-adapter.md#td_media_field-0320).
 
 Cắt ảnh từ PHP (0.35.0): `croppable`, `crop_ratio`, `focal_point`, `focal` — xem [mục 9](#9-cắt-ảnh--croppable-0350).
+
+Tuỳ chọn PHP `hide_label` / `hide_hints` (bool) in attribute `hide-label` / `hide-hints` ([mục 10](#10-ẩn-nhãn-và-gợi-ý--hide-label-hide-hints-0790)).
+HTML cũ còn cache với marker `media-field@1` (cây có `__actions` / `__replace`) bị cổng SSR từ chối → field **render lại an toàn** (giữ value / alt đang gõ / focus).
 
 PHP in nhãn **tiếng Việt mặc định** (`Td::MEDIA_FIELD_LABELS`). Site đổi `TdMediaField.labels` (ví dụ tiếng Anh) → chữ
 in sẵn không khớp `render()` nên field **render lại an toàn** lúc nâng cấp thay vì nhận tại chỗ (không mất giá trị, alt
@@ -313,7 +317,7 @@ Gửi form: `og[id]=a_9f2c`, `og[alt]=…`, `og[crop]={"v":1,…}`, `og[focal]={
 
 | Thuộc tính | Tác dụng |
 |---|---|
-| `croppable` | Bật cắt ảnh: nút **"Cắt ảnh"** + bước cắt khi chọn ảnh qua picker |
+| `croppable` | Bật cắt ảnh: nút icon **"Cắt ảnh"** (cạnh X) + bước cắt khi chọn ảnh qua picker |
 | `crop-mode` | 0.75.0: `pan` \| `box` (mặc định). `pan` = hộp cắt giữ khung cố định, người dùng kéo / phóng **ảnh** (avatar) — xem [Cropper › mode](cropper.md#hai-kiểu-thao-tác--mode-0730). Cắt khoảng trắng, không phân biệt hoa thường; giá trị lạ = `box`, im lặng. Áp cho cả nút "Cắt ảnh" và bước cắt của picker (thắng `pickerOptions.crop`). Cần `usage` + `croppable` |
 | `crop-shape` | 0.75.0: `circle` \| `rect` (mặc định). `circle` = khung tròn trong hộp cắt; chỉ có tác dụng khi `crop-mode="pan"` **và** tỉ lệ cắt đang là 1:1 (ví dụ `crop-ratio="1"`), ngoài ra cropper cảnh báo một lần và vẽ khung chữ nhật. Chỉ đổi hình khung; ảnh xem trước và `name[crop]` không đổi (vẫn hình vuông) — muốn avatar tròn, bo tròn ảnh xem trước bằng CSS của site (xem dưới). Giá trị lạ = `rect` |
 | `crop-ratio` | Tỉ lệ khung cắt: `W/H` \| `W:H` \| số \| `free`; tỉ lệ phải trong **[0.01, 100]**. **Vắng** (hoặc sai / ngoài khoảng: một cảnh báo) → theo `aspect-ratio` của khung (khung ngoài [0.01, 100] → tự do + cảnh báo); vắng cả hai → tự do (như dcms2 tách tỉ lệ cắt khỏi tỉ lệ hiển thị) |
@@ -323,10 +327,10 @@ Gửi form: `og[id]=a_9f2c`, `og[alt]=…`, `og[crop]={"v":1,…}`, `og[focal]={
 - Cả bốn chỉ có tác dụng ở **chế độ `usage`** (dạng reference không có mục crop): thiếu `usage` → cảnh báo console một
   lần, bỏ qua (fail closed).
 - `focal-point` **không** kèm `croppable` → chỉ round-trip giá trị server in ra (như crop ở 0.32), không có UI sửa focal.
-- **Nút "Cắt ảnh"** (`.td-media-field__crop-btn`, `aria-haspopup="dialog"`, giữa "Đổi ảnh" và "Gỡ") hiện khi: `croppable`
+- **Nút "Cắt ảnh"** (`.td-media-field__crop-btn`, nút icon tròn trong `.td-media-field__tools`, đứng **trước** X, `aria-haspopup="dialog"`, tên trợ năng "Cắt ảnh {nhãn}") hiện khi: `croppable`
   + `usage` + đã có `value` + `kind="image"` + có nguồn ảnh an toàn (dưới). Bấm → hộp cắt
   ([`TdCropper.openDialog`](cropper.md#hộp-thoại--tdcropperopendialogopts), chung khoá mở-hai-lần với picker) mở từ crop /
-  focal hiện tại. **"Áp dụng"** có thay đổi → cập nhật, phát `input` + `change`, focus về nút. Không đổi gì / **"Huỷ"** →
+  focal hiện tại. **"Áp dụng"** có thay đổi → cập nhật, phát `input` + `change`, focus về nút cắt. Không đổi gì / **"Huỷ"** →
   giữ **nguyên chuỗi crop / focal gốc đúng từng byte** (không làm tròn lại dữ liệu server), không event.
 - **Chọn ảnh qua picker** khi `croppable` → "Chèn" mở bước cắt (picker option `crop`), kết quả áp ngay vào field.
 - Khung phủ toàn ảnh → `crop = null` ("dùng nguyên ảnh").
@@ -362,7 +366,7 @@ phát event, nên `detail.selection` luôn là state mới.
 | Picker → cùng ảnh, không `croppable` | giữ (như 0.34) | giữ | không |
 | Hộp cắt "Áp dụng" có thay đổi | crop mới / `null` (toàn ảnh) | focal mới / `null` | `input` + `change` |
 | Hộp cắt "Huỷ" / không đổi gì | giữ đúng byte | giữ đúng byte | không |
-| "Gỡ" | `null` | `null` | `input` + `change` |
+| X ("Gỡ") | `null` | `null` | `input` + `change` |
 | `.value = id` (code) | `null` | `null` | không |
 | `setSelection(sel)` | `usage.crop.normalized` (như 0.34, không làm tròn) | `usage.focalPoint` (không làm tròn) | không |
 | `setSelection(null)` / `[]` | `null` | `null` | không |
@@ -390,7 +394,7 @@ khung 1:1 (`aspect-ratio="1"`): `td-media-field[name="avatar"] :is(.td-media-fie
 ```php
 <?= td_media_field('og', $seo->og_media_id, [
     'label' => 'Ảnh chia sẻ (OG)', 'aspect_ratio' => '1.91', 'usage' => true,
-    'croppable'   => true,                       // in nút "Cắt ảnh" (ẩn tới khi JS chạy, như Đổi / Gỡ)
+    'croppable'   => true,                       // in nút icon "Cắt ảnh" (ẩn tới khi JS chạy, như X)
     'crop_ratio'  => '1.91',                     // tuỳ chọn; vắng → theo aspect_ratio; 'free' → tự do
     // 'crop_mode' => 'pan', 'crop_shape' => 'circle',  // 0.75.0, tuỳ chọn: in crop-mode="pan" / crop-shape="circle"
     'focal_point' => true,                       // in hidden og[focal]
@@ -406,13 +410,39 @@ khung 1:1 (`aspect-ratio="1"`): `td-media-field[name="avatar"] :is(.td-media-fie
 0.35 thiếu `usage` → bỏ cả bốn + một `E_USER_WARNING`. Không có JS: hidden `og[crop]` / `og[focal]` gửi lại đúng giá trị server in ra; nút "Cắt ảnh" ẩn.
 Bảng option đầy đủ: [Adapter PHP › td_media_field](../guides/php-adapter.md#td_media_field-0320).
 
+### 10. Ẩn nhãn và gợi ý — `hide-label`, `hide-hints` (0.79.0)
+
+Form chỉ có ô ảnh (avatar, logo) thường không cần nhãn hiện ra hay chữ gợi ý. Hai attribute boolean, thuần CSS (DOM không đổi):
+
+| Attribute / PHP | Tác dụng |
+|---|---|
+| `hide-label` / `'hide_label' => true` | Nhãn ẩn khỏi mắt (kiểu `td-sr-only`, 1px) nhưng **vẫn là tên trợ năng**: ô mở, nút X / cắt và tiêu đề picker vẫn dùng nó. Nhãn rỗng vẫn không hiện như trước |
+| `hide-hints` / `'hide_hints' => true` | Ẩn lời nhắc `prompt` trong khung rỗng và chữ tỉ lệ (`display: none`); hai thứ này không nằm trong tên trợ năng. `helper-text` / `error-text` **không** bị ẩn |
+
+```html
+<td-media-field name="avatar" label="Ảnh đại diện" hide-label hide-hints></td-media-field>
+```
+
+Bỏ bo góc khung: `--td-media-field-frame-radius: 0` (đặt trên field hoặc cha). Nút mở bo theo `max(0px, frame-radius − 1px)` để ôm viền khung.
+
+#### Bỏ CSS đè của site khi nâng lên 0.79.0
+
+Site từng tự viết CSS đè `.td-media-field__*` để ẩn nhãn / chữ gợi ý / chữ tỉ lệ hoặc bỏ bo góc thì **xoá các luật đó** và dùng:
+
+| CSS đè cũ | Thay bằng |
+|---|---|
+| ẩn `.td-media-field__label` (giữ tên trợ năng) | attribute `hide-label` |
+| ẩn `.td-media-field__prompt` / `.td-media-field__ratio` | attribute `hide-hints` |
+| `border-radius: 0` trên `__frame` / `__open` | `--td-media-field-frame-radius: 0` |
+| style `.td-media-field__actions` / `__replace` | xoá (phần tử không còn) |
+| style `.td-media-field__remove` / `__crop-btn` như nút chữ | đổi màu bằng token `-remove-bg/-fg`, `-tool-bg/-fg`, kích thước bằng `-tool-size` |
+
 ## Responsive (0.34.0)
 
 Host `<td-media-field>` là **container** (`container: td-media-field / inline-size`, thêm `min-inline-size: 0`). Khi field
-**hẹp hơn 360px** (cỡ `2xs` chỉ dành cho container) hai nút **Đổi / Gỡ xếp dọc, mỗi nút rộng 100%**. ≥ 360px: như trước
-(cạnh nhau). Khung ảnh không bao giờ rộng hơn ô (luôn bị chặn ở 100% bề rộng ô). Cần bề rộng từ cha: `--td-media-field-w` phải là độ dài / phần trăm
-(mặc định `100%`), **không** `fit-content` / `max-content` (container co theo nội dung sẽ sụp về 0). Không có container
-query (Chrome / Edge 102–104): dự phòng theo viewport < 360px. Muốn khung nhỏ mà phần còn lại vẫn rộng: dùng
+**hẹp hơn 360px** (cỡ `2xs` chỉ dành cho container) giao diện không đổi hình dạng (từ 0.79.0 không còn hai nút chữ để xếp dọc;
+X / cắt là nút tròn nằm trong góc khung). Khung ảnh không bao giờ rộng hơn ô (luôn bị chặn ở 100% bề rộng ô). Cần bề rộng từ cha: `--td-media-field-w` phải là độ dài / phần trăm
+(mặc định `100%`), **không** `fit-content` / `max-content` (container co theo nội dung sẽ sụp về 0). Muốn khung nhỏ mà phần còn lại vẫn rộng: dùng
 [`--td-media-field-frame-w`](#khung-nhỏ-trong-ô-rộng---td-media-field-frame-w-0710), đừng thu `--td-media-field-w`.
 
 ## Attribute
@@ -432,7 +462,7 @@ query (Chrome / Edge 102–104): dự phòng theo viewport < 360px. Muốn khung
 | `usage` | boolean | — | Dạng gửi usage (ô alt + `[id]` / `[alt]` / `[crop]`, + `[focal]` khi `focal-point`) |
 | `alt` | string | `''` | Alt mặc định (usage) |
 | `crop` | JSON v1 | — | Crop mặc định (usage); sai định dạng → coi như `null` |
-| `croppable` | boolean | — | 0.35: nút "Cắt ảnh" + bước cắt khi chọn (cần `usage`) |
+| `croppable` | boolean | — | 0.35: nút icon "Cắt ảnh" + bước cắt khi chọn (cần `usage`) |
 | `crop-ratio` | `W/H` \| `W:H` \| số \| `free` | theo `aspect-ratio` | 0.35: tỉ lệ khung cắt |
 | `crop-mode` | `box` \| `pan` | `box` | 0.75.0: kiểu thao tác của hộp cắt (cần `usage` + `croppable`) |
 | `crop-shape` | `rect` \| `circle` | `rect` | 0.75.0: hình khung của hộp cắt; tròn chỉ khi `pan` + tỉ lệ 1:1 |
@@ -440,6 +470,8 @@ query (Chrome / Edge 102–104): dự phòng theo viewport < 360px. Muốn khung
 | `focal` | JSON v1 `{"v":1,"x","y"}` | — | 0.35: focal mặc định; sai → `null` |
 | `prompt` | string | theo `accept-kind` | Chữ trong khung rỗng |
 | `helper-text` / `error-text` | string | — | Ghi chú / lỗi. 0.54.0: có lỗi thì ghi chú ẩn (và rời khỏi mô tả); đổi `helper-text` không render lại; `setHelper()` / `helperMessage`; nội dung giàu: `<td-hint>` con — [Hint](hint.md) |
+| `hide-label` | boolean | — | 0.79.0: nhãn ẩn khỏi mắt, vẫn là tên trợ năng ([mục 10](#10-ẩn-nhãn-và-gợi-ý--hide-label-hide-hints-0790)) |
+| `hide-hints` | boolean | — | 0.79.0: ẩn lời nhắc `prompt` và chữ tỉ lệ (`helper-text` / `error-text` vẫn hiện) |
 | `required` / `disabled` | boolean | — | |
 
 ## Property & method
@@ -470,9 +502,9 @@ phát event.
 | Key | Mặc định |
 |---|---|
 | `prompt.image` / `prompt.video` / `prompt.file` | "Chọn ảnh" / "Chọn video" / "Chọn file" |
-| `replace.image` / `replace.video` / `replace.file` | "Đổi ảnh" / "Đổi video" / "Đổi file" |
-| `remove` | "Gỡ" |
-| `crop` | "Cắt ảnh" (0.35; tiêu đề hộp cắt = "Cắt ảnh · {tỉ lệ}" khi khoá) |
+| `replace.image` / `replace.video` / `replace.file` | "Đổi ảnh" / "Đổi video" / "Đổi file" — **deprecated từ 0.79.0**: giữ key (site đã ghi đè không vỡ) nhưng **không còn render**; bỏ ở 1.0 |
+| `remove` | "Gỡ" (nút X có tên trợ năng "Gỡ {nhãn}", tooltip "Gỡ") |
+| `crop` | "Cắt ảnh" (0.35; nút icon có tên "Cắt ảnh {nhãn}", tooltip "Cắt ảnh"; tiêu đề hộp cắt = "Cắt ảnh · {tỉ lệ}" khi khoá) |
 | `cropError` | "Không tải được ảnh để cắt." (0.35; khi `adapter.get` lỗi không có `userMessage` / không có URL ảnh an toàn) |
 | `alt` | "Mô tả ảnh (alt)" |
 | `empty` | "Chưa chọn" (đọc cho trình đọc màn hình) |
@@ -490,34 +522,48 @@ phát event.
 | `--td-media-field-frame-w` | `100%` | Bề rộng của **riêng khung ảnh**: độ dài hoặc phần trăm của host, tối đa bằng host (0.71.0). Xem [khung nhỏ trong ô rộng](#khung-nhỏ-trong-ô-rộng---td-media-field-frame-w-0710) |
 | `--td-media-field-empty-h` | `10rem` | Chiều cao khung rỗng khi **không** có `aspect-ratio` (chỉ `preview-shape="ratio"`) |
 | `--td-media-field-max-h` | `24rem` | Cạnh tối đa của ô vuông xem trước (0.77.0); với `preview-shape="ratio"`: chiều cao tối đa của ảnh khi **không** có `aspect-ratio` |
+| `--td-media-field-frame-radius` | `var(--td-radius-md)` | 0.79.0: bo góc khung; nút mở bo `max(0px, giá trị − 1px)`. `0` = vuông góc |
+| `--td-media-field-tool-size` | `1.75rem` | 0.79.0: đường kính nút X / cắt (vùng chạm trên màn cảm ứng vẫn ≥ `--td-touch-min`, qua `::before`) |
+| `--td-media-field-remove-bg` / `-remove-fg` | `var(--td-solid-danger-bg)` / `var(--td-solid-danger-fg)` | 0.79.0: nền / icon nút X (hover: `--td-solid-danger-hover`) |
+| `--td-media-field-tool-bg` / `-tool-fg` | `rgb(0 0 0 / 60%)` / `#fff` | 0.79.0: nền / icon nút cắt |
+| `--td-media-field-tool-shadow` | `var(--td-shadow-2)` | 0.79.0: bóng nhẹ tách nút khỏi ảnh sáng |
+| `--td-media-field-empty-icon-size` | `4rem` | 0.79.0: đường kính vòng tròn icon của khung rỗng |
+| `--td-media-field-empty-icon-bg` | `color-mix(in srgb, var(--td-color-text) 10%, var(--td-color-surface-muted))` | 0.79.0: nền vòng tròn icon (tự theo theme tối vì trộn từ token chữ / nền) |
+
+Token 0.79.0 **không khai báo trên `:root`** (chỉ dùng `var(--x, mặc định)`) để giá trị mặc định đi theo theme; đặt chúng trên field, một cha hoặc `:root` của site đều có tác dụng.
 
 Khung rỗng: viền 1px dashed `--td-color-text-muted` (≥ 3.2:1 trên nền khung rỗng), nền `--td-color-surface-muted`; có ảnh: viền liền
-`--td-color-border`, nền `--td-color-surface`; lỗi: viền `--td-field-error`. Trên màn cảm ứng
-các nút ≥ 44px.
+`--td-color-border`, nền `--td-color-surface`; lỗi: viền `--td-field-error`. Con trỏ tinh: nút X / cắt `opacity: 0`, hiện khi rê vào khung hoặc Tab vào ô
+(`:hover` / `:focus-within`); màn cảm ứng (`(hover: none), (pointer: coarse)`): luôn hiện, vùng chạm mỗi nút ≥ 44 × 44px (hai vùng chỉ chạm mép nhau, không chồng),
+nhấn có trạng thái `data-td-pressed` (nền đậm hơn). Field `disabled` (kể cả `<fieldset disabled>`) ẩn hẳn hai nút.
 
 ## Cấu trúc DOM & class
 
 ```html
-<td-media-field class="td-media-field" name="hero" label="Ảnh đại diện" aspect-ratio="3/2">
+<td-media-field class="td-media-field" name="hero" label="Ảnh đại diện" aspect-ratio="3/2" data-td-ssr="media-field@2">
   <span class="td-media-field__label" id="{id}-label">Ảnh đại diện</span>
   <div class="td-media-field__frame" data-state="empty|filled" data-kind="image|video|file">
     <svg class="td-media-field__sizer" viewBox="0 0 3 2" aria-hidden="true" focusable="false"></svg>
     <button type="button" class="td-media-field__open" aria-haspopup="dialog" aria-labelledby="{id}-label {id}-state">
       <!-- rỗng -->
-      <span class="td-media-field__empty"><span class="td-media-field__icon" data-td-icon="image" aria-hidden="true"></span>
-        <span class="td-media-field__prompt">Chọn ảnh</span><span class="td-media-field__ratio">3:2</span></span>
+      <span class="td-media-field__empty"><span class="td-media-field__badge-icon"><span class="td-media-field__icon" data-td-icon="image" aria-hidden="true"></span></span>
+        <span class="td-media-field__prompt">Chọn ảnh</span></span>
       <!-- có ảnh: <img class="td-media-field__img" src alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">
            [+ <span class="td-media-field__badge">Video</span>] | file: icon + <span class="td-media-field__name"> -->
-      <!-- 0.77.0, ô vuông + croppable + crop: <span class="td-media-field__view"><img class="td-media-field__img" …></span>
+      <!-- ô vuông + croppable + crop: <span class="td-media-field__view"><img class="td-media-field__img" …></span>
            (JS thêm / gỡ; style chỉ là CSSOM --_td-mf-view-w / -h; `preview-shape="ratio"` không có span này) -->
       <span class="td-sr-only" id="{id}-state">Chưa chọn</span>
     </button>
+    <!-- 0.79.0: nút công cụ là anh em của nút mở (không lồng nút trong nút); [hidden] khi rỗng -->
+    <div class="td-media-field__tools" hidden>
+      <!-- croppable: --><button type="button" class="td-media-field__tool td-media-field__crop-btn" aria-haspopup="dialog"
+              aria-labelledby="{id}-crop-t {id}-label" title="Cắt ảnh"><span class="td-media-field__icon" data-td-icon="crop" aria-hidden="true"></span>
+              <span class="td-sr-only" id="{id}-crop-t">Cắt ảnh</span></button>
+      <button type="button" class="td-media-field__tool td-media-field__remove" aria-labelledby="{id}-remove-t {id}-label" title="Gỡ">
+        <span class="td-media-field__icon" data-td-icon="close" aria-hidden="true"></span><span class="td-sr-only" id="{id}-remove-t">Gỡ</span></button>
+    </div>
   </div>
-  <div class="td-media-field__actions" hidden>
-    <button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__replace" aria-haspopup="dialog">Đổi ảnh</button>
-    <!-- croppable: <button type="button" class="… td-media-field__crop-btn" aria-haspopup="dialog">Cắt ảnh</button> -->
-    <button type="button" class="td-btn td-btn--ghost td-btn--sm td-media-field__remove">Gỡ</button>
-  </div>
+  <!-- 0.79.0: chữ tỉ lệ DƯỚI khung, cả rỗng lẫn có ảnh, khi có aspect-ratio hợp lệ: <span class="td-media-field__ratio">3:2</span> -->
   <!-- usage: <div class="td-field td-media-field__usage"><label class="td-field__label" for="{id}-alt">Mô tả ảnh (alt)</label>
                <input type="text" class="td-field__control td-media-field__alt" id="{id}-alt" maxlength="500"></div> -->
   <!-- <span class="td-media-field__help" id="{id}-help">…</span> -->
@@ -525,12 +571,14 @@ các nút ≥ 44px.
 </td-media-field>
 ```
 
-- Nút mở là `<button>` thật, không bọc control khác; Đổi / Gỡ là nút anh em, **luôn hiện** khi có ảnh (không chỉ khi rê
-  chuột — màn cảm ứng thấy được).
+- Nút mở là `<button>` thật, không bọc control khác; X / cắt nằm trong `__frame > __tools`, là nút anh em của nút mở. Con trỏ tinh chỉ thấy
+  khi rê / Tab vào khung; con trỏ thô / không hover thì **luôn hiện** (màn cảm ứng không có hover).
+- 0.79.0 **bỏ** `div.td-media-field__actions` và `button.td-media-field__replace`; `span.td-media-field__ratio` chuyển ra **dưới khung**
+  (trước là con của `__empty`, chỉ khi rỗng). `.td-media-field__crop-btn` / `__remove` không còn là `td-btn` chữ mà là nút icon tròn.
 - `img alt=""` vì trạng thái đã được đọc qua `{id}-state` ("Đã chọn: iphone-17.jpg").
-- Hợp đồng SSR `media-field@1` ([ADR 0012](../internal/decisions/0012-ssr-hydration.md)): markup giống hệt + hidden input
+- Hợp đồng SSR `media-field@2` (0.79.0; `@1` từ 0.32–0.78 — HTML cache cũ bị từ chối rồi render an toàn) ([ADR 0012](../internal/decisions/0012-ssr-hydration.md)): markup giống hệt + hidden input
   `.td-media-field__value` (`name` / `name[id]`), `name="…[alt]"` trên ô alt, hidden `.td-media-field__crop` (+ 0.35:
-  hidden `.td-media-field__focal` `name[focal]` khi `focal_point`, nút `.td-media-field__crop-btn` khi `croppable`). Nhận tại
+  hidden `.td-media-field__focal` `name[focal]` khi `focal_point`, nút icon `.td-media-field__crop-btn` trong `__tools` khi `croppable`). Attribute `hide-label` / `hide-hints` do PHP in qua `hide_label` / `hide_hints`. Nhận tại
   chỗ khi cấu trúc, thuộc tính (allowlist), URL / tỉ lệ / crop đều hợp lệ; lệch → render an toàn, giữ value / alt đang gõ /
   focus. Di chuyển field đã nâng cấp sang chỗ khác → giữ nguyên node; markup bị sửa khi đang tách → render an toàn + khôi
   phục state.
@@ -539,13 +587,15 @@ các nút ≥ 44px.
 
 | Phím | Tác dụng |
 |---|---|
-| Tab | Nút mở → (Đổi → Cắt ảnh → Gỡ) → ô alt |
-| Enter / Space trên nút mở hoặc "Đổi" | Mở picker; đóng picker → focus trở lại nút đã mở (nút bị ẩn → nút mở) |
-| Enter / Space trên "Gỡ" | Gỡ ảnh, focus về nút mở |
-| Enter / Space trên "Cắt ảnh" | Mở hộp cắt ([bàn phím của cropper](cropper.md#bàn-phím--trợ-năng)); đóng → focus về "Cắt ảnh" |
+| Tab | Ô (nút mở) → (Cắt ảnh →) Gỡ → ô alt. Tab vào ô là X / cắt hiện ra (`:focus-within`) |
+| Enter / Space trên ô | Mở picker (rỗng: chọn; có ảnh: đổi); đóng picker → focus trở lại nút đã mở (nút bị ẩn → ô) |
+| Enter / Space trên X ("Gỡ") | Gỡ ảnh, focus về ô |
+| Enter / Space trên "Cắt ảnh" | Mở hộp cắt ([bàn phím của cropper](cropper.md#bàn-phím--trợ-năng)); đóng → focus về nút cắt |
 
-Tên của nút mở = nhãn + trạng thái ("Ảnh đại diện, Chưa chọn"). `<label for="{id host}">` bên ngoài → focus nút mở.
-`disabled` / `<fieldset disabled>` → mọi nút + ô alt `disabled`.
+Không có phím tắt mới (Delete để gỡ: chưa hỗ trợ). Tên của nút mở = nhãn + trạng thái ("Ảnh đại diện, Chưa chọn"). Tên nút công cụ gồm nhãn để nhiều ô
+trên một trang vẫn phân biệt được: **"Gỡ {nhãn}"** / **"Cắt ảnh {nhãn}"**. Chữ tỉ lệ nằm ngoài nút nên đọc được ở chế độ duyệt.
+`<label for="{id host}">` bên ngoài → focus nút mở. `disabled` / `<fieldset disabled>` → mọi nút + ô alt `disabled` (X / cắt không hiện).
+Forced colors: nút X / cắt dùng `ButtonFace` / `ButtonText` + viền, focus `Highlight`.
 
 ## Bảo mật
 
@@ -566,8 +616,8 @@ Tên của nút mở = nhãn + trạng thái ("Ảnh đại diện, Chưa chọn
 | `onChange(url)` callback | Event `change` (`detail: { value, selection }`) trên host |
 | `ratioText` truyền tay ("3:2") | Tự suy từ `aspect-ratio` |
 | `freeStyle: true` (khung giữ tỉ lệ, ảnh theo tỉ lệ gốc) | **Bỏ** `aspect-ratio`: rỗng cao `--td-media-field-empty-h`, có ảnh theo tỉ lệ gốc (trần `--td-media-field-max-h`) |
-| Nút gỡ chỉ hiện khi rê chuột | Nút "Đổi" / "Gỡ" luôn hiện, là `<button>` thật |
-| Cả khung là `role="button"` chứa nút khác | Nút mở và Đổi / Gỡ là nút anh em (không lồng control) |
+| Nút gỡ (X đỏ góc) chỉ hiện khi rê chuột | 0.79.0 giống dcms2: X tròn đỏ hiện khi rê / Tab vào khung; màn cảm ứng luôn hiện (không phụ thuộc hover). Là `<button>` thật |
+| Cả khung là `role="button"` chứa nút khác | Nút mở và X / cắt là nút anh em (không lồng control) |
 | `window.DCMS.MediaPicker` | [`TdMediaPicker`](media-picker.md) + adapter của site (`configureDefaults`) |
 | Chế độ video có player trong field | Chỉ poster + nhãn "Video" |
 | `style.*` inline (aspect-ratio, width, màu viền) | SVG sizer + token `--td-media-field-*` (CSP strict) |

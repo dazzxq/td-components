@@ -45,7 +45,9 @@ const POINTER_FILES = ['src/display/td-v031-sortable.engines.browser-test.js', '
   // v0.73.0: td-cropper mode="pan" — real mouse drags on the stage and on the zoom slider, synthetic pinch, wheel
   'src/form/td-v073-cropper-pan.engines.browser-test.js',
   // v0.78.0: TdModal backdropCloses — real presses / drags on the scrim and the dialog
-  'src/feedback/td-v078-modal-backdrop.engines.browser-test.js'];
+  'src/feedback/td-v078-modal-backdrop.engines.browser-test.js',
+  // v0.79.0: td-media-field placeholder — real :hover reveal of the corner X, real hit testing over the image
+  'src/form/td-v079-media-field-placeholder.engines.browser-test.js'];
 
 /** All src stories (for src/stories-dom.browser-test.js). */
 function storyFiles(dir = 'src', out = []) {

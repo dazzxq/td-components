@@ -12,7 +12,7 @@ import './td-pagination.js';
 //   td-repeater  < 480: the per-row tool cluster (drag / ↑ / ↓ / ×) is its own row, aligned to the end, under the fields
 //   td-empty-state / td-alert < 480: action buttons stacked, each full width
 //   td-dropzone  < 360: "Kéo thả file vào đây hoặc" visually hidden (kept in the DOM), the browse button full width
-//   td-media-field < 360: Đổi / Gỡ stacked, each full width
+//   td-media-field: (v0.79.0) no action row any more — the corner tools stay inside the frame at any width
 // Each is asserted in a 280px wrapper (the promised arrangement) and a 600px wrapper (the old arrangement, unchanged).
 // DOM nodes are compared as booleans: a failing chai assertion carrying DOM nodes hangs the runner.
 const link = document.createElement('link');
@@ -262,22 +262,19 @@ describe('v0.34.0 narrow containers (QĐ 12): td-dropzone', () => {
 const FIELD = '<td-media-field label="Ảnh đại diện" name="avatar" value="a1" preview-src="/test/fixtures/1.svg" preview-alt="Ảnh 1"></td-media-field>';
 
 describe('v0.34.0 narrow containers (QĐ 12): td-media-field', () => {
-  it('280px: Đổi / Gỡ stacked, each full width', async () => {
-    const { wrap, el } = mount(280, FIELD);
-    await frame();
-    const box = el.querySelector('.td-media-field__actions');
-    expect(box.hidden, 'filled → actions shown').to.equal(false);
-    expectStackedFull(box, [el.querySelector('.td-media-field__replace'), el.querySelector('.td-media-field__remove')], 'media-field 280');
-    expectInside(wrap, el, 'media-field 280');
-  });
-
-  it('600px: unchanged — Đổi / Gỡ side by side', async () => {
-    const { wrap, el } = mount(600, FIELD);
-    await frame();
-    const box = el.querySelector('.td-media-field__actions');
-    expectSideBySide(box, [el.querySelector('.td-media-field__replace'), el.querySelector('.td-media-field__remove')], 'media-field 600');
-    expectInside(wrap, el, 'media-field 600');
-  });
+  for (const w of [280, 600]) {
+    it(`${w}px: the corner X sits inside the frame, the field inside the wrapper`, async () => {
+      const { wrap, el } = mount(w, FIELD);
+      await frame();
+      const tools = el.querySelector('.td-media-field__tools');
+      expect(tools.hidden, 'filled → tools shown').to.equal(false);
+      expect(el.querySelector('.td-media-field__actions'), 'v0.79.0: no actions row').to.equal(null);
+      const f = rect(el.querySelector('.td-media-field__frame'));
+      const x = rect(el.querySelector('.td-media-field__tools .td-media-field__remove'));
+      expect(x.left >= f.left - 0.5 && x.right <= f.right + 0.5 && x.top >= f.top - 0.5 && x.bottom <= f.bottom + 0.5, `X inside the frame ${w}`).to.equal(true);
+      expectInside(wrap, el, `media-field ${w}`);
+    });
+  }
 });
 
 // --- generated viewport fallback (engines without container queries, Chrome/Edge 102–104) --------------------------
@@ -307,7 +304,7 @@ describe('v0.34.0 narrow containers: generated @supports-not viewport fallback',
     await frame();
   });
 
-  it('viewport 340: pagination status form, stacked empty-state actions, full-width browse / Đổi / Gỡ', async () => {
+  it('viewport 340: pagination status form, stacked empty-state actions, full-width browse', async () => {
     const { wrap, el } = mount(280, '<div><td-pagination total-items="2000" items-per-page="10" current-page="57"></td-pagination>'
       + '<td-empty-state title="Trống"></td-empty-state>'
       + '<td-dropzone label="Tệp" accept=".pdf"></td-dropzone>'
@@ -323,8 +320,6 @@ describe('v0.34.0 narrow containers: generated @supports-not viewport fallback',
     const browse = el.querySelector('.td-dropzone__browse');
     const zb = contentBox(el.querySelector('.td-dropzone__zone'));
     expect(Math.abs(rect(browse).right - zb.right) < 2 && Math.abs(rect(browse).left - zb.left) < 2, 'fallback browse full width').to.equal(true);
-    const mf = el.querySelector('.td-media-field__actions');
-    expectStackedFull(mf, [...mf.children], 'fallback media-field');
     expectInside(wrap, el, 'fallback 340');
   });
 });

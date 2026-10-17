@@ -883,6 +883,8 @@
         helper-text="Kiểu trước 0.77: khung theo aspect-ratio"></td-media-field>
       <td-media-field name="avatar" label="Avatar tròn (0.75.0)" usage croppable crop-ratio="1" crop-mode="pan" crop-shape="circle" value="m2" preview-src="/test/fixtures/square.svg" preview-alt="avatar.jpg"
         helper-text="crop-mode=&quot;pan&quot; crop-shape=&quot;circle&quot; — bấm “Cắt ảnh”; bo tròn là CSS của site"></td-media-field>
+      <td-media-field class="demo-mf-bare" name="bare" label="Ảnh gọn (0.79.0)" value="m3" preview-src="/test/fixtures/3.svg" preview-alt="anh-3.jpg" aspect-ratio="3/2"
+        hide-label hide-hints helper-text="hide-label hide-hints + --td-media-field-frame-radius: 0"></td-media-field>
     </div>
     <p class="demo-note">Cạnh ô vuông = min(<code>--td-media-field-frame-w</code>, bề rộng, <code>--td-media-field-max-h</code> 24rem).
       Avatar: hộp cắt tròn cố định, kéo / phóng ảnh bên dưới; kết quả vẫn là crop vuông.</p>

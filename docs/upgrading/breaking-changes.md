@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.77.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.79.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.79.0](#0790) | **Phá vỡ DOM (`td-media-field`)**: bỏ `.td-media-field__actions` / `__replace` (nút chữ "Đổi ảnh" / "Gỡ"); khung bấm được để đổi ảnh; X tròn đỏ + nút cắt dạng icon nằm trong `__frame > __tools`; chữ tỉ lệ `__ratio` ra dưới khung; marker SSR `media-field@2`; thêm `hide-label` / `hide-hints` + token mới | Xoá CSS đè `.td-media-field__actions` / `__replace`; CSS đè `__remove` / `__crop-btn` kiểu nút chữ viết lại theo token. HTML PHP cache cũ (`media-field@1`) vẫn chạy (render lại an toàn). Site đã tự ẩn nhãn / gợi ý / bo góc bằng CSS thì thay bằng `hide-label` / `hide-hints` / `--td-media-field-frame-radius`. |
 | [0.77.0](#0770) | **Đổi giao diện**: `td-media-field` xem trước luôn là ô vuông 1:1, ảnh `contain` (kể cả khi có `aspect-ratio`); thêm `preview-shape="ratio"` | Không phải sửa code. Muốn khung theo tỉ lệ như 0.76: `preview-shape="ratio"` / PHP `'preview_shape' => 'ratio'`. Ô to hơn 24rem: tăng `--td-media-field-max-h` |
 | [0.76.0](#0760) | **Đổi giao diện**: `td-badge` mặc định kiểu "tinted" (nền pastel, chữ đậm, không viền nhìn thấy, bóng đổ mềm) thay cho nền đặc; thêm `--glass` (opt-in) | Không phải sửa code (class, PHP, token giữ nguyên). Muốn badge đặc như 0.36 → 0.75: đặt lại `--td-badge-{v}-bg` / `-fg` / `-border` / `--td-badge-shadow` (đoạn CSS mẫu dưới). CSS site ghi đè `--td-badge-*` cũ vẫn được tôn trọng |
 | [0.75.0](#0750) | Không phá vỡ: `mode` / `shape` của `td-cropper` (0.73.0) đi qua hộp thoại, `td-media-field` / `td-media-gallery` (`crop-mode`, `crop-shape`), media picker (`crop.mode`, `crop.shape`) và PHP (`crop_mode`, `crop_shape`) (opt-in) | Không phải sửa code. Muốn avatar tròn: `crop-ratio="1" crop-mode="pan" crop-shape="circle"`. Site tự đặt attribute tên `mode` / `shape` lên `<td-cropper>` cho việc riêng (từ 0.73.0) hoặc tự dùng `crop-mode` / `crop-shape` trên field / gallery cho việc khác thì đổi tên. |
@@ -101,6 +102,49 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.79.0
+
+**Phá vỡ DOM + đổi giao diện (`td-media-field`).** Giao diện theo placeholder của dcms2; form (FormData, event, `value`, API) giữ nguyên.
+
+Đổi gì:
+
+- **Bỏ** `div.td-media-field__actions` và `button.td-media-field__replace` (nút chữ "Đổi ảnh"). Cả khung (`.td-media-field__open`) bấm được để chọn / đổi ảnh.
+- `.td-media-field__remove` ("Gỡ") và `.td-media-field__crop-btn` ("Cắt ảnh") **không còn là `td-btn` chữ**: là nút icon tròn (`.td-media-field__tool`) nằm trong `.td-media-field__frame > .td-media-field__tools`
+  (góc trên-cuối khung, đè lên ảnh). Con trỏ tinh: hiện khi rê / Tab vào khung; cảm ứng: luôn hiện (vùng chạm ≥ 44px). Tên trợ năng là "Gỡ {nhãn}" / "Cắt ảnh {nhãn}"; Tab: ô → Cắt → Gỡ.
+- `span.td-media-field__ratio` chuyển ra **dưới `__frame`** (trước là con của `__empty`, chỉ khi rỗng), hiện cả khi có ảnh. Khung rỗng: vòng tròn xám có icon `{kind}` (`.td-media-field__badge-icon`) + `prompt`.
+- Marker SSR `media-field@1` → **`media-field@2`**. Markup PHP cũ còn cache bị cổng SSR từ chối và field render lại an toàn (giữ value / alt đang gõ / focus); nâng kit và HTML PHP cùng lúc để giữ lợi ích "không nháy".
+- `TdMediaField.labels.replace` **deprecated**: giữ key (ghi đè không vỡ), không còn render; bỏ ở 1.0.
+- Mới: attribute `hide-label` / `hide-hints` (PHP `hide_label` / `hide_hints`) và token `--td-media-field-frame-radius`, `-tool-size`, `-remove-bg/-fg`, `-tool-bg/-fg`, `-tool-shadow`, `-empty-icon-size`, `-empty-icon-bg` ([bảng](../components/media-field.md#tuỳ-biến-giao-diện)).
+
+Việc site cần làm:
+
+1. Xoá CSS nhắm `.td-media-field__actions` / `.td-media-field__replace` (phần tử không còn; luật cũ im lặng mất tác dụng).
+2. CSS nhắm `.td-media-field__remove` / `.td-media-field__crop-btn` như nút chữ (`td-btn`) thì viết lại: dùng token màu / kích thước ở trên.
+3. Test / script tìm nút bằng chữ "Đổi ảnh" hoặc `.td-media-field__replace`: bấm thẳng `.td-media-field__open`; nút gỡ là `.td-media-field__tools .td-media-field__remove`.
+4. Site đã tự viết CSS đè để ẩn nhãn / chữ gợi ý / chữ tỉ lệ hoặc bỏ bo góc khung: thay bằng attribute + token.
+
+```css
+/* trước (0.78): CSS đè của site */
+td-media-field .td-media-field__label { position: absolute; clip: rect(0 0 0 0); }
+td-media-field :is(.td-media-field__prompt, .td-media-field__ratio) { display: none; }
+td-media-field :is(.td-media-field__frame, .td-media-field__open) { border-radius: 0; }
+```
+
+```html
+<!-- sau (0.79): không cần CSS đè -->
+<td-media-field name="avatar" label="Ảnh đại diện" hide-label hide-hints class="avatar-field"></td-media-field>
+```
+
+```css
+.avatar-field { --td-media-field-frame-radius: 0; }
+```
+
+```php
+<?= td_media_field('avatar', $id, ['label' => 'Ảnh đại diện', 'hide_label' => true, 'hide_hints' => true]) ?>
+```
 
 ---
 

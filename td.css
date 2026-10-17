@@ -16315,16 +16315,15 @@
  * `aspect-ratio`) = the free mode (dcms2 `freeStyle`): empty = --td-media-field-empty-h tall, filled = the image's
  * natural ratio capped at --td-media-field-max-h. `preview-fit="contain"` (with a ratio) fits the image in the frame.
  * State: [data-state="empty|filled"] / [data-kind] on the frame, [aria-invalid] / :disabled on the open button,
- * [hidden] on the actions. Empty frame = dashed border (≥ 3.2:1 on the empty fill, --td-color-text-muted), filled = solid.
- * Before define (php/td.php td_media_field): the open / Đổi / Gỡ buttons are `visibility: hidden` (no dead control;
+ * [hidden] on the tools. Empty frame = dashed border (≥ 3.2:1 on the empty fill, --td-color-text-muted), filled = solid.
+ * Before define (php/td.php td_media_field): the open button and the tool buttons are `visibility: hidden` (no dead control;
  * the box, sizer and preview stay → no layout shift).
  * Tokens: --td-media-field-w (host inline size), --td-media-field-empty-h, --td-media-field-max-h.
  * v0.71.0 (plan v0.71.0-field-frame-table-empty, K10): --td-media-field-frame-w = the inline size of the image FRAME alone (a length or
- * a % of the host, default 100%, capped at the host). The label, the Đổi / Gỡ buttons, the alt field, the helper text and the error
- * keep the width of the HOST — a small square logo field no longer squeezes them into its own width. The < 360px container
- * query below still reads the HOST width, not the frame's.
- * v0.35 (plan v0.35.0-cropper decisions 28, 30): "Cắt ảnh" button (.td-media-field__crop-btn, one more action button —
- * same touch rule), the crop source error (.td-media-field__status, role="status", text only) and the crop preview of
+ * a % of the host, default 100%, capped at the host). The label, the alt field, the helper text and the error
+ * keep the width of the HOST — a small square logo field no longer squeezes them into its own width.
+ * v0.35 (plan v0.35.0-cropper decisions 28, 30): the crop button (.td-media-field__crop-btn, since v0.79.0 an icon tool next
+ * to the X), the crop source error (.td-media-field__status, role="status", text only) and the crop preview of
  * `td-media-field[croppable]` with a ratio: the `<img>` is sized / offset so the frame shows exactly the cropped area
  * from the private unitless CSSOM properties --_td-mf-crop-x / -y / -w / -h (set by JS only when the crop's pixel ratio
  * is within 2 % of the frame's; absent → 0 / 0 / 1 / 1 = the plain cover box). Physical left / top: the crop is in
@@ -16334,6 +16333,14 @@
  * inline-size, no max-*). The sizer is hidden; `aspect-ratio` still drives the crop ratio and the empty-state label.
  * `td-media-field[preview-shape="ratio" i]` keeps every rule above (the pre-0.77 frame). A croppable field with a crop shows
  * the cropped area contained in the square: `span.td-media-field__view` (--_td-mf-view-w / -h, unitless, set by JS).
+ * v0.79.0 (plan v0.79.0-media-field-placeholder, the dcms2 placeholder): no Đổi ảnh / Gỡ text buttons — the whole frame
+ * (.td-media-field__open) chooses / changes the asset; .td-media-field__tools (absolute, top-end corner of the frame, over the
+ * image) holds the round tool buttons: the red X (remove) and, when croppable, the crop icon. Fine pointers: shown on frame
+ * :hover / :focus-within; coarse / no-hover: always shown (touch standard, ADR 0019). The ratio text sits below the frame;
+ * the empty state is a grey circle with the kind icon + the prompt. `hide-label` (label visually hidden, still the name) and
+ * `hide-hints` (prompt + ratio hidden) are attribute-only. Tokens (all with fallbacks, none declared on :root so a theme or
+ * subtree override applies): --td-media-field-frame-radius, -tool-size, -tool-bg / -tool-fg, -remove-bg / -remove-fg,
+ * -tool-shadow, -empty-icon-size, -empty-icon-bg.
  * CSP: classes / data / aria attributes only; per-instance values through CSSOM custom properties.
  */
 @layer td.tokens {
@@ -16376,13 +16383,26 @@
 		display: none;
 	}
 
+	/* v0.79.0: hide-label = visually hidden (the same declarations as .td-sr-only), still the accessible name */
+	td-media-field[hide-label] .td-media-field__label:not(:empty) {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
 	.td-media-field__frame {
 		position: relative;
 		display: grid;
 		/* v0.71.0 (K10): capped at the host through min() rather than max-inline-size, so the computed max-width stays `none` (CSP parity baseline) */
 		inline-size: min(var(--td-media-field-frame-w, 100%), 100%);
 		border: 1px solid var(--td-color-border);
-		border-radius: var(--td-radius-md);
+		border-radius: var(--td-media-field-frame-radius, var(--td-radius-md));
 		background: var(--td-color-surface);
 	}
 
@@ -16416,7 +16436,7 @@
 		margin: 0;
 		padding: 0;
 		border: 0;
-		border-radius: calc(var(--td-radius-md) - 1px);
+		border-radius: max(0px, calc(var(--td-media-field-frame-radius, var(--td-radius-md)) - 1px));
 		background: transparent;
 		color: inherit;
 		font: inherit;
@@ -16444,6 +16464,12 @@
 		.td-media-field__frame[data-state="empty"] > .td-media-field__open:hover:not(:disabled) {
 			background: var(--td-color-hover);
 		}
+
+		/* v0.79.0: a filled frame darkens its edge on hover (the whole frame is the button) */
+		/* active-exempt: the frame is not a control — its opener (.td-media-field__open) carries the pressed state */
+		.td-media-field__frame[data-state="filled"]:has(> .td-media-field__open:hover:not(:disabled, [aria-invalid="true"])) {
+			border-color: var(--td-color-border-strong);
+		}
 	}
 
 	.td-media-field__open:disabled > :not(.td-sr-only) {
@@ -16465,6 +16491,11 @@
 		color: var(--td-color-text);
 	}
 
+	/* v0.79.0: the circle + prompt must fit a small (7.5rem) square frame: a tighter padding than the file tile */
+	.td-media-field__empty {
+		padding: var(--td-space-sm);
+	}
+
 	.td-media-field__icon {
 		display: inline-flex;
 		color: var(--td-color-text-muted);
@@ -16479,9 +16510,29 @@
 		font-weight: var(--td-fw-medium);
 	}
 
+	/* v0.79.0: the empty state = a grey circle holding the kind icon, the prompt under it */
+	.td-media-field__badge-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex: none;
+		inline-size: var(--td-media-field-empty-icon-size, 4rem);
+		block-size: var(--td-media-field-empty-icon-size, 4rem);
+		border-radius: var(--td-radius-full);
+		background: var(--td-media-field-empty-icon-bg, color-mix(in srgb, var(--td-color-text) 10%, var(--td-color-surface-muted)));
+	}
+
+	/* v0.79.0: below the frame, empty and filled */
 	.td-media-field__ratio {
+		display: block;
+		margin-block-start: var(--td-space-2xs);
 		font-size: var(--td-text-xs);
 		font-variant-numeric: tabular-nums;
+		color: var(--td-color-text-muted);
+	}
+
+	td-media-field[hide-hints] :is(.td-media-field__prompt, .td-media-field__ratio) {
+		display: none;
 	}
 
 	.td-media-field__name {
@@ -16589,28 +16640,111 @@
 		line-height: var(--td-leading-normal);
 	}
 
-	.td-media-field__actions {
+	/* v0.79.0 tools: absolute in the top-end corner of the frame, over the image; the box never joins the grid, so the
+	   frame does not resize when they show / hide. The row lets pointer events through (the gap clicks the opener) */
+	.td-media-field__tools {
+		position: absolute;
+		inset-block-start: var(--td-space-xs);
+		inset-inline-end: var(--td-space-xs);
+		z-index: 1;
 		display: flex;
-		flex-wrap: wrap;
-		gap: var(--td-space-xs);
-		margin-block-start: var(--td-space-xs);
+		gap: var(--td-space-2xs);
+		pointer-events: none;
 	}
 
-	.td-media-field__actions[hidden] {
+	.td-media-field__tools[hidden] {
 		display: none;
 	}
 
-	/* v0.34.0 (plan QĐ 12): below 360px of width Đổi / Gỡ stack, each full width */
-	@container td-media-field (width < 360px) {
-		.td-media-field__actions {
-			flex-direction: column;
-			align-items: stretch;
+	.td-media-field__frame:has(> .td-media-field__open:disabled) > .td-media-field__tools {
+		display: none;
+	}
+
+	.td-media-field__tool {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex: none;
+		inline-size: var(--td-media-field-tool-size, 1.75rem);
+		block-size: var(--td-media-field-tool-size, 1.75rem);
+		margin: 0;
+		padding: 0;
+		border: 0;
+		border-radius: var(--td-radius-full);
+		background: var(--td-media-field-tool-bg, rgb(0 0 0 / 60%));
+		color: var(--td-media-field-tool-fg, #fff);
+		box-shadow: var(--td-media-field-tool-shadow, var(--td-shadow-2));
+		font: inherit;
+		cursor: pointer;
+		pointer-events: auto;
+		-webkit-tap-highlight-color: transparent;
+		transition: opacity var(--td-dur-fast) var(--td-ease), background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-media-field__tool[hidden] {
+		display: none;
+	}
+
+	.td-media-field__tool.td-media-field__remove {
+		background: var(--td-media-field-remove-bg, var(--td-solid-danger-bg));
+		color: var(--td-media-field-remove-fg, var(--td-solid-danger-fg));
+	}
+
+	.td-media-field__tool .td-media-field__icon {
+		color: inherit;
+	}
+
+	.td-media-field__tool .td-media-field__icon svg {
+		inline-size: 1rem;
+		block-size: 1rem;
+	}
+
+	.td-media-field__tool:focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: 2px;
+	}
+
+	.td-media-field__tool:disabled {
+		cursor: not-allowed;
+	}
+
+	/* fine pointer: the tools fade in with the hover / focus on the frame; coarse / no hover: always shown */
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-field__tool {
+			opacity: 0;
+		}
+
+		.td-media-field__frame:hover > .td-media-field__tools .td-media-field__tool,
+		.td-media-field__frame:focus-within > .td-media-field__tools .td-media-field__tool {
+			opacity: 1;
+		}
+
+		.td-media-field__tool:hover:not(:disabled) {
+			background: rgb(0 0 0 / 75%);
+		}
+
+		.td-media-field__tool.td-media-field__remove:hover:not(:disabled) {
+			background: var(--td-solid-danger-hover);
 		}
 	}
 
-	/* td: generated container fallback (ADR 0014) */
-	@supports not (container-type: inline-size) {
-		@media (max-width: 359.98px) {.td-media-field__actions{flex-direction:column;align-items:stretch}}
+	/* coarse pointer: the touch-min hit area is a centred ::before (the circle and the layout stay), the gap keeps two
+	   areas edge to edge, never overlapping */
+	@media (pointer: coarse) {
+		.td-media-field__tools {
+			gap: max(var(--td-space-2xs), calc(var(--td-touch-min, 44px) - var(--td-media-field-tool-size, 1.75rem) + 1px)); /* +1px: Chromium rounds the transformed ::before hit box outward */
+		}
+
+		.td-media-field__tool::before {
+			content: "";
+			position: absolute;
+			inset-block-start: 50%;
+			inset-inline-start: 50%;
+			inline-size: var(--td-touch-min, 44px);
+			block-size: var(--td-touch-min, 44px);
+			transform: translate(-50%, -50%);
+		}
 	}
 
 	/* v0.35: the crop source error (stays rendered while empty: a live region must exist before its text changes) */
@@ -16637,7 +16771,7 @@
 	}
 
 	/* ADR 0012 §6: before define no dead control — the buttons keep their box, their content (preview) stays */
-	td-media-field:not(:defined) :is(.td-media-field__open, .td-media-field__actions button) {
+	td-media-field:not(:defined) :is(.td-media-field__open, .td-media-field__tools button) {
 		visibility: hidden;
 	}
 
@@ -16645,14 +16779,9 @@
 		visibility: visible;
 	}
 
-	@media (pointer: coarse) {
-		.td-media-field__actions .td-btn {
-			min-block-size: var(--td-touch-min, 44px);
-		}
-	}
-
 	@media (prefers-reduced-motion: reduce) {
-		.td-media-field__open {
+		.td-media-field__open,
+		.td-media-field__tool {
 			transition: none;
 		}
 	}
@@ -16666,8 +16795,16 @@
 			border: 1px solid CanvasText;
 		}
 
-		.td-media-field__open:focus-visible {
+		.td-media-field__open:focus-visible,
+		.td-media-field__tool:focus-visible {
 			outline-color: Highlight;
+		}
+
+		.td-media-field__tool,
+		.td-media-field__tool.td-media-field__remove {
+			border: 1px solid CanvasText;
+			background: ButtonFace;
+			color: ButtonText;
 		}
 	}
 
@@ -16688,8 +16825,19 @@
 		transition-duration: 0s;
 	}
 
+	/* v0.79.0 tools: one step darker while pressed (X: the pressed danger, crop: a deeper black) */
+	.td-media-field__tool:is(:active, [data-td-pressed]):not(:disabled) {
+		background: rgb(0 0 0 / 75%);
+		transition-duration: 0s;
+	}
+
+	.td-media-field__tool.td-media-field__remove:is(:active, [data-td-pressed]):not(:disabled) {
+		background: var(--td-btn-danger-pressed, var(--td-solid-danger-hover));
+	}
+
 	@media (forced-colors: active) {
-		.td-media-field__open:is(:active, [data-td-pressed]) {
+		.td-media-field__open:is(:active, [data-td-pressed]),
+		.td-media-field__tool:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
 		}
 	}

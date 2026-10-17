@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.78.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.78.0', __DIR__ . '/public/assets/vendor/td-components/0.78.0');
+ *   require_once '/path/to/vendor/td-components/0.79.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.79.0', __DIR__ . '/public/assets/vendor/td-components/0.79.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -32,7 +32,7 @@
  *     `data-td-ssr="tree-select@1"` (the select styled to the trigger box — no layout shift, single and multiple).
  *   - v0.26.0 td_empty prints `<td-empty-state data-td-ssr="empty-state@1">` + the full styled tree (always element),
  *     hydrated in place by `@dazzxq/td-components/empty-state`.
- *   - v0.32.0 td_media_field prints `<td-media-field data-td-ssr="media-field@1">` + the full tree (always element) +
+ *   - v0.32.0 td_media_field prints `<td-media-field data-td-ssr="media-field@2">` + the full tree (always element) +
  *     the no-JS hidden inputs (assetId / crop) and the alt input name, adopted in place by `@dazzxq/td-components/media-field`.
  *   - v0.47.0 td_check_matrix prints `<td-check-matrix data-td-ssr="check-matrix@1" data="{JSON}">` + the full no-JS form
  *     (column markers `name[col]=""`, one checkbox `name[col][]=row` per applicable cell, a hidden twin after each
@@ -205,7 +205,7 @@ namespace TdComponents {
         /** v0.31.0: td_masked_value (always — the masked string only, never the real value). */
         public const SSR_MASKED_VALUE = 'masked-value@1';
         /** v0.32.0: td_media_field (always the element <td-media-field> + the no-JS hidden inputs). */
-        public const SSR_MEDIA_FIELD = 'media-field@1';
+        public const SSR_MEDIA_FIELD = 'media-field@2';
         /** v0.36.0: td_action_button element mode (<td-action-button> + the icon-only control). */
         public const SSR_ACTION_BUTTON = 'action-button@1';
         /** v0.38.0: td_scan_input (single: element mode opt-in; multiple: always the element + textarea + hidden inputs). */
@@ -445,7 +445,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.78.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.79.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool, assets?: string} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -2791,9 +2791,10 @@ namespace {
     }
 
     /**
-     * v0.32.0 media field (contract media-field@1, plan v0.32.0-media-picker decisions 24-25, 29) — ALWAYS the element:
-     * `<td-media-field data-td-ssr="media-field@1" …>` + the exact tree <td-media-field> renders (label, frame with the
-     * SVG ratio sizer + the open button showing the empty prompt / preview image / file name, Đổi / Gỡ buttons, the alt
+     * v0.32.0 media field (contract media-field@2 since v0.79.0, plan v0.32.0-media-picker decisions 24-25, 29) — ALWAYS the element:
+     * `<td-media-field data-td-ssr="media-field@2" …>` + the exact tree <td-media-field> renders (label, frame with the
+     * SVG ratio sizer + the open button showing the empty prompt / preview image / file name + the corner tools (crop
+     * icon, X) inside the frame, the ratio text below it, the alt
      * input in `usage` mode, helper + error notes) + the NO-JS form parts: a hidden `input.td-media-field__value`
      * (`name` = assetId, or `name[id]` with `usage`), the alt input's `name[alt]` and a hidden `input.td-media-field__crop`
      * (`name[crop]` = the JSON v1 crop or `null`) — exactly the FormData of the component (decision 24). The open / Đổi /
@@ -2817,7 +2818,8 @@ namespace {
      * anything else prints nothing, silently), focal_point (bool:
      * prints the hidden `input.td-media-field__focal` `name[focal]` after `name[crop]`), focal (array x / y in 0..1 or
      * the JSON v1 string `{"v":1,"x","y"}` → printed / submitted as JSON v1; invalid → null + one E_USER_WARNING). The
-     * crop printing is unchanged (byte-identical to v0.34 without these options).
+     * crop printing is unchanged (byte-identical to v0.34 without these options). v0.79.0: hide_label / hide_hints (bool)
+     * print the host attributes `hide-label` / `hide-hints` (CSS only: label visually hidden / prompt + ratio hidden).
      * Never prints adapter endpoints, permissions or serialized assets.
      */
     function td_media_field(string $name, mixed $assetId = null, array $o = []): string
@@ -2839,6 +2841,8 @@ namespace {
         $required = !empty($o['required']);
         $disabled = !empty($o['disabled']);
         $usage = !empty($o['usage']);
+        $hideLabel = !empty($o['hide_label']);
+        $hideHints = !empty($o['hide_hints']);
         $kinds = td__media_kinds($o['accept_kind'] ?? null);
         $ratioRaw = isset($o['aspect_ratio']) && is_scalar($o['aspect_ratio']) && !is_bool($o['aspect_ratio']) ? (string) $o['aspect_ratio'] : null;
         $ratio = $ratioRaw !== null && $ratioRaw !== '' ? td__media_ratio($ratioRaw) : null;
@@ -2894,9 +2898,8 @@ namespace {
         $focalInput = $named && $focalOn ? $hidden('td-media-field__focal', $name . '[focal]', $focal ?? 'null') : '';
 
         if (!$filled) {
-            $inner = '<span class="td-media-field__empty"><span class="td-media-field__icon" data-td-icon="' . $k . '" aria-hidden="true">'
-                . Td::icon($k) . '</span><span class="td-media-field__prompt">' . Td::e($prompt ?? $L['prompt'][$k]) . '</span>'
-                . ($ratio !== null ? '<span class="td-media-field__ratio">' . Td::e($ratio['text']) . '</span>' : '') . '</span>';
+            $inner = '<span class="td-media-field__empty"><span class="td-media-field__badge-icon"><span class="td-media-field__icon" data-td-icon="' . $k . '" aria-hidden="true">'
+                . Td::icon($k) . '</span></span><span class="td-media-field__prompt">' . Td::e($prompt ?? $L['prompt'][$k]) . '</span></span>';
         } elseif ($src !== null && $k !== 'file') {
             $inner = '<img class="td-media-field__img" src="' . Td::e($src) . '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">'
                 . ($k === 'video' ? '<span class="td-media-field__badge">' . Td::e($L['video']) . '</span>' : '');
@@ -2934,6 +2937,8 @@ namespace {
             'crop-shape' => $cropShape,
             'focal-point' => $focalOn,
             'focal' => $focal,
+            'hide-label' => $hideLabel,
+            'hide-hints' => $hideHints,
             'prompt' => $prompt,
             'helper-text' => $help,
             'error-text' => $error,
@@ -2941,7 +2946,7 @@ namespace {
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['id', 'class', 'name', 'label', 'aspect-ratio', 'preview-fit', 'preview-shape', 'accept-kind', 'usage', 'required',
             'disabled', 'value', 'preview-src', 'preview-alt', 'kind', 'alt', 'crop', 'prompt', 'helper-text', 'error-text',
-            'croppable', 'crop-ratio', 'crop-mode', 'crop-shape', 'focal-point', 'focal'], $extra, $taken);
+            'croppable', 'crop-ratio', 'crop-mode', 'crop-shape', 'focal-point', 'focal', 'hide-label', 'hide-hints'], $extra, $taken);
         return $html . Td::attrs($extra, $taken) . '>'
             . '<span class="td-media-field__label" id="' . $hid . '-label">' . Td::e($label)
             . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</span>'
@@ -2950,15 +2955,18 @@ namespace {
             . '<button type="button" class="td-media-field__open" aria-haspopup="dialog" aria-labelledby="' . $hid . '-label ' . $hid . '-state"'
             . ($described !== '' ? ' aria-describedby="' . Td::e($described) . '"' : '')
             . ($error !== null ? ' aria-invalid="true" aria-errormessage="' . $hid . '-error"' : '') . $dis . '>'
-            . $inner . '<span class="td-sr-only" id="' . $hid . '-state">' . Td::e($state) . '</span></button></div>'
-            . '<div class="td-media-field__actions"' . ($filled ? '' : ' hidden') . '>'
-            . '<button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__replace" aria-haspopup="dialog"' . $dis . '>'
-            . Td::e($L['replace'][$k]) . '</button>'
+            . $inner . '<span class="td-sr-only" id="' . $hid . '-state">' . Td::e($state) . '</span></button>'
+            . '<div class="td-media-field__tools"' . ($filled ? '' : ' hidden') . '>'
             . ($croppable
-                ? '<button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__crop-btn" aria-haspopup="dialog"'
-                    . ($filled && $k === 'image' && $src !== null ? '' : ' hidden') . $dis . '>' . Td::e($L['crop']) . '</button>'
+                ? '<button type="button" class="td-media-field__tool td-media-field__crop-btn" aria-haspopup="dialog" aria-labelledby="'
+                    . $hid . '-crop-t ' . $hid . '-label" title="' . Td::e($L['crop']) . '"' . ($filled && $k === 'image' && $src !== null ? '' : ' hidden') . $dis . '>'
+                    . '<span class="td-media-field__icon" data-td-icon="crop" aria-hidden="true">' . Td::icon('crop') . '</span>'
+                    . '<span class="td-sr-only" id="' . $hid . '-crop-t">' . Td::e($L['crop']) . '</span></button>'
                 : '')
-            . '<button type="button" class="td-btn td-btn--ghost td-btn--sm td-media-field__remove"' . $dis . '>' . Td::e($L['remove']) . '</button></div>'
+            . '<button type="button" class="td-media-field__tool td-media-field__remove" aria-labelledby="' . $hid . '-remove-t ' . $hid . '-label" title="'
+            . Td::e($L['remove']) . '"' . $dis . '><span class="td-media-field__icon" data-td-icon="close" aria-hidden="true">' . Td::icon('close') . '</span>'
+            . '<span class="td-sr-only" id="' . $hid . '-remove-t">' . Td::e($L['remove']) . '</span></button></div></div>'
+            . ($ratio !== null ? '<span class="td-media-field__ratio">' . Td::e($ratio['text']) . '</span>' : '')
             . ($croppable ? '<span class="td-media-field__status" role="status"></span>' : '')
             . $valueInput
             . ($usage

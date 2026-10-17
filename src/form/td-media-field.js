@@ -18,7 +18,7 @@ const HIDDEN_ATTRS = ['type', 'class', 'name', 'value', 'disabled'];
 /** v0.35: the no-JS hidden inputs, in FormData order (usage: id, crop, focal — alt is the visible input). */
 const HIDDEN_CLASSES = ['td-media-field__value', 'td-media-field__crop', 'td-media-field__focal'];
 const ROLES = {
-  open: 'td-media-field__open', replace: 'td-media-field__replace', crop: 'td-media-field__crop-btn', remove: 'td-media-field__remove', alt: 'td-media-field__alt',
+  open: 'td-media-field__open', crop: 'td-media-field__crop-btn', remove: 'td-media-field__remove', alt: 'td-media-field__alt',
 };
 /** v0.35 (decision 30): the unitless CSSOM custom properties of the crop preview on the `<img>`. */
 const CROP_VARS = ['--_td-mf-crop-x', '--_td-mf-crop-y', '--_td-mf-crop-w', '--_td-mf-crop-h'];
@@ -44,21 +44,21 @@ const fill = (t, params) => String(t ?? '').replace(/\{(\w+)\}/g, (m, k) => (k i
  * - The value is the opaque `assetId` (`''` = empty); `preview-src` / `preview-alt` / `kind` only DISPLAY the asset
  *   (never submitted, never identity). The `value` attribute (+ the preview attributes, `alt`, `crop`) is the default /
  *   reset state; a later attribute change sets the live state too.
- * - Choosing: the frame's open button (or "Đổi ảnh") opens `TdMediaPicker.open()` once at a time (double-open lock),
+ * - Choosing: the frame's open button (the whole frame; v0.79.0: no "Đổi ảnh" button) opens `TdMediaPicker.open()` once at a time (double-open lock),
  *   options resolved open params > `pickerOptions` > `adapter` > `TdMediaPicker.configureDefaults()`; single selection,
  *   `initialIds = [value]`, `kinds` from `accept-kind`, `title` = `label`. A new id → value, preview, alt
  *   (`usage.altText`), crop `null`, then `input` + `change` (detail `{ value, selection }`); the same id refreshes the
- *   preview only (no event); cancel changes nothing. "Gỡ" → `''`, `input` + `change`, focus to the open button.
+ *   preview only (no event); cancel changes nothing. the corner X ("Gỡ") → `''`, `input` + `change`, focus to the open button.
  *   No adapter anywhere → one console warning, nothing opens.
  * - `.value = id` without a preview + an adapter → a lazy `adapter.get(id)` (latest wins, aborted by the next change).
  * - Form shape (decision 24): reference `name=assetId`; `usage` → `name[id]`, `name[alt]`, `name[crop]` (`crop` = the
  *   validated attribute string, kept byte-identical, `null` once the asset changes). A usage `name` ending in `[]` is
  *   not submitted (one warning). Restore state: JSON v1 (`encodeState`), the preview URL re-validated on restore.
- * - SSR (ADR 0012, contract `media-field@1`): php/td.php td_media_field() prints exactly render()'s tree + the no-JS
+ * - SSR (ADR 0012, contract `media-field@2`): php/td.php td_media_field() prints exactly render()'s tree + the no-JS
  *   hidden inputs / alt `name` — adopted IN PLACE (internals first, then the no-JS parts removed); anything else →
  *   safe render keeping the alt being typed + the focus. Re-connect re-binds in place while the markup still matches.
  * - v0.35 (plan v0.35.0-cropper decisions 27-31, `usage` mode only — else one warning, ignored): `croppable` adds the
- *   "Cắt ảnh" button (an un-cropped source: `adapter.get(value)` → `urls.preview` + `width/height` when an adapter
+ *   crop icon button ("Cắt ảnh") (an un-cropped source: `adapter.get(value)` → `urls.preview` + `width/height` when an adapter
  *   resolves, else `preview-src`, no pixels) and makes the picker run its crop step (`crop` is ALWAYS passed to
  *   `open()`: `{ enabled: false }` when not croppable); `crop-ratio` (`W/H` | `W:H` | number | `free`; absent → the
  *   `aspect-ratio`, then free); `focal-point` submits a fourth entry `name[focal]` (JSON v1 `{"v":1,"x","y"}` or `null`)
@@ -68,27 +68,30 @@ const fill = (t, params) => String(t ?? '').replace(/\{(\w+)\}/g, (m, k) => (k i
  *
  * DOM contract (JS render() = PHP):
  *   <td-media-field class="td-media-field" name label [aspect-ratio] [preview-fit] [preview-shape] [accept-kind] [usage] [required]
- *                   [disabled] [value] [preview-src] [preview-alt] [kind] [alt] [crop] [prompt] [helper-text] [error-text]>
+ *                   [disabled] [value] [preview-src] [preview-alt] [kind] [alt] [crop] [prompt] [helper-text] [error-text] [hide-label] [hide-hints]>
  *     <span class="td-media-field__label" id="{id}-label">label[<span class="td-field__required" aria-hidden="true"> *</span>]</span>
  *     <div class="td-media-field__frame" data-state="empty|filled" data-kind="image|video|file">
  *       [<svg class="td-media-field__sizer" viewBox="0 0 W H" aria-hidden="true" focusable="false"></svg>]
  *       <button type="button" class="td-media-field__open" aria-haspopup="dialog" aria-labelledby="{id}-label {id}-state"
  *               [aria-describedby="{id}-help {id}-error"] [aria-invalid aria-errormessage] [disabled]>
- *         empty:  <span class="td-media-field__empty"><span class="td-media-field__icon" data-td-icon="{kind}" aria-hidden="true">
- *                 </span><span class="td-media-field__prompt">…</span>[<span class="td-media-field__ratio">3:2</span>]</span>
+ *         empty:  <span class="td-media-field__empty"><span class="td-media-field__badge-icon"><span class="td-media-field__icon"
+ *                 data-td-icon="{kind}" aria-hidden="true"></span></span><span class="td-media-field__prompt">…</span></span>
  *         image / video poster: <img class="td-media-field__img" src alt="" loading="lazy" decoding="async"
  *                 referrerpolicy="no-referrer">[<span class="td-media-field__badge">Video</span>]
  *         file / no preview: <span class="td-media-field__file"><span class="td-media-field__icon" data-td-icon="{kind}"
  *                 aria-hidden="true"></span><span class="td-media-field__name">{preview-alt | noPreview}</span></span>
  *         <span class="td-sr-only" id="{id}-state">Chưa chọn | Đã chọn: …</span>
  *       </button>
+ *       <div class="td-media-field__tools" [hidden when empty]>
+ *         [croppable + usage: <button type="button" class="td-media-field__tool td-media-field__crop-btn" aria-haspopup="dialog"
+ *                 aria-labelledby="{id}-crop-t {id}-label" title="Cắt ảnh" [hidden]><span class="td-media-field__icon"
+ *                 data-td-icon="crop" aria-hidden="true"></span><span class="td-sr-only" id="{id}-crop-t">Cắt ảnh</span></button>]
+ *         <button type="button" class="td-media-field__tool td-media-field__remove" aria-labelledby="{id}-remove-t {id}-label"
+ *                 title="Gỡ"><span class="td-media-field__icon" data-td-icon="close" aria-hidden="true"></span>
+ *                 <span class="td-sr-only" id="{id}-remove-t">Gỡ</span></button>
+ *       </div>
  *     </div>
- *     <div class="td-media-field__actions" [hidden]>
- *       <button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__replace" aria-haspopup="dialog">Đổi ảnh</button>
- *       [croppable + usage: <button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__crop-btn"
- *               aria-haspopup="dialog" [hidden]>Cắt ảnh</button>]
- *       <button type="button" class="td-btn td-btn--ghost td-btn--sm td-media-field__remove">Gỡ</button>
- *     </div>
+ *     [<span class="td-media-field__ratio">3:2</span>]   (below the frame, empty and filled)
  *     [croppable + usage: <span class="td-media-field__status" role="status">{crop source error}</span>]
  *     [<div class="td-field td-media-field__usage"><label class="td-field__label" for="{id}-alt">Mô tả ảnh (alt)</label>
  *       <input type="text" class="td-field__control td-media-field__alt" id="{id}-alt" maxlength="500"></div>]
@@ -113,18 +116,21 @@ const fill = (t, params) => String(t ?? '').replace(/\{(\w+)\}/g, (m, k) => (k i
  * @attr {string} crop-shape - v0.75.0 (usage only): `circle` (round frame; only with `crop-mode="pan"` and a 1:1 crop) | `rect` (default)
  * @attr {boolean} focal-point - v0.35 (usage only): submit `name[focal]` (+ edited in the crop dialog when croppable)
  * @attr {string} focal - v0.35: JSON v1 `{"v":1,"x","y"}` (kept as is)
+ * @attr {boolean} hide-label - v0.79.0: the label is visually hidden (still the accessible name)
+ * @attr {boolean} hide-hints - v0.79.0: hides the empty prompt and the ratio text
  * @attr {string} prompt @attr {string} helper-text @attr {string} error-text
  * @attr {boolean} required @attr {boolean} disabled
  * @fires input - detail: { value, selection } (also on each alt keystroke)
  * @fires change - detail: { value, selection } (alt: on blur after an edit)
  */
 export class TdMediaField extends TdFormElement {
-  /** v0.32.0: adopts php/td.php td_media_field() markup in place (contract media-field@1). */
+  /** v0.32.0: adopts php/td.php td_media_field() markup in place (contract media-field@2). */
   static hydratable = true;
 
   /** Texts (Vietnamese); override per site (an SSR page whose texts differ is safely re-rendered). */
   static labels = {
     prompt: { image: 'Chọn ảnh', video: 'Chọn video', file: 'Chọn file' },
+    /** @deprecated v0.79.0: no longer rendered (the frame itself changes the asset); kept so site overrides do not break */
     replace: { image: 'Đổi ảnh', video: 'Đổi video', file: 'Đổi file' },
     remove: 'Gỡ',
     alt: 'Mô tả ảnh (alt)',
@@ -543,9 +549,8 @@ export class TdMediaField extends TdFormElement {
     let inner;
     if (!filled) {
       const prompt = this.getAttribute('prompt') || this._label(`prompt.${kind}`);
-      inner = `<span class="td-media-field__empty"><span class="td-media-field__icon" data-td-icon="${kind}" aria-hidden="true"></span>`
-        + `<span class="td-media-field__prompt">${e(prompt)}</span>`
-        + (ratio ? `<span class="td-media-field__ratio">${e(ratio.text)}</span>` : '') + '</span>';
+      inner = `<span class="td-media-field__empty"><span class="td-media-field__badge-icon"><span class="td-media-field__icon" data-td-icon="${kind}" aria-hidden="true"></span></span>`
+        + `<span class="td-media-field__prompt">${e(prompt)}</span></span>`;
     } else if (this._previewSrc && kind !== 'file') {
       inner = `<img class="td-media-field__img" src="${e(this._previewSrc)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
         + (kind === 'video' ? `<span class="td-media-field__badge">${e(this._label('video'))}</span>` : '');
@@ -562,13 +567,15 @@ export class TdMediaField extends TdFormElement {
       + `<button type="button" class="td-media-field__open" aria-haspopup="dialog" aria-labelledby="${e(id)}-label ${e(id)}-state"`
       + (described ? ` aria-describedby="${e(described)}"` : '')
       + (err ? ` aria-invalid="true" aria-errormessage="${e(id)}-error"` : '') + `${dis}>`
-      + inner + `<span class="td-sr-only" id="${e(id)}-state">${e(state)}</span></button></div>`
-      + `<div class="td-media-field__actions"${filled ? '' : ' hidden'}>`
-      + `<button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__replace" aria-haspopup="dialog"${dis}>${e(this._label(`replace.${kind}`))}</button>`
+      + inner + `<span class="td-sr-only" id="${e(id)}-state">${e(state)}</span></button>`
+      + `<div class="td-media-field__tools"${filled ? '' : ' hidden'}>`
       + (croppable
-        ? `<button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__crop-btn" aria-haspopup="dialog"${this._cropBtnShown() ? '' : ' hidden'}${dis}>${e(this._label('crop'))}</button>`
+        ? `<button type="button" class="td-media-field__tool td-media-field__crop-btn" aria-haspopup="dialog" aria-labelledby="${e(id)}-crop-t ${e(id)}-label" title="${e(this._label('crop'))}"${this._cropBtnShown() ? '' : ' hidden'}${dis}>`
+          + `<span class="td-media-field__icon" data-td-icon="crop" aria-hidden="true"></span><span class="td-sr-only" id="${e(id)}-crop-t">${e(this._label('crop'))}</span></button>`
         : '')
-      + `<button type="button" class="td-btn td-btn--ghost td-btn--sm td-media-field__remove"${dis}>${e(this._label('remove'))}</button></div>`
+      + `<button type="button" class="td-media-field__tool td-media-field__remove" aria-labelledby="${e(id)}-remove-t ${e(id)}-label" title="${e(this._label('remove'))}"${dis}>`
+      + `<span class="td-media-field__icon" data-td-icon="close" aria-hidden="true"></span><span class="td-sr-only" id="${e(id)}-remove-t">${e(this._label('remove'))}</span></button></div></div>`
+      + (ratio ? `<span class="td-media-field__ratio">${e(ratio.text)}</span>` : '')
       + (croppable ? `<span class="td-media-field__status" role="status">${e(this._ssrRender ? '' : this._cropStatus)}</span>` : '')
       + (this.hasAttribute('usage')
         ? `<div class="td-field td-media-field__usage"><label class="td-field__label" for="${e(id)}-alt">${e(this._label('alt'))}</label>`
@@ -596,8 +603,6 @@ export class TdMediaField extends TdFormElement {
     this._ownDescribedBy = new Set([`${this.id}-help`, `${this.id}-error`]);
     this._errorNote = [...this.children].find(ssrIsErrorNote) || null;
     this.listen(open, 'click', () => this._openPicker(open));
-    const replace = this._part('replace');
-    if (replace) this.listen(replace, 'click', () => this._openPicker(replace));
     const crop = this._part('crop');
     if (crop) this.listen(crop, 'click', () => this._openCrop(crop));
     const remove = this._part('remove');
@@ -652,16 +657,15 @@ export class TdMediaField extends TdFormElement {
   _part(role) {
     const sel = {
       open: ':scope > .td-media-field__frame > button.td-media-field__open',
-      replace: ':scope > .td-media-field__actions > button.td-media-field__replace',
-      crop: ':scope > .td-media-field__actions > button.td-media-field__crop-btn',
+      crop: ':scope > .td-media-field__frame > .td-media-field__tools > button.td-media-field__crop-btn',
       status: ':scope > span.td-media-field__status',
       img: ':scope > .td-media-field__frame > button.td-media-field__open > img.td-media-field__img, '
         + ':scope > .td-media-field__frame > button.td-media-field__open > span.td-media-field__view > img.td-media-field__img',
       view: ':scope > .td-media-field__frame > button.td-media-field__open > span.td-media-field__view',
-      remove: ':scope > .td-media-field__actions > button.td-media-field__remove',
+      remove: ':scope > .td-media-field__frame > .td-media-field__tools > button.td-media-field__remove',
       alt: ':scope > .td-media-field__usage > input.td-media-field__alt',
       frame: ':scope > div.td-media-field__frame',
-      actions: ':scope > div.td-media-field__actions',
+      tools: ':scope > .td-media-field__frame > div.td-media-field__tools',
     }[role];
     return sel ? this.querySelector(sel) : null;
   }
@@ -681,26 +685,29 @@ export class TdMediaField extends TdFormElement {
     this._part(role)?.focus({ preventScroll: true });
   }
 
-  /** @private repaint the value-dependent parts IN PLACE (open button content, frame state, actions, alt) */
+  /** @private repaint the value-dependent parts IN PLACE (open button content, frame state, tools, alt) */
   _update() {
     const frame = this._part('frame');
     const open = this._part('open');
-    const actions = this._part('actions');
-    if (!frame || !open || !actions) { this._doRender(); return; }
+    const tools = this._part('tools');
+    if (!frame || !open || !tools) { this._doRender(); return; }
     const tpl = document.createElement('template');
     tpl.innerHTML = this.render();
     const top = [...tpl.content.children];
     const wFrame = top.find((n) => n.classList.contains('td-media-field__frame'));
     const wOpen = wFrame.querySelector('.td-media-field__open');
-    const wActions = top.find((n) => n.classList.contains('td-media-field__actions'));
+    const wTools = wFrame.querySelector('.td-media-field__tools');
     for (const a of ['data-state', 'data-kind']) frame.setAttribute(a, wFrame.getAttribute(a));
     open.replaceChildren(...wOpen.childNodes);
     fillIconSlots(open);
-    actions.hidden = wActions.hidden;
-    const btns = [...actions.querySelectorAll(':scope > button')];
-    [...wActions.children].forEach((w, i) => {
+    tools.hidden = wTools.hidden;
+    const btns = [...tools.querySelectorAll(':scope > button')];
+    [...wTools.children].forEach((w, i) => {
       if (!btns[i]) return;
-      if (btns[i].textContent !== w.textContent) btns[i].textContent = w.textContent;
+      const wt = w.querySelector('.td-sr-only')?.textContent ?? '';
+      const t = btns[i].querySelector('.td-sr-only');
+      if (t && t.textContent !== wt) t.textContent = wt;
+      if (btns[i].title !== w.title) btns[i].title = w.title;
       if (btns[i].hidden !== w.hidden) btns[i].hidden = w.hidden;
     });
     const status = this._part('status');
@@ -1198,10 +1205,10 @@ export class TdMediaField extends TdFormElement {
     console.warn(msg);
   }
 
-  // --- SSR (ADR 0012, contract media-field@1) ---
+  // --- SSR (ADR 0012, contract media-field@2) ---
 
   /**
-   * Marker `media-field@1` + exactly render()'s tree (+ the no-JS hidden inputs / alt name agreeing with the state) →
+   * Marker `media-field@2` + exactly render()'s tree (+ the no-JS hidden inputs / alt name agreeing with the state) →
    * adopt in place. Anything else → safe render now, keeping the alt being typed + the focused control.
    * @returns {boolean}
    */
@@ -1209,7 +1216,7 @@ export class TdMediaField extends TdFormElement {
     this._initLive();
     const m = ssrMarker(this);
     if (!m || m.name !== 'media-field') return false;
-    if (m.schema === 1 && this._ssrGate(true)) return true;
+    if (m.schema === 2 && this._ssrGate(true)) return true;
     const slots = this.querySelectorAll(':scope > div.td-media-field__usage > input.td-media-field__alt');
     const active = this.ownerDocument.activeElement;
     this._ssrRestore = {

@@ -41,7 +41,7 @@ import { cdpFor, touchDown, touchMoveTo, touchUp, touchCancel, touchDrag, pinch,
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ORIGIN = 'http://touch.local';
-const MIME = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.css': 'text/css' };
+const MIME = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.css': 'text/css', '.png': 'image/png' };
 const ONLY = process.env.TOUCH_ONLY || '';
 
 const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
@@ -163,7 +163,7 @@ async function centre(page, sel) {
 /** a token resolved in the page (a probe element's computed colour) */
 const tokenColour = (page, token) => page.evaluate((t) => {
   const p = document.createElement('span');
-  p.style.setProperty('background-color', `var(${t})`);
+  p.style.setProperty('background-color', t.startsWith('--') ? `var(${t})` : t); // a token, or (v0.79.0) a literal colour
   document.body.append(p);
   const c = getComputedStyle(p).backgroundColor;
   p.remove();
@@ -202,6 +202,9 @@ const PRESS_TYPES = [
   { name: 'dropzone', sel: 'td-dropzone .td-dropzone__zone', token: '--td-dropzone-bg-pressed', noTap: true, top: true },
   // v0.43.0: td-media-gallery tile button (Gỡ — pressed only: a tap removes the image)
   { name: 'gallery button', sel: '#rsp-gallery .td-media-gallery__remove', token: '--td-color-pressed', noTap: true },
+  // v0.79.0: td-media-field corner tools (X = the pressed danger token, crop icon = a deeper black) — pressed only (a tap removes / opens the cropper)
+  { name: 'media-field remove', sel: 'td-media-field[name="og"] .td-media-field__remove', token: '--td-btn-danger-pressed', noTap: true },
+  { name: 'media-field crop', sel: 'td-media-field[name="og"] .td-media-field__crop-btn', token: 'rgb(0 0 0 / 75%)', noTap: true },
   { name: 'toast', sel: '.td-toast--error', token: '--td-toast-error-pressed-bg', noTap: true,
     open: async (page) => { await page.evaluate(() => window.__openers.toast()); await page.locator('.td-toast--error[data-state="open"]').waitFor(); await settle(page, '.td-toast--error'); } },
   // v0.46.0: td-diff <summary> (native <details>: a tap toggles it — pressed only)
@@ -416,6 +419,86 @@ async function chromiumSemantics(browser) {
   const has = (sel) => page.evaluate((s) => document.querySelector(s).hasAttribute('data-td-pressed'), sel);
   try {
     await controlMatrix(tag, page, cdpInput(page, cdp));
+
+    // v0.79.0 (plan v0.79.0-media-field-placeholder): td-media-field corner tools on a real coarse pointer
+    const mfTools = async () => {
+      await load(page);
+      await page.evaluate(() => {
+        const host = document.getElementById('touch-extra');
+        const f = document.createElement('td-media-field');
+        f.id = 't-mf';
+        for (const [k, v] of Object.entries({ name: 'mf', label: 'Ảnh bìa', usage: '', croppable: '', 'aspect-ratio': '3/2', value: 'm1', 'preview-src': '/test/fixtures/crop-large.png' })) f.setAttribute(k, v);
+        f.style.inlineSize = '320px';
+        host.append(f);
+        window.__mf = { changes: 0 };
+        f.addEventListener('change', () => { window.__mf.changes += 1; });
+      });
+      await page.waitForFunction(() => { const c = document.querySelector('#t-mf .td-media-field__crop-btn'); return c && !c.hidden; }, null, { timeout: 5000 });
+      await frames(page, 2);
+    };
+    // the area of a tool = its 44 px ::before, centred on the button
+    const mfAreas = () => page.evaluate(() => {
+      const one = (sel) => {
+        const b = document.querySelector(sel);
+        const r = b.getBoundingClientRect();
+        const cs = getComputedStyle(b, '::before');
+        const w = parseFloat(cs.width); const h = parseFloat(cs.height);
+        const cx = r.x + r.width / 2; const cy = r.y + r.height / 2;
+        return { cx, cy, w, h, left: cx - w / 2, right: cx + w / 2, top: cy - h / 2, bottom: cy + h / 2, opacity: parseFloat(getComputedStyle(b).opacity) };
+      };
+      return { crop: one('#t-mf .td-media-field__crop-btn'), remove: one('#t-mf .td-media-field__remove') };
+    });
+    await it(tag, 'media-field: the X shows without hover, each tool area ≥ 44 × 44 and the two do not overlap', async () => {
+      await mfTools();
+      await page.locator('#t-mf').scrollIntoViewIfNeeded();
+      const a = await mfAreas();
+      expect(a.crop.opacity === 1 && a.remove.opacity === 1, `tools opacity ${a.crop.opacity}/${a.remove.opacity} on a touch pointer`);
+      for (const k of ['crop', 'remove']) expect(a[k].w >= 43.5 && a[k].h >= 43.5, `${k} area ${a[k].w}×${a[k].h}`);
+      const overlap = a.crop.left < a.remove.right - 0.5 && a.remove.left < a.crop.right - 0.5 && a.crop.top < a.remove.bottom - 0.5 && a.remove.top < a.crop.bottom - 0.5;
+      expect(!overlap, `crop and remove areas overlap: ${JSON.stringify(a)}`);
+    });
+    await it(tag, 'media-field: a tap at the inner edge of the remove area removes (one change), not the opener', async () => {
+      await mfTools();
+      await page.locator('#t-mf').scrollIntoViewIfNeeded();
+      const a = await mfAreas();
+      // 2 px inside the expanded area, on the side facing the crop icon (outside the 28 px circle, inside the 44 px area)
+      await page.touchscreen.tap(a.remove.left + 2, a.remove.cy);
+      await page.waitForFunction(() => document.getElementById('t-mf').value === '', null, { timeout: 3000 }).catch(() => {});
+      const st = await page.evaluate(() => ({ v: document.getElementById('t-mf').value, ch: window.__mf.changes, dlg: !!document.querySelector('td-media-picker, .td-crop-dialog') }));
+      expect(st.v === '' && st.ch === 1 && !st.dlg, `remove edge tap: ${JSON.stringify(st)}`);
+    });
+    await it(tag, 'media-field: a tap at the inner edge of the crop area opens the cropper, not remove', async () => {
+      await mfTools();
+      await page.locator('#t-mf').scrollIntoViewIfNeeded();
+      const a = await mfAreas();
+      await page.touchscreen.tap(a.crop.right - 2, a.crop.cy);
+      await page.locator('.td-crop-dialog').first().waitFor({ timeout: 5000 });
+      const st = await page.evaluate(() => ({ v: document.getElementById('t-mf').value, ch: window.__mf.changes }));
+      expect(st.v === 'm1' && st.ch === 0, `crop edge tap changed the field: ${JSON.stringify(st)}`);
+    });
+    await it(tag, 'media-field: a tap on the extended area below the X (over the opener) removes, one change', async () => {
+      await mfTools();
+      await page.locator('#t-mf').scrollIntoViewIfNeeded();
+      const a = await mfAreas();
+      await page.touchscreen.tap(a.remove.cx, a.remove.bottom - 2);
+      await page.waitForFunction(() => document.getElementById('t-mf').value === '', null, { timeout: 3000 }).catch(() => {});
+      const st = await page.evaluate(() => ({ v: document.getElementById('t-mf').value, ch: window.__mf.changes }));
+      expect(st.v === '' && st.ch === 1, `lower edge tap: ${JSON.stringify(st)}`);
+    });
+    await it(tag, 'media-field: a finger down on each tool sets data-td-pressed, a cancel clears it', async () => {
+      await mfTools();
+      await page.locator('#t-mf').scrollIntoViewIfNeeded();
+      const a = await mfAreas();
+      for (const k of ['crop', 'remove']) {
+        await touchDown(cdp, { x: Math.round(a[k].cx), y: Math.round(a[k].cy) });
+        await frames(page, 2);
+        const on = await page.evaluate((sel) => document.querySelector(sel).hasAttribute('data-td-pressed'), `#t-mf .td-media-field__${k === 'crop' ? 'crop-btn' : 'remove'}`);
+        await touchCancel(cdp);
+        await frames(page, 2);
+        const off = await page.evaluate((sel) => !document.querySelector(sel).hasAttribute('data-td-pressed'), `#t-mf .td-media-field__${k === 'crop' ? 'crop-btn' : 'remove'}`);
+        expect(on && off, `${k}: pressed ${on}, cleared ${off}`);
+      }
+    });
 
     await it(tag, 'pressed: 6 px keeps it, 12 px clears it (touch slop 10); one holder at a time', async () => {
       await load(page);

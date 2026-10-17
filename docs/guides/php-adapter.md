@@ -77,7 +77,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_number_input` (0.30.0) | `div.td-field.td-number` + `input.td-number__control` **native** `type=number` (giá trị chuẩn, `min` ngầm `0`, `step` theo `decimals`) | Không | Không |
 | `td_number_input` — **chế độ element** (0.30.0, tự bật) | host `<td-number-input data-td-ssr="number-input@1">` chứa sẵn cùng cây | Không (input native chạy ngay, gửi số sạch) | **Có** — nạp module `number-input`: nhận **tại chỗ**, hiện `12.990.000` |
 | `td_masked_value` (0.31.0) | **luôn** host `<td-masked-value data-td-ssr="masked-value@1">` chứa chuỗi che + nút toggle + live region — **không bao giờ** giá trị thật | Không (chưa có JS: chỉ thấy chuỗi che, nút ẩn) | **Có** — nạp module `masked-value`: nhận **tại chỗ** |
-| `td_media_field` (0.32.0) | **luôn** host `<td-media-field data-td-ssr="media-field@1">` chứa sẵn khung (tỉ lệ bằng SVG sizer), ảnh xem trước, nút mở / Đổi / Gỡ + **hidden input** gửi `assetId` (và ô alt / crop ở chế độ usage) | Không (form gửi đúng hình dạng; chưa có JS thì nút ẩn, giữ chỗ) | **Có** — nạp module `media-field`: nhận **tại chỗ**, gỡ hidden input |
+| `td_media_field` (0.32.0) | **luôn** host `<td-media-field data-td-ssr="media-field@2">` chứa sẵn khung (tỉ lệ bằng SVG sizer), ảnh xem trước, ô mở + nút X (gỡ) / cắt + chữ tỉ lệ dưới khung + **hidden input** gửi `assetId` (và ô alt / crop ở chế độ usage) | Không (form gửi đúng hình dạng; chưa có JS thì nút ẩn, giữ chỗ) | **Có** — nạp module `media-field`: nhận **tại chỗ**, gỡ hidden input |
 | `td_media_gallery` (0.43.0) | **luôn** host `<td-media-gallery data-td-ssr="media-gallery@1">` chứa sẵn lưới ô (tỉ lệ bằng SVG sizer), ảnh, tay nắm / Cắt / Gỡ, nút Thêm + **hidden input** gửi danh sách (`name[]` / `name[i][…]`, ô alt có `name`) | Không (form gửi đúng hình dạng theo thứ tự server in; chưa có JS thì nút ẩn, giữ chỗ) | **Có** — nạp module `media-gallery`: nhận **tại chỗ**, gỡ hidden input |
 | `td_scan_input` (0.38.0) | `div.td-scan` + `input.td-scan__input` **native** (`autocomplete="off"`, `enterkeyhint="done"`…) | Không (Enter submit form) | Không |
 | `td_scan_input` — **chế độ element** (0.38.0, tự bật) / **`multiple`** (luôn element) | host `<td-scan-input data-td-ssr="scan-input@1">` + cùng input; `multiple`: + `textarea` nhập tay + danh sách + một **hidden input** mỗi mã | Không (form gửi mã in sẵn + dòng textarea) | **Có** — nạp module `scan-input`: nhận **tại chỗ**, gỡ hidden / textarea, dòng textarea qua `validate` |
@@ -124,7 +124,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.78.0/
+public/assets/vendor/td-components/0.79.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
   dist/  module-graph.json                    (0.64.0+: bản minify + đồ thị preload)
 ```
@@ -133,7 +133,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.78.0';
+const TD_VERSION = '0.79.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -1355,11 +1355,11 @@ tên component render → component render lại (vẫn đúng, chỉ mất lợ
 ```
 
 `td_media_field($name, string|int|null $assetId = null, $o)` in ô chọn ảnh của [Media field](../components/media-field.md)
-(hợp đồng `media-field@1`). **Luôn element mode** — không có control native nào chọn được ảnh từ thư viện, nên không có
+(hợp đồng `media-field@2` từ 0.79.0). **Luôn element mode** — không có control native nào chọn được ảnh từ thư viện, nên không có
 option `element` và `ssr_elements` không ảnh hưởng. Helper **không** in endpoint, quyền, envelope hay `MediaAsset`
 serialize: adapter là JS của site ([Media picker](../components/media-picker.md#cấu-hình-mặc-định--configuredefaults)).
 
-- **Không có JS:** host + khung + ảnh xem trước có dáng ngay; nút mở / Đổi / Gỡ `visibility: hidden` (giữ chỗ, không có
+- **Không có JS:** host + khung + ảnh xem trước có dáng ngay; ô mở + nút X / cắt `visibility: hidden` (giữ chỗ, không có
   nút chết). Form vẫn gửi **đúng** hình dạng của component nhờ hidden input:
   - reference: `<input type="hidden" class="td-media-field__value" name="hero" value="{assetId}">` (rỗng → `hero=`);
   - usage: hidden `name="og[id]"`, ô alt thật `name="og[alt]"`, hidden `.td-media-field__crop` `name="og[crop]"`
@@ -1375,7 +1375,7 @@ serialize: adapter là JS của site ([Media picker](../components/media-picker.
 | `$assetId` | `assetId` hiện tại (`string` / `int`; `null` / `''` = rỗng → hidden `value=""`) |
 | `label`, `helper_text`, `error_text`, `prompt` | nhãn (có `*` khi `required`), ghi chú (`span.td-media-field__help`), lỗi (`span.td-field-error` + `aria-invalid` trên nút mở), chữ khung rỗng (mặc định theo loại đầu của `accept_kind`) — đều là text |
 | `required` | thuộc tính trên host (chỉ có tác dụng khi có JS — không-JS: server validate) |
-| `disabled` | host + nút mở / Đổi / Gỡ + ô alt **và các hidden input** đều `disabled` → không gửi gì (như control native) |
+| `disabled` | host + nút mở / X / cắt + ô alt **và các hidden input** đều `disabled` → không gửi gì (như control native) |
 | `aspect_ratio` | `'3/2'` \| `'3:2'` \| `'1.91'` — cùng luật với JS (`W/H`, `W:H` hoặc một số; mỗi phần > 0, ≤ 10000, ≤ 4 chữ số thập phân, không dấu / `e`). Sai → bỏ + một `E_USER_WARNING` |
 | `preview_fit` | `'cover'` (mặc định, không in) \| `'contain'` (chỉ có tác dụng với `preview_shape => 'ratio'`) |
 | `preview_shape` | 0.77.0: `'ratio'` → in `preview-shape="ratio"` = khung theo `aspect_ratio` / tỉ lệ ảnh như trước 0.77.0 (bỏ khoảng trắng đầu / cuối, không phân biệt hoa thường). Vắng hoặc giá trị khác → không in = ô xem trước **vuông 1:1**, ảnh contain (mặc định mới) |
@@ -1386,14 +1386,15 @@ serialize: adapter là JS của site ([Media picker](../components/media-picker.
 | `usage` | `true` → ô alt + hidden `name[id]` / `name[crop]` + `name[alt]` trên ô alt |
 | `alt` | alt mặc định (usage), cắt 500 ký tự |
 | `crop` | mảng `['x' => …, 'y' => …, 'width' => …, 'height' => …]` (số, chuẩn hoá 0..1) **hoặc** chuỗi JSON v1 (`{"v":1,…}` — nên in lại được nguyên `$_POST['og']['crop']` sau lỗi validate). `null` / `''` / `'null'` → `null` im lặng; sai (thiếu / thừa key, ngoài 0..1, `x + width > 1`…) → `null` + một `E_USER_WARNING` |
-| `croppable` (0.35.0) | `true` → in nút "Cắt ảnh" `.td-media-field__crop-btn` (ẩn tới khi JS chạy, như Đổi / Gỡ) + `span.td-media-field__status` (`role="status"`, báo lỗi nguồn ảnh). Bốn option 0.35 cần `usage`: thiếu → bỏ cả bốn + một `E_USER_WARNING` (fail closed) |
+| `croppable` (0.35.0) | `true` → in nút icon "Cắt ảnh" `.td-media-field__crop-btn` (nút icon trong `__tools`, đứng trước X, ẩn tới khi JS chạy) + `span.td-media-field__status` (`role="status"`, báo lỗi nguồn ảnh). Bốn option 0.35 cần `usage`: thiếu → bỏ cả bốn + một `E_USER_WARNING` (fail closed) |
 | `crop_ratio` (0.35.0) | `'1.91'` \| `'16/9'` \| `'16:9'` \| `'free'` → thuộc tính `crop-ratio`. Vắng → JS theo `aspect_ratio`, rồi tự do. Sai hoặc tỉ lệ ngoài **[0.01, 100]** → bỏ + một `E_USER_WARNING` (bảng `CROP_RATIO_CASES` JS = PHP) |
 | `crop_mode`, `crop_shape` (0.75.0) | chuỗi `pan` / `circle` (cắt khoảng trắng kiểu JS, không phân biệt hoa thường) → in hằng `crop-mode="pan"` / `crop-shape="circle"`; mọi giá trị khác (`box`, `rect`, lạ, không phải chuỗi) → không in gì, im lặng (bảng `CROP_MODE_CASES` / `CROP_SHAPE_CASES` JS = PHP). Cần `usage` (thiếu → bỏ + cùng `E_USER_WARNING`) |
+| `hide_label`, `hide_hints` (0.79.0) | `true` → in attribute `hide-label` (nhãn ẩn khỏi mắt, vẫn là tên trợ năng) / `hide-hints` (ẩn `prompt` + chữ tỉ lệ). Thuần CSS, cây DOM không đổi. Xem [Media field › mục 10](../components/media-field.md#10-ẩn-nhãn-và-gợi-ý--hide-label-hide-hints-0790) |
 | `focal_point` (0.35.0) | `true` (+ `usage`) → in hidden `input.td-media-field__focal` `name="og[focal]"` (mục thứ tư, sau `og[crop]`) |
 | `focal` (0.35.0) | mảng `['x' => …, 'y' => …]` (0..1) **hoặc** chuỗi JSON v1 `{"v":1,"x","y"}` (in lại được nguyên `$_POST['og']['focal']`). `null` / `''` / `'null'` → `null` im lặng; sai → `null` + một `E_USER_WARNING` |
 | `id` | id của **host**; id con suy ra: `{id}-label`, `{id}-state`, `{id}-alt`, `{id}-help`, `{id}-error`. Không có → id duy nhất trong request (`td-{name}-{n}`) |
 | `class` | class thêm trên host (sau `td-media-field`) |
-| `attrs` | attribute thêm trên host (allowlist chung + `data-*`). Tên component tự đọc (`id` `class` `name` `label` `aspect-ratio` `preview-fit` `accept-kind` `usage` `required` `disabled` `value` `preview-src` `preview-alt` `kind` `alt` `crop` `prompt` `helper-text` `error-text`; 0.35: `croppable` `crop-ratio` `focal-point` `focal`; 0.75: `crop-mode` `crop-shape`) và mọi `data-td-*` bị bỏ |
+| `attrs` | attribute thêm trên host (allowlist chung + `data-*`). Tên component tự đọc (`id` `class` `name` `label` `aspect-ratio` `preview-fit` `accept-kind` `usage` `required` `disabled` `value` `preview-src` `preview-alt` `kind` `alt` `crop` `prompt` `helper-text` `error-text`; 0.35: `croppable` `crop-ratio` `focal-point` `focal`; 0.75: `crop-mode` `crop-shape`; 0.79: `hide-label` `hide-hints`) và mọi `data-td-*` bị bỏ |
 
 Nhãn in sẵn là **tiếng Việt mặc định** (`Td::MEDIA_FIELD_LABELS`, giống `TdMediaField.labels`). Site đổi
 `TdMediaField.labels` trong JS → chữ in sẵn không khớp `render()` → lúc nâng cấp field **render lại an toàn** (không nhận
@@ -1408,10 +1409,10 @@ nhận `http:` chỉ khi **trang** là `http:`. Trang `https:` có ảnh xem tr�
      'crop' => ['x' => 0.1, 'y' => 0, 'width' => 0.5, 'height' => 1], 'preview_src' => '/test/fixtures/2.svg',
      'preview_alt' => 'og.jpg'])  — nguyên văn từ fixture test/ssr/fixtures/media-field.html (case usage-full),
      chỉ thêm xuống dòng giữa các phần -->
-<td-media-field data-td-ssr="media-field@1" id="td-og-4" class="td-media-field" name="og" label="Ảnh OG" aspect-ratio="1.91" usage value="m2" preview-src="/test/fixtures/2.svg" preview-alt="og.jpg" alt="Mô tả có sẵn" crop="{&quot;v&quot;:1,&quot;x&quot;:0.1,&quot;y&quot;:0,&quot;width&quot;:0.5,&quot;height&quot;:1}">
+<td-media-field data-td-ssr="media-field@2" id="td-og-4" class="td-media-field" name="og" label="Ảnh OG" aspect-ratio="1.91" usage value="m2" preview-src="/test/fixtures/2.svg" preview-alt="og.jpg" alt="Mô tả có sẵn" crop="{&quot;v&quot;:1,&quot;x&quot;:0.1,&quot;y&quot;:0,&quot;width&quot;:0.5,&quot;height&quot;:1}">
 <span class="td-media-field__label" id="td-og-4-label">Ảnh OG</span>
-<div class="td-media-field__frame" data-state="filled" data-kind="image"><svg class="td-media-field__sizer" viewBox="0 0 1.91 1" aria-hidden="true" focusable="false"></svg><button type="button" class="td-media-field__open" aria-haspopup="dialog" aria-labelledby="td-og-4-label td-og-4-state"><img class="td-media-field__img" src="/test/fixtures/2.svg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="td-sr-only" id="td-og-4-state">Đã chọn: og.jpg</span></button></div>
-<div class="td-media-field__actions"><button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__replace" aria-haspopup="dialog">Đổi ảnh</button><button type="button" class="td-btn td-btn--ghost td-btn--sm td-media-field__remove">Gỡ</button></div>
+<div class="td-media-field__frame" data-state="filled" data-kind="image"><svg class="td-media-field__sizer" viewBox="0 0 1.91 1" aria-hidden="true" focusable="false"></svg><button type="button" class="td-media-field__open" aria-haspopup="dialog" aria-labelledby="td-og-4-label td-og-4-state"><img class="td-media-field__img" src="/test/fixtures/2.svg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="td-sr-only" id="td-og-4-state">Đã chọn: og.jpg</span></button><div class="td-media-field__tools"><button type="button" class="td-media-field__tool td-media-field__remove" aria-labelledby="td-og-4-remove-t td-og-4-label" title="Gỡ"><span class="td-media-field__icon" data-td-icon="close" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span><span class="td-sr-only" id="td-og-4-remove-t">Gỡ</span></button></div></div>
+<span class="td-media-field__ratio">1.91:1</span>
 <input type="hidden" class="td-media-field__value" name="og[id]" value="m2">
 <div class="td-field td-media-field__usage"><label class="td-field__label" for="td-og-4-alt">Mô tả ảnh (alt)</label><input type="text" class="td-field__control td-media-field__alt" id="td-og-4-alt" maxlength="500" name="og[alt]" value="Mô tả có sẵn"></div>
 <input type="hidden" class="td-media-field__crop" name="og[crop]" value="{&quot;v&quot;:1,&quot;x&quot;:0.1,&quot;y&quot;:0,&quot;width&quot;:0.5,&quot;height&quot;:1}">
@@ -2140,7 +2141,7 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 | `td_otp_input`: `#id` của site trỏ vào wrapper không còn ăn | `id` là id **input** (cả native lẫn element); element: host = `{id}-host` | nhắm `#id` (input) / `.td-otp` (wrapper) / `#id-host` (host) |
 | `td_number_input` không JS không có dấu chấm hàng nghìn | giới hạn của `type=number` native (cố ý: giá trị gửi đi phải là số sạch) | nạp module `number-input` (element mode) |
 | `td_number_input`: giá trị / `min` / `step` biến mất + `Warning` | không ở dạng chuẩn (`12.990.000`, `1,5`, nhiều số lẻ hơn `decimals`, `step` ≤ 0) | truyền số chuẩn (`12990000`, `1.5`), đặt `decimals` |
-| `td_media_field` không JS không thấy nút Đổi / Gỡ | cố ý: nút `visibility: hidden` tới khi module tải (không nút chết); hidden input vẫn gửi `assetId` | import module `media-field` (và cấu hình adapter: `TdMediaPicker.configureDefaults`) |
+| `td_media_field` không JS không thấy ô mở / nút X | cố ý: nút `visibility: hidden` tới khi module tải (không nút chết); hidden input vẫn gửi `assetId` | import module `media-field` (và cấu hình adapter: `TdMediaPicker.configureDefaults`) |
 | `td_media_field`: ảnh xem trước không in ra | `preview_src` bị từ chối (`javascript:`, `data:`, `mailto:`, `http:` khi chưa `allowHttpLinks`) | URL `https:` hoặc tương đối |
 | `td_media_field` usage không gửi gì + `Warning` | `name` kết thúc `[]` | bỏ `[]` (`og`, không phải `og[]`) |
 | `td_media_gallery` không gửi gì + `Warning` | `$items` hỏng (id trùng / id không phải string-int / > 100 / không phải list) hoặc `name` kết thúc `[]` → fail closed; hoặc nhiều ảnh hơn `max` → in đủ ô nhưng không `name` | sửa dữ liệu; `name` không có `[]`; `max` ≥ số ảnh thật (server vẫn tự kiểm) |

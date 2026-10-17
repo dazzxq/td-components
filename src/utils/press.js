@@ -62,6 +62,8 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-masked__toggle',
   '.td-media-field__frame > .td-media-field__open',
   '.td-media-field__open',
+  '.td-media-field__tool',
+  '.td-media-field__tool.td-media-field__remove',
   '.td-media-gallery__add',
   '.td-media-gallery__btn',
   '.td-media-gallery__media > .td-sortable__handle',

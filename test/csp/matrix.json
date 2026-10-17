@@ -5190,12 +5190,46 @@
         ".td-media-field__frame",
         ".td-media-field__open",
         ".td-media-field__img",
-        ".td-media-field__actions",
-        ".td-media-field__replace",
+        ".td-media-field__tools",
         ".td-media-field__remove",
-        ".td-media-field__sizer"
+        ".td-media-field__sizer",
+        ".td-media-field__ratio"
       ],
       "settle": 200
+    },
+    {
+      "state": "tools",
+      "markup": "<td-media-field name=\"hero\" label=\"Ảnh đại diện\" aspect-ratio=\"3/2\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__img",
+        ".td-media-field__tools",
+        ".td-media-field__remove",
+        ".td-media-field__icon",
+        ".td-media-field__ratio"
+      ],
+      "settle": 200,
+      "touch": true,
+      "selectorNote": "v0.79.0: coarse pointer (touch context) — the corner X is always visible (opacity 1, 44px hit area); the fine-pointer hover reveal is covered by the engines tests"
+    },
+    {
+      "state": "hide",
+      "markup": "<td-media-field name=\"hero\" label=\"Ảnh đại diện\" aspect-ratio=\"3/2\" hide-label hide-hints helper-text=\"Ảnh ngang 3:2\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__empty",
+        ".td-media-field__icon",
+        ".td-media-field__prompt",
+        ".td-media-field__ratio",
+        ".td-media-field__help"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.79.0: hide-label (label visually hidden, still named) + hide-hints (prompt and ratio display:none)"
     },
     {
       "state": "contain",
@@ -5206,8 +5240,7 @@
         ".td-media-field__frame",
         ".td-media-field__open",
         ".td-media-field__img",
-        ".td-media-field__actions",
-        ".td-media-field__replace",
+        ".td-media-field__tools",
         ".td-media-field__remove"
       ],
       "settle": 200
@@ -5221,8 +5254,7 @@
         ".td-media-field__frame",
         ".td-media-field__open",
         ".td-media-field__img",
-        ".td-media-field__actions",
-        ".td-media-field__replace",
+        ".td-media-field__tools",
         ".td-media-field__remove"
       ],
       "settle": 200
@@ -5236,8 +5268,7 @@
         ".td-media-field__frame",
         ".td-media-field__open",
         ".td-media-field__img",
-        ".td-media-field__actions",
-        ".td-media-field__replace",
+        ".td-media-field__tools",
         ".td-media-field__remove",
         ".td-media-field__badge"
       ],
@@ -5252,8 +5283,7 @@
         ".td-media-field__frame",
         ".td-media-field__open",
         ".td-media-field__img",
-        ".td-media-field__actions",
-        ".td-media-field__replace",
+        ".td-media-field__tools",
         ".td-media-field__remove",
         ".td-media-field__usage",
         ".td-media-field__alt"
@@ -5269,8 +5299,7 @@
         ".td-media-field__frame",
         ".td-media-field__open",
         ".td-media-field__img",
-        ".td-media-field__actions",
-        ".td-media-field__replace",
+        ".td-media-field__tools",
         ".td-media-field__remove"
       ],
       "settle": 200
@@ -5293,19 +5322,18 @@
     },
     {
       "state": "ssr",
-      "markup": "<td-media-field data-td-ssr=\"media-field@1\" id=\"td-cover-3\" class=\"td-media-field\" name=\"cover\" label=\"Ảnh bìa\" aspect-ratio=\"3/2\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\" helper-text=\"JPG, PNG, tối đa 5 MB\"><span class=\"td-media-field__label\" id=\"td-cover-3-label\">Ảnh bìa</span><div class=\"td-media-field__frame\" data-state=\"filled\" data-kind=\"image\"><svg class=\"td-media-field__sizer\" viewBox=\"0 0 3 2\" aria-hidden=\"true\" focusable=\"false\"></svg><button type=\"button\" class=\"td-media-field__open\" aria-haspopup=\"dialog\" aria-labelledby=\"td-cover-3-label td-cover-3-state\" aria-describedby=\"td-cover-3-help\"><img class=\"td-media-field__img\" src=\"/test/fixtures/1.svg\" alt=\"\" loading=\"lazy\" decoding=\"async\" referrerpolicy=\"no-referrer\"><span class=\"td-sr-only\" id=\"td-cover-3-state\">Đã chọn: Ảnh 1</span></button></div><div class=\"td-media-field__actions\"><button type=\"button\" class=\"td-btn td-btn--secondary td-btn--sm td-media-field__replace\" aria-haspopup=\"dialog\">Đổi ảnh</button><button type=\"button\" class=\"td-btn td-btn--ghost td-btn--sm td-media-field__remove\">Gỡ</button></div><input type=\"hidden\" class=\"td-media-field__value\" name=\"cover\" value=\"m1\"><span class=\"td-media-field__help\" id=\"td-cover-3-help\">JPG, PNG, tối đa 5 MB</span></td-media-field>",
+      "markup": "<td-media-field data-td-ssr=\"media-field@2\" id=\"td-cover-1\" class=\"td-media-field\" name=\"cover\" label=\"Ảnh bìa\" aspect-ratio=\"3/2\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\" helper-text=\"JPG, PNG, tối đa 5 MB\"><span class=\"td-media-field__label\" id=\"td-cover-1-label\">Ảnh bìa</span><div class=\"td-media-field__frame\" data-state=\"filled\" data-kind=\"image\"><svg class=\"td-media-field__sizer\" viewBox=\"0 0 3 2\" aria-hidden=\"true\" focusable=\"false\"></svg><button type=\"button\" class=\"td-media-field__open\" aria-haspopup=\"dialog\" aria-labelledby=\"td-cover-1-label td-cover-1-state\" aria-describedby=\"td-cover-1-help\"><img class=\"td-media-field__img\" src=\"/test/fixtures/1.svg\" alt=\"\" loading=\"lazy\" decoding=\"async\" referrerpolicy=\"no-referrer\"><span class=\"td-sr-only\" id=\"td-cover-1-state\">Đã chọn: Ảnh 1</span></button><div class=\"td-media-field__tools\"><button type=\"button\" class=\"td-media-field__tool td-media-field__remove\" aria-labelledby=\"td-cover-1-remove-t td-cover-1-label\" title=\"Gỡ\"><span class=\"td-media-field__icon\" data-td-icon=\"close\" aria-hidden=\"true\"><svg class=\"td-icon td-icon--m\" data-icon=\"close\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></span><span class=\"td-sr-only\" id=\"td-cover-1-remove-t\">Gỡ</span></button></div></div><span class=\"td-media-field__ratio\">3:2</span><input type=\"hidden\" class=\"td-media-field__value\" name=\"cover\" value=\"m1\"><span class=\"td-media-field__help\" id=\"td-cover-1-help\">JPG, PNG, tối đa 5 MB</span></td-media-field>",
       "selectors": [
         ".td-media-field",
         ".td-media-field__label",
         ".td-media-field__frame",
         ".td-media-field__open",
         ".td-media-field__img",
-        ".td-media-field__actions",
-        ".td-media-field__replace",
+        ".td-media-field__tools",
         ".td-media-field__remove"
       ],
       "settle": 200,
-      "selectorNote": "php/td.php td_media_field (media-field@1), hydrated in place under the strict CSP"
+      "selectorNote": "php/td.php td_media_field (media-field@2), hydrated in place under the strict CSP"
     },
     {
       "state": "croppable",
@@ -5314,8 +5342,7 @@
         ".td-media-field",
         ".td-media-field__frame",
         ".td-media-field__img",
-        ".td-media-field__actions",
-        ".td-media-field__replace",
+        ".td-media-field__tools",
         ".td-media-field__crop-btn",
         ".td-media-field__remove"
       ],
@@ -5338,7 +5365,7 @@
         ".td-media-field__help"
       ],
       "settle": 200,
-      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"empty\" (must match its v0.76 baseline)"
+      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"empty\" (recaptured for the v0.79.0 placeholder DOM (tools + ratio below the frame))"
     },
     {
       "state": "ratio-filled",
@@ -5349,13 +5376,12 @@
         ".td-media-field__frame",
         ".td-media-field__open",
         ".td-media-field__img",
-        ".td-media-field__actions",
-        ".td-media-field__replace",
+        ".td-media-field__tools",
         ".td-media-field__remove",
         ".td-media-field__sizer"
       ],
       "settle": 200,
-      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"filled\" (must match its v0.76 baseline)"
+      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"filled\" (recaptured for the v0.79.0 placeholder DOM (tools + ratio below the frame))"
     },
     {
       "state": "ratio-contain",
@@ -5366,12 +5392,11 @@
         ".td-media-field__frame",
         ".td-media-field__open",
         ".td-media-field__img",
-        ".td-media-field__actions",
-        ".td-media-field__replace",
+        ".td-media-field__tools",
         ".td-media-field__remove"
       ],
       "settle": 200,
-      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"contain\" (must match its v0.76 baseline)"
+      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"contain\" (recaptured for the v0.79.0 placeholder DOM (tools + ratio below the frame))"
     },
     {
       "state": "ratio-free",
@@ -5382,28 +5407,26 @@
         ".td-media-field__frame",
         ".td-media-field__open",
         ".td-media-field__img",
-        ".td-media-field__actions",
-        ".td-media-field__replace",
+        ".td-media-field__tools",
         ".td-media-field__remove"
       ],
       "settle": 200,
-      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"free\" (must match its v0.76 baseline)"
+      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"free\" (recaptured for the v0.79.0 placeholder DOM (tools + ratio below the frame))"
     },
     {
       "state": "ratio-ssr",
-      "markup": "<td-media-field preview-shape=\"ratio\" data-td-ssr=\"media-field@1\" id=\"td-cover-3\" class=\"td-media-field\" name=\"cover\" label=\"Ảnh bìa\" aspect-ratio=\"3/2\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\" helper-text=\"JPG, PNG, tối đa 5 MB\"><span class=\"td-media-field__label\" id=\"td-cover-3-label\">Ảnh bìa</span><div class=\"td-media-field__frame\" data-state=\"filled\" data-kind=\"image\"><svg class=\"td-media-field__sizer\" viewBox=\"0 0 3 2\" aria-hidden=\"true\" focusable=\"false\"></svg><button type=\"button\" class=\"td-media-field__open\" aria-haspopup=\"dialog\" aria-labelledby=\"td-cover-3-label td-cover-3-state\" aria-describedby=\"td-cover-3-help\"><img class=\"td-media-field__img\" src=\"/test/fixtures/1.svg\" alt=\"\" loading=\"lazy\" decoding=\"async\" referrerpolicy=\"no-referrer\"><span class=\"td-sr-only\" id=\"td-cover-3-state\">Đã chọn: Ảnh 1</span></button></div><div class=\"td-media-field__actions\"><button type=\"button\" class=\"td-btn td-btn--secondary td-btn--sm td-media-field__replace\" aria-haspopup=\"dialog\">Đổi ảnh</button><button type=\"button\" class=\"td-btn td-btn--ghost td-btn--sm td-media-field__remove\">Gỡ</button></div><input type=\"hidden\" class=\"td-media-field__value\" name=\"cover\" value=\"m1\"><span class=\"td-media-field__help\" id=\"td-cover-3-help\">JPG, PNG, tối đa 5 MB</span></td-media-field>",
+      "markup": "<td-media-field data-td-ssr=\"media-field@2\" id=\"td-cover-2\" class=\"td-media-field\" name=\"cover\" label=\"Ảnh bìa\" aspect-ratio=\"3/2\" preview-shape=\"ratio\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\" helper-text=\"JPG, PNG, tối đa 5 MB\"><span class=\"td-media-field__label\" id=\"td-cover-2-label\">Ảnh bìa</span><div class=\"td-media-field__frame\" data-state=\"filled\" data-kind=\"image\"><svg class=\"td-media-field__sizer\" viewBox=\"0 0 3 2\" aria-hidden=\"true\" focusable=\"false\"></svg><button type=\"button\" class=\"td-media-field__open\" aria-haspopup=\"dialog\" aria-labelledby=\"td-cover-2-label td-cover-2-state\" aria-describedby=\"td-cover-2-help\"><img class=\"td-media-field__img\" src=\"/test/fixtures/1.svg\" alt=\"\" loading=\"lazy\" decoding=\"async\" referrerpolicy=\"no-referrer\"><span class=\"td-sr-only\" id=\"td-cover-2-state\">Đã chọn: Ảnh 1</span></button><div class=\"td-media-field__tools\"><button type=\"button\" class=\"td-media-field__tool td-media-field__remove\" aria-labelledby=\"td-cover-2-remove-t td-cover-2-label\" title=\"Gỡ\"><span class=\"td-media-field__icon\" data-td-icon=\"close\" aria-hidden=\"true\"><svg class=\"td-icon td-icon--m\" data-icon=\"close\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></span><span class=\"td-sr-only\" id=\"td-cover-2-remove-t\">Gỡ</span></button></div></div><span class=\"td-media-field__ratio\">3:2</span><input type=\"hidden\" class=\"td-media-field__value\" name=\"cover\" value=\"m1\"><span class=\"td-media-field__help\" id=\"td-cover-2-help\">JPG, PNG, tối đa 5 MB</span></td-media-field>",
       "selectors": [
         ".td-media-field",
         ".td-media-field__label",
         ".td-media-field__frame",
         ".td-media-field__open",
         ".td-media-field__img",
-        ".td-media-field__actions",
-        ".td-media-field__replace",
+        ".td-media-field__tools",
         ".td-media-field__remove"
       ],
       "settle": 200,
-      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"ssr\" (must match its v0.76 baseline)"
+      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"ssr\" (recaptured for the v0.79.0 placeholder DOM (tools + ratio below the frame))"
     },
     {
       "state": "ratio-croppable",
@@ -5412,13 +5435,12 @@
         ".td-media-field",
         ".td-media-field__frame",
         ".td-media-field__img",
-        ".td-media-field__actions",
-        ".td-media-field__replace",
+        ".td-media-field__tools",
         ".td-media-field__crop-btn",
         ".td-media-field__remove"
       ],
       "settle": 400,
-      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"croppable\" (must match its v0.76 baseline)"
+      "selectorNote": "v0.77.0: preview-shape=\"ratio\" keeps the pre-0.77 computed style of state \"croppable\" (recaptured for the v0.79.0 placeholder DOM (tools + ratio below the frame))"
     },
     {
       "state": "square-portrait",
@@ -5443,7 +5465,7 @@
         ".td-media-field__open",
         ".td-media-field__view",
         ".td-media-field__img",
-        ".td-media-field__actions"
+        ".td-media-field__tools"
       ],
       "settle": 400,
       "selectorNote": "v0.77.0: square croppable (no aspect-ratio) with a crop — the img sits in span.td-media-field__view (--_td-mf-view-w/-h) and shows the cropped area"

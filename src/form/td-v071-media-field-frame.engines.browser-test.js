@@ -3,7 +3,7 @@ import { expect } from '@esm-bundle/chai';
 import { TdMediaField } from './td-media-field.js';
 
 // v0.71.0 (plan docs/internal/plans/v0.71.0-field-frame-table-empty.md, K10 of dsuite) — --td-media-field-frame-w sizes the image
-// FRAME alone: the label, the Đổi / Gỡ buttons, the helper text and the error line keep the width of the HOST (a small square
+// FRAME alone: the label, the helper text and the error line keep the width of the HOST (a small square
 // logo field no longer squeezes them into 120px). Without the token nothing changes. Chromium, Firefox AND WebKit.
 void TdMediaField; // defines <td-media-field>
 const link = document.createElement('link');
@@ -55,12 +55,12 @@ const near = (a, b, tol = 0.75) => Math.abs(a - b) <= tol;
 const q = (el, sel) => el.querySelector(sel);
 
 describe('v0.71.0 td-media-field — --td-media-field-frame-w (K10)', () => {
-  it('without the token the frame, label, actions are all as wide as the host (nothing changed)', async () => {
+  it('without the token the frame and label are as wide as the host (nothing changed)', async () => {
     const { el } = await mk({ attrs: FILLED });
     expect(near(w(el), 400), `host ${w(el)}`).to.equal(true);
     expect(near(w(q(el, '.td-media-field__frame')), 400), `frame ${w(q(el, '.td-media-field__frame'))}`).to.equal(true);
     expect(near(w(q(el, '.td-media-field__label')), 400)).to.equal(true);
-    expect(near(w(q(el, '.td-media-field__actions')), 400)).to.equal(true);
+    expect(q(el, '.td-media-field__actions'), 'v0.79.0: no actions row').to.equal(null);
   });
 
   it('a 7.5rem frame in a 400px host: the frame is a 120px square, the host keeps 400px', async () => {
@@ -86,17 +86,15 @@ describe('v0.71.0 td-media-field — --td-media-field-frame-w (K10)', () => {
     expect(h(err) < 3 * parseFloat(getComputedStyle(err).lineHeight), `error height ${h(err)}`).to.equal(true);
   });
 
-  it('a filled field: Đổi ảnh / Gỡ sit side by side across the host width (host >= 360px), under the small frame', async () => {
+  it('a filled field: the X sits in the top-end corner of the small frame, the label keeps the host width', async () => {
     const { el } = await mk({ tokens: { [FRAME_W]: '7.5rem' }, attrs: FILLED });
     const fr = q(el, '.td-media-field__frame');
-    const actions = q(el, '.td-media-field__actions');
-    const [a, b] = [...actions.querySelectorAll('button')];
-    expect(a !== undefined && b !== undefined, 'two action buttons').to.equal(true);
+    const x = q(el, '.td-media-field__tools .td-media-field__remove').getBoundingClientRect();
+    const f = fr.getBoundingClientRect();
     expect(near(w(fr), 7.5 * ROOT_PX), `frame ${w(fr)}`).to.equal(true);
-    expect(near(w(actions), 400), `actions ${w(actions)}`).to.equal(true);
-    expect(near(a.getBoundingClientRect().top, b.getBoundingClientRect().top, 1.5), 'same row').to.equal(true);
-    expect(a.getBoundingClientRect().right <= b.getBoundingClientRect().left + 0.5, 'side by side').to.equal(true);
-    // (had the token narrowed the HOST to 120px, the container query would have stacked them: this is what the case guards)
+    expect(near(w(q(el, '.td-media-field__label')), 400), 'label keeps the host width').to.equal(true);
+    expect(x.left >= f.left - 0.5 && x.right <= f.right + 0.5 && x.top >= f.top - 0.5 && x.bottom <= f.bottom + 0.5, 'X inside the frame').to.equal(true);
+    expect(near(x.right, f.right - 1 - 0.5 * ROOT_PX, 2), `X at the end edge ${x.right} vs ${f.right}`).to.equal(true);
   });
 
   it('the frame is capped at the host (a token wider than the host never overflows it)', async () => {
@@ -159,10 +157,11 @@ describe('v0.71.0 td-media-field — --td-media-field-frame-w (K10)', () => {
     expect(hit === img, 'the image does not spill into the host column').to.equal(false);
   });
 
-  it('the stacking threshold of the buttons is still the HOST width: a 300px host stacks them although the frame is small', async () => {
+  it('a 300px host with a 6rem frame: the X stays inside the small frame', async () => {
     const { el } = await mk({ hostW: 300, tokens: { [FRAME_W]: '6rem' }, attrs: FILLED });
-    const [a, b] = [...q(el, '.td-media-field__actions').querySelectorAll('button')];
-    expect(b.getBoundingClientRect().top > a.getBoundingClientRect().bottom - 1, 'stacked (container query on the host)').to.equal(true);
+    const x = q(el, '.td-media-field__tools .td-media-field__remove').getBoundingClientRect();
+    const f = q(el, '.td-media-field__frame').getBoundingClientRect();
+    expect(x.right <= f.right + 0.5 && x.left >= f.left - 0.5, 'X inside the frame').to.equal(true);
   });
 
   it('the token is declared with a 100% default next to --td-media-field-w', async () => {

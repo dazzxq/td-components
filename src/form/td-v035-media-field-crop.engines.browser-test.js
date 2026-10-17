@@ -163,7 +163,7 @@ const CROPPABLE = { name: 'og', usage: true, croppable: true, 'focal-point': tru
 describe('td-media-field v0.35 — table 28b (one test per row)', () => {
   it('row 1: picker → NEW asset, croppable → serializeCrop(usage.crop.normalized) + serializeFocal(usage.focalPoint); input + change', async () => {
     const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_A, focal: FOCAL_A, 'preview-src': '/test/fixtures/1.svg' });
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     const normalized = { x: 0.1234567891, y: 0.2, width: 0.5, height: 0.5 };
     opens[0].resolve(picked('m2', { crop: { normalized, pixels: { x: 148, y: 160, width: 600, height: 400 }, aspectRatio: 1.5 }, focalPoint: { x: 0.3333333333, y: 0.5 } }));
     await until(() => t.el.value === 'm2');
@@ -173,7 +173,7 @@ describe('td-media-field v0.35 — table 28b (one test per row)', () => {
 
   it('row 1b: picker → new asset, croppable, crop step gave none (whole image) → null / null; input + change', async () => {
     const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_A, focal: FOCAL_A, 'preview-src': '/test/fixtures/1.svg' });
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     opens[0].resolve(picked('m3'));
     await until(() => t.el.value === 'm3');
     expectState(t, 'og', { crop: null, focal: null, events: 1 });
@@ -181,7 +181,7 @@ describe('td-media-field v0.35 — table 28b (one test per row)', () => {
 
   it('row 2: picker → new asset, NOT croppable → crop null (v0.34) even if the outcome carries one; focal null; input + change', async () => {
     const t = mk({ name: 'og', usage: true, 'focal-point': true, value: 'm1', crop: CROP_A, focal: FOCAL_A, 'preview-src': '/test/fixtures/1.svg' });
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     expect(opens[0].opts.crop).to.deep.equal({ enabled: false });
     opens[0].resolve(picked('m2', { crop: { normalized: { x: 0, y: 0, width: 0.5, height: 0.5 } }, focalPoint: { x: 0.5, y: 0.5 } }));
     await until(() => t.el.value === 'm2');
@@ -190,7 +190,7 @@ describe('td-media-field v0.35 — table 28b (one test per row)', () => {
 
   it('row 3: picker → SAME asset, croppable, other crop / focal → asset + preview refreshed, new crop / focal; input + change', async () => {
     const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_A, focal: FOCAL_A, 'preview-src': '/test/fixtures/3.svg', 'preview-alt': 'cũ' });
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     expect(opens[0].opts.selection.initialIds).to.deep.equal(['m1']);
     const normalized = { x: 0.25, y: 0.25, width: 0.5, height: 0.5 };
     opens[0].resolve(picked('m1', { crop: { normalized, aspectRatio: 1.5 }, focalPoint: { x: 0.1, y: 0.9 } }));
@@ -203,7 +203,7 @@ describe('td-media-field v0.35 — table 28b (one test per row)', () => {
 
   it('row 3b: picker → same asset, croppable, identical crop + focal (± 1e-6) → no event, raw strings kept byte-identical', async () => {
     const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_B, focal: FOCAL_B, 'preview-src': '/test/fixtures/3.svg', 'preview-alt': 'cũ' });
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     opens[0].resolve(picked('m1', { crop: { normalized: { x: 0.2500004, y: 0.25, width: 0.5, height: 0.4999996 } }, focalPoint: { x: 0.5, y: 0.5000003 } }));
     await until(() => q(t.el, '.td-sr-only').textContent === `Đã chọn: ${asset('m1').name}`);
     await tick();
@@ -213,7 +213,7 @@ describe('td-media-field v0.35 — table 28b (one test per row)', () => {
 
   it('row 4: picker → same asset, NOT croppable → v0.34: preview refreshed, crop / focal kept, no event', async () => {
     const t = mk({ name: 'og', usage: true, 'focal-point': true, value: 'm1', crop: CROP_B, focal: FOCAL_B, 'preview-alt': 'cũ' });
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     opens[0].resolve(picked('m1', { crop: { normalized: { x: 0, y: 0, width: 0.5, height: 0.5 } }, focalPoint: { x: 0, y: 0 } }));
     await until(() => q(t.el, '.td-sr-only').textContent === `Đã chọn: ${asset('m1').name}`);
     await tick();
@@ -222,7 +222,7 @@ describe('td-media-field v0.35 — table 28b (one test per row)', () => {
 
   it('row 7: "Gỡ" → crop null, focal null; input + change (v0.34)', () => {
     const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_A, focal: FOCAL_A, 'preview-src': '/test/fixtures/1.svg' });
-    q(t.el, '.td-media-field__remove').click();
+    q(t.el, '.td-media-field__tools .td-media-field__remove').click();
     expect(t.el.value).to.equal('');
     expectState(t, 'og', { crop: null, focal: null, events: 1 });
     expect(t.c.details[1].selection).to.deep.equal([]);
@@ -287,7 +287,7 @@ describe('td-media-field v0.35 — table 28b (one test per row)', () => {
 
   it('row 13: form.reset() → the crop / focal attributes (byte-identical), no event', async () => {
     const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_B, focal: FOCAL_B, 'preview-src': '/test/fixtures/1.svg' });
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     opens[0].resolve(picked('m2', { crop: { normalized: { x: 0, y: 0, width: 0.5, height: 0.5 } }, focalPoint: { x: 0.2, y: 0.2 } }));
     await until(() => t.el.value === 'm2');
     t.c.input = 0; t.c.change = 0; t.c.details.length = 0;
@@ -366,7 +366,7 @@ describe('td-media-field v0.35 — picker `crop` param (decision 28, review R2 #
       try {
         const t = mk({ name: 'og', usage: true, value: 'm1', 'preview-src': '/test/fixtures/1.svg' });
         if (via === 'pickerOptions') t.el.pickerOptions = { crop: { enabled: true, aspectRatio: 1.5, allowFocalPoint: true } };
-        q(t.el, '.td-media-field__replace').click();
+        openBtn(t.el).click();
         expect(seen[0].crop).to.deep.equal({ enabled: false });
         const root = () => document.body.querySelector(':scope > .td-media-picker[data-state="open"]') || document.body.querySelector(':scope > .td-media-picker');
         const item = (id) => root()?.querySelector(`[data-td-media-item][data-id="${id}"] [data-td-media-open]`);
@@ -412,10 +412,10 @@ describe('td-media-field v0.35 — attributes, button, FormData shape, preview',
     expect(four.el.selection[0].usage.focalPoint).to.deep.equal({ x: 0.25, y: 0.75 });
   });
 
-  it('"Cắt ảnh": between Đổi and Gỡ, aria-haspopup=dialog; only croppable + usage + value + image + a source (adapter or preview-src)', () => {
+  it('"Cắt ảnh": a crop icon tool before the X, aria-haspopup=dialog; only croppable + usage + value + image + a source (adapter or preview-src)', () => {
     const shown = mk({ ...CROPPABLE, value: 'm1', 'preview-src': '/test/fixtures/1.svg' }, { adapter: null }).el;
-    const btns = [...q(shown, '.td-media-field__actions').children];
-    expect(btns.map((b) => b.className.split(' ').at(-1))).to.deep.equal(['td-media-field__replace', 'td-media-field__crop-btn', 'td-media-field__remove']);
+    const btns = [...q(shown, '.td-media-field__frame > .td-media-field__tools').children];
+    expect(btns.map((b) => b.className.split(' ').at(-1))).to.deep.equal(['td-media-field__crop-btn', 'td-media-field__remove']);
     expect(cropBtn(shown).textContent).to.equal(TdMediaField.labels.crop);
     expect(TdMediaField.labels.crop).to.equal('Cắt ảnh');
     expect(cropBtn(shown).getAttribute('aria-haspopup')).to.equal('dialog');
@@ -539,7 +539,7 @@ describe('td-media-field v0.35 — "Cắt ảnh" dialog rows (table 28b rows 5, 
     const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_B, 'preview-src': '/test/fixtures/1.svg' }); // adapter: the picker could open
     const d = await openCrop(t.el);
     cropBtn(t.el).click();
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     openBtn(t.el).click();
     expect(opens.length, 'picker not opened while cropping').to.equal(0);
     expect(dialogRoots().length).to.equal(1);
@@ -618,7 +618,7 @@ describe('td-media-field v0.35 — un-cropped source of the crop dialog (decisio
     for (let i = 0; i < 5; i++) await tick();
     expect(dialogRoots().length).to.equal(0);
     // the lock is free again: the picker opens
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     expect(opens.length).to.equal(1);
     expectState(t, 'og', { crop: null, focal: null, events: 0 });
   });
@@ -670,7 +670,7 @@ describe('td-media-field v0.35 — REAL picker + crop step on the same asset', (
   it('re-pick the same asset via the picker, crop in its step (croppable) → asset / preview refreshed, new crop + focal; input + change', async () => {
     const t = mk({ ...CROPPABLE, value: 'm59', crop: CROP_B, focal: FOCAL_B, 'preview-src': '/test/fixtures/1.svg', 'preview-alt': 'cũ' });
     TdMediaPicker.open = realOpen;
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     const root = () => document.body.querySelector(':scope > .td-media-picker');
     const confirm = () => root()?.querySelector('.td-media-picker__confirm');
     await until(() => confirm() && !confirm().hasAttribute('disabled'), 4000, 'm59 preselected');
@@ -741,7 +741,7 @@ describe('td-media-field v0.35 — review R1 #2: crop source provenance (adapter
     cropperOf(d).crop = { normalized: { x: 0, y: 0, width: 0.5, height: 0.5 } };
     t.el.pickerOptions = { context: 'other' };
     await dialogGone();
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     expect(opens.length, 'double-open lock released').to.equal(1);
     expectState(t, 'og', { crop: CROP_B, focal: null, events: 0 });
   });
@@ -769,7 +769,7 @@ describe('td-media-field v0.35 — review R1 #3: same asset, null crop ≡ whole
   const WHOLE = '{"v":1,"x":0,"y":0,"width":1,"height":1}';
   it('field crop null + picker returns the whole image {0,0,1,1} → no event, crop stays null', async () => {
     const t = mk({ ...CROPPABLE, value: 'm1', 'preview-src': '/test/fixtures/3.svg' });
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     opens[0].resolve(picked('m1', { crop: { normalized: { x: 0, y: 0, width: 1, height: 1 }, aspectRatio: 1.5 } }));
     await until(() => q(t.el, '.td-sr-only').textContent === `Đã chọn: ${asset('m1').name}`);
     await tick();
@@ -778,7 +778,7 @@ describe('td-media-field v0.35 — review R1 #3: same asset, null crop ≡ whole
 
   it('field crop = whole image (server bytes) + picker returns null → no event, the raw string kept byte-identical', async () => {
     const t = mk({ ...CROPPABLE, value: 'm1', crop: WHOLE, 'preview-src': '/test/fixtures/3.svg' });
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     opens[0].resolve(picked('m1', { crop: null }));
     await until(() => q(t.el, '.td-sr-only').textContent === `Đã chọn: ${asset('m1').name}`);
     await tick();
@@ -851,14 +851,14 @@ describe('td-media-field v0.35 — review R2 path 2: a picker of an old source n
     ['adapter', (el) => { el.adapter = createMockAdapter(); }]]) {
     it(`${what} change while the field's picker is open → the old outcome is ignored (field unchanged, no event)`, async () => {
       const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_B, 'preview-src': '/test/fixtures/3.svg' });
-      q(t.el, '.td-media-field__replace').click();
+      openBtn(t.el).click();
       expect(opens.length).to.equal(1);
       change(t.el);
       opens[0].resolve(picked('m2', { crop: { normalized: { x: 0, y: 0, width: 0.5, height: 0.5 } } }));
       for (let i = 0; i < 5; i++) await tick();
       expect(t.el.value).to.equal('m1');
       expectState(t, 'og', { crop: CROP_B, focal: null, events: 0 });
-      q(t.el, '.td-media-field__replace').click();
+      openBtn(t.el).click();
       expect(opens.length, 'lock released').to.equal(2);
     });
   }
@@ -866,7 +866,7 @@ describe('td-media-field v0.35 — review R2 path 2: a picker of an old source n
   it('REAL picker: a source change closes the open picker (cancelled / programmatic), the field is unchanged', async () => {
     TdMediaPicker.open = realOpen;
     const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_B, 'preview-src': '/test/fixtures/3.svg' });
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     await until(() => document.querySelector('body > .td-media-picker[data-state="open"]'), 4000, 'picker open');
     t.el.pickerOptions = { context: 'other' };
     await until(() => !document.querySelector('body > .td-media-picker'), 4000, 'picker closed');
@@ -882,7 +882,7 @@ describe('td-media-field v0.35 — review R3: the field’s picker never outlive
   it('field removed while a REAL picker is open → the picker is closed (no old-context picker left)', async () => {
     TdMediaPicker.open = realOpen;
     const t = mk({ ...CROPPABLE, value: 'm1', 'preview-src': '/test/fixtures/3.svg' });
-    q(t.el, '.td-media-field__replace').click();
+    openBtn(t.el).click();
     await until(() => document.querySelector('body > .td-media-picker[data-state="open"]'), 4000, 'picker open');
     t.form.remove();
     await pickerGone();
@@ -908,7 +908,7 @@ describe('td-media-field v0.35 — review R3: the field’s picker never outlive
       try {
         const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_B, 'preview-src': '/test/fixtures/3.svg' }, { adapter: reentrant });
         el = t.el;
-        q(t.el, '.td-media-field__replace').click();
+        openBtn(t.el).click();
         expect(fired, 'list() ran during open()').to.equal(true);
         await pickerGone();
         expectState(t, 'og', { crop: CROP_B, focal: null, events: 0 });

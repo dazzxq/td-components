@@ -1,4 +1,4 @@
-// v0.32.0 (ADR 0012, plan v0.32.0-media-picker decisions 24-25, 29, M5) — PHP side of the SSR contract `media-field@1`:
+// v0.32.0 (ADR 0012, plan v0.32.0-media-picker decisions 24-25, 29, M5) — PHP side of the SSR contract `media-field@2`:
 //   - td_media_field(): ALWAYS the element + the exact tree <td-media-field> renders + the no-JS form parts (hidden
 //     value / crop inputs, the alt input name) with the component's FormData shape (reference / usage);
 //   - aspect ratio / crop / accept_kind parsing = src/utils/media-field-model.js (ASPECT_CASES / CROP_CASES / parseKinds);
@@ -53,21 +53,22 @@ const hostAttr = (html, name) => {
   return m ? (m[1] ?? true) : null;
 };
 
-describe('php/td.php — td_media_field (v0.32.0, contract media-field@1)', opts, () => {
+describe('php/td.php — td_media_field (v0.32.0, contract media-field@2)', opts, () => {
   test('empty reference field: the exact tree + one hidden input (name=)', () => {
     const { html, warns } = one('hero', null, { label: 'Ảnh đại diện', aspect_ratio: '3/2', required: true });
     assert.equal(warns, 0);
-    assert.equal(html, '<td-media-field data-td-ssr="media-field@1" id="td-hero-1" class="td-media-field" name="hero" label="Ảnh đại diện" aspect-ratio="3/2" required>'
+    assert.equal(html, '<td-media-field data-td-ssr="media-field@2" id="td-hero-1" class="td-media-field" name="hero" label="Ảnh đại diện" aspect-ratio="3/2" required>'
       + '<span class="td-media-field__label" id="td-hero-1-label">Ảnh đại diện<span class="td-field__required" aria-hidden="true"> *</span></span>'
       + '<div class="td-media-field__frame" data-state="empty" data-kind="image">'
       + '<svg class="td-media-field__sizer" viewBox="0 0 3 2" aria-hidden="true" focusable="false"></svg>'
       + '<button type="button" class="td-media-field__open" aria-haspopup="dialog" aria-labelledby="td-hero-1-label td-hero-1-state">'
-      + `<span class="td-media-field__empty"><span class="td-media-field__icon" data-td-icon="image" aria-hidden="true">${icon('image')}</span>`
-      + '<span class="td-media-field__prompt">Chọn ảnh</span><span class="td-media-field__ratio">3:2</span></span>'
-      + '<span class="td-sr-only" id="td-hero-1-state">Chưa chọn</span></button></div>'
-      + '<div class="td-media-field__actions" hidden>'
-      + '<button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__replace" aria-haspopup="dialog">Đổi ảnh</button>'
-      + '<button type="button" class="td-btn td-btn--ghost td-btn--sm td-media-field__remove">Gỡ</button></div>'
+      + `<span class="td-media-field__empty"><span class="td-media-field__badge-icon"><span class="td-media-field__icon" data-td-icon="image" aria-hidden="true">${icon('image')}</span></span>`
+      + '<span class="td-media-field__prompt">Chọn ảnh</span></span>'
+      + '<span class="td-sr-only" id="td-hero-1-state">Chưa chọn</span></button>'
+      + '<div class="td-media-field__tools" hidden>'
+      + '<button type="button" class="td-media-field__tool td-media-field__remove" aria-labelledby="td-hero-1-remove-t td-hero-1-label" title="Gỡ">'
+      + `<span class="td-media-field__icon" data-td-icon="close" aria-hidden="true">${icon('close')}</span><span class="td-sr-only" id="td-hero-1-remove-t">Gỡ</span></button></div></div>`
+      + '<span class="td-media-field__ratio">3:2</span>'
       + '<input type="hidden" class="td-media-field__value" name="hero" value=""></td-media-field>');
   });
 
@@ -152,7 +153,7 @@ describe('php/td.php — td_media_field (v0.32.0, contract media-field@1)', opts
       ['n', 'm1', {}],
     ]).map((r) => r.html);
     assert.ok(v.includes('<img class="td-media-field__img" src="/p.jpg"') && v.includes('<span class="td-media-field__badge">Video</span>'), v);
-    assert.ok(v.includes('>Đổi video</button>') && !/<video|<iframe/.test(v), v);
+    assert.ok(!v.includes('td-media-field__replace') && !v.includes('td-media-field__actions') && !/<video|<iframe/.test(v), v);
     assert.ok(!f.includes('<img') && f.includes('<span class="td-media-field__name">a.pdf</span>') && f.includes('data-td-icon="file"'), f);
     assert.ok(n.includes('<span class="td-media-field__name">Đã chọn (không có ảnh xem trước)</span>'), n);
     assert.ok(n.includes('>Đã chọn (không có ảnh xem trước)</span></button>'), n);
@@ -183,14 +184,14 @@ describe('php/td.php — td_media_field (v0.32.0, contract media-field@1)', opts
 
   test('disabled: buttons, alt and hidden inputs disabled (no-JS submits nothing)', () => {
     const { html } = one('d', 'm1', { disabled: true, usage: true });
-    assert.equal((html.match(/<button[^>]* disabled>/g) || []).length, 3);
+    assert.equal((html.match(/<button[^>]* disabled>/g) || []).length, 2); // v0.79.0: the open button + the X (no Đổi button)
     assert.equal((html.match(/<input[^>]* disabled>/g) || []).length, 3);
   });
 
   test('attrs: allowlisted on the host; owned names (any case) + data-td-* reserved; unsafe names dropped', () => {
     const c = MEDIA_FIELD_FIXTURES.cases.find((x) => x.id === 'attrs');
     const { html } = one(...c.args);
-    assert.ok(html.startsWith('<td-media-field data-td-ssr="media-field@1" id="mf-att" class="td-media-field a b" name="att" data-x="1" title="Gợi ý">'), html);
+    assert.ok(html.startsWith('<td-media-field data-td-ssr="media-field@2" id="mf-att" class="td-media-field a b" name="att" data-x="1" title="Gợi ý">'), html);
     for (const bad of ['onclick', 'style=', 'evil', 'data-td-z']) assert.ok(!html.includes(bad), bad);
   });
 
@@ -240,13 +241,14 @@ describe('php/td.php — td_media_field (v0.32.0, contract media-field@1)', opts
     assert.equal([...alt[1]].length, 500);
   });
 
-  test('v0.35 golden: every v0.34 fixture case prints byte-identical markup (sha256 of the case HTML)', () => {
-    // computed from test/ssr/fixtures/media-field.html at v0.34.0 (0702b2e) — the v0.35 options are opt-in
+  test('golden: every base fixture case prints the v0.79 markup (sha256 of the case HTML; re-pinned for media-field@2 — the v0.34 hashes no longer apply)', () => {
+    // v0.79.0: re-computed from test/ssr/fixtures/media-field.html for the media-field@2 tree (tools in the frame, ratio below it); the
+    // v0.34.0 hashes (0702b2e) were byte-identical until then — the v0.35 options are opt-in
     const GOLDEN = {
-      free: 'f3ef18fb75acc155', 'ref-empty': 'edd2210dbc201da5', 'ref-filled': 'af82cdbc7389d620', 'usage-full': '5e8701d63d865fa5',
-      'usage-empty': '243892c3e54bc710', contain: '7042fe109a6f3aa2', video: '6e7eaf8218c2dbdb', file: '9f1241032c04ff3d',
-      disabled: '53633ad6a40820bd', 'required-error': '0a2429bd5a177e61', 'unsafe-src': '2fac2b22a3163944',
-      'array-usage': 'b19ed352800479ff', attrs: 'ee523e9f1292784c', xss: '9b16273f56f87cd6',
+      free: '49a336f67257cd5c', 'ref-empty': '26e25649bef91d70', 'ref-filled': '525238834b7a1152', 'usage-full': '22d6f9f111b27568',
+      'usage-empty': 'fd2a7ccdd1354ca0', contain: '5486a0c222bfc941', video: 'a7046c2e43e96d69', file: 'f05f353523d7c909',
+      disabled: '4bc2b89f5ab1105d', 'required-error': 'c799567e5174d69b', 'unsafe-src': 'e706b4e67cff5177', 'array-usage': '60126309cac8f8fb',
+      attrs: '0302bdfdf904578a', xss: '1c3f3219212f3ecc',
     };
     const html = readFileSync(MEDIA_FIELD_FIXTURE_FILE, 'utf8');
     const got = {};
@@ -292,7 +294,7 @@ describe('php/td.php — td_media_field (v0.32.0, contract media-field@1)', opts
     assert.equal(hostAttr(without.html, 'focal-point'), null);
   });
 
-  test('v0.35 croppable: "Cắt ảnh" between Đổi and Gỡ + the status region; hidden unless an image with preview_src; disabled', () => {
+  test('v0.35 croppable: the crop icon tool before the X (inside the frame) + the status region; hidden unless an image with preview_src; disabled', () => {
     const [shown, noSrc, empty, video, dis, plain] = run([
       ['c', 'm1', { usage: true, croppable: true, preview_src: '/a.jpg' }],
       ['c', 'm1', { usage: true, croppable: true }],
@@ -301,12 +303,39 @@ describe('php/td.php — td_media_field (v0.32.0, contract media-field@1)', opts
       ['c', 'm1', { usage: true, croppable: true, preview_src: '/a.jpg', disabled: true }],
       ['c', 'm1', { usage: true, preview_src: '/a.jpg' }],
     ]).map((r) => r.html);
-    const btn = '<button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__crop-btn" aria-haspopup="dialog"';
-    assert.ok(shown.includes(`aria-haspopup="dialog">Đổi ảnh</button>${btn}>Cắt ảnh</button><button type="button" class="td-btn td-btn--ghost td-btn--sm td-media-field__remove">Gỡ</button></div><span class="td-media-field__status" role="status"></span>`), shown);
+    const btn = (h) => h.match(/<button type="button" class="td-media-field__tool td-media-field__crop-btn" aria-haspopup="dialog" aria-labelledby="([^"]*)-crop-t \1-label" title="Cắt ảnh"([^>]*)>/);
+    const cropEnd = (id) => `<span class="td-media-field__icon" data-td-icon="crop" aria-hidden="true">${icon('crop')}</span><span class="td-sr-only" id="${id}-crop-t">Cắt ảnh</span></button>`;
+    const m = btn(shown);
+    assert.ok(m && m[2] === '', shown);
+    assert.ok(shown.includes(`${cropEnd(m[1])}<button type="button" class="td-media-field__tool td-media-field__remove"`) && shown.includes('</button></div></div><span class="td-media-field__status" role="status"></span>'), shown);
+    assert.ok(!shown.includes('td-media-field__actions') && !shown.includes('td-media-field__replace'), shown);
     assert.equal(hostAttr(shown, 'croppable'), true);
-    for (const h of [noSrc, empty, video]) assert.ok(h.includes(`${btn} hidden>Cắt ảnh</button>`), h);
-    assert.ok(dis.includes(`${btn} disabled>Cắt ảnh</button>`), dis);
+    for (const h of [noSrc, empty, video]) assert.equal(btn(h)?.[2], ' hidden', h);
+    assert.equal(btn(dis)?.[2], ' disabled', dis);
     assert.ok(!plain.includes('crop-btn') && !plain.includes('td-media-field__status') && hostAttr(plain, 'croppable') === null, plain);
+  });
+
+  test('v0.79 hide_label / hide_hints: boolean host attributes, nothing else changes (owned names reserved in attrs)', () => {
+    const [plain, both, label, hints, rsv] = run([
+      ['h', null, { id: 'h1', aspect_ratio: '3/2' }],
+      ['h', null, { id: 'h1', aspect_ratio: '3/2', hide_label: true, hide_hints: true }],
+      ['h', null, { id: 'h1', aspect_ratio: '3/2', hide_label: true }],
+      ['h', null, { id: 'h1', aspect_ratio: '3/2', hide_hints: true }],
+      ['h', null, { id: 'h1', attrs: { 'hide-label': '', 'hide-hints': '' } }],
+    ]).map((r) => r.html);
+    assert.equal(hostAttr(plain, 'hide-label'), null);
+    assert.equal(hostAttr(plain, 'hide-hints'), null);
+    assert.equal(hostAttr(both, 'hide-label'), true);
+    assert.equal(hostAttr(both, 'hide-hints'), true);
+    assert.equal(hostAttr(label, 'hide-label'), true);
+    assert.equal(hostAttr(label, 'hide-hints'), null);
+    assert.equal(hostAttr(hints, 'hide-hints'), true);
+    assert.equal(hostAttr(hints, 'hide-label'), null);
+    const strip = (h) => h.replace(/ hide-(label|hints)/g, '');
+    assert.equal(strip(both), plain);
+    assert.equal(strip(label), plain);
+    assert.equal(strip(hints), plain);
+    assert.ok(!/hide-label|hide-hints/.test(rsv), rsv);
   });
 
   test('v0.35 crop_ratio parity with parseCropRatio(): free / ratios printed as given; invalid → dropped + one warning', () => {

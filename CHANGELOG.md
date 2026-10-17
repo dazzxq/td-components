@@ -2,6 +2,44 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.79.0
+
+**`td-media-field` kiểu placeholder dcms2: bỏ nút "Đổi ảnh" / "Gỡ", X đỏ ở góc khung, nút cắt dạng icon; thêm `hide-label` / `hide-hints` / `--td-media-field-frame-radius`**
+(yêu cầu dsuite K-A5-4, owner duyệt 2026-10-17; [plan](docs/internal/plans/v0.79.0-media-field-placeholder.md)). Mặc định mới của cả kit (không opt-in).
+Form (FormData, event, `value`, picker) không đổi.
+
+### Breaking
+
+- **DOM đổi, marker SSR `media-field@1` → `media-field@2`** ([ADR 0012](docs/internal/decisions/0012-ssr-hydration.md)). Bỏ `div.td-media-field__actions` và `button.td-media-field__replace`.
+  `.td-media-field__crop-btn` / `.td-media-field__remove` là nút icon tròn (`.td-media-field__tool`) trong `.td-media-field__frame > .td-media-field__tools`
+  (anh em của `__open`, không lồng nút trong nút). `span.td-media-field__ratio` chuyển ra **dưới khung** (cả trống lẫn có ảnh). Markup PHP `@1` còn cache bị cổng SSR
+  từ chối → render lại an toàn (giữ value / alt đang gõ / focus). CSS site đè `__actions` / `__replace` phải xoá; xem [nâng cấp 0.79.0](docs/upgrading/breaking-changes.md#0790).
+- `TdMediaField.labels.replace` **deprecated**: giữ key (ghi đè không vỡ), không còn render; bỏ ở 1.0.
+
+### Changed (visual)
+
+- Cả khung bấm được để chọn / đổi ảnh. Trống: nét đứt + vòng tròn xám (`--td-media-field-empty-icon-size` 4rem) có icon `{kind}` + `prompt` nhỏ; có ảnh: nét liền, hover tinh viền đậm hơn.
+- X tròn đỏ (28px) ở góc trên-cuối khung đè lên ảnh; con trỏ tinh `opacity: 0` → hiện khi `:hover` / `:focus-within` của khung; con trỏ thô / không hover: luôn hiện.
+  Vùng chạm cảm ứng ≥ 44 × 44 (`::before`, hai vùng chỉ chạm mép nhau), trạng thái nhấn `data-td-pressed` (ADR 0019; `.td-media-field__tool` thêm vào `PRESS_TARGETS`).
+  Field `disabled` ẩn nút. Forced colors: `ButtonFace` / `ButtonText` + viền.
+- Tên trợ năng nút công cụ: "Gỡ {nhãn}" / "Cắt ảnh {nhãn}"; Tab: ô → Cắt → Gỡ.
+
+### Added
+
+- Attribute boolean `hide-label` (nhãn ẩn khỏi mắt kiểu `td-sr-only`, vẫn là tên trợ năng) và `hide-hints` (ẩn `prompt` + chữ tỉ lệ); PHP `td_media_field(…, ['hide_label' => true, 'hide_hints' => true])`. Thuần CSS.
+- Token (đều dùng `var(--x, mặc định)`, **không** khai báo trên `:root` để mặc định theo theme): `--td-media-field-frame-radius` (`var(--td-radius-md)`), `-tool-size` (1.75rem), `-remove-bg` / `-remove-fg`,
+  `-tool-bg` (`rgb(0 0 0 / 60%)`) / `-tool-fg`, `-tool-shadow`, `-empty-icon-size` (4rem), `-empty-icon-bg`.
+
+### Tests
+
+- `src/form/td-v079-media-field-placeholder.engines.browser-test.js` (Chromium / Firefox / WebKit, chuột thật); các test media-field / narrow / SSR / PHP / fixture cập nhật sang DOM mới.
+- CSP matrix: baseline `td-media-field.*` chụp lại có chủ đích (DOM mới), thêm state `tools` (touch, X luôn hiện) và `hide`. Touch lane: X hiện không cần hover, vùng chạm ≥ 44 không chồng,
+  chạm mép trong mỗi vùng ra đúng hành động, trạng thái nhấn của X và nút cắt.
+
+### Demo
+
+- `demo.html`: ô media-field `hide-label hide-hints` + `--td-media-field-frame-radius: 0` (class trong `demo.css`).
+
 ## 0.78.0
 
 **`TdModal.show({ backdropCloses: true })`: bấm nền mờ đóng modal — opt-in, mặc định tắt** (yêu cầu của dwp khi port sang td,

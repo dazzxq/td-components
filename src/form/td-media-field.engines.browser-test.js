@@ -73,7 +73,7 @@ describe('td-media-field — picker flow', () => {
     const { el } = mk({ name: 'hero', label: 'Ảnh đại diện', 'aspect-ratio': '3/2' });
     openBtn(el).click();
     openBtn(el).click();
-    q(el, '.td-media-field__replace').click();
+    openBtn(el).click();
     expect(opens.length).to.equal(1);
     opens[0].resolve({ status: 'cancelled', reason: 'close', selection: [] });
     await tick();
@@ -94,7 +94,7 @@ describe('td-media-field — picker flow', () => {
     opens[0].resolve(picked('m3'));
     await tick();
     el.pickerOptions = null;
-    q(el, '.td-media-field__replace').click();
+    openBtn(el).click();
     expect(opens[1].opts.adapter === ad).to.equal(true);
     expect(opens[1].opts.selection.initialIds).to.deep.equal(['m3']);
   });
@@ -113,7 +113,7 @@ describe('td-media-field — picker flow', () => {
     expect(img.getAttribute('referrerpolicy')).to.equal('no-referrer');
     expect(q(el, '.td-media-field__frame').dataset.state).to.equal('filled');
     expect(q(el, '.td-sr-only').textContent).to.equal(`Đã chọn: ${asset('m2').name}`);
-    expect(q(el, '.td-media-field__actions').hidden).to.equal(false);
+    expect(q(el, '.td-media-field__tools').hidden).to.equal(false);
     expect(q(el, '.td-media-field__alt').value).to.equal('Một con mèo');
     expect(c.input).to.equal(1);
     expect(c.change).to.equal(1);
@@ -138,7 +138,7 @@ describe('td-media-field — picker flow', () => {
   it('the same id → preview refreshed, no event', async () => {
     const { el } = mk({ name: 'hero', value: 'm1', 'preview-alt': 'cũ' });
     const c = counter(el);
-    q(el, '.td-media-field__replace').click();
+    openBtn(el).click();
     opens[0].resolve(picked('m1'));
     await tick();
     expect(c.input + c.change).to.equal(0);
@@ -150,13 +150,13 @@ describe('td-media-field — picker flow', () => {
     const crop = '{"v":1,"x":0.1,"y":0,"width":0.5,"height":1}';
     const { el, form } = mk({ name: 'hero', usage: true, value: 'm1', alt: 'mô tả', crop, 'preview-src': '/test/fixtures/1.svg' });
     const c = counter(el);
-    q(el, '.td-media-field__remove').focus();
-    q(el, '.td-media-field__remove').click();
+    q(el, '.td-media-field__tools .td-media-field__remove').focus();
+    q(el, '.td-media-field__tools .td-media-field__remove').click();
     expect(el.value).to.equal('');
     expect(c.input).to.equal(1);
     expect(c.change).to.equal(1);
     expect(document.activeElement === openBtn(el)).to.equal(true);
-    expect(q(el, '.td-media-field__actions').hidden).to.equal(true);
+    expect(q(el, '.td-media-field__tools').hidden).to.equal(true);
     expect(q(el, '.td-media-field__frame').dataset.state).to.equal('empty');
     expect(fd(form)).to.deep.equal([['hero[id]', ''], ['hero[alt]', ''], ['hero[crop]', 'null']]);
   });
@@ -207,7 +207,7 @@ describe('td-media-field — form value', () => {
     const { el, form } = mk({ name: 'hero', usage: true, value: 'm1', alt: 'A', crop, 'preview-src': '/test/fixtures/1.svg' });
     expect(fd(form)).to.deep.equal([['hero[id]', 'm1'], ['hero[alt]', 'A'], ['hero[crop]', crop]]);
     expect(el.selection[0].usage.crop).to.deep.equal({ normalized: { x: 0.1, y: 0, width: 0.5, height: 1 } });
-    q(el, '.td-media-field__replace').click();
+    openBtn(el).click();
     opens[0].resolve(picked('m2', 'B'));
     await tick();
     expect(fd(form)).to.deep.equal([['hero[id]', 'm2'], ['hero[alt]', 'B'], ['hero[crop]', 'null']]);
@@ -469,7 +469,8 @@ describe('td-media-field — frame, preview, kinds', () => {
     const v = mk({ name: 'h', 'aspect-ratio': '16/9', value: 'm10', kind: 'video', 'preview-src': '/test/fixtures/2.svg', 'preview-alt': 'clip.mp4' }).el;
     expect(q(v, '.td-media-field__badge').textContent).to.equal('Video');
     expect(!!q(v, 'video, iframe, object, embed')).to.equal(false);
-    expect(q(v, '.td-media-field__replace').textContent).to.equal('Đổi video');
+    expect(q(v, '.td-media-field__replace'), 'v0.79.0: no Đổi button').to.equal(null);
+    expect(q(v, '.td-media-field__tools .td-media-field__remove .td-sr-only').textContent).to.equal('Gỡ');
     const f = mk({ name: 'h', value: 'm15', kind: 'file', 'preview-alt': 'tai-lieu.pdf', 'accept-kind': 'file' }).el;
     expect(q(f, '.td-media-field__name').textContent).to.equal('tai-lieu.pdf');
     expect(q(f, '.td-media-field__icon').getAttribute('data-td-icon')).to.equal('file');

@@ -114,5 +114,7 @@ hr { margin: 32px 0; border: none; border-top: 1px solid var(--td-color-border);
 .demo-mf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 16px; }
 /* 0.75.0 avatar recipe (docs/components/media-field.md "Avatar tròn"): rounding the preview is site CSS */
 td-media-field[name="avatar"] :is(.td-media-field__frame, .td-media-field__open) { border-radius: 50%; }
+/* 0.79.0: hide-label / hide-hints are attributes; square corners through the frame-radius token (no override CSS) */
+.demo-mf-bare { --td-media-field-frame-radius: 0; }
 /* 0.47.0 check matrix is an inline-size container: it takes its width from the column */
 .demo-cm > td-check-matrix { align-self: stretch; }

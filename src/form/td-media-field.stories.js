@@ -57,7 +57,7 @@ export const Empty = {
   args: { label: 'Ảnh đại diện', prompt: '', helperText: 'JPG, PNG — tối đa 5 MB', errorText: '', required: false, disabled: false },
 };
 
-/** Filled (server data: value + preview-src + preview-alt): Đổi ảnh re-opens with initialIds = [value]; Gỡ clears. */
+/** Filled (server data: value + preview-src + preview-alt): clicking the frame re-opens the picker with initialIds = [value]; the corner X clears. */
 export const Filled = {
   render: (args) => field('aspect-ratio="3/2" value="m1" preview-src="/lightbox/1.svg" preview-alt="anh-1.jpg"', args),
   args: { label: 'Ảnh bìa' },
@@ -127,7 +127,7 @@ export const Usage = {
 
 /**
  * v0.35 croppable + focal-point (OG 1.91:1): "Cắt ảnh" opens the crop dialog on the un-cropped `urls.preview` (adapter
- * `get`); "Áp dụng" submits og[crop] (JSON v1) + og[focal]; the frame previews the cropped area. "Đổi ảnh" runs the
+ * `get`); "Áp dụng" submits og[crop] (JSON v1) + og[focal]; the frame previews the cropped area. Clicking the frame runs the
  * picker's crop step.
  */
 export const Croppable = {
@@ -150,7 +150,7 @@ export const WithError = {
 
 /**
  * v0.71.0 (K10): a small square logo frame — `--td-media-field-frame-w: 7.5rem` (class `.sb-logo-frame` in story-layout.css). The label,
- * the Đổi / Gỡ buttons, the helper text and the error keep the width of the field instead of being squeezed into the frame.
+ * the helper text and the error keep the width of the field instead of being squeezed into the frame.
  */
 export const SmallFrame = {
   render: (args) => field('class="sb-logo-frame" preview-shape="ratio" aspect-ratio="1/1" preview-fit="contain" value="m2" preview-src="/lightbox/2.svg" preview-alt="logo.png"', args),
@@ -161,19 +161,20 @@ export const SmallFrame = {
   },
 };
 
-/** SSR (`media-field@1`): the markup php/td.php td_media_field('hero', 'm1', [...usage...]) prints — adopted in place. */
+/** SSR (`media-field@2`): the markup php/td.php td_media_field('hero', 'm1', [...usage...]) prints — adopted in place. */
 export const ServerRendered = {
   render: (args) => {
     const label = esc(args.label);
     setTimeout(() => { const el = document.getElementById('mf-ssr'); if (el) el.adapter = adapter; }, 0);
-    return `<form class="sb-stack" novalidate><td-media-field data-td-ssr="media-field@1" id="mf-ssr" class="td-media-field" name="hero" label="${label}" aspect-ratio="3/2" usage value="m1" preview-src="/lightbox/1.svg" preview-alt="anh-1.jpg">`
+    return `<form class="sb-stack" novalidate><td-media-field data-td-ssr="media-field@2" id="mf-ssr" class="td-media-field" name="hero" label="${label}" aspect-ratio="3/2" usage value="m1" preview-src="/lightbox/1.svg" preview-alt="anh-1.jpg">`
       + `<span class="td-media-field__label" id="mf-ssr-label">${label}</span>`
       + '<div class="td-media-field__frame" data-state="filled" data-kind="image"><svg class="td-media-field__sizer" viewBox="0 0 3 2" aria-hidden="true" focusable="false"></svg>'
       + '<button type="button" class="td-media-field__open" aria-haspopup="dialog" aria-labelledby="mf-ssr-label mf-ssr-state">'
       + '<img class="td-media-field__img" src="/lightbox/1.svg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">'
-      + '<span class="td-sr-only" id="mf-ssr-state">Đã chọn: anh-1.jpg</span></button></div>'
-      + '<div class="td-media-field__actions"><button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__replace" aria-haspopup="dialog">Đổi ảnh</button>'
-      + '<button type="button" class="td-btn td-btn--ghost td-btn--sm td-media-field__remove">Gỡ</button></div>'
+      + '<span class="td-sr-only" id="mf-ssr-state">Đã chọn: anh-1.jpg</span></button>'
+      + '<div class="td-media-field__tools"><button type="button" class="td-media-field__tool td-media-field__remove" aria-labelledby="mf-ssr-remove-t mf-ssr-label" title="Gỡ">'
+      + '<span class="td-media-field__icon" data-td-icon="close" aria-hidden="true"></span><span class="td-sr-only" id="mf-ssr-remove-t">Gỡ</span></button></div></div>'
+      + '<span class="td-media-field__ratio">3:2</span>'
       + '<input type="hidden" class="td-media-field__value" name="hero[id]" value="m1">'
       + '<div class="td-field td-media-field__usage"><label class="td-field__label" for="mf-ssr-alt">Mô tả ảnh (alt)</label>'
       + '<input type="text" class="td-field__control td-media-field__alt" id="mf-ssr-alt" maxlength="500" name="hero[alt]"></div>'
