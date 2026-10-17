@@ -2,8 +2,8 @@
 
 # Ô chọn ảnh — `<td-media-field>`
 
-Ô form chọn **một** ảnh / video / file từ thư viện media, giao diện **placeholder kiểu dcms2** (0.79.0): khung nét đứt khi rỗng
-(vòng tròn xám có icon + lời nhắc), xem trước khi đã chọn; **cả khung bấm được** để chọn / đổi ảnh (mở [media picker](media-picker.md),
+Ô form chọn **một** ảnh / video / file từ thư viện media, giao diện **placeholder kiểu dcms2** (0.79.0; 0.79.1 y hệt dcms2): khung nét đứt cả khi rỗng lẫn khi có ảnh;
+khi rỗng chỉ có vòng tròn xám chứa icon (lời nhắc chỉ hiện khi đặt `prompt`), xem trước khi đã chọn; **cả khung bấm được** để chọn / đổi ảnh (mở [media picker](media-picker.md),
 chế độ đơn); nút **X tròn đỏ** ở góc trên-cuối để gỡ, hiện khi rê chuột / Tab vào ô (màn cảm ứng: luôn hiện), chữ tỉ lệ (`3:2`, `1.91:1`…)
 nằm dưới khung. Không còn hai nút chữ "Đổi ảnh" / "Gỡ" dưới khung.
 Từ 0.35.0 (`croppable`): **nút icon cắt** cạnh X + bước cắt khi chọn ảnh — chỉ lưu toạ độ, không tạo file mới.
@@ -468,7 +468,7 @@ X / cắt là nút tròn nằm trong góc khung). Khung ảnh không bao giờ r
 | `crop-shape` | `rect` \| `circle` | `rect` | 0.75.0: hình khung của hộp cắt; tròn chỉ khi `pan` + tỉ lệ 1:1 |
 | `focal-point` | boolean | — | 0.35: điểm trọng tâm + mục `name[focal]` (cần `usage`) |
 | `focal` | JSON v1 `{"v":1,"x","y"}` | — | 0.35: focal mặc định; sai → `null` |
-| `prompt` | string | theo `accept-kind` | Chữ trong khung rỗng |
+| `prompt` | string | theo `accept-kind` | Chữ trong khung rỗng. 0.79.1: chỉ hiện khi đặt attribute (không rỗng); không đặt thì khung rỗng chỉ có icon như dcms2 (span vẫn có trong DOM, `display: none`) |
 | `helper-text` / `error-text` | string | — | Ghi chú / lỗi. 0.54.0: có lỗi thì ghi chú ẩn (và rời khỏi mô tả); đổi `helper-text` không render lại; `setHelper()` / `helperMessage`; nội dung giàu: `<td-hint>` con — [Hint](hint.md) |
 | `hide-label` | boolean | — | 0.79.0: nhãn ẩn khỏi mắt, vẫn là tên trợ năng ([mục 10](#10-ẩn-nhãn-và-gợi-ý--hide-label-hide-hints-0790)) |
 | `hide-hints` | boolean | — | 0.79.0: ẩn lời nhắc `prompt` và chữ tỉ lệ (`helper-text` / `error-text` vẫn hiện) |
@@ -532,8 +532,8 @@ phát event.
 
 Token 0.79.0 **không khai báo trên `:root`** (chỉ dùng `var(--x, mặc định)`) để giá trị mặc định đi theo theme; đặt chúng trên field, một cha hoặc `:root` của site đều có tác dụng.
 
-Khung rỗng: viền 1px dashed `--td-color-text-muted` (≥ 3.2:1 trên nền khung rỗng), nền `--td-color-surface-muted`; có ảnh: viền liền
-`--td-color-border`, nền `--td-color-surface`; lỗi: viền `--td-field-error`. Con trỏ tinh: nút X / cắt `opacity: 0`, hiện khi rê vào khung hoặc Tab vào ô
+Khung (0.79.1, cả rỗng lẫn có ảnh): viền 1px dashed `--td-color-text-muted` (≥ 3.2:1 trên nền khung rỗng); nền rỗng `--td-color-surface-muted`, có ảnh
+`--td-color-surface`, rê chuột tinh lên ô có ảnh: viền `--td-color-text`; lỗi: viền `--td-field-error`. Con trỏ tinh: nút X / cắt `opacity: 0`, hiện khi rê vào khung hoặc Tab vào ô
 (`:hover` / `:focus-within`); màn cảm ứng (`(hover: none), (pointer: coarse)`): luôn hiện, vùng chạm mỗi nút ≥ 44 × 44px (hai vùng chỉ chạm mép nhau, không chồng),
 nhấn có trạng thái `data-td-pressed` (nền đậm hơn). Field `disabled` (kể cả `<fieldset disabled>`) ẩn hẳn hai nút.
 

@@ -2,6 +2,15 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.79.1
+
+**`td-media-field` y hệt dcms2** (owner 2026-10-18: "làm giống như bên dcms2 đi"; [plan](docs/internal/plans/v0.79.1-media-field-dcms2-exact.md)). Chỉ CSS: DOM, marker `media-field@2`, PHP, JS, API không đổi.
+
+### Changed (visual)
+
+- Khung nét đứt `--td-color-text-muted` ở **cả hai** trạng thái (trước: có ảnh nét liền `--td-color-border`); rê chuột tinh lên ô có ảnh: viền `--td-color-text`.
+- Khung rỗng chỉ có icon: chữ gợi ý mặc định ("Chọn ảnh"…) `display: none`; đặt `prompt="…"` (PHP `prompt`) thì chữ hiện lại, `hide-hints` vẫn ẩn nó. Chữ gợi ý không nằm trong tên trợ năng nên trình đọc màn hình không đổi.
+
 ## 0.79.0
 
 **`td-media-field` kiểu placeholder dcms2: bỏ nút "Đổi ảnh" / "Gỡ", X đỏ ở góc khung, nút cắt dạng icon; thêm `hide-label` / `hide-hints` / `--td-media-field-frame-radius`**

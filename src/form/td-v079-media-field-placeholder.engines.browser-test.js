@@ -124,7 +124,7 @@ describe('v0.79.0 td-media-field placeholder — structure', () => {
     }
   });
 
-  it('empty state: a grey circle with the kind icon + the prompt', async () => {
+  it('empty state: a grey circle with the kind icon (+ the prompt span, hidden by default since v0.79.1)', async () => {
     const { el } = await mk({});
     const badge = q(el, '.td-media-field__badge-icon');
     const r = rect(badge);
@@ -263,8 +263,26 @@ describe('v0.79.0 td-media-field placeholder — hide-label / hide-hints / frame
     expect(getComputedStyle(q(el, '.td-media-field__ratio')).display).to.equal('none');
     const filled = (await mk({ ...FILLED, 'hide-hints': true, 'aspect-ratio': '3/2' })).el;
     expect(getComputedStyle(q(filled, '.td-media-field__ratio')).display).to.equal('none');
-    const shown = (await mk({ 'aspect-ratio': '3/2' })).el;
+    const set = (await mk({ 'hide-hints': true, prompt: 'Thả ảnh' })).el;
+    expect(getComputedStyle(q(set, '.td-media-field__prompt')).display, 'hide-hints wins over a set prompt').to.equal('none');
+    const shown = (await mk({ 'aspect-ratio': '3/2', prompt: 'Thả ảnh' })).el;
     expect(getComputedStyle(q(shown, '.td-media-field__prompt')).display).to.not.equal('none');
+  });
+
+  it('v0.79.1 like dcms2: the frame is dashed empty and filled; the empty state is icon-only unless prompt is set', async () => {
+    const empty = (await mk({})).el;
+    const filled = (await mk(FILLED)).el;
+    for (const el of [empty, filled]) {
+      const cs = getComputedStyle(frameOf(el));
+      expect(cs.borderTopStyle, el === empty ? 'empty' : 'filled').to.equal('dashed');
+    }
+    expect(getComputedStyle(frameOf(filled)).borderTopColor).to.equal(getComputedStyle(frameOf(empty)).borderTopColor);
+    expect(q(empty, '.td-media-field__prompt').textContent, 'still in the DOM (SSR media-field@2 unchanged)').to.equal('Chọn ảnh');
+    expect(getComputedStyle(q(empty, '.td-media-field__prompt')).display).to.equal('none');
+    const blank = (await mk({ prompt: '' })).el;
+    expect(getComputedStyle(q(blank, '.td-media-field__prompt')).display, 'prompt="" = the default label, hidden').to.equal('none');
+    const own = (await mk({ prompt: 'Thả ảnh vào đây' })).el;
+    expect(getComputedStyle(q(own, '.td-media-field__prompt')).display).to.not.equal('none');
   });
 
   it('--td-media-field-frame-radius: default = the md radius (opener 1px less); 0 → frame and opener square', async () => {

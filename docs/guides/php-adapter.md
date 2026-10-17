@@ -124,7 +124,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.79.0/
+public/assets/vendor/td-components/0.79.1/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
   dist/  module-graph.json                    (0.64.0+: bản minify + đồ thị preload)
 ```
@@ -133,7 +133,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.79.0';
+const TD_VERSION = '0.79.1';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -1373,7 +1373,7 @@ serialize: adapter là JS của site ([Media picker](../components/media-picker.
 |---|---|
 | `$name` | tên field (rỗng → không in `name`, không gửi). `usage` + tên kết thúc `[]` → không in `name` nào (không hidden input, ô alt không `name`) + một `E_USER_WARNING` — giống JS |
 | `$assetId` | `assetId` hiện tại (`string` / `int`; `null` / `''` = rỗng → hidden `value=""`) |
-| `label`, `helper_text`, `error_text`, `prompt` | nhãn (có `*` khi `required`), ghi chú (`span.td-media-field__help`), lỗi (`span.td-field-error` + `aria-invalid` trên nút mở), chữ khung rỗng (mặc định theo loại đầu của `accept_kind`) — đều là text |
+| `label`, `helper_text`, `error_text`, `prompt` | nhãn (có `*` khi `required`), ghi chú (`span.td-media-field__help`), lỗi (`span.td-field-error` + `aria-invalid` trên nút mở), chữ khung rỗng (mặc định theo loại đầu của `accept_kind`; 0.79.1: chữ mặc định ẩn, chỉ hiện khi truyền `prompt`) — đều là text |
 | `required` | thuộc tính trên host (chỉ có tác dụng khi có JS — không-JS: server validate) |
 | `disabled` | host + nút mở / X / cắt + ô alt **và các hidden input** đều `disabled` → không gửi gì (như control native) |
 | `aspect_ratio` | `'3/2'` \| `'3:2'` \| `'1.91'` — cùng luật với JS (`W/H`, `W:H` hoặc một số; mỗi phần > 0, ≤ 10000, ≤ 4 chữ số thập phân, không dấu / `e`). Sai → bỏ + một `E_USER_WARNING` |
