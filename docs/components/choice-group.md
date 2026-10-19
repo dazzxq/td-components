@@ -347,7 +347,12 @@ document.getElementById('theme-switch').addEventListener('change', (e) => {
 | `--td-choice-bg` | `var(--td-control-bg)` | Nền nút |
 | `--td-choice-border` | `var(--td-control-border-soft)` | Viền nút khi nghỉ |
 | `--td-choice-border-hover` | `var(--td-control-border-hover)` | Viền khi rê chuột |
-| `--td-choice-selected` | `var(--td-color-text)` | Vòng mực 2px của lựa chọn đang chọn (≥ 3:1 với nền) |
+| `--td-choice-selected` | `var(--td-accent)` | Vòng 2px + tam giác góc của lựa chọn đang chọn (≥ 3:1 với nền). Từ 0.80.0 theo accent của site (trước: `--td-color-text`) |
+| `--td-choice-selected-bg` | `color-mix(in srgb, var(--td-accent) 10%, var(--td-choice-bg))` | 0.80.0: nền ô đang chọn (variant `button`) |
+| `--td-choice-selected-fg` | `var(--td-control-fg)` | 0.80.0: màu chữ ô đang chọn |
+| `--td-choice-mark-size` | `18px` | 0.80.0: cạnh tam giác tick ở góc dưới-cuối |
+| `--td-choice-mark-fg` | `var(--td-accent-contrast, #fff)` | 0.80.0: màu dấu ✓ trong tam giác |
+| `--td-choice-mark` | `block` | 0.80.0: giá trị `display` của tick; đặt `none` để tắt. Tick chỉ có ở ô đang chọn và không disabled (kể cả ô `unavailable`) |
 | `--td-choice-hint-fg` | `var(--td-color-text-muted)` | Dòng phụ / ghi chú / chữ gạch (≥ 4.7:1) |
 | `--td-choice-swatch-size` | `2rem` | Cỡ ô màu |
 | `--td-choice-swatch-edge` | `var(--td-color-border-strong)` | Vành trong của ô màu |
@@ -363,8 +368,22 @@ document.getElementById('theme-switch').addEventListener('change', (e) => {
 | `--td-choice-seg-icon` | `1.25rem` (sm `1rem`) | 0.53.1: cỡ icon (ở `stacked` tự thu nhỏ cho vừa chiều cao ô) |
 | `--td-choice-seg-icon-gap` | `0.375rem` (sm `0.25rem`) | 0.53.1: khe icon ↔ nhãn |
 
-Mọi màu đọc token của hợp đồng theme → dark / `auto` / theme theo vùng / palette sinh tự đúng. Đã chọn = **vòng mực** (đổi
-hình dạng, không chỉ màu); focus = viền focus của kit **ngoài** mặt nút, tách khỏi vòng chọn. Nhãn dài xuống dòng trong nút
+Giữ kiểu cũ (vòng mực, không tint, không tick):
+
+```css
+td-choice-group {
+  --td-choice-selected: var(--td-color-text);
+  --td-choice-selected-bg: var(--td-choice-bg);
+  --td-choice-mark: none;
+}
+```
+
+Mọi màu đọc token của hợp đồng theme → dark / `auto` / theme theo vùng / palette sinh tự đúng. Đã chọn (0.80.0) = **nền tint +
+vòng accent + tick góc** (tick đổi hình dạng, không chỉ màu); focus = viền focus của kit **ngoài** mặt nút, tách khỏi vòng chọn.
+
+Đổi màu ô chọn theo accent của site: đặt `--td-accent` ở `:root` (hoặc trên vùng `data-td-theme`, [ADR 0020](../internal/decisions/0020-theme-scope-portal.md)).
+Đặt `--td-accent` trên một thẻ bọc thường thì **không** ăn, vì token dẫn xuất đã tính ở `:root`; muốn đổi riêng một chỗ thì đặt
+thẳng `--td-choice-selected` / `--td-choice-selected-bg` lên `td-choice-group` như đoạn trên. Nhãn dài xuống dòng trong nút
 (không cắt `…`).
 
 ## Cấu trúc DOM & class

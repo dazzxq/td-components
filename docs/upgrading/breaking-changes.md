@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.79.2)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.80.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.80.0](#0800) | **Đổi giao diện**: `td-choice-group` ô đang chọn có nền tint + vòng accent + tick góc; floating label có khoảng thở; affix chữ ngắn không bị cắt | Không phải sửa code. Giữ kiểu chọn cũ: `--td-choice-selected: var(--td-color-text); --td-choice-selected-bg: var(--td-choice-bg); --td-choice-mark: none`. Màu theo accent của site: đặt `--td-accent` ở `:root` / vùng `data-td-theme`. |
 | 0.79.2 | Không phá vỡ: thêm `hide-alt` cho `td-media-field` | Không cần làm gì |
 | [0.79.1](#0791) | Chỉ hình (`td-media-field`): khung có ảnh cũng nét đứt; khung rỗng chỉ có icon, chữ gợi ý mặc định ẩn | Cần chữ gợi ý thì đặt `prompt="…"` (PHP `'prompt' => '…'`). CSS site đè `border-style` của khung có ảnh vẫn chạy. |
 | [0.79.0](#0790) | **Phá vỡ DOM (`td-media-field`)**: bỏ `.td-media-field__actions` / `__replace` (nút chữ "Đổi ảnh" / "Gỡ"); khung bấm được để đổi ảnh; X tròn đỏ + nút cắt dạng icon nằm trong `__frame > __tools`; chữ tỉ lệ `__ratio` ra dưới khung; marker SSR `media-field@2`; thêm `hide-label` / `hide-hints` + token mới | Xoá CSS đè `.td-media-field__actions` / `__replace`; CSS đè `__remove` / `__crop-btn` kiểu nút chữ viết lại theo token. HTML PHP cache cũ (`media-field@1`) vẫn chạy (render lại an toàn). Site đã tự ẩn nhãn / gợi ý / bo góc bằng CSS thì thay bằng `hide-label` / `hide-hints` / `--td-media-field-frame-radius`. |
@@ -104,6 +105,27 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.80.0
+
+**Đổi giao diện, không đổi DOM / API / PHP.**
+
+- `td-choice-group`: ô đang chọn có nền tint theo `--td-accent`, vòng 2px accent và tick ở góc dưới-cuối (trước: vòng mực
+  `--td-color-text`). Site đặt `--td-accent` ở `:root` (hoặc vùng `data-td-theme`) thì ô chọn đi theo màu đó. Giữ kiểu cũ:
+
+  ```css
+  td-choice-group {
+    --td-choice-selected: var(--td-color-text);
+    --td-choice-selected-bg: var(--td-choice-bg);
+    --td-choice-mark: none;
+  }
+  ```
+
+- `td-input-field` floating: nhãn nổi thấp xuống vài px, giá trị thấp theo. Test so pixel / vị trí của ô floating phải chụp lại;
+  textarea floating tối thiểu 86 / 98 / 108 px; trên cảm ứng ô `sm` cao 49 px.
+- Affix chữ (`prefix` / `suffix`) giữ bề rộng tự nhiên (trước bị bóp kể cả khi còn chỗ); dài hơn nửa ô vẫn cắt `…`.
 
 ---
 

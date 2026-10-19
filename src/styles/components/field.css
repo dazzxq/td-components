@@ -464,9 +464,9 @@
 	}
 
 	.td-field__affix {
-		flex-shrink: 1; /* two long affixes in a narrow column shrink (ellipsis) before the box overflows */
+		flex-shrink: 0; /* v0.80.0: a text affix keeps its natural width (the control's intrinsic width used to shrink it: "https://" → "http…") */
 		min-inline-size: 0;
-		max-inline-size: 50%; /* a long affix never squeezes the value out: cut with an ellipsis (the description reads it all) */
+		max-inline-size: 50%; /* ...but a long affix never squeezes the value out: cut with an ellipsis (the description reads it all) */
 		overflow: hidden;
 		color: var(--td-field-affix-fg);
 		text-overflow: ellipsis;
@@ -568,13 +568,14 @@
 	.td-field--floating {
 		--_td-field-h: var(--td-field-float-h-md);
 		--_td-field-pad-x: 14px;
-		--_td-field-pad-top: 22px;
+		--_td-field-pad-top: 25px; /* v0.80.0: was 22px (the raised label's hit box must end above the value line) */
 		--_td-field-pad-bottom: 6px;
 		--_td-field-pad: var(--_td-field-pad-top) var(--_td-field-pad-x) var(--_td-field-pad-bottom);
-		--_td-field-float-shift: -15px;
-		--_td-field-float-ta-min: 96px;
-		--_td-field-float-ta-pad-top: 24px;
+		--_td-field-float-shift: -12px; /* v0.80.0: was -15px (label text 4.7px under the top edge → ~7.7px) */
+		--_td-field-float-ta-min: 98px;
+		--_td-field-float-ta-pad-top: 26px;
 		--_td-field-float-ta-label-top: 16px;
+		--_td-field-float-ta-shift: -10px; /* raised textarea label: top = label-top + this */
 
 		position: relative;
 	}
@@ -582,23 +583,25 @@
 	.td-field--floating.td-field--sm {
 		--_td-field-h: var(--td-field-float-h-sm);
 		--_td-field-pad-x: 12px;
-		--_td-field-pad-top: 20px;
-		--_td-field-pad-bottom: 4px;
-		--_td-field-float-shift: -13px;
-		--_td-field-float-ta-min: 84px;
-		--_td-field-float-ta-pad-top: 22px;
+		--_td-field-pad-top: 23px; /* v0.80.0: was 20px (room for the lowered raised label) */
+		--_td-field-pad-bottom: 2px; /* was 4px: the 48px field keeps its 21px value line */
+		--_td-field-float-shift: -9.5px; /* v0.80.0: was -13px */
+		--_td-field-float-ta-min: 86px;
+		--_td-field-float-ta-pad-top: 24px;
 		--_td-field-float-ta-label-top: 14px;
+		--_td-field-float-ta-shift: -9px;
 	}
 
 	.td-field--floating.td-field--lg {
 		--_td-field-h: var(--td-field-float-h-lg);
 		--_td-field-pad-x: 16px;
-		--_td-field-pad-top: 26px;
+		--_td-field-pad-top: 28px; /* v0.80.0: was 26px */
 		--_td-field-pad-bottom: 8px;
-		--_td-field-float-shift: -18px;
+		--_td-field-float-shift: -14px; /* v0.80.0: was -18px */
 		--_td-field-float-ta-min: 108px;
 		--_td-field-float-ta-pad-top: 30px;
 		--_td-field-float-ta-label-top: 18px;
+		--_td-field-float-ta-shift: -12px;
 	}
 
 	/* an input grows with its value line (large text) — never below the field height */
@@ -609,6 +612,7 @@
 
 	.td-field--floating.td-field--textarea {
 		--_td-field-pad-top: var(--_td-field-float-ta-pad-top);
+		--_td-field-float-shift: var(--_td-field-float-ta-shift);
 	}
 
 	.td-field--floating.td-field--textarea > .td-field__control {
@@ -726,7 +730,7 @@
 	@media (pointer: coarse) {
 		/* value text 16 px (line 24 px): sm keeps the value line inside 48 px */
 		.td-field--floating.td-field--sm {
-			--_td-field-pad-bottom: 2px;
+			--_td-field-pad-bottom: 0; /* v0.80.0: was 2px; the 24px value line + 23px top pad make this field 49px on touch */
 		}
 	}
 

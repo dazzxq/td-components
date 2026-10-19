@@ -1281,9 +1281,9 @@
 	}
 
 	.td-field__affix {
-		flex-shrink: 1; /* two long affixes in a narrow column shrink (ellipsis) before the box overflows */
+		flex-shrink: 0; /* v0.80.0: a text affix keeps its natural width (the control's intrinsic width used to shrink it: "https://" → "http…") */
 		min-inline-size: 0;
-		max-inline-size: 50%; /* a long affix never squeezes the value out: cut with an ellipsis (the description reads it all) */
+		max-inline-size: 50%; /* ...but a long affix never squeezes the value out: cut with an ellipsis (the description reads it all) */
 		overflow: hidden;
 		color: var(--td-field-affix-fg);
 		text-overflow: ellipsis;
@@ -1385,13 +1385,14 @@
 	.td-field--floating {
 		--_td-field-h: var(--td-field-float-h-md);
 		--_td-field-pad-x: 14px;
-		--_td-field-pad-top: 22px;
+		--_td-field-pad-top: 25px; /* v0.80.0: was 22px (the raised label's hit box must end above the value line) */
 		--_td-field-pad-bottom: 6px;
 		--_td-field-pad: var(--_td-field-pad-top) var(--_td-field-pad-x) var(--_td-field-pad-bottom);
-		--_td-field-float-shift: -15px;
-		--_td-field-float-ta-min: 96px;
-		--_td-field-float-ta-pad-top: 24px;
+		--_td-field-float-shift: -12px; /* v0.80.0: was -15px (label text 4.7px under the top edge → ~7.7px) */
+		--_td-field-float-ta-min: 98px;
+		--_td-field-float-ta-pad-top: 26px;
 		--_td-field-float-ta-label-top: 16px;
+		--_td-field-float-ta-shift: -10px; /* raised textarea label: top = label-top + this */
 
 		position: relative;
 	}
@@ -1399,23 +1400,25 @@
 	.td-field--floating.td-field--sm {
 		--_td-field-h: var(--td-field-float-h-sm);
 		--_td-field-pad-x: 12px;
-		--_td-field-pad-top: 20px;
-		--_td-field-pad-bottom: 4px;
-		--_td-field-float-shift: -13px;
-		--_td-field-float-ta-min: 84px;
-		--_td-field-float-ta-pad-top: 22px;
+		--_td-field-pad-top: 23px; /* v0.80.0: was 20px (room for the lowered raised label) */
+		--_td-field-pad-bottom: 2px; /* was 4px: the 48px field keeps its 21px value line */
+		--_td-field-float-shift: -9.5px; /* v0.80.0: was -13px */
+		--_td-field-float-ta-min: 86px;
+		--_td-field-float-ta-pad-top: 24px;
 		--_td-field-float-ta-label-top: 14px;
+		--_td-field-float-ta-shift: -9px;
 	}
 
 	.td-field--floating.td-field--lg {
 		--_td-field-h: var(--td-field-float-h-lg);
 		--_td-field-pad-x: 16px;
-		--_td-field-pad-top: 26px;
+		--_td-field-pad-top: 28px; /* v0.80.0: was 26px */
 		--_td-field-pad-bottom: 8px;
-		--_td-field-float-shift: -18px;
+		--_td-field-float-shift: -14px; /* v0.80.0: was -18px */
 		--_td-field-float-ta-min: 108px;
 		--_td-field-float-ta-pad-top: 30px;
 		--_td-field-float-ta-label-top: 18px;
+		--_td-field-float-ta-shift: -12px;
 	}
 
 	/* an input grows with its value line (large text) — never below the field height */
@@ -1426,6 +1429,7 @@
 
 	.td-field--floating.td-field--textarea {
 		--_td-field-pad-top: var(--_td-field-float-ta-pad-top);
+		--_td-field-float-shift: var(--_td-field-float-ta-shift);
 	}
 
 	.td-field--floating.td-field--textarea > .td-field__control {
@@ -1543,7 +1547,7 @@
 	@media (pointer: coarse) {
 		/* value text 16 px (line 24 px): sm keeps the value line inside 48 px */
 		.td-field--floating.td-field--sm {
-			--_td-field-pad-bottom: 2px;
+			--_td-field-pad-bottom: 0; /* v0.80.0: was 2px; the 24px value line + 23px top pad make this field 49px on touch */
 		}
 	}
 
@@ -21758,6 +21762,9 @@
 		--td-choice-h: 2.5rem;
 		--td-choice-radius: var(--td-radius-md);
 		--td-choice-swatch-size: 2rem;
+		/* v0.80.0 corner tick of the selected option: size, and `display` value (`none` turns it off) */
+		--td-choice-mark-size: 18px;
+		--td-choice-mark: block;
 		/* v0.52.0 segmented (plan v0.52.0 QĐ 15): trough padding, pill radius, segment height (md; sm / lg on the variant) */
 		--td-choice-seg-pad: 3px;
 		--td-choice-seg-radius: var(--td-radius-full);
@@ -21776,7 +21783,12 @@
 		--td-choice-bg: var(--td-control-bg);
 		--td-choice-border: var(--td-control-border-soft);
 		--td-choice-border-hover: var(--td-control-border-hover);
-		--td-choice-selected: var(--td-color-text);
+		/* v0.80.0: the selected option follows the site accent — tint + 2px ring + a corner tick (plan v0.80.0). Keep the old
+		   ink look: --td-choice-selected: var(--td-color-text); --td-choice-selected-bg: var(--td-choice-bg); --td-choice-mark: none */
+		--td-choice-selected: var(--td-accent);
+		--td-choice-selected-bg: color-mix(in srgb, var(--td-accent) 10%, var(--td-choice-bg));
+		--td-choice-selected-fg: var(--td-control-fg);
+		--td-choice-mark-fg: var(--td-accent-contrast, #fff);
 		--td-choice-hint-fg: var(--td-color-text-muted);
 		--td-choice-swatch-edge: var(--td-color-border-strong);
 		/* v0.52.0 segmented: trough = the hover wash (like the td-tabs trough: the palette solver keeps muted text ≥ 4.7 on
@@ -21915,6 +21927,43 @@
 	.td-choice--button .td-choice__input:checked + .td-choice__face {
 		border-color: var(--td-choice-selected);
 		box-shadow: inset 0 0 0 1px var(--td-choice-selected); /* border + inset = a 2px ring, no layout shift */
+	}
+
+	.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face {
+		color: var(--td-choice-selected-fg);
+		background: var(--td-choice-selected-bg);
+	}
+
+	/* corner tick (v0.80.0): a triangle in the block-end / inline-end corner (::after) + the ✓ (::before), CSS only, purely
+	   decorative — the real radio reports the state. Every checked, enabled option (unavailable ones too); none when disabled */
+	.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face::after,
+	.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face::before {
+		position: absolute;
+		display: var(--td-choice-mark);
+		pointer-events: none;
+		content: "";
+	}
+
+	.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face::after {
+		inset-block-end: 0;
+		inset-inline-end: 0;
+		inline-size: 0;
+		block-size: 0;
+		border-block-end: var(--td-choice-mark-size) solid var(--td-choice-selected);
+		border-inline-start: var(--td-choice-mark-size) solid transparent;
+		border-end-end-radius: calc(var(--td-choice-radius) - 1px);
+	}
+
+	.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face::before {
+		z-index: 1;
+		inset-block-end: calc(var(--td-choice-mark-size) * 0.32 - var(--td-choice-mark-size) * 0.21);
+		inset-inline-end: calc(var(--td-choice-mark-size) * 0.3 - var(--td-choice-mark-size) * 0.11);
+		box-sizing: border-box;
+		inline-size: calc(var(--td-choice-mark-size) * 0.22);
+		block-size: calc(var(--td-choice-mark-size) * 0.42);
+		border: solid var(--td-choice-mark-fg);
+		border-width: 0 max(1.5px, calc(var(--td-choice-mark-size) * 0.1)) max(1.5px, calc(var(--td-choice-mark-size) * 0.1)) 0;
+		transform: rotate(45deg);
 	}
 
 	.td-choice__option[data-unavailable] .td-choice__text {
@@ -22069,6 +22118,19 @@
 		.td-choice--button .td-choice__input:checked + .td-choice__face {
 			border-color: Highlight;
 			box-shadow: inset 0 0 0 1px Highlight;
+		}
+
+		.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face {
+			color: ButtonText;
+			background: ButtonFace;
+		}
+
+		.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face::after {
+			border-block-end-color: Highlight;
+		}
+
+		.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face::before {
+			border-color: HighlightText;
 		}
 
 		.td-choice--swatch .td-choice__input:checked + .td-choice__face {

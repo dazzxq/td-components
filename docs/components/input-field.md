@@ -109,7 +109,8 @@ kế lấy từ ô nhập "label_mode floating" của dwp.
   dạng, đừng lặp lại nhãn. Không có
   `placeholder`: kit đặt chữ của nhãn làm placeholder (luôn ẩn) để CSS biết ô rỗng; trình đọc màn hình không đọc thêm gì.
 - **Cỡ:** `sm` / `md` / `lg` cao 48 / 56 / 64 px (cao hơn kiểu thường 32 / 40 / 48 — chỗ cho nhãn nổi); textarea tối thiểu
-  84 / 96 / 108 px.
+  86 / 98 / 108 px. Từ 0.80.0 nhãn nổi cách viền trên khoảng 6 / 8 / 9 px (trước đó 3 / 5 / 5 px) và không chạm dòng giá trị;
+  chỉ CSS, markup không đổi. Trên màn hình cảm ứng ô `sm` cao 49 px (chữ giá trị 16 px).
 - **Nhãn dài** chỉ một dòng, cắt bằng `…` (tên truy cập vẫn đủ). Viết nhãn ngắn, phần giải thích để ở `helper-text`.
 - **Textarea:** chữ cuộn sau nhãn nổi (nhãn có nền của ô).
 - Gợi ý / lỗi / bộ đếm / `<td-hint>` / dấu `*` như kiểu thường. Lỗi: viền đỏ + dòng lỗi, nhãn **không** đổi màu.
@@ -303,7 +304,8 @@ bên trong (`.td-field__control`), nên trình quản lý mật khẩu và bàn 
   `type="button"` (nếu không nút trong `<form>` là nút submit), tự xử lý click. Bấm vào nút / link / ô trong slot không cướp
   focus về ô nhập. Tab: ô nhập → nội dung slot hậu tố (thứ tự DOM). Trên cảm ứng nút của bạn nên ≥ 44 px.
 - Đổi các attribute affix lúc chạy là render lại hộp nhưng **giữ** focus, con trỏ và giá trị (không phát `change`).
-- Chữ affix dài bị cắt bằng `…` (tối đa nửa bề rộng hộp); mô tả cho trình đọc màn hình vẫn đủ.
+- Chữ affix dài bị cắt bằng `…` (tối đa nửa bề rộng hộp); mô tả cho trình đọc màn hình vẫn đủ. Từ 0.80.0 affix chữ ngắn
+  (`https://`) giữ nguyên bề rộng, không bị cắt trừ khi rộng hơn nửa ô (trước đó bị bóp thành `http…` kể cả khi còn chỗ).
 
 **Trợ năng:** chữ / icon hiển thị là trang trí (`aria-hidden`). Đơn vị được đọc qua **mô tả** (`aria-describedby` →
 `span#{host}-unit[hidden]`, đứng **đầu** mô tả): `unit-label` → nếu không có thì `suffix` → nếu không thì `prefix` (một luật

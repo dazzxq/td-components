@@ -100,7 +100,7 @@
     ".td-field__control": {
       "min-height": "64px",
       "max-height": "none",
-      "padding-top": "26px",
+      "padding-top": "28px",
       "padding-bottom": "8px",
       "padding-left": "16px",
       "padding-right": "16px",

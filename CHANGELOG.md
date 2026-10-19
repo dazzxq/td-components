@@ -2,6 +2,34 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.80.0
+
+**`td-choice-group` ô đang chọn nổi bật theo accent + floating label có khoảng thở** (owner 2026-10-16, chọn mẫu C;
+[plan](docs/internal/plans/v0.80.0-choice-selected-floating-spacing.md)). Chỉ CSS: DOM, SSR, JS, PHP, API không đổi.
+
+### Changed (visual)
+
+- `td-choice-group` `variant="button"`: ô đang chọn có nền tint `--td-choice-selected-bg`
+  (`color-mix(in srgb, var(--td-accent) 10%, var(--td-choice-bg))`), vòng 2px `--td-choice-selected` (= `--td-accent`, trước:
+  `--td-color-text`) và tick ở góc dưới-cuối (tam giác `--td-choice-mark-size` 18px, dấu ✓ `--td-choice-mark-fg`). Tick là tín
+  hiệu hình dạng (không chỉ dựa vào màu); ô `unavailable` đang chọn cũng có tick, ô disabled thì không. Swatch dùng cùng
+  `--td-choice-selected`. Forced colors: Highlight / HighlightText.
+- `td-input-field` `label-mode="floating"`: nhãn nổi có khoảng thở. Chữ nhãn cách viền trên khoảng 6 / 8 / 9 px (sm / md / lg;
+  trước 3 / 5 / 5 px) và cách dòng giá trị ≥ 4px; textarea cũng vậy. Chiều cao 48 / 56 / 64 px giữ nguyên; textarea tối thiểu
+  86 / 98 / 108 px (trước 84 / 96 / 108); trên cảm ứng ô `sm` cao 49 px.
+
+### Fixed
+
+- `td-input-field` / affix: chữ tiền tố / hậu tố ngắn (`prefix="https://"`) không còn bị bóp thành `http…` khi ô còn chỗ
+  (`flex-shrink: 0`). Trần `max-inline-size: 50%` + `…` giữ nguyên: affix dài hơn nửa ô vẫn bị cắt, vùng nhập không về 0.
+
+### Added
+
+- Token `--td-choice-selected`, `--td-choice-selected-bg`, `--td-choice-selected-fg`, `--td-choice-mark-fg` (màu, theo theme),
+  `--td-choice-mark-size`, `--td-choice-mark` (`block`; `none` = tắt tick). Đổi `--td-accent` phải đặt ở `:root` hoặc vùng
+  `data-td-theme` (ADR 0020) thì ô chọn mới đổi màu theo. Giữ kiểu cũ: `--td-choice-selected: var(--td-color-text);
+  --td-choice-selected-bg: var(--td-choice-bg); --td-choice-mark: none`.
+
 ## 0.79.2
 
 **`td-media-field` `hide-alt`** (yêu cầu dsuite K-A5-5; hướng chốt qua Codex think-about; [plan](docs/internal/plans/v0.79.2-media-field-hide-alt.md)). Không phá vỡ.

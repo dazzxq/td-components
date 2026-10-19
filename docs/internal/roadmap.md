@@ -101,7 +101,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.79.0 (yêu cầu dsuite, owner duyệt 2026-10-17): `td-media-field` kiểu placeholder dcms2 — bỏ nút Đổi ảnh / Gỡ, bấm ô để đổi, X đỏ góc khi hover / focus (luôn hiện trên cảm ứng), nút cắt cạnh X khi `croppable`, khung nét đứt + chữ tỉ lệ dưới khung + icon tròn khi trống; kèm K-A5-4: token bo góc khung `--td-media-field-frame-radius` + attribute `hide-label` / `hide-hints` (PHP `hide_label` / `hide_hints`; nhãn vẫn đọc được); DOM `media-field@2`; plan [v0.79.0](plans/v0.79.0-media-field-placeholder.md)
 - `done` v0.79.1 (owner 2026-10-18 "làm giống như bên dcms2 đi"): `td-media-field` khung nét đứt cả khi có ảnh, khung rỗng chỉ có icon (chữ gợi ý hiện khi đặt `prompt`); chỉ CSS; plan [v0.79.1](plans/v0.79.1-media-field-dcms2-exact.md)
 - `done` v0.79.2 (yêu cầu dsuite K-A5-5): `td-media-field` `hide-alt` (PHP `hide_alt`) — ẩn ô alt của `usage`, vẫn gửi `name[alt]`; chỉ CSS; plan [v0.79.2](plans/v0.79.2-media-field-hide-alt.md)
-- `todo` v0.80.0 (plan Codex APPROVE): `td-choice-group` đang chọn nổi bật (tint + vòng + tick góc, opt-out `--td-choice-mark`); floating label của `td-input-field` thêm khoảng thở; affix prefix không bị cắt; plan [v0.80.0](plans/v0.80.0-choice-selected-floating-spacing.md)
+- `done` v0.80.0: `td-choice-group` đang chọn nổi bật (tint + vòng accent + tick góc, opt-out `--td-choice-mark`); floating label của `td-input-field` thêm khoảng thở; affix chữ ngắn không bị cắt; chỉ CSS; plan [v0.80.0](plans/v0.80.0-choice-selected-floating-spacing.md)
 - `todo` v0.81+: `td-media-gallery` sắp lại kiểu lưới kéo-thả của dcms2
 
 ## Chờ nhu cầu (owner 2026-10-08: chỉ làm khi có site cần)

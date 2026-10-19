@@ -14,6 +14,9 @@
 		--td-choice-h: 2.5rem;
 		--td-choice-radius: var(--td-radius-md);
 		--td-choice-swatch-size: 2rem;
+		/* v0.80.0 corner tick of the selected option: size, and `display` value (`none` turns it off) */
+		--td-choice-mark-size: 18px;
+		--td-choice-mark: block;
 		/* v0.52.0 segmented (plan v0.52.0 QĐ 15): trough padding, pill radius, segment height (md; sm / lg on the variant) */
 		--td-choice-seg-pad: 3px;
 		--td-choice-seg-radius: var(--td-radius-full);
@@ -32,7 +35,12 @@
 		--td-choice-bg: var(--td-control-bg);
 		--td-choice-border: var(--td-control-border-soft);
 		--td-choice-border-hover: var(--td-control-border-hover);
-		--td-choice-selected: var(--td-color-text);
+		/* v0.80.0: the selected option follows the site accent — tint + 2px ring + a corner tick (plan v0.80.0). Keep the old
+		   ink look: --td-choice-selected: var(--td-color-text); --td-choice-selected-bg: var(--td-choice-bg); --td-choice-mark: none */
+		--td-choice-selected: var(--td-accent);
+		--td-choice-selected-bg: color-mix(in srgb, var(--td-accent) 10%, var(--td-choice-bg));
+		--td-choice-selected-fg: var(--td-control-fg);
+		--td-choice-mark-fg: var(--td-accent-contrast, #fff);
 		--td-choice-hint-fg: var(--td-color-text-muted);
 		--td-choice-swatch-edge: var(--td-color-border-strong);
 		/* v0.52.0 segmented: trough = the hover wash (like the td-tabs trough: the palette solver keeps muted text ≥ 4.7 on
@@ -171,6 +179,43 @@
 	.td-choice--button .td-choice__input:checked + .td-choice__face {
 		border-color: var(--td-choice-selected);
 		box-shadow: inset 0 0 0 1px var(--td-choice-selected); /* border + inset = a 2px ring, no layout shift */
+	}
+
+	.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face {
+		color: var(--td-choice-selected-fg);
+		background: var(--td-choice-selected-bg);
+	}
+
+	/* corner tick (v0.80.0): a triangle in the block-end / inline-end corner (::after) + the ✓ (::before), CSS only, purely
+	   decorative — the real radio reports the state. Every checked, enabled option (unavailable ones too); none when disabled */
+	.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face::after,
+	.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face::before {
+		position: absolute;
+		display: var(--td-choice-mark);
+		pointer-events: none;
+		content: "";
+	}
+
+	.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face::after {
+		inset-block-end: 0;
+		inset-inline-end: 0;
+		inline-size: 0;
+		block-size: 0;
+		border-block-end: var(--td-choice-mark-size) solid var(--td-choice-selected);
+		border-inline-start: var(--td-choice-mark-size) solid transparent;
+		border-end-end-radius: calc(var(--td-choice-radius) - 1px);
+	}
+
+	.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face::before {
+		z-index: 1;
+		inset-block-end: calc(var(--td-choice-mark-size) * 0.32 - var(--td-choice-mark-size) * 0.21);
+		inset-inline-end: calc(var(--td-choice-mark-size) * 0.3 - var(--td-choice-mark-size) * 0.11);
+		box-sizing: border-box;
+		inline-size: calc(var(--td-choice-mark-size) * 0.22);
+		block-size: calc(var(--td-choice-mark-size) * 0.42);
+		border: solid var(--td-choice-mark-fg);
+		border-width: 0 max(1.5px, calc(var(--td-choice-mark-size) * 0.1)) max(1.5px, calc(var(--td-choice-mark-size) * 0.1)) 0;
+		transform: rotate(45deg);
 	}
 
 	.td-choice__option[data-unavailable] .td-choice__text {
@@ -325,6 +370,19 @@
 		.td-choice--button .td-choice__input:checked + .td-choice__face {
 			border-color: Highlight;
 			box-shadow: inset 0 0 0 1px Highlight;
+		}
+
+		.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face {
+			color: ButtonText;
+			background: ButtonFace;
+		}
+
+		.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face::after {
+			border-block-end-color: Highlight;
+		}
+
+		.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face::before {
+			border-color: HighlightText;
 		}
 
 		.td-choice--swatch .td-choice__input:checked + .td-choice__face {

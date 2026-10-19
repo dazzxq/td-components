@@ -1860,9 +1860,34 @@
       "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
     },
     "--td-choice-selected": {
+      "light": "rgb(37, 99, 235)",
+      "dark": "rgb(75, 141, 248)",
+      "why": "v0.80.0 td-choice-group selected state: accent tint + accent ring + corner tick (plan v0.80.0-choice-selected-floating-spacing, owner-approved preview C) (v0.49.0–0.79: --td-color-text)"
+    },
+    "--td-choice-mark": {
+      "light": "block",
+      "dark": "block",
+      "why": "v0.80.0 td-choice-group selected state: accent tint + accent ring + corner tick (plan v0.80.0-choice-selected-floating-spacing, owner-approved preview C): --td-choice-mark"
+    },
+    "--td-choice-mark-fg": {
+      "light": "rgb(255, 255, 255)",
+      "dark": "rgb(255, 255, 255)",
+      "why": "v0.80.0 td-choice-group selected state: accent tint + accent ring + corner tick (plan v0.80.0-choice-selected-floating-spacing, owner-approved preview C): --td-choice-mark-fg"
+    },
+    "--td-choice-mark-size": {
+      "light": "18px",
+      "dark": "18px",
+      "why": "v0.80.0 td-choice-group selected state: accent tint + accent ring + corner tick (plan v0.80.0-choice-selected-floating-spacing, owner-approved preview C): --td-choice-mark-size"
+    },
+    "--td-choice-selected-bg": {
+      "light": "rgb(233, 239, 253)",
+      "dark": "rgb(33, 39, 52)",
+      "why": "v0.80.0 td-choice-group selected state: accent tint + accent ring + corner tick (plan v0.80.0-choice-selected-floating-spacing, owner-approved preview C): --td-choice-selected-bg"
+    },
+    "--td-choice-selected-fg": {
       "light": "rgb(28, 28, 30)",
       "dark": "rgb(245, 245, 247)",
-      "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
+      "why": "v0.80.0 td-choice-group selected state: accent tint + accent ring + corner tick (plan v0.80.0-choice-selected-floating-spacing, owner-approved preview C): --td-choice-selected-fg"
     },
     "--td-choice-swatch-edge": {
       "light": "rgb(212, 212, 216)",
