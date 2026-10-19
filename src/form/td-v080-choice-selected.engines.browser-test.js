@@ -108,4 +108,20 @@ describe('v0.80.0 td-choice-group selected state', () => {
     const { el: el2 } = group('variant="swatch" value="x"', [{ value: 'x', label: 'X', swatch: '#3b3b3d' }], '--td-accent:#d00000');
     expect(cs(face(el2, 'x')).boxShadow).to.contain('rgb(208, 0, 0)');
   });
+
+  it('muted lines on the tint take the label ink (contrast ≥ 4.7); pressed still takes the control ink', () => {
+    const opts = [{ value: 'a', label: 'A', hint: '1₫' }, { value: 'b', label: 'B', hint: '2₫', unavailable: true }, { value: 'd', label: 'D', hint: '3₫' }];
+    const { el } = group('value="a"', opts);
+    const label = rgb('var(--td-color-text-label)', el);
+    expect(cs(face(el, 'a').querySelector('.td-choice__hint')).color).to.equal(label);
+    expect(cs(face(el, 'a').querySelector('.td-choice__text')).color).to.equal(rgb('var(--td-choice-selected-fg)', el));
+    expect(cs(face(el, 'd').querySelector('.td-choice__hint')).color).to.equal(rgb('var(--td-choice-hint-fg)', el));
+    el.value = 'b';
+    const fb = face(el, 'b');
+    expect(cs(fb.querySelector('.td-choice__text')).color).to.equal(label);
+    fb.closest('.td-choice__option').setAttribute('data-td-pressed', '');
+    const ink = rgb('var(--td-control-fg)', el);
+    expect(cs(fb.querySelector('.td-choice__text')).color).to.equal(ink);
+    expect(cs(fb.querySelector('.td-choice__hint')).color).to.equal(ink);
+  });
 });

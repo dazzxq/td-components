@@ -186,6 +186,13 @@
 		background: var(--td-choice-selected-bg);
 	}
 
+	/* the muted lines on the tint take the label ink, a step darker: muted on the 10 % accent tint is only 4.59:1 (contrast
+	   gate v049:choice:button ≥ 4.7). :where() keeps the specificity at the pressed rule's, which comes later and wins */
+	.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face :is(.td-choice__hint, .td-choice__note),
+	.td-choice--button :where(.td-choice__option[data-unavailable]) > .td-choice__input:checked:not(:disabled) + .td-choice__face .td-choice__text {
+		color: var(--td-color-text-label);
+	}
+
 	/* corner tick (v0.80.0): a triangle in the block-end / inline-end corner (::after) + the ✓ (::before), CSS only, purely
 	   decorative — the real radio reports the state. Every checked, enabled option (unavailable ones too); none when disabled */
 	.td-choice--button .td-choice__input:checked:not(:disabled) + .td-choice__face::after,
