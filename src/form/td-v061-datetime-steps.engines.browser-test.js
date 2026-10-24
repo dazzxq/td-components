@@ -558,7 +558,7 @@ describe('v0.61.0 range datetime — two screens per endpoint', () => {
     expect(stepOf()).to.equal('time');
     expect(document.activeElement === now).to.equal(true);
     expect(centred()).to.equal(true);
-    const t = new Date();
+    const t = TdDatetimeRange.now(); // the stubbed clock (NOW), never the wall clock: the test must not depend on today
     if (iso(t) > '2026-10-20' || iso(t) < '2026-10-01') {
       expect(openModal().querySelector('.td-dtr-panel__error').hidden).to.equal(false);
       openModal().querySelector('.td-time-step [data-action="back"]').click();
