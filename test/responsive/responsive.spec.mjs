@@ -425,21 +425,39 @@ async function runConfig(browser, c) {
       const tiles = [...g.querySelectorAll('.td-media-gallery__item')].map((li) => li.getBoundingClientRect());
       const cols = new Set(tiles.filter((t) => Math.abs(t.top - tiles[0].top) < 1).map((t) => Math.round(t.left))).size;
       const out = tiles.filter((t) => t.left < ul.left - 0.5 || t.right > ul.right + 0.5).length;
-      const btns = [...g.querySelectorAll('.td-media-gallery__btn:not([hidden]), .td-media-gallery__handle')].map((b) => { const r = b.getBoundingClientRect(); return [r.width, r.height]; });
-      // v0.51.0 (plan v0.51.0-gallery-caption M6): the alt / caption controls + counters stay inside their tile; their
-      // text size (≥ 16 px on a coarse pointer: no iOS zoom)
-      const texts = [...g.querySelectorAll('.td-media-gallery__alt, .td-media-gallery__caption, .td-media-gallery__counter:not([hidden])')].map((n) => {
-        const r = n.getBoundingClientRect();
-        const t = n.closest('.td-media-gallery__item').getBoundingClientRect();
-        return { cls: n.className, out: r.left < t.left - 0.5 || r.right > t.right + 0.5, fs: parseFloat(getComputedStyle(n).fontSize), ctl: n.localName !== 'span' };
+      // v0.81.0: the chips are 1.75rem boxes with a 44px centred ::before hit area on a coarse pointer — the EFFECTIVE target is
+      // the larger of the box and its ::before
+      const btns = [...g.querySelectorAll('.td-media-gallery__btn:not([hidden]), .td-media-gallery__handle, .td-media-gallery__remove')].map((b) => {
+        const r = b.getBoundingClientRect();
+        const bf = getComputedStyle(b, '::before');
+        const has = bf.content !== 'none' && bf.content !== 'normal';
+        return [Math.max(r.width, has ? parseFloat(bf.width) || 0 : 0), Math.max(r.height, has ? parseFloat(bf.height) || 0 : 0)];
       });
-      return { id, cols, out, btns, texts, captions: g.querySelectorAll('.td-media-gallery__caption').length };
+      // v0.51.0 (plan v0.51.0-gallery-caption M6): the alt / caption controls + counters stay inside their tile; their
+      // text size (≥ 16 px on a coarse pointer: no iOS zoom). v0.81.0: the fields show only on an open tile — open each
+      // tile (Mô tả) in turn and measure its own fields
+      const texts = [];
+      for (const li of g.querySelectorAll('.td-media-gallery__item')) {
+        li.querySelector('.td-media-gallery__edit')?.click();
+        for (const n of li.querySelectorAll('.td-media-gallery__alt, .td-media-gallery__caption, .td-media-gallery__counter:not([hidden])')) {
+          const r = n.getBoundingClientRect();
+          const t = li.getBoundingClientRect();
+          texts.push({ cls: n.className, out: r.width === 0 || r.left < t.left - 0.5 || r.right > t.right + 0.5, fs: parseFloat(getComputedStyle(n).fontSize), ctl: n.localName !== 'span' });
+        }
+      }
+      const cell = ul && g.querySelector('.td-media-gallery__list > .td-media-gallery__add-cell');
+      const add = cell && cell.getBoundingClientRect();
+      const addOut = !cell || cell.hidden || cell !== g.querySelector('.td-media-gallery__list').lastElementChild ? 0 : (add.left < ul.left - 0.5 || add.right > ul.right + 0.5 ? 1 : 0);
+      const addH = cell && !cell.hidden ? cell.firstElementChild.getBoundingClientRect().height : 99;
+      return { id, cols, out, btns, texts, addOut, addH, captions: g.querySelectorAll('.td-media-gallery__caption').length };
     }));
     const galErr = [];
     for (const x of gal) {
       if (x.out) galErr.push(`#${x.id}: ${x.out} tile(s) outside the list`);
       if (c.touch && c.engine !== 'firefox') for (const [w, h] of x.btns) if (w < 43.5 || h < 43.5) galErr.push(`#${x.id}: a tile button ${w}×${h} < 44 (coarse)`);
       if (!x.captions) galErr.push(`#${x.id}: no caption control (v0.51.0)`);
+      if (x.addOut) galErr.push(`#${x.id}: the Add cell is outside the list`);
+      if (c.touch && c.engine !== 'firefox' && x.addH < 43.5) galErr.push(`#${x.id}: the Add button ${x.addH}px high < 44 (coarse)`);
       for (const t of x.texts) {
         if (t.out) galErr.push(`#${x.id}: ${t.cls} outside its tile`);
         if (c.touch && c.engine !== 'firefox' && t.ctl && t.fs < 16) galErr.push(`#${x.id}: ${t.cls} font-size ${t.fs} < 16 (coarse)`);

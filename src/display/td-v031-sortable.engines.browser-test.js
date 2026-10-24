@@ -340,6 +340,20 @@ describe('td-sortable — tap-to-move (WCAG 2.5.7) and pointer', () => {
     handle(s, 0).click();
   });
 
+  it('v0.81.0: without `surfaceOf` (td-sortable) a mouse press on the item body never drags — only the handle does', async () => {
+    const s = mount(list(3)).querySelector('td-sortable');
+    const rec = record(s);
+    const [x, y] = center(itemsOf(s)[0]);
+    const p = [x + 30, y];
+    await mouseDown(p);
+    for (let i = 1; i <= 6; i += 1) { await sendMouse({ type: 'move', position: [p[0], p[1] + i * 20] }); await frame(); }
+    expect(s.hasAttribute('data-td-dragging')).to.equal(false);
+    await sendMouse({ type: 'up' });
+    await wait();
+    expect(ids(s)).to.deep.equal(['s1', 's2', 's3']);
+    expect(rec).to.deep.equal([]);
+  });
+
   it('vertical list: drag past the threshold → placeholder + data-td-dragging; drop at the slot under the pointer; click after the drag swallowed', async () => {
     const s = mount(list(5)).querySelector('td-sortable');
     const rec = record(s);

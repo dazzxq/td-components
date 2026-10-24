@@ -5,7 +5,9 @@
  * List: a fixed grid `repeat(auto-fill, minmax(--td-media-gallery-tile-min, 1fr))` — never justified (a row height that
  * changes while sorting would move the target under the finger). Tile: the media box (SVG sizer = the tile ratio, same
  * markup in PHP and JS, default 1:1; the image covers it, `preview-fit="contain"` fits it), the handle on its top-end
- * corner on a solid chip, the Cắt / Gỡ buttons in a row UNDER the image (never over it), the alt input (usage), the
+ * corner on a solid chip — v0.81.0 (@2): the tools over the picture (handle top-start, red X top-end, [bìa][cắt][mô tả]
+ * bottom-end; fine pointer: shown on hover / focus), Add = the last grid cell, the usage fields only on an open tile
+ * ([data-td-open]); before: the Cắt / Gỡ buttons in a row UNDER the image, the alt input (usage), the
  * v0.51.0 caption (input / textarea) + the counter / error of a limited field ([hidden], [data-state="limit|over"]).
  * State: [data-kind] on the tile, [data-state="empty|filled"] / [hidden] / [aria-invalid] / :disabled on the Add button,
  * the SortableController's [data-td-dragging] on the list + [data-td-sort-state] on a tile, [hidden] on Cắt.
@@ -15,7 +17,8 @@
  * kept → no layout shift). Responsive (ADR 0014): container `td-media-gallery`; `2xs` (< 360) tighter gaps.
  * Touch (ADR 0019): `touch-action` only on the handle (shared rule), every tile button ≥ 44px on coarse pointers,
  * :hover inside the hover gate, pressed = colour only.
- * Tokens: --td-media-gallery-tile-min, --td-media-gallery-gap, --td-media-gallery-empty-h.
+ * Tokens: --td-media-gallery-tile-min, --td-media-gallery-gap, --td-media-gallery-empty-h; v0.81.0 -tool-size,
+ * -tool-bg / -tool-fg, -remove-bg / -remove-fg.
  * CSP: classes / data / aria attributes only; per-instance values through CSSOM custom properties.
  */
 @layer td.tokens {
@@ -23,6 +26,14 @@
 		--td-media-gallery-tile-min: 8rem;
 		--td-media-gallery-gap: var(--td-space-xs);
 		--td-media-gallery-empty-h: 8rem;
+		/* v0.81.0: the round tools over the picture (= the media-field tools) */
+		--td-media-gallery-tool-size: 1.75rem;
+	}
+	:root, [data-td-theme] {
+		--td-media-gallery-tool-bg: rgb(0 0 0 / 60%);
+		--td-media-gallery-tool-fg: #fff;
+		--td-media-gallery-remove-bg: var(--td-solid-danger-bg);
+		--td-media-gallery-remove-fg: var(--td-solid-danger-fg);
 	}
 }
 
@@ -78,14 +89,11 @@
 		position: relative; /* the drag placeholder is positioned in the list (the controller's host) */
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(var(--td-media-gallery-tile-min, 8rem), 100%), 1fr));
+		align-items: start; /* an open tile (usage fields) never stretches its row */
 		gap: var(--td-media-gallery-gap, var(--td-space-xs));
 		margin: 0;
 		padding: 0;
 		list-style: none;
-	}
-
-	.td-media-gallery__list:empty {
-		display: none;
 	}
 
 	.td-media-gallery__item {
@@ -103,8 +111,15 @@
 		position: relative;
 		display: grid;
 		overflow: hidden;
-		border-radius: calc(var(--td-radius-md) - 1px) calc(var(--td-radius-md) - 1px) 0 0;
+		border-radius: calc(var(--td-radius-md) - 1px);
 		background: var(--td-color-surface-muted);
+		user-select: none;
+		-webkit-user-select: none;
+	}
+
+	.td-media-gallery__item[data-td-open] > .td-media-gallery__media {
+		border-end-start-radius: 0;
+		border-end-end-radius: 0;
 	}
 
 	.td-media-gallery__sizer {
@@ -181,39 +196,117 @@
 		pointer-events: none;
 	}
 
+	/* below the handle row (the handle owns the top-start corner) */
 	.td-media-gallery__badge {
-		inset-block-start: var(--td-space-2xs);
+		inset-block-start: calc(var(--_td-mg-tool-inset, var(--td-space-2xs)) + var(--td-media-gallery-tool-size, 1.75rem) + var(--td-space-2xs));
 	}
 
 	.td-media-gallery__cover {
 		inset-block-end: var(--td-space-2xs);
 	}
 
-	/* the handle on the image's top-end corner, on a solid chip (the glyph keeps its contrast over any image) */
+	/* v0.81.0 tools over the picture, the media-field look: the handle (top-start), the red X (top-end), the row of
+	   the other tools (bottom-end) — round chips that keep their contrast over any image */
+	.td-media-gallery__media > .td-sortable__handle,
+	.td-media-gallery__remove,
+	.td-media-gallery__actions > .td-media-gallery__btn {
+		inline-size: var(--td-media-gallery-tool-size, 1.75rem);
+		block-size: var(--td-media-gallery-tool-size, 1.75rem);
+		border: 0;
+		border-radius: var(--td-radius-full);
+		background: var(--td-media-gallery-tool-bg, rgb(0 0 0 / 60%));
+		color: var(--td-media-gallery-tool-fg, #fff);
+		box-shadow: var(--td-shadow-2);
+		transition: opacity var(--td-dur-fast) var(--td-ease), background-color var(--td-dur-fast) var(--td-ease);
+	}
+
 	.td-media-gallery__media > .td-sortable__handle {
+		position: absolute;
+		inset-block-start: var(--td-space-2xs);
+		inset-inline-start: var(--td-space-2xs);
+		z-index: 1;
+	}
+
+	.td-media-gallery__remove {
 		position: absolute;
 		inset-block-start: var(--td-space-2xs);
 		inset-inline-end: var(--td-space-2xs);
 		z-index: 1;
-		background: var(--td-color-surface);
-		border-color: var(--td-color-border);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		margin: 0;
+		padding: 0;
+		background: var(--td-media-gallery-remove-bg, var(--td-solid-danger-bg));
+		color: var(--td-media-gallery-remove-fg, var(--td-solid-danger-fg));
+		font: inherit;
+		line-height: 0;
+		cursor: pointer;
+		appearance: none;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-media-gallery__actions {
+		position: absolute;
+		inset-block-end: var(--td-space-2xs);
+		inset-inline-end: var(--td-space-2xs);
+		z-index: 1;
+		display: flex;
+		gap: var(--td-space-2xs);
 	}
 
 	.td-media-gallery__media > .td-sortable__handle .td-media-gallery__icon,
+	.td-media-gallery__remove .td-media-gallery__icon,
 	.td-media-gallery__btn .td-media-gallery__icon {
 		color: inherit;
 	}
 
-	.td-media-gallery__media > .td-sortable__handle:disabled {
-		color: var(--td-btn-disabled-fg);
+	:is(.td-media-gallery__media > .td-sortable__handle, .td-media-gallery__remove, .td-media-gallery__actions > .td-media-gallery__btn) .td-media-gallery__icon svg {
+		inline-size: 1rem;
+		block-size: 1rem;
+	}
+
+	/* filter, not opacity: the fine-pointer reveal (opacity 0 → 1) composes with it */
+	:is(.td-media-gallery__media > .td-sortable__handle, .td-media-gallery__remove):disabled {
+		filter: opacity(50%);
 		cursor: not-allowed;
 	}
 
-	.td-media-gallery__bar {
-		display: flex;
-		justify-content: flex-end;
-		gap: var(--td-space-2xs);
-		padding: var(--td-space-2xs);
+	.td-media-gallery__remove:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	/* a press on the tile shows its tools too (pressed state outside the hover gate, ADR 0019) */
+	.td-media-gallery__item:is(:active, [data-td-pressed]) > .td-media-gallery__media > :is(.td-sortable__handle, .td-media-gallery__remove, .td-media-gallery__actions) {
+		opacity: 1;
+	}
+
+	/* v0.81.0 (D): a fine pointer sees the tools with the hover / focus on the tile (or while it is open / lifted);
+	   coarse / no hover: always shown. opacity only — the controls stay in the Tab order */
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-gallery__media > :is(.td-sortable__handle, .td-media-gallery__remove, .td-media-gallery__actions) {
+			opacity: 0;
+		}
+
+		.td-media-gallery__item:hover > .td-media-gallery__media > :is(.td-sortable__handle, .td-media-gallery__remove, .td-media-gallery__actions),
+		.td-media-gallery__item:is(:focus-within, [data-td-open], [data-td-sort-state]) > .td-media-gallery__media > :is(.td-sortable__handle, .td-media-gallery__remove, .td-media-gallery__actions) {
+			opacity: 1;
+		}
+
+		.td-media-gallery__media:has(> .td-sortable__handle:not(:disabled)) {
+			cursor: grab;
+		}
+
+		.td-media-gallery__media > .td-sortable__handle:hover:not(:disabled),
+		.td-media-gallery__actions > .td-media-gallery__btn:hover:not(:disabled) {
+			background: rgb(0 0 0 / 75%);
+		}
+
+		.td-media-gallery__remove:hover:not(:disabled) {
+			background: var(--td-solid-danger-hover);
+		}
 	}
 
 	.td-media-gallery__btn {
@@ -240,13 +333,6 @@
 		display: none;
 	}
 
-	@media (hover: hover) and (pointer: fine) {
-		.td-media-gallery__btn:hover:not(:disabled) {
-			color: var(--td-color-text);
-			background: var(--td-color-hover-strong);
-		}
-	}
-
 	.td-media-gallery__btn:focus-visible,
 	.td-media-gallery__add:focus-visible {
 		outline: 2px solid transparent;
@@ -270,8 +356,23 @@
 		--_td-field-pad: 4px 8px;
 
 		display: block;
-		padding: 0 var(--td-space-2xs) var(--td-space-2xs);
+		padding: var(--td-space-2xs);
 		font-size: var(--td-text-xs);
+	}
+
+	/* v0.81.0 (E): a tile's usage fields show while it is open (chosen, or an over-long field); no JS (scripting: none)
+	   keeps them shown — the no-JS form edits the alt; hidden from the start → no layout shift at define */
+	@media (scripting: enabled) {
+		.td-media-gallery__item:not([data-td-open]) > :is(.td-media-gallery__alt-field, .td-media-gallery__caption-field, .td-media-gallery__counter, .td-media-gallery__error) {
+			display: none;
+		}
+	}
+
+	@media (scripting: none) {
+		td-media-gallery[usage] .td-media-gallery__media {
+			border-end-start-radius: 0;
+			border-end-end-radius: 0;
+		}
 	}
 
 	.td-media-gallery__alt {
@@ -333,7 +434,7 @@
 		gap: var(--td-space-xs);
 		inline-size: 100%;
 		min-block-size: 2.75rem;
-		margin: var(--td-space-xs) 0 0;
+		margin: 0;
 		padding: var(--td-space-xs) var(--td-space-md);
 		border: 1px dashed var(--td-color-text-muted);
 		border-radius: var(--td-radius-md);
@@ -351,7 +452,49 @@
 		flex-direction: column;
 		gap: var(--td-space-2xs);
 		min-block-size: var(--td-media-gallery-empty-h, 8rem);
-		margin-block-start: 0;
+	}
+
+	/* v0.81.0 (C): Add is the last cell of the grid — a tile of the same shape (its sizer) with "+" and the prompt; an
+	   empty list: the one cell takes the whole row */
+	.td-media-gallery__add-cell {
+		display: flex;
+		min-inline-size: 0;
+		margin: 0;
+	}
+
+	.td-media-gallery__add-cell:only-child {
+		grid-column: 1 / -1;
+	}
+
+	.td-media-gallery__add-cell[hidden] {
+		display: none;
+	}
+
+	.td-media-gallery__add[data-state="filled"] {
+		display: grid;
+		grid-template-rows: 1fr auto auto 1fr;
+		justify-items: center;
+		gap: var(--td-space-2xs);
+		padding: 0 var(--td-space-2xs);
+	}
+
+	.td-media-gallery__add[data-state="filled"] > .td-media-gallery__sizer {
+		grid-area: 1 / 1 / -1 / -1;
+		justify-self: stretch;
+	}
+
+	.td-media-gallery__add[data-state="filled"] > .td-media-gallery__icon {
+		grid-area: 2 / 1;
+	}
+
+	.td-media-gallery__add[data-state="filled"] > .td-media-gallery__prompt {
+		grid-area: 3 / 1;
+		font-size: var(--td-text-xs);
+	}
+
+	.td-media-gallery__add[data-state="filled"] .td-media-gallery__icon svg {
+		inline-size: 1.5rem;
+		block-size: 1.5rem;
 	}
 
 	.td-media-gallery__add[hidden] {
@@ -433,7 +576,7 @@
 	}
 
 	/* ADR 0012 §6: before define no dead control — the buttons keep their box */
-	td-media-gallery:not(:defined) :is(.td-media-gallery__handle, .td-media-gallery__btn, .td-media-gallery__add) {
+	td-media-gallery:not(:defined) :is(.td-media-gallery__handle, .td-media-gallery__remove, .td-media-gallery__btn, .td-media-gallery__add) {
 		visibility: hidden;
 	}
 
@@ -441,16 +584,94 @@
 		.td-media-gallery__list {
 			gap: var(--td-space-2xs);
 		}
-
-		.td-media-gallery__bar {
-			padding: 2px;
-		}
 	}
 
+	/* coarse pointer: the touch-min hit area is a centred ::before (the chip stays small), the gaps keep two areas
+	   edge to edge (= media-field) */
 	@media (pointer: coarse) {
-		.td-media-gallery__btn {
+		/* the 44px hit areas stay inside the clipped picture: the chips sit half a hit area minus half a chip in */
+		.td-media-gallery__media {
+			--_td-mg-tool-inset: max(var(--td-space-2xs), calc((var(--td-touch-min, 44px) - var(--td-media-gallery-tool-size, 1.75rem)) / 2 + 1px));
+		}
+
+		.td-media-gallery__media > .td-sortable__handle,
+		.td-media-gallery__remove {
+			z-index: 1; /* above the Mô tả cover */
+			inset-block-start: var(--_td-mg-tool-inset);
+		}
+
+		.td-media-gallery__media > .td-sortable__handle {
+			inset-inline-start: var(--_td-mg-tool-inset);
+		}
+
+		.td-media-gallery__remove,
+		.td-media-gallery__actions {
+			inset-inline-end: var(--_td-mg-tool-inset);
+		}
+
+		.td-media-gallery__actions {
+			inset-block-end: var(--_td-mg-tool-inset);
+		}
+
+		.td-media-gallery__actions {
+			gap: max(var(--td-space-2xs), calc(var(--td-touch-min, 44px) - var(--td-media-gallery-tool-size, 1.75rem) + 1px));
+		}
+
+		/* a narrow tile holds two 44px targets per row: the row splits — Đặt làm ảnh bìa bottom-start (where tile 1 has
+		   its badge), Cắt bottom-end, and Mô tả becomes the picture itself (a transparent cover under the chips: the tap
+		   on the picture opens the fields, a swipe still scrolls) */
+		.td-media-gallery__actions {
+			display: contents;
+		}
+
+		.td-media-gallery__actions > .td-media-gallery__btn {
+			position: absolute;
+			z-index: 1;
+			inset-block-end: var(--_td-mg-tool-inset);
+		}
+
+		.td-media-gallery__actions > .td-media-gallery__cover-btn {
+			inset-inline-start: var(--_td-mg-tool-inset);
+		}
+
+		.td-media-gallery__actions > .td-media-gallery__crop-btn {
+			inset-inline-end: var(--_td-mg-tool-inset);
+		}
+
+		.td-media-gallery__actions > .td-media-gallery__edit {
+			inset: 0;
+			z-index: 0;
+			inline-size: auto;
+			block-size: auto;
+			border-radius: 0;
+			background: transparent;
+			box-shadow: none;
+		}
+
+		.td-media-gallery__actions > .td-media-gallery__edit .td-media-gallery__icon {
+			display: none;
+		}
+
+		.td-media-gallery__actions > .td-media-gallery__edit:focus-visible {
+			box-shadow: inset 0 0 0 3px var(--td-focus);
+		}
+
+		.td-media-gallery__actions > .td-media-gallery__edit:is(:active, [data-td-pressed]):not(:disabled) {
+			background-color: rgb(0 0 0 / 15%);
+		}
+
+		:is(.td-media-gallery__media > .td-sortable__handle, .td-media-gallery__remove, .td-media-gallery__actions > .td-media-gallery__btn)::before {
+			content: "";
+			position: absolute;
+			inset-block-start: 50%;
+			inset-inline-start: 50%;
 			inline-size: var(--td-touch-min, 44px);
 			block-size: var(--td-touch-min, 44px);
+			transform: translate(-50%, -50%);
+		}
+
+		.td-media-gallery__actions > .td-media-gallery__edit::before {
+			content: none;
 		}
 
 		/* v0.51.0 (v0.36 QĐ 67): the counter / error under a control ≥ 14px on touch screens */
@@ -466,6 +687,8 @@
 
 	@media (prefers-reduced-motion: reduce) {
 		.td-media-gallery__btn,
+		.td-media-gallery__remove,
+		.td-media-gallery__media > .td-sortable__handle,
 		.td-media-gallery__add {
 			transition: none;
 		}
@@ -482,7 +705,10 @@
 			border: 1px solid CanvasText;
 		}
 
-		.td-media-gallery__btn {
+		.td-media-gallery__btn,
+		.td-media-gallery__remove,
+		.td-media-gallery__media > .td-sortable__handle {
+			border: 1px solid ButtonText;
 			color: ButtonText;
 		}
 
@@ -498,9 +724,15 @@
 		-webkit-tap-highlight-color: transparent;
 	}
 
-	.td-media-gallery__btn:is(:active, [data-td-pressed]):not(:disabled) {
-		color: var(--td-color-text);
-		background-color: var(--td-color-pressed);
+	.td-media-gallery__actions > .td-media-gallery__btn:is(:active, [data-td-pressed]):not(:disabled),
+	.td-media-gallery__media > .td-sortable__handle:is(:active, [data-td-pressed]):not(:disabled) {
+		background-color: rgb(0 0 0 / 80%);
+		background-image: none;
+		transition-duration: 0s;
+	}
+
+	.td-media-gallery__remove:is(:active, [data-td-pressed]):not(:disabled) {
+		background-color: var(--td-solid-danger-hover);
 		transition-duration: 0s;
 	}
 
@@ -510,16 +742,9 @@
 		transition-duration: 0s;
 	}
 
-	/* the handle chip stays solid over the image when pressed (the shared rule's translucent fill would not) */
-	.td-media-gallery__media > .td-sortable__handle:is(:active, [data-td-pressed]):not(:disabled) {
-		color: var(--td-color-text);
-		background-color: var(--td-color-surface);
-		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
-		transition-duration: 0s;
-	}
-
 	@media (forced-colors: active) {
 		.td-media-gallery__btn:is(:active, [data-td-pressed]),
+		.td-media-gallery__remove:is(:active, [data-td-pressed]),
 		.td-media-gallery__add:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
 		}

@@ -39,7 +39,7 @@ function mount(n, { width = 600, attrs = '' } = {}) {
   for (const t of ['input', 'change']) el.addEventListener(t, (e) => rec.push(`${t}:${e.detail.reason}`));
   return { el, form: wrap.querySelector('form'), rec };
 }
-const lis = (el) => [...el.querySelectorAll('.td-media-gallery__list > li')];
+const lis = (el) => [...el.querySelectorAll('.td-media-gallery__list > li.td-media-gallery__item')];
 const handle = (li) => li.querySelector('.td-media-gallery__handle');
 const live = (el) => el.querySelector('.td-media-gallery__sort-status');
 const center = (n) => { const r = n.getBoundingClientRect(); return [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)]; };
@@ -140,17 +140,46 @@ describe('td-media-gallery — pointer / tap reorder', () => {
     expect(lis(el).every((li) => !li.hasAttribute('style') || !li.style.getPropertyValue('--_td-sort-x'))).to.equal(true);
   });
 
-  it('a drag that starts on the image body does nothing (only the handle drags)', async () => {
-    const { el, rec } = mount(3);
-    const from = center(lis(el)[0].querySelector('.td-media-gallery__media'));
-    const p = [from[0] - 20, from[1] + 10];
-    await sendMouse({ type: 'move', position: p });
+  it('v0.81.0: a real mouse drag that starts on the image body reorders like the handle (ONE input + change); the click after it does not open the tile', async () => {
+    const { el, rec } = mount(3, { attrs: ' usage' });
+    const ul = el.querySelector('.td-media-gallery__list');
+    const m = lis(el)[0].querySelector('.td-media-gallery__media');
+    const from = center(m);
+    const to = center(lis(el)[2]);
+    await sendMouse({ type: 'move', position: from });
     await sendMouse({ type: 'down' });
-    await sendMouse({ type: 'move', position: [p[0] + 200, p[1]] });
-    await sendMouse({ type: 'up' });
+    for (let i = 1; i <= 8; i += 1) {
+      await sendMouse({ type: 'move', position: [Math.round(from[0] + ((to[0] - from[0]) * i) / 8), Math.round(from[1] + ((to[1] - from[1]) * i) / 8)] });
+      await frame();
+    }
     await wait();
-    expect(el.value).to.deep.equal(['m1', 'm2', 'm3']);
-    expect(rec).to.deep.equal([]);
+    expect(ul.hasAttribute('data-td-dragging')).to.equal(true, 'gesture alive');
+    await sendMouse({ type: 'up' });
+    await frame();
+    await wait();
+    expect(el.value).to.deep.equal(['m2', 'm3', 'm1']);
+    expect(rec).to.deep.equal(['input:reorder', 'change:reorder']);
+    expect(el.querySelector('[data-td-open]'), 'the click ending the drag is swallowed').to.equal(null);
+  });
+
+  it('a TOUCH press on the image body does not drag (touch / pen only via the handle); a mouse-typed one does', async () => {
+    const { el, rec } = mount(3);
+    const ul = el.querySelector('.td-media-gallery__list');
+    const m = lis(el)[0].querySelector('.td-media-gallery__media');
+    const [x, y] = center(m);
+    const [x2] = center(lis(el)[2]);
+    const pe = (type, xx, pointerType) => m.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, composed: true, clientX: xx, clientY: y, pointerId: 7, pointerType, isPrimary: true, button: type === 'pointermove' ? -1 : 0, buttons: type === 'pointerup' ? 0 : 1 }));
+    for (const [pointerType, drags] of [['touch', false], ['pen', false], ['mouse', true]]) {
+      pe('pointerdown', x, pointerType);
+      for (let i = 1; i <= 5; i += 1) { pe('pointermove', x + ((x2 - x) * i) / 5, pointerType); await frame(); }
+      expect(ul.hasAttribute('data-td-dragging'), pointerType).to.equal(drags);
+      pe('pointerup', x2, pointerType);
+      await wait();
+      if (drags) await wait(); // the drop of the mouse control
+      el.value = ['m1', 'm2', 'm3']; // back to the start for the next pointer type
+      rec.length = 0;
+    }
+    expect(ul.hasAttribute('data-td-dragging')).to.equal(false);
   });
 
   it('tap-to-move (WCAG 2.5.7): tap a handle, then another tile\'s handle → moved there, ONE change', async () => {

@@ -200,8 +200,10 @@ const PRESS_TYPES = [
   // v0.36.2 review ISSUE-1: tap-to-act surfaces (a tap opens the file picker / dismisses) — pressed only (noTap)
   // the zone's top padding (its centre holds the browse button, a control of its own)
   { name: 'dropzone', sel: 'td-dropzone .td-dropzone__zone', token: '--td-dropzone-bg-pressed', noTap: true, top: true },
-  // v0.43.0: td-media-gallery tile button (Gỡ — pressed only: a tap removes the image)
-  { name: 'gallery button', sel: '#rsp-gallery .td-media-gallery__remove', token: '--td-color-pressed', noTap: true },
+  // v0.43.0: td-media-gallery tile button (Gỡ — pressed only: a tap removes the image); v0.81.0: the red round X, pressed = the danger hover fill
+  { name: 'gallery button', sel: '#rsp-gallery .td-media-gallery__remove', token: '--td-solid-danger-hover', noTap: true },
+  // v0.81.0: the dark round tool chips (handle / Mô tả) over the picture — pressed = rgb(0 0 0 / 80%)
+  { name: 'gallery tool', sel: '#rsp-gallery .td-media-gallery__edit', token: 'rgb(0 0 0 / 80%)', noTap: true },
   // v0.79.0: td-media-field corner tools (X = the pressed danger token, crop icon = a deeper black) — pressed only (a tap removes / opens the cropper)
   { name: 'media-field remove', sel: 'td-media-field[name="og"] .td-media-field__remove', token: '--td-btn-danger-pressed', noTap: true },
   { name: 'media-field crop', sel: 'td-media-field[name="og"] .td-media-field__crop-btn', token: 'rgb(0 0 0 / 75%)', noTap: true },
@@ -683,6 +685,30 @@ async function chromiumSemantics(browser) {
       const ids = await galIds();
       expect(ids.startsWith('m2,m1'), `order after the drag: ${ids}`);
       expect(JSON.stringify(await page.evaluate(() => window.__galChanges)) === '["reorder"]', 'not exactly one change (reorder)');
+    });
+    // v0.81.0 (E): the usage fields are collapsed — a tap on the picture or on Mô tả opens one tile at a time; a horizontal
+    // touch drag on the picture never reorders (touch / pen drag only by the handle)
+    await it(tag, 'gallery: a tap on the picture / Mô tả opens a tile (one at a time); a horizontal touch drag on the picture does not reorder', async () => {
+      await load(page);
+      await page.locator(`${gal} .td-media-gallery__item`).first().scrollIntoViewIfNeeded();
+      const open = () => page.evaluate((s) => [...document.querySelectorAll(`${s} .td-media-gallery__item`)].slice(0, 3)
+        .map((li) => (li.hasAttribute('data-td-open') ? 'o' : '-')).join(''), gal);
+      expect(await open() === '---', `initially ${await open()}`);
+      const m1 = await centre(page, `${gal} .td-media-gallery__item:nth-child(1) .td-media-gallery__media`);
+      await page.touchscreen.tap(m1.x, m1.y);
+      await frames(page, 2);
+      expect(await open() === 'o--', `after a tap on the picture: ${await open()}`);
+      const e2 = await centre(page, `${gal} .td-media-gallery__item:nth-child(2) .td-media-gallery__edit`);
+      await page.touchscreen.tap(e2.x, e2.y);
+      await frames(page, 2);
+      expect(await open() === '-o-', `after a tap on Mô tả of tile 2: ${await open()}`);
+      await galChanges();
+      const from = await centre(page, `${gal} .td-media-gallery__item:nth-child(1) .td-media-gallery__media`);
+      const to = await centre(page, `${gal} .td-media-gallery__item:nth-child(2) .td-media-gallery__media`);
+      await touchDrag(cdp, [from, { x: from.x + 12, y: from.y }, to], { durationMs: 400 });
+      await frames(page, 4);
+      expect((await galIds()).startsWith('m1,m2'), `order after a touch drag on the picture: ${await galIds()}`);
+      expect(JSON.stringify(await page.evaluate(() => window.__galChanges)) === '[]', 'a change was fired');
     });
     await it(tag, 'gallery: tap a handle, tap another handle → moved there (tap-to-move)', async () => {
       await load(page);
@@ -1647,6 +1673,9 @@ async function webkitSmoke(browser) {
     await it(tag, 'gallery caption: tap focuses, ≥ 44 px, ≥ 16 px; counter ≥ 14 px; typing reaches the value', async () => {
       await load(page);
       const ta = '#rsp-gallery .td-media-gallery__item:nth-child(2) .td-media-gallery__caption';
+      const mo = '#rsp-gallery .td-media-gallery__item:nth-child(2) .td-media-gallery__edit'; // v0.81.0: the fields show on an open tile
+      await page.locator(mo).scrollIntoViewIfNeeded();
+      await tap(mo);
       await page.locator(ta).scrollIntoViewIfNeeded();
       await tap(ta);
       await page.keyboard.type('Chú thích');

@@ -39,6 +39,8 @@ export const SORTABLE_LABELS = {
 /* px of movement before a press on a handle becomes a drag: dragSlop(pointerType) of the PRESS (v0.36.2, ADR 0019 —
    mouse 4 as before, pen 8, touch 10; read from the event, so a hybrid laptop gets the right one per input) */
 const NAV_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End']);
+/* v0.81.0: a press on one of these inside a drag surface is the control's, never a drag */
+const SURFACE_SKIP = 'button, input, textarea, select, a[href], label, [contenteditable]:not([contenteditable="false"])';
 const X = '--_td-sort-x';
 const Y = '--_td-sort-y';
 
@@ -116,9 +118,14 @@ export class SortableController {
    *   labels?: object,
    *   placePlaceholder?: (ph: HTMLElement) => void,
    *   reconcile?: () => void,
+   *   surfaceOf?: (item: HTMLElement) => HTMLElement|null,
+   *   surfacePointers?: string[],
    * }} opts
    *   `reconcile` (review round 1 IMPL-1): drain the consumer's pending MutationObserver records synchronously and apply
    *   them (an outside change cancels the gesture as 'external'); called right before every drop.
+   *   `surfaceOf` (v0.81.0): a press of a `surfacePointers` pointer (default mouse only) on that part of an item — not
+   *   on a control inside it — drags like its handle. Click, lift, tap-to-move and the keyboard stay on the handle; the
+   *   click that ends a surface drag never reaches the consumer.
    */
   constructor(host, opts) {
     this.host = host;
@@ -205,6 +212,22 @@ export class SortableController {
     const h = target.closest('.td-sortable__handle');
     if (!h || !this.host.contains(h)) return null;
     for (const it of this._items()) if (this.o.handleOf(it) === h) return { item: it, handle: /** @type {HTMLElement} */ (h) };
+    return null;
+  }
+
+  /** @private v0.81.0: the item whose drag surface holds `target` (not a control inside it), for this pointer type */
+  _itemOfSurface(target, pointerType) {
+    const o = this.o;
+    if (!o.surfaceOf || !(target instanceof Element) || !this.host.contains(target)) return null;
+    if (pointerType != null && !(o.surfacePointers || ['mouse']).includes(pointerType)) return null;
+    for (const it of this._items()) {
+      const s = o.surfaceOf(it);
+      if (!s || !s.contains(target)) continue;
+      const ctl = target.closest(SURFACE_SKIP);
+      if (ctl && s.contains(ctl)) return null;
+      const h = o.handleOf(it);
+      return h ? { item: it, handle: h, surface: s } : null;
+    }
     return null;
   }
 
@@ -312,7 +335,7 @@ export class SortableController {
     if (g.raf) cancelAnimationFrame(g.raf);
     g.raf = 0;
     if (g.captured) {
-      try { g.handle.releasePointerCapture(g.pointerId); } catch { /* already released */ }
+      try { (g.capture || g.handle).releasePointerCapture(g.pointerId); } catch { /* already released */ }
     }
     for (const el of g.touched || []) clearPos(el);
     clearPos(g.item);
@@ -331,7 +354,16 @@ export class SortableController {
   /** @private */
   _click(e) {
     const hit = this._itemOfHandle(e.target);
-    if (!hit) return;
+    if (!hit) {
+      // v0.81.0: the click that ends a surface drag stops here (the consumer's own click must not run)
+      if (this._suppressClick && this._itemOfSurface(e.target, null)) {
+        this._suppressClick = false;
+        clearTimeout(this._suppressTimer);
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      return;
+    }
     if (e === this._swallowEvent) { this._swallowEvent = null; return; } // the click the cancel happened in
     if (this._suppressClick) {
       this._suppressClick = false;
@@ -429,16 +461,17 @@ export class SortableController {
 
   /** @private */
   _pointerDown(e) {
-    const hit = this._itemOfHandle(e.target);
+    const handleHit = this._itemOfHandle(e.target);
+    const hit = handleHit || this._itemOfSurface(e.target, e.pointerType);
     if (!hit) return;
-    this._downOnHandle = true;
+    if (handleHit) this._downOnHandle = true;
     clearTimeout(this._downTimer);
     this._downTimer = setTimeout(() => { this._downOnHandle = false; }, 1000);
     this._suppressClick = false;
     if (this._g) return; // lifted: the click decides (tap-to-move / drop)
     if (e.button !== 0 || !e.isPrimary || !this._usable(hit.handle)) return;
     const g = {
-      mode: 'pending', item: hit.item, handle: hit.handle, origin: this._indexOf(hit.item), source: 'pointer',
+      mode: 'pending', item: hit.item, handle: hit.handle, capture: hit.surface || hit.handle, origin: this._indexOf(hit.item), source: 'pointer',
       pointerId: e.pointerId, slop: dragSlop(e.pointerType), sx: e.clientX, sy: e.clientY, cx: e.clientX, cy: e.clientY,
       listeners: [], touched: new Set(),
       layer: null, raf: 0, captured: false, to: -1,
@@ -483,10 +516,10 @@ export class SortableController {
     this._register(g);
     if (this._g !== g) return; // covered at once
     try {
-      g.handle.setPointerCapture(g.pointerId);
+      g.capture.setPointerCapture(g.pointerId);
       g.captured = true;
     } catch { g.captured = false; }
-    if (g.captured) this._on(g.handle, 'lostpointercapture', () => { if (this._g === g) this.cancel('capture'); });
+    if (g.captured) this._on(g.capture, 'lostpointercapture', () => { if (this._g === g) this.cancel('capture'); });
     g.items = items;
     g.rects = this._snapshot(items);
     const p = this._toHost(g.sx, g.sy);

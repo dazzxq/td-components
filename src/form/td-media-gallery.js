@@ -27,6 +27,7 @@ const HOST_ATTRS = new Set(['data-td-ssr', 'name', 'label', 'items', 'usage', 'c
   'caption', 'alt-maxlength', 'caption-maxlength']);
 const ROLES = {
   handle: 'td-media-gallery__handle', crop: 'td-media-gallery__crop-btn', remove: 'td-media-gallery__remove',
+  edit: 'td-media-gallery__edit', coverBtn: 'td-media-gallery__cover-btn',
   alt: 'td-media-gallery__alt', caption: 'td-media-gallery__caption', add: 'td-media-gallery__add',
 };
 /** v0.51.0: the text controls of a tile (alt, caption) */
@@ -51,7 +52,7 @@ const LOAD_BOUND = new WeakSet();
 /**
  * <td-media-gallery> — an ORDERED LIST of media assets as one form value (v0.43.0, plan
  * docs/internal/plans/v0.43.0-media-gallery.md, ADR 0021). Token-native: needs td.css
- * (src/styles/components/media-gallery.css). Form-associated (TdFormElement), hydratable (contract media-gallery@1).
+ * (src/styles/components/media-gallery.css). Form-associated (TdFormElement), hydratable (contract media-gallery@2, v0.81.0).
  *
  * - The value is the ordered list of opaque `assetId`s; `src` / `name` / `kind` of an item only DISPLAY it. The `items`
  *   attribute (JSON `[{"id","src"?,"name"?,"kind"?,"alt"?,"crop"?,"focal"?}]`) is the default / reset state; a later
@@ -105,7 +106,7 @@ const LOAD_BOUND = new WeakSet();
  * @fires change - same detail (alt: on blur after an edit; reorder: once, on drop)
  */
 export class TdMediaGallery extends TdFormElement {
-  /** v0.43.0: adopts php/td.php td_media_gallery() markup in place (contract media-gallery@1). */
+  /** v0.43.0: adopts php/td.php td_media_gallery() markup in place (contract media-gallery@2 since v0.81.0). */
   static hydratable = true;
 
   /** Hard ceiling (decision 6, owner O2): also the default `max`. */
@@ -131,6 +132,10 @@ export class TdMediaGallery extends TdFormElement {
     handle: 'Sắp xếp {name}',
     remove: 'Gỡ {name}',
     crop: 'Cắt {name}',
+    // v0.81.0: collapsed usage fields + set-cover (dsuite K3)
+    edit: 'Mô tả {name}',
+    makeCover: 'Đặt {name} làm ảnh bìa',
+    madeCover: 'Đã đặt {name} làm ảnh bìa.',
     alt: 'Mô tả ảnh {n} (alt)',
     altPlaceholder: 'Mô tả (alt)',
     noPreview: 'Không có ảnh xem trước',
@@ -545,7 +550,7 @@ export class TdMediaGallery extends TdFormElement {
       }
       return this._createLi(it);
     });
-    this._own(() => ul.replaceChildren(...lis));
+    this._setTiles(lis);
     this._checkCrop();
     this._afterListChange();
     if (focus && !this.contains(this.ownerDocument.activeElement)) this._restoreFocus(focus);
@@ -562,6 +567,14 @@ export class TdMediaGallery extends TdFormElement {
     this._liOf.set(it, li);
     this._syncText(li);
     return li;
+  }
+
+  /** @private v0.81.0: THE way the list's children are set — the tiles, then the Add cell (always the last cell) */
+  _setTiles(lis) {
+    const ul = this._ul();
+    if (!ul) return;
+    const cell = this._addCell;
+    this._own(() => (cell ? ul.replaceChildren(...lis, cell) : ul.replaceChildren(...lis)));
   }
 
   /** @private everything that depends on the list: names, cover, count, Add, crop buttons / previews, form */
@@ -750,18 +763,33 @@ export class TdMediaGallery extends TdFormElement {
     const r = this._ratio();
     const full = this._fullName(it, i, count);
     const icon = (n) => `<span class="td-media-gallery__icon" data-td-icon="${n}" aria-hidden="true"></span>`;
-    return `<li class="td-media-gallery__item" data-kind="${it.kind}"><div class="td-media-gallery__media">`
+    const usage = this.hasAttribute('usage');
+    const cover = this.hasAttribute('cover');
+    // v0.81.0 (E): a tile with an over-long field is printed open (= PHP): no layout shift when JS takes over
+    const lim = usage ? this._curLimits() : {};
+    const bad = usage && TEXT_FIELDS.some((f) => lim[f] != null && limitCount(f === 'caption' ? captionValue(it.caption, this._captionMode()) : it.alt) > lim[f]);
+    return `<li class="td-media-gallery__item" data-kind="${it.kind}"${bad ? ' data-td-open="error"' : ''}><div class="td-media-gallery__media">`
       + `<svg class="td-media-gallery__sizer" viewBox="0 0 ${r ? `${r.w} ${r.h}` : '1 1'}" aria-hidden="true" focusable="false"></svg>`
       + this._previewHtml(it)
-      + (this.hasAttribute('cover') && i === 0 ? `<span class="td-media-gallery__cover">${e(this._label('cover'))}</span>` : '')
+      + (cover && i === 0 ? `<span class="td-media-gallery__cover">${e(this._label('cover'))}</span>` : '')
       + `<button type="button" class="td-sortable__handle td-media-gallery__handle" aria-label="${e(this._label('handle', { name: full }))}"`
-      + ` aria-describedby="${e(id)}-sort-help"${dis}>${icon('grip')}</button></div>`
-      + '<div class="td-media-gallery__bar">'
+      + ` aria-describedby="${e(id)}-sort-help"${dis}>${icon('grip')}</button>`
+      // v0.81.0 (@2): the red round X at the top-end corner, the other tools in one row at the bottom-end corner
+      + `<button type="button" class="td-media-gallery__remove" aria-label="${e(this._label('remove', { name: full }))}"${dis}>${icon('close')}</button>`
+      + (cover || this._croppable() || usage ? '<div class="td-media-gallery__actions">' : '')
+      + (cover
+        ? `<button type="button" class="td-media-gallery__btn td-media-gallery__cover-btn" aria-label="${e(this._label('makeCover', { name: full }))}"`
+          + `${i === 0 ? ' hidden' : ''}${dis}>${icon('star')}</button>`
+        : '')
       + (this._croppable()
         ? `<button type="button" class="td-media-gallery__btn td-media-gallery__crop-btn" aria-haspopup="dialog" aria-label="${e(this._label('crop', { name: full }))}"`
           + `${this._cropBtnShown(it) ? '' : ' hidden'}${dis}>${icon('crop')}</button>`
         : '')
-      + `<button type="button" class="td-media-gallery__btn td-media-gallery__remove" aria-label="${e(this._label('remove', { name: full }))}"${dis}>${icon('trash')}</button></div>`
+      + (usage
+        ? `<button type="button" class="td-media-gallery__btn td-media-gallery__edit" aria-expanded="false" aria-label="${e(this._label('edit', { name: full }))}">${icon('pencil')}</button>`
+        : '')
+      + (cover || this._croppable() || usage ? '</div>' : '')
+      + '</div>'
       + this._textFieldsHtml(it, i)
       + '</li>';
   }
@@ -891,7 +919,9 @@ export class TdMediaGallery extends TdFormElement {
     const e = (s) => this.escapeHtml(String(s ?? ''));
     const kind = this._kinds()[0];
     if (this._items.length) {
-      return '<span class="td-media-gallery__icon" data-td-icon="plus" aria-hidden="true"></span>'
+      const r = this._ratio();
+      return `<svg class="td-media-gallery__sizer" viewBox="0 0 ${r ? `${r.w} ${r.h}` : '1 1'}" aria-hidden="true" focusable="false"></svg>`
+        + '<span class="td-media-gallery__icon" data-td-icon="plus" aria-hidden="true"></span>'
         + `<span class="td-media-gallery__prompt">${e(this._label(`add.${kind}`))}</span>`;
     }
     const r = this._ratio();
@@ -922,11 +952,13 @@ export class TdMediaGallery extends TdFormElement {
     const count = this._items.length;
     return `${head}<span class="td-media-gallery__count" id="${e(id)}-count"${count > this._max() ? ' data-state="over"' : ''}>${e(this._countText())}</span></div>`
       + `<ul class="td-media-gallery__list" role="list" aria-labelledby="${e(id)}-label" aria-describedby="${e(id)}-count">`
-      + this._items.map((it, i) => this._itemHtml(it, i, count)).join('') + '</ul>'
+      + this._items.map((it, i) => this._itemHtml(it, i, count)).join('')
+      // v0.81.0 (@2): Add is the LAST cell of the grid (an item of the list), never a tile of the state
+      + `<li class="td-media-gallery__add-cell"${count >= this._max() ? ' hidden' : ''}>`
       + `<button type="button" class="td-media-gallery__add" data-state="${count ? 'filled' : 'empty'}" aria-haspopup="dialog"`
       + (described ? ` aria-describedby="${e(described)}"` : '')
       + (err ? ` aria-invalid="true" aria-errormessage="${e(id)}-error"` : '')
-      + `${count >= this._max() ? ' hidden' : ''}${dis}>${this._addInner()}</button>`
+      + `${count >= this._max() ? ' hidden' : ''}${dis}>${this._addInner()}</button></li></ul>`
       + '<span class="td-sr-only td-media-gallery__status" role="status"></span>'
       + '<span class="td-sr-only td-media-gallery__sort-status" role="status"></span>'
       + `<span class="td-media-gallery__sort-help" id="${e(id)}-sort-help" hidden>${e(this._label('sortHelp'))}</span>`
@@ -951,6 +983,7 @@ export class TdMediaGallery extends TdFormElement {
   afterRender() {
     fillIconSlots(this);
     const add = this._part('add');
+    this._addCell = this._part('addCell');
     this._describedByTarget = add;
     this._foreignDescribedBy = [];
     this._ownDescribedBy = new Set([`${this.id}-help`, `${this.id}-error`]);
@@ -1013,15 +1046,66 @@ export class TdMediaGallery extends TdFormElement {
     return li && li.parentNode === this._ul() ? /** @type {HTMLElement} */ (li) : null;
   }
 
-  /** @private delegated clicks: Add, Gỡ, Cắt (only this gallery's own buttons) */
+  /**
+   * @private delegated clicks: Add, Gỡ, Cắt, Mô tả, Đặt làm ảnh bìa (only this gallery's own buttons); v0.81.0: a click
+   * on the picture itself (not a drag — the controller swallows that click) opens / closes the tile's usage fields.
+   */
   _onClick(ev) {
-    const btn = ev.target instanceof Element ? ev.target.closest('button') : null;
-    if (!btn || btn.closest('td-media-gallery') !== this) return;
-    if (btn.parentNode === this && btn.classList.contains('td-media-gallery__add')) { this._openPicker(); return; }
+    const t = ev.target instanceof Element ? ev.target : null;
+    const btn = t ? t.closest('button') : null;
+    if (btn && btn.closest('td-media-gallery') !== this) return;
+    if (!btn) {
+      const li = t && this._tileOf(t);
+      const media = li && this._part('media', li);
+      if (media && media.contains(t) && this._part('edit', li)) this._toggleOpen(li);
+      return;
+    }
+    if (btn === this._part('add')) { this._openPicker(); return; }
     const li = this._tileOf(btn);
     if (!li) return;
     if (btn === this._part('remove', li)) this._remove(li);
     else if (btn === this._part('crop', li)) this._openCrop(li);
+    else if (btn === this._part('edit', li)) this._toggleOpen(li);
+    else if (btn === this._part('coverBtn', li)) this._makeCover(li);
+  }
+
+  /** @private v0.81.0 (E): one tile's usage fields open at a time (a tile with an over-long field stays open anyway) */
+  _toggleOpen(li) {
+    const it = this._itemOf.get(li);
+    if (!it) return;
+    this._openId = this._openId === it.id ? null : it.id;
+    this._syncOpen();
+  }
+
+  /** @private v0.81.0 (E): `data-td-open` ('' = chosen, 'error' = an invalid field) + the Mô tả button's aria-expanded */
+  _syncOpen() {
+    if (this._openId != null && !this._items.some((it) => it.id === this._openId)) this._openId = null; // its tile left
+    if (!this.hasAttribute('usage')) return;
+    for (const it of this._items) {
+      const li = this._liOf.get(it);
+      if (!li) continue;
+      const bad = !!li.querySelector(':scope > label > [aria-invalid="true"]');
+      const v = bad ? 'error' : it.id === this._openId ? '' : null;
+      if (v == null) li.removeAttribute('data-td-open');
+      else if (li.getAttribute('data-td-open') !== v) li.setAttribute('data-td-open', v);
+      const btn = this._part('edit', li);
+      const ex = v == null ? 'false' : 'true';
+      if (btn && btn.getAttribute('aria-expanded') !== ex) btn.setAttribute('aria-expanded', ex);
+    }
+  }
+
+  /** @private v0.81.0 (dsuite K3): the tile becomes the first one (= the cover) — a reorder for the page */
+  _makeCover(li) {
+    if (this._effectiveDisabled || this._isBroken()) return;
+    const it = this._itemOf.get(li);
+    const i = it ? this._items.indexOf(it) : -1;
+    if (i <= 0) return;
+    this._ctl?.cancel('api');
+    this._move(i, 0);
+    this._emit('input', 'reorder');
+    this._emit('change', 'reorder');
+    this._announce(this._label('madeCover', { name: this._baseName(it) }));
+    this._part('handle', li)?.focus({ preventScroll: true });
   }
 
   /**
@@ -1045,6 +1129,7 @@ export class TdMediaGallery extends TdFormElement {
     } else {
       cur.caption = normCaption(v);
       this._syncLimits(li);
+      this._syncOpen();
     }
     this._syncForm();
     this._emit('input', field);
@@ -1088,8 +1173,10 @@ export class TdMediaGallery extends TdFormElement {
         handle: ':scope > .td-media-gallery__media > button.td-media-gallery__handle',
         media: ':scope > div.td-media-gallery__media',
         img: ':scope > .td-media-gallery__media > img.td-media-gallery__img',
-        crop: ':scope > .td-media-gallery__bar > button.td-media-gallery__crop-btn',
-        remove: ':scope > .td-media-gallery__bar > button.td-media-gallery__remove',
+        crop: ':scope > .td-media-gallery__media > .td-media-gallery__actions > button.td-media-gallery__crop-btn',
+        coverBtn: ':scope > .td-media-gallery__media > .td-media-gallery__actions > button.td-media-gallery__cover-btn',
+        edit: ':scope > .td-media-gallery__media > .td-media-gallery__actions > button.td-media-gallery__edit',
+        remove: ':scope > .td-media-gallery__media > button.td-media-gallery__remove',
         alt: ':scope > .td-media-gallery__alt-field > input.td-media-gallery__alt',
         altLabel: ':scope > .td-media-gallery__alt-field > span.td-sr-only',
         caption: ':scope > .td-media-gallery__caption-field > .td-media-gallery__caption',
@@ -1103,7 +1190,8 @@ export class TdMediaGallery extends TdFormElement {
       return sel ? /** @type {HTMLElement|null} */ (li.querySelector(sel)) : null;
     }
     const sel = {
-      add: ':scope > button.td-media-gallery__add',
+      add: ':scope > ul.td-media-gallery__list > li.td-media-gallery__add-cell > button.td-media-gallery__add',
+      addCell: ':scope > ul.td-media-gallery__list > li.td-media-gallery__add-cell',
       count: ':scope > .td-media-gallery__head > span.td-media-gallery__count',
       status: ':scope > span.td-media-gallery__status',
       sortStatus: ':scope > span.td-media-gallery__sort-status',
@@ -1126,7 +1214,9 @@ export class TdMediaGallery extends TdFormElement {
     if (f.role === 'add' || f.id == null) { this._part('add')?.focus({ preventScroll: true }); return; }
     const it = this._items.find((x) => x.id === f.id);
     const li = it && this._liOf.get(it);
-    if (li) this._part(f.role, li)?.focus({ preventScroll: true });
+    if (!li) return;
+    if ((f.role === 'alt' || f.role === 'caption') && !li.hasAttribute('data-td-open')) { this._openId = it.id; this._syncOpen(); }
+    this._part(f.role, li)?.focus({ preventScroll: true });
   }
 
   /** @private a move (remove + insert) drops the focus: put it back */
@@ -1167,6 +1257,12 @@ export class TdMediaGallery extends TdFormElement {
       set(this._part('handle', li), 'aria-label', this._label('handle', { name: full }));
       set(this._part('remove', li), 'aria-label', this._label('remove', { name: full }));
       set(this._part('crop', li), 'aria-label', this._label('crop', { name: full }));
+      set(this._part('edit', li), 'aria-label', this._label('edit', { name: full }));
+      const cb = this._part('coverBtn', li);
+      if (cb) {
+        set(cb, 'aria-label', this._label('makeCover', { name: full }));
+        if (cb.hidden !== (i === 0)) cb.hidden = i === 0;
+      }
       const al = this._part('altLabel', li);
       const at = this._label('alt', { n: i + 1 });
       if (al && al.textContent !== at) al.textContent = at;
@@ -1200,8 +1296,11 @@ export class TdMediaGallery extends TdFormElement {
       }
       const hide = n >= this._max();
       if (add.hidden !== hide) add.hidden = hide;
+      const cell = this._part('addCell');
+      if (cell && cell.hidden !== hide) cell.hidden = hide;
     }
     this._syncLimits(); // v0.51.0: the counter / error ids follow the positions
+    this._syncOpen();
   }
 
   /** @private "Cắt" buttons follow the source (adapter appeared / removed) */
@@ -1359,6 +1458,7 @@ export class TdMediaGallery extends TdFormElement {
         this._limits = next;
         if (prev[field] !== next[field]) {
           this._syncLimits();
+          this._syncOpen();
           this._syncForm();
         }
         return;
@@ -1447,6 +1547,7 @@ export class TdMediaGallery extends TdFormElement {
   /** @private decision 5 / 15b: append the picked assets (pick order), skipping duplicates / invalid / overflow */
   _onPicked(outcome, srcGen) {
     if (!outcome || outcome.status !== 'selected' || !Array.isArray(outcome.selection)) return;
+    this._reconcile(); // an outside change queued with the pick is undone first (_own below drops pending records)
     const remaining = this._max() - this._items.length;
     const have = new Set(this._items.map((it) => it.id));
     const kind0 = this._kinds()[0];
@@ -1475,7 +1576,10 @@ export class TdMediaGallery extends TdFormElement {
       this._items = [...this._items, ...added];
       const ul = this._ul();
       const lis = added.map((it) => this._createLi(it));
-      this._own(() => ul?.append(...lis));
+      // v0.81.0: the new tiles go in before the + cell (it stays the last child; nothing focused is moved)
+      // (a cell detached from outside comes back last with them)
+      const cell = this._addCell;
+      this._own(() => (cell?.parentNode === ul ? cell.before(...lis) : ul?.append(...lis, ...(cell ? [cell] : []))));
       this._afterListChange();
       this._emit('input', 'add');
       this._emit('change', 'add');
@@ -1524,6 +1628,7 @@ export class TdMediaGallery extends TdFormElement {
     this._ctl = new SortableController(ul, {
       items: () => this._items.map((it) => this._liOf.get(it)).filter(Boolean),
       handleOf: (li) => this._part('handle', li),
+      surfaceOf: (li) => this._part('media', li), // v0.81.0 (A): a mouse drags the whole picture
       move: (from, to) => this._move(from, to),
       commit: () => {
         this._emit('input', 'reorder');
@@ -1571,9 +1676,11 @@ export class TdMediaGallery extends TdFormElement {
     if (!ul) return;
     const lis = this._items.map((it) => this._liOf.get(it));
     const kids = [...ul.children].filter((n) => !(this._ctl && this._ctl.isOwnNode(n)));
-    if (kids.length === lis.length && kids.every((n, i) => n === lis[i])) return;
+    const cell = this._addCell;
+    const want = cell ? [...lis, cell] : lis;
+    if (kids.length === want.length && kids.every((n, i) => n === want[i])) return;
     this._ctl?.cancel('external');
-    this._own(() => ul.replaceChildren(...lis));
+    this._setTiles(lis);
   }
 
   /** @private the controller's adapter: neighbours move around the item (it stays attached, focus kept) */
@@ -1730,10 +1837,10 @@ export class TdMediaGallery extends TdFormElement {
     console.warn(msg);
   }
 
-  // --- SSR (ADR 0012, contract media-gallery@1) ---
+  // --- SSR (ADR 0012, contract media-gallery@2) ---
 
   /**
-   * Marker `media-gallery@1` + exactly render()'s tree (+ the no-JS inputs agreeing with the state) → adopt in place.
+   * Marker `media-gallery@2` (v0.81.0; @1 markup → safe render) + exactly render()'s tree (+ the no-JS inputs agreeing with the state) → adopt in place.
    * Anything else → safe render now, keeping the alts being typed + the focused control (by item id + role).
    * @returns {boolean}
    */
@@ -1741,9 +1848,9 @@ export class TdMediaGallery extends TdFormElement {
     this._initLive();
     const m = ssrMarker(this);
     if (!m || m.name !== 'media-gallery') return false;
-    if (m.schema === 1 && this._ssrGate(true)) return true;
+    if (m.schema === 2 && this._ssrGate(true)) return true;
     const ul = this.querySelector(LIST);
-    const lis = ul ? [...ul.children].filter((n) => n.localName === 'li') : [];
+    const lis = ul ? [...ul.children].filter((n) => n.localName === 'li' && n.classList.contains('td-media-gallery__item')) : [];
     const idOf = (li, i) => {
       const h = [...li.children].find((n) => isHiddenInput(n) && n.classList.contains('td-media-gallery__value'));
       if (h) return h.getAttribute('value');

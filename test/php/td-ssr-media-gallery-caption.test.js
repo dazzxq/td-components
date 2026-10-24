@@ -1,5 +1,5 @@
 // v0.51.0 (plan docs/internal/plans/v0.51.0-gallery-caption.md M2, QĐ 1-4, 7-10, 18) — PHP side of the gallery caption
-// + length limits (contract still media-gallery@1, ADR 0021 addendum):
+// + length limits (contract media-gallery@2 since v0.81.0, ADR 0021 addendum):
 //   - td__media_caption / td__media_caption_value / td__media_text_count = normCaption / captionValue / limitCount
 //     (test/ssr/media-text.cases.json) and td__media_limit_opt = parseLimit (test/ssr/media-limit.cases.json — read by
 //     PHP from the file itself: JSON floats / huge ints must not pass through JS);

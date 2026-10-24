@@ -46,7 +46,7 @@ function mk(attrs = {}, { adapter = null } = {}) {
   box.appendChild(form);
   return { form, el };
 }
-const lis = (el) => [...el.querySelectorAll('.td-media-gallery__list > li')];
+const lis = (el) => [...el.querySelectorAll('.td-media-gallery__list > li.td-media-gallery__item')];
 const fd = (form) => [...new FormData(form)].map(([k, v]) => [k, String(v)]);
 const status = (el) => el.querySelector('.td-media-gallery__status').textContent;
 const dialogRoots = () => [...document.body.querySelectorAll(':scope > .td-crop-dialog')];

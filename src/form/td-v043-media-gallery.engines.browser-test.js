@@ -50,7 +50,7 @@ function mk(attrs = {}, { adapter = ad, html = '' } = {}) {
 }
 const q = (el, s) => el.querySelector(s);
 const qa = (el, s) => [...el.querySelectorAll(s)];
-const lis = (el) => qa(el, '.td-media-gallery__list > li');
+const lis = (el) => qa(el, '.td-media-gallery__list > li.td-media-gallery__item');
 const addBtn = (el) => q(el, 'button.td-media-gallery__add');
 const removeBtn = (li) => li.querySelector('.td-media-gallery__remove');
 const status = (el) => q(el, '.td-media-gallery__status').textContent;
@@ -138,12 +138,40 @@ describe('td-media-gallery — add through the picker (decision 5)', () => {
     expect(opens.length).to.equal(2);
   });
 
+  it('v0.81.0: an Add cell detached from outside while the picker is open comes back last with the new tiles', async () => {
+    const { el } = mk({ name: 'g', items: J([{ id: 'm1' }]), max: '10' });
+    addBtn(el).click();
+    opens[0].resolve(picked('m5'));
+    el.querySelector('.td-media-gallery__add-cell').remove(); // same task: the pick lands before the observer runs
+    await tick();
+    await tick();
+    const kids = [...el.querySelector('.td-media-gallery__list').children];
+    expect(kids.map((n) => n.className)).to.deep.equal(['td-media-gallery__item', 'td-media-gallery__item', 'td-media-gallery__add-cell']);
+    expect(el.value).to.deep.equal(['m1', 'm5']);
+  });
+
+  it('v0.81.0: an outside child inserted in the same task as the pick is still undone', async () => {
+    const { el } = mk({ name: 'g', items: J([{ id: 'm1' }]), max: '10' });
+    addBtn(el).click();
+    opens[0].resolve(picked('m5'));
+    const junk = document.createElement('li');
+    el.querySelector('.td-media-gallery__list').prepend(junk);
+    await tick();
+    await tick();
+    expect(junk.isConnected).to.equal(false);
+    const kids = [...el.querySelector('.td-media-gallery__list').children];
+    expect(kids.map((n) => n.className)).to.deep.equal(['td-media-gallery__item', 'td-media-gallery__item', 'td-media-gallery__add-cell']);
+  });
+
   it('appends in pick order; input + change once each (reason add); alt from usage.altText; announce + count', async () => {
     const { el, form, c } = mk({ name: 'g', usage: true, items: J([{ id: 'm1' }]), max: '10' });
     addBtn(el).click();
     opens[0].resolve({ status: 'selected', selection: [sel('m5', 'Năm'), sel('m3')] });
     await tick();
     expect(el.value).to.deep.equal(['m1', 'm5', 'm3']);
+    // v0.81.0: the new tiles go before the + cell, which stays the last child of the list
+    const kids = [...el.querySelector('.td-media-gallery__list').children];
+    expect(kids.map((n) => n.className)).to.deep.equal(['td-media-gallery__item', 'td-media-gallery__item', 'td-media-gallery__item', 'td-media-gallery__add-cell']);
     expect(c.input).to.equal(1);
     expect(c.change).to.equal(1);
     expect(c.details[1].reason).to.equal('add');
@@ -210,7 +238,7 @@ describe('td-media-gallery — remove (decision 7)', () => {
     expect(document.activeElement === addBtn(el)).to.equal(true);
     expect(fd(form)).to.deep.equal([['g', '']]);
     expect(addBtn(el).dataset.state).to.equal('empty');
-    expect(q(el, '.td-media-gallery__list').children.length).to.equal(0);
+    expect(q(el, '.td-media-gallery__list').children.length).to.equal(1); // only the Add cell
   });
 });
 
@@ -260,7 +288,7 @@ describe('td-media-gallery — disabled, reset, restore (decisions 14, 16)', () 
   it('disabled / <fieldset disabled> → nothing submitted, buttons + alt disabled, Add does nothing', () => {
     const { el, form } = mk({ name: 'd', usage: true, items: three, disabled: true });
     expect(fd(form)).to.deep.equal([]);
-    expect(qa(el, 'button').every((b) => b.disabled)).to.equal(true);
+    expect(qa(el, 'button:not(.td-media-gallery__edit)').every((b) => b.disabled)).to.equal(true); // Mô tả only toggles the view
     expect(qa(el, '.td-media-gallery__alt').every((i) => i.disabled)).to.equal(true);
     addBtn(el).click();
     expect(opens.length).to.equal(0);

@@ -2,6 +2,47 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.81.0
+
+**`td-media-gallery` lưới gọn kiểu dcms2** (owner 2026-10-20; [plan](docs/internal/plans/v0.81.0-media-gallery-dcms2-grid.md), Codex plan APPROVE r2).
+**Phá vỡ DOM**: marker SSR `media-gallery@2`. FormData, event, `value`, `items`, `selection`, API công khai giữ nguyên.
+
+### Breaking
+
+- DOM của ô ảnh đổi: **bỏ** `div.td-media-gallery__bar`. X đỏ gỡ ảnh (`button.td-media-gallery__remove`, icon `close`, không còn class `__btn`)
+  và các nút `__cover-btn` / `__crop-btn` / `__edit` (trong `div.td-media-gallery__actions`) nằm **trong** `div.__media`, đè lên ảnh.
+  Trường alt / chú thích vẫn là con trực tiếp của `li`.
+- Nút **Thêm** chuyển vào lưới: `ul.__list > li.td-media-gallery__add-cell > button.__add` là phần tử **cuối** của `ul` (trước: anh em sau `ul`).
+  Ô `li` và nút đều `hidden` khi đủ `max`; nút Thêm dạng `filled` có `svg.__sizer` để vuông như ô. Input ẩn no-JS của gallery rỗng vẫn nằm ngay sau `</ul>`.
+- Marker SSR `media-gallery@1` → **`media-gallery@2`** (PHP `Td::SSR_MEDIA_GALLERY`). HTML PHP đã cache với `@1` bị cổng SSR từ chối và gallery
+  **render lại an toàn** (giữ giá trị); nâng kit và HTML PHP cùng lúc để không nháy.
+- Giữ nguyên cho site (dsuite): `.td-media-gallery__item` có `img` bên trong; tên truy cập của nút Thêm ("Thêm ảnh" / "Chọn ảnh").
+  CSS / test nhắm `.td-media-gallery__bar` hoặc nút Gỡ dạng thùng rác phải viết lại.
+
+### Added
+
+- Chuột kéo **cả ô ảnh** để sắp lại (ngưỡng 4 px; nhấn nút / ô nhập không kéo; click đuôi của cú kéo bị nuốt). Cảm ứng / bút vẫn dùng tay nắm
+  (luôn hiện) + chạm-để-chuyển + bàn phím; không thêm `touch-action`.
+- Ô **"+"** là ô cuối lưới (gallery rỗng: chiếm cả hàng, cao `--td-media-gallery-empty-h`).
+- Alt / chú thích **thu gọn** (chế độ `usage`): nút **Mô tả** (`.td-media-gallery__edit`, `aria-expanded`) hoặc bấm vào ảnh mở trường của ô đó, mỗi lần một ô;
+  ô có trường lỗi luôn mở; không có JS thì các trường vẫn hiện và sửa được (ẩn chỉ bằng CSS `@media (scripting: enabled)`).
+- Nút **Đặt làm ảnh bìa** (`.td-media-gallery__cover-btn`, chỉ với `cover`, ẩn ở ô đầu) — yêu cầu dsuite K3: đưa ảnh lên đầu, `input` + `change` (`reason: 'reorder'`).
+- Công cụ trên ảnh (tay nắm, X, hàng nút) chỉ hiện khi rê / focus với chuột tinh; luôn hiện trên cảm ứng.
+- Token `--td-media-gallery-tool-size`, `-tool-bg`, `-tool-fg`, `-remove-bg`, `-remove-fg`.
+- Nhãn `edit` ("Mô tả {name}"), `makeCover` ("Đặt {name} làm ảnh bìa") — JS `TdMediaGallery.labels` và PHP `Td::MEDIA_GALLERY_LABELS`; `madeCover` (chỉ JS).
+- Nội bộ: `sortable-controller` nhận option `surfaceOf` (+ `surfacePointers`, mặc định `['mouse']`); `td-sortable` / `td-repeater` không truyền nên giữ nguyên hành vi.
+
+### Changed
+
+- Nút trong ô là nút tròn nổi trên ảnh thay cho hàng nút dưới ảnh; vùng chạm vẫn ≥ 44 px trên cảm ứng.
+- Tab trong ô: tay nắm → Gỡ → Đặt bìa → Cắt → Mô tả → alt / chú thích.
+- Fixture SSR (`test/ssr`) và baseline `hint.baseline.json` (mục `mg`) sinh lại theo `@2`.
+
+### Fixed
+
+- Ghi chú còn thiếu của 0.80.0: `td-choice-group` ô đang chọn có nền tint — chữ `hint` / `note` (và chữ gạch của tuỳ chọn `unavailable`)
+  dùng `--td-color-text-label` thay vì muted, tương phản ≥ 4.7 (cổng tương phản; `:where()` giữ luật nhấn thắng). Đã vào commit `b4db21dc`, chưa có trong mục 0.80.0.
+
 ## 0.80.0
 
 **`td-choice-group` ô đang chọn nổi bật theo accent + floating label có khoảng thở** (owner 2026-10-16, chọn mẫu C;

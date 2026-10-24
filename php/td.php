@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.80.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.80.0', __DIR__ . '/public/assets/vendor/td-components/0.80.0');
+ *   require_once '/path/to/vendor/td-components/0.81.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.81.0', __DIR__ . '/public/assets/vendor/td-components/0.81.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -348,7 +348,7 @@ namespace TdComponents {
             'crop' => 'Cắt ảnh',
         ];
         /** v0.43.0: td_media_gallery (always the element <td-media-gallery> + the no-JS inputs, ADR 0021). */
-        public const SSR_MEDIA_GALLERY = 'media-gallery@1';
+        public const SSR_MEDIA_GALLERY = 'media-gallery@2';
         /** v0.43.0 (decision 6, owner O2): hard ceiling of a gallery = the default max (TdMediaGallery.MAX_ITEMS). */
         public const MEDIA_GALLERY_MAX_ITEMS = 100;
         /** v0.51.0 (plan v0.51.0-gallery-caption QĐ 7 / 8): the alt / caption hard ceilings (code points) = GALLERY_ALT_MAX / GALLERY_CAPTION_MAX. */
@@ -368,6 +368,9 @@ namespace TdComponents {
             'handle' => 'Sắp xếp {name}',
             'remove' => 'Gỡ {name}',
             'crop' => 'Cắt {name}',
+            /** v0.81.0: collapsed usage fields + set-cover */
+            'edit' => 'Mô tả {name}',
+            'makeCover' => 'Đặt {name} làm ảnh bìa',
             'alt' => 'Mô tả ảnh {n} (alt)',
             'altPlaceholder' => 'Mô tả (alt)',
             'noPreview' => 'Không có ảnh xem trước',
@@ -445,7 +448,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.80.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.81.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool, assets?: string} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -3473,7 +3476,9 @@ namespace {
             $full = $f($L['item'], ['n' => $i + 1, 'count' => $count, 'name' => $base]) . ($cover && $i === 0 ? $L['coverSuffix'] : '');
             $k = $it['kind'];
             $img = $it['src'] !== '' && $k !== 'file';
-            $html .= '<li class="td-media-gallery__item" data-kind="' . $k . '"><div class="td-media-gallery__media">'
+            // v0.81.0 (E): a tile with an over-long field is printed open (= the element's render())
+            $bad = str_contains($altAria . $capAria, 'aria-invalid');
+            $html .= '<li class="td-media-gallery__item" data-kind="' . $k . '"' . ($bad ? ' data-td-open="error"' : '') . '><div class="td-media-gallery__media">'
                 . '<svg class="td-media-gallery__sizer" viewBox="0 0 ' . $vb . '" aria-hidden="true" focusable="false"></svg>'
                 . ($img
                     ? '<img class="td-media-gallery__img" src="' . Td::e($it['src']) . '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">'
@@ -3482,14 +3487,25 @@ namespace {
                 . ($img && $k === 'video' ? '<span class="td-media-gallery__badge">' . Td::e($L['video']) . '</span>' : '')
                 . ($cover && $i === 0 ? '<span class="td-media-gallery__cover">' . Td::e($L['cover']) . '</span>' : '')
                 . '<button type="button" class="td-sortable__handle td-media-gallery__handle" aria-label="' . Td::e($f($L['handle'], ['name' => $full]))
-                . '" aria-describedby="' . $hid . '-sort-help"' . $dis . '>' . $ico('grip') . '</button></div>'
-                . '<div class="td-media-gallery__bar">'
+                . '" aria-describedby="' . $hid . '-sort-help"' . $dis . '>' . $ico('grip') . '</button>'
+                // v0.81.0 (@2): the red round X at the top-end corner, the other tools in one row at the bottom-end corner
+                . '<button type="button" class="td-media-gallery__remove" aria-label="' . Td::e($f($L['remove'], ['name' => $full])) . '"'
+                . $dis . '>' . $ico('close') . '</button>'
+                . ($cover || $croppable || $usage ? '<div class="td-media-gallery__actions">' : '')
+                . ($cover
+                    ? '<button type="button" class="td-media-gallery__btn td-media-gallery__cover-btn" aria-label="' . Td::e($f($L['makeCover'], ['name' => $full])) . '"'
+                        . ($i === 0 ? ' hidden' : '') . $dis . '>' . $ico('star') . '</button>'
+                    : '')
                 . ($croppable
                     ? '<button type="button" class="td-media-gallery__btn td-media-gallery__crop-btn" aria-haspopup="dialog" aria-label="'
                         . Td::e($f($L['crop'], ['name' => $full])) . '"' . ($k === 'image' && $it['src'] !== '' ? '' : ' hidden') . $dis . '>' . $ico('crop') . '</button>'
                     : '')
-                . '<button type="button" class="td-media-gallery__btn td-media-gallery__remove" aria-label="' . Td::e($f($L['remove'], ['name' => $full])) . '"'
-                . $dis . '>' . $ico('trash') . '</button></div>'
+                . ($usage
+                    ? '<button type="button" class="td-media-gallery__btn td-media-gallery__edit" aria-expanded="false" aria-label="' . Td::e($f($L['edit'], ['name' => $full])) . '">'
+                        . $ico('pencil') . '</button>'
+                    : '')
+                . ($cover || $croppable || $usage ? '</div>' : '')
+                . '</div>'
                 . ($named ? $hidden('td-media-gallery__value', $usage ? $name . '[' . $i . '][id]' : $name . '[]', $it['id']) : '')
                 . ($usage
                     ? '<label class="td-media-gallery__alt-field"><span class="td-sr-only">' . Td::e($f($L['alt'], ['n' => $i + 1])) . '</span>'
@@ -3511,17 +3527,19 @@ namespace {
                 . ($named && $usage && $focalOn ? $hidden('td-media-gallery__focal', $name . '[' . $i . '][focal]', $it['focal'] ?? 'null') : '')
                 . '</li>';
         }
-        $html .= '</ul>' . ($named && $count === 0 ? $hidden('td-media-gallery__value', $name, '') : '');
         $empty = $count === 0;
-        $html .= '<button type="button" class="td-media-gallery__add" data-state="' . ($empty ? 'empty' : 'filled') . '" aria-haspopup="dialog"'
+        // v0.81.0 (@2): Add is the LAST cell of the grid (an item of the list)
+        $html .= '<li class="td-media-gallery__add-cell"' . ($count >= $limit ? ' hidden' : '') . '>'
+            . '<button type="button" class="td-media-gallery__add" data-state="' . ($empty ? 'empty' : 'filled') . '" aria-haspopup="dialog"'
             . ($described !== '' ? ' aria-describedby="' . Td::e($described) . '"' : '')
             . ($error !== null ? ' aria-invalid="true" aria-errormessage="' . $hid . '-error"' : '')
             . ($count >= $limit ? ' hidden' : '') . $dis . '>'
             . ($empty
                 ? $ico($kinds[0]) . '<span class="td-media-gallery__prompt">' . Td::e($prompt ?? $L['prompt'][$kinds[0]]) . '</span>'
                     . ($ratio !== null ? '<span class="td-media-gallery__ratio">' . Td::e($ratio['text']) . '</span>' : '')
-                : $ico('plus') . '<span class="td-media-gallery__prompt">' . Td::e($L['add'][$kinds[0]]) . '</span>')
-            . '</button>'
+                : '<svg class="td-media-gallery__sizer" viewBox="0 0 ' . $vb . '" aria-hidden="true" focusable="false"></svg>'
+                    . $ico('plus') . '<span class="td-media-gallery__prompt">' . Td::e($L['add'][$kinds[0]]) . '</span>')
+            . '</button></li></ul>' . ($named && $count === 0 ? $hidden('td-media-gallery__value', $name, '') : '')
             . '<span class="td-sr-only td-media-gallery__status" role="status"></span>'
             . '<span class="td-sr-only td-media-gallery__sort-status" role="status"></span>'
             . '<span class="td-media-gallery__sort-help" id="' . $hid . '-sort-help" hidden>' . Td::e($L['sortHelp']) . '</span>';

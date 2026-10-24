@@ -66,6 +66,10 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-media-field__tool.td-media-field__remove',
   '.td-media-gallery__add',
   '.td-media-gallery__btn',
+  '.td-media-gallery__remove', // v0.81.0: the red X (no __btn class)
+  '.td-media-gallery__actions > .td-media-gallery__btn',
+  '.td-media-gallery__actions > .td-media-gallery__edit',
+  '.td-media-gallery__item',
   '.td-media-gallery__media > .td-sortable__handle',
   '.td-media-grid__open',
   '.td-media-grid__tick',

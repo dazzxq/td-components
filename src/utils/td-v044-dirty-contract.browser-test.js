@@ -239,6 +239,7 @@ describe('trackFormDirty contract — every form-associated td element (v0.44.0 
       const tracker = trackFormDirty(form);
       try {
         const ctl = el.querySelector('.td-media-gallery__caption');
+        el.querySelector('.td-media-gallery__edit').click(); // v0.81.0: the fields show only on an open tile
         await typeIn(ctl, 'c');
         await frames(3);
         expect(tracker.isDirty()).to.equal(true);

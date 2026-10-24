@@ -373,7 +373,7 @@ in giá trị / lỗi gốc của adapter) áp dụng nguyên. Thêm:
 - **Luồng cắt theo thế hệ + identity** (QĐ 12b): kết quả `adapter.get` / hộp cắt chỉ áp khi chưa abort, cùng thế hệ nguồn,
   cùng `li` còn trong lưới và cùng id — adapter phớt lờ `AbortSignal` cũng không ghi được gì; áp vào đúng ảnh, không theo
   index. Lazy get cùng luật (thế hệ + adapter + context + item + id).
-- **Cổng hydrate riêng:** dấu `media-gallery@1`, allowlist attribute host, từng phần so với `render()` (attribute chính
+- **Cổng hydrate riêng:** dấu `media-gallery@2`, allowlist attribute host, từng phần so với `render()` (attribute chính
   xác, text chính xác), hidden input đúng lớp / tên / giá trị / vị trí / `disabled`, ô alt chỉ thêm được `name` / `value`
   của bản no-JS. Lệch → render an toàn (không lấy node nào của markup lạ), chỉ giữ alt đang gõ + focus (theo id item).
 - **Server phải:** `count ≤ max` **của server**, `distinct`, mọi id tồn tại / đúng loại / có quyền (**một** `whereIn`,

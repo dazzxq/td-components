@@ -1510,6 +1510,11 @@
     "@color-scheme": "dark"
   },
   "added": {
+    "--td-media-gallery-remove-bg": { "light": "rgb(220, 38, 38)", "dark": "rgb(220, 38, 38)", "why": "v0.81.0 td-media-gallery: the red X over the picture (= --td-solid-danger-bg)" },
+    "--td-media-gallery-remove-fg": { "light": "rgb(255, 255, 255)", "dark": "rgb(255, 255, 255)", "why": "v0.81.0 td-media-gallery: the glyph of the red X (= --td-solid-danger-fg)" },
+    "--td-media-gallery-tool-bg": { "light": "rgba(0, 0, 0, 0.6)", "dark": "rgba(0, 0, 0, 0.6)", "why": "v0.81.0 td-media-gallery: fill of the round tools over the picture (handle, set-cover, crop, Mô tả; = the media-field tools)" },
+    "--td-media-gallery-tool-fg": { "light": "rgb(255, 255, 255)", "dark": "rgb(255, 255, 255)", "why": "v0.81.0 td-media-gallery: glyph colour of the round tools over the picture" },
+    "--td-media-gallery-tool-size": { "light": "1.75rem", "dark": "1.75rem", "why": "v0.81.0 td-media-gallery: size of the round tools over the picture (touch hit area is extended to --td-touch-min)" },
     "--td-field-affix-fg": { "light": "rgb(107, 107, 115)", "dark": "rgb(172, 172, 180)", "why": "v0.55.0: prefix / suffix text + icon of td-input-field / td-number-input (= --td-color-text-muted, ≥ 4.7 on every field fill — contrast gate); --td-number-affix-fg aliases it" },
     "--td-field-affix-gap": { "light": "0.25rem", "dark": "0.25rem", "why": "v0.55.0: gap between the affix parts and the value in the field box (--td-number-affix-gap aliases it, same value)" },
     "--td-field-note-size": { "light": "0.75rem", "dark": "0.75rem", "why": "v0.55.0 (release lead, dsuite): font size of every helper note (= --td-text-xs; --td-text-sm under pointer: coarse) — sites enlarge hints without touching --td-text-xs" },

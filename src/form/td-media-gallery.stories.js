@@ -59,7 +59,7 @@ export const Empty = {
   args: { label: 'Ảnh sản phẩm', helperText: 'Tối đa 8 ảnh, ảnh đầu là ảnh bìa', errorText: '', required: false, disabled: false },
 };
 
-/** Reference shape (name[]=id): drag the handle, tap-to-move or Space + arrows to reorder. */
+/** Reference shape (name[]=id): a mouse drags the whole picture (touch: the handle), tap-to-move or Space + arrows to reorder; ★ makes a picture the cover; the + cell adds. */
 export const Reorder = {
   render: (args) => gallery('max="8" cover', ITEMS, args),
   args: { label: 'Ảnh bài viết' },

@@ -78,7 +78,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_number_input` — **chế độ element** (0.30.0, tự bật) | host `<td-number-input data-td-ssr="number-input@1">` chứa sẵn cùng cây | Không (input native chạy ngay, gửi số sạch) | **Có** — nạp module `number-input`: nhận **tại chỗ**, hiện `12.990.000` |
 | `td_masked_value` (0.31.0) | **luôn** host `<td-masked-value data-td-ssr="masked-value@1">` chứa chuỗi che + nút toggle + live region — **không bao giờ** giá trị thật | Không (chưa có JS: chỉ thấy chuỗi che, nút ẩn) | **Có** — nạp module `masked-value`: nhận **tại chỗ** |
 | `td_media_field` (0.32.0) | **luôn** host `<td-media-field data-td-ssr="media-field@2">` chứa sẵn khung (tỉ lệ bằng SVG sizer), ảnh xem trước, ô mở + nút X (gỡ) / cắt + chữ tỉ lệ dưới khung + **hidden input** gửi `assetId` (và ô alt / crop ở chế độ usage) | Không (form gửi đúng hình dạng; chưa có JS thì nút ẩn, giữ chỗ) | **Có** — nạp module `media-field`: nhận **tại chỗ**, gỡ hidden input |
-| `td_media_gallery` (0.43.0) | **luôn** host `<td-media-gallery data-td-ssr="media-gallery@1">` chứa sẵn lưới ô (tỉ lệ bằng SVG sizer), ảnh, tay nắm / Cắt / Gỡ, nút Thêm + **hidden input** gửi danh sách (`name[]` / `name[i][…]`, ô alt có `name`) | Không (form gửi đúng hình dạng theo thứ tự server in; chưa có JS thì nút ẩn, giữ chỗ) | **Có** — nạp module `media-gallery`: nhận **tại chỗ**, gỡ hidden input |
+| `td_media_gallery` (0.43.0) | **luôn** host `<td-media-gallery data-td-ssr="media-gallery@2">` chứa sẵn lưới ô (tỉ lệ bằng SVG sizer), ảnh, tay nắm / X gỡ / Cắt / Mô tả / Đặt bìa, ô "+" Thêm ở cuối lưới (0.81, `@2`) + **hidden input** gửi danh sách (`name[]` / `name[i][…]`, ô alt có `name`) | Không (form gửi đúng hình dạng theo thứ tự server in; chưa có JS thì nút ẩn, giữ chỗ) | **Có** — nạp module `media-gallery`: nhận **tại chỗ**, gỡ hidden input |
 | `td_scan_input` (0.38.0) | `div.td-scan` + `input.td-scan__input` **native** (`autocomplete="off"`, `enterkeyhint="done"`…) | Không (Enter submit form) | Không |
 | `td_scan_input` — **chế độ element** (0.38.0, tự bật) / **`multiple`** (luôn element) | host `<td-scan-input data-td-ssr="scan-input@1">` + cùng input; `multiple`: + `textarea` nhập tay + danh sách + một **hidden input** mỗi mã | Không (form gửi mã in sẵn + dòng textarea) | **Có** — nạp module `scan-input`: nhận **tại chỗ**, gỡ hidden / textarea, dòng textarea qua `validate` |
 | `td_filter_chips` (0.39.0) | **luôn** host `<td-filter-chips data-td-ssr="filter-chips@1">` chứa sẵn đúng cây component (nhóm, mỗi chip một `li` với nhãn / giá trị / ×, "Xoá tất cả", live region) | Không (× có `href` là **link** chạy ngay; × không link thì vô hình, giữ chỗ) | **Có** — nạp module `filter-chips`: nhận **tại chỗ** |
@@ -124,7 +124,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.80.0/
+public/assets/vendor/td-components/0.81.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
   dist/  module-graph.json                    (0.64.0+: bản minify + đồ thị preload)
 ```
@@ -133,7 +133,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.80.0';
+const TD_VERSION = '0.81.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -1451,10 +1451,10 @@ Cảnh báo (`E_USER_WARNING`) chỉ ghi tên option và kiểu, không in giá 
 ```
 
 `td_media_gallery(string $name, array $items = [], array $o = [])` in [Media gallery](../components/media-gallery.md)
-(hợp đồng `media-gallery@1`, [ADR 0021](../internal/decisions/0021-media-gallery-form-shape.md)). **Luôn element mode.**
+(hợp đồng `media-gallery@2`, [ADR 0021](../internal/decisions/0021-media-gallery-form-shape.md)). **Luôn element mode.**
 Không in endpoint, quyền hay asset serialize.
 
-- **Không có JS:** lưới ô có dáng ngay; tay nắm / Cắt / Gỡ / Thêm `visibility: hidden` (giữ chỗ). Form gửi **đúng** hình
+- **Không có JS:** lưới ô có dáng ngay; tay nắm / Cắt / Gỡ / Thêm / Mô tả / Đặt bìa `visibility: hidden` (giữ chỗ). Form gửi **đúng** hình
   dạng của component, theo thứ tự server in, alt sửa được (ô nhập thật có `name`):
   - reference: mỗi ô `<input type="hidden" class="td-media-gallery__value" name="gallery[]" value="{id}">`;
   - usage: hidden `name="gallery[i][id]"`, ô alt `name="gallery[i][alt]"`, [0.51 `caption`: ô chú thích
@@ -1495,17 +1495,17 @@ Không in endpoint, quyền hay asset serialize.
 Ví dụ rút gọn (icon SVG lược bớt; nguyên văn ở `test/ssr/fixtures/media-gallery.html`, case `usage`):
 
 ```html
-<td-media-gallery data-td-ssr="media-gallery@1" id="td-g-3" class="td-media-gallery" name="g" label="Gallery" items="[{&quot;id&quot;:&quot;m1&quot;,…}]" usage croppable crop-ratio="1:1" focal-point cover aspect-ratio="1/1" min="1" max="4">
+<td-media-gallery data-td-ssr="media-gallery@2" id="td-g-3" class="td-media-gallery" name="g" label="Gallery" items="[{&quot;id&quot;:&quot;m1&quot;,…}]" usage croppable crop-ratio="1:1" focal-point cover aspect-ratio="1/1" min="1" max="4">
 <div class="td-media-gallery__head"><span class="td-media-gallery__label" id="td-g-3-label">Gallery</span><span class="td-media-gallery__count" id="td-g-3-count">2/4 ảnh</span></div>
 <ul class="td-media-gallery__list" role="list" aria-labelledby="td-g-3-label" aria-describedby="td-g-3-count">
-<li class="td-media-gallery__item" data-kind="image"><div class="td-media-gallery__media"><svg class="td-media-gallery__sizer" viewBox="0 0 1 1" aria-hidden="true" focusable="false"></svg><img class="td-media-gallery__img" src="/test/fixtures/1.svg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="td-media-gallery__cover">Ảnh bìa</span><button type="button" class="td-sortable__handle td-media-gallery__handle" aria-label="Sắp xếp Ảnh 1 trên 2: Ảnh 1, ảnh bìa" aria-describedby="td-g-3-sort-help">…</button></div>
-<div class="td-media-gallery__bar"><button type="button" class="td-media-gallery__btn td-media-gallery__crop-btn" aria-haspopup="dialog" aria-label="Cắt Ảnh 1 trên 2: Ảnh 1, ảnh bìa">…</button><button type="button" class="td-media-gallery__btn td-media-gallery__remove" aria-label="Gỡ Ảnh 1 trên 2: Ảnh 1, ảnh bìa">…</button></div>
+<li class="td-media-gallery__item" data-kind="image"><div class="td-media-gallery__media"><svg class="td-media-gallery__sizer" viewBox="0 0 1 1" aria-hidden="true" focusable="false"></svg><img class="td-media-gallery__img" src="/test/fixtures/1.svg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="td-media-gallery__cover">Ảnh bìa</span><button type="button" class="td-sortable__handle td-media-gallery__handle" aria-label="Sắp xếp Ảnh 1 trên 2: Ảnh 1, ảnh bìa" aria-describedby="td-g-3-sort-help">…</button><button type="button" class="td-media-gallery__remove" aria-label="Gỡ Ảnh 1 trên 2: Ảnh 1, ảnh bìa">…</button>
+<div class="td-media-gallery__actions"><button type="button" class="td-media-gallery__btn td-media-gallery__cover-btn" aria-label="Đặt Ảnh 1 trên 2: Ảnh 1, ảnh bìa làm ảnh bìa" hidden>…</button><button type="button" class="td-media-gallery__btn td-media-gallery__crop-btn" aria-haspopup="dialog" aria-label="Cắt Ảnh 1 trên 2: Ảnh 1, ảnh bìa">…</button><button type="button" class="td-media-gallery__btn td-media-gallery__edit" aria-expanded="false" aria-label="Mô tả Ảnh 1 trên 2: Ảnh 1, ảnh bìa">…</button></div></div>
 <input type="hidden" class="td-media-gallery__value" name="g[0][id]" value="m1">
 <label class="td-media-gallery__alt-field"><span class="td-sr-only">Mô tả ảnh 1 (alt)</span><input type="text" class="td-field__control td-media-gallery__alt" maxlength="500" placeholder="Mô tả (alt)" name="g[0][alt]" value="Áo thun trắng"></label>
 <input type="hidden" class="td-media-gallery__crop" name="g[0][crop]" value="{&quot;v&quot;:1,…}"><input type="hidden" class="td-media-gallery__focal" name="g[0][focal]" value="{&quot;v&quot;:1,…}"></li>
 …
+<li class="td-media-gallery__add-cell"><button type="button" class="td-media-gallery__add" data-state="filled" aria-haspopup="dialog">…<span class="td-media-gallery__prompt">Thêm ảnh</span></button></li>
 </ul>
-<button type="button" class="td-media-gallery__add" data-state="filled" aria-haspopup="dialog">…<span class="td-media-gallery__prompt">Thêm ảnh</span></button>
 <span class="td-sr-only td-media-gallery__status" role="status"></span><span class="td-sr-only td-media-gallery__sort-status" role="status"></span><span class="td-media-gallery__sort-help" id="td-g-3-sort-help" hidden>…</span>
 </td-media-gallery>
 ```

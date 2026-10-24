@@ -21,6 +21,8 @@ server** — đổi sau là phá site:
 
 ### 1. Element riêng `<td-media-gallery>` (+ PHP `td_media_gallery()`, hợp đồng SSR `media-gallery@1`)
 
+> **v0.81.0: hợp đồng SSR hiện là `media-gallery@2`** (bỏ `div.__bar`, X đỏ + `div.__actions` trong `__media`, nút Thêm thành `li.__add-cell` cuối lưới; hình dạng form không đổi). Markup `@1` đã cache được render lại an toàn. Xem plan [v0.81.0](../plans/v0.81.0-media-gallery-dcms2-grid.md). Phần dưới giữ nguyên lịch sử `@1`.
+
 Không thêm `multiple` vào `<td-media-field>`: hợp đồng của field là **một giá trị** (`value: string`, sáu attribute đơn
 trị), và 1264 dòng state machine của field cho một ảnh sẽ thêm một chiều ở mọi nhánh. Gallery giữ **hợp đồng** của field
 (cùng bộ khoá `id` / `alt` / `crop` / `focal`, cùng JSON v1, cùng tên attribute `usage` / `croppable` / `crop-ratio` /

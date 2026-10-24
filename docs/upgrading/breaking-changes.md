@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.80.0)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.81.0)
 
 Trang này liệt kê, cho từng bản từ bản mới nhất ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.81.0](#0810) | **Phá vỡ DOM (`td-media-gallery`)**: bỏ `.td-media-gallery__bar`; X đỏ `__remove` (icon close, không còn `__btn`) và `__cover-btn` / `__crop-btn` / `__edit` nằm trong `__media > __actions`; nút Thêm chuyển vào lưới (`ul > li.__add-cell > button.__add`, ô cuối); alt / chú thích thu gọn; marker SSR `media-gallery@2`; thêm 5 token + nhãn `edit` / `makeCover` | Xoá / viết lại CSS và test nhắm `.td-media-gallery__bar` hoặc nút Gỡ thùng rác; nút Thêm không còn là anh em sau `ul`. HTML PHP cache cũ (`media-gallery@1`) vẫn chạy (render lại an toàn). Giữ nguyên: `.td-media-gallery__item img`, tên nút Thêm, FormData, event. |
 | [0.80.0](#0800) | **Đổi giao diện**: `td-choice-group` ô đang chọn có nền tint + vòng accent + tick góc; floating label có khoảng thở; affix chữ ngắn không bị cắt | Không phải sửa code. Giữ kiểu chọn cũ: `--td-choice-selected: var(--td-color-text); --td-choice-selected-bg: var(--td-choice-bg); --td-choice-mark: none`. Màu theo accent của site: đặt `--td-accent` ở `:root` / vùng `data-td-theme`. |
 | 0.79.2 | Không phá vỡ: thêm `hide-alt` cho `td-media-field` | Không cần làm gì |
 | [0.79.1](#0791) | Chỉ hình (`td-media-field`): khung có ảnh cũng nét đứt; khung rỗng chỉ có icon, chữ gợi ý mặc định ẩn | Cần chữ gợi ý thì đặt `prompt="…"` (PHP `'prompt' => '…'`). CSS site đè `border-style` của khung có ảnh vẫn chạy. |
@@ -105,6 +106,41 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.81.0
+
+**Phá vỡ DOM + đổi giao diện (`td-media-gallery`).** Lưới gọn theo dcms2; form (FormData, event, `value`, `items`, `selection`, API) giữ nguyên.
+
+Đổi gì:
+
+- **Bỏ** `div.td-media-gallery__bar`. `button.td-media-gallery__remove` ("Gỡ") giờ là **X đỏ tròn** (icon `close`, không còn class `td-media-gallery__btn`, không còn icon thùng rác) nằm trong `div.__media` ngay sau tay nắm.
+  Nút đặt bìa / cắt / mô tả (`__cover-btn` / `__crop-btn` / `__edit`) nằm trong `div.td-media-gallery__actions` (chỉ in khi có `cover` / `croppable` / `usage`), cũng trong `__media`.
+- Nút **Thêm** là ô cuối của lưới: `ul.__list > li.td-media-gallery__add-cell > button.__add` (trước: anh em sau `ul`). Đủ `max` thì cả `li` lẫn nút `hidden`.
+- Alt / chú thích **thu gọn** (chỉ `usage`): mở bằng nút **Mô tả** hoặc bấm vào ảnh, mỗi lần một ô; ô lỗi luôn mở; không có JS thì các trường vẫn hiện.
+- Chuột kéo cả ô ảnh; cảm ứng vẫn kéo bằng tay nắm. Với `cover`: nút "Đặt làm ảnh bìa" trên mọi ô trừ ô đầu.
+- Marker SSR `media-gallery@1` → **`media-gallery@2`**. Markup PHP cũ còn cache bị cổng SSR từ chối và gallery render lại an toàn (giữ giá trị / focus); nâng kit và HTML PHP cùng lúc để giữ lợi ích "không nháy".
+- Mới: token `--td-media-gallery-tool-size`, `-tool-bg`, `-tool-fg`, `-remove-bg`, `-remove-fg` ([bảng](../components/media-gallery.md#tuỳ-biến-giao-diện)); nhãn `edit`, `makeCover` (+ `madeCover` chỉ JS).
+
+Việc site cần làm:
+
+1. Xoá CSS nhắm `.td-media-gallery__bar` (phần tử không còn; luật cũ im lặng mất tác dụng).
+2. CSS nhắm `.td-media-gallery__remove` như nút `__btn` chữ / thùng rác thì viết lại bằng token `--td-media-gallery-remove-bg` / `-remove-fg` / `-tool-size`.
+3. Test / script: nút Thêm không còn là anh em sau `ul` (dùng `.td-media-gallery__add`, vẫn tìm được bằng tên "Thêm ảnh" / "Chọn ảnh"); đếm ô ảnh bằng `.td-media-gallery__item` (ô "+" là `li.__add-cell`, không phải `__item`); `ul.lastElementChild` là ô "+".
+   Trường alt / chú thích ẩn tới khi mở ô — test điền alt phải bấm **Mô tả** (hoặc ảnh) trước.
+4. Nhãn tuỳ biến: thêm `edit` / `makeCover` nếu site dịch nhãn gallery (PHP `Td::MEDIA_GALLERY_LABELS` cũng có hai khoá này; nhãn PHP khác nhãn JS thì render lại).
+
+```css
+/* trước (0.80): CSS đè của site */
+td-media-gallery .td-media-gallery__bar { justify-content: flex-end; }
+td-media-gallery .td-media-gallery__remove { background: #b91c1c; }
+```
+
+```css
+/* sau (0.81): token, không cần đè cấu trúc */
+td-media-gallery { --td-media-gallery-remove-bg: #b91c1c; --td-media-gallery-tool-size: 2rem; }
+```
 
 ---
 

@@ -133,7 +133,7 @@ export function renderDatetimeRangeFixture() {
   return renderPhp('datetime-range-fixture.php');
 }
 
-// v0.43.0: td_media_gallery (always the element <td-media-gallery data-td-ssr="media-gallery@1"> + the no-JS inputs).
+// v0.43.0: td_media_gallery (always the element <td-media-gallery data-td-ssr="media-gallery@2"> + the no-JS inputs).
 export const MEDIA_GALLERY_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'media-gallery.fixtures.json'), 'utf8'));
 export const MEDIA_GALLERY_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'media-gallery.html');
 

@@ -59,18 +59,25 @@ function mk(attrs = {}, { adapter = ad } = {}) {
 }
 const q = (el, s) => el.querySelector(s);
 const qa = (el, s) => [...el.querySelectorAll(s)];
-const lis = (el) => qa(el, '.td-media-gallery__list > li');
+const lis = (el) => qa(el, '.td-media-gallery__list > li.td-media-gallery__item');
 const cap = (li) => li.querySelector('.td-media-gallery__caption');
 const alt = (li) => li.querySelector('.td-media-gallery__alt');
 const part = (li, f, k) => li.querySelector(`.td-media-gallery__${f}-field ~ .td-media-gallery__${k}[id$="-${f}-${k === 'counter' ? 'count' : 'error'}"]`);
 const fd = (form) => [...new FormData(form)].map(([k, v]) => [k, String(v)]);
 const status = (el) => q(el, '.td-media-gallery__status').textContent;
+/** v0.81.0: a tile's alt / caption show only while it is open — open it (Mô tả) before focusing / typing */
+function openOf(ctl) {
+  const li = ctl.closest('li.td-media-gallery__item');
+  if (li && !li.hasAttribute('data-td-open')) li.querySelector('.td-media-gallery__edit').click();
+}
 async function typeIn(ctl, text) {
+  openOf(ctl);
   ctl.focus();
   try { ctl.setSelectionRange(ctl.value.length, ctl.value.length); } catch { /* ignore */ }
   await sendKeys({ type: text });
 }
 async function clear(ctl) {
+  openOf(ctl);
   ctl.focus();
   ctl.select();
   await sendKeys({ press: 'Backspace' });
@@ -344,6 +351,7 @@ describe('td-media-gallery limits — counter, error, validity (QĐ 8-12)', () =
       expect(part(lis(el)[0], field, 'counter').textContent).to.equal('8/10');
       const li1 = lis(el)[0];
       const ctl = field === 'alt' ? alt(li1) : cap(li1);
+      openOf(ctl);
       ctl.focus();
       el.setAttribute(attr, '7');
       expect(lis(el)[0] === li1, `${attr} number → number keeps the tile`).to.equal(true);
@@ -353,7 +361,9 @@ describe('td-media-gallery limits — counter, error, validity (QĐ 8-12)', () =
       el.setAttribute(attr, '0');
       expect(qa(el, '.td-media-gallery__counter, .td-media-gallery__error').length).to.equal(0);
       expect(el.validity.customError).to.equal(false);
-      expect(el.innerHTML, `${attr} on → off = the never-limited bytes`).to.equal(fresh);
+      // the focus kept on the field re-opens its tile (v0.81.0 collapsed fields): only that open state may differ
+      const closed = () => el.innerHTML.replace(' data-td-open=""', '').replace('aria-expanded="true"', 'aria-expanded="false"');
+      expect(closed(), `${attr} on → off = the never-limited bytes`).to.equal(fresh);
       const li2 = lis(el)[0];
       const n = warns.length;
       el.setAttribute(attr, 'abc');
@@ -361,7 +371,7 @@ describe('td-media-gallery limits — counter, error, validity (QĐ 8-12)', () =
       expect(warns.length).to.equal(n + 1);
       el.setAttribute(attr, '9');
       el.removeAttribute(attr);
-      expect(el.innerHTML).to.equal(fresh);
+      expect(closed()).to.equal(fresh);
     }
     const { el } = mk({ name: 'g', usage: true, caption: true, 'caption-maxlength': '5', items: J([{ id: 'm1', caption: 'abcdef' }]) });
     el.removeAttribute('caption');

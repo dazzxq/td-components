@@ -6235,6 +6235,7 @@
         ".td-media-gallery__head",
         ".td-media-gallery__label",
         ".td-media-gallery__count",
+        ".td-media-gallery__add-cell",
         ".td-media-gallery__add",
         ".td-media-gallery__add .td-media-gallery__icon",
         ".td-media-gallery__prompt",
@@ -6265,12 +6266,15 @@
         ".td-media-gallery__badge",
         ".td-media-gallery__item[data-kind=\"file\"] .td-media-gallery__file",
         ".td-media-gallery__handle",
-        ".td-media-gallery__bar",
+        ".td-media-gallery__actions",
+        ".td-media-gallery__edit",
+        ".td-media-gallery__cover-btn",
         ".td-media-gallery__crop-btn",
         ".td-media-gallery__remove",
         ".td-media-gallery__alt-field",
         ".td-media-gallery__alt",
-        ".td-media-gallery__add"
+        ".td-media-gallery__add-cell",
+        ".td-media-gallery__add-cell > .td-media-gallery__add"
       ],
       "settle": 400,
       "excludeProps": [
@@ -6278,7 +6282,27 @@
         "height",
         "margin-left"
       ],
-      "excludeNote": "v0.43.0: text-bearing boxes (label, count, the Add prompt, the alt input, the tiles that hold them) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.39 filter chips): width / height / margin-left are excluded from the start; the layout budgets (no horizontal scroll 320–1280, columns, 44px touch targets) are gated by test:responsive and the engines tests"
+      "excludeNote": "v0.43.0: text-bearing boxes (label, count, the Add prompt, the alt input, the tiles that hold them) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.39 filter chips): width / height / margin-left are excluded from the start; the layout budgets (no horizontal scroll 320–1280, columns, 44px touch targets) are gated by test:responsive and the engines tests",
+      "selectorNote": "v0.81.0: dcms2 grid — tile actions row (cover / crop / Mô tả), the red X, the Add cell last in the list; the usage fields are collapsed (see the open state)"
+    },
+    {
+      "state": "open",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','600px'); window.__mount.appendChild(w); const g=document.createElement('td-media-gallery'); for (const [k,v] of [['name','g'],['label','Ảnh sản phẩm'],['usage',''],['croppable',''],['cover',''],['max','10'],['aspect-ratio','4/3']]) g.setAttribute(k,v); g.setAttribute('items', \"[{\\\"id\\\": \\\"m1\\\", \\\"src\\\": \\\"/test/fixtures/1.svg\\\", \\\"name\\\": \\\"Ảnh 1\\\", \\\"alt\\\": \\\"Áo thun trắng\\\", \\\"crop\\\": \\\"{\\\\\\\"v\\\\\\\":1,\\\\\\\"x\\\\\\\":0.1,\\\\\\\"y\\\\\\\":0,\\\\\\\"width\\\\\\\":0.5,\\\\\\\"height\\\\\\\":1}\\\"}, {\\\"id\\\": \\\"m2\\\", \\\"src\\\": \\\"/test/fixtures/2.svg\\\", \\\"name\\\": \\\"Ảnh 2\\\"}, {\\\"id\\\": \\\"m4\\\", \\\"kind\\\": \\\"video\\\", \\\"src\\\": \\\"/test/fixtures/4.svg\\\", \\\"name\\\": \\\"clip.mp4\\\"}, {\\\"id\\\": \\\"m11\\\", \\\"kind\\\": \\\"file\\\", \\\"name\\\": \\\"tai-lieu.pdf\\\"}]\"); w.appendChild(g); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))); g.querySelector('.td-media-gallery__edit').click(); await new Promise(r=>setTimeout(r,200));",
+      "selectors": [
+        ".td-media-gallery__item[data-td-open]",
+        ".td-media-gallery__item[data-td-open] .td-media-gallery__edit[aria-expanded=\"true\"]",
+        ".td-media-gallery__item[data-td-open] .td-media-gallery__alt-field",
+        ".td-media-gallery__item[data-td-open] .td-media-gallery__alt",
+        ".td-media-gallery__item:not([data-td-open]) .td-media-gallery__alt-field"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.43.0: text-bearing boxes (label, count, the Add prompt, the alt input, the tiles that hold them) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.39 filter chips): width / height / margin-left are excluded from the start; the layout budgets (no horizontal scroll 320–1280, columns, 44px touch targets) are gated by test:responsive and the engines tests",
+      "selectorNote": "v0.81.0: the tile after a click on Mô tả — data-td-open, the alt field shown; the other tiles keep their fields collapsed"
     },
     {
       "state": "dragging",
@@ -6346,7 +6370,7 @@
     },
     {
       "state": "caption-line",
-      "setup": "const w=document.createElement('div'); w.style.setProperty('width','600px'); window.__mount.appendChild(w); const g=document.createElement('td-media-gallery'); for (const [k,v] of [[\"name\", \"g\"], [\"label\", \"Ảnh sản phẩm\"], [\"usage\", \"\"], [\"max\", \"10\"], [\"caption\", \"\"]]) g.setAttribute(k,v); g.setAttribute('items', \"[{\\\"id\\\": \\\"m1\\\", \\\"src\\\": \\\"/test/fixtures/1.svg\\\", \\\"name\\\": \\\"Ảnh 1\\\", \\\"alt\\\": \\\"Áo thun trắng\\\", \\\"caption\\\": \\\"Dòng 1\\\\nDòng 2\\\"}, {\\\"id\\\": \\\"m2\\\", \\\"src\\\": \\\"/test/fixtures/2.svg\\\", \\\"name\\\": \\\"Ảnh 2\\\"}]\"); w.appendChild(g); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','600px'); window.__mount.appendChild(w); const g=document.createElement('td-media-gallery'); for (const [k,v] of [[\"name\", \"g\"], [\"label\", \"Ảnh sản phẩm\"], [\"usage\", \"\"], [\"max\", \"10\"], [\"caption\", \"\"]]) g.setAttribute(k,v); g.setAttribute('items', \"[{\\\"id\\\": \\\"m1\\\", \\\"src\\\": \\\"/test/fixtures/1.svg\\\", \\\"name\\\": \\\"Ảnh 1\\\", \\\"alt\\\": \\\"Áo thun trắng\\\", \\\"caption\\\": \\\"Dòng 1\\\\nDòng 2\\\"}, {\\\"id\\\": \\\"m2\\\", \\\"src\\\": \\\"/test/fixtures/2.svg\\\", \\\"name\\\": \\\"Ảnh 2\\\"}]\"); w.appendChild(g); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))); g.querySelector('.td-media-gallery__edit').click(); await new Promise(r=>setTimeout(r,200));",
       "selectors": [
         "td-media-gallery",
         ".td-media-gallery__item",
@@ -6365,7 +6389,7 @@
     },
     {
       "state": "caption-multiline",
-      "setup": "const w=document.createElement('div'); w.style.setProperty('width','600px'); window.__mount.appendChild(w); const g=document.createElement('td-media-gallery'); for (const [k,v] of [[\"name\", \"g\"], [\"label\", \"Ảnh sản phẩm\"], [\"usage\", \"\"], [\"max\", \"10\"], [\"caption\", \"multiline\"]]) g.setAttribute(k,v); g.setAttribute('items', \"[{\\\"id\\\": \\\"m1\\\", \\\"src\\\": \\\"/test/fixtures/1.svg\\\", \\\"name\\\": \\\"Ảnh 1\\\", \\\"alt\\\": \\\"Áo thun trắng\\\", \\\"caption\\\": \\\"Dòng 1\\\\nDòng 2\\\"}, {\\\"id\\\": \\\"m2\\\", \\\"src\\\": \\\"/test/fixtures/2.svg\\\", \\\"name\\\": \\\"Ảnh 2\\\"}]\"); w.appendChild(g); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','600px'); window.__mount.appendChild(w); const g=document.createElement('td-media-gallery'); for (const [k,v] of [[\"name\", \"g\"], [\"label\", \"Ảnh sản phẩm\"], [\"usage\", \"\"], [\"max\", \"10\"], [\"caption\", \"multiline\"]]) g.setAttribute(k,v); g.setAttribute('items', \"[{\\\"id\\\": \\\"m1\\\", \\\"src\\\": \\\"/test/fixtures/1.svg\\\", \\\"name\\\": \\\"Ảnh 1\\\", \\\"alt\\\": \\\"Áo thun trắng\\\", \\\"caption\\\": \\\"Dòng 1\\\\nDòng 2\\\"}, {\\\"id\\\": \\\"m2\\\", \\\"src\\\": \\\"/test/fixtures/2.svg\\\", \\\"name\\\": \\\"Ảnh 2\\\"}]\"); w.appendChild(g); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))); g.querySelector('.td-media-gallery__edit').click(); await new Promise(r=>setTimeout(r,200));",
       "selectors": [
         "td-media-gallery",
         ".td-media-gallery__item",
@@ -6384,7 +6408,7 @@
     },
     {
       "state": "limit-over",
-      "setup": "const w=document.createElement('div'); w.style.setProperty('width','600px'); window.__mount.appendChild(w); const g=document.createElement('td-media-gallery'); for (const [k,v] of [[\"name\", \"g\"], [\"label\", \"Ảnh sản phẩm\"], [\"usage\", \"\"], [\"max\", \"10\"], [\"caption\", \"\"], [\"alt-maxlength\", \"10\"], [\"caption-maxlength\", \"5\"]]) g.setAttribute(k,v); g.setAttribute('items', \"[{\\\"id\\\": \\\"m1\\\", \\\"src\\\": \\\"/test/fixtures/1.svg\\\", \\\"name\\\": \\\"Ảnh 1\\\", \\\"alt\\\": \\\"12345678\\\", \\\"caption\\\": \\\"abcdef\\\"}, {\\\"id\\\": \\\"m2\\\", \\\"src\\\": \\\"/test/fixtures/2.svg\\\", \\\"name\\\": \\\"Ảnh 2\\\", \\\"alt\\\": \\\"0123456789A\\\", \\\"caption\\\": \\\"abcde\\\"}]\"); w.appendChild(g); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','600px'); window.__mount.appendChild(w); const g=document.createElement('td-media-gallery'); for (const [k,v] of [[\"name\", \"g\"], [\"label\", \"Ảnh sản phẩm\"], [\"usage\", \"\"], [\"max\", \"10\"], [\"caption\", \"\"], [\"alt-maxlength\", \"10\"], [\"caption-maxlength\", \"5\"]]) g.setAttribute(k,v); g.setAttribute('items', \"[{\\\"id\\\": \\\"m1\\\", \\\"src\\\": \\\"/test/fixtures/1.svg\\\", \\\"name\\\": \\\"Ảnh 1\\\", \\\"alt\\\": \\\"12345678\\\", \\\"caption\\\": \\\"abcdef\\\"}, {\\\"id\\\": \\\"m2\\\", \\\"src\\\": \\\"/test/fixtures/2.svg\\\", \\\"name\\\": \\\"Ảnh 2\\\", \\\"alt\\\": \\\"0123456789A\\\", \\\"caption\\\": \\\"abcde\\\"}]\"); w.appendChild(g); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))); g.querySelector('.td-media-gallery__item:nth-child(1) .td-media-gallery__edit').click(); await new Promise(r=>setTimeout(r,200));",
       "selectors": [
         ".td-media-gallery__item:nth-child(1) .td-media-gallery__counter",
         ".td-media-gallery__item:nth-child(1) .td-media-gallery__error",

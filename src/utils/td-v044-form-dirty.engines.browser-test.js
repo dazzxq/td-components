@@ -309,6 +309,7 @@ describe('trackFormDirty — td-media-gallery (v0.43, plan M4 step 0)', () => {
     await frames(2);
     const { t, log } = track(form);
     const alt = /** @type {HTMLInputElement} */ (g.querySelector('.td-media-gallery__alt'));
+    /** @type {HTMLElement} */ (g.querySelector('.td-media-gallery__edit')).click(); // v0.81.0: the fields show only on an open tile
     await typeIn(alt, 'x');
     await until(() => log.length === 1);
     expect(t.isDirty()).to.equal(true);

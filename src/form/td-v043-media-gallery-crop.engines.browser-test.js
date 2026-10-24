@@ -59,7 +59,7 @@ function mk(attrs = {}, { adapter = null, items = ITEMS } = {}) {
   el.addEventListener('change', (e) => { c.change++; c.details.push(e.detail); });
   return { form, el, c };
 }
-const lis = (el) => [...el.querySelectorAll('.td-media-gallery__list > li')];
+const lis = (el) => [...el.querySelectorAll('.td-media-gallery__list > li.td-media-gallery__item')];
 const cropBtn = (li) => li.querySelector('.td-media-gallery__crop-btn');
 const fd = (form) => [...new FormData(form)].map(([k, v]) => [k, String(v)]);
 const entry = (form, k) => fd(form).find(([n]) => n === k)?.[1];

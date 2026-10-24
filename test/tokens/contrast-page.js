@@ -716,14 +716,22 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     } else if (c.state === 'filled') {
       const li = host.querySelector('.td-media-gallery__item');
       const tile = getComputedStyle(li).backgroundColor;
+      // v0.81.0: the usage fields are collapsed — open the first tile (a real click on Mô tả) to measure the alt input
+      host.querySelector('.td-media-gallery__edit').click();
+      await new Promise((r) => setTimeout(r, 120));
       const alt = host.querySelector('.td-media-gallery__alt');
       const handle = host.querySelector('.td-media-gallery__handle');
       const media = getComputedStyle(host.querySelectorAll('.td-media-gallery__media')[1]).backgroundColor;
+      const white = 'rgb(255, 255, 255)'; // the worst picture behind a white glyph: a white image
+      const chip = (el) => overRgb(getComputedStyle(el).backgroundColor, white);
+      const rm = host.querySelector('.td-media-gallery__remove');
       box = li;
       pairs = [
-        { what: 'Gỡ icon vs tile', fg: cs('.td-media-gallery__remove').color, bg: tile, min: 3.2 },
-        { what: 'Cắt icon vs tile', fg: cs('.td-media-gallery__crop-btn').color, bg: tile, min: 3.2 },
-        { what: 'handle icon vs its chip', fg: getComputedStyle(handle).color, bg: getComputedStyle(handle).backgroundColor, min: 3.2 },
+        { what: 'Gỡ X (white) vs its red chip', fg: getComputedStyle(rm).color, bg: getComputedStyle(rm).backgroundColor, min: 4.7 },
+        { what: 'Gỡ red chip vs a white picture', fg: getComputedStyle(rm).backgroundColor, bg: white, min: 3.2 },
+        { what: 'Cắt icon vs its chip over a white picture', fg: cs('.td-media-gallery__crop-btn').color, bg: chip(host.querySelector('.td-media-gallery__crop-btn')), min: 3.2 },
+        { what: 'Mô tả icon vs its chip over a white picture', fg: cs('.td-media-gallery__edit').color, bg: chip(host.querySelector('.td-media-gallery__edit')), min: 3.2 },
+        { what: 'handle icon vs its chip over a white picture', fg: getComputedStyle(handle).color, bg: chip(handle), min: 3.2 },
         { what: 'cover badge text vs its fill', fg: cs('.td-media-gallery__cover').color, bg: cs('.td-media-gallery__cover').backgroundColor, min: 4.7 },
         { what: 'alt placeholder vs the input', fg: getComputedStyle(alt).getPropertyValue('--td-field-placeholder').trim(), bg: getComputedStyle(alt).backgroundColor, min: 4.5 },
         { what: 'file name vs the media box', fg: cs('.td-media-gallery__name').color, bg: media, min: 4.7 },
@@ -731,6 +739,8 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       ];
     } else if (c.state === 'limits') {
       const [li1, li2] = host.querySelectorAll('.td-media-gallery__item');
+      li1.querySelector('.td-media-gallery__edit').click(); // v0.81.0: li2 (over the limit) is open on its own ('error')
+      await new Promise((r) => setTimeout(r, 120));
       const tile = getComputedStyle(li1).backgroundColor;
       const capCtl = li1.querySelector('.td-media-gallery__caption');
       const counter = (li, f) => getComputedStyle(li.querySelector(`[id$="-${f}-count"]`)).color;

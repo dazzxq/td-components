@@ -1,5 +1,5 @@
 // v0.43.0 (ADR 0012, ADR 0021, plan v0.43.0-media-gallery decisions 8, 14-15b, 19, M2) — PHP side of the SSR contract
-// `media-gallery@1`:
+// `media-gallery@2`:
 //   - td_media_gallery(): ALWAYS the element + the exact tree <td-media-gallery> renders + the no-JS form parts (hidden
 //     inputs per item, the alt input name / value) with the component's FormData shape (reference name[] / usage
 //     name[i][…]; empty → one name=);
@@ -65,39 +65,39 @@ const entries = (html) => [...html.matchAll(/<input([^>]*)>|<textarea([^>]*)>([\
   .map(({ a, v }) => [unesc(/ name="([^"]*)"/.exec(a)[1]), v]);
 const icon = (name) => php(` echo json_encode(TdComponents\\Td::icon(${JSON.stringify(name)}));`);
 
-describe('php/td.php — td_media_gallery (v0.43.0, contract media-gallery@1)', opts, () => {
+describe('php/td.php — td_media_gallery (v0.43.0, contract media-gallery@2; @1 until v0.80.0)', opts, () => {
   test('empty reference gallery: the exact tree + ONE hidden name= after the list', () => {
     const { html, warns } = one('gallery', [], { label: 'Ảnh sản phẩm', id: 'g1' });
     assert.deepEqual(warns, []);
-    assert.equal(html, '<td-media-gallery data-td-ssr="media-gallery@1" id="g1" class="td-media-gallery" name="gallery" label="Ảnh sản phẩm">'
+    assert.equal(html, '<td-media-gallery data-td-ssr="media-gallery@2" id="g1" class="td-media-gallery" name="gallery" label="Ảnh sản phẩm">'
       + '<div class="td-media-gallery__head"><span class="td-media-gallery__label" id="g1-label">Ảnh sản phẩm</span>'
       + '<span class="td-media-gallery__count" id="g1-count">0/100 ảnh</span></div>'
-      + '<ul class="td-media-gallery__list" role="list" aria-labelledby="g1-label" aria-describedby="g1-count"></ul>'
-      + '<input type="hidden" class="td-media-gallery__value" name="gallery" value="">'
-      + '<button type="button" class="td-media-gallery__add" data-state="empty" aria-haspopup="dialog">'
+      + '<ul class="td-media-gallery__list" role="list" aria-labelledby="g1-label" aria-describedby="g1-count">'
+      + '<li class="td-media-gallery__add-cell"><button type="button" class="td-media-gallery__add" data-state="empty" aria-haspopup="dialog">'
       + `<span class="td-media-gallery__icon" data-td-icon="image" aria-hidden="true">${icon('image')}</span>`
-      + '<span class="td-media-gallery__prompt">Chọn ảnh</span></button>'
+      + '<span class="td-media-gallery__prompt">Chọn ảnh</span></button></li></ul>'
+      + '<input type="hidden" class="td-media-gallery__value" name="gallery" value="">'
       + '<span class="td-sr-only td-media-gallery__status" role="status"></span>'
       + '<span class="td-sr-only td-media-gallery__sort-status" role="status"></span>'
       + '<span class="td-media-gallery__sort-help" id="g1-sort-help" hidden>Nhấn Space hoặc Enter để nhấc, phím mũi tên để di chuyển, Space hoặc Enter để thả, Escape để huỷ.</span>'
       + '</td-media-gallery>');
   });
 
-  test('one item (reference): media (sizer, img, handle), bar (Gỡ), hidden value; names carry the position', () => {
+  test('one item (reference): media (sizer, img, handle, remove X), hidden value; names carry the position', () => {
     const { html } = one('images', [{ id: 'm1', src: '/a.jpg', name: 'anh-1.jpg' }], { id: 'g2', aspect_ratio: '4/3', max: 6 });
-    const li = /<li [^]*<\/li>/.exec(html)[0];
+    const li = /<li [^]*?<\/li>/.exec(html)[0];
     assert.equal(li, '<li class="td-media-gallery__item" data-kind="image"><div class="td-media-gallery__media">'
       + '<svg class="td-media-gallery__sizer" viewBox="0 0 4 3" aria-hidden="true" focusable="false"></svg>'
       + '<img class="td-media-gallery__img" src="/a.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">'
       + '<button type="button" class="td-sortable__handle td-media-gallery__handle" aria-label="Sắp xếp Ảnh 1 trên 1: anh-1.jpg" aria-describedby="g2-sort-help">'
-      + `<span class="td-media-gallery__icon" data-td-icon="grip" aria-hidden="true">${icon('grip')}</span></button></div>`
-      + '<div class="td-media-gallery__bar">'
-      + '<button type="button" class="td-media-gallery__btn td-media-gallery__remove" aria-label="Gỡ Ảnh 1 trên 1: anh-1.jpg">'
-      + `<span class="td-media-gallery__icon" data-td-icon="trash" aria-hidden="true">${icon('trash')}</span></button></div>`
+      + `<span class="td-media-gallery__icon" data-td-icon="grip" aria-hidden="true">${icon('grip')}</span></button>`
+      + '<button type="button" class="td-media-gallery__remove" aria-label="Gỡ Ảnh 1 trên 1: anh-1.jpg">'
+      + `<span class="td-media-gallery__icon" data-td-icon="close" aria-hidden="true">${icon('close')}</span></button></div>`
       + '<input type="hidden" class="td-media-gallery__value" name="images[]" value="m1"></li>');
     assert.ok(html.includes('<span class="td-media-gallery__count" id="g2-count">1/6 ảnh</span>'), html);
-    assert.ok(html.includes('<button type="button" class="td-media-gallery__add" data-state="filled" aria-haspopup="dialog">'
-      + `<span class="td-media-gallery__icon" data-td-icon="plus" aria-hidden="true">${icon('plus')}</span><span class="td-media-gallery__prompt">Thêm ảnh</span></button>`), html);
+    assert.ok(html.includes('<li class="td-media-gallery__add-cell"><button type="button" class="td-media-gallery__add" data-state="filled" aria-haspopup="dialog">'
+      + '<svg class="td-media-gallery__sizer" viewBox="0 0 4 3" aria-hidden="true" focusable="false"></svg>'
+      + `<span class="td-media-gallery__icon" data-td-icon="plus" aria-hidden="true">${icon('plus')}</span><span class="td-media-gallery__prompt">Thêm ảnh</span></button></li></ul>`), html);
     assert.equal(hostAttr(html, 'items'), esc('[{"id":"m1","src":"/a.jpg","name":"anh-1.jpg"}]'));
   });
 
@@ -112,6 +112,10 @@ describe('php/td.php — td_media_gallery (v0.43.0, contract media-gallery@1)', 
     assert.ok(html.includes('<label class="td-media-gallery__alt-field"><span class="td-sr-only">Mô tả ảnh 1 (alt)</span>'
       + '<input type="text" class="td-field__control td-media-gallery__alt" maxlength="500" placeholder="Mô tả (alt)" name="g[0][alt]" value="Áo thun trắng"></label>'), html);
     assert.ok(html.includes('placeholder="Mô tả (alt)" name="g[1][alt]"></label>'), html);
+    // v0.81.0 (@2): actions overlay inside __media (cover-btn hidden on the first item, crop, collapsed Mô tả); no __bar
+    assert.ok(!html.includes('td-media-gallery__bar'), html);
+    assert.ok(html.includes('<div class="td-media-gallery__actions"><button type="button" class="td-media-gallery__btn td-media-gallery__cover-btn" aria-label="Đặt Ảnh 1 trên 2: Ảnh 1, ảnh bìa làm ảnh bìa" hidden>'), html);
+    assert.equal(html.split('td-media-gallery__edit" aria-expanded="false" aria-label="Mô tả Ảnh').length, 3, 'one Mô tả button per item');
     assert.deepEqual(entries(html), c.expect.entries);
     for (const a of ['usage', 'croppable', 'focal-point', 'cover']) assert.equal(hostAttr(html, a), true, a);
     assert.equal(hostAttr(html, 'crop-ratio'), '1:1');
@@ -238,10 +242,10 @@ describe('php/td.php — td_media_gallery (v0.43.0, contract media-gallery@1)', 
     const { html, warns } = one(...c.args);
     assert.equal(warns.length, 1);
     assert.match(warns[0], /4 .*max 2/);
-    assert.equal((html.match(/<li /g) || []).length, 4);
+    assert.equal((html.match(/<li class="td-media-gallery__item"/g) || []).length, 4);
     assert.ok(!/<input[^>]* name="/.test(html), html);
     assert.equal((html.match(/<input type="hidden"/g) || []).length, 0);
-    assert.ok(/class="td-media-gallery__add" data-state="filled" aria-haspopup="dialog" hidden>/.test(html), html);
+    assert.ok(/<li class="td-media-gallery__add-cell" hidden><button type="button" class="td-media-gallery__add" data-state="filled" aria-haspopup="dialog" hidden>/.test(html), html);
     assert.ok(html.includes('>Vượt giới hạn: 4/2 ảnh</span>'), html);
   });
 
@@ -254,7 +258,7 @@ describe('php/td.php — td_media_gallery (v0.43.0, contract media-gallery@1)', 
     assert.equal(hostAttr(bad.html, 'max'), null);
     assert.equal(hostAttr(minBig.html, 'min'), '3');
     assert.ok(full.html.includes('>Đã đủ 3 ảnh</span>'), full.html);
-    assert.ok(/class="td-media-gallery__add" data-state="filled" aria-haspopup="dialog" hidden>/.test(full.html), full.html);
+    assert.ok(/<li class="td-media-gallery__add-cell" hidden><button type="button" class="td-media-gallery__add" data-state="filled" aria-haspopup="dialog" hidden>/.test(full.html), full.html);
   });
 
   test('disabled: every button, the alt and the hidden inputs disabled (no-JS submits nothing)', () => {
@@ -278,7 +282,7 @@ describe('php/td.php — td_media_gallery (v0.43.0, contract media-gallery@1)', 
   test('attrs: allowlisted on the host; owned names (any case) + data-td-* reserved; unsafe names dropped', () => {
     const c = MEDIA_GALLERY_FIXTURES.cases.find((x) => x.id === 'attrs');
     const { html } = one(...c.args);
-    assert.ok(html.startsWith('<td-media-gallery data-td-ssr="media-gallery@1" id="mg-att" class="td-media-gallery a b" name="att" label="Attrs" data-x="1" title="Gợi ý">'), html);
+    assert.ok(html.startsWith('<td-media-gallery data-td-ssr="media-gallery@2" id="mg-att" class="td-media-gallery a b" name="att" label="Attrs" data-x="1" title="Gợi ý">'), html);
     for (const bad of ['onclick', 'style=', 'data-td-z', 'items=', ' max=']) assert.ok(!html.includes(bad), bad);
   });
 

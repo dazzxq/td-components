@@ -3,7 +3,7 @@
 # Gallery ảnh — `<td-media-gallery>`
 
 Ô form cho **danh sách ảnh có thứ tự**: gallery sản phẩm, ảnh bài viết, slide. Thêm nhiều ảnh một lần qua
-[media picker](media-picker.md) (chế độ nhiều ảnh), gỡ từng ảnh, **sắp lại** bằng kéo / chạm-để-chuyển / bàn phím, alt +
+[media picker](media-picker.md) (chế độ nhiều ảnh), gỡ từng ảnh, **sắp lại** bằng kéo (chuột: cả ô ảnh) / chạm-để-chuyển / bàn phím, alt +
 cắt ảnh + điểm trọng tâm + chú thích (0.51) **theo từng ảnh** (chỉ toạ độ / chữ thường). Giá trị gửi form là **danh sách `assetId` theo thứ tự** — không
 bao giờ là URL. Ảnh đầu là ảnh bìa (quy ước, không có trường riêng).
 
@@ -15,7 +15,7 @@ Chỉ cần **một** ảnh → dùng [Media field](media-field.md). Hiển th�
 | Import | `import '@dazzxq/td-components/media-gallery'` (class: `import { TdMediaGallery } from '@dazzxq/td-components'`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.43.0 (cần `td.css`; cần một adapter — xem [media picker](media-picker.md#cấu-hình-mặc-định--configuredefaults)). Quyết định: [ADR 0021](../internal/decisions/0021-media-gallery-form-shape.md). Chú thích + giới hạn độ dài: 0.51.0; `crop-mode` / `crop-shape`: 0.75.0 |
+| Từ phiên bản | 0.43.0 (cần `td.css`; cần một adapter — xem [media picker](media-picker.md#cấu-hình-mặc-định--configuredefaults)). Quyết định: [ADR 0021](../internal/decisions/0021-media-gallery-form-shape.md). Chú thích + giới hạn độ dài: 0.51.0; `crop-mode` / `crop-shape`: 0.75.0; lưới gọn (ô "+", X đỏ, kéo cả ô, mô tả thu gọn, đặt ảnh bìa), DOM + marker `media-gallery@2`: 0.81.0 |
 
 ## Ví dụ nhanh
 
@@ -197,7 +197,7 @@ if (array_key_exists('gallery', $_POST)) {               // không có key → g
 
 ### 2. Thêm ảnh
 
-Nút **Thêm ảnh** nằm dưới lưới (gallery rỗng: khung lớn "Chọn ảnh" + tỉ lệ). Bấm → `TdMediaPicker.open()` với:
+Nút **Thêm ảnh** là **ô cuối của lưới** (0.81: `li.td-media-gallery__add-cell` — cùng cỡ với ô ảnh; gallery rỗng: ô chiếm cả hàng, cao `--td-media-gallery-empty-h`, "Chọn ảnh" + tỉ lệ). Bấm → `TdMediaPicker.open()` với:
 
 ```js
 { selection: { mode: 'multiple', initialIds: [], maxItems: max - count, kinds }, crop: { enabled: false },
@@ -211,14 +211,14 @@ Nút **Thêm ảnh** nằm dưới lưới (gallery rỗng: khung lớn "Chọn 
   (adapter bỏ qua `maxItems`) → chỉ lấy phần vừa đủ, phần còn lại đọc "Bỏ qua {n} ảnh vượt quá giới hạn".
 - Đây là chế độ **thêm**, không phải "sửa cả tập": bỏ chọn trong picker không xoá ảnh của gallery, và không có N lời gọi
   `adapter.get` lúc mở.
-- Đủ `max` → nút Thêm ẩn, dòng đếm "Đã đủ {max} ảnh"; focus chuyển sang tay nắm của ảnh mới đầu tiên.
+- Đủ `max` → ô Thêm ẩn (cả `li` lẫn nút), dòng đếm "Đã đủ {max} ảnh"; focus chuyển sang tay nắm của ảnh mới đầu tiên.
 - Mỗi lần thêm: `input` + `change` (`reason: 'add'`) và vùng thông báo đọc "Đã thêm {n} ảnh. {count}/{max} ảnh."
 - Không có adapter ở đâu cả → một cảnh báo console, không mở gì. Resolve adapter giống field: `pickerOptions.adapter` >
   `gallery.adapter` > `TdMediaPicker.configureDefaults()`; `selection` / `crop` luôn do gallery đặt.
 
 ### 3. Gỡ ảnh
 
-Nút thùng rác trên từng ô (`aria-label="Gỡ Ảnh 2 trên 5: ao-den.jpg"`). Không hỏi xác nhận (chưa lưu tới khi gửi form).
+**X đỏ tròn** ở góc trên-cuối ảnh (0.81; trước đó là nút thùng rác ở hàng nút dưới ảnh; `aria-label="Gỡ Ảnh 2 trên 5: ao-den.jpg"`). Không hỏi xác nhận (chưa lưu tới khi gửi form).
 `input` + `change` (`reason: 'remove'`), đọc "Đã gỡ {name}. Còn {count} ảnh.". Focus sang nút Gỡ của ô **kế tiếp** →
 ô trước → nút Thêm.
 
@@ -226,24 +226,39 @@ Nút thùng rác trên từng ô (`aria-label="Gỡ Ảnh 2 trên 5: ao-den.jpg"
 
 Dùng chung bộ điều khiển với [`td-sortable`](sortable.md):
 
-- **Kéo** tay nắm (góc trên của ảnh) bằng chuột / ngón tay — DOM không đổi khi đang kéo, thả = một lần di chuyển.
+- **Chuột (0.81): kéo cả ô ảnh** — nhấn vào bất kỳ chỗ nào trên ảnh (trừ nút) rồi kéo; ngưỡng 4 px, DOM không đổi khi đang
+  kéo, thả = một lần di chuyển. Click đuôi của cú kéo bị nuốt (không mở mô tả). Nhấn vào nút / ô nhập không bắt đầu kéo.
+- **Cảm ứng / bút:** kéo **tay nắm** (góc trên-đầu của ảnh, luôn hiện), không kéo cả ô — thân ảnh vẫn cuộn trang bình thường
+  (không thêm `touch-action`, [chuẩn cảm ứng](../internal/design/touch.md)).
 - **Chạm-để-chuyển** (WCAG 2.5.7): chạm tay nắm ô A rồi chạm tay nắm ô B → A về chỗ B.
 - **Bàn phím:** Tab tới tay nắm → Space / Enter nhấc → mũi tên di chuyển **theo lưới** (↑ ↓ đi một hàng), Home / End →
   Space / Enter thả, Escape huỷ.
 - `change` (`reason: 'reorder'`) phát **đúng một lần khi thả**, không phát khi đang nhấc. FormData đi theo thứ tự mới
   ngay lập tức.
-- Thân ô (ảnh) cuộn trang bình thường trên điện thoại — chỉ tay nắm có `touch-action: none`.
+- Chỉ **tay nắm** có `touch-action: none`; thân ô (ảnh) cuộn trang bình thường trên điện thoại.
+- Công cụ (tay nắm, X, hàng nút) chỉ hiện khi rê chuột / focus / đang mở với chuột (`(hover: hover) and (pointer: fine)`,
+  `opacity`, vẫn Tab tới được); trên cảm ứng luôn hiện.
 
 ### 5. Ảnh bìa — `cover`
 
 Ảnh bìa **luôn là ảnh đầu** (quy ước dsuite / dwp — không có cờ `is_cover`, server lấy `[0]`). Thuộc tính `cover` chỉ
 **hiển thị**: badge "Ảnh bìa" trên ô đầu + ", ảnh bìa" trong tên đọc. Đặt một ảnh làm bìa = đưa nó lên đầu (nhấc + Home,
-hoặc chạm-để-chuyển vào ô đầu).
+hoặc chạm-để-chuyển vào ô đầu) — hoặc bấm nút **Đặt làm ảnh bìa** (0.81, dsuite K3).
+
+Với `cover`, mỗi ô có nút sao `td-media-gallery__cover-btn` (`aria-label="Đặt {name} làm ảnh bìa"`, **ẩn ở ô đầu**). Bấm → ảnh về
+vị trí đầu như một lần sắp lại: `input` + `change` (`reason: 'reorder'`), đọc "Đã đặt {name} làm ảnh bìa" (`labels.madeCover`),
+focus về tay nắm của ảnh đó.
 
 ### 6. Alt (chế độ `usage`)
 
 Mỗi ô có ô nhập alt (placeholder "Mô tả (alt)", nhãn cho trình đọc màn hình "Mô tả ảnh {n} (alt)", tối đa 500 ký tự).
-Ô hẹp nên nhãn nhìn thấy chỉ là placeholder — đánh đổi có chủ đích. `input` mỗi lần gõ, `change` khi rời ô
+Ô hẹp nên nhãn nhìn thấy chỉ là placeholder — đánh đổi có chủ đích.
+
+**Thu gọn (0.81):** alt và chú thích của từng ô ẩn mặc định cho lưới gọn; mở bằng nút **Mô tả** (`td-media-gallery__edit`,
+`aria-expanded`, `aria-label="Mô tả {name}"`) hoặc bấm vào ảnh (không kéo). **Mỗi lần một ô** — mở ô khác thì ô trước đóng.
+Ô có trường **lỗi** (`aria-invalid`, quá giới hạn) luôn mở; focus vào một trường (ví dụ `reportValidity()`) cũng mở ô đó.
+Chỉ ẩn bằng CSS khi có script (`@media (scripting: enabled)`), nên **không có JS thì các trường vẫn hiện và sửa được**, và
+FormData không đổi (ẩn không phải `disabled`). `input` mỗi lần gõ, `change` khi rời ô
 (`reason: 'alt'`); event native của ô nhập bị chặn tại host (không trùng).
 
 ### 6b. Chú thích (caption) — `caption` (0.51)
@@ -382,17 +397,18 @@ echo td_media_gallery('gallery', $product->galleryItems(), [
 // 0.75: 'crop_mode' => 'pan', 'crop_shape' => 'circle' (in crop-mode="pan" crop-shape="circle"; giá trị khác → không in)
 ```
 
-In host `<td-media-gallery data-td-ssr="media-gallery@1">` + đúng cây `render()` + hidden input gửi đúng FormData ở
-trên khi **chưa có JS** (thứ tự = thứ tự server in; alt sửa được vì là ô nhập thật). Tay nắm / Cắt / Gỡ / Thêm ẩn
+In host `<td-media-gallery data-td-ssr="media-gallery@2">` + đúng cây `render()` + hidden input gửi đúng FormData ở
+trên khi **chưa có JS** (thứ tự = thứ tự server in; alt sửa được vì là ô nhập thật). Tay nắm / Cắt / Gỡ / Thêm (và các nút mới Mô tả / Đặt bìa) ẩn
 (`visibility: hidden`, giữ chỗ) tới khi module chạy. Có JS → nhận **tại chỗ** (cùng node, không xô lệch, FormData giống
-từng byte). Chi tiết option: [PHP adapter › td_media_gallery](../guides/php-adapter.md#td_media_gallery-0430).
+từng byte). Trang đã cache với marker `@1` (trước 0.81) được JS **render lại** an toàn, không nhận tại chỗ. Chi tiết option: [PHP adapter › td_media_gallery](../guides/php-adapter.md#td_media_gallery-0430).
 
 ## Responsive & cảm ứng
 
 - Host là container `td-media-gallery` (ADR 0014); lưới cố định `repeat(auto-fill, minmax(--td-media-gallery-tile-min, 1fr))`
   — **không justified** (hàng đổi chiều cao khi sắp lại sẽ làm ô đích nhảy dưới ngón tay). Mặc định `8rem`: 2 cột ở
   320–430 px, 4+ cột từ 768 px. Container < 360 px: khe nhỏ hơn.
-- Nút trên ô ≥ 44 × 44 px khi `pointer: coarse`; hàng nút nằm **dưới** ảnh (không che ảnh). Tay nắm trên nền đặc.
+- Nút trên ô (tay nắm, X, sao / cắt / mô tả) là nút tròn nổi **trên** ảnh (0.81; không còn hàng nút dưới ảnh), vùng chạm ≥ 44 × 44 px khi
+  `pointer: coarse` (nút nhìn nhỏ, vùng chạm được nới), luôn hiện trên cảm ứng.
 - Hover chỉ trong `(hover: hover) and (pointer: fine)`; trạng thái nhấn chỉ đổi màu (ADR 0019).
 
 ## Attribute
@@ -453,7 +469,7 @@ PHP (`Td::MEDIA_GALLERY_LABELS`) được render lại an toàn (không nhận t
 `kinds.{kind}`, `countMax` (vắng `max` → 100), `full`, `over`, `item`, `coverSuffix`, `cover`, `handle`, `remove`, `crop`, `alt`,
 `altPlaceholder`, `noPreview`, `video`, `broken`, `sortHelp`, `added`, `skipped`, `tooMany`, `removed`, `required`,
 `min`, `max`, `cropTitle`, `cropError`; 0.51: `caption`, `captionPlaceholder`, `counter`, `altTooLong`, `captionTooLong`
-(cũng có trong `Td::MEDIA_GALLERY_LABELS`), `tooLongItem`, `limitLeft`, `limitOver` (chỉ JS). Thông báo khi nhấc / di chuyển / thả dùng `TdSortable.labels`.
+(cũng có trong `Td::MEDIA_GALLERY_LABELS`), `tooLongItem`, `limitLeft`, `limitOver` (chỉ JS); 0.81: `edit` ("Mô tả {name}"), `makeCover` ("Đặt {name} làm ảnh bìa") — cũng có trong `Td::MEDIA_GALLERY_LABELS` — và `madeCover` (chỉ JS). Thông báo khi nhấc / di chuyển / thả dùng `TdSortable.labels`.
 
 ## Tuỳ biến giao diện
 
@@ -462,6 +478,11 @@ PHP (`Td::MEDIA_GALLERY_LABELS`) được render lại an toàn (không nhận t
 | `--td-media-gallery-tile-min` | `8rem` | Bề rộng tối thiểu một ô (số cột tự tính) |
 | `--td-media-gallery-gap` | `var(--td-space-xs)` | Khe lưới |
 | `--td-media-gallery-empty-h` | `8rem` | Chiều cao khung "Chọn ảnh" khi rỗng |
+| `--td-media-gallery-tool-size` | `1.75rem` | 0.81: đường kính nút tròn nổi trên ảnh (tay nắm, sao, cắt, mô tả); vùng chạm vẫn ≥ `--td-touch-min` |
+| `--td-media-gallery-tool-bg` | `rgb(0 0 0 / 60%)` | 0.81: nền nút tròn nổi |
+| `--td-media-gallery-tool-fg` | `#fff` | 0.81: màu biểu tượng nút tròn nổi |
+| `--td-media-gallery-remove-bg` | `var(--td-solid-danger-bg)` | 0.81: nền X đỏ gỡ ảnh |
+| `--td-media-gallery-remove-fg` | `var(--td-solid-danger-fg)` | 0.81: màu dấu X |
 
 Màu chỉ lấy từ token ngữ nghĩa (`--td-color-surface`, `-surface-muted`, `-text`, `-text-muted`, `-border`, `-hover`,
 `-pressed`) — palette sinh bằng `td-theme` đọc được ([Theming](../customization/theming.md)).
@@ -482,11 +503,14 @@ Màu chỉ lấy từ token ngữ nghĩa (`--td-color-surface`, `-surface-muted`
         <span class="td-media-gallery__cover">Ảnh bìa</span>
         <button type="button" class="td-sortable__handle td-media-gallery__handle" aria-label="Sắp xếp Ảnh 1 trên 2: …"
                 aria-describedby="{id}-sort-help">…grip…</button>
+        <button type="button" class="td-media-gallery__remove" aria-label="Gỡ …">…close…</button>
+        <div class="td-media-gallery__actions">   <!-- chỉ khi cover || croppable || usage -->
+          <button type="button" class="td-media-gallery__btn td-media-gallery__cover-btn" aria-label="Đặt … làm ảnh bìa" hidden>…star…</button> <!-- cover; hidden ở ô đầu -->
+          <button type="button" class="td-media-gallery__btn td-media-gallery__crop-btn" aria-haspopup="dialog" aria-label="Cắt …">…</button>
+          <button type="button" class="td-media-gallery__btn td-media-gallery__edit" aria-expanded="false" aria-label="Mô tả …">…</button> <!-- usage -->
+        </div>
       </div>
-      <div class="td-media-gallery__bar">
-        <button type="button" class="td-media-gallery__btn td-media-gallery__crop-btn" aria-haspopup="dialog" aria-label="Cắt …">…</button>
-        <button type="button" class="td-media-gallery__btn td-media-gallery__remove" aria-label="Gỡ …">…</button>
-      </div>
+      <!-- usage: các trường là con trực tiếp của li (thu gọn bằng CSS) -->
       <label class="td-media-gallery__alt-field"><span class="td-sr-only">Mô tả ảnh 1 (alt)</span>
         <input type="text" class="td-field__control td-media-gallery__alt" maxlength="500" placeholder="Mô tả (alt)"></label>
       <!-- 0.51, alt-maxlength: -->
@@ -497,8 +521,11 @@ Màu chỉ lấy từ token ngữ nghĩa (`--td-color-surface`, `-surface-muted`
         <textarea class="td-field__control td-media-gallery__caption" rows="2" maxlength="1000" placeholder="Chú thích"></textarea></label>
       <!-- 0.51, caption-maxlength: td-media-gallery__counter / __error như trên ({id}-0-caption-count / -error) -->
     </li>
+    <li class="td-media-gallery__add-cell">   <!-- ô cuối lưới; hidden khi đủ max -->
+      <button type="button" class="td-media-gallery__add" data-state="filled" aria-haspopup="dialog">
+        <svg class="td-media-gallery__sizer" …></svg>…Thêm ảnh</button>   <!-- filled có sizer để vuông như ô; empty: không sizer -->
+    </li>
   </ul>
-  <button type="button" class="td-media-gallery__add" data-state="filled" aria-haspopup="dialog">…Thêm ảnh</button>
   <span class="td-sr-only td-media-gallery__status" role="status"></span>
   <span class="td-sr-only td-media-gallery__sort-status" role="status"></span>
   <span class="td-media-gallery__sort-help" id="{id}-sort-help" hidden>…</span>
@@ -506,13 +533,14 @@ Màu chỉ lấy từ token ngữ nghĩa (`--td-color-surface`, `-surface-muted`
 ```
 
 Trạng thái: `data-kind` trên ô, `data-state` / `hidden` / `aria-invalid` / `:disabled` trên nút Thêm,
-`data-td-dragging` (lưới) + `data-td-sort-state` (ô) khi sắp. Video có `span.td-media-gallery__badge`; file / không có
+`data-td-dragging` (lưới) + `data-td-sort-state` (ô) khi sắp, `data-td-open` (ô đang mở mô tả; `error` khi mở vì có lỗi).
+Marker SSR `data-td-ssr="media-gallery@2"`; selector `.td-media-gallery__bar` **không còn** (0.81). Giữ nguyên cho site: `.td-media-gallery__item` có `img` bên trong, tên truy cập của nút Thêm. Video có `span.td-media-gallery__badge`; file / không có
 ảnh có `span.td-media-gallery__file` > `span.td-media-gallery__name`. Hỏng: `span.td-media-gallery__broken` thay cho
 lưới + nút Thêm.
 
 ## Bàn phím & trợ năng
 
-- Thứ tự Tab: tay nắm → Cắt → Gỡ → alt → chú thích của ô 1 → … → Thêm. Enter trong ô chú thích một dòng submit form
+- Thứ tự Tab: tay nắm → Gỡ (X) → Đặt bìa → Cắt → Mô tả → alt → chú thích của ô 1 → … → Thêm. Enter trong ô chú thích một dòng submit form
   (như ô alt); trong textarea là xuống dòng. Mũi tên chỉ tác dụng trên tay nắm đang nhấc — không cướp
   phím của ô alt.
 - Lưới là `ul[role=list]` có tên (nhãn) + mô tả (dòng đếm). Tên đọc của mỗi nút có vị trí: "Gỡ Ảnh 2 trên 5: tên ảnh"
