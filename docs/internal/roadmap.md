@@ -103,6 +103,8 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.79.2 (yêu cầu dsuite K-A5-5): `td-media-field` `hide-alt` (PHP `hide_alt`) — ẩn ô alt của `usage`, vẫn gửi `name[alt]`; chỉ CSS; plan [v0.79.2](plans/v0.79.2-media-field-hide-alt.md)
 - `done` v0.80.0: `td-choice-group` đang chọn nổi bật (tint + vòng accent + tick góc, opt-out `--td-choice-mark`); floating label của `td-input-field` thêm khoảng thở; affix chữ ngắn không bị cắt; chỉ CSS; plan [v0.80.0](plans/v0.80.0-choice-selected-floating-spacing.md)
 - `done` v0.81.0 (owner 2026-10-20): `td-media-gallery` lưới gọn kiểu dcms2 — kéo cả ô bằng chuột, X đỏ, ô "+" cuối lưới, công cụ hiện khi hover, mô tả thu gọn, nút Đặt làm ảnh bìa (dsuite K3); marker `media-gallery@2`; plan [v0.81.0](plans/v0.81.0-media-gallery-dcms2-grid.md)
+- `todo` v0.82.0 (dsuite-40, 2026-10-25): `swatch` cho option `td-dropdown` (`'#rgb'|'#rrggbb'`, `data-swatch`, regex chặt, màu qua CSSOM `--td-swatch`, chấm 12px trong menu + trigger + chip multi) và chip `td-chip-input`; SSR tuỳ chọn (dsuite truyền options bằng JS)
+- `todo` theo dõi: v0.61 range "Bây giờ" khi hôm nay ngoài min–max — chưa có test, component không báo lỗi ngay
 
 ## Chờ nhu cầu (owner 2026-10-08: chỉ làm khi có site cần)
 
