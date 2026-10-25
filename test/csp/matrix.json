@@ -1437,6 +1437,34 @@
         ".td-field__note"
       ],
       "settle": 300
+    },
+    {
+      "state": "swatch",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Màu'); d.setAttribute('searchable','false'); d.setAttribute('value','den'); window.__mount.appendChild(d); d.options=[{value:'den',label:'Titan đen',swatch:'#3b3b3d'},{value:'trang',label:'Titan trắng',swatch:'#f4f4f2'},{value:'x',label:'Không màu'}]; d.open();",
+      "selectors": [
+        ".td-dropdown__value",
+        ".td-dropdown__value > .td-dropdown__swatch",
+        ".td-dropdown__menu",
+        ".td-dropdown__option",
+        ".td-dropdown__option > .td-dropdown__swatch",
+        ".td-dropdown__option-label"
+      ],
+      "portal": [
+        ".td-dropdown__menu",
+        ".td-dropdown__option",
+        ".td-dropdown__option > .td-dropdown__swatch",
+        ".td-dropdown__option-label"
+      ],
+      "settle": 350,
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left"
+      ]
     }
   ],
   "td-button": [
@@ -3377,6 +3405,32 @@
         "height"
       ],
       "selectorNote": "v0.28.0 php/td.php td_multiselect native mode (no JS); height excluded: the UA list height of a select[multiple][size] depends on the option line metrics (Tailwind preflight in the legacy+td profile changes it by a few px)"
+    },
+    {
+      "state": "swatch",
+      "setup": "const c=document.createElement('td-chip-input'); c.id='probe'; c.setAttribute('aria-label','Màu'); c.setAttribute('show-on-focus',''); window.__mount.appendChild(c); c.options=[{value:'den',label:'Titan đen',swatch:'#3b3b3d'},{value:'trang',label:'Titan trắng',swatch:'#f4f4f2'},{value:'x',label:'Không màu'}]; c.value=[{value:'den',label:'Titan đen',swatch:'#3b3b3d'}]; c.querySelector('.td-chip-input__input').focus();",
+      "selectors": [
+        ".td-chip-input__chip",
+        ".td-chip-input__chip .td-chip-input__swatch",
+        ".td-chip-input__menu",
+        ".td-chip-input__option",
+        ".td-chip-input__option .td-chip-input__swatch"
+      ],
+      "portal": [
+        ".td-chip-input__menu",
+        ".td-chip-input__option",
+        ".td-chip-input__option .td-chip-input__swatch"
+      ],
+      "settle": 450,
+      "excludeProps": [
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "height",
+        "width",
+        "margin-left"
+      ]
     }
   ],
   "td-form-validation": [

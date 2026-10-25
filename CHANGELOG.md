@@ -2,6 +2,22 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.82.0
+
+**`swatch` cho option `td-dropdown` và `td-chip-input`** (yêu cầu dsuite-40: chọn màu sản phẩm; [plan](docs/internal/plans/v0.82.0-option-swatch.md), Codex plan APPROVE r3).
+Không phá vỡ: option không có `swatch` cho DOM y như 0.81.0; marker SSR `dropdown@1` / `chip-input@1` giữ nguyên.
+
+### Added
+
+- Option có `swatch` (màu CSS) hiện **chấm tròn 12px** trước nhãn: `td-dropdown` ở dòng trong menu + trigger khi đang chọn
+  (placeholder không có chấm); `td-chip-input` ở dòng gợi ý (cả dòng multi-select có tick) + chip. Cổng màu **giống `td-choice-group`**
+  (`safeColor`: hex, `rgb()` / `hsl()`, tên màu, ≤ 64 ký tự; sai → không chấm). Màu chỉ vào `fill` của `<circle>` bằng `setAttribute`
+  (không `style`, không `<style>`, hợp CSP); chấm `aria-hidden`, tên truy cập vẫn là nhãn (nhãn nên nói tên màu).
+- Khai báo bằng `<option data-swatch="#ff0000">` (nâng cấp `<select>` của cả hai component) và PHP `swatch` trong mảng option của
+  `td_dropdown` / `td_multiselect` (cổng `Td::safeColor`, in `data-swatch` đã escape).
+- `td-chip-input`: `renderOption` / `renderChip` đặt thì chấm built-in không hiện (chủ hook tự vẽ, đọc `item.swatch`).
+- Token `--td-dropdown-swatch-size` / `--td-dropdown-swatch-edge`, `--td-chip-swatch-size` / `--td-chip-swatch-edge`.
+
 ## 0.81.0
 
 **`td-media-gallery` lưới gọn kiểu dcms2** (owner 2026-10-20; [plan](docs/internal/plans/v0.81.0-media-gallery-dcms2-grid.md), Codex plan APPROVE r2).

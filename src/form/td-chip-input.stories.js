@@ -237,3 +237,26 @@ export const FromSelectMultiple = {
       + '<p class="sb-note">Không JS: select multiple gốc. Có JS: chip + lọc + nhóm; Đặt lại về các option selected gốc.</p></form>';
   },
 };
+
+const COLORS = [
+  { value: 'den', label: 'Titan đen', swatch: '#3b3b3d' },
+  { value: 'trang', label: 'Titan trắng', swatch: '#f4f4f2' },
+  { value: 'sa', label: 'Titan sa mạc', swatch: 'rgb(191, 160, 126)' },
+  { value: 'xanh', label: 'Xanh dương', swatch: '#1d4ed8' },
+  { value: 'khac', label: 'Màu khác (không chấm)' },
+];
+
+export const MauSanPham = {
+  name: 'Màu sản phẩm',
+  render: () => {
+    const a = `ci-color-${++seq}`;
+    const b = `ci-color-${++seq}`;
+    withProps(a, (el) => { el.options = COLORS; el.value = [COLORS[0], COLORS[2]]; });
+    withProps(b, (el) => { el.options = COLORS; });
+    return '<div class="sb-stack">'
+      + `<td-chip-input id="${a}" label="Màu sắc (chip)" placeholder="Thêm màu…" show-on-focus min-chars="0"></td-chip-input>`
+      + `<td-chip-input id="${b}" name="colors[]" label="Màu sắc (multi-select)" selection-only select-all show-on-focus min-chars="0"></td-chip-input>`
+      + '<p class="sb-note">Option có <code>swatch</code> (màu CSS) hiện chấm tròn ở dòng gợi ý và ở chip. '
+      + 'Nhãn phải nói tên màu; có <code>renderOption</code> / <code>renderChip</code> thì chấm built-in không hiện.</p></div>';
+  },
+};

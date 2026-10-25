@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.81.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.81.0', __DIR__ . '/public/assets/vendor/td-components/0.81.0');
+ *   require_once '/path/to/vendor/td-components/0.82.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.82.0', __DIR__ . '/public/assets/vendor/td-components/0.82.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -448,7 +448,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.81.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.82.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool, assets?: string} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -1609,7 +1609,8 @@ namespace {
 
     /**
      * `<td-dropdown>` host wrapping a native `<select>` (works without JS; upgraded by the dropdown module — E2).
-     * $options: value => label, or a list of ['value' => …, 'label' => …, 'disabled' => bool].
+     * $options: value => label, or a list of ['value' => …, 'label' => …, 'disabled' => bool, 'swatch'? (v0.82.0: a CSS colour, Td::safeColor
+     * gate → `data-swatch` on the `<option>`; the component draws a dot; invalid → not printed)].
      * Options: label, placeholder (⇒ an empty first option + the component's clear option), searchable
      * (absent / null = auto when > 8 options; false, 0 and the strings 'false' / '0' / 'off' / 'no' / '' — trimmed,
      * any case — turn it off; anything else keeps PHP truthiness: true, 1, '1', 'true', 'yes', 'on'… → on), required, disabled, aria_label, id (host; select = {id}-select), class,
@@ -1628,9 +1629,10 @@ namespace {
                 if (!isset($v['value']) || !is_scalar($v['value'])) {
                     continue;
                 }
-                $list[] = ['value' => (string) $v['value'], 'label' => (string) ($v['label'] ?? $v['value']), 'disabled' => !empty($v['disabled'])];
+                $list[] = ['value' => (string) $v['value'], 'label' => (string) ($v['label'] ?? $v['value']), 'disabled' => !empty($v['disabled']),
+                    'swatch' => Td::safeColor($v['swatch'] ?? null)]; // v0.82.0: colour dot (same gate as td_choice_group)
             } elseif (is_scalar($v)) {
-                $list[] = ['value' => (string) $k, 'label' => (string) $v, 'disabled' => false];
+                $list[] = ['value' => (string) $k, 'label' => (string) $v, 'disabled' => false, 'swatch' => ''];
             }
         }
         $id = isset($o['id']) && is_scalar($o['id']) && (string) $o['id'] !== '' ? (string) $o['id'] : Td::uid('dd-' . $name);
@@ -1695,7 +1697,9 @@ namespace {
         foreach ($list as $opt) {
             $html .= '<option value="' . Td::e($opt['value']) . '"'
                 . ($current !== '' && $opt['value'] === $current ? ' selected' : '')
-                . ($opt['disabled'] ? ' disabled' : '') . '>' . Td::e($opt['label']) . '</option>';
+                . ($opt['disabled'] ? ' disabled' : '')
+                . ($opt['swatch'] !== '' ? ' data-swatch="' . Td::e($opt['swatch']) . '"' : '')
+                . '>' . Td::e($opt['label']) . '</option>';
         }
         return $html . '</select>' . td__helper_note($help, $id, false) . '</td-dropdown>';
     }
@@ -1707,7 +1711,7 @@ namespace {
      * `<td-chip-input data-td-ssr="chip-input@1" selection-only …>` + [label] + the same select with
      * `class="td-chip-input__native"` (styled to at least the chip box height), upgraded by <td-chip-input> (options,
      * groups, live selection, name / required / disabled / aria-label taken from the select; focused → upgraded on blur).
-     * $options: value => label, or a list of ['value' => …, 'label' => …, 'disabled' => bool, 'description' => …];
+     * $options: value => label, or a list of ['value' => …, 'label' => …, 'disabled' => bool, 'description' => …, 'swatch'? (v0.82.0, Td::safeColor → `data-swatch`)];
      * a group is ['label' => …, 'disabled' => bool, 'options' => [same leaf shapes]] → `<optgroup>` (one level).
      * $selected: the selected values (compared as strings). Options: label, id (host / wrapper; select = {id}-select),
      * class, required, disabled, aria_label (names the select), size (rows of the native list, default 4); element mode
@@ -1797,11 +1801,13 @@ namespace {
             $label = isset($v['label']) && is_scalar($v['label']) ? (string) $v['label'] : $value;
             $disabled = !empty($v['disabled']);
             $desc = td__str($v['description'] ?? null);
+            $swatch = Td::safeColor($v['swatch'] ?? null); // v0.82.0
         } elseif (is_scalar($v) && !is_bool($v)) {
             $value = (string) $k;
             $label = (string) $v;
             $disabled = false;
             $desc = null;
+            $swatch = '';
         } else {
             return '';
         }
@@ -1810,6 +1816,7 @@ namespace {
             'selected' => isset($sel[$value]),
             'disabled' => $disabled,
             'data-description' => $desc,
+            'data-swatch' => $swatch !== '' ? $swatch : null,
         ]) . '>' . Td::e($label) . '</option>';
     }
 

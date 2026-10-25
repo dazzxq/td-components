@@ -13,6 +13,7 @@
 @layer td.tokens {
 	:root {
 		--td-dropdown-option-h: 40px; /* JS mirrors it: max-height = visible options × 40 px */
+		--td-dropdown-swatch-size: 0.75rem; /* v0.82.0: option colour dot (trigger + rows) */
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
@@ -26,6 +27,7 @@
 		--td-dropdown-search-bg: var(--td-color-hover);
 		--td-dropdown-search-border: var(--td-control-border-soft);      /* soft like the fields (v0.14.1) */
 		--td-dropdown-hairline: var(--td-color-border);
+		--td-dropdown-swatch-edge: var(--td-color-border-strong); /* v0.82.0: ring so a white / black dot shows on any surface */
 		/* v0.22.0 create row label: the accent, one step darker so it keeps ≥ 4.7:1 on the menu surface and its
 		   hover / active fills (contrast gate). Without color-mix(): a fixed contrast-safe blue (measured too). */
 		--td-dropdown-create-fg-fallback: #1d4ed8;
@@ -219,6 +221,28 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	/* v0.82.0: option colour dot — in a row and on the trigger; the colour is the circle's `fill` attribute (set by JS) */
+	.td-dropdown__swatch {
+		display: inline-block;
+		flex: none;
+		width: var(--td-dropdown-swatch-size);
+		height: var(--td-dropdown-swatch-size);
+		margin-inline-end: var(--td-space-xs);
+		vertical-align: -0.1em;
+		forced-color-adjust: none; /* the colour is content */
+		border-radius: var(--td-radius-full);
+		box-shadow: 0 0 0 1px var(--td-dropdown-swatch-edge);
+	}
+
+	.td-dropdown__option > .td-dropdown__swatch {
+		margin-inline-end: 0; /* the row's gap spaces it */
+	}
+
+	/* the row is space-between (label | check): the label takes the room so the check stays at the end */
+	.td-dropdown__swatch + .td-dropdown__option-label {
+		flex: 1;
 	}
 
 	.td-dropdown__value[data-placeholder] {
@@ -470,6 +494,10 @@
 		td-dropdown:not(:defined) > select,
 		td-dropdown > .td-dropdown__native {
 			border-color: CanvasText;
+		}
+
+		.td-dropdown__swatch {
+			box-shadow: 0 0 0 1px CanvasText;
 		}
 
 		/* the system arrow (in system colours) instead of the gradient chevron */

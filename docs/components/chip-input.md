@@ -58,6 +58,11 @@ tags.addEventListener('change', (e) => {
 - **chuỗi hoặc số** → tự đổi thành `{ value: 'x', label: 'x' }`;
 - **object** có `value` khác rỗng (không phải object): `{ value: '7', label: 'Nguyễn A', description: 'Biên tập viên' }`.
   `label` thiếu/rỗng → dùng `value` làm chữ hiển thị. `description` (tuỳ chọn) hiện thành dòng phụ trong gợi ý.
+  `swatch` (0.82.0, tuỳ chọn): một màu CSS → chấm tròn 12px trước nhãn ở dòng gợi ý (kể cả dòng multi-select có ô tick)
+  và ở chip đã chọn; chip lấy `swatch` từ chính object mục (mục chỉ có `value` dạng chuỗi thì không có chấm, trừ
+  [multi-select](#11-chọn-nhiều-từ-danh-sách--multi-select-0280) nơi mục được khớp lại với option). Cổng màu **giống**
+  [`td-choice-group`](choice-group.md) (`safeColor`: hex, `rgb()` / `hsl()`, tên màu, ≤ 64 ký tự); sai → không chấm. Màu chỉ
+  vào `fill` của SVG, không `style`. Chấm là trang trí (`aria-hidden`): **nhãn phải nói tên màu**.
 
 Mục không hợp lệ (null, object không có value…) bị bỏ qua. Trùng lặp được loại **theo value** (so chuỗi). Key có thể đổi
 bằng `value-key` / `label-key`:
@@ -196,7 +201,9 @@ authors.renderChip = (item) => `@${item.label}`;   // chuỗi → text
 ```
 
 - Hook trả `null`, `''` hoặc ném lỗi → dùng label mặc định (lỗi được `console.error`).
-- Khi có `renderOption`, dòng `description` tự động **không** hiện nữa (bạn tự hiển thị nếu muốn).
+- Khi có `renderOption`, dòng `description` tự động **không** hiện nữa (bạn tự hiển thị nếu muốn). Tương tự chấm
+  `swatch` (0.82.0): có `renderOption` thì dòng gợi ý không có chấm, có `renderChip` thì chip không có chấm — bạn tự vẽ
+  (đọc `item.swatch`).
 - Nút xoá của chip vẫn dùng label gốc cho `aria-label` (`Xóa {label}`).
 - Gán `renderChip` sau khi render sẽ vẽ lại các chip ngay.
 
@@ -284,13 +291,13 @@ mục **đang hiện** (sau lọc) không bị `disabled`. Chọn → thêm mọ
       <option value="hp">Hải Phòng</option>
     </optgroup>
     <optgroup label="Miền Nam" disabled><option value="hcm">TP Hồ Chí Minh</option></optgroup>
-    <option value="hue" data-description="Cố đô">Huế</option>
+    <option value="hue" data-description="Cố đô" data-swatch="#f59e0b">Huế</option>
   </select>
 </td-chip-input>
 ```
 
 - Lần connect đầu, `<select multiple>` là **con trực tiếp** → `options` (option → mục, `<optgroup>` → nhóm, `disabled`
-  giữ nguyên, `data-description` → `description`), `name` / `required` / `disabled` / `aria-label` của select lên host (khi
+  giữ nguyên, `data-description` → `description`, `data-swatch` → `swatch` (0.82.0; qua cổng màu, sai → bỏ)), `name` / `required` / `disabled` / `aria-label` của select lên host (khi
   host chưa có), `<label for="{id select}">` bên ngoài trỏ sang host, `selection-only` **tự bật**, rồi select bị gỡ
   (component gửi form thay nó). Không có select (hoặc `<select>` không `multiple`) → hành vi như cũ.
 - **Lựa chọn ban đầu**, theo thứ tự ưu tiên: (1) property JS gán sớm (`value` / `options` gán trước khi phần tử nâng
@@ -442,6 +449,8 @@ Tất cả chữ là **văn bản thuần**.
 | `--td-chip-remove-size` | `22px` | Kích thước nút xoá |
 | `--td-chip-remove-hover` | `var(--td-color-hover-strong)` (dark: `rgb(255 255 255 / 13%)`, trước 0.42.1: 16 %) | Nền nút xoá khi hover; nhấn = lớp này hai lần (dark: chữ 4.88:1) |
 | `--td-chip-input-min-w` | `8rem` | Độ rộng tối thiểu ô nhập trước khi xuống dòng |
+| `--td-chip-swatch-size` | `0.75rem` | Cỡ chấm màu `swatch` của option / chip (0.82.0) |
+| `--td-chip-swatch-edge` | `var(--td-color-border-strong)` | Viền 1px quanh chấm (forced-colors: `CanvasText`) |
 
 Khung dùng token field (`--td-field-bg`, `--td-field-border`, `--td-field-border-hover`, `--td-field-focus`,
 `--td-field-error`, `--td-field-radius-md`, `--td-field-h-md`…). Popup gợi ý dùng chung token option của dropdown:

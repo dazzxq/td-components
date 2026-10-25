@@ -98,3 +98,20 @@ export const ExternalLabel = {
       + '<td-dropdown id="dd-aria" aria-label="Chỉ có aria-label"></td-dropdown></div>';
   },
 };
+
+const COLORS = [
+  { value: 'den', label: 'Titan đen', swatch: '#3b3b3d' },
+  { value: 'trang', label: 'Titan trắng', swatch: '#f4f4f2' },
+  { value: 'sa', label: 'Titan sa mạc', swatch: 'rgb(191, 160, 126)' },
+  { value: 'xanh', label: 'Xanh dương', swatch: '#1d4ed8' },
+  { value: 'khac', label: 'Màu khác (không chấm)' },
+];
+
+export const MauSanPham = {
+  name: 'Màu sản phẩm',
+  render: () => {
+    withOptions('dd-color', COLORS);
+    return '<div class="sb-stack"><td-dropdown id="dd-color" label="Màu sắc" value="sa" searchable="false"></td-dropdown>'
+      + '<p class="sb-note">Option có <code>swatch</code> (màu CSS) hiện chấm tròn trước nhãn, cả trên trigger. Nhãn phải nói tên màu.</p></div>';
+  },
+};

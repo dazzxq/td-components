@@ -1510,6 +1510,10 @@
     "@color-scheme": "dark"
   },
   "added": {
+    "--td-dropdown-swatch-size": { "light": "0.75rem", "dark": "0.75rem", "why": "v0.82.0 td-dropdown: size of the option colour dot (menu rows + trigger)" },
+    "--td-dropdown-swatch-edge": { "light": "rgb(212, 212, 216)", "dark": "rgb(69, 69, 75)", "why": "v0.82.0 td-dropdown: 1px ring of the option colour dot (= --td-color-border-strong) so a white / black dot shows on any surface" },
+    "--td-chip-swatch-size": { "light": "0.75rem", "dark": "0.75rem", "why": "v0.82.0 td-chip-input: size of the option colour dot (chip + option row)" },
+    "--td-chip-swatch-edge": { "light": "rgb(212, 212, 216)", "dark": "rgb(69, 69, 75)", "why": "v0.82.0 td-chip-input: 1px ring of the option colour dot (= --td-color-border-strong)" },
     "--td-media-gallery-remove-bg": { "light": "rgb(220, 38, 38)", "dark": "rgb(220, 38, 38)", "why": "v0.81.0 td-media-gallery: the red X over the picture (= --td-solid-danger-bg)" },
     "--td-media-gallery-remove-fg": { "light": "rgb(255, 255, 255)", "dark": "rgb(255, 255, 255)", "why": "v0.81.0 td-media-gallery: the glyph of the red X (= --td-solid-danger-fg)" },
     "--td-media-gallery-tool-bg": { "light": "rgba(0, 0, 0, 0.6)", "dark": "rgba(0, 0, 0, 0.6)", "why": "v0.81.0 td-media-gallery: fill of the round tools over the picture (handle, set-cover, crop, Mô tả; = the media-field tools)" },

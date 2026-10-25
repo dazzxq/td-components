@@ -67,7 +67,21 @@ dd.options = [
 - `disabled: true` (từ 0.17.0; đúng giá trị boolean `true`) → option vẫn hiện (mờ, `aria-disabled="true"`) nhưng
   người dùng **không chọn được** bằng chuột/phím, và bị bỏ qua khi di chuyển bằng ↑↓ / Home / End / PageUp / PageDown /
   type-ahead / tìm kiếm. `setValue()` vẫn chọn được nó (như `<select>` native).
+- `swatch` (từ 0.82.0, tuỳ chọn): một **màu CSS** → chấm tròn 12px trước nhãn, ở dòng trong menu và ở trigger khi
+  option đó đang được chọn (placeholder không có chấm). Cùng cổng với `swatch` của
+  [`td-choice-group`](choice-group.md): hex `#rgb` / `#rgba` / `#rrggbb` / `#rrggbbaa`, `rgb()` / `hsl()`, tên màu, tối đa
+  64 ký tự; giá trị khác (`url(…)`, `var(…)`, có `;`…) → **không có chấm**, không báo lỗi. Màu chỉ vào thuộc tính `fill`
+  của SVG (không `style`, hợp CSP). Chấm là trang trí (`aria-hidden`): **nhãn phải nói tên màu** ("Đỏ", "Titan đen"), vì
+  tên truy cập của option và trigger chỉ là nhãn.
 - Không hỗ trợ: nhóm option (`optgroup` — khi nâng cấp từ `<select>` thì bị làm phẳng), HTML trong label, chọn nhiều.
+
+```js
+dd.options = [
+  { value: 'red', label: 'Đỏ', swatch: '#ff0000' },
+  { value: 'blue', label: 'Xanh dương', swatch: 'rgb(0, 0, 255)' },
+  { value: 'none', label: 'Không màu' }, // không swatch → không chấm
+];
+```
 
 ```js
 dd.options = [
@@ -199,7 +213,7 @@ Từ 0.17.0, in một `<select>` bình thường **bên trong** `<td-dropdown>`.
 Khi gắn vào trang **lần đầu**, nếu host có con trực tiếp `<select>` và chưa có `options` gán bằng JS:
 
 - **options**: mỗi `<option>` → `{ value, label }` (`label` = chữ hiển thị đã trim, hoặc attribute `label` của option
-  nếu có), theo đúng thứ tự. `<optgroup>` được **làm phẳng**, nhãn nhóm bị bỏ. Option `disabled` hoặc nằm trong
+  nếu có), theo đúng thứ tự. `data-swatch` của `<option>` → `swatch` (0.82.0; qua cùng cổng màu, sai → bỏ). `<optgroup>` được **làm phẳng**, nhãn nhóm bị bỏ. Option `disabled` hoặc nằm trong
   `<optgroup disabled>` → `disabled: true`. Key theo `value-key` / `label-key` nếu host có đặt.
 - **lựa chọn**: (1) attribute `value` của host nếu có; (2) nếu không, giá trị **đang chọn** của select — gồm cả lựa chọn
   người dùng đã đổi trước khi JS chạy, và option đầu tiên (không bị vô hiệu) khi không option nào `selected`, như native.
@@ -425,6 +439,8 @@ Token riêng của dropdown (khai báo trong `@layer td.tokens`, file `component
 | `--td-dropdown-option-active` | `var(--td-option-active-bg)` | Nền option đang active (bàn phím) + vạch nhấn đầu dòng (0.36.0). |
 | `--td-dropdown-option-active-line` | `var(--td-control-border-hover)` | **Hết tác dụng từ 0.36.0** — hàng active có vạch nhấn đầu dòng `--td-option-active-bar` (xem [Tuỳ biến › Hàng option](../customization/theming.md)). |
 | `--td-dropdown-option-selected` | `var(--td-option-selected-bg)` | Nền option đã chọn (0.36.0: nhãn in đậm, ✓ ở cuối, hàng tràn mép). |
+| `--td-dropdown-swatch-size` | `0.75rem` | Cỡ chấm màu của option (0.82.0). |
+| `--td-dropdown-swatch-edge` | `var(--td-color-border-strong)` | Viền 1px quanh chấm để chấm trắng / đen vẫn thấy trên mọi nền (forced-colors: `CanvasText`). |
 | `--td-dropdown-search-bg` | `var(--td-color-hover)` (dark: `rgb(255 255 255 / 6%)`) | Nền ô tìm kiếm. |
 | `--td-dropdown-search-border` | `var(--td-control-border-soft)` | Viền ô tìm kiếm. |
 | `--td-dropdown-hairline` | `var(--td-color-border)` | Đường kẻ dưới ô tìm kiếm và trên dòng "Thêm mới". |

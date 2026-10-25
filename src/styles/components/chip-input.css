@@ -19,6 +19,7 @@
 		--td-chip-gap: 6px;
 		--td-chip-remove-size: 22px;
 		--td-chip-input-min-w: 8rem;
+		--td-chip-swatch-size: 0.75rem; /* v0.82.0: option colour dot (chip + row) */
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
@@ -26,6 +27,7 @@
 		--td-chip-bg: var(--td-color-fill-strong); /* opaque (v0.20.0): = 8 % black over the #fff field */
 		--td-chip-fg: var(--td-color-text);
 		--td-chip-remove-hover: var(--td-color-hover-strong);
+		--td-chip-swatch-edge: var(--td-color-border-strong); /* v0.82.0: ring so a white / black dot shows on any surface */
 	}
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
@@ -140,6 +142,16 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	/* v0.82.0: option colour dot, first child of the (flex, gap) chip / row label; the colour is the circle's `fill` */
+	.td-chip-input__swatch {
+		flex: none;
+		width: var(--td-chip-swatch-size);
+		height: var(--td-chip-swatch-size);
+		forced-color-adjust: none; /* the colour is content */
+		border-radius: var(--td-radius-full);
+		box-shadow: 0 0 0 1px var(--td-chip-swatch-edge);
 	}
 
 	.td-chip-input__remove {
@@ -517,6 +529,10 @@
 
 		.td-chip-input__chip {
 			border: 1px solid CanvasText;
+		}
+
+		.td-chip-input__swatch {
+			box-shadow: 0 0 0 1px CanvasText;
 		}
 
 		.td-chip-input__remove:focus-visible {

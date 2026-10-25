@@ -9,6 +9,8 @@ import { fillIconSlots } from '../icons/td-icon.js';
 const CLEAR = '__CLEAR__';
 const OPTION_PX = 40; // --td-dropdown-option-h: `max-height` = visible options × 40 px
 const TYPEAHEAD_MS = 500;
+// v0.82.0: the colourless dot; the colour is set only through circle.setAttribute('fill') (see _applySwatchFills)
+const SWATCH_SVG = '<svg class="td-dropdown__swatch" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><circle cx="6" cy="6" r="6"/></svg>';
 /** Properties that may be set on the element before it upgrades (they would shadow the class accessors). */
 const UPGRADE_PROPS = ['options', 'onChange', 'onSelect', 'onCreate', 'createLabel'];
 
@@ -289,6 +291,8 @@ export class TdDropdown extends TdFormElement {
     const items = opts.map((opt) => {
       const item = { [vk]: opt.value, [lk]: opt.label.trim() };
       if (isOff(opt)) item.disabled = true;
+      const sw = this.safeColor(opt.dataset.swatch); // v0.82.0: <option data-swatch="#f00"> → item.swatch
+      if (sw) item.swatch = sw;
       return item;
     });
     // Native reset rule: the last `selected` option, else the first enabled one.
@@ -446,13 +450,15 @@ export class TdDropdown extends TdFormElement {
     const label = this._getLabel();
     const placeholder = !this._selectedItem;
     const text = placeholder ? this._getPlaceholder() : this._selectedItem[this._getLabelKey()];
+    // v0.82.0: a valid swatch prints a colourless dot; _applySwatchFills() sets its `fill` after render
+    const dot = !placeholder && this._swatchOf(this._selectedItem) ? SWATCH_SVG : '';
     const labelHtml = label
       ? `<label class="td-field__label" id="${id}-label" for="${id}-trigger">${esc(label)}</label>`
       : '';
     return `<div class="td-dropdown" data-state="${this._isOpen ? 'open' : 'closed'}">${labelHtml}`
       + `<button type="button" class="td-dropdown__trigger" id="${id}-trigger" role="combobox" aria-haspopup="listbox"`
       + ` aria-expanded="${this._isOpen}" aria-controls="${id}-listbox"${this._isDisabled() ? ' disabled' : ''}>`
-      + `<span class="td-dropdown__value"${placeholder ? ' data-placeholder' : ''}>${esc(text)}</span>`
+      + `<span class="td-dropdown__value"${placeholder ? ' data-placeholder' : ''}>${dot}${esc(text)}</span>`
       + '<span class="td-dropdown__arrow" data-td-icon="down" aria-hidden="true"></span>'
       + '</button></div>';
   }
@@ -491,6 +497,7 @@ export class TdDropdown extends TdFormElement {
     this._applyName();
     this._applyRequired();
     this._watchValueTitle();
+    this._applySwatchFills();
     if (this._isOpen && this._isDisabled()) this.close();
     // Push the current selection + validity into the form on (re)render.
     this._syncForm();
@@ -594,11 +601,37 @@ export class TdDropdown extends TdFormElement {
     if (this._selectedItem) {
       span.textContent = String(this._selectedItem[this._getLabelKey()]);
       span.removeAttribute('data-placeholder');
+      if (this._swatchOf(this._selectedItem)) span.insertAdjacentHTML('afterbegin', SWATCH_SVG);
     } else {
       span.textContent = this._getPlaceholder();
       span.setAttribute('data-placeholder', '');
     }
+    this._applySwatchFills();
     this._scheduleValueTitle();
+  }
+
+  /** @private v0.82.0: the option's colour when it passes the safeColor gate (same as td-choice-group), else ''. */
+  _swatchOf(item) {
+    return item && typeof item.swatch === 'string' ? this.safeColor(item.swatch) : '';
+  }
+
+  /**
+   * @private v0.82.0: colour the dots (trigger + menu rows) through the SVG `fill` presentation attribute — never an
+   * HTML string, `style` attribute or `<style>` (CSP). Idempotent; runs after every host render / value-text update.
+   */
+  _applySwatchFills() {
+    const fill = (svg, c) => {
+      const circle = svg && svg.querySelector('circle');
+      if (circle) circle.setAttribute('fill', c);
+    };
+    const span = this.querySelector('.td-dropdown__value');
+    if (span && this._selectedItem) fill(span.querySelector(':scope > svg.td-dropdown__swatch'), this._swatchOf(this._selectedItem));
+    const scroller = this._scroller();
+    if (!scroller) return;
+    for (const row of scroller.querySelectorAll('.td-dropdown__option[data-index]')) {
+      const c = this._swatchOf(this._filteredData[Number(row.dataset.index)]);
+      if (c) fill(row.querySelector(':scope > svg.td-dropdown__swatch'), c);
+    }
   }
 
   /**
@@ -753,11 +786,13 @@ export class TdDropdown extends TdFormElement {
       html += `<div class="td-dropdown__option" role="option" id="${id}-opt-${index}" aria-selected="${selected}"`
         + `${this._isItemDisabled(item) ? ' aria-disabled="true"' : ''}`
         + ` data-value="${esc(item[valueKey])}" data-index="${index}" data-nav="${nav.length - 1}">`
+        + (this._swatchOf(item) ? SWATCH_SVG : '')
         + `<span class="td-dropdown__option-label">${esc(item[labelKey])}</span>`
         + (selected ? '<span class="td-dropdown__check" data-td-icon="check" aria-hidden="true"></span>' : '')
         + '</div>';
     });
     scroller.innerHTML = html;
+    this._applySwatchFills();
     // v0.22.0: the create row — last direct child of the listbox, outside the scroller, never filtered, never a value.
     for (const old of list.querySelectorAll(':scope > .td-dropdown__option--create')) old.remove();
     const createLabel = this._getCreateLabel();

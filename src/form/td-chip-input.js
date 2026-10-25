@@ -310,6 +310,8 @@ export class TdChipInput extends TdFormElement {
       if (opt.disabled) item.disabled = true;
       const d = opt.getAttribute('data-description');
       if (d) item.description = d;
+      const sw = this.safeColor(opt.getAttribute('data-swatch')); // v0.82.0: gated like td-choice-group
+      if (sw) item.swatch = sw;
       byOpt.set(opt, item);
       return item;
     };
@@ -754,6 +756,29 @@ export class TdChipInput extends TdFormElement {
     return document.createTextNode(fallback);
   }
 
+  /**
+   * @private v0.82.0: the colour dot of an item (DOM APIs; `fill` through setAttribute, gated by safeColor — never an
+   * HTML string / `style`), or null: no valid swatch, or `hook` (renderChip / renderOption) is set — its owner draws.
+   */
+  _swatchDot(item, hook) {
+    if (hook || !item || typeof item.swatch !== 'string') return null;
+    const c = this.safeColor(item.swatch);
+    if (!c) return null;
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'td-chip-input__swatch');
+    svg.setAttribute('viewBox', '0 0 12 12');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    const circle = document.createElementNS(NS, 'circle');
+    circle.setAttribute('cx', '6');
+    circle.setAttribute('cy', '6');
+    circle.setAttribute('r', '6');
+    circle.setAttribute('fill', c);
+    svg.appendChild(circle);
+    return svg;
+  }
+
   /** @private one chip `li` (DOM APIs only; labels as text) */
   _buildChip(item, index) {
     const li = document.createElement('li');
@@ -773,6 +798,8 @@ export class TdChipInput extends TdFormElement {
     icon.setAttribute('data-td-icon-size', 's');
     icon.setAttribute('aria-hidden', 'true');
     btn.appendChild(icon);
+    const dot = this._swatchDot(item, this._renderChip);
+    if (dot) label.prepend(dot); // inside the (flex, gap) label: the ellipsis cuts the text, not the dot
     li.append(label, btn);
     fillIconSlots(li);
     return li;
@@ -1407,6 +1434,8 @@ export class TdChipInput extends TdFormElement {
         const label = document.createElement('span');
         label.className = 'td-chip-input__option-label';
         label.appendChild(this._hookContent(this._renderOption, [entry.item, { query }], this._lab(entry.item)));
+        const dot = this._swatchDot(entry.item, this._renderOption);
+        if (dot) label.prepend(dot);
         el.appendChild(label);
         const desc = entry.item.description;
         if (!this._renderOption && desc != null && typeof desc !== 'object' && String(desc) !== '') {
@@ -1459,6 +1488,8 @@ export class TdChipInput extends TdFormElement {
         el.setAttribute('data-index', String(i));
         el.setAttribute('data-value', this._val(entry.item));
         label.appendChild(this._hookContent(this._renderOption, [entry.item, { query }], this._lab(entry.item)));
+        const dot = this._swatchDot(entry.item, this._renderOption);
+        if (dot) label.prepend(dot);
         const desc = entry.item.description;
         if (!this._renderOption && desc != null && typeof desc !== 'object' && String(desc) !== '') {
           const d = document.createElement('span');
