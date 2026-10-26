@@ -170,7 +170,8 @@
     ],
     "src/display/td-tabs.js": [
       "src/base/td-base-element.js",
-      "src/icons/td-icon.js"
+      "src/icons/td-icon.js",
+      "src/utils/media-url.js"
     ],
     "src/display/td-timeline.js": [
       "src/base/td-base-element.js",

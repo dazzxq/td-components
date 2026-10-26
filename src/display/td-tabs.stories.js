@@ -156,3 +156,38 @@ export const WithCounts = {
     });
   },
 };
+
+export const PageNavigation = {
+  name: 'Điều hướng trang (0.83.0)',
+  render: (args) => `
+    <div class="sb-stack">
+      <td-tabs size="${escapeHtml(String(args.size || 'md'))}" aria-label="Cài đặt hệ thống" data-sb-paths>
+        <a href="/system/settings/telegram" data-tab-id="telegram">Telegram</a>
+        <a href="/system/settings/sepay" data-tab-id="sepay" aria-current="page" data-count="2" data-tone="warning">SePay</a>
+        <a href="/system/settings/ghtk" data-tab-id="ghtk">GHTK</a>
+      </td-tabs>
+      <p class="sb-note">Link theo đường dẫn: <code>&lt;a&gt;</code> con do server in sẵn (Blade / PHP) được nâng cấp thành
+        <code>&lt;nav&gt;</code> + <code>aria-current="page"</code>. Ở đây <code>tab-click</code> bị huỷ (mô phỏng SPA, Storybook
+        không rời trang) rồi <code>setActiveTab(id)</code>; Ctrl / ⌘ / Shift-click và chuột giữa vẫn là link thật.</p>
+      <td-tabs size="${escapeHtml(String(args.size || 'md'))}" aria-label="Các mục của biểu mẫu" match-hash data-sb-hash></td-tabs>
+      <p class="sb-note">Link <code>#section</code> + <code>match-hash</code>: thẻ hiện tại theo <code>location.hash</code>
+        (đổi qua <code>hashchange</code>, không cần JS của site).</p>
+    </div>
+  `,
+  args: { size: 'md' },
+  play: async ({ canvasElement }) => {
+    const paths = canvasElement.querySelector('[data-sb-paths]');
+    paths.addEventListener('tab-click', (e) => {
+      const click = e.detail.event;
+      if (click.button !== 0 || click.ctrlKey || click.metaKey || click.shiftKey || click.altKey) return;
+      e.preventDefault();
+      paths.setActiveTab(e.detail.tabId);
+    });
+    const hash = canvasElement.querySelector('[data-sb-hash]');
+    hash.tabs = [
+      { id: 'info', label: 'Thông tin chung', href: '#info' },
+      { id: 'media', label: 'Hình ảnh', href: '#media', icon: 'image' },
+      { id: 'seo', label: 'SEO', href: '#seo' },
+    ];
+  },
+};

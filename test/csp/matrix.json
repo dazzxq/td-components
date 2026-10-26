@@ -1666,6 +1666,23 @@
       ],
       "settle": 350,
       "selectorNote": "v0.36.0 (QĐ 16): label = inline-flex column + ::after attr(data-label) width reservation — static CSS only"
+    },
+    {
+      "state": "links",
+      "setup": "const t=document.createElement('td-tabs'); t.id='probe'; t.setAttribute('aria-label','Cài đặt'); t.setAttribute('active-tab','b'); window.__mount.appendChild(t); t.tabs=[{id:'a',label:'Telegram',href:'#telegram'},{id:'b',label:'SePay',href:'#sepay',count:3},{id:'c',label:'GHTK',href:'#ghtk'}];",
+      "selectors": [
+        ".td-tabs",
+        ".td-tabs__indicator",
+        ".td-tabs__tab",
+        ".td-tabs__tab[aria-current=\"page\"]",
+        ".td-tabs__count"
+      ],
+      "excludeProps": [
+        "transform",
+        "width"
+      ],
+      "settle": 350,
+      "selectorNote": "v0.83.0: link mode — <nav> of <a class=td-tabs__tab>, the explicit current page (aria-current) + a count pill"
     }
   ],
   "td-pagination": [

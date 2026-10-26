@@ -1,5 +1,6 @@
 import { TdBaseElement } from '../base/td-base-element.js';
 import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
+import { safeLinkUrl } from '../utils/media-url.js';
 
 let _autoIdCounter = 0;
 const SIZES = ['sm', 'md'];
@@ -19,6 +20,8 @@ function countText(count) {
 }
 const CLASS_TOKEN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 const DEFAULT_NAME = 'Các thẻ';
+/** v0.83.0: default name of the link-mode `<nav>` */
+const NAV_NAME = 'Điều hướng phụ';
 /** px — width of the overflow edge fade (tabs.css `--_td-tabs-fade`); the active tab is scrolled clear of it. */
 const EDGE_FADE = 24;
 /** px — leave overflow mode only when the widest tab fits the slot with this much to spare (no flip-flop). */
@@ -55,6 +58,21 @@ const FOCUSABLE = [
  *   </div>
  *   Empty: <div class="td-tabs td-tabs--{size}" data-state="empty"></div>
  *
+ * Link mode (v0.83.0, plan v0.83.0-tabs-links) — at least one tab has a valid `href` (gate: safeLinkUrl; tabs without one
+ * are dropped with a console.warn):
+ *   <nav class="td-tabs td-tabs--{sm|md}" aria-label="…" [data-state="ready"] [data-overflow] …>
+ *     <span class="td-tabs__indicator" aria-hidden="true"></span>
+ *     <a class="td-tabs__tab" href="{href as written}" data-tab-id="{id}" [aria-current="page"]>icon? label count?</a>…
+ *   </nav>
+ *   No tab roles, no aria-selected, no tabindex (every link is a Tab stop; arrows do nothing); `panel` is ignored. The
+ *   current tab = explicit (`active-tab` / setActiveTab) → else the URL (same origin + pathname, one trailing `/`
+ *   ignored, search ignored, exact — no prefix; a href with a hash only matches with `match-hash`, then on the exact
+ *   `location.hash`, and beats a path-only match) → else none (no aria-current, no data-state, indicator hidden).
+ *   Re-matched in place (silently) on `popstate` and, with `match-hash`, on `hashchange`. A click is a native link click;
+ *   `tab-click` is dispatched first and cancelling it prevents the navigation. Server-rendered `<a href>` children are
+ *   read as the tabs at the first render when `tabs` was never assigned (`data-tab-id`, `data-icon`, `data-count`,
+ *   `data-tone`; `aria-current="page"` → initial `active-tab`).
+ *
  * Responsive (v0.34.0, plan QĐ 9): equal-width segments (`flex: 1 1 0`) while they fit, else `data-overflow` on the
  * trough → natural-width tabs in a horizontally scrolling row (snap, hidden scrollbar, edge fade driven by
  * `data-scroll-start` / `data-scroll-end`). Rule: slot = (content width − gap × (n − 1)) / n; overflow when the widest
@@ -74,20 +92,27 @@ const FOCUSABLE = [
  * @attr {string} size - 'sm' | 'md' (default 'md')
  * @attr {string} active-tab - ID of the active tab (changes switch silently, no event)
  * @attr {string} activation - 'manual' (default) | 'auto'
- * @attr {string} aria-label - Tablist name (default "Các thẻ"); `aria-labelledby` is forwarded too
+ * @attr {string} aria-label - Tablist name (default "Các thẻ"; link-mode nav: "Điều hướng phụ"); `aria-labelledby` is
+ *   forwarded too
+ * @attr {boolean} match-hash - v0.83.0 (link mode): a tab whose href has a `#hash` can be current (exact `location.hash`)
  * @fires tab-change - When the user (or setActiveTab) changes the tab, detail: { tabId }
+ * @fires tab-click - v0.83.0 (link mode), on a tab link click, BEFORE the native navigation; cancelable (cancelling it calls
+ *   preventDefault() on the click), detail: { tabId, href, event }
  *
- * @property {Array<{id: string, label: string, icon?: string, panel?: string, count?: number|string, tone?: string}>} tabs - Tab
+ * @property {Array<{id: string, label: string, href?: string, icon?: string, panel?: string, count?: number|string, tone?: string}>} tabs - Tab
  *   definitions. `icon`: registry name; DEPRECATED: any other value is a class list rendered as `<i class aria-hidden>`.
  *   v0.70.0: `count` (a finite number or a string; null / undefined / blank / NaN = no pill; 0 → "0") and `tone`
  *   (neutral | info | success | warning | danger, default neutral) draw a count pill after the label.
+ *   v0.83.0: `href` (kept as written, escaped; refused by safeLinkUrl → no href) switches to link mode.
  * @property {Function} onChange - Callback receiving tabId (runs before `tab-change`; a throw is logged with
  *   `console.error` and the event still fires)
  */
 export class TdTabs extends TdBaseElement {
   static get observedAttributes() {
-    return ['size', 'active-tab', 'aria-label', 'aria-labelledby'];
+    return ['size', 'active-tab', 'aria-label', 'aria-labelledby', 'match-hash'];
   }
+
+  static get booleanAttributes() { return ['match-hash']; }
 
   constructor() {
     super();
@@ -119,18 +144,38 @@ export class TdTabs extends TdBaseElement {
     // disconnected when the count changed, or when its frame had not run yet) — connectedCallback pays it
     this._countRaf = 0;
     this._countDirty = false;
+    // v0.83.0 link mode: `_links` = at least one tab has a valid href; `_explicitId` = active-tab / setActiveTab (null = follow
+    // the URL); `_tabsAssigned` = the `tabs` setter ran (incl. the pre-upgrade replay) → `<a>` children are not read
+    this._links = false;
+    this._explicitId = null;
+    this._tabsAssigned = false;
+    this._childLinksRead = false;
+    this._offPop = null;
+    this._offHash = null;
   }
 
   // --- JS Property accessors ---
 
   get tabs() { return this._tabs; }
   set tabs(data) {
+    this._tabsAssigned = true; // v0.83.0: `<a>` children are never read once `tabs` was assigned
+    this._assign(data);
+    if (this._initialized) {
+      const hadFocus = this.contains(document.activeElement);
+      this._doRender();
+      if (hadFocus) this._buttonFor(this._activeTabId)?.focus();
+    }
+  }
+
+  /** Normalise `data` into `_items` (+ v0.83.0 link mode) and re-validate the active tab. */
+  _assign(data) {
     this._tabs = Array.isArray(data) ? data : [];
-    this._items = this._tabs
+    const items = this._tabs
       .filter((t) => t && typeof t === 'object' && t.id != null && t.id !== '')
       .map((t) => {
         const count = countText(t.count); // read ONCE (an accessor-backed tab object may answer differently the second time)
         const tone = t.tone;
+        const href = typeof t.href === 'string' ? t.href.trim() : ''; // v0.83.0: kept as written when the gate accepts it
         return {
           id: String(t.id),
           label: t.label == null ? '' : String(t.label),
@@ -139,14 +184,17 @@ export class TdTabs extends TdBaseElement {
           count,
           // a tone only means something with a pill: without a count it is dropped (a later setTabCount with no tone starts neutral)
           tone: count && TONES.includes(tone) ? tone : 'neutral',
+          href: href && safeLinkUrl(href) ? href : '',
         };
       });
-    this._validateActive();
-    if (this._initialized) {
-      const hadFocus = this.contains(document.activeElement);
-      this._doRender();
-      if (hadFocus) this._buttonFor(this._activeTabId)?.focus();
+    // v0.83.0: one valid href → link mode; a tab without one is dropped there (no "link tab that is not a link")
+    this._links = items.some((t) => t.href);
+    this._items = this._links ? items.filter((t) => t.href) : items;
+    if (this._items.length < items.length) {
+      console.warn(`td-tabs: link mode — ${items.length - this._items.length} tab(s) without a valid href dropped`);
     }
+    if (this._explicitId != null && !this._hasTab(this._explicitId)) this._explicitId = null;
+    this._validateActive();
   }
 
   get onChange() { return this._onChange; }
@@ -172,6 +220,9 @@ export class TdTabs extends TdBaseElement {
     } else {
       this._observe();
       this._syncPanels();
+      // v0.83.0: popstate / hashchange were not heard while detached → listen again and re-match the URL
+      this._syncLocationListeners();
+      if (this._links) this._resolveCurrent();
       if (this._countDirty) { // v0.70.0: a count changed while disconnected → widths / overflow mode / indicator are stale
         this._countDirty = false;
         this._remeasure();
@@ -194,6 +245,7 @@ export class TdTabs extends TdBaseElement {
     }
     this._pendingOverflow = null;
     this._releasePanels(new Set());
+    this._syncLocationListeners(); // v0.83.0: not connected → both window listeners removed
   }
 
   /** Same pattern as TdFormElement._ensureId: a host id so tab ids `{host-id}-tab-{i}` never collide. */
@@ -222,10 +274,20 @@ export class TdTabs extends TdBaseElement {
   }
 
   render() {
+    // v0.83.0: the first render (after the pre-upgrade property replay) reads server-rendered `<a>` children — only
+    // when `tabs` was never assigned
+    if (!this._childLinksRead) {
+      this._childLinksRead = true;
+      if (!this._tabsAssigned) this._adoptLinkChildren();
+      // pre-upgrade `activeTab` / `matchHash` replayed in super.connectedCallback() came after connectedCallback's
+      // _validateActive (their attribute callbacks return before _initialized) → validate again before the first markup
+      this._validateActive();
+    }
     const size = this._size();
     if (this._items.length === 0) {
       return `<div class="td-tabs td-tabs--${size}" data-state="empty"></div>`;
     }
+    if (this._links) return this._renderLinks(size);
     const tabs = this._items.map((tab, i) => {
       const selected = tab.id === this._activeTabId;
       const controls = tab.panel ? ` aria-controls="${this.escapeHtml(tab.panel)}"` : '';
@@ -240,6 +302,49 @@ export class TdTabs extends TdBaseElement {
       + `<span class="td-tabs__indicator" aria-hidden="true"></span>${tabs}</div>`;
   }
 
+  /** v0.83.0 link mode: `<nav>` of `<a class="td-tabs__tab">` (href = the gated original string, escaped). */
+  _renderLinks(size) {
+    const tabs = this._items.map((tab) => {
+      const current = tab.id === this._activeTabId ? ' aria-current="page"' : '';
+      return `<a class="td-tabs__tab" href="${this.escapeHtml(tab.href)}" data-tab-id="${this.escapeHtml(tab.id)}"${current}>`
+        + `${this._iconMarkup(tab.icon)}<span class="td-tabs__label" data-label="${this.escapeHtml(tab.label)}">`
+        + `${this.escapeHtml(tab.label)}</span>${this._countMarkup(tab)}</a>`;
+    }).join('');
+    const overflow = this._overflow ? ' data-overflow=""' : '';
+    return `<nav class="td-tabs td-tabs--${size}"${overflow}>`
+      + `<span class="td-tabs__indicator" aria-hidden="true"></span>${tabs}</nav>`;
+  }
+
+  /**
+   * v0.83.0 progressive enhancement: `:scope > a[href]` children → tabs (id = data-tab-id or the index, label = text,
+   * href = the attribute as written, data-icon / data-count / data-tone); an `aria-current="page"` child becomes the
+   * initial `active-tab` when the host has none. Children whose href the gate refuses are dropped; none left → empty.
+   */
+  _adoptLinkChildren() {
+    const anchors = [...this.querySelectorAll(':scope > a[href]')];
+    if (!anchors.length) return;
+    let current = null;
+    const data = anchors.map((a, i) => {
+      const id = a.getAttribute('data-tab-id') || String(i);
+      if (current == null && a.getAttribute('aria-current') === 'page') current = id;
+      const tab = { id, label: a.textContent.trim(), href: a.getAttribute('href') };
+      for (const [key, attr] of [['icon', 'data-icon'], ['count', 'data-count'], ['tone', 'data-tone']]) {
+        const v = a.getAttribute(attr);
+        if (v != null) tab[key] = v;
+      }
+      return tab;
+    });
+    this._assign(data);
+    if (!this._links) { // no child href passed the gate: never turn server links into tablist buttons
+      this._assign([]);
+      return;
+    }
+    if (current != null && this._hasTab(current) && !this.hasAttribute('active-tab')) {
+      this.setAttribute('active-tab', current); // → _explicitId (attributeChangedCallback)
+      this._validateActive();
+    }
+  }
+
   afterRender() {
     this._list = this.querySelector(':scope > .td-tabs');
     this._buttons = [...this.querySelectorAll(':scope > .td-tabs > .td-tabs__tab')];
@@ -250,6 +355,7 @@ export class TdTabs extends TdBaseElement {
     this._measure();
     this._decideFromLayout();
     this._updateIndicator();
+    this._syncLocationListeners();
   }
 
   /** v0.70.0 (K9): the count pill of one tab ('' without a count); `tone` was validated against TONES, `count` is escaped. */
@@ -297,19 +403,27 @@ export class TdTabs extends TdBaseElement {
 
   _hasTab(id) { return this._items.some((t) => t.id === id); }
 
-  /** Keep `_activeTabId` pointing at an existing tab: current → `active-tab` attribute → first tab. */
+  /**
+   * Keep `_activeTabId` pointing at an existing tab: current → `active-tab` attribute → first tab.
+   * v0.83.0 link mode: explicit → URL match → null (never a fallback to the first tab).
+   */
   _validateActive() {
+    if (this._links) {
+      this._activeTabId = this._currentId();
+      return;
+    }
     if (this._activeTabId != null && this._hasTab(this._activeTabId)) return;
     const attr = this.getAttribute('active-tab');
     if (attr != null && this._hasTab(attr)) this._activeTabId = attr;
     else this._activeTabId = this._items[0]?.id ?? null;
   }
 
-  /** D19: tablist name = host aria-labelledby → host aria-label → "Các thẻ". */
+  /** D19: tablist name = host aria-labelledby → host aria-label → "Các thẻ" (v0.83.0: link-mode nav → "Điều hướng phụ"). */
   _applyName() {
     const list = this._list;
     if (!list) return;
-    if (list.getAttribute('role') !== 'tablist') {
+    const nav = list.tagName === 'NAV';
+    if (list.getAttribute('role') !== 'tablist' && !nav) {
       list.removeAttribute('aria-label');
       list.removeAttribute('aria-labelledby');
       return;
@@ -320,7 +434,7 @@ export class TdTabs extends TdBaseElement {
       list.setAttribute('aria-labelledby', labelledby);
       list.removeAttribute('aria-label');
     } else {
-      list.setAttribute('aria-label', label || DEFAULT_NAME);
+      list.setAttribute('aria-label', label || (nav ? NAV_NAME : DEFAULT_NAME));
       list.removeAttribute('aria-labelledby');
     }
   }
@@ -347,7 +461,10 @@ export class TdTabs extends TdBaseElement {
     const list = this._list;
     if (!list || !list.isConnected || this._items.length === 0) return;
     const btn = this._buttonFor(this._activeTabId);
-    if (!btn) return;
+    if (!btn) {
+      if (this._links) list.removeAttribute('data-state'); // v0.83.0: no current page → no pill
+      return;
+    }
     const lr = list.getBoundingClientRect();
     const br = btn.getBoundingClientRect();
     if (br.width === 0) return; // not laid out yet (hidden ancestor) — the ResizeObserver retries
@@ -511,6 +628,10 @@ export class TdTabs extends TdBaseElement {
 
   _syncPanels() {
     if (!this.isConnected) return;
+    if (this._links) { // v0.83.0: `panel` is ignored in link mode; panels managed before (tablist) are given back
+      this._releasePanels(new Set());
+      return;
+    }
     const keep = new Set();
     this._items.forEach((tab, i) => {
       if (!tab.panel) return;
@@ -549,9 +670,17 @@ export class TdTabs extends TdBaseElement {
   // --- Attributes: all handled in place (no re-render) ---
 
   attributeChangedCallback(name, oldVal, newVal) {
+    // v0.83.0: the explicit current tab of link mode follows `active-tab` from the start (null = removed → follow the URL)
+    if (name === 'active-tab' && oldVal !== newVal) this._explicitId = newVal;
     if (oldVal === newVal || !this._initialized) return;
     if (name === 'active-tab') {
-      if (newVal != null) this._select(newVal, false);
+      if (this._links) this._resolveCurrent();
+      else if (newVal != null) this._select(newVal, false);
+    } else if (name === 'match-hash') {
+      if (this._links) {
+        this._syncLocationListeners();
+        this._resolveCurrent();
+      }
     } else if (name === 'size') {
       if (this._list) this._list.className = `td-tabs td-tabs--${this._size()}`;
       this._remeasure();
@@ -571,11 +700,29 @@ export class TdTabs extends TdBaseElement {
   _onClick(e) {
     const btn = this._tabFromEvent(e);
     if (!btn) return;
+    if (this._links) {
+      this._onLinkClick(e, btn);
+      return;
+    }
     for (const b of this._buttons) b.tabIndex = b === btn ? 0 : -1; // also when re-clicking the selected tab
     this._select(btn.dataset.tabId, true);
   }
 
+  /**
+   * v0.83.0: a link click stays native. `tab-click` is dispatched directly (emit() is not cancelable); only a cancelled
+   * `tab-click` prevents the click's default. The current tab is not changed here (the page / hashchange / the site does).
+   */
+  _onLinkClick(e, a) {
+    const tabId = a.dataset.tabId;
+    const href = this._items.find((t) => t.id === tabId)?.href ?? a.getAttribute('href');
+    const ev = new CustomEvent('tab-click', {
+      bubbles: true, composed: true, cancelable: true, detail: { tabId, href, event: e },
+    });
+    if (!this.dispatchEvent(ev)) e.preventDefault();
+  }
+
   _onKeydown(e) {
+    if (this._links) return; // v0.83.0: links are plain Tab stops — no roving, no arrows
     const btn = this._tabFromEvent(e);
     if (!btn || e.altKey || e.ctrlKey || e.metaKey) return;
     const n = this._buttons.length;
@@ -603,16 +750,22 @@ export class TdTabs extends TdBaseElement {
    */
   _select(tabId, fireEvents) {
     const id = tabId == null ? null : String(tabId);
-    if (id == null || !this._hasTab(id) || id === this._activeTabId) return false;
-    this._activeTabId = id;
-    for (const b of this._buttons) {
-      const selected = b.dataset.tabId === id;
-      b.setAttribute('aria-selected', String(selected));
-      b.setAttribute('tabindex', selected ? '0' : '-1');
+    if (this._links) { // v0.83.0: an explicit current tab, kept until the next explicit choice
+      if (id == null || !this._hasTab(id)) return false;
+      this._explicitId = id;
+      if (!this._applyCurrent(id)) return false;
+    } else {
+      if (id == null || !this._hasTab(id) || id === this._activeTabId) return false;
+      this._activeTabId = id;
+      for (const b of this._buttons) {
+        const selected = b.dataset.tabId === id;
+        b.setAttribute('aria-selected', String(selected));
+        b.setAttribute('tabindex', selected ? '0' : '-1');
+      }
+      this._syncPanels();
+      this._scrollActiveIntoView();
+      this._updateIndicator();
     }
-    this._syncPanels();
-    this._scrollActiveIntoView();
-    this._updateIndicator();
     if (fireEvents) {
       if (this._onChange) {
         try {
@@ -626,18 +779,102 @@ export class TdTabs extends TdBaseElement {
     return true;
   }
 
+  // --- Link mode: the current tab (v0.83.0) ---
+
+  /** Explicit (still a tab) → URL match → null. */
+  _currentId() {
+    if (this._explicitId != null && this._hasTab(this._explicitId)) return this._explicitId;
+    return this._matchLocation();
+  }
+
+  /**
+   * Same origin + pathname (one trailing `/` ignored, search ignored, exact). A href with a hash: never without
+   * `match-hash`; with it, path + exact `location.hash`, and it beats a path-only match. First match wins per level.
+   * @returns {string|null}
+   */
+  _matchLocation() {
+    if (typeof location === 'undefined') return null;
+    const trim = (p) => (p.length > 1 && p.endsWith('/') ? p.slice(0, -1) : p);
+    const here = trim(location.pathname);
+    const withHash = this.hasAttribute('match-hash');
+    let pathHit = null;
+    for (const tab of this._items) {
+      let u;
+      try { u = new URL(tab.href, document.baseURI); } catch { continue; }
+      if (u.origin !== location.origin || trim(u.pathname) !== here) continue;
+      if (u.hash) {
+        if (withHash && u.hash === location.hash) return tab.id;
+      } else if (pathHit == null) pathHit = tab.id;
+    }
+    return pathHit;
+  }
+
+  /** Re-resolve the current tab and apply it in place — silent (no tab-change). */
+  _resolveCurrent() {
+    if (!this._links) return false;
+    return this._applyCurrent(this._currentId());
+  }
+
+  /**
+   * aria-current + indicator (+ scroll into the trough when it changed), in place, no re-render.
+   * @param {string|null} id
+   * @returns {boolean} whether the current tab changed
+   */
+  _applyCurrent(id) {
+    const changed = id !== this._activeTabId;
+    this._activeTabId = id;
+    for (const b of this._buttons) {
+      if (b.dataset.tabId === id) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    }
+    if (changed) this._scrollActiveIntoView();
+    this._updateIndicator();
+    return changed;
+  }
+
+  /** popstate always in link mode; hashchange only with `match-hash`; none when detached or in tablist mode. */
+  _syncLocationListeners() {
+    const pop = this.isConnected && this._links && typeof window !== 'undefined';
+    const hash = pop && this.hasAttribute('match-hash');
+    const on = (type) => {
+      const fn = () => this._resolveCurrent();
+      window.addEventListener(type, fn);
+      return () => window.removeEventListener(type, fn);
+    };
+    if (pop && !this._offPop) this._offPop = on('popstate');
+    else if (!pop && this._offPop) { this._offPop(); this._offPop = null; }
+    if (hash && !this._offHash) this._offHash = on('hashchange');
+    else if (!hash && this._offHash) { this._offHash(); this._offHash = null; }
+  }
+
   // --- Public API ---
 
   /**
    * Programmatically switch to a tab (fires `tab-change` / onChange when it changes).
-   * @param {string} tabId - Tab ID to activate
+   * v0.83.0 link mode: the tab becomes the explicit current page until the next explicit choice (URL changes no longer
+   * move it); `setActiveTab(null)` = `syncFromLocation()` (silent).
+   * @param {string|null} tabId - Tab ID to activate
    */
   setActiveTab(tabId) {
+    if (tabId == null && this._links) {
+      this.syncFromLocation();
+      return;
+    }
     this._select(tabId, true);
   }
 
   /**
-   * Get the currently active tab ID.
+   * v0.83.0 (link mode): forget the explicit current tab and match the current URL again — call it after a SPA / PJAX
+   * navigation (`history.pushState` fires no event). Silent (no tab-change). No-op in tablist mode.
+   */
+  syncFromLocation() {
+    if (!this._links) return;
+    this._explicitId = null;
+    this._resolveCurrent();
+  }
+
+  /**
+   * Get the currently active tab ID (v0.83.0 link mode: the current page's tab, null when none matches).
    * @returns {string|null}
    */
   getActiveTab() {

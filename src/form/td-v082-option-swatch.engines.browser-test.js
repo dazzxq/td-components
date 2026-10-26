@@ -217,4 +217,13 @@ describe('td-chip-input swatch', () => {
   });
 });
 
+describe('v0.83.0 swatch ring not clipped (dsuite-40)', () => {
+  it('the trigger dot (ring included) sits inside the clipping value span', () => {
+    const el = dd('label="Màu" value="r"');
+    const span = valueSpan(el).getBoundingClientRect();
+    const dot = valueSpan(el).querySelector('svg.td-dropdown__swatch').getBoundingClientRect();
+    expect(dot.left - 1 >= span.left - 0.01, `ring start ${dot.left - 1} >= span ${span.left}`).to.equal(true);
+  });
+});
+
 void TdDropdown; void TdChipInput;

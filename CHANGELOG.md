@@ -2,6 +2,29 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.83.0
+
+**`td-tabs` chế độ link — điều hướng giữa trang** (yêu cầu dsuite-40: thay thanh điều hướng phụ tự viết; [plan](docs/internal/plans/v0.83.0-tabs-links.md), Codex plan APPROVE r3).
+Không phá vỡ: không thẻ nào có `href` → tablist y như 0.82.0.
+
+### Added
+
+- Thẻ có `href` (ít nhất một) → `td-tabs` render `<nav>` gồm `<a class="td-tabs__tab" href>` thật, cùng giao diện (rãnh + viên thuốc,
+  icon, số đếm, cuộn ngang, dark mode); trang hiện tại mang `aria-current="page"`. `href` qua cổng `safeLinkUrl` và được in nguyên chuỗi
+  đã viết (escape); thẻ không có `href` hợp lệ bị bỏ ở chế độ link (`console.warn`). Tên `<nav>`: `aria-labelledby` → `aria-label` →
+  "Điều hướng phụ". Không role tab, không roving tabindex: mỗi link một điểm dừng Tab, mũi tên không làm gì; `panel` bị bỏ qua.
+- Thẻ hiện tại: tường minh (`active-tab`, `setActiveTab(id)` — bền tới lần chọn kế tiếp) → khớp URL (cùng origin + pathname chính xác,
+  bỏ một `/` cuối và query; không khớp tiền tố) → không có (không `aria-current`, viên thuốc ẩn). Attribute boolean mới **`match-hash`**:
+  link `#section` khớp theo `location.hash` (mặc định tắt). Khớp lại im lặng khi `popstate` và (với `match-hash`) `hashchange`.
+- Event **`tab-click`** (`{ tabId, href, event }`, cancelable): huỷ → kit chặn điều hướng gốc; method **`syncFromLocation()`** cho SPA /
+  PJAX (sau `pushState`); `setActiveTab(null)` cũng về khớp URL.
+- Nâng cấp `<a href>` con do server in sẵn (Blade / PHP) khi chưa gán `tabs`: `data-tab-id`, `data-icon`, `data-count`, `data-tone`,
+  `aria-current="page"` → `active-tab` ban đầu. CSS `td-tabs:not(:defined) > a` cho trước khi định nghĩa. Không token mới.
+
+### Fixed
+
+- **Viền chấm màu (0.82.0) bị cắt mép trái** (báo bởi dsuite-40): trên trigger `td-dropdown` (`.td-dropdown__value` có `overflow: hidden`) và trong nhãn chip / dòng gợi ý `td-chip-input`, vòng viền 1px của chấm đứng sát mép đầu bị cắt. Chấm lùi vào 1px (`margin-inline-start: 1px`). Site đang tự vá bằng margin có thể bỏ bản vá.
+
 ## 0.82.0
 
 **`swatch` cho option `td-dropdown` và `td-chip-input`** (yêu cầu dsuite-40: chọn màu sản phẩm; [plan](docs/internal/plans/v0.82.0-option-swatch.md), Codex plan APPROVE r3).

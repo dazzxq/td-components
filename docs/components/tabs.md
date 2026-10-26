@@ -5,7 +5,8 @@
 Thanh chuyển thẻ dạng segmented control, đúng mẫu WAI-ARIA APG "Tabs": `role="tablist"` / `role="tab"`,
 `aria-selected`, roving tabindex, mặc định **kích hoạt thủ công** (mũi tên chỉ di chuyển focus, Enter/Space mới chọn).
 Tuỳ chọn quản lý luôn panel nội dung (`role="tabpanel"`, `hidden`…). Dùng để chuyển giữa các vùng nội dung ngang hàng
-trên cùng một trang; **không** dùng làm menu điều hướng giữa các trang (dùng `<nav>` + link) và không dùng cho lựa
+trên cùng một trang; từ **0.83.0** cũng dùng được làm **thanh điều hướng phụ giữa các trang / mục** khi mỗi thẻ có
+`href` (`<nav>` + link thật — xem [Điều hướng giữa trang](#điều-hướng-giữa-trang-0830)); không dùng cho lựa
 chọn giá trị trong form (dùng [dropdown](dropdown.md) hoặc radio; thanh viên thuốc chọn **một giá trị** như Tự động / Sáng /
 Tối → [choice group `variant="segmented"`](choice-group.md#7-thanh-chọn-segmented-0520), 0.52.0).
 
@@ -102,24 +103,117 @@ tabs.tabs = [
 [Icons](icons.md). Giá trị không phải tên registry bị coi là danh sách class cũ (ví dụ `'fas fa-link'`) và render thành
 `<i class="…" aria-hidden="true">`; cách này **đã deprecated**, chỉ giữ cho site cũ. Class không hợp lệ bị lọc bỏ.
 
+## Điều hướng giữa trang (0.83.0)
+
+Khi **ít nhất một** thẻ có `href` hợp lệ, td-tabs chuyển sang **chế độ link**: cùng giao diện (rãnh + viên thuốc trượt,
+icon, số đếm, cuộn ngang khi hẹp, dark mode) nhưng là `<nav>` gồm các `<a class="td-tabs__tab" href>` thật, thẻ của trang
+hiện tại mang `aria-current="page"`. Hành vi là của link gốc: Tab qua từng link, Enter mở, chuột giữa / Ctrl / ⌘-click mở
+tab mới. Không có `href` ở thẻ nào → tablist như trước (không đổi gì).
+
+```js
+const nav = document.querySelector('td-tabs');
+nav.setAttribute('aria-label', 'Cài đặt hệ thống'); // luôn đặt tên riêng: trang thường có nhiều <nav>
+nav.tabs = [
+  { id: 'telegram', label: 'Telegram', href: '/system/settings/telegram' },
+  { id: 'sepay',    label: 'SePay',    href: '/system/settings/sepay', count: 2, tone: 'warning' },
+  { id: 'ghtk',     label: 'GHTK',     href: '/system/settings/ghtk' },
+];
+```
+
+- **`href`** qua cổng URL của kit (`https:`, `http:` chỉ khi trang là `http:`, đường dẫn tương đối / `/a/b` / `?q` /
+  `#x`): được nhận thì in **nguyên chuỗi đã viết** (escape); `javascript:` / `data:` / `mailto:`… bị từ chối. Trong chế
+  độ link, thẻ không có `href` hợp lệ **bị bỏ** (một `console.warn` mỗi lần gán).
+- **`panel` bị bỏ qua** (không `aria-controls`, không quản lý panel; panel đã quản lý ở chế độ tablist được trả lại).
+- **Không có biến thể gạch chân / pill riêng**: td-tabs chỉ có một kiểu, chế độ link dùng đúng kiểu đó.
+
+### `<a>` con do server in sẵn (Blade / PHP)
+
+> **Bảo mật:** server phải tự lọc `href` trước khi in (xem [Bảo mật](#bảo-mật)) — trước khi upgrade, các `<a>` này là link thật.
+
+```html
+<td-tabs aria-label="Cài đặt hệ thống">
+  <a href="/system/settings/telegram" data-tab-id="telegram">Telegram</a>
+  <a href="/system/settings/sepay" data-tab-id="sepay" aria-current="page" data-count="2" data-tone="warning">SePay</a>
+  <a href="/system/settings/ghtk" data-tab-id="ghtk" data-icon="link">GHTK</a>
+</td-tabs>
+```
+
+Ở lần render đầu, nếu `tabs` **chưa từng được gán** (kể cả gán trước khi phần tử được định nghĩa), td-tabs đọc các
+`<a href>` con trực tiếp thành thẻ: `id` = `data-tab-id` (thiếu → thứ tự `"0"`, `"1"`…), `label` = chữ của link,
+`href` = attribute nguyên văn, `data-icon`, `data-count`, `data-tone`; một `<a aria-current="page">` thành `active-tab` ban
+đầu (nếu host chưa có `active-tab`). Rồi render thay thế. Không có JS: các link vẫn bấm được (td.css có một quy tắc nhỏ
+cho `td-tabs:not(:defined) > a`). Gán `tabs` sau đó thì `tabs` thắng.
+
+### Thẻ hiện tại
+
+Một quy tắc duy nhất, theo thứ tự:
+
+1. **Tường minh**: attribute `active-tab` hoặc `setActiveTab(id)` (nếu `id` còn tồn tại). `setActiveTab` giữ tới lần chọn
+   tường minh kế tiếp (đổi URL không kéo nó đi); xoá `active-tab`, `setActiveTab(null)` hoặc `syncFromLocation()` → về
+   khớp URL. Gán lại `tabs` giữ lựa chọn tường minh nếu `id` còn trong danh sách mới.
+2. **Khớp URL**: `href` (resolve theo `document.baseURI`) cùng origin + **pathname chính xác** với `location` (bỏ qua một
+   `/` cuối và query `?…`). **Không khớp tiền tố**: trang con (`/system/settings/sepay/webhooks`) không tự sáng thẻ
+   `/system/settings/sepay` — site đặt `active-tab`. Nhiều thẻ cùng khớp → thẻ đầu.
+3. **Không khớp gì → không có thẻ hiện tại**: không `aria-current`, viên thuốc ẩn, `getActiveTab()` = `null` (khác tablist:
+   không rơi về thẻ đầu — báo sai trang hiện tại là lỗi trợ năng).
+
+Đổi do URL / attribute / `tabs` là **im lặng** (không `tab-change`); `setActiveTab(id)` vẫn phát `tab-change` + `onChange`
+khi thẻ thật sự đổi. Back / Forward (`popstate`) tự khớp lại (khi không có lựa chọn tường minh).
+
+### Link `#section` trong trang: `match-hash`
+
+```html
+<td-tabs aria-label="Các mục của biểu mẫu" match-hash></td-tabs>
+<script type="module">
+  document.querySelector('[match-hash]').tabs = [
+    { id: 'info', label: 'Thông tin chung', href: '#info' },
+    { id: 'seo',  label: 'SEO',             href: '#seo' },
+  ];
+</script>
+```
+
+Mặc định (không `match-hash`) một `href` có hash (`#x`, `/a#x`) **không bao giờ** tự thành thẻ hiện tại. Có `match-hash`:
+nó khớp khi path khớp **và** hash đúng bằng `location.hash`, thắng thẻ chỉ khớp path; hash lệch / không có hash → rơi về thẻ
+không hash khớp path. td-tabs nghe `hashchange` (chỉ khi có `match-hash`), nên bấm link `#x` tự đổi thẻ hiện tại. Thêm /
+xoá `match-hash` lúc chạy có hiệu lực ngay.
+
+### SPA / PJAX
+
+`history.pushState` không phát sự kiện nào. Huỷ `tab-click` để tự điều hướng, **bỏ qua** click có phím bổ trợ hoặc không
+phải chuột trái (để "mở tab mới" vẫn chạy), rồi đồng bộ lại:
+
+```js
+nav.addEventListener('tab-click', (e) => {
+  const click = e.detail.event;
+  if (click.button !== 0 || click.ctrlKey || click.metaKey || click.shiftKey || click.altKey) return;
+  e.preventDefault();            // huỷ tab-click → td-tabs gọi preventDefault() trên click gốc
+  router.navigate(e.detail.href); // pushState của site
+  nav.syncFromLocation();        // khớp lại từ URL mới (hoặc nav.setActiveTab(e.detail.tabId))
+});
+```
+
+Click **không** đổi `aria-current` (trang mới / `hashchange` / site làm việc đó). td-tabs không vá `history.pushState`.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
 | `size` | `'sm'` \| `'md'` | `md` | Kích thước; giá trị khác → `md`. Đổi tại chỗ. |
-| `active-tab` | string | — | `id` thẻ đang chọn. Đổi sau khi render → chọn im lặng (không event). |
+| `active-tab` | string | — | `id` thẻ đang chọn. Đổi sau khi render → chọn im lặng (không event). Chế độ link: thẻ hiện tại tường minh (thắng khớp URL); xoá → về khớp URL. |
 | `activation` | `'manual'` \| `'auto'` | `manual` | Chỉ đúng chuỗi `auto` mới bật tự động. Đọc mỗi lần nhấn phím nên đổi lúc nào cũng có hiệu lực. |
-| `aria-label` | string | `Các thẻ` | Tên của tablist. |
-| `aria-labelledby` | id | — | Tên tablist theo phần tử khác; **ưu tiên hơn** `aria-label`. Được chuyển xuống tablist. |
+| `aria-label` | string | `Các thẻ` (chế độ link: `Điều hướng phụ`) | Tên của tablist / `<nav>`. Chế độ link: nên luôn đặt tên riêng. |
+| `aria-labelledby` | id | — | Tên tablist theo phần tử khác; **ưu tiên hơn** `aria-label`. Được chuyển xuống tablist / `<nav>`. |
+| `match-hash` | boolean | tắt | **0.83.0**, chế độ link: thẻ có `href` chứa `#hash` được khớp theo `location.hash` (xem [`match-hash`](#link-section-trong-trang-match-hash)). Property `matchHash`. Đổi có hiệu lực ngay. |
 
 ## Property & method
 
 | Thành viên | Kiểu / chữ ký | Mô tả |
 |---|---|---|
-| `tabs` | `Array<{ id, label, icon?, panel?, count?, tone? }>` | Danh sách thẻ. Mục thiếu `id` (hoặc `id` rỗng) bị bỏ qua; `id` được ép sang chuỗi; `label` null → `''`. Gán lại → dựng lại thanh, nếu focus đang trong td-tabs thì focus về thẻ đang chọn. |
+| `tabs` | `Array<{ id, label, href?, icon?, panel?, count?, tone? }>` | Danh sách thẻ. Mục thiếu `id` (hoặc `id` rỗng) bị bỏ qua; `id` được ép sang chuỗi; `label` null → `''`. Gán lại → dựng lại thanh, nếu focus đang trong td-tabs thì focus về thẻ đang chọn. |
 | `onChange` | `(tabId: string) => void` | Callback khi thẻ đổi do người dùng hoặc `setActiveTab`. Không phải function → `null`. |
-| `setActiveTab(tabId)` | `(string) => void` | Chọn thẻ; nếu thật sự đổi thì gọi `onChange` rồi phát `tab-change`. `id` không tồn tại hoặc đang chọn → không làm gì. |
-| `getActiveTab()` | `() => string \| null` | `id` thẻ đang chọn, `null` nếu không có thẻ. |
+| `setActiveTab(tabId)` | `(string \| null) => void` | Chọn thẻ; nếu thật sự đổi thì gọi `onChange` rồi phát `tab-change`. `id` không tồn tại hoặc đang chọn → không làm gì. Chế độ link (0.83.0): thẻ thành thẻ hiện tại **tường minh** (bền qua `popstate` / `hashchange`); `setActiveTab(null)` = `syncFromLocation()`. |
+| `syncFromLocation()` | `() => void` | **0.83.0**, chế độ link: bỏ lựa chọn tường minh và khớp lại thẻ hiện tại từ URL — gọi sau khi SPA tự `pushState`. Im lặng. Chế độ tablist: không làm gì. |
+| `getActiveTab()` | `() => string \| null` | `id` thẻ đang chọn, `null` nếu không có thẻ (chế độ link: `null` khi không thẻ nào là trang hiện tại). |
 | `setTabCount(tabId, count, tone?)` | `(string, number \| string \| null, string?) => boolean` | **0.70.0**: đặt, đổi hoặc xoá viên số đếm của MỘT thẻ **tại chỗ** (không dựng lại thanh) — xem [Số đếm](#số-đếm-count-tone-0700). Trả `false` (không làm gì, không ném lỗi) nếu không có thẻ đó. |
 
 Khoá của một mục `tabs`:
@@ -127,9 +221,10 @@ Khoá của một mục `tabs`:
 | Khoá | Kiểu | Mô tả |
 |---|---|---|
 | `id` | string | Bắt buộc, định danh thẻ (trả về trong `tab-change`). |
+| `href` | string | **0.83.0**: có ở ít nhất một thẻ → [chế độ link](#điều-hướng-giữa-trang-0830). Qua cổng URL, in nguyên chuỗi đã viết (escape); bị từ chối → coi như không có. |
 | `label` | string | Chữ hiển thị (escape). **Không bao giờ bị cắt** (v0.34.0): không đủ chỗ thì hàng thẻ cuộn ngang — xem [Responsive](#responsive-v0340). |
 | `icon` | string | Tên icon registry (hoặc class cũ, deprecated). |
-| `panel` | string | `id` của phần tử panel **nằm ngoài** td-tabs (cùng document / shadow root với td-tabs). |
+| `panel` | string | `id` của phần tử panel **nằm ngoài** td-tabs (cùng document / shadow root với td-tabs). Bị bỏ qua ở chế độ link. |
 | `count` | number \| string | **0.70.0**: số đếm vẽ thành viên thuốc sau nhãn. Số hữu hạn → chữ số; chuỗi hiển thị **nguyên văn** (không cắt). `null` / `undefined` / `''` / chuỗi trắng / `NaN` / `±Infinity` / kiểu khác → **không vẽ gì**; `0` → "0". |
 | `tone` | `'neutral'` \| `'info'` \| `'success'` \| `'warning'` \| `'danger'` | **0.70.0**: màu viên số đếm, cùng bộ tone của [badge](badge.md). Thiếu hoặc lạ → `neutral`. Không có `count` thì bị bỏ qua. |
 
@@ -172,7 +267,8 @@ tabs.setTabCount('done', null);            // chưa biết: xoá viên thuốc (
 
 | Event | detail | Khi nào | bubbles? |
 |---|---|---|---|
-| `tab-change` | `{ tabId }` | Người dùng chọn thẻ **khác** thẻ hiện tại (click, Enter/Space, hoặc mũi tên khi `activation="auto"`), hoặc gọi `setActiveTab()`. Đúng một lần mỗi lần chọn. Click lại thẻ đang chọn và đổi attribute `active-tab` **không** phát. | có (composed) |
+| `tab-change` | `{ tabId }` | Người dùng chọn thẻ **khác** thẻ hiện tại (click, Enter/Space, hoặc mũi tên khi `activation="auto"`), hoặc gọi `setActiveTab()`. Đúng một lần mỗi lần chọn. Click lại thẻ đang chọn và đổi attribute `active-tab` **không** phát. Chế độ link: chỉ `setActiveTab()`. | có (composed) |
+| `tab-click` | `{ tabId, href, event }` | **0.83.0**, chế độ link: click một link thẻ, **trước** điều hướng gốc. **cancelable**: huỷ (`preventDefault()`) → td-tabs gọi `preventDefault()` trên click gốc (`event`); không huỷ → không đụng click. Chuột giữa (`auxclick`) không qua đây. | có (composed) |
 
 `onChange(tabId)` được gọi **trước** khi event phát. `onChange` ném lỗi → lỗi được ghi `console.error`, thẻ vẫn đổi và
 `tab-change` vẫn phát (từ 0.16.0).
@@ -270,6 +366,20 @@ cột hẹp của trang desktop cũng đúng như trên điện thoại.
 ```
 
 - Không có thẻ nào: `<div class="td-tabs td-tabs--md" data-state="empty"></div>` (không có `role`).
+- **Chế độ link (0.83.0)**:
+
+  ```html
+  <nav class="td-tabs td-tabs--md" aria-label="Điều hướng phụ" data-state="ready" [data-overflow] …>
+    <span class="td-tabs__indicator" aria-hidden="true"></span>
+    <a class="td-tabs__tab" href="/system/settings/sepay" data-tab-id="sepay" aria-current="page">
+      <span class="td-tabs__label" data-label="SePay">SePay</span>
+    </a>
+    …
+  </nav>
+  ```
+
+  Không `role`, không `aria-selected`, không `tabindex`, không `id` trên link. Thẻ hiện tại: `[aria-current="page"]` (cùng
+  kiểu với `[aria-selected="true"]`). Không có thẻ hiện tại → không có `data-state` (viên thuốc ẩn).
 - `data-state="ready"` được đặt sau khi đo xong vị trí viên thuốc; trước đó viên thuốc ẩn (không trượt từ x = 0).
 - Id của nút thẻ: `{id host}-tab-{i}`; host không có id thì được gán `td-tabs-{n}`.
 - Trạng thái chọn: `[aria-selected="true"]` trên `.td-tabs__tab`.
@@ -287,6 +397,8 @@ cột hẹp của trang desktop cũng đúng như trên điện thoại.
 | Home / End | Focus thẻ đầu / cuối |
 | Enter / Space | Chọn thẻ đang focus (nút native) |
 
+- **Chế độ link (0.83.0)**: mỗi link là một điểm dừng Tab, Enter mở link (gốc); ← → / Home / End **không làm gì**. `<nav>`
+  có tên (`aria-label` của host, mặc định "Điều hướng phụ" — nên đặt tên riêng), trang hiện tại là `aria-current="page"`.
 - Ở chế độ `manual`, roving tabindex **đi theo focus**: thẻ vừa được focus bằng mũi tên là thẻ Tab sẽ quay về, dù chưa
   được chọn.
 - Phím kèm Alt / Ctrl / Meta bị bỏ qua (không chặn phím tắt trình duyệt).
@@ -295,8 +407,18 @@ cột hẹp của trang desktop cũng đúng như trên điện thoại.
 
 ## Bảo mật
 
-`label`, `id`, `icon`, `panel` và (0.70.0) `count` đều được escape khi vào markup hoặc gán bằng `textContent`; `tone` chỉ nhận 5 giá trị trong danh sách
+`href` (0.83.0) qua cổng URL của kit (chỉ `http(s)` / tương đối; `javascript:` / `data:`… bị bỏ) rồi mới escape vào
+thuộc tính. `label`, `id`, `icon`, `panel` và (0.70.0) `count` đều được escape khi vào markup hoặc gán bằng `textContent`; `tone` chỉ nhận 5 giá trị trong danh sách
 (lạ → `neutral`, không bao giờ vào thuộc tính nguyên văn); class icon cũ qua whitelist ký tự. Không có cửa sau HTML.
+
+**`<a>` con do server in sẵn: server chịu trách nhiệm lọc `href`.** Trước khi JS nâng cấp (hoặc khi JS không tải được)
+các `<a>` đó là link thật của trình duyệt — cổng URL của kit chưa chạy, nên một `href="javascript:…"` in từ dữ liệu
+không tin cậy (CMS / DB) vẫn bấm được. Escape HTML **không** chặn `javascript:`, và chỉ kiểm scheme bằng `parse_url`
+cũng **không đủ** (trình duyệt bỏ tab / xuống dòng và ký tự điều khiển ở hai đầu: `java\tscript:` vẫn chạy). Dùng
+helper đã test của kit: PHP `Td::safeUrl($href)` (`php/td.php`; chuẩn hoá như trình duyệt rồi allowlist; `''` = bỏ thẻ)
+— Blade: `@php($u = \TdComponents\Td::safeUrl($href))` rồi chỉ in `<a>` khi `$u !== ''`. `Td::safeUrl` còn nhận
+`mailto:` / `tel:`; cổng JS của td-tabs thì không (thẻ đó bị bỏ sau upgrade) — tab điều hướng chỉ nên là đường dẫn
+tương đối, `#…`, `?…` hoặc `https:`. Cổng của kit chỉ là lớp thứ hai (sau upgrade nó bỏ thẻ có `href` xấu).
 
 ## Cảm ứng
 

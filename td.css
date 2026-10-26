@@ -3799,6 +3799,8 @@
  * sets [data-overflow] on .td-tabs → natural-width tabs in a horizontally scrolling trough (snap, hidden scrollbar,
  * edge fade by mask-image from [data-scroll-start] / [data-scroll-end]). [data-measuring] exists only inside one
  * synchronous JS pass (never painted): every tab at its natural width in the active (semibold) style.
+ * v0.83.0 (plan v0.83.0-tabs-links): link mode = <nav class="td-tabs"> of <a class="td-tabs__tab">; the current page
+ * [aria-current="page"] looks exactly like [aria-selected="true"]; no current page → no data-state → no pill.
  */
 @layer td.tokens {
 	:root {
@@ -3836,6 +3838,17 @@
 	td-tabs {
 		display: block;
 		min-inline-size: 0;
+	}
+
+	/* v0.83.0: server-rendered <a> children before the element is defined (or without JS) — a plain row of links */
+	td-tabs:not(:defined) {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 16px;
+	}
+
+	td-tabs:not(:defined) > a {
+		text-decoration: none;
 	}
 
 	.td-tabs {
@@ -3899,6 +3912,7 @@
 		background: transparent;
 		border: 0;
 		border-radius: var(--_td-tabs-inner-radius);
+		text-decoration: none; /* v0.83.0: link mode <a> */
 		appearance: none;
 		-webkit-tap-highlight-color: transparent;
 		transition: color var(--td-dur-fast) var(--td-ease);
@@ -3914,7 +3928,7 @@
 		}
 	}
 
-	.td-tabs__tab[aria-selected="true"] {
+	.td-tabs__tab:is([aria-selected="true"], [aria-current="page"]) {
 		font-weight: var(--td-fw-semibold);
 		color: var(--td-tabs-fg-active);
 	}
@@ -4092,7 +4106,7 @@
 			border: 2px solid transparent;
 		}
 
-		.td-tabs__tab[aria-selected="true"] {
+		.td-tabs__tab:is([aria-selected="true"], [aria-current="page"]) {
 			border-color: Highlight;
 		}
 	}
@@ -6766,6 +6780,11 @@
 		forced-color-adjust: none; /* the colour is content */
 		border-radius: var(--td-radius-full);
 		box-shadow: 0 0 0 1px var(--td-dropdown-swatch-edge);
+	}
+
+	/* v0.83.0 (dsuite-40): the value span clips (overflow: hidden) → keep the 1px ring of a flush-start dot inside it */
+	.td-dropdown__value > .td-dropdown__swatch {
+		margin-inline-start: 1px;
 	}
 
 	.td-dropdown__option > .td-dropdown__swatch {
@@ -10115,6 +10134,7 @@
 		forced-color-adjust: none; /* the colour is content */
 		border-radius: var(--td-radius-full);
 		box-shadow: 0 0 0 1px var(--td-chip-swatch-edge);
+		margin-inline-start: 1px; /* v0.83.0: the labels clip (overflow: hidden) → the 1px ring of the leading dot stays inside */
 	}
 
 	.td-chip-input__remove {

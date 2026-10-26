@@ -152,6 +152,7 @@
 		forced-color-adjust: none; /* the colour is content */
 		border-radius: var(--td-radius-full);
 		box-shadow: 0 0 0 1px var(--td-chip-swatch-edge);
+		margin-inline-start: 1px; /* v0.83.0: the labels clip (overflow: hidden) → the 1px ring of the leading dot stays inside */
 	}
 
 	.td-chip-input__remove {
