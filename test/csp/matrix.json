@@ -1551,7 +1551,6 @@
         ".td-dropdown__value-icon",
         ".td-dropdown__trigger-meta",
         ".td-dropdown__arrow",
-        ".td-dropdown__live",
         ".td-dropdown__menu",
         ".td-dropdown__option",
         ".td-dropdown__option--rich[aria-disabled=\"true\"]"
