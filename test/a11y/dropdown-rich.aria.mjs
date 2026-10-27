@@ -10,6 +10,11 @@
  * src/form/td-v084-dropdown-rich.engines.browser-test.js (b). Same server pattern as test/touch/touch.spec.mjs (routes
  * on a fake origin, files read from the repo, td.css from the root build).
  *
+ * v0.85.0 (plan docs/internal/plans/v0.85.0-dropdown-action.md, decision 10): a second page — `mode="action"` with
+ * `trigger-meta`: the trigger stays a combobox named by its `aria-label` (the placeholder is its displayed text, the
+ * meta is NOT folded into the name), `aria-describedby` resolves to the meta, the polite live region is in the host and
+ * says "Đã chọn {label}" after a pick.
+ *
  *   node test/a11y/dropdown-rich.aria.mjs     (npm run test:a11y)
  */
 import { chromium } from 'playwright-core';
@@ -52,6 +57,17 @@ const EXPECTED = `- listbox "Nơi nhận":
   - option "Khác"
   - option "Thêm nơi nhận"`;
 
+const PAGE_ACTION = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="${ORIGIN}/td.css">
+<script type="module">
+  await import('${ORIGIN}/src/form/td-dropdown.js');
+  const el = document.getElementById('dda');
+  el.options = [{ value: 'a', label: 'Kho chính', description: 'Hà Nội' }, { value: 'b', label: 'Kho phụ' }];
+  window.__ready = true;
+</script></head><body><td-dropdown id="dda" mode="action" aria-label="Thêm kho" placeholder="Chọn kho để thêm"
+  trigger-meta="4/10" searchable="false"></td-dropdown></body></html>`;
+
 const tdCss = await readFile(join(ROOT, 'td.css'), 'utf8');
 const failures = [];
 const browser = await chromium.launch();
@@ -60,6 +76,7 @@ try {
   await context.route(`${ORIGIN}/**`, async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE });
+    if (url.pathname === '/action') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_ACTION });
     if (url.pathname === '/td.css') return route.fulfill({ status: 200, contentType: 'text/css', body: tdCss });
     if (/^\/src\//.test(url.pathname) && !url.pathname.includes('..')) {
       const ext = url.pathname.slice(url.pathname.lastIndexOf('.'));
@@ -83,6 +100,29 @@ try {
   const trig = (await page.locator('#dd-trigger').ariaSnapshot()).trim();
   if (!/^- combobox "Nơi nhận"/.test(trig)) failures.push(`trigger: expected a combobox "Nơi nhận", got:\n${trig}`);
   if (!trig.includes('Cửa hàng Láng')) failures.push(`trigger: expected the value text "Cửa hàng Láng", got:\n${trig}`);
+  // v0.85.0 action mode
+  await page.goto(`${ORIGIN}/action`);
+  await page.waitForFunction(() => window.__ready === true);
+  const aTrig = (await page.locator('#dda-trigger').ariaSnapshot()).trim();
+  if (!/^- combobox "Thêm kho"/.test(aTrig)) failures.push(`action trigger: expected a combobox "Thêm kho", got:\n${aTrig}`);
+  if (!aTrig.includes('Chọn kho để thêm')) failures.push(`action trigger: expected the placeholder text, got:\n${aTrig}`);
+  if (/combobox "[^"]*4\/10/.test(aTrig)) failures.push(`action trigger: the meta folded into the name:\n${aTrig}`);
+  const aria = await page.evaluate(() => {
+    const t = document.getElementById('dda-trigger');
+    const ids = (t.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+    const region = document.querySelector('#dda > .td-dropdown__live');
+    return {
+      described: ids.map((id) => document.getElementById(id)?.textContent ?? null),
+      live: region ? [region.getAttribute('aria-live'), region.getAttribute('aria-atomic'), region.textContent] : null,
+    };
+  });
+  if (JSON.stringify(aria.described) !== JSON.stringify(['4/10'])) failures.push(`action: aria-describedby should resolve to ["4/10"], got ${JSON.stringify(aria.described)}`);
+  if (JSON.stringify(aria.live) !== JSON.stringify(['polite', 'true', ''])) failures.push(`action: live region ${JSON.stringify(aria.live)}`);
+  await page.locator('#dda-trigger').click();
+  await page.waitForFunction(() => !document.getElementById('dda-menu').hidden);
+  await page.locator('#dda-opt-1').click();
+  const said = await page.evaluate(() => document.querySelector('#dda > .td-dropdown__live').textContent);
+  if (said !== 'Đã chọn Kho phụ') failures.push(`action: live text after a pick = ${JSON.stringify(said)}`);
   if (errors.length) failures.push(`page errors: ${errors.join(' | ')}`);
   await context.close();
 } finally {
@@ -92,4 +132,5 @@ if (failures.length) {
   console.error(`dropdown-rich aria: ${failures.length} failure(s):\n  ${failures.join('\n  ')}`);
   process.exit(1);
 }
-console.log('dropdown-rich aria: OK (listbox > group > option names, disabled / selected, create row last; trigger name)');
+console.log('dropdown-rich aria: OK (listbox > group > option names, disabled / selected, create row last; trigger name;'
+  + ' action mode: combobox name, aria-describedby → meta, polite live region "Đã chọn …")');

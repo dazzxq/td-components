@@ -1541,6 +1541,36 @@
         "bottom",
         "margin-left"
       ]
+    },
+    {
+      "state": "action",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('mode','action'); d.setAttribute('aria-label','Thêm kho'); d.setAttribute('placeholder','Thêm kho'); d.setAttribute('trigger-meta','4/10'); d.setAttribute('keep-open',''); window.__mount.appendChild(d); d.groups=[{key:'k',label:'Kho'}]; d.options=[{value:'a',label:'Kho chính',icon:'archive',description:'Hà Nội',meta:'Đã thêm',disabled:true,group:'k'},{value:'b',label:'Kho phụ',group:'k'},{value:'c',label:'Khác'}]; d.open();",
+      "selectors": [
+        ".td-dropdown__trigger",
+        ".td-dropdown__value[data-action]",
+        ".td-dropdown__value-icon",
+        ".td-dropdown__trigger-meta",
+        ".td-dropdown__arrow",
+        ".td-dropdown__live",
+        ".td-dropdown__menu",
+        ".td-dropdown__option",
+        ".td-dropdown__option--rich[aria-disabled=\"true\"]"
+      ],
+      "portal": [
+        ".td-dropdown__menu",
+        ".td-dropdown__option",
+        ".td-dropdown__option--rich[aria-disabled=\"true\"]"
+      ],
+      "settle": 350,
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left"
+      ]
     }
   ],
   "td-button": [

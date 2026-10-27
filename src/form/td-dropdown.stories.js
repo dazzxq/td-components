@@ -135,3 +135,25 @@ export const DongGiauThongTin = {
       + 'mô tả và <code>keywords</code> (thử "saigon"); trình đọc màn hình nghe số kết quả.</p></div>';
   },
 };
+
+export const ChonDeThem = {
+  name: 'Action mode (chọn để thêm)',
+  render: () => {
+    const LIMIT = 10;
+    withOptions('dd-action', WAREHOUSES.map((o) => ({ ...o, disabled: false })), (el) => {
+      el.groups = [{ key: 'kho', label: 'Kho hàng' }, { key: 'shop', label: 'Cửa hàng' }];
+      let added = 0;
+      // the site marks a picked option "Đã thêm" (disabled) and updates the count; the open menu keeps its search text
+      el.addEventListener('pick', (e) => {
+        added += 1;
+        el.options = el.options.map((o) => (o.value === e.detail.value ? { ...o, disabled: true, meta: 'Đã thêm' } : o));
+        el.triggerMeta = `${added}/${LIMIT}`;
+      });
+    });
+    return '<div class="sb-stack"><td-dropdown id="dd-action" mode="action" keep-open aria-label="Thêm nơi xuất"'
+      + ` placeholder="Thêm nơi xuất" trigger-meta="0/${LIMIT}" max-height="5"></td-dropdown>`
+      + '<p class="sb-note"><code>mode="action"</code>: chọn một dòng phát sự kiện <code>pick</code> (không giữ giá trị, không gửi '
+      + 'form). <code>keep-open</code> giữ menu mở để thêm liên tiếp; <code>trigger-meta</code> hiện số đếm ở cuối nút; trình '
+      + 'đọc màn hình nghe "Đã chọn …".</p></div>';
+  },
+};

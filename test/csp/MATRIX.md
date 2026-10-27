@@ -80,6 +80,9 @@ v0.26.0: `ssr` (PHP `td_dropdown(…, ['element' => true])` shell `dropdown@1` �
 `select.td-dropdown__native` — upgraded to the trigger under the strict CSP).
 v0.84.0: `rich` (icon tile + tones, description, status dot, meta, disabled rich row, trigger value icon) and `groups`
 (`groups` property: role=group wrappers + headers, the visually hidden result count `.td-dropdown__empty[data-count]`).
+v0.85.0: `action` (`mode="action"` + `keep-open` + `trigger-meta`, menu open: the trigger's `data-action` value span
+(normal text colour) with the default `plus` icon, the muted `.td-dropdown__trigger-meta`, the host live region
+`.td-dropdown__live` (`td-sr-only`), a grouped list with a disabled rich row).
 
 ### td-button (1 declarative — variant glass OR custom-color inline style)
 Styled el: inner `button` (bg/box-shadow/backdrop-filter from `_glassStyles[variant]`, or

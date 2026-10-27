@@ -2,6 +2,25 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.85.0
+
+**`td-dropdown` chế độ "chọn để thêm"** (yêu cầu dsuite-40: ô "+ Thêm mẫu khuyến mãi" chọn từ danh mục;
+[plan](docs/internal/plans/v0.85.0-dropdown-action.md), Codex plan APPROVE r3). Không phá vỡ: không có `mode="action"` và
+`trigger-meta` → DOM, event và form y như 0.84.0.
+
+### Added
+
+- Attribute `mode="action"` (property `mode`): chọn một option thì phát event **`pick`** `{ value, item }` (callback `onPick(item)` chạy trước), đóng menu và đưa focus về trigger. Ở chế độ này:
+  - không giữ lựa chọn, không phát `change`, không vào `FormData`;
+  - `required`, `allow-clear`, `value` / `setValue()` / reset đều bị bỏ qua;
+  - không có dấu tích;
+  - dòng "Thêm mới" chạy như cũ.
+- Trigger ở mode action: chữ `placeholder` màu thường (`data-action`), icon đầu mặc định `plus` (`trigger-icon="tên"` đổi icon, `"none"` tắt).
+- Attribute `trigger-meta` (cả hai chế độ): chữ phụ mờ ở cuối trigger (`4/10`), vào `aria-describedby`, đổi tại chỗ.
+- Attribute `keep-open` (property `keepOpen`, chỉ mode action): chọn xong menu vẫn mở; ô tìm giữ chữ; dòng active sang dòng kế còn chọn được. Gán lại `options` / `updateData()` khi menu đang mở cũng giữ chữ tìm và dòng active.
+- Vùng `aria-live="polite"` ẩn với mắt đọc "Đã chọn {nhãn}" sau mỗi lần chọn: nhãn mới `TdDropdown.labels.picked` (`''` = tắt).
+- Nâng cấp `<select>` dưới `mode="action"`: đọc option / nhóm như thường nhưng không chọn gì.
+
 ## 0.84.0
 
 **`td-dropdown` dòng giàu thông tin, nhóm có tiêu đề, tìm rộng hơn** (yêu cầu dsuite-40: các ô "+ Thêm …" chọn từ danh mục;

@@ -12,7 +12,8 @@ const TYPEAHEAD_MS = 500;
 // v0.82.0: the colourless dot; the colour is set only through circle.setAttribute('fill') (see _applySwatchFills)
 const SWATCH_SVG = '<svg class="td-dropdown__swatch" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><circle cx="6" cy="6" r="6"/></svg>';
 /** Properties that may be set on the element before it upgrades (they would shadow the class accessors). */
-const UPGRADE_PROPS = ['options', 'groups', 'onChange', 'onSelect', 'onCreate', 'createLabel'];
+const UPGRADE_PROPS = ['mode', 'keepOpen', 'triggerMeta', 'options', 'groups', 'onChange', 'onSelect', 'onCreate',
+  'createLabel', 'onPick']; // v0.85.0: `mode` first, so a pre-upgrade action mode is in force before the <select> read
 /** v0.84.0: tones of the icon tile / status dot (anything else → neutral). */
 const TONES = ['neutral', 'accent', 'success', 'warning', 'danger', 'info'];
 /** v0.84.0: the fields `search-fields` may name (all three by default). */
@@ -79,10 +80,12 @@ function safeCall(fn, arg, what) {
  *       [<label class="td-field__label" id="{host}-label" for="{host}-trigger">{label}[<span class="td-field__required"> *</span>]</label>]
  *       <button type="button" class="td-dropdown__trigger" id="{host}-trigger" role="combobox" aria-haspopup="listbox"
  *               aria-expanded aria-controls="{host}-listbox" [aria-activedescendant] [aria-required] [aria-invalid] …>
- *         <span class="td-dropdown__value" [data-placeholder]>[swatch svg][<span class="td-dropdown__value-icon" data-td-icon aria-hidden="true">]…</span>
+ *         <span class="td-dropdown__value" [data-placeholder | data-action]>[swatch svg][<span class="td-dropdown__value-icon" data-td-icon aria-hidden="true">]…</span>
+ *         [<span class="td-dropdown__trigger-meta" id="{host}-trigger-meta">…</span>]   (v0.85.0 `trigger-meta`, in aria-describedby)
  *         <span class="td-dropdown__arrow" data-td-icon="down" aria-hidden="true"></span>
  *       </button>
  *     </div>
+ *     [<span class="td-sr-only td-dropdown__live" aria-live="polite" aria-atomic="true"></span>]   (v0.85.0 action mode only)
  *     [<span class="td-field-error" id="{host}-error" data-for="{host}">…</span>]
  *   </td-dropdown>
  *   <body> portal (persistent while connected):
@@ -165,14 +168,30 @@ function safeCall(fn, arg, what) {
  * @attr {string} search-fields - v0.84.0: what the search matches, a space / comma separated subset of
  *   `label description keywords` (default all three; unknown tokens ignored). Changing it re-filters in place.
  * @attr {string} trigger-icon - v0.84.0: `none` / `off` / `false` = the trigger shows no option icon (text only). Any
- *   other value is reserved (v0.85.0 action mode: a fixed icon name) and ignored in select mode.
+ *   other value is ignored in select mode. v0.85.0 action mode: absent / empty = `plus`, `none` / `off` / `false` = no
+ *   icon, any other value = that registered icon name (an unknown / malformed name → no icon + one bounded warn).
+ * @attr {string} mode - v0.85.0: `action` (trimmed, any case) = "pick to add": picking fires `pick` and never holds a
+ *   value — `getValue()` is null; `value` / `setValue()` / reset / state restore are ignored; no `change`, no form value
+ *   (no `name` key in FormData), `required` has no effect (no `aria-required`, no asterisk); no clear row, no check
+ *   mark. The trigger shows the `placeholder` text (`data-action`, normal text colour) and an icon (see `trigger-icon`).
+ *   A polite live region says `labels.picked` after a pick. Anything else / absent = select mode (0.84.0). Changing it
+ *   re-renders (an open menu closes); entering action mode drops the selection and any pending value. A child `<select>`
+ *   is still read (options, groups, name, aria-label, disabled) but selects nothing.
+ * @attr {boolean} keep-open - v0.85.0, action mode only: the menu stays open after a pick (the search text kept, the
+ *   active row moves to the next enabled row, else the previous one); `false` / `0` / `off` = off. Read at pick time
+ *   (not observed: toggling it never re-renders or closes the menu). The create row still closes the menu.
+ * @attr {string} trigger-meta - v0.85.0, both modes: muted text at the trigger's inline end (e.g. "4/10"), escaped,
+ *   in the trigger's `aria-describedby`; updated in place (no re-render). Empty / absent = none.
  * @fires change - When selection changes, detail: { value, item }
+ * @fires pick - v0.85.0 action mode: an option was picked, detail: { value, item }. Order without `keep-open`: menu
+ *   closed → focus on the trigger → `onPick(item)` → `pick` → announcement; with `keep-open` the menu stays open (focus
+ *   kept). Exactly one per activation (click, Enter, Space on the trigger, Alt+ArrowUp); disabled options never fire it.
  * @fires create - The create row was activated, detail: { query } (search text trimmed, '' without one). Never a value:
  *   no selection change, no `change`, nothing submitted. Order: query snapshot → menu closed + focus on the trigger →
  *   `onCreate(query)` → `create`.
  *
- * Texts: `TdDropdown.labels` (`search`, `none`, `noResults`, `required`, `createWithQuery`, `resultCount`) — override
- * per site.
+ * Texts: `TdDropdown.labels` (`search`, `none`, `noResults`, `required`, `createWithQuery`, `resultCount`, `picked`) —
+ * override per site.
  *
  * @property {Array<Object>} options - Array of option objects set via JS property (may be set before the element is
  *   defined). Re-assigning keeps the current selection when its value is still listed (else it is dropped); the
@@ -192,11 +211,19 @@ function safeCall(fn, arg, what) {
  * @property {string} createLabel - Mirrors `create-label` (v0.22.0)
  * @property {Function} onCreate - Callback receiving the query when the create row is activated; runs before the
  *   `create` event (a throw is logged, the event still fires) — v0.22.0
+ * @property {'select'|'action'} mode - v0.85.0: mirrors `mode` (setting anything but `'action'` removes the attribute)
+ * @property {boolean} keepOpen - v0.85.0: mirrors `keep-open`
+ * @property {string} triggerMeta - v0.85.0: mirrors `trigger-meta` ('' / null = removed)
+ * @property {Function} onPick - v0.85.0 action mode: callback receiving the picked item; runs before the `pick` event (a
+ *   throw is logged, the event still fires). Options re-assigned (`options` / `updateData()`) while an action menu is
+ *   OPEN keep the typed search text (re-filtered), the active row (by value, else the nearest enabled row) and the
+ *   scroll position — e.g. a site disabling the picked item inside its `pick` handler.
  */
 export class TdDropdown extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'placeholder', 'searchable', 'allow-clear', 'max-height', 'value-key',
-      'label-key', 'value', 'label', 'error-text', 'aria-label', 'create-label', 'search-fields', 'trigger-icon'];
+      'label-key', 'value', 'label', 'error-text', 'aria-label', 'create-label', 'search-fields', 'trigger-icon',
+      'mode', 'trigger-meta']; // v0.85.0: `keep-open` is read at pick time, not observed
   }
 
   static get errorContract() { return true; }
@@ -229,6 +256,8 @@ export class TdDropdown extends TdFormElement {
      * matching options; the clear / create rows are not counted). '' = off.
      */
     resultCount: '{count} kết quả',
+    /** v0.85.0 action mode: the polite announcement after a pick (`{label}` = the option's label text). '' = off. */
+    picked: 'Đã chọn {label}',
   };
 
   /** @type {TdDropdown[]} Track all open dropdowns for closeAllExcept */
@@ -265,6 +294,7 @@ export class TdDropdown extends TdFormElement {
     this._onChange = null;
     this._onSelect = null;
     this._onCreate = null;
+    this._onPick = null;
 
     this._boundPointerOutside = (e) => {
       const t = e.target;
@@ -413,7 +443,8 @@ export class TdDropdown extends TdFormElement {
     this.options = items;
     // (1) the host `value` attribute resolves through the deferred initial selection; (2) else the live select value.
     // map the exact selected <option> to its item (a selected leading placeholder = no selection)
-    if (!this.hasAttribute('value')) {
+    // v0.85.0: action mode never holds a selection (the select's live value and its reset default are ignored)
+    if (!this.hasAttribute('value') && !this._isAction()) {
       const idx = selOpt && selOpt !== ph ? opts.indexOf(selOpt) : -1;
       this._selectedItem = idx >= 0 ? items[idx] : null;
     }
@@ -453,6 +484,7 @@ export class TdDropdown extends TdFormElement {
    */
   get value() { return this.getValue(); }
   set value(v) {
+    if (this._isAction()) return; // v0.85.0: no value in action mode (nothing stored)
     if (!this._initialized) {
       if (v == null) this.removeAttribute('value');
       else this.setAttribute('value', String(v));
@@ -479,7 +511,9 @@ export class TdDropdown extends TdFormElement {
     if (this._pendingValue != null) {
       this.setValue(this._pendingValue);
     }
-    this._renderMenuOptions();
+    // v0.85.0: an OPEN action menu keeps its query / active row / scroll; else (and select mode always) as 0.84.0
+    if (this._isOpen && this._isAction()) this._refreshOpen();
+    else this._renderMenuOptions();
   }
 
   /** v0.84.0: ordered group headers [{ key, label }]; re-assigning re-filters in place (as `options`). */
@@ -498,6 +532,28 @@ export class TdDropdown extends TdFormElement {
   /** v0.22.0: called with the query when the create row is activated (before the `create` event). */
   get onCreate() { return this._onCreate; }
   set onCreate(fn) { this._onCreate = typeof fn === 'function' ? fn : null; }
+
+  /** v0.85.0: action mode → called with the picked item (before the `pick` event). */
+  get onPick() { return this._onPick; }
+  set onPick(fn) { this._onPick = typeof fn === 'function' ? fn : null; }
+
+  /** v0.85.0: `'action'` | `'select'`; mirrors `mode` (anything but `'action'` removes the attribute). */
+  get mode() { return this._isAction() ? 'action' : 'select'; }
+  set mode(v) {
+    if (String(v ?? '').trim().toLowerCase() === 'action') this.setAttribute('mode', 'action');
+    else this.removeAttribute('mode');
+  }
+
+  /** v0.85.0: mirrors `keep-open` (true → present, false → removed). */
+  get keepOpen() { return this._keepOpen(); }
+  set keepOpen(v) { v ? this.setAttribute('keep-open', '') : this.removeAttribute('keep-open'); }
+
+  /** v0.85.0: mirrors `trigger-meta` ('' / null / false = removed). */
+  get triggerMeta() { return this.getAttribute('trigger-meta') ?? ''; }
+  set triggerMeta(v) {
+    if (v == null || v === false || String(v) === '') this.removeAttribute('trigger-meta');
+    else this.setAttribute('trigger-meta', String(v));
+  }
 
   /** v0.22.0: mirrors `create-label` ('' = no create row). */
   get createLabel() { return this._getCreateLabel(); }
@@ -556,10 +612,24 @@ export class TdDropdown extends TdFormElement {
     const v = (this.getAttribute('trigger-icon') || '').trim().toLowerCase();
     return v === 'none' || v === 'off' || v === 'false';
   }
-  /** @private v0.84.0: the selected option's icon for the trigger ('' = none / off) */
+  /**
+   * @private v0.84.0: the selected option's icon for the trigger ('' = none / off). v0.85.0 action mode: the fixed
+   * trigger icon instead — `trigger-icon` absent / empty → `plus`, off → '', else a registered name (iconOf gate).
+   */
   _triggerIconOf(item) {
+    if (this._isAction()) {
+      const name = (this.getAttribute('trigger-icon') || '').trim();
+      if (!name) return 'plus';
+      return this._triggerIconOff() ? '' : iconOf(name);
+    }
     return item && !this._triggerIconOff() ? iconOf(item.icon) : '';
   }
+  /** @private v0.85.0: `mode="action"` (trimmed, any case) */
+  _isAction() { return (this.getAttribute('mode') || '').trim().toLowerCase() === 'action'; }
+  /** @private v0.85.0: `keep-open` present and not `false` / `0` / `off` (read at pick time) */
+  _keepOpen() { return this.hasAttribute('keep-open') && !this._isDisabledFlag('keep-open'); }
+  /** @private v0.85.0: the trimmed `trigger-meta` text ('' = none) */
+  _triggerMetaText() { return (this.getAttribute('trigger-meta') || '').trim(); }
 
   /**
    * @private v0.84.0: `groups` key → its index in `groups` (null = grouping off: `groups` empty / not an array).
@@ -640,21 +710,27 @@ export class TdDropdown extends TdFormElement {
     const esc = (s) => this.escapeHtml(String(s));
     const id = esc(this.id);
     const label = this._getLabel();
+    const action = this._isAction(); // v0.85.0: never a selection → placeholder text, `data-action`, fixed icon
     const placeholder = !this._selectedItem;
     const text = placeholder ? this._getPlaceholder() : this._selectedItem[this._getLabelKey()];
     // v0.82.0: a valid swatch prints a colourless dot; _applySwatchFills() sets its `fill` after render
     const dot = !placeholder && this._swatchOf(this._selectedItem) ? SWATCH_SVG : '';
     // v0.84.0: the option icon (filled by fillIconSlots in afterRender), after the dot
-    const icon = placeholder ? '' : this._triggerIconHtml(this._selectedItem);
+    const icon = placeholder && !action ? '' : this._triggerIconHtml(this._selectedItem);
+    const valueAttr = action ? ' data-action' : placeholder ? ' data-placeholder' : '';
+    // v0.85.0: `trigger-meta` (absent → '' : the 0.84.0 string); the live region of action mode, outside the portal
+    const meta = this._triggerMetaText();
+    const metaHtml = meta ? `<span class="td-dropdown__trigger-meta" id="${id}-trigger-meta">${esc(meta)}</span>` : '';
+    const live = action ? '<span class="td-sr-only td-dropdown__live" aria-live="polite" aria-atomic="true"></span>' : '';
     const labelHtml = label
       ? `<label class="td-field__label" id="${id}-label" for="${id}-trigger">${esc(label)}</label>`
       : '';
     return `<div class="td-dropdown" data-state="${this._isOpen ? 'open' : 'closed'}">${labelHtml}`
       + `<button type="button" class="td-dropdown__trigger" id="${id}-trigger" role="combobox" aria-haspopup="listbox"`
       + ` aria-expanded="${this._isOpen}" aria-controls="${id}-listbox"${this._isDisabled() ? ' disabled' : ''}>`
-      + `<span class="td-dropdown__value"${placeholder ? ' data-placeholder' : ''}>${dot}${icon}${esc(text)}</span>`
+      + `<span class="td-dropdown__value"${valueAttr}>${dot}${icon}${esc(text)}</span>${metaHtml}`
       + '<span class="td-dropdown__arrow" data-td-icon="down" aria-hidden="true"></span>'
-      + '</button></div>';
+      + `</button></div>${live}`;
   }
 
   afterRender() {
@@ -700,12 +776,17 @@ export class TdDropdown extends TdFormElement {
 
   /**
    * In place: `value`, `placeholder`, `disabled`, `required`, `name`, `aria-label`, `error-text`, `create-label`,
-   * `search-fields`, `trigger-icon`.
+   * `search-fields`, `trigger-icon`, `trigger-meta` (v0.85.0). `mode` (v0.85.0) re-renders.
    */
   attributeChangedCallback(name, oldVal, newVal) {
     if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (oldVal === newVal) return;
     if (name === 'disabled') this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
+    if (name === 'mode' && this._isAction()) {
+      // v0.85.0: entering action mode drops any selection and any pending value (also before the first render)
+      this._selectedItem = null;
+      this._pendingValue = null;
+    }
     if (!this._initialized) return;
     switch (name) {
       case 'value':
@@ -742,8 +823,11 @@ export class TdDropdown extends TdFormElement {
       case 'trigger-icon':
         this._updateValueText(); // v0.84.0: only the trigger's value span changes
         return;
+      case 'trigger-meta':
+        this._updateTriggerMeta(); // v0.85.0: in place (focus kept)
+        return;
       default:
-        // label, searchable, allow-clear, max-height, value-key, label-key → structure changes.
+        // label, searchable, allow-clear, max-height, value-key, label-key, mode (v0.85.0) → structure changes.
         if (this._isOpen) this.close();
         this._doRender();
     }
@@ -764,10 +848,10 @@ export class TdDropdown extends TdFormElement {
     if (this._isDisabled() && this._isOpen) this.close();
   }
 
-  /** @private `aria-required` on the combobox + decorative asterisk in the label. */
+  /** @private `aria-required` on the combobox + decorative asterisk in the label (never in action mode — v0.85.0). */
   _applyRequired() {
     const trigger = this._trigger();
-    const required = this.hasAttribute('required');
+    const required = this.hasAttribute('required') && !this._isAction();
     if (trigger) {
       if (required) trigger.setAttribute('aria-required', 'true');
       else trigger.removeAttribute('aria-required');
@@ -802,7 +886,17 @@ export class TdDropdown extends TdFormElement {
   _updateValueText() {
     const span = this.querySelector('.td-dropdown__value');
     if (!span) return;
-    if (this._selectedItem) {
+    if (this._isAction()) {
+      // v0.85.0: the placeholder is the button's label (`data-action`), led by the fixed trigger icon
+      span.textContent = this._getPlaceholder();
+      span.removeAttribute('data-placeholder');
+      span.setAttribute('data-action', '');
+      const icon = this._triggerIconHtml(null);
+      if (icon) {
+        span.insertAdjacentHTML('afterbegin', icon);
+        fillIconSlots(span, '.td-dropdown__value-icon');
+      }
+    } else if (this._selectedItem) {
       span.textContent = String(this._selectedItem[this._getLabelKey()]);
       span.removeAttribute('data-placeholder');
       // dot, then the v0.84.0 icon slot (re-created: textContent above wiped it), filled here
@@ -827,6 +921,36 @@ export class TdDropdown extends TdFormElement {
     return name
       ? `<span class="td-dropdown__value-icon" data-td-icon="${this.escapeHtml(name)}" aria-hidden="true"></span>`
       : '';
+  }
+
+  /**
+   * @private v0.85.0: `trigger-meta` in place — the span is added (before the arrow) / re-texted / removed, then the
+   * trigger's `aria-describedby` is re-merged. No re-render (focus and an open menu are kept).
+   */
+  _updateTriggerMeta() {
+    const trigger = this._trigger();
+    if (!trigger) return;
+    const text = this._triggerMetaText();
+    let span = trigger.querySelector(':scope > .td-dropdown__trigger-meta');
+    if (text) {
+      if (!span) {
+        span = document.createElement('span');
+        span.className = 'td-dropdown__trigger-meta';
+        span.id = `${this.id}-trigger-meta`;
+        trigger.insertBefore(span, trigger.querySelector(':scope > .td-dropdown__arrow'));
+      }
+      if (span.textContent !== text) span.textContent = text;
+    } else if (span) {
+      span.remove();
+    }
+    this._syncDescribedBy();
+  }
+
+  /** @protected v0.85.0: the `trigger-meta` id (while shown), then the helper ids; the base adds the error id. */
+  _describedByIds() {
+    const trigger = this._trigger();
+    const meta = trigger && trigger.querySelector(':scope > .td-dropdown__trigger-meta');
+    return [...(meta ? [meta.id] : []), ...super._describedByIds()];
   }
 
   /** @private v0.82.0: the option's colour when it passes the safeColor gate (same as td-choice-group), else ''. */
@@ -889,6 +1013,12 @@ export class TdDropdown extends TdFormElement {
   /** @private Push the selected value + validity to the form. */
   _syncForm() {
     if (this._passthrough) return; // the kept native <select multiple> submits itself
+    if (this._isAction()) {
+      // v0.85.0: action mode writes nothing into the form and `required` never blocks it
+      this._setFormValue(null);
+      this._setValidity({});
+      return;
+    }
     // `null` = no selection. A selected option whose value is '' (not the placeholder — that one is never an option)
     // submits '' and satisfies `required`, like a native <select> (review v0.17.0 ISSUE-1).
     const val = this._selectedItem ? this.getValue() : null;
@@ -907,7 +1037,7 @@ export class TdDropdown extends TdFormElement {
   }
 
   _restoreDefaults() {
-    if (this._passthrough) return;
+    if (this._passthrough || this._isAction()) return; // v0.85.0: no value to reset in action mode
     const dv = this._defaultValueAttr;
     if (dv == null) this.removeAttribute('value');
     else this.setAttribute('value', dv);
@@ -917,7 +1047,7 @@ export class TdDropdown extends TdFormElement {
   }
 
   _restoreState(state, _mode) {
-    if (this._passthrough) return;
+    if (this._passthrough || this._isAction()) return; // v0.85.0: nothing to restore in action mode
     if (typeof state === 'string') {
       this.setValue(state);
       this._syncForm();
@@ -994,7 +1124,7 @@ export class TdDropdown extends TdFormElement {
     const labelKey = this._getLabelKey();
     const nav = [];
     let html = '';
-    if (this._isAllowClear() && this._selectedItem) {
+    if (this._isAllowClear() && this._selectedItem && !this._isAction()) { // v0.85.0: no clear row in action mode
       nav.push({ clear: true });
       html += `<div class="td-dropdown__option td-dropdown__option--clear" role="option" id="${id}-opt-clear"`
         + ` aria-selected="false" data-value="${CLEAR}" data-nav="${nav.length - 1}"><span class="td-dropdown__option-label">${esc(TdDropdown.labels.none ?? '')}</span></div>`;
@@ -1206,14 +1336,55 @@ export class TdDropdown extends TdFormElement {
     }
   }
 
-  /** @private commit the active option (clear, item or the create row) */
+  /** @private commit the active option (clear, item or the create row; v0.85.0 action mode: pick the item) */
   _commitActive() {
     const entry = this._nav[this._activeIndex];
     if (!entry || !this._isNavEnabled(this._activeIndex)) return false;
     if (entry.create) this._activateCreate();
     else if (entry.clear) this._clearSelection();
+    else if (this._isAction()) this._pickItem(entry.item);
     else this._selectItem(entry.item);
     return true;
+  }
+
+  /**
+   * @private v0.85.0 action mode: one pick. Without `keep-open` (the create-row order): close the menu + focus the
+   * trigger, then `onPick(item)` → `pick` { value, item } → announcement. With `keep-open`: the menu stays open (search
+   * text kept), the active row moves to the next enabled row after the picked one (no wrap), else the previous enabled
+   * one, else none; focus stays; then `onPick` → `pick` → announcement. Never a selection, `change` or form value.
+   */
+  _pickItem(item) {
+    if (this._isDisabled() || !item || this._isItemDisabled(item)) return;
+    if (this._keepOpen() && this._isOpen) {
+      // the next pickable OPTION row (never the create row: Enter there would leave the menu), else the previous one
+      const from = this._activeIndex;
+      const pickable = (i) => !!this._nav[i].item && this._isNavEnabled(i);
+      let next = -1;
+      for (let i = from + 1; i < this._nav.length && next < 0; i++) if (pickable(i)) next = i;
+      for (let i = from - 1; i >= 0 && next < 0; i--) if (pickable(i)) next = i;
+      this._setActive(next);
+    } else {
+      const trigger = this._trigger();
+      this.close();
+      if (trigger && document.activeElement !== trigger) trigger.focus({ preventScroll: true });
+    }
+    if (this._onPick) safeCall(this._onPick, item, 'onPick');
+    this.emit('pick', { value: item[this._getValueKey()], item });
+    this._announcePicked(item);
+  }
+
+  /**
+   * @private v0.85.0: the polite live region (in the host, not the hidden portal) — cleared, then `labels.picked` with
+   * `{label}` = the label text (split/join: no `$` patterns; textContent, never HTML). '' = no announcement.
+   */
+  _announcePicked(item) {
+    const live = this.querySelector(':scope > .td-dropdown__live');
+    if (!live) return;
+    live.textContent = '';
+    const tpl = String(TdDropdown.labels.picked ?? '');
+    if (!tpl) return;
+    const label = item[this._getLabelKey()];
+    live.textContent = tpl.split('{label}').join(label == null ? '' : String(label));
   }
 
   /**
@@ -1420,15 +1591,21 @@ export class TdDropdown extends TdFormElement {
 
   // --- Search ---
 
-  _handleSearch(query) {
-    // Case- and diacritic-insensitive ("ha noi" finds "Hà Nội"), like the type-ahead. v0.84.0: label, description and
-    // keywords by default (`search-fields` restricts it); the result is in display (group) order.
+  /**
+   * @private The options matching `query`, in display (group) order. Case- and diacritic-insensitive ("ha noi" finds
+   * "Hà Nội"), like the type-ahead. v0.84.0: label, description and keywords by default (`search-fields` restricts it).
+   */
+  _filtered(query) {
     const q = fold(query).trim();
     const labelKey = this._getLabelKey();
     const fields = this._searchFields();
-    this._filteredData = this._ordered(!q
+    return this._ordered(!q
       ? this._options
       : this._options.filter((item) => this._matches(item, q, fields, labelKey)));
+  }
+
+  _handleSearch(query) {
+    this._filteredData = this._filtered(query);
     this._renderMenuOptions();
     // Active = first matching option (the clear option is skipped). Closed (a `groups` / `search-fields` change): open()
     // picks the active option.
@@ -1476,6 +1653,7 @@ export class TdDropdown extends TdFormElement {
 
   /** @private First `options` assignment: select the `value` attribute (resolved later if not listed yet). */
   _setInitialValue() {
+    if (this._isAction()) return; // v0.85.0: the `value` attribute is ignored in action mode
     const initialValue = this._getInitialValue();
     if (initialValue == null || this._selectedItem || this._pendingValue != null) return;
     const item = this._options.find((i) => String(i[this._getValueKey()]) === String(initialValue));
@@ -1496,7 +1674,7 @@ export class TdDropdown extends TdFormElement {
    * listed, otherwise drop it — the form never submits a value the list no longer has.
    */
   _reconcileSelection() {
-    if (!this._selectedItem) return;
+    if (!this._selectedItem || this._isAction()) return; // v0.85.0: action mode never holds one
     const vk = this._getValueKey();
     const cur = String(this._selectedItem[vk]);
     const item = this._options.find((i) => String(i[vk]) === cur) || null;
@@ -1716,6 +1894,7 @@ export class TdDropdown extends TdFormElement {
   }
 
   setValue(value) {
+    if (this._isAction()) return; // v0.85.0: no value in action mode (ignored, nothing stored)
     // an explicit selection / clear supersedes the initial `value` attribute — for good (review v0.16.0 ISSUE-6/7)
     this._initialDeferred = false;
     this._initialSuperseded = true;
@@ -1762,8 +1941,43 @@ export class TdDropdown extends TdFormElement {
     if (this._pendingValue != null) {
       this.setValue(this._pendingValue);
     }
+    // v0.85.0: an OPEN action menu keeps its query / active row / scroll (see the `options` setter)
+    if (this._isOpen && this._isAction()) {
+      this._refreshOpen();
+      return;
+    }
     this._renderMenuOptions();
     if (this._isOpen) this._updatePosition();
+  }
+
+  /**
+   * @private v0.85.0 (action mode, menu open): the options were re-assigned — re-apply the current search text, keep
+   * the active row by value (gone / disabled → that index, moved to the nearest enabled row, forward first), keep the
+   * scroller's scrollTop, reposition. Shared by the `options` setter and `updateData()` (v0.86.0 reuses it).
+   */
+  _refreshOpen() {
+    const prevIndex = this._activeIndex;
+    const prev = this._nav[prevIndex];
+    const vk = this._getValueKey();
+    const scroller = this._scroller();
+    const top = scroller ? scroller.scrollTop : 0;
+    this._filteredData = this._filtered(this._query());
+    this._renderMenuOptions();
+    let i = -1;
+    if (prev && prev.item) {
+      const v = String(prev.item[vk]);
+      i = this._nav.findIndex((n) => n.item && String(n.item[vk]) === v);
+    } else if (prev && prev.create) {
+      i = this._nav.findIndex((n) => n.create);
+    }
+    if (prevIndex >= 0 && (i < 0 || !this._isNavEnabled(i))) {
+      const at = i >= 0 ? i : prevIndex;
+      i = this._enabledFrom(at, 1) >= 0 ? this._enabledFrom(at, 1) : this._enabledFrom(at, -1);
+    }
+    this._activeIndex = prevIndex >= 0 ? i : -1;
+    this._syncActive(false);
+    this._updatePosition();
+    if (scroller && scroller.scrollTop !== top) scroller.scrollTop = top;
   }
 
   destroy() {

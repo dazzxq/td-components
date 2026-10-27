@@ -187,6 +187,18 @@ const CASES = [
       groups: [{ key: 'g', label: 'Nhóm' }] }), // v0.84.0
     check(el) { expect(el.textContent.includes('B')).to.equal(true); expect(el.groups).to.deep.equal([{ key: 'g', label: 'Nhóm' }]); },
   },
+  // v0.85.0: action mode (no value) — `mode` assigned first, so it is in force when the options arrive
+  {
+    tag: 'td-dropdown', attrs: { 'aria-label': 'Thêm' },
+    props: () => ({ mode: 'action', keepOpen: true, triggerMeta: '4/10', onPick: fn(), options: [{ value: 'a', label: 'A' }] }),
+    check(el) {
+      expect(el.getAttribute('mode')).to.equal('action');
+      expect(el.hasAttribute('keep-open')).to.equal(true);
+      expect(el.querySelector('.td-dropdown__trigger-meta')?.textContent).to.equal('4/10');
+      expect(!!el.querySelector('.td-dropdown__live')).to.equal(true);
+      expect(el.getValue()).to.equal(null);
+    },
+  },
   {
     tag: 'td-chip-input', attrs: { label: 'Thẻ' },
     props: () => ({ options: [{ value: 'php', label: 'PHP' }], value: [{ value: 'php', label: 'PHP' }], search: fn(), create: fn(),

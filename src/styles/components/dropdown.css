@@ -4,7 +4,7 @@
  * Menu = body-portaled small popup (v0.20.0 minimal surfaces: .td-glass-surface--strong = 94 % + blur(12px) + thin
  * border + soft shadow), pad --td-glass-pad, radius --td-glass-radius, options concentric (--td-glass-radius-inner)
  * plain fills. Fades in (no pop scale).
- * State: [aria-expanded] / :disabled / [aria-invalid] on the trigger, [data-placeholder] on the value,
+ * State: [aria-expanded] / :disabled / [aria-invalid] on the trigger, [data-placeholder] / [data-action] on the value,
  * [hidden] / data-state / data-placement on the menu, [aria-selected] / [data-active] / [aria-disabled] on options.
  * Only geometry (top/left/width, scroller max-height) is written by JS through CSSOM.
  * v0.22.0: the listbox (.td-dropdown__options) no longer scrolls — its .td-dropdown__scroller does; the optional create
@@ -255,7 +255,24 @@
 		color: var(--td-field-placeholder);
 	}
 
-	.td-dropdown__trigger:disabled .td-dropdown__value {
+	/* v0.85.0 action mode: the placeholder is the button's label → the normal field text colour, not the hint grey */
+	.td-dropdown__value[data-action] {
+		color: var(--td-field-fg);
+	}
+
+	/* v0.85.0: `trigger-meta` (e.g. "4/10") — muted, fixed-width digits, pinned to the inline end before the arrow; the
+	   value span keeps flex 1 / min-width 0, so the value is cut first and the meta never wraps; the trigger's gap spaces
+	   it from the arrow */
+	.td-dropdown__trigger-meta {
+		flex: none;
+		margin-inline-start: auto;
+		color: var(--td-field-placeholder);
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+
+	.td-dropdown__trigger:disabled .td-dropdown__value,
+	.td-dropdown__trigger:disabled .td-dropdown__trigger-meta {
 		color: var(--td-field-fg-disabled);
 	}
 

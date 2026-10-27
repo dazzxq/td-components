@@ -134,7 +134,7 @@ dd.options = [
   - Trình đọc màn hình nghe số kết quả khi đang gõ ("12 kết quả", từ `TdDropdown.labels.resultCount`). Câu này ẩn với mắt; "Không tìm thấy kết quả" vẫn hiện như cũ.
 - **Trigger:** option đã chọn có `icon` thì trigger hiện icon (màu chữ, không ô nền) + nhãn, không có mô tả.
   - `trigger-icon="none"` để trigger chỉ có chữ.
-  - Ở chế độ chọn giá trị, các giá trị `trigger-icon` khác bị bỏ qua: chúng dành cho chế độ "chọn để thêm" sắp có.
+  - Ở chế độ chọn giá trị, các giá trị `trigger-icon` khác bị bỏ qua. Ở chế độ "chọn để thêm" chúng là tên icon cố định ([mục 11](#11-chế-độ-chọn-để-thêm-modeaction-0850)).
 - **`max-height`** vẫn là **số dòng**. Khi có dòng giàu thông tin hoặc nhóm, chiều cao được đo thật: đúng N dòng option nhìn thấy, tính từ trên xuống, tiêu đề nhóm cộng thêm chiều cao nhưng không tính là một dòng. PageUp / PageDown nhảy N dòng.
 - **Trợ năng:**
   - Tên của option chỉ là nhãn (`aria-labelledby`). Mô tả, trạng thái và chữ phụ được đọc như phần mô tả (`aria-describedby`).
@@ -403,6 +403,51 @@ Gỡ attribute (`removeAttribute('create-label')` hoặc `createLabel = ''`) →
 được nên dòng cũng không kích hoạt được. Adapter PHP: `td_dropdown(..., ['create_label' => 'Thêm film mới'])` (dòng chỉ
 có khi JS đã nạp — bản `<select>` native không có nó).
 
+### 11. Chế độ "chọn để thêm" (`mode="action"`, 0.85.0)
+
+Dùng khi dropdown là một **nút thêm**, không phải ô chọn giá trị. Ví dụ "+ Thêm mẫu khuyến mãi": mỗi lần chọn là thêm một mục vào danh sách bên dưới.
+
+```html
+<td-dropdown id="ds-campaign-add" mode="action" placeholder="Thêm mẫu khuyến mãi" trigger-meta="4/10"
+             aria-label="Thêm mẫu khuyến mãi" create-label="Tạo mẫu khuyến mãi mới" max-height="8"></td-dropdown>
+```
+
+```js
+const add = document.getElementById('ds-campaign-add');
+add.groups = [{ key: 'public', label: 'Đang hiện' }, { key: 'hidden', label: 'Đang tắt' }];
+add.options = templates.map((t) => ({ value: t.id, label: t.name, group: t.group, icon: t.icon }));
+add.addEventListener('pick', (e) => {
+  addTemplate(e.detail.item);                         // site tự thêm vào danh sách của mình
+  add.setAttribute('trigger-meta', `${count()}/10`);  // cập nhật số đếm trên trigger
+  if (count() >= 10) add.disabled = true;             // đủ trần → tắt cả ô
+});
+```
+
+Hợp đồng:
+
+- **Không giữ giá trị.** Chọn một option thì phát `pick` `{ value, item }` (và `onPick(item)` chạy trước). Sau đó menu đóng và focus về trigger. Ngoài ra:
+  - không phát `change`;
+  - không vào `FormData`, kể cả khi có `name`;
+  - `required` không có tác dụng;
+  - không có dòng "Không chọn" (`allow-clear` bị bỏ qua) và không có dấu tích.
+- `getValue()` / `value` luôn `null`. `setValue()`, attribute `value`, form reset và khôi phục trạng thái đều bị bỏ qua.
+- **Trigger** luôn hiện chữ `placeholder`, màu chữ thường (đây là nhãn của nút, không phải gợi ý mờ). Icon đầu:
+  - mặc định `plus`;
+  - `trigger-icon="tên-icon"` dùng icon khác (phải có trong registry);
+  - `trigger-icon="none"` thì không có icon.
+- **`trigger-meta`**: chữ phụ mờ ở cuối trigger (ví dụ `4/10`), dùng được ở cả hai chế độ. Trình đọc màn hình đọc nó như mô tả (`aria-describedby`), không gộp vào tên. Đổi attribute thì cập nhật tại chỗ.
+- **`keep-open`**: chọn xong menu vẫn mở để thêm nhiều mục liền:
+  - ô tìm giữ nguyên chữ đã gõ;
+  - dòng active nhảy sang option kế tiếp còn chọn được (bỏ qua dòng "Thêm mới"), không có thì lùi về option trước.
+  - Nếu site gán lại `options` ngay trong handler `pick` (ví dụ đánh dấu mục vừa thêm là `disabled` + `meta: 'Đã thêm'`), menu vẫn giữ chữ tìm và dòng active. Chỉ áp dụng ở chế độ action.
+  - Dòng "Thêm mới" (`create-label`) vẫn đóng menu như 0.22.0.
+- Option `disabled` không phát `pick`. Host `disabled` thì không mở được.
+- **Trợ năng:**
+  - trigger vẫn là `role="combobox"`, nên luôn đặt `label` hoặc `aria-label`;
+  - sau mỗi lần chọn, một vùng `aria-live="polite"` ẩn với mắt đọc "Đã chọn {nhãn}" (`TdDropdown.labels.picked`; `''` = tắt).
+- Đổi `mode` lúc đang chạy sẽ đóng menu, render lại và bỏ lựa chọn cũ.
+- Adapter PHP không có chế độ này: dropdown hành động chỉ có khi JS chạy. Bản `<select>` native sẽ gửi giá trị, trái với hợp đồng.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -416,7 +461,10 @@ có khi JS đã nạp — bản `<select>` native không có nó).
 | `allow-clear` | cờ mặc định BẬT | bật | Thêm dòng "Không chọn" ở đầu danh sách khi đã có lựa chọn. Tắt như trên. |
 | `max-height` | number | `5` | Số option hiển thị trước khi cuộn (mỗi option 40px; tối đa 100; có dòng giàu thông tin / nhóm thì đo thật, 0.84.0). Cũng là bước nhảy của PageUp/PageDown. |
 | `search-fields` | string | `label description keywords` | **0.84.0** Trường dùng để tìm (cách nhau bởi dấu cách / dấu phẩy). `label` = hành vi cũ. Đổi tại chỗ. |
-| `trigger-icon` | string | — | **0.84.0** `none` / `off` / `false` → trigger không hiện icon của option đã chọn. Giá trị khác dành cho chế độ "chọn để thêm" sắp có. |
+| `trigger-icon` | string | — | **0.84.0** `none` / `off` / `false` → trigger không hiện icon của option đã chọn. **0.85.0** Ở `mode="action"`: vắng → `plus`, tên icon khác → icon đó (phải có trong registry), `none` → không icon. |
+| `mode` | `select` \| `action` | `select` | **0.85.0** `action` = chế độ "chọn để thêm" ([mục 11](#11-chế-độ-chọn-để-thêm-modeaction-0850)). Đổi sẽ render lại. |
+| `keep-open` | cờ | tắt | **0.85.0** Chỉ ở `mode="action"`: chọn xong menu vẫn mở. `"false"` / `"0"` / `"off"` = tắt. Đọc lúc chọn, đổi không render lại. |
+| `trigger-meta` | string | — | **0.85.0** Chữ phụ mờ ở cuối trigger (ví dụ `4/10`), vào `aria-describedby` của trigger. Cả hai chế độ. Đổi tại chỗ. |
 | `value-key` | string | `value` | Key trong object option dùng làm giá trị. |
 | `label-key` | string | `label` | Key trong object option dùng làm chữ hiển thị. |
 | `required` | boolean | `false` | Bắt buộc chọn: `valueMissing` khi trống, `aria-required`, dấu `*` trang trí trong label. |
@@ -425,8 +473,9 @@ có khi JS đã nạp — bản `<select>` native không có nó).
 | `create-label` | string | — | Bật dòng hành động "Thêm mới" cố định ở đáy menu với chữ này (0.22.0). Rỗng / vắng = tắt. Xem [mục 10](#10-dòng--thêm-mới-ở-cuối-menu-create-label-0220). |
 | `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
-Đổi `value`, `placeholder`, `disabled`, `required`, `name`, `aria-label`, `error-text`, `create-label`, `search-fields` được cập nhật
-**tại chỗ** (giữ focus; menu đang mở vẫn mở). Đổi `label`, `searchable`, `allow-clear`, `max-height`, `value-key`, `label-key` sẽ đóng menu và render lại.
+Đổi `value`, `placeholder`, `disabled`, `required`, `name`, `aria-label`, `error-text`, `create-label`, `search-fields`, `trigger-icon`,
+`trigger-meta`, `keep-open` được cập nhật **tại chỗ** (giữ focus; menu đang mở vẫn mở). Đổi `label`, `searchable`, `allow-clear`,
+`max-height`, `value-key`, `label-key`, `mode` sẽ đóng menu và render lại.
 
 ## Property & method
 
@@ -437,6 +486,8 @@ có khi JS đã nạp — bản `<select>` native không có nó).
 | `onSelect` | `(item) => void` \| `null` | Callback nhận cả object (`null` khi bỏ chọn). Chạy trước `onChange` (cả hai đều chạy nếu cùng đặt). |
 | `onCreate` | `(query) => void` \| `null` | Callback khi kích hoạt dòng "Thêm mới" (0.22.0); nhận `query` (chuỗi). Chạy trước event `create`; ném lỗi → ghi `console.error`, event vẫn phát. |
 | `createLabel` | `string` (get/set) | Phản chiếu attribute `create-label` (`''` = tắt). |
+| `onPick` | `(item) => void` \| `null` | **0.85.0** Callback khi chọn một option ở `mode="action"`. Chạy trước event `pick`; ném lỗi thì ghi `console.error`, event vẫn phát. Gán trước khi define vẫn nhận. |
+| `mode` / `keepOpen` / `triggerMeta` | get/set | **0.85.0** Phản chiếu `mode` (`'select'` \| `'action'`), `keep-open` (boolean), `trigger-meta` (chuỗi). Gán trước khi define vẫn nhận. |
 | `groups` | `Array<{ key, label }>` (get/set) | **0.84.0** Thứ tự và tiêu đề nhóm ([mục 1b](#1b-dòng-giàu-thông-tin-và-nhóm-084-0)). Gán lại → lọc lại tại chỗ. Gán trước khi define vẫn nhận. |
 | `TdDropdown.labels` | static object | Chữ giao diện, site ghi đè được (xem [dưới](#tddropdownlabels)). |
 | `searchable` | `boolean` (get/set) | Trạng thái thật của cờ. `false` → `searchable="false"`; `true` → xoá attribute. |
@@ -445,7 +496,7 @@ có khi JS đã nạp — bản `<select>` native không có nó).
 | `getValue()` | `() => any \| null` | Giá trị của mục đang chọn (kiểu gốc trong object, không ép chuỗi), `null` nếu chưa chọn. |
 | `setValue(value)` | `(value) => void` | Chọn theo giá trị. `null` / `undefined` → luôn bỏ chọn. `''` → chọn option **có giá trị rỗng thật** nếu có (0.17.0), không có thì bỏ chọn (không pending). Giá trị khác chưa có trong options → bỏ lựa chọn cũ, nhớ lại để áp dụng khi options đến. **Không** phát `change`. |
 | `getSelectedItem()` | `() => Object \| null` | Object option đang chọn. |
-| `updateData(list)` | `(Array) => void` | Thay danh sách: giữ lựa chọn hiện tại nếu còn trong danh sách, không còn thì bỏ chọn (không phát `change`); áp giá trị pending. |
+| `updateData(list)` | `(Array) => void` | Thay danh sách: giữ lựa chọn hiện tại nếu còn trong danh sách, không còn thì bỏ chọn (không phát `change`); áp giá trị pending. **0.85.0** Ở `mode="action"` khi menu đang mở (như `options = …`): giữ chữ tìm, lọc lại, giữ dòng active theo giá trị. |
 | `open()` | `() => void` | Mở menu (không làm gì khi disabled; đang mở thì chỉ đặt lại vị trí). Đóng mọi dropdown khác đang mở. |
 | `close()` | `() => void` | Đóng menu, xoá chữ tìm kiếm, trả focus về trigger nếu focus đang trong menu. |
 | `toggle()` | `() => void` | Mở/đóng. |
@@ -475,6 +526,7 @@ Object.assign(TdDropdown.labels, {
 | `required` | `Vui lòng chọn một tùy chọn` | Thông điệp `valueMissing` khi `required` |
 | `createWithQuery` | `Thêm “{query}”` | Chữ dòng "Thêm mới" khi đang gõ tìm kiếm; `{query}` = chữ đã gõ (trim). Không gõ gì → dùng `create-label` (0.22.0) |
 | `resultCount` | `{count} kết quả` | **0.84.0** Câu trình đọc màn hình đọc khi đang gõ tìm và có kết quả (ẩn với mắt). `''` = tắt |
+| `picked` | `Đã chọn {label}` | **0.85.0** Câu thông báo lịch sự sau mỗi lần chọn ở `mode="action"`; `{label}` = nhãn option. `''` = tắt |
 
 Tất cả được escape / đưa vào bằng `textContent`. Placeholder của trigger ("Chọn một tùy chọn") đổi bằng attribute
 `placeholder`.
@@ -485,10 +537,12 @@ Tất cả được escape / đưa vào bằng `textContent`. Placeholder của 
 |---|---|---|---|
 | `change` | `{ value, item }` — `value` là giá trị gốc (hoặc `null`), `item` là object (hoặc `null`) | Người dùng chọn một mục hoặc chọn "Không chọn". Đúng **một** event mỗi lần chọn. `setValue()`, `updateData()`, form reset **không** phát. | có (`composed: true`) |
 | `create` | `{ query }` — chữ trong ô tìm kiếm, trim hai đầu (`''` nếu không có) | Người dùng kích hoạt dòng "Thêm mới" (`create-label`, 0.22.0). Phát **sau** khi menu đã đóng và focus đã về trigger, sau `onCreate`. Không kèm `change`. | có (`composed: true`) |
+| `pick` | `{ value, item }` | **0.85.0** Chỉ ở `mode="action"`: người dùng chọn một option (chuột, Enter, Space, Alt+↑). Đúng **một** event mỗi lần. Phát sau `onPick`, sau khi menu đóng và focus về trigger (`keep-open`: menu vẫn mở, focus giữ nguyên). Không kèm `change`. | có (`composed: true`) |
 
 ## Form
 
 - **Giá trị gửi**: `String(value)` của mục đang chọn dưới `name`. Chưa chọn → không có entry trong `FormData`.
+  `mode="action"` (0.85.0) không bao giờ gửi gì và không bao giờ `valueMissing`.
 - **`required`**: chưa chọn → `validity.valueMissing`, thông báo `TdDropdown.labels.required` (`Vui lòng chọn một tùy chọn`).
 - **Reset** (`form.reset()` / `<button type="reset">`): khôi phục attribute `value` ban đầu (lúc kết nối DOM), xoá lỗi
   `setError`. Nâng cấp từ `<select>`: về mặc định theo luật `<select>` (xem [mục 9](#9-nâng-cấp-từ-select-native-ssr--không-js)).
@@ -610,6 +664,18 @@ Từ 0.84.0, khi option dùng trường mới (xem [mục 1b](#1b-dòng-giàu-th
 <!-- option không thuộc nhóm nào: con trực tiếp của .td-dropdown__scroller, sau các nhóm -->
 ```
 
+Từ 0.85.0 (`trigger-meta` ở cả hai chế độ; còn lại chỉ ở `mode="action"`, [mục 11](#11-chế-độ-chọn-để-thêm-modeaction-0850)):
+
+```html
+<button type="button" class="td-dropdown__trigger" id="{host}-trigger" role="combobox" … aria-describedby="{host}-trigger-meta">
+  <span class="td-dropdown__value" data-action><span class="td-dropdown__value-icon" data-td-icon="plus" aria-hidden="true">…</span>Thêm mẫu khuyến mãi</span>
+  <span class="td-dropdown__trigger-meta" id="{host}-trigger-meta">4/10</span>
+  <span class="td-dropdown__arrow" data-td-icon="down" aria-hidden="true">…</span>
+</button>
+<!-- sau khối .td-dropdown, trong host: vùng thông báo ẩn với mắt -->
+<span class="td-sr-only td-dropdown__live" aria-live="polite" aria-atomic="true">Đã chọn Tặng ốp lưng</span>
+```
+
 **0.22.0 đổi cấu trúc menu:** `.td-dropdown__options` (listbox) **không còn cuộn** — vùng cuộn và `max-height` chuyển
 sang `.td-dropdown__scroller` bên trong; dòng `.td-dropdown__empty` chuyển lên **trước** listbox. CSS của site nhắm
 `.td-dropdown__options` để đổi chiều cao / thanh cuộn → đổi sang `.td-dropdown__scroller`. Mỗi dòng mang `data-nav`
@@ -621,7 +687,7 @@ Trạng thái dùng để style (không có class JS bật/tắt):
 |---|---|
 | `.td-dropdown` | `data-state="open|closed"` |
 | `.td-dropdown__trigger` | `aria-expanded`, `:disabled`, `aria-invalid="true"` |
-| `.td-dropdown__value` | `data-placeholder` khi chưa chọn |
+| `.td-dropdown__value` | `data-placeholder` khi chưa chọn; `data-action` ở `mode="action"` (0.85.0) |
 | `.td-dropdown__menu` | `[hidden]`, `data-state`, `data-placement="top|bottom"` |
 | `.td-dropdown__option` | `aria-selected="true"` (đã chọn), `data-active` (đang trỏ bằng phím/chuột), `aria-disabled="true"` (option vô hiệu hoá, 0.17.0) |
 
