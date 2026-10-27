@@ -73,7 +73,9 @@ dd.options = [
   64 ký tự; giá trị khác (`url(…)`, `var(…)`, có `;`…) → **không có chấm**, không báo lỗi. Màu chỉ vào thuộc tính `fill`
   của SVG (không `style`, hợp CSP). Chấm là trang trí (`aria-hidden`): **nhãn phải nói tên màu** ("Đỏ", "Titan đen"), vì
   tên truy cập của option và trigger chỉ là nhãn.
-- Không hỗ trợ: nhóm option (`optgroup` — khi nâng cấp từ `<select>` thì bị làm phẳng), HTML trong label, chọn nhiều.
+- Từ 0.84.0: icon, dòng mô tả, trạng thái, chữ phụ, từ khoá tìm kiếm và nhóm có tiêu đề, xem
+  [mục 1b](#1b-dòng-giàu-thông-tin-và-nhóm-084-0).
+- Không hỗ trợ: HTML trong label, chọn nhiều.
 
 ```js
 dd.options = [
@@ -89,6 +91,72 @@ dd.options = [
   { value: 'sg', label: 'Sài Gòn', disabled: true }, // hết hàng: thấy nhưng không chọn được
 ];
 ```
+
+### 1b. Dòng giàu thông tin và nhóm (0.84.0)
+
+Mọi trường dưới đây đều **tuỳ chọn**. Option không dùng trường nào thì ra DOM và hành vi y như 0.83.0. Tên trường cố
+định: chúng **không** đổi theo `value-key` / `label-key`.
+
+| Trường | Kiểu | Hiển thị |
+|---|---|---|
+| `icon` | string | Tên icon trong registry của kit (core, hoặc icon site đã `registerIcons`), vẽ trong ô vuông bo tròn đầu dòng. Tên không có trong registry → không vẽ ô, `console.warn` một lần cho mỗi tên. Không bao giờ nhận SVG / HTML. |
+| `iconTone` | `neutral` \| `accent` \| `success` \| `warning` \| `danger` \| `info` | Màu ô icon, lấy theo token của `td-badge`. Giá trị khác → `neutral`. |
+| `description` | string | Dòng thứ hai, chữ nhỏ màu phụ, một dòng, dài thì cắt `…`. |
+| `status` | `{ tone, text }` | Chấm màu (theo `tone`, như `iconTone`) + chữ ngắn, ở cuối dòng mô tả. Mô tả dài bị cắt trước, trạng thái luôn còn. |
+| `meta` | string | Chữ phụ căn phải của dòng (vd "Đã thêm"), hay đi cùng `disabled: true`. |
+| `keywords` | string \| string[] | Chỉ dùng để tìm, không hiển thị. |
+| `group` | string | Khoá nhóm, chỉ có tác dụng khi đã gán property `groups`. |
+
+```js
+dd.groups = [
+  { key: 'public', label: 'Đang hiện' },
+  { key: 'hidden', label: 'Đang tắt' },
+];
+dd.options = [
+  { value: 'a', label: 'Tặng ốp lưng', group: 'public', icon: 'gift', iconTone: 'danger',
+    description: 'Quà tặng', status: { tone: 'success', text: 'Đang hiện' }, keywords: ['qua', 'op lung'] },
+  { value: 'b', label: 'Trả góp 0%', group: 'public', icon: 'credit-card', iconTone: 'info',
+    description: 'Trả góp', disabled: true, meta: 'Đã thêm' },
+  { value: 'c', label: 'Giảm 5%', group: 'hidden' },
+  { value: 'd', label: 'Khác' }, // không group → nhóm cuối, không tiêu đề
+];
+```
+
+- **Nhóm:** `groups` (chỉ property, gán được trước khi component được định nghĩa) quyết định **thứ tự và tiêu đề**.
+  - Trong một nhóm, option giữ thứ tự của mảng.
+  - Option có `group` lạ hoặc không có `group` → xếp cuối, không tiêu đề.
+  - Khi chưa có `groups`, `group` bị bỏ qua (danh sách phẳng như cũ).
+  - Nhóm không còn option nào (vd sau khi lọc) thì ẩn cả tiêu đề.
+  - Tiêu đề không chọn được, và ↑↓ / Home / End / PageUp / PageDown / type-ahead bỏ qua nó.
+  - `getSelectedItem()` và `options` vẫn là mảng gốc của bạn.
+- **Tìm kiếm:** mặc định tìm trên `label`, `description` và `keywords` (không dấu, không phân biệt hoa thường).
+  - `search-fields="label"` trở lại hành vi trước 0.84.0. Nhận một danh sách con của `label description keywords`, cách nhau bởi dấu cách hoặc dấu phẩy.
+  - Trình đọc màn hình nghe số kết quả khi đang gõ ("12 kết quả", từ `TdDropdown.labels.resultCount`). Câu này ẩn với mắt; "Không tìm thấy kết quả" vẫn hiện như cũ.
+- **Trigger:** option đã chọn có `icon` thì trigger hiện icon (màu chữ, không ô nền) + nhãn, không có mô tả.
+  - `trigger-icon="none"` để trigger chỉ có chữ.
+  - Ở chế độ chọn giá trị, các giá trị `trigger-icon` khác bị bỏ qua: chúng dành cho chế độ "chọn để thêm" sắp có.
+- **`max-height`** vẫn là **số dòng**. Khi có dòng giàu thông tin hoặc nhóm, chiều cao được đo thật: đúng N dòng option nhìn thấy, tính từ trên xuống, tiêu đề nhóm cộng thêm chiều cao nhưng không tính là một dòng. PageUp / PageDown nhảy N dòng.
+- **Trợ năng:**
+  - Tên của option chỉ là nhãn (`aria-labelledby`). Mô tả, trạng thái và chữ phụ được đọc như phần mô tả (`aria-describedby`).
+  - Nhóm là `role="group"`, tên là tiêu đề nhóm.
+  - Ô icon và chấm trạng thái là `aria-hidden`.
+  - Màu của trạng thái chỉ để trang trí: chữ `text` phải tự nói đủ nghĩa.
+
+PHP (`td_dropdown`, in `<optgroup>` và `data-*` cho bản nâng cấp đọc lại):
+
+```php
+<?= td_dropdown('warehouse', [
+    ['label' => 'Kho hàng', 'options' => [
+        ['value' => 'hn', 'label' => 'Kho Hà Nội', 'icon' => 'archive', 'icon_tone' => 'success',
+         'description' => 'Cầu Giấy', 'status' => ['text' => 'Đang mở', 'tone' => 'success'], 'meta' => '128 SP',
+         'keywords' => ['ha noi', 'mien bac']],
+    ]],
+    ['value' => 'other', 'label' => 'Khác'], // ngoài nhóm → xếp cuối
+], 'hn', ['element' => true, 'label' => 'Nơi xuất']) ?>
+```
+
+Mỗi trường chỉ được in khi hợp lệ: tên icon đúng mẫu, tone thuộc danh sách (và chỉ khi có icon), chữ không rỗng. Mọi giá
+trị đều escape.
 
 ### 2. Dữ liệu từ API có key khác (`value-key` / `label-key`)
 
@@ -213,7 +281,9 @@ Từ 0.17.0, in một `<select>` bình thường **bên trong** `<td-dropdown>`.
 Khi gắn vào trang **lần đầu**, nếu host có con trực tiếp `<select>` và chưa có `options` gán bằng JS:
 
 - **options**: mỗi `<option>` → `{ value, label }` (`label` = chữ hiển thị đã trim, hoặc attribute `label` của option
-  nếu có), theo đúng thứ tự. `data-swatch` của `<option>` → `swatch` (0.82.0; qua cùng cổng màu, sai → bỏ). `<optgroup>` được **làm phẳng**, nhãn nhóm bị bỏ. Option `disabled` hoặc nằm trong
+  nếu có), theo đúng thứ tự. `data-swatch` của `<option>` → `swatch` (0.82.0; qua cùng cổng màu, sai → bỏ). Từ 0.84.0 `<optgroup label>` thành **nhóm** (`groups` tự sinh khoá `g0`, `g1`…; option nằm ngoài mọi optgroup xếp cuối,
+  không tiêu đề), và `<option>` đọc thêm `data-icon`, `data-icon-tone`, `data-description`, `data-status` +
+  `data-status-tone`, `data-meta`, `data-keywords` (trước 0.84.0 optgroup bị làm phẳng). Option `disabled` hoặc nằm trong
   `<optgroup disabled>` → `disabled: true`. Key theo `value-key` / `label-key` nếu host có đặt.
 - **lựa chọn**: (1) attribute `value` của host nếu có; (2) nếu không, giá trị **đang chọn** của select — gồm cả lựa chọn
   người dùng đã đổi trước khi JS chạy, và option đầu tiên (không bị vô hiệu) khi không option nào `selected`, như native.
@@ -344,7 +414,9 @@ có khi JS đã nạp — bản `<select>` native không có nó).
 | `placeholder` | string | `Chọn một tùy chọn` | Chữ hiện khi chưa chọn gì. |
 | `searchable` | cờ mặc định BẬT | bật | Hiện ô tìm kiếm trong menu. Tắt: `"false"` / `"0"` / `"off"`. |
 | `allow-clear` | cờ mặc định BẬT | bật | Thêm dòng "Không chọn" ở đầu danh sách khi đã có lựa chọn. Tắt như trên. |
-| `max-height` | number | `5` | Số option hiển thị trước khi cuộn (mỗi option 40px; tối đa 100). Cũng là bước nhảy của PageUp/PageDown. |
+| `max-height` | number | `5` | Số option hiển thị trước khi cuộn (mỗi option 40px; tối đa 100; có dòng giàu thông tin / nhóm thì đo thật, 0.84.0). Cũng là bước nhảy của PageUp/PageDown. |
+| `search-fields` | string | `label description keywords` | **0.84.0** Trường dùng để tìm (cách nhau bởi dấu cách / dấu phẩy). `label` = hành vi cũ. Đổi tại chỗ. |
+| `trigger-icon` | string | — | **0.84.0** `none` / `off` / `false` → trigger không hiện icon của option đã chọn. Giá trị khác dành cho chế độ "chọn để thêm" sắp có. |
 | `value-key` | string | `value` | Key trong object option dùng làm giá trị. |
 | `label-key` | string | `label` | Key trong object option dùng làm chữ hiển thị. |
 | `required` | boolean | `false` | Bắt buộc chọn: `valueMissing` khi trống, `aria-required`, dấu `*` trang trí trong label. |
@@ -353,7 +425,7 @@ có khi JS đã nạp — bản `<select>` native không có nó).
 | `create-label` | string | — | Bật dòng hành động "Thêm mới" cố định ở đáy menu với chữ này (0.22.0). Rỗng / vắng = tắt. Xem [mục 10](#10-dòng--thêm-mới-ở-cuối-menu-create-label-0220). |
 | `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
-Đổi `value`, `placeholder`, `disabled`, `required`, `name`, `aria-label`, `error-text`, `create-label` được cập nhật
+Đổi `value`, `placeholder`, `disabled`, `required`, `name`, `aria-label`, `error-text`, `create-label`, `search-fields` được cập nhật
 **tại chỗ** (giữ focus; menu đang mở vẫn mở). Đổi `label`, `searchable`, `allow-clear`, `max-height`, `value-key`, `label-key` sẽ đóng menu và render lại.
 
 ## Property & method
@@ -365,6 +437,7 @@ có khi JS đã nạp — bản `<select>` native không có nó).
 | `onSelect` | `(item) => void` \| `null` | Callback nhận cả object (`null` khi bỏ chọn). Chạy trước `onChange` (cả hai đều chạy nếu cùng đặt). |
 | `onCreate` | `(query) => void` \| `null` | Callback khi kích hoạt dòng "Thêm mới" (0.22.0); nhận `query` (chuỗi). Chạy trước event `create`; ném lỗi → ghi `console.error`, event vẫn phát. |
 | `createLabel` | `string` (get/set) | Phản chiếu attribute `create-label` (`''` = tắt). |
+| `groups` | `Array<{ key, label }>` (get/set) | **0.84.0** Thứ tự và tiêu đề nhóm ([mục 1b](#1b-dòng-giàu-thông-tin-và-nhóm-084-0)). Gán lại → lọc lại tại chỗ. Gán trước khi define vẫn nhận. |
 | `TdDropdown.labels` | static object | Chữ giao diện, site ghi đè được (xem [dưới](#tddropdownlabels)). |
 | `searchable` | `boolean` (get/set) | Trạng thái thật của cờ. `false` → `searchable="false"`; `true` → xoá attribute. |
 | `allowClear` | `boolean` (get/set) | Tương tự cho `allow-clear`. |
@@ -401,6 +474,7 @@ Object.assign(TdDropdown.labels, {
 | `noResults` | `Không tìm thấy kết quả` | Dòng trạng thái khi tìm không ra |
 | `required` | `Vui lòng chọn một tùy chọn` | Thông điệp `valueMissing` khi `required` |
 | `createWithQuery` | `Thêm “{query}”` | Chữ dòng "Thêm mới" khi đang gõ tìm kiếm; `{query}` = chữ đã gõ (trim). Không gõ gì → dùng `create-label` (0.22.0) |
+| `resultCount` | `{count} kết quả` | **0.84.0** Câu trình đọc màn hình đọc khi đang gõ tìm và có kết quả (ẩn với mắt). `''` = tắt |
 
 Tất cả được escape / đưa vào bằng `textContent`. Placeholder của trigger ("Chọn một tùy chọn") đổi bằng attribute
 `placeholder`.
@@ -441,6 +515,7 @@ Token riêng của dropdown (khai báo trong `@layer td.tokens`, file `component
 | `--td-dropdown-option-selected` | `var(--td-option-selected-bg)` | Nền option đã chọn (0.36.0: nhãn in đậm, ✓ ở cuối, hàng tràn mép). |
 | `--td-dropdown-swatch-size` | `0.75rem` | Cỡ chấm màu của option (0.82.0). |
 | `--td-dropdown-swatch-edge` | `var(--td-color-border-strong)` | Viền 1px quanh chấm để chấm trắng / đen vẫn thấy trên mọi nền (forced-colors: `CanvasText`). |
+| `--td-dropdown-icon-size` | `1.75rem` | **0.84.0** Cạnh ô vuông chứa `icon` của option; hình bên trong bằng 60% cạnh ô. Màu ô lấy theo token `--td-badge-{tone}-*`. |
 | `--td-dropdown-search-bg` | `var(--td-color-hover)` (dark: `rgb(255 255 255 / 6%)`) | Nền ô tìm kiếm. |
 | `--td-dropdown-search-border` | `var(--td-control-border-soft)` | Viền ô tìm kiếm. |
 | `--td-dropdown-hairline` | `var(--td-color-border)` | Đường kẻ dưới ô tìm kiếm và trên dòng "Thêm mới". |
@@ -508,6 +583,31 @@ Xem thêm: [Theming](../customization/theming.md), [Styling](../customization/st
     </div>
   </div>
 </div>
+```
+
+Từ 0.84.0, khi option dùng trường mới (xem [mục 1b](#1b-dòng-giàu-thông-tin-và-nhóm-084-0)):
+
+```html
+<!-- trigger: option đã chọn có icon (tắt bằng trigger-icon="none") -->
+<span class="td-dropdown__value"><span class="td-dropdown__value-icon" data-td-icon="{icon}" aria-hidden="true">…</span>Kho Hà Nội</span>
+
+<!-- vùng trạng thái khi đang gõ và có kết quả: ẩn với mắt, chỉ trình đọc màn hình đọc -->
+<p class="td-dropdown__empty" role="status" data-count>12 kết quả</p>
+
+<!-- trong .td-dropdown__scroller: một nhóm (chỉ khi đã gán groups) -->
+<div class="td-dropdown__group" role="group" aria-labelledby="{host}-grp-0">
+  <div class="td-dropdown__group-label" role="presentation" id="{host}-grp-0">Kho hàng</div>
+  <div class="td-dropdown__option td-dropdown__option--rich" role="option" id="{host}-opt-0" aria-selected="false"
+       aria-labelledby="{host}-opt-0-label" aria-describedby="{host}-opt-0-desc {host}-opt-0-meta" data-value data-index data-nav>
+    <span class="td-dropdown__icon" data-tone="success" data-td-icon="archive" aria-hidden="true">…</span>
+    <span class="td-dropdown__text">
+      <span class="td-dropdown__option-label" id="{host}-opt-0-label">Kho Hà Nội</span>
+      <span class="td-dropdown__desc" id="{host}-opt-0-desc"><span class="td-dropdown__desc-text">Cầu Giấy</span><span class="td-dropdown__status" data-tone="success"><span class="td-dropdown__status-dot" aria-hidden="true"></span>Đang mở</span></span>
+    </span>
+    <span class="td-dropdown__meta" id="{host}-opt-0-meta">128 SP</span>
+  </div>
+</div>
+<!-- option không thuộc nhóm nào: con trực tiếp của .td-dropdown__scroller, sau các nhóm -->
 ```
 
 **0.22.0 đổi cấu trúc menu:** `.td-dropdown__options` (listbox) **không còn cuộn** — vùng cuộn và `max-height` chuyển

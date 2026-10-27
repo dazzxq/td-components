@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.83.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.83.0', __DIR__ . '/public/assets/vendor/td-components/0.83.0');
+ *   require_once '/path/to/vendor/td-components/0.84.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.84.0', __DIR__ . '/public/assets/vendor/td-components/0.84.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -448,7 +448,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.83.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.84.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool, assets?: string} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -1611,6 +1611,12 @@ namespace {
      * `<td-dropdown>` host wrapping a native `<select>` (works without JS; upgraded by the dropdown module — E2).
      * $options: value => label, or a list of ['value' => …, 'label' => …, 'disabled' => bool, 'swatch'? (v0.82.0: a CSS colour, Td::safeColor
      * gate → `data-swatch` on the `<option>`; the component draws a dot; invalid → not printed)].
+     * v0.84.0 rich rows (each printed as a `data-*` on the `<option>` only when valid, all escaped): `icon` (icon name →
+     * `data-icon`), `icon_tone` / `iconTone` (neutral|accent|success|warning|danger|info → `data-icon-tone`; needs an icon),
+     * `description` (`data-description`), `status` (['text' => …, 'tone'? => tone] → `data-status` + `data-status-tone`),
+     * `meta` (`data-meta`), `keywords` (string, or a list of scalars joined with a space → `data-keywords`). Groups (v0.84.0,
+     * one level, like td_multiselect): ['label' => …, 'disabled' => bool, 'options' => [leaves]] → `<optgroup>`; the placeholder
+     * option stays first, outside any group; the search threshold counts the leaves.
      * Options: label, placeholder (⇒ an empty first option + the component's clear option), searchable
      * (absent / null = auto when > 8 options; false, 0 and the strings 'false' / '0' / 'off' / 'no' / '' — trimmed,
      * any case — turn it off; anything else keeps PHP truthiness: true, 1, '1', 'true', 'yes', 'on'… → on), required, disabled, aria_label, id (host; select = {id}-select), class,
@@ -1623,16 +1629,26 @@ namespace {
      */
     function td_dropdown(string $name, array $options, string|int|null $value = '', array $o = []): string
     {
+        // v0.84.0: entries = leaves and groups (one level); $list stays the flat leaf list (search threshold counts leaves).
+        $entries = [];
         $list = [];
         foreach ($options as $k => $v) {
-            if (is_array($v)) {
-                if (!isset($v['value']) || !is_scalar($v['value'])) {
-                    continue;
+            if (is_array($v) && !isset($v['value']) && isset($v['options']) && is_array($v['options'])) {
+                $leaves = [];
+                foreach ($v['options'] as $ik => $iv) {
+                    $leaf = td__dd_leaf($ik, $iv);
+                    if ($leaf !== null) {
+                        $leaves[] = $leaf;
+                        $list[] = $leaf;
+                    }
                 }
-                $list[] = ['value' => (string) $v['value'], 'label' => (string) ($v['label'] ?? $v['value']), 'disabled' => !empty($v['disabled']),
-                    'swatch' => Td::safeColor($v['swatch'] ?? null)]; // v0.82.0: colour dot (same gate as td_choice_group)
-            } elseif (is_scalar($v)) {
-                $list[] = ['value' => (string) $k, 'label' => (string) $v, 'disabled' => false, 'swatch' => ''];
+                $entries[] = ['group' => true, 'label' => td__str($v['label'] ?? null) ?? '', 'disabled' => !empty($v['disabled']), 'leaves' => $leaves];
+            } else {
+                $leaf = td__dd_leaf($k, $v);
+                if ($leaf !== null) {
+                    $entries[] = $leaf;
+                    $list[] = $leaf;
+                }
             }
         }
         $id = isset($o['id']) && is_scalar($o['id']) && (string) $o['id'] !== '' ? (string) $o['id'] : Td::uid('dd-' . $name);
@@ -1694,14 +1710,79 @@ namespace {
         if ($placeholder !== null) {
             $html .= '<option value="">' . Td::e($placeholder) . '</option>';
         }
-        foreach ($list as $opt) {
-            $html .= '<option value="' . Td::e($opt['value']) . '"'
-                . ($current !== '' && $opt['value'] === $current ? ' selected' : '')
-                . ($opt['disabled'] ? ' disabled' : '')
-                . ($opt['swatch'] !== '' ? ' data-swatch="' . Td::e($opt['swatch']) . '"' : '')
-                . '>' . Td::e($opt['label']) . '</option>';
+        foreach ($entries as $ent) {
+            if (!empty($ent['group'])) {
+                $html .= '<optgroup' . Td::ownAttrs(['label' => $ent['label'], 'disabled' => $ent['disabled']]) . '>';
+                foreach ($ent['leaves'] as $opt) {
+                    $html .= td__dd_option($opt, $current);
+                }
+                $html .= '</optgroup>';
+            } else {
+                $html .= td__dd_option($ent, $current);
+            }
         }
         return $html . '</select>' . td__helper_note($help, $id, false) . '</td-dropdown>';
+    }
+
+    /**
+     * @internal v0.84.0 td_dropdown leaf → normalised option (null = dropped). Rich fields are gated: icon (icon-name
+     * pattern), tones (neutral|accent|success|warning|danger|info), status ({text, tone?}), keywords (string | list of
+     * scalars joined with a space), description / meta (non-empty scalar).
+     * @return array<string,mixed>|null
+     */
+    function td__dd_leaf(int|string $k, mixed $v): ?array
+    {
+        $blank = ['description' => '', 'icon' => '', 'icon_tone' => '', 'status' => '', 'status_tone' => '', 'meta' => '', 'keywords' => ''];
+        if (is_array($v)) {
+            if (!isset($v['value']) || !is_scalar($v['value'])) {
+                return null;
+            }
+            $tone = static fn(mixed $t): string => is_string($t) && in_array($t, ['neutral', 'accent', 'success', 'warning', 'danger', 'info'], true) ? $t : '';
+            $text = static fn(mixed $t): string => is_scalar($t) && !is_bool($t) && trim((string) $t) !== '' ? (string) $t : '';
+            $icon = isset($v['icon']) && is_string($v['icon']) && preg_match('/^[a-z][a-z0-9-]{0,63}$/', $v['icon']) === 1 ? $v['icon'] : '';
+            $st = is_array($v['status'] ?? null) ? $v['status'] : [];
+            $status = $text($st['text'] ?? null);
+            $kw = $v['keywords'] ?? null;
+            if (is_array($kw)) {
+                $parts = [];
+                foreach ($kw as $w) {
+                    if (is_scalar($w) && !is_bool($w) && trim((string) $w) !== '') {
+                        $parts[] = (string) $w;
+                    }
+                }
+                $kw = implode(' ', $parts);
+            }
+            return ['value' => (string) $v['value'], 'label' => (string) ($v['label'] ?? $v['value']), 'disabled' => !empty($v['disabled']),
+                'swatch' => Td::safeColor($v['swatch'] ?? null), // v0.82.0: colour dot (same gate as td_choice_group)
+                'description' => $text($v['description'] ?? null),
+                'icon' => $icon,
+                'icon_tone' => $icon !== '' ? $tone($v['icon_tone'] ?? $v['iconTone'] ?? null) : '',
+                'status' => $status,
+                'status_tone' => $status !== '' ? $tone($st['tone'] ?? null) : '',
+                'meta' => $text($v['meta'] ?? null),
+                'keywords' => $text($kw)];
+        }
+        if (is_scalar($v)) {
+            return ['value' => (string) $k, 'label' => (string) $v, 'disabled' => false, 'swatch' => ''] + $blank;
+        }
+        return null;
+    }
+
+    /** @internal v0.84.0 one td_dropdown `<option>` (attribute order: value, selected, disabled, data-swatch, then the rich data-*). */
+    function td__dd_option(array $opt, string $current): string
+    {
+        return '<option value="' . Td::e($opt['value']) . '"'
+            . ($current !== '' && $opt['value'] === $current ? ' selected' : '')
+            . ($opt['disabled'] ? ' disabled' : '')
+            . ($opt['swatch'] !== '' ? ' data-swatch="' . Td::e($opt['swatch']) . '"' : '')
+            . ($opt['icon'] !== '' ? ' data-icon="' . Td::e($opt['icon']) . '"' : '')
+            . ($opt['icon_tone'] !== '' ? ' data-icon-tone="' . Td::e($opt['icon_tone']) . '"' : '')
+            . ($opt['description'] !== '' ? ' data-description="' . Td::e($opt['description']) . '"' : '')
+            . ($opt['status'] !== '' ? ' data-status="' . Td::e($opt['status']) . '"' : '')
+            . ($opt['status_tone'] !== '' ? ' data-status-tone="' . Td::e($opt['status_tone']) . '"' : '')
+            . ($opt['meta'] !== '' ? ' data-meta="' . Td::e($opt['meta']) . '"' : '')
+            . ($opt['keywords'] !== '' ? ' data-keywords="' . Td::e($opt['keywords']) . '"' : '')
+            . '>' . Td::e($opt['label']) . '</option>';
     }
 
     /**

@@ -4,7 +4,7 @@ import { isCoarsePointer } from '../utils/breakpoints.js';
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { LAYERS, register as registerLayer, bridgeTheme } from '../utils/layers.js';
 import { TdFormElement } from '../base/td-form-element.js';
-import { fillIconSlots } from '../icons/td-icon.js';
+import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 
 const CLEAR = '__CLEAR__';
 const OPTION_PX = 40; // --td-dropdown-option-h: `max-height` = visible options × 40 px
@@ -12,7 +12,50 @@ const TYPEAHEAD_MS = 500;
 // v0.82.0: the colourless dot; the colour is set only through circle.setAttribute('fill') (see _applySwatchFills)
 const SWATCH_SVG = '<svg class="td-dropdown__swatch" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><circle cx="6" cy="6" r="6"/></svg>';
 /** Properties that may be set on the element before it upgrades (they would shadow the class accessors). */
-const UPGRADE_PROPS = ['options', 'onChange', 'onSelect', 'onCreate', 'createLabel'];
+const UPGRADE_PROPS = ['options', 'groups', 'onChange', 'onSelect', 'onCreate', 'createLabel'];
+/** v0.84.0: tones of the icon tile / status dot (anything else → neutral). */
+const TONES = ['neutral', 'accent', 'success', 'warning', 'danger', 'info'];
+/** v0.84.0: the fields `search-fields` may name (all three by default). */
+const SEARCH_FIELDS = ['label', 'description', 'keywords'];
+/** v0.84.0: unknown option icon names already warned about (once per name per page; capped — security review). */
+const WARNED_ICONS = new Set();
+const WARNED_ICONS_MAX = 100;
+/** v0.84.0: the icon-name grammar of the registry (src/icons/td-icon.js NAME_RE — registerIcons enforces it). */
+const ICON_NAME_RE = /^[a-z][a-z0-9-]{0,63}$/;
+
+/** @private a non-empty string / finite number, trimmed; anything else → '' */
+function textOf(v) {
+  if (typeof v === 'number') return Number.isFinite(v) ? String(v) : '';
+  return typeof v === 'string' ? v.trim() : '';
+}
+
+/** @private an allowed tone, else 'neutral' */
+function toneOf(v) {
+  return TONES.includes(v) ? v : 'neutral';
+}
+
+/**
+ * @private v0.84.0: a registered icon name ('' for none). An unknown name warns once per name per page and gives ''
+ * (its slot is never printed, so fillIconSlots never warns about it). Never SVG / HTML from the option.
+ */
+function iconOf(v) {
+  if (typeof v !== 'string' || !v) return '';
+  // malformed names (never registrable) share one fixed key: nothing long or odd is retained or logged
+  const key = ICON_NAME_RE.test(v) ? v : '';
+  if (key && hasIcon(key)) return key;
+  if (!WARNED_ICONS.has(key) && WARNED_ICONS.size < WARNED_ICONS_MAX) {
+    WARNED_ICONS.add(key);
+    console.warn(key ? `td-dropdown: unknown icon "${key}"` : 'td-dropdown: invalid icon name');
+  }
+  return '';
+}
+
+/** @private v0.84.0: `keywords` (a string, or an array of strings / numbers) flattened with ' '; else '' */
+function keywordsOf(v) {
+  if (typeof v === 'string') return v;
+  if (!Array.isArray(v)) return '';
+  return v.filter((k) => typeof k === 'string' || (typeof k === 'number' && Number.isFinite(k))).join(' ');
+}
 
 /** @private Run a site callback; a throw is logged and never breaks the component flow. */
 function safeCall(fn, arg, what) {
@@ -36,7 +79,7 @@ function safeCall(fn, arg, what) {
  *       [<label class="td-field__label" id="{host}-label" for="{host}-trigger">{label}[<span class="td-field__required"> *</span>]</label>]
  *       <button type="button" class="td-dropdown__trigger" id="{host}-trigger" role="combobox" aria-haspopup="listbox"
  *               aria-expanded aria-controls="{host}-listbox" [aria-activedescendant] [aria-required] [aria-invalid] …>
- *         <span class="td-dropdown__value" [data-placeholder]>…</span>
+ *         <span class="td-dropdown__value" [data-placeholder]>[swatch svg][<span class="td-dropdown__value-icon" data-td-icon aria-hidden="true">]…</span>
  *         <span class="td-dropdown__arrow" data-td-icon="down" aria-hidden="true"></span>
  *       </button>
  *     </div>
@@ -46,11 +89,22 @@ function safeCall(fn, arg, what) {
  *   <div class="td-dropdown__menu td-glass-surface td-glass-surface--strong" id="{host}-menu" hidden data-state data-placement>
  *     [<div class="td-dropdown__search-wrap"><input class="td-dropdown__search" aria-label="{labels.search}" aria-autocomplete="list"
  *        aria-controls="{host}-listbox" [aria-activedescendant]></div>]
- *     <p class="td-dropdown__empty" role="status">[{labels.noResults}]</p>
+ *     <p class="td-dropdown__empty" role="status" [data-count]>[{labels.noResults} | {labels.resultCount} (visually hidden)]</p>
  *     <div class="td-dropdown__options" role="listbox" id="{host}-listbox">          (not scrolling — v0.22.0)
  *       <div class="td-dropdown__scroller" role="presentation">                       (the scroll area, gets max-height)
  *         [<div class="td-dropdown__option td-dropdown__option--clear" role="option" id="{host}-opt-clear" data-value="__CLEAR__" data-nav>…]
  *         <div class="td-dropdown__option" role="option" id="{host}-opt-{i}" aria-selected data-value data-index data-nav [data-active]>…
+ *         v0.84.0 rich row (icon / description / status / meta), r = {host}-opt-{i}:
+ *         <div class="td-dropdown__option td-dropdown__option--rich" role="option" id="r" aria-selected [aria-disabled]
+ *              [aria-labelledby="r-label" aria-describedby="[r-desc] [r-meta]"] data-value data-index data-nav>
+ *           [swatch svg][<span class="td-dropdown__icon" data-tone data-td-icon aria-hidden="true">]
+ *           <span class="td-dropdown__text"><span class="td-dropdown__option-label" id="r-label">…</span>
+ *             [<span class="td-dropdown__desc" id="r-desc">[<span class="td-dropdown__desc-text">…</span>]
+ *               [<span class="td-dropdown__status" data-tone><span class="td-dropdown__status-dot" aria-hidden="true"></span>…</span>]</span>]</span>
+ *           [<span class="td-dropdown__meta" id="r-meta">…</span>][<span class="td-dropdown__check" …>]</div>
+ *         v0.84.0 groups (`groups` set): [<div class="td-dropdown__group" role="group" aria-labelledby="{host}-grp-{n}">
+ *           <div class="td-dropdown__group-label" role="presentation" id="{host}-grp-{n}">…</div> rows…</div>]
+ *         then the rows of no / an unknown group (no header, no wrapper)
  *       </div>
  *       [<div class="td-dropdown__option td-dropdown__option--create" role="option" id="{host}-opt-create" aria-selected="false" data-nav>
  *          <span class="td-dropdown__create-icon" data-td-icon="plus" aria-hidden="true"></span><span class="td-dropdown__option-label">…</span></div>]
@@ -73,8 +127,11 @@ function safeCall(fn, arg, what) {
  * and state restore (bfcache/autofill re-selects by value). Error contract: `error-text`, `setError()`, `clearError()`.
  *
  * **Progressive enhancement from a native `<select>` (0.17.0 E2):** on the FIRST connect, a direct child `<select>` (and
- * no `options` assigned from JS) is read into `options` — `<optgroup>` flattened (group labels dropped), an option is
- * disabled when it or its `<optgroup>` is. Selection: the host `value` attribute if present, else the select's LIVE
+ * no `options` assigned from JS) is read into `options` — since v0.84.0 `<optgroup>`s are kept: `groups` =
+ * `[{ key: 'g{n}', label }]` and their options get `group: 'g{n}'` (options outside any optgroup form the trailing
+ * section, so an option placed between optgroups moves to the end); `data-icon` / `data-icon-tone` / `data-description` /
+ * `data-status` + `data-status-tone` / `data-meta` / `data-keywords` become the v0.84.0 fields (absent = no key). An
+ * option is disabled when it or its `<optgroup>` is. Selection: the host `value` attribute if present, else the select's LIVE
  * `value` (a choice the user made before JS ran, or the first option when none is `selected`). Reset returns to the
  * native default (last `selected` option, else the first enabled one). `name` / `required` / `disabled` / `aria-label`
  * are taken from the select when the host lacks them; `<label for="{select id}">` is re-pointed at the host. The select
@@ -105,16 +162,28 @@ function safeCall(fn, arg, what) {
  * @attr {string} value - Initial selected value (the attribute is NOT live — read/write the `value` property)
  * @attr {string} error-text - Error message (aria-invalid + note; 0.9.0)
  * @attr {string} create-label - Shows a fixed "add new" action row at the bottom of the menu (v0.22.0; empty = off)
+ * @attr {string} search-fields - v0.84.0: what the search matches, a space / comma separated subset of
+ *   `label description keywords` (default all three; unknown tokens ignored). Changing it re-filters in place.
+ * @attr {string} trigger-icon - v0.84.0: `none` / `off` / `false` = the trigger shows no option icon (text only). Any
+ *   other value is reserved (v0.85.0 action mode: a fixed icon name) and ignored in select mode.
  * @fires change - When selection changes, detail: { value, item }
  * @fires create - The create row was activated, detail: { query } (search text trimmed, '' without one). Never a value:
  *   no selection change, no `change`, nothing submitted. Order: query snapshot → menu closed + focus on the trigger →
  *   `onCreate(query)` → `create`.
  *
- * Texts: `TdDropdown.labels` (`search`, `none`, `noResults`, `required`, `createWithQuery`) — override per site.
+ * Texts: `TdDropdown.labels` (`search`, `none`, `noResults`, `required`, `createWithQuery`, `resultCount`) — override
+ * per site.
  *
  * @property {Array<Object>} options - Array of option objects set via JS property (may be set before the element is
  *   defined). Re-assigning keeps the current selection when its value is still listed (else it is dropped); the
- *   `value` attribute only picks the initial selection.
+ *   `value` attribute only picks the initial selection. v0.84.0 optional fields (fixed names, not `value-key` /
+ *   `label-key`): `icon` (registered icon name, in a toned tile; also shown on the trigger), `iconTone`, `description`
+ *   (second line), `status` ({ tone, text }: dot + text), `meta` (muted, inline end), `keywords` (string | array, search
+ *   only), `group` (a `groups` key). Tones: neutral / accent / success / warning / danger / info (else neutral). An
+ *   option with none of icon / description / status / meta renders the plain 0.83.0 row.
+ * @property {Array<{key: string, label: string}>} groups - v0.84.0: ordered group headers (may be set before the
+ *   element is defined). Non-empty → options are shown group by group (`group` = a key), then the options of no / an
+ *   unknown group as a trailing section without a header. Empty / not an array → `group` is ignored.
  * @property {string|null} value - The selected value, live (= `getValue()`; set = `setValue()`) — 0.17.0; before that
  *   it returned the `value` attribute. Before the first connect, setting it sets the initial `value` attribute.
  * @property {Function} onChange - Callback receiving the value (or null) on a user selection
@@ -127,7 +196,7 @@ function safeCall(fn, arg, what) {
 export class TdDropdown extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'placeholder', 'searchable', 'allow-clear', 'max-height', 'value-key',
-      'label-key', 'value', 'label', 'error-text', 'aria-label', 'create-label'];
+      'label-key', 'value', 'label', 'error-text', 'aria-label', 'create-label', 'search-fields', 'trigger-icon'];
   }
 
   static get errorContract() { return true; }
@@ -155,6 +224,11 @@ export class TdDropdown extends TdFormElement {
     required: 'Vui lòng chọn một tùy chọn',
     /** v0.22.0: the create row while a search text is typed (`{query}` = the trimmed text); else `create-label`. */
     createWithQuery: 'Thêm “{query}”',
+    /**
+     * v0.84.0: screen-reader-only result count while a search text is typed and something matches (`{count}` = the
+     * matching options; the clear / create rows are not counted). '' = off.
+     */
+    resultCount: '{count} kết quả',
   };
 
   /** @type {TdDropdown[]} Track all open dropdowns for closeAllExcept */
@@ -163,6 +237,10 @@ export class TdDropdown extends TdFormElement {
   constructor() {
     super();
     this._options = [];
+    /** @private v0.84.0: the `groups` property as assigned (raw) */
+    this._groups = [];
+    /** @private v0.84.0: the rendered list has a rich row or a group header → measured listMax (see _placeMenu) */
+    this._measured = false;
     this._selectedItem = null;
     /** @private A value set before its option existed; resolved when options arrive. */
     this._pendingValue = null;
@@ -288,11 +366,24 @@ export class TdDropdown extends TdFormElement {
     const ph = all[0] && all[0].value === '' ? all[0] : null;
     if (ph && !this.hasAttribute('placeholder') && ph.label.trim()) this.setAttribute('placeholder', ph.label.trim());
     const opts = ph ? all.slice(1) : all;
+    // v0.84.0: <optgroup>s are kept → `groups` [{ key: 'g{n}', label }] + `group` on their options
+    const optgroups = [...select.children].filter((c) => c.localName === 'optgroup');
+    const groupOf = new Map(optgroups.map((g, n) => [g, `g${n}`]));
     const items = opts.map((opt) => {
       const item = { [vk]: opt.value, [lk]: opt.label.trim() };
       if (isOff(opt)) item.disabled = true;
       const sw = this.safeColor(opt.dataset.swatch); // v0.82.0: <option data-swatch="#f00"> → item.swatch
       if (sw) item.swatch = sw;
+      // v0.84.0 data-* → the rich fields (gated at render); an absent / empty attribute adds no key
+      const d = opt.dataset;
+      if (d.icon) item.icon = d.icon;
+      if (d.iconTone) item.iconTone = d.iconTone;
+      if (d.description) item.description = d.description;
+      if (d.status) item.status = d.statusTone ? { text: d.status, tone: d.statusTone } : { text: d.status };
+      if (d.meta) item.meta = d.meta;
+      if (d.keywords) item.keywords = d.keywords;
+      const g = opt.parentElement && groupOf.get(opt.parentElement);
+      if (g) item.group = g;
       return item;
     });
     // Native reset rule: the last `selected` option, else the first enabled one.
@@ -318,6 +409,7 @@ export class TdDropdown extends TdFormElement {
     }
     select.remove();
 
+    if (optgroups.length) this.groups = optgroups.map((g, n) => ({ key: `g${n}`, label: g.label.trim() }));
     this.options = items;
     // (1) the host `value` attribute resolves through the deferred initial selection; (2) else the live select value.
     // map the exact selected <option> to its item (a selected leading placeholder = no selection)
@@ -372,7 +464,7 @@ export class TdDropdown extends TdFormElement {
   get options() { return this._options; }
   set options(data) {
     this._options = Array.isArray(data) ? data : [];
-    this._filteredData = [...this._options];
+    this._filteredData = this._ordered(this._options);
     if (!this._optionsInit) {
       this._optionsInit = true;
       // Before the first connect, early properties (value, value-key…) may still be replayed: defer (see _setupProperties).
@@ -388,6 +480,13 @@ export class TdDropdown extends TdFormElement {
       this.setValue(this._pendingValue);
     }
     this._renderMenuOptions();
+  }
+
+  /** v0.84.0: ordered group headers [{ key, label }]; re-assigning re-filters in place (as `options`). */
+  get groups() { return this._groups; }
+  set groups(v) {
+    this._groups = Array.isArray(v) ? v : [];
+    this._handleSearch(this._query());
   }
 
   get onChange() { return this._onChange; }
@@ -441,6 +540,99 @@ export class TdDropdown extends TdFormElement {
   _getCreateLabel() { return this.getAttribute('create-label') || ''; }
   /** `null` = no `value` attribute; `''` is an explicit value (a real empty-valued option — review v0.17.0 ISSUE-5). */
   _getInitialValue() { return this.hasAttribute('value') ? this.getAttribute('value') : null; }
+  /** @private the current search text (raw; '' without a search box) */
+  _query() {
+    const search = this._search();
+    return search ? String(search.value) : '';
+  }
+  /** @private v0.84.0: `search-fields` tokens that are known; none valid / empty → all three */
+  _searchFields() {
+    const tokens = String(this.getAttribute('search-fields') || '').toLowerCase().split(/[\s,]+/)
+      .filter((t) => SEARCH_FIELDS.includes(t));
+    return new Set(tokens.length ? tokens : SEARCH_FIELDS);
+  }
+  /** @private v0.84.0: `trigger-icon="none" | "off" | "false"` → the trigger shows no option icon */
+  _triggerIconOff() {
+    const v = (this.getAttribute('trigger-icon') || '').trim().toLowerCase();
+    return v === 'none' || v === 'off' || v === 'false';
+  }
+  /** @private v0.84.0: the selected option's icon for the trigger ('' = none / off) */
+  _triggerIconOf(item) {
+    return item && !this._triggerIconOff() ? iconOf(item.icon) : '';
+  }
+
+  /**
+   * @private v0.84.0: `groups` key → its index in `groups` (null = grouping off: `groups` empty / not an array).
+   * Entries that are not objects with a string / number key are skipped (their index is kept for the others).
+   * @returns {Map<string, number>|null}
+   */
+  _groupIndex() {
+    const groups = this._groups;
+    if (!Array.isArray(groups) || !groups.length) return null;
+    const map = new Map();
+    groups.forEach((g, n) => {
+      const key = g && typeof g === 'object' ? textOf(g.key) : '';
+      if (key && !map.has(key)) map.set(key, n);
+    });
+    return map;
+  }
+
+  /** @private v0.84.0: the group index of an item (-1 = no / an unknown group, the trailing section) */
+  _groupOf(item, index) {
+    if (!index || !item || typeof item !== 'object') return -1;
+    const key = textOf(item.group);
+    return key && index.has(key) ? index.get(key) : -1;
+  }
+
+  /**
+   * @private v0.84.0: `list` in DISPLAY order — each declared group in `groups` order (array order inside it), then the
+   * no / unknown group options. Without groups: a plain copy. `_filteredData` is always this flat display-ordered list
+   * (data-index, row ids and _applySwatchFills index into it); `_options` stays the site's raw array.
+   * @param {Array<Object>} list
+   */
+  _ordered(list) {
+    const index = this._groupIndex();
+    if (!index) return [...list];
+    const buckets = this._groups.map(() => []);
+    const rest = [];
+    for (const item of list) {
+      const n = this._groupOf(item, index);
+      (n < 0 ? rest : buckets[n]).push(item);
+    }
+    return [...buckets.flat(), ...rest];
+  }
+
+  /**
+   * @private v0.84.0: the gated rich parts of an option, or null for a plain (0.83.0) row. Rich = a registered `icon`,
+   * a non-empty `description`, a `status` with a non-empty `text` or a non-empty `meta`.
+   * @returns {{ icon: string, tone: string, desc: string, status: {tone: string, text: string}|null, meta: string }|null}
+   */
+  _richOf(item) {
+    if (!item || typeof item !== 'object') return null;
+    const icon = iconOf(item.icon);
+    const desc = textOf(item.description);
+    const st = item.status && typeof item.status === 'object' ? item.status : null;
+    const stText = st ? textOf(st.text) : '';
+    const status = stText ? { tone: toneOf(st.tone), text: stText } : null;
+    const meta = textOf(item.meta);
+    if (!icon && !desc && !status && !meta) return null;
+    return { icon, tone: toneOf(item.iconTone), desc, status, meta };
+  }
+
+  /** @private v0.84.0: does `item` match the folded query `q` in the `search-fields`? */
+  _matches(item, q, fields, labelKey) {
+    if (fields.has('label') && fold(item[labelKey]).includes(q)) return true;
+    if (!item || typeof item !== 'object') return false;
+    if (fields.has('description')) {
+      const d = textOf(item.description);
+      if (d && fold(d).includes(q)) return true;
+    }
+    if (fields.has('keywords')) {
+      const k = keywordsOf(item.keywords);
+      if (k && fold(k).includes(q)) return true;
+    }
+    return false;
+  }
 
   // --- Rendering ---
 
@@ -452,13 +644,15 @@ export class TdDropdown extends TdFormElement {
     const text = placeholder ? this._getPlaceholder() : this._selectedItem[this._getLabelKey()];
     // v0.82.0: a valid swatch prints a colourless dot; _applySwatchFills() sets its `fill` after render
     const dot = !placeholder && this._swatchOf(this._selectedItem) ? SWATCH_SVG : '';
+    // v0.84.0: the option icon (filled by fillIconSlots in afterRender), after the dot
+    const icon = placeholder ? '' : this._triggerIconHtml(this._selectedItem);
     const labelHtml = label
       ? `<label class="td-field__label" id="${id}-label" for="${id}-trigger">${esc(label)}</label>`
       : '';
     return `<div class="td-dropdown" data-state="${this._isOpen ? 'open' : 'closed'}">${labelHtml}`
       + `<button type="button" class="td-dropdown__trigger" id="${id}-trigger" role="combobox" aria-haspopup="listbox"`
       + ` aria-expanded="${this._isOpen}" aria-controls="${id}-listbox"${this._isDisabled() ? ' disabled' : ''}>`
-      + `<span class="td-dropdown__value"${placeholder ? ' data-placeholder' : ''}>${dot}${esc(text)}</span>`
+      + `<span class="td-dropdown__value"${placeholder ? ' data-placeholder' : ''}>${dot}${icon}${esc(text)}</span>`
       + '<span class="td-dropdown__arrow" data-td-icon="down" aria-hidden="true"></span>'
       + '</button></div>';
   }
@@ -504,7 +698,10 @@ export class TdDropdown extends TdFormElement {
     this._applyErrorState();
   }
 
-  /** In place: `value`, `placeholder`, `disabled`, `required`, `name`, `aria-label`, `error-text`. */
+  /**
+   * In place: `value`, `placeholder`, `disabled`, `required`, `name`, `aria-label`, `error-text`, `create-label`,
+   * `search-fields`, `trigger-icon`.
+   */
   attributeChangedCallback(name, oldVal, newVal) {
     if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (oldVal === newVal) return;
@@ -537,6 +734,13 @@ export class TdDropdown extends TdFormElement {
         // in place: only the create row changes (an open menu stays open, re-measured)
         this._renderMenuOptions();
         if (this._isOpen) this._updatePosition();
+        return;
+      case 'search-fields':
+        // v0.84.0: re-filter in place with the current search text (an open menu stays open)
+        this._handleSearch(this._query());
+        return;
+      case 'trigger-icon':
+        this._updateValueText(); // v0.84.0: only the trigger's value span changes
         return;
       default:
         // label, searchable, allow-clear, max-height, value-key, label-key → structure changes.
@@ -601,13 +805,28 @@ export class TdDropdown extends TdFormElement {
     if (this._selectedItem) {
       span.textContent = String(this._selectedItem[this._getLabelKey()]);
       span.removeAttribute('data-placeholder');
-      if (this._swatchOf(this._selectedItem)) span.insertAdjacentHTML('afterbegin', SWATCH_SVG);
+      // dot, then the v0.84.0 icon slot (re-created: textContent above wiped it), filled here
+      const icon = this._triggerIconHtml(this._selectedItem);
+      const lead = (this._swatchOf(this._selectedItem) ? SWATCH_SVG : '') + icon;
+      if (lead) span.insertAdjacentHTML('afterbegin', lead);
+      if (icon) fillIconSlots(span, '.td-dropdown__value-icon');
     } else {
       span.textContent = this._getPlaceholder();
       span.setAttribute('data-placeholder', '');
     }
     this._applySwatchFills();
     this._scheduleValueTitle();
+  }
+
+  /**
+   * @private v0.84.0: the trigger's icon slot for `item` ('' = none): plain currentColor, aria-hidden (the name and
+   * `title` stay the label text — the svg has no text).
+   */
+  _triggerIconHtml(item) {
+    const name = this._triggerIconOf(item);
+    return name
+      ? `<span class="td-dropdown__value-icon" data-td-icon="${this.escapeHtml(name)}" aria-hidden="true"></span>`
+      : '';
   }
 
   /** @private v0.82.0: the option's colour when it passes the safeColor gate (same as td-choice-group), else ''. */
@@ -780,17 +999,46 @@ export class TdDropdown extends TdFormElement {
       html += `<div class="td-dropdown__option td-dropdown__option--clear" role="option" id="${id}-opt-clear"`
         + ` aria-selected="false" data-value="${CLEAR}" data-nav="${nav.length - 1}"><span class="td-dropdown__option-label">${esc(TdDropdown.labels.none ?? '')}</span></div>`;
     }
+    // v0.84.0: group wrappers (only while `groups` is set); `_filteredData` is already in display order
+    const groupIndex = this._groupIndex();
+    let openGroup = -1; // index of the group whose wrapper is open (-1 = none)
+    let measured = false; // a rich row or a group header is rendered → measured listMax
+    const wasMeasured = this._measured;
     this._filteredData.forEach((item, index) => {
+      if (groupIndex) {
+        const n = this._groupOf(item, groupIndex);
+        if (n !== openGroup) {
+          if (openGroup >= 0) html += '</div>';
+          openGroup = -1;
+          const label = n >= 0 ? textOf(this._groups[n].label) : '';
+          if (label) {
+            // a declared group with an empty label prints its rows unwrapped (like the trailing section)
+            openGroup = n;
+            measured = true;
+            html += `<div class="td-dropdown__group" role="group" aria-labelledby="${id}-grp-${n}">`
+              + `<div class="td-dropdown__group-label" role="presentation" id="${id}-grp-${n}">${esc(label)}</div>`;
+          }
+        }
+      }
       const selected = this._isSelected(item);
       nav.push({ item });
-      html += `<div class="td-dropdown__option" role="option" id="${id}-opt-${index}" aria-selected="${selected}"`
-        + `${this._isItemDisabled(item) ? ' aria-disabled="true"' : ''}`
-        + ` data-value="${esc(item[valueKey])}" data-index="${index}" data-nav="${nav.length - 1}">`
-        + (this._swatchOf(item) ? SWATCH_SVG : '')
-        + `<span class="td-dropdown__option-label">${esc(item[labelKey])}</span>`
-        + (selected ? '<span class="td-dropdown__check" data-td-icon="check" aria-hidden="true"></span>' : '')
-        + '</div>';
+      const rich = this._richOf(item);
+      if (!rich) {
+        // the plain row: exactly the 0.83.0 string (hard compatibility rule)
+        html += `<div class="td-dropdown__option" role="option" id="${id}-opt-${index}" aria-selected="${selected}"`
+          + `${this._isItemDisabled(item) ? ' aria-disabled="true"' : ''}`
+          + ` data-value="${esc(item[valueKey])}" data-index="${index}" data-nav="${nav.length - 1}">`
+          + (this._swatchOf(item) ? SWATCH_SVG : '')
+          + `<span class="td-dropdown__option-label">${esc(item[labelKey])}</span>`
+          + (selected ? '<span class="td-dropdown__check" data-td-icon="check" aria-hidden="true"></span>' : '')
+          + '</div>';
+        return;
+      }
+      measured = true;
+      html += this._richRowHtml(item, rich, `${id}-opt-${index}`, index, nav.length - 1, selected);
     });
+    if (openGroup >= 0) html += '</div>';
+    this._measured = measured;
     scroller.innerHTML = html;
     this._applySwatchFills();
     // v0.22.0: the create row — last direct child of the listbox, outside the scroller, never filtered, never a value.
@@ -807,11 +1055,52 @@ export class TdDropdown extends TdFormElement {
     this._nav = nav;
     const empty = this._menuElement.querySelector('.td-dropdown__empty');
     if (empty) {
-      const msg = this._filteredData.length ? '' : String(TdDropdown.labels.noResults ?? '');
+      let msg = this._filteredData.length ? '' : String(TdDropdown.labels.noResults ?? '');
+      // v0.84.0: the result count (visually hidden via [data-count]) only with a typed query and ≥ 1 match
+      let count = false;
+      if (this._filteredData.length && this._query().trim()) {
+        const tpl = String(TdDropdown.labels.resultCount ?? '');
+        if (tpl) {
+          msg = tpl.split('{count}').join(String(this._filteredData.length));
+          count = true;
+        }
+      }
+      if (count !== empty.hasAttribute('data-count')) empty.toggleAttribute('data-count', count);
       if (empty.textContent !== msg) empty.textContent = msg;
     }
     if (this._activeIndex >= nav.length) this._activeIndex = -1;
     this._syncActive(false);
+    // v0.84.0: rows of mixed heights → re-measure the scroller while open (also when leaving the measured layout)
+    if (this._isOpen && (measured || wasMeasured)) this._updatePosition();
+  }
+
+  /**
+   * @private v0.84.0: one rich row (see the DOM sketch). Name = the label (`aria-labelledby` when there is a
+   * description / meta part); description, status and meta = the accessible description. Every text is escaped; the
+   * icon is a registered name only (filled by fillIconSlots); tones come from the allowlist.
+   */
+  _richRowHtml(item, rich, rid, index, navIndex, selected) {
+    const esc = (s) => this.escapeHtml(String(s));
+    const hasDesc = !!(rich.desc || rich.status);
+    const described = [hasDesc ? `${rid}-desc` : '', rich.meta ? `${rid}-meta` : ''].filter(Boolean);
+    const aria = described.length ? ` aria-labelledby="${rid}-label" aria-describedby="${described.join(' ')}"` : '';
+    const desc = hasDesc
+      ? `<span class="td-dropdown__desc" id="${rid}-desc">`
+        + (rich.desc ? `<span class="td-dropdown__desc-text">${esc(rich.desc)}</span>` : '')
+        + (rich.status
+          ? `<span class="td-dropdown__status" data-tone="${rich.status.tone}"><span class="td-dropdown__status-dot" aria-hidden="true"></span>${esc(rich.status.text)}</span>`
+          : '')
+        + '</span>'
+      : '';
+    return `<div class="td-dropdown__option td-dropdown__option--rich" role="option" id="${rid}" aria-selected="${selected}"`
+      + `${this._isItemDisabled(item) ? ' aria-disabled="true"' : ''}${aria}`
+      + ` data-value="${esc(item[this._getValueKey()])}" data-index="${index}" data-nav="${navIndex}">`
+      + (this._swatchOf(item) ? SWATCH_SVG : '')
+      + (rich.icon ? `<span class="td-dropdown__icon" data-tone="${rich.tone}" data-td-icon="${esc(rich.icon)}" aria-hidden="true"></span>` : '')
+      + `<span class="td-dropdown__text"><span class="td-dropdown__option-label" id="${rid}-label">${esc(item[this._getLabelKey()])}</span>${desc}</span>`
+      + (rich.meta ? `<span class="td-dropdown__meta" id="${rid}-meta">${esc(rich.meta)}</span>` : '')
+      + (selected ? '<span class="td-dropdown__check" data-td-icon="check" aria-hidden="true"></span>' : '')
+      + '</div>';
   }
 
   /**
@@ -875,6 +1164,11 @@ export class TdDropdown extends TdFormElement {
     const scroller = this._scroller();
     if (activeEl && scroll && scroller && scroller.contains(activeEl) && typeof activeEl.scrollIntoView === 'function') {
       activeEl.scrollIntoView({ block: 'nearest' });
+      // v0.84.0: the first row of a group also brings its header into view (moving up into a group shows its title)
+      const head = activeEl.previousElementSibling;
+      if (head && head.classList.contains('td-dropdown__group-label') && typeof head.scrollIntoView === 'function') {
+        head.scrollIntoView({ block: 'nearest' });
+      }
     }
   }
 
@@ -1127,14 +1421,18 @@ export class TdDropdown extends TdFormElement {
   // --- Search ---
 
   _handleSearch(query) {
-    // Case- and diacritic-insensitive ("ha noi" finds "Hà Nội"), like the type-ahead.
+    // Case- and diacritic-insensitive ("ha noi" finds "Hà Nội"), like the type-ahead. v0.84.0: label, description and
+    // keywords by default (`search-fields` restricts it); the result is in display (group) order.
     const q = fold(query).trim();
     const labelKey = this._getLabelKey();
-    this._filteredData = !q
-      ? [...this._options]
-      : this._options.filter((item) => fold(item[labelKey]).includes(q));
+    const fields = this._searchFields();
+    this._filteredData = this._ordered(!q
+      ? this._options
+      : this._options.filter((item) => this._matches(item, q, fields, labelKey)));
     this._renderMenuOptions();
-    // Active = first matching option (the clear option is skipped).
+    // Active = first matching option (the clear option is skipped). Closed (a `groups` / `search-fields` change): open()
+    // picks the active option.
+    if (!this._isOpen) return;
     const first = this._nav.findIndex((n) => n.item && !this._isItemDisabled(n.item));
     this._setActive(first);
   }
@@ -1312,7 +1610,7 @@ export class TdDropdown extends TdFormElement {
     // Reset search
     if (searchInput && (searchInput.value || this._filteredData.length !== this._options.length)) {
       searchInput.value = '';
-      this._filteredData = [...this._options];
+      this._filteredData = this._ordered(this._options);
       this._renderMenuOptions();
     } else if (wasOpen) {
       this._syncActive(false);
@@ -1378,11 +1676,27 @@ export class TdDropdown extends TdFormElement {
   _placeMenu(rect) {
     const menu = this._menuElement;
     if (!menu) return;
+    const scroller = this._scroller();
+    let listMax = this._getMaxHeight() * OPTION_PX;
+    let scrollTop = null;
+    if (this._measured && scroller) {
+      // v0.84.0 measured layout (rich rows / group headers: mixed heights): the scroller shows exactly N option rows
+      // (N = max-height; the clear row counts, group headers add their height but are not rows); fewer than N + 1 rows
+      // → natural height (placeFloating still caps it to the viewport).
+      scrollTop = scroller.scrollTop;
+      scroller.style.removeProperty('max-height');
+      const n = this._getMaxHeight();
+      const rows = scroller.querySelectorAll('.td-dropdown__option');
+      listMax = rows.length > n
+        ? rows[n - 1].getBoundingClientRect().bottom - scroller.getBoundingClientRect().top
+        : 0;
+    }
     const { side } = placeFloating(rect, menu, {
       width: 'match',
-      list: this._scroller(),
-      listMax: this._getMaxHeight() * OPTION_PX,
+      list: scroller,
+      listMax,
     });
+    if (scrollTop != null) scroller.scrollTop = scrollTop;
     menu.setAttribute('data-placement', side);
   }
 
@@ -1441,7 +1755,7 @@ export class TdDropdown extends TdFormElement {
    */
   updateData(newData) {
     this._options = Array.isArray(newData) ? newData : [];
-    this._filteredData = [...this._options];
+    this._filteredData = this._ordered(this._options);
     this._optionsInit = true;
     this._reconcileSelection();
     // Resolve a value set before these options arrived (same as the `options` setter).

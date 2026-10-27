@@ -78,6 +78,8 @@ v0.22.0: `.td-dropdown__options` (listbox) no longer scrolls — `.td-dropdown__
 new state `create` (`create-label` + 12 options: listbox, scroller, pinned `.td-dropdown__option--create` + its icon).
 v0.26.0: `ssr` (PHP `td_dropdown(…, ['element' => true])` shell `dropdown@1` — label + required star + styled
 `select.td-dropdown__native` — upgraded to the trigger under the strict CSP).
+v0.84.0: `rich` (icon tile + tones, description, status dot, meta, disabled rich row, trigger value icon) and `groups`
+(`groups` property: role=group wrappers + headers, the visually hidden result count `.td-dropdown__empty[data-count]`).
 
 ### td-button (1 declarative — variant glass OR custom-color inline style)
 Styled el: inner `button` (bg/box-shadow/backdrop-filter from `_glassStyles[variant]`, or

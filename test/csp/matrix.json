@@ -1465,6 +1465,82 @@
         "bottom",
         "margin-left"
       ]
+    },
+    {
+      "state": "rich",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Kho'); d.setAttribute('searchable','false'); d.setAttribute('value','a'); window.__mount.appendChild(d); d.options=[{value:'a',label:'Kho chính',icon:'archive',iconTone:'accent',description:'Hà Nội',status:{tone:'success',text:'Đang mở'},meta:'12 SP'},{value:'b',label:'Kho phụ',icon:'inbox',description:'Sài Gòn',status:{tone:'danger',text:'Đóng'},meta:'3',disabled:true},{value:'c',label:'Thường'}]; d.open();",
+      "selectors": [
+        ".td-dropdown__value",
+        ".td-dropdown__value-icon",
+        ".td-dropdown__menu",
+        ".td-dropdown__option--rich",
+        ".td-dropdown__option--rich[aria-disabled=\"true\"]",
+        ".td-dropdown__icon",
+        ".td-dropdown__icon .td-icon",
+        ".td-dropdown__text",
+        ".td-dropdown__desc",
+        ".td-dropdown__desc-text",
+        ".td-dropdown__status",
+        ".td-dropdown__status-dot",
+        ".td-dropdown__meta",
+        ".td-dropdown__option--rich[aria-disabled=\"true\"] .td-dropdown__status-dot",
+        ".td-dropdown__option--rich[aria-disabled=\"true\"] .td-dropdown__desc"
+      ],
+      "portal": [
+        ".td-dropdown__menu",
+        ".td-dropdown__option--rich",
+        ".td-dropdown__option--rich[aria-disabled=\"true\"]",
+        ".td-dropdown__icon",
+        ".td-dropdown__icon .td-icon",
+        ".td-dropdown__text",
+        ".td-dropdown__desc",
+        ".td-dropdown__desc-text",
+        ".td-dropdown__status",
+        ".td-dropdown__status-dot",
+        ".td-dropdown__meta",
+        ".td-dropdown__option--rich[aria-disabled=\"true\"] .td-dropdown__status-dot",
+        ".td-dropdown__option--rich[aria-disabled=\"true\"] .td-dropdown__desc"
+      ],
+      "settle": 350,
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left"
+      ]
+    },
+    {
+      "state": "groups",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn'); window.__mount.appendChild(d); d.groups=[{key:'k',label:'Kho'},{key:'s',label:'Cửa hàng'}]; d.options=[{value:'a',label:'Apple',group:'k'},{value:'b',label:'Banana',group:'s'},{value:'m',label:'Mango'}]; d.open(); const s=d._menuElement.querySelector('.td-dropdown__search'); s.value='a'; s.dispatchEvent(new Event('input',{bubbles:true}));",
+      "selectors": [
+        ".td-dropdown__menu",
+        ".td-dropdown__scroller",
+        ".td-dropdown__group",
+        ".td-dropdown__group-label",
+        ".td-dropdown__group .td-dropdown__option",
+        ".td-dropdown__empty[data-count]"
+      ],
+      "portal": [
+        ".td-dropdown__menu",
+        ".td-dropdown__scroller",
+        ".td-dropdown__group",
+        ".td-dropdown__group-label",
+        ".td-dropdown__group .td-dropdown__option",
+        ".td-dropdown__empty[data-count]"
+      ],
+      "settle": 350,
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left"
+      ]
     }
   ],
   "td-button": [

@@ -214,20 +214,23 @@ describe('v0.17.0 E2 — <select> upgrade', () => {
     expect(document.activeElement === trig(el)).to.equal(true);
   });
 
-  it('<optgroup> is flattened (group label dropped); a disabled option or optgroup disables its options', () => {
+  it('<optgroup> groups are kept (v0.84.0: `groups` + `group`); a disabled option or optgroup disables its options', () => {
     const el = mount('<td-dropdown><select>'
       + '<optgroup label="Bắc"><option value="hn">Hà Nội</option><option value="hp">Hải Phòng</option></optgroup>'
       + '<optgroup label="Nam" disabled><option value="sg">Sài Gòn</option></optgroup>'
       + '<option value="dn" disabled>Đà Nẵng</option>'
       + '</select></td-dropdown>');
     expect(plain(el.options)).to.deep.equal([
-      { value: 'hn', label: 'Hà Nội' },
-      { value: 'hp', label: 'Hải Phòng' },
-      { value: 'sg', label: 'Sài Gòn', disabled: true },
+      { value: 'hn', label: 'Hà Nội', group: 'g0' },
+      { value: 'hp', label: 'Hải Phòng', group: 'g0' },
+      { value: 'sg', label: 'Sài Gòn', disabled: true, group: 'g1' },
       { value: 'dn', label: 'Đà Nẵng', disabled: true },
     ]);
+    expect(plain(el.groups)).to.deep.equal([{ key: 'g0', label: 'Bắc' }, { key: 'g1', label: 'Nam' }]);
     const labels = optEls(el).map((o) => o.textContent);
-    expect(labels).to.not.include('Bắc');
+    expect(labels).to.not.include('Bắc'); // a header, not an option
+    const heads = [...el._menuElement.querySelectorAll('.td-dropdown__group-label')].map((h) => h.textContent);
+    expect(heads).to.deep.equal(['Bắc', 'Nam']);
   });
 
   it('JS `options` assigned before connect win over the select (which is dropped, no double submit)', () => {

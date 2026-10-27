@@ -6548,6 +6548,7 @@
 	:root {
 		--td-dropdown-option-h: 40px; /* JS mirrors it: max-height = visible options × 40 px */
 		--td-dropdown-swatch-size: 0.75rem; /* v0.82.0: option colour dot (trigger + rows) */
+		--td-dropdown-icon-size: 1.75rem; /* v0.84.0: the toned icon tile of a rich row (the glyph is 60 % of it) */
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
@@ -6992,6 +6993,134 @@
 		flex-shrink: 0;
 	}
 
+	/*
+	 * v0.84.0 rich rows (plan v0.84.0-dropdown-rich): [icon tile] [label / description · status] [meta] [✓]. Only rows with
+	 * an icon / description / status / meta carry --rich and these parts — a plain row is the 0.83.0 row, untouched. Tile
+	 * and dot colours are the td-badge tinted pairs of the tone, read through PRIVATE props (the tabs.css count pattern:
+	 * no new colour token, a site recolours with --td-badge-{tone}-bg / -fg / -border, already contrast-gated); the
+	 * description / meta / status texts are the muted text on the menu surface (gated too). Hover / active / selected /
+	 * disabled / pressed are the row's own rules (same class).
+	 */
+	.td-dropdown__option--rich {
+		padding-block: 6px;
+	}
+
+	.td-dropdown__icon,
+	.td-dropdown__status {
+		--_td-dd-tone-bg: var(--td-badge-neutral-bg);
+		--_td-dd-tone-fg: var(--td-badge-neutral-fg);
+		--_td-dd-tone-edge: var(--td-badge-neutral-border);
+	}
+
+	:is(.td-dropdown__icon, .td-dropdown__status)[data-tone="accent"] { --_td-dd-tone-bg: var(--td-badge-accent-bg); --_td-dd-tone-fg: var(--td-badge-accent-fg); --_td-dd-tone-edge: var(--td-badge-accent-border); }
+	:is(.td-dropdown__icon, .td-dropdown__status)[data-tone="info"] { --_td-dd-tone-bg: var(--td-badge-info-bg); --_td-dd-tone-fg: var(--td-badge-info-fg); --_td-dd-tone-edge: var(--td-badge-info-border); }
+	:is(.td-dropdown__icon, .td-dropdown__status)[data-tone="success"] { --_td-dd-tone-bg: var(--td-badge-success-bg); --_td-dd-tone-fg: var(--td-badge-success-fg); --_td-dd-tone-edge: var(--td-badge-success-border); }
+	:is(.td-dropdown__icon, .td-dropdown__status)[data-tone="warning"] { --_td-dd-tone-bg: var(--td-badge-warning-bg); --_td-dd-tone-fg: var(--td-badge-warning-fg); --_td-dd-tone-edge: var(--td-badge-warning-border); }
+	:is(.td-dropdown__icon, .td-dropdown__status)[data-tone="danger"] { --_td-dd-tone-bg: var(--td-badge-danger-bg); --_td-dd-tone-fg: var(--td-badge-danger-fg); --_td-dd-tone-edge: var(--td-badge-danger-border); }
+
+	.td-dropdown__icon {
+		--_td-dd-glyph: calc(var(--td-dropdown-icon-size) * 0.6);
+
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-dropdown-icon-size);
+		height: var(--td-dropdown-icon-size);
+		color: var(--_td-dd-tone-fg);
+		background-color: var(--_td-dd-tone-bg);
+		border: 1px solid var(--_td-dd-tone-edge);
+		border-radius: var(--td-radius-md);
+	}
+
+	.td-dropdown__icon .td-icon {
+		width: var(--_td-dd-glyph);
+		height: var(--_td-dd-glyph);
+	}
+
+	/* label over the description line; takes the room so meta / ✓ stay at the inline end */
+	.td-dropdown__text {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		min-width: 0;
+	}
+
+	/* one line: the description is cut with … first, the status never shrinks (it is never hidden by a long text) */
+	.td-dropdown__desc {
+		display: flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		min-width: 0;
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-normal);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-dropdown__desc-text {
+		flex: 0 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-dropdown__status {
+		display: inline-flex;
+		flex: none;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		white-space: nowrap;
+	}
+
+	.td-dropdown__status-dot {
+		flex: none;
+		width: 0.375rem;
+		height: 0.375rem;
+		background-color: var(--_td-dd-tone-fg);
+		border-radius: var(--td-radius-full);
+	}
+
+	.td-dropdown__meta {
+		flex: none;
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-normal);
+		color: var(--td-color-text-muted);
+		white-space: nowrap;
+	}
+
+	/* v0.84.0 groups: header (not an option: no data-nav, never active) + its rows; copies the chip-input group */
+	.td-dropdown__group {
+		display: flex;
+		flex: none;
+		flex-direction: column;
+	}
+
+	.td-dropdown__group-label {
+		padding: 8px var(--td-option-pad-x) 2px;
+		overflow: hidden;
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-color-text-muted);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		user-select: none;
+	}
+
+	/* v0.84.0: the selected option's icon on the trigger — plain currentColor; inside the clipping value span, so (like the
+	   swatch, v0.83.0) 1px in from its start edge */
+	.td-dropdown__value-icon {
+		display: inline-flex;
+		margin-inline: 1px var(--td-space-xs);
+		vertical-align: -0.2em;
+	}
+
+	.td-dropdown__value-icon .td-icon {
+		width: var(--td-icon-s);
+		height: var(--td-icon-s);
+	}
+
 	.td-dropdown__empty {
 		padding: 8px var(--td-option-pad-x);
 		margin: 0;
@@ -7001,6 +7130,19 @@
 
 	.td-dropdown__empty:empty {
 		display: none;
+	}
+
+	/* v0.84.0: the result count is for screen readers only (the .td-sr-only geometry; the region stays a live status) */
+	.td-dropdown__empty[data-count] {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 
 	@media (pointer: coarse) {
@@ -7096,6 +7238,20 @@
 		.td-dropdown__option--create {
 			color: LinkText;
 			border-top-color: CanvasText;
+		}
+
+		/* v0.84.0: the tile fill is gone → an outline; the dot keeps a system colour (its text says the status) */
+		.td-dropdown__icon {
+			border: 1px solid CanvasText;
+		}
+
+		.td-dropdown__status-dot {
+			forced-color-adjust: none;
+			background-color: CanvasText;
+		}
+
+		.td-dropdown__option[aria-disabled="true"] :is(.td-dropdown__desc, .td-dropdown__meta) {
+			color: GrayText;
 		}
 	}
 

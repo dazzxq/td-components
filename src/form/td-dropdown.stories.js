@@ -115,3 +115,23 @@ export const MauSanPham = {
       + '<p class="sb-note">Option có <code>swatch</code> (màu CSS) hiện chấm tròn trước nhãn, cả trên trigger. Nhãn phải nói tên màu.</p></div>';
   },
 };
+
+const WAREHOUSES = [
+  { value: 'hn', label: 'Kho Hà Nội', icon: 'archive', iconTone: 'accent', description: 'Cầu Giấy', status: { tone: 'success', text: 'Đang mở' }, meta: '128 SP', keywords: ['main', 'kho chinh'], group: 'kho' },
+  { value: 'hcm', label: 'Kho Sài Gòn', icon: 'archive', description: 'Quận 7', status: { tone: 'warning', text: 'Sắp đầy' }, meta: '96 SP', keywords: 'saigon', group: 'kho' },
+  { value: 'dn', label: 'Kho Đà Nẵng', icon: 'lock', iconTone: 'danger', description: 'Tạm ngưng nhập', status: { tone: 'danger', text: 'Đóng' }, disabled: true, group: 'kho' },
+  { value: 'lang', label: 'Cửa hàng Láng', icon: 'inbox', iconTone: 'info', description: '1 Láng Hạ', meta: '24 SP', group: 'shop' },
+  { value: 'online', label: 'Bán online', icon: 'star', iconTone: 'success', group: 'shop' },
+  { value: 'khac', label: 'Khác' },
+];
+
+export const DongGiauThongTin = {
+  name: 'Dòng giàu thông tin + nhóm',
+  render: () => {
+    withOptions('dd-rich', WAREHOUSES, (el) => { el.groups = [{ key: 'kho', label: 'Kho hàng' }, { key: 'shop', label: 'Cửa hàng' }]; });
+    return '<div class="sb-stack"><td-dropdown id="dd-rich" label="Nơi xuất" value="hn" max-height="5"></td-dropdown>'
+      + '<p class="sb-note">Option có <code>icon</code> / <code>iconTone</code>, <code>description</code>, <code>status</code>, '
+      + '<code>meta</code> thành dòng hai tầng; <code>group</code> + <code>groups</code> gom nhóm có tiêu đề. Ô tìm kiếm khớp cả '
+      + 'mô tả và <code>keywords</code> (thử "saigon"); trình đọc màn hình nghe số kết quả.</p></div>';
+  },
+};

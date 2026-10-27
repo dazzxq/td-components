@@ -1510,6 +1510,7 @@
     "@color-scheme": "dark"
   },
   "added": {
+    "--td-dropdown-icon-size": { "light": "1.75rem", "dark": "1.75rem", "why": "v0.84.0 td-dropdown: the toned icon tile of a rich option row (the glyph is 60 % of it)" },
     "--td-dropdown-swatch-size": { "light": "0.75rem", "dark": "0.75rem", "why": "v0.82.0 td-dropdown: size of the option colour dot (menu rows + trigger)" },
     "--td-dropdown-swatch-edge": { "light": "rgb(212, 212, 216)", "dark": "rgb(69, 69, 75)", "why": "v0.82.0 td-dropdown: 1px ring of the option colour dot (= --td-color-border-strong) so a white / black dot shows on any surface" },
     "--td-chip-swatch-size": { "light": "0.75rem", "dark": "0.75rem", "why": "v0.82.0 td-chip-input: size of the option colour dot (chip + option row)" },

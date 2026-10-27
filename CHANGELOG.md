@@ -2,6 +2,36 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.84.0
+
+**`td-dropdown` dòng giàu thông tin, nhóm có tiêu đề, tìm rộng hơn** (yêu cầu dsuite-40: các ô "+ Thêm …" chọn từ danh mục;
+[plan](docs/internal/plans/v0.84.0-dropdown-rich.md), Codex plan APPROVE r3). Không phá vỡ: option không dùng trường mới → DOM, hành vi
+và chiều cao menu y như 0.83.0.
+
+### Added
+
+- Trường option mới (đều tuỳ chọn, tên cố định):
+  - `icon` (tên trong registry, vẽ trong ô vuông; tên lạ → không vẽ + `console.warn` một lần mỗi tên) và `iconTone`;
+  - `description` (dòng thứ hai) và `status` `{ tone, text }` (chấm màu + chữ ở cuối dòng mô tả);
+  - `meta` (chữ phụ căn phải) và `keywords` (chỉ để tìm).
+  - Chữ đều escape; màu từ token `td-badge` qua class, không `style`.
+  - Tên truy cập của option = nhãn (`aria-labelledby`); mô tả, trạng thái và chữ phụ → `aria-describedby`.
+  - Token mới `--td-dropdown-icon-size`.
+- Nhóm:
+  - property `groups: [{ key, label }]` quyết định thứ tự và tiêu đề; option `group` lạ hoặc thiếu → nhóm cuối không tiêu đề;
+  - nhóm rỗng sau khi lọc bị ẩn; tiêu đề không nằm trong điều hướng;
+  - `role="group"` + `aria-labelledby` trong listbox.
+- Trigger hiện icon của option đã chọn; `trigger-icon="none"` tắt.
+- `max-height` đo thật khi có dòng giàu thông tin hoặc nhóm: đúng N dòng option.
+- Nâng cấp từ `<select>`: `<optgroup label>` → nhóm; `<option data-icon / data-icon-tone / data-description / data-status / data-status-tone / data-meta / data-keywords>`.
+- PHP `td_dropdown` in được nhóm (`['label', 'disabled', 'options' => […]]` → `<optgroup>`) và các `data-*` trên (có cổng kiểm; cũ in y hệt).
+- Attribute `search-fields` (`label description keywords`, đổi tại chỗ); nhãn `TdDropdown.labels.resultCount` (`{count} kết quả`, chỉ trình đọc màn hình nghe).
+
+### Changed
+
+- **Tìm kiếm mặc định** giờ tìm cả trên `description` và `keywords` của option (trước chỉ `label`). Site muốn giữ hành vi cũ: `search-fields="label"`.
+- Nâng cấp `<select>` có `<optgroup>`: nhóm được **giữ** (trước 0.84.0 bị làm phẳng); option nằm ngoài mọi optgroup xếp cuối.
+
 ## 0.83.0
 
 **`td-tabs` chế độ link — điều hướng giữa trang** (yêu cầu dsuite-40: thay thanh điều hướng phụ tự viết; [plan](docs/internal/plans/v0.83.0-tabs-links.md), Codex plan APPROVE r3).

@@ -33,60 +33,11 @@
  * diffs that are pure rasterisation noise, regenerate with the "update visual baselines" workflow (amd64) and commit.
  * No dependencies: PNGs are decoded with node:zlib (test/visual/png.mjs).
  */
-import { chromium } from 'playwright-core';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { decodePng, comparePng } from './png.mjs';
+import { ORIGIN, FREEZE_CSS, startGate, newPage, settle, check, failures, finish } from './lib.mjs';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const BASELINE_DIR = join(ROOT, 'test', 'visual', 'baseline', 'linux-chromium');
-const OUT_DIR = process.env.TD_VISUAL_OUT || join(tmpdir(), 'td-visual');
-const ORIGIN = 'http://td-visual.test';
-const UPDATE = process.argv.includes('--update');
-const STRICT = process.env.TD_VISUAL_STRICT === '1';
-const CHANNEL_DELTA = 16; // ΔRGB per channel above which a pixel counts as different
-const MAX_DIFF_RATIO = 0.005; // ≤ 0.5% differing pixels per shot
-const MIME = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml',
-  '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg' };
+// Guard / page routing / compare plumbing live in ./lib.mjs (shared with dropdown.visual.mjs since v0.84.0).
+const { browser, version } = await startGate('test/visual/media-picker.visual.mjs');
 
-// ---------- reference platform guard ----------
-async function pinnedChromiumVersion() {
-  const candidates = [join(ROOT, 'node_modules', 'playwright-core', 'browsers.json')];
-  for (const f of candidates) {
-    if (!existsSync(f)) continue;
-    const json = JSON.parse(await readFile(f, 'utf8'));
-    const entry = (json.browsers || []).find((b) => b.name === 'chromium');
-    if (entry?.browserVersion) return entry.browserVersion;
-  }
-  return null;
-}
-
-function skip(reason) {
-  const fatal = UPDATE || STRICT;
-  (fatal ? console.error : console.log)(`Visual gate ${fatal ? 'FAILED (cannot run)' : 'SKIPPED'}: ${reason}`);
-  console.log('Baselines are Linux + pinned Chromium only (mcr.microsoft.com/playwright:v<playwright-core>-jammy, CI job `visual`). See test/visual/media-picker.visual.mjs.');
-  process.exit(fatal ? 1 : 0);
-}
-/** "148.0.7778.96" → "148.0.7778" */
-const buildOf = (v) => String(v).split('.').slice(0, 3).join('.');
-
-const FORCE = process.env.TD_VISUAL_FORCE === '1';
-if (process.platform !== 'linux' && !FORCE) skip(`platform is ${process.platform}, not linux`);
-const pinned = await pinnedChromiumVersion();
-if (!pinned && !FORCE) skip('cannot read the Chromium version pinned by playwright-core (node_modules/playwright-core/browsers.json)');
-if (!existsSync(chromium.executablePath()) && !FORCE) skip(`pinned Chromium ${pinned} is not installed (npx playwright-core install chromium)`);
-if (UPDATE && process.platform !== 'linux') {
-  console.error('Refusing --update off Linux: baselines must come from the reference platform.');
-  process.exit(1);
-}
-
-// ---------- pages ----------
-const FREEZE_CSS = `*, *::before, *::after { animation: none !important; transition: none !important;
-  caret-color: transparent !important; scroll-behavior: auto !important; }
-html, body { margin: 0; }`;
 
 const PICKER_PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 <link rel="stylesheet" href="${ORIGIN}/td.css">
@@ -133,52 +84,6 @@ const CROP_PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 <td-media-field name="og" label="Ảnh chia sẻ" usage croppable aspect-ratio="3/2" value="m1"
   preview-src="${ORIGIN}/test/fixtures/1.svg" crop='{"v":1,"x":0.25,"y":0.25,"width":0.5,"height":0.5}'></td-media-field>
 </main></body></html>`;
-
-// ---------- browser ----------
-async function newPage(browser, viewport, html) {
-  const context = await browser.newContext({
-    viewport, deviceScaleFactor: 1, reducedMotion: 'reduce', colorScheme: 'light',
-    locale: 'vi-VN', timezoneId: 'Asia/Ho_Chi_Minh',
-  });
-  context.setDefaultTimeout(10_000); // a state that cannot be driven fails fast instead of hanging 30 s per step
-  const page = await context.newPage();
-  await page.route(`${ORIGIN}/**`, async (route) => {
-    const url = new URL(route.request().url());
-    if (url.pathname === '/') return route.fulfill({ status: 200, contentType: 'text/html', body: html });
-    if ((url.pathname === '/td.css' || /^\/(src|test)\//.test(url.pathname)) && !url.pathname.includes('..')) {
-      const ext = url.pathname.slice(url.pathname.lastIndexOf('.'));
-      try {
-        return route.fulfill({ status: 200, contentType: MIME[ext] || 'application/octet-stream', body: await readFile(join(ROOT, url.pathname)) });
-      } catch { return route.fulfill({ status: 404, body: '' }); }
-    }
-    return route.fulfill({ status: 404, body: '' }); // never reach the network
-  });
-  page.on('pageerror', (e) => notes.push(`page error (${viewport.width}): ${e.message.split('\n')[0]}`));
-  await page.goto(`${ORIGIN}/`);
-  await page.waitForFunction(() => window.__ready === true);
-  return { page, context };
-}
-
-/**
- * Pointer parked at (0, 0), fonts loaded, every VISIBLE <img> settled (a loading="lazy" image off-screen never loads — waiting for it would
- * hang), two frames. Capped at 5 s so a stuck image shows up as a pixel diff instead of hanging the run.
- */
-async function settle(page) {
-  // park the pointer: no hover state from the last scripted click may be baked into a shot. (0, 0) is the dialog's
-  // top-left padding corner — nothing hoverable there at any viewport.
-  await page.mouse.move(0, 0);
-  await page.evaluate(async () => {
-    const inView = (img) => {
-      const r = img.getBoundingClientRect();
-      return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
-    };
-    const images = Promise.all([...document.images].filter((img) => !img.complete && inView(img)).map((img) =>
-      new Promise((r) => { img.addEventListener('load', r, { once: true }); img.addEventListener('error', r, { once: true }); })));
-    await Promise.race([Promise.all([document.fonts.ready, images]), new Promise((r) => setTimeout(r, 5000))]);
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  });
-  await page.waitForTimeout(100);
-}
 
 // =====================================================================================================================
 // STATE DRIVERS — the only block that knows the picker's UI. The picker UI is v0.33 work in progress: when a label or
@@ -288,43 +193,8 @@ const STATES = {
 const PICKER_VIEWPORTS = [{ width: 1440, height: 900 }, { width: 390, height: 844 }];
 const GRID_VIEWPORTS = [{ width: 1280, height: 900 }, { width: 390, height: 844 }];
 
-const failures = [];
-const notes = [];
-const missing = [];
-let compared = 0;
-let written = 0;
 
-async function check(name, png) {
-  const file = join(BASELINE_DIR, `${name}.png`);
-  if (UPDATE) {
-    await mkdir(BASELINE_DIR, { recursive: true });
-    await writeFile(file, png);
-    written++;
-    return;
-  }
-  const saveActual = async () => {
-    await mkdir(OUT_DIR, { recursive: true });
-    await writeFile(join(OUT_DIR, `${name}.png`), png);
-  };
-  if (!existsSync(file)) {
-    missing.push(name);
-    await saveActual();
-    return;
-  }
-  compared++;
-  const r = comparePng(decodePng(await readFile(file)), decodePng(png), CHANNEL_DELTA);
-  if (r.sizeMismatch || r.ratio > MAX_DIFF_RATIO) {
-    failures.push(`${name}: ${r.sizeMismatch ? 'size differs from baseline' : `${(r.ratio * 100).toFixed(2)}% pixels differ (${r.diff}/${r.total}) > ${MAX_DIFF_RATIO * 100}%`}`);
-    await saveActual();
-  }
-}
 
-const browser = await chromium.launch();
-const version = browser.version();
-if (pinned && buildOf(version) !== buildOf(pinned) && !FORCE) {
-  await browser.close();
-  skip(`Chromium ${version} is not the pinned build ${pinned}`);
-}
 try {
   for (const vp of PICKER_VIEWPORTS) {
     for (const [state, drive] of Object.entries(STATES)) {
@@ -370,21 +240,5 @@ try {
   await browser.close();
 }
 
-for (const n of notes) console.log(`note: ${n}`);
-if (UPDATE) {
-  if (failures.length) {
-    console.error(`Visual baselines: ${written} written, ${failures.length} FAILED:\n  ${failures.join('\n  ')}`);
-    process.exit(1);
-  }
-  console.log(`Visual baselines: ${written} written to ${BASELINE_DIR} (Chromium ${version}).`);
-  process.exit(0);
-}
-if (missing.length) {
-  const msg = `${missing.length} shot(s) have no baseline (actual PNGs in ${OUT_DIR}): ${missing.join(', ')}`;
-  failures.push(`${msg} — run the "update visual baselines" workflow (or --update in the Playwright image) and commit the PNGs`);
-}
-if (failures.length) {
-  console.error(`Visual gate FAILED (${failures.length}); actual PNGs in ${OUT_DIR}:\n  ${failures.join('\n  ')}`);
-  process.exit(1);
-}
-console.log(`Visual gate: ${compared} shot(s) match the baselines (Chromium ${version}, ΔRGB > ${CHANNEL_DELTA}, ≤ ${MAX_DIFF_RATIO * 100}% pixels).`);
+
+finish(version);
