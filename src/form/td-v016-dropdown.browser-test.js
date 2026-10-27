@@ -153,6 +153,9 @@ describe('B4 TdDropdown.labels', () => {
       createWithQuery: 'Thêm “{query}”', // v0.22.0 create row
       resultCount: '{count} kết quả', // v0.84.0 screen-reader result count
       picked: 'Đã chọn {label}', // v0.85.0 action-mode announcement
+      loading: 'Đang tải…', // v0.86.0 load()
+      loadError: 'Không tải được',
+      retry: 'Thử lại',
     });
     const el = dd('value="hn" required');
     const input = el._menuElement.querySelector('.td-dropdown__search');

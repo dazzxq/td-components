@@ -1570,6 +1570,30 @@
         "bottom",
         "margin-left"
       ]
+    },
+    {
+      "state": "load-error",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn kho'); window.__mount.appendChild(d); d.options=[]; d.load=()=>Promise.reject(new Error('x')); d.open(); await new Promise(r=>setTimeout(r,60));",
+      "selectors": [
+        ".td-dropdown__menu",
+        ".td-dropdown__empty",
+        ".td-dropdown__retry"
+      ],
+      "portal": [
+        ".td-dropdown__menu",
+        ".td-dropdown__empty",
+        ".td-dropdown__retry"
+      ],
+      "settle": 350,
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left"
+      ]
     }
   ],
   "td-button": [

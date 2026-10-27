@@ -2,6 +2,34 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.86.0
+
+**`td-dropdown` nạp danh sách bất đồng bộ, danh sách lớn** (yêu cầu dsuite-40 R5;
+[plan](docs/internal/plans/v0.86.0-dropdown-load.md), Codex plan APPROVE r3). Không phá vỡ: không gán `load` và danh
+sách ≤ 200 dòng → DOM và hành vi y như 0.85.0, trừ một sửa lỗi lệch ở mục Changed.
+
+### Added
+
+- Property `load: () => Promise<options[]>`: tự gọi **một lần** ở lần mở menu đầu tiên. Method `reload()` (trả
+  `Promise<boolean>`, không reject) nạp lại bất cứ lúc nào.
+  - Đang tải: dòng trạng thái `role="status"` của menu hiện "Đang tải…", listbox `aria-busy="true"`, menu `data-load="loading"`.
+  - Lỗi (reject, ném lỗi, kết quả không phải mảng object): "Không tải được" + nút "Thử lại" (`.td-dropdown__retry`, không nhận
+    focus); bấm nút hoặc Enter để nạp lại, focus không rời trigger / ô tìm; `console.warn('td-dropdown: load failed', err)`.
+    Mở lại sau lỗi không tự gọi.
+  - Chỉ lần nạp mới nhất có hiệu lực (`reload()` chồng nhau, gán `load` mới / `null`, `destroy()` bỏ kết quả cũ).
+  - Nhãn mới `TdDropdown.labels.loading`, `loadError`, `retry`.
+- Danh sách hơn 200 option đang hiện: scroller mang `data-many`, mỗi dòng `content-visibility: auto` (mọi dòng vẫn trong
+  DOM: bàn phím, `aria-activedescendant`, type-ahead không đổi). 2000 option có icon + mô tả + trạng thái + chữ phụ + 5
+  nhóm, Chromium headless trên máy dev: mở menu ~16 ms (trước: ~77 ms), mỗi lần gõ lọc ~20–30 ms tính tới frame kế
+  (trước: 55–72 ms). Test `td-v086-dropdown-perf` (Chromium): CI ngưỡng rộng 250 / 150 ms, `TD_PERF_STRICT=1` ngưỡng thật
+  100 / 50 ms. 1 + max-height dòng đầu luôn được dàn trang (chiều cao menu đo đúng N dòng).
+
+### Changed
+
+- **Gán `options` / `updateData()` khi menu đang mở ở chế độ select** giờ giữ chữ tìm **và lọc theo nó**, giữ dòng active
+  theo giá trị (dòng "Không chọn" / "Thêm mới" theo loại) và giữ vị trí cuộn — như chế độ action từ 0.85.0. Trước 0.86.0
+  ô tìm giữ chữ nhưng danh sách hiện đủ, không lọc.
+
 ## 0.85.0
 
 **`td-dropdown` chế độ "chọn để thêm"** (yêu cầu dsuite-40: ô "+ Thêm mẫu khuyến mãi" chọn từ danh mục;

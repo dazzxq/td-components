@@ -439,7 +439,7 @@ Hợp đồng:
 - **`keep-open`**: chọn xong menu vẫn mở để thêm nhiều mục liền:
   - ô tìm giữ nguyên chữ đã gõ;
   - dòng active nhảy sang option kế tiếp còn chọn được (bỏ qua dòng "Thêm mới"), không có thì lùi về option trước.
-  - Nếu site gán lại `options` ngay trong handler `pick` (ví dụ đánh dấu mục vừa thêm là `disabled` + `meta: 'Đã thêm'`), menu vẫn giữ chữ tìm và dòng active. Chỉ áp dụng ở chế độ action.
+  - Nếu site gán lại `options` ngay trong handler `pick` (ví dụ đánh dấu mục vừa thêm là `disabled` + `meta: 'Đã thêm'`), menu vẫn giữ chữ tìm và dòng active (từ 0.86.0 cũng vậy ở chế độ select).
   - Dòng "Thêm mới" (`create-label`) vẫn đóng menu như 0.22.0.
 - Option `disabled` không phát `pick`. Host `disabled` thì không mở được.
 - **Trợ năng:**
@@ -447,6 +447,41 @@ Hợp đồng:
   - sau mỗi lần chọn, một vùng `aria-live="polite"` ẩn với mắt đọc "Đã chọn {nhãn}" (`TdDropdown.labels.picked`; `''` = tắt).
 - Đổi `mode` lúc đang chạy sẽ đóng menu, render lại và bỏ lựa chọn cũ.
 - Adapter PHP không có chế độ này: dropdown hành động chỉ có khi JS chạy. Bản `<select>` native sẽ gửi giá trị, trái với hợp đồng.
+
+### 12. Nạp danh sách bất đồng bộ (`load`, 0.86.0)
+
+Danh sách lớn hoặc lấy từ API: gán một hàm trả `Promise` của mảng option. Dropdown gọi nó **một lần**, ở lần mở menu đầu
+tiên; trong lúc chờ, menu hiện "Đang tải…".
+
+```js
+const dd = document.querySelector('#customer');
+dd.load = async () => {
+  const res = await fetch('/api/customers');
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();           // mảng option như mục 1 / 1b
+};
+// danh sách đổi ở server → nạp lại (menu mở hay đóng đều được)
+const ok = await dd.reload();  // true = đã gán options; false = lỗi / bị lần nạp mới hơn thay / không có load
+```
+
+- **Chỉ tự gọi một lần.** Nạp xong thì các lần mở sau không gọi lại; muốn nạp lại dùng `reload()` hoặc gán `load` mới.
+- **Lỗi** (promise reject, hàm ném lỗi, kết quả không phải mảng hoặc có phần tử không phải object): menu hiện "Không tải được" và nút "Thử lại". Bấm nút
+  hoặc nhấn Enter (khi không có dòng nào đang active) để nạp lại. Focus vẫn ở trigger / ô tìm, menu không đóng. Lỗi được
+  ghi `console.warn('td-dropdown: load failed', err)`. Đóng rồi mở lại sau lỗi **không** tự gọi lại: menu vẫn hiện lỗi và
+  nút.
+- **Chỉ lần nạp mới nhất có hiệu lực.** Gọi `reload()` chồng nhau, gán `load` mới (kể cả `null`) hoặc `destroy()` → kết
+  quả của lần cũ bị bỏ (lần cũ trả `false`). Gán `load = null` xoá ngay chữ "Đang tải…" / lỗi.
+- Kết quả đi qua `options` như gán tay: attribute `value` hoặc `setValue()` gọi trước đó được áp khi danh sách về. Menu
+  đang mở thì giữ chữ tìm; chưa có dòng active thì đặt như lúc mở (↓ mở → dòng đầu, End → dòng cuối…).
+- Option đã có sẵn (gán trước `load`) vẫn hiện trong lúc tải.
+- Chữ: `TdDropdown.labels.loading`, `loadError`, `retry`. Dòng trạng thái là `role="status"` sẵn có của menu (trình đọc
+  màn hình đọc "Đang tải…" rồi kết quả), listbox mang `aria-busy="true"` khi đang tải.
+- Không có trong adapter PHP: muốn có danh sách khi không JS thì in `<select>` (mục 9).
+
+**Danh sách lớn (0.86.0).** Hơn 200 option (sau khi lọc) → trình duyệt bỏ qua dàn trang các dòng ngoài màn hình
+(`content-visibility: auto`); mọi dòng vẫn có trong DOM nên bàn phím, `aria-activedescendant` và tìm kiếm không đổi.
+2000 option có icon + mô tả + nhóm: mở menu và gõ tìm đều dưới mức người dùng thấy giật (số đo ở CHANGELOG 0.86.0).
+Trình duyệt cũ (Firefox < 125, Safari < 18) vẫn đúng, chỉ chậm hơn.
 
 ## Attribute
 
@@ -481,11 +516,13 @@ Hợp đồng:
 
 | Thành viên | Chữ ký | Mô tả |
 |---|---|---|
-| `options` | `Array<Object>` (get/set) | Danh sách option. Lần gán đầu áp attribute `value`; các lần sau giữ lựa chọn hiện tại nếu còn trong danh sách (không còn → bỏ chọn). Luôn áp giá trị pending. Gán trước khi component được define vẫn nhận. |
+| `options` | `Array<Object>` (get/set) | Danh sách option. Lần gán đầu áp attribute `value`; các lần sau giữ lựa chọn hiện tại nếu còn trong danh sách (không còn → bỏ chọn). Luôn áp giá trị pending. Menu đang mở → giữ chữ tìm, dòng active, vị trí cuộn (0.86.0 ở cả hai chế độ). Gán trước khi component được define vẫn nhận. |
 | `onChange` | `(value) => void` \| `null` | Callback khi người dùng chọn/bỏ chọn; nhận value (`null` khi bỏ chọn). Chạy sau `onSelect`. |
 | `onSelect` | `(item) => void` \| `null` | Callback nhận cả object (`null` khi bỏ chọn). Chạy trước `onChange` (cả hai đều chạy nếu cùng đặt). |
 | `onCreate` | `(query) => void` \| `null` | Callback khi kích hoạt dòng "Thêm mới" (0.22.0); nhận `query` (chuỗi). Chạy trước event `create`; ném lỗi → ghi `console.error`, event vẫn phát. |
 | `createLabel` | `string` (get/set) | Phản chiếu attribute `create-label` (`''` = tắt). |
+| `load` | `() => Promise<Array>` \| `null` | **0.86.0** Hàm nạp danh sách bất đồng bộ ([mục 12](#12-nạp-danh-sách-bất-đồng-bộ-load-0860)). Tự gọi một lần ở lần mở đầu. Gán lại (kể cả `null`) → bỏ lần nạp đang chờ; menu đang mở thì nạp ngay. Gán trước khi define vẫn nhận. |
+| `reload()` | `() => Promise<boolean>` | **0.86.0** Gọi `load` ngay (menu mở hay đóng). `true` = đã gán options; `false` = không có `load`, lỗi, hoặc bị lần nạp mới hơn thay. Không bao giờ reject. |
 | `onPick` | `(item) => void` \| `null` | **0.85.0** Callback khi chọn một option ở `mode="action"`. Chạy trước event `pick`; ném lỗi thì ghi `console.error`, event vẫn phát. Gán trước khi define vẫn nhận. |
 | `mode` / `keepOpen` / `triggerMeta` | get/set | **0.85.0** Phản chiếu `mode` (`'select'` \| `'action'`), `keep-open` (boolean), `trigger-meta` (chuỗi). Gán trước khi define vẫn nhận. |
 | `groups` | `Array<{ key, label }>` (get/set) | **0.84.0** Thứ tự và tiêu đề nhóm ([mục 1b](#1b-dòng-giàu-thông-tin-và-nhóm-084-0)). Gán lại → lọc lại tại chỗ. Gán trước khi define vẫn nhận. |
@@ -496,7 +533,7 @@ Hợp đồng:
 | `getValue()` | `() => any \| null` | Giá trị của mục đang chọn (kiểu gốc trong object, không ép chuỗi), `null` nếu chưa chọn. |
 | `setValue(value)` | `(value) => void` | Chọn theo giá trị. `null` / `undefined` → luôn bỏ chọn. `''` → chọn option **có giá trị rỗng thật** nếu có (0.17.0), không có thì bỏ chọn (không pending). Giá trị khác chưa có trong options → bỏ lựa chọn cũ, nhớ lại để áp dụng khi options đến. **Không** phát `change`. |
 | `getSelectedItem()` | `() => Object \| null` | Object option đang chọn. |
-| `updateData(list)` | `(Array) => void` | Thay danh sách: giữ lựa chọn hiện tại nếu còn trong danh sách, không còn thì bỏ chọn (không phát `change`); áp giá trị pending. **0.85.0** Ở `mode="action"` khi menu đang mở (như `options = …`): giữ chữ tìm, lọc lại, giữ dòng active theo giá trị. |
+| `updateData(list)` | `(Array) => void` | Thay danh sách: giữ lựa chọn hiện tại nếu còn trong danh sách, không còn thì bỏ chọn (không phát `change`); áp giá trị pending. Khi menu đang mở (như `options = …`; **0.85.0** ở `mode="action"`, **0.86.0** cả chế độ select): giữ chữ tìm và lọc lại, giữ dòng active theo giá trị, giữ vị trí cuộn. |
 | `open()` | `() => void` | Mở menu (không làm gì khi disabled; đang mở thì chỉ đặt lại vị trí). Đóng mọi dropdown khác đang mở. |
 | `close()` | `() => void` | Đóng menu, xoá chữ tìm kiếm, trả focus về trigger nếu focus đang trong menu. |
 | `toggle()` | `() => void` | Mở/đóng. |
@@ -527,6 +564,9 @@ Object.assign(TdDropdown.labels, {
 | `createWithQuery` | `Thêm “{query}”` | Chữ dòng "Thêm mới" khi đang gõ tìm kiếm; `{query}` = chữ đã gõ (trim). Không gõ gì → dùng `create-label` (0.22.0) |
 | `resultCount` | `{count} kết quả` | **0.84.0** Câu trình đọc màn hình đọc khi đang gõ tìm và có kết quả (ẩn với mắt). `''` = tắt |
 | `picked` | `Đã chọn {label}` | **0.85.0** Câu thông báo lịch sự sau mỗi lần chọn ở `mode="action"`; `{label}` = nhãn option. `''` = tắt |
+| `loading` | `Đang tải…` | **0.86.0** Dòng trạng thái khi `load` đang chạy |
+| `loadError` | `Không tải được` | **0.86.0** Dòng trạng thái khi `load` lỗi |
+| `retry` | `Thử lại` | **0.86.0** Chữ nút nạp lại khi `load` lỗi |
 
 Tất cả được escape / đưa vào bằng `textContent`. Placeholder của trigger ("Chọn một tùy chọn") đổi bằng attribute
 `placeholder`.
@@ -676,6 +716,14 @@ Từ 0.85.0 (`trigger-meta` ở cả hai chế độ; còn lại chỉ ở `mode
 <span class="td-sr-only td-dropdown__live" aria-live="polite" aria-atomic="true">Đã chọn Tặng ốp lưng</span>
 ```
 
+Từ 0.86.0, khi `load` lỗi, nút nạp lại nằm ngay sau dòng trạng thái (không bao giờ nhận focus):
+
+```html
+<p class="td-dropdown__empty" role="status">Không tải được</p>
+<button type="button" class="td-dropdown__retry" tabindex="-1">Thử lại</button>
+<div class="td-dropdown__options" role="listbox" id="{host}-listbox">…</div>
+```
+
 **0.22.0 đổi cấu trúc menu:** `.td-dropdown__options` (listbox) **không còn cuộn** — vùng cuộn và `max-height` chuyển
 sang `.td-dropdown__scroller` bên trong; dòng `.td-dropdown__empty` chuyển lên **trước** listbox. CSS của site nhắm
 `.td-dropdown__options` để đổi chiều cao / thanh cuộn → đổi sang `.td-dropdown__scroller`. Mỗi dòng mang `data-nav`
@@ -688,7 +736,9 @@ Trạng thái dùng để style (không có class JS bật/tắt):
 | `.td-dropdown` | `data-state="open|closed"` |
 | `.td-dropdown__trigger` | `aria-expanded`, `:disabled`, `aria-invalid="true"` |
 | `.td-dropdown__value` | `data-placeholder` khi chưa chọn; `data-action` ở `mode="action"` (0.85.0) |
-| `.td-dropdown__menu` | `[hidden]`, `data-state`, `data-placement="top|bottom"` |
+| `.td-dropdown__options` | `aria-busy="true"` khi `load` đang chạy (0.86.0) |
+| `.td-dropdown__scroller` | `data-many` khi hơn 200 option đang hiện (0.86.0, `content-visibility: auto` cho từng dòng) |
+| `.td-dropdown__menu` | `[hidden]`, `data-state`, `data-placement="top|bottom"`, `data-load="loading|error"` khi `load` đang chạy / lỗi (0.86.0) |
 | `.td-dropdown__option` | `aria-selected="true"` (đã chọn), `data-active` (đang trỏ bằng phím/chuột), `aria-disabled="true"` (option vô hiệu hoá, 0.17.0) |
 
 JS chỉ ghi toạ độ/độ rộng menu và `max-height` của vùng cuộn (`.td-dropdown__scroller`) qua CSSOM. Host không có `id` sẽ được gán tự động

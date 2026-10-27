@@ -7149,6 +7149,40 @@
 		display: none;
 	}
 
+	/* v0.86.0 `load`: the retry button after the failed status ("Thử lại"); never focused (DOM focus stays on the
+	   trigger / search box), so no focus ring — hover / press feedback only */
+	.td-dropdown__retry {
+		display: flex;
+		align-items: center;
+		min-height: var(--td-dropdown-option-h);
+		padding: 0 var(--td-option-pad-x);
+		margin: 0;
+		font: inherit;
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-dropdown-create-fg);
+		text-align: start;
+		cursor: pointer;
+		background: none;
+		border: 0;
+		border-radius: 0;
+		appearance: none;
+		touch-action: manipulation;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropdown__retry:hover {
+			background: var(--td-dropdown-option-hover);
+		}
+	}
+
+	/* v0.86.0: a long list (> 200 option rows, JS sets [data-many]) skips layout / paint of the off-screen rows; every
+	   row stays in the DOM (aria-activedescendant, Home / End, type-ahead unchanged). The first max-height + 1 rows
+	   carry no [data-cv]: they are always laid out, so the measured scroller height stays exact */
+	.td-dropdown__scroller[data-many] .td-dropdown__option[data-cv] {
+		content-visibility: auto;
+		contain-intrinsic-size: auto var(--td-dropdown-option-h);
+	}
+
 	/* v0.84.0: the result count is for screen readers only (the .td-sr-only geometry; the region stays a live status) */
 	.td-dropdown__empty[data-count] {
 		position: absolute;
@@ -7252,7 +7286,8 @@
 			opacity: 1;
 		}
 
-		.td-dropdown__option--create {
+		.td-dropdown__option--create,
+		.td-dropdown__retry {
 			color: LinkText;
 			border-top-color: CanvasText;
 		}
@@ -7275,7 +7310,8 @@
 	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
 	   applied at once; forced colours: a Highlight outline */
 	.td-dropdown__trigger,
-	.td-dropdown__option {
+	.td-dropdown__option,
+	.td-dropdown__retry {
 		-webkit-tap-highlight-color: transparent;
 	}
 
@@ -7284,14 +7320,16 @@
 		transition-duration: 0s;
 	}
 
-	.td-dropdown__option:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+	.td-dropdown__option:is(:active, [data-td-pressed]):not([aria-disabled="true"]),
+	.td-dropdown__retry:is(:active, [data-td-pressed]) {
 		background: var(--td-option-pressed-bg);
 		transition-duration: 0s;
 	}
 
 	@media (forced-colors: active) {
 		.td-dropdown__trigger:is(:active, [data-td-pressed]),
-		.td-dropdown__option:is(:active, [data-td-pressed]) {
+		.td-dropdown__option:is(:active, [data-td-pressed]),
+		.td-dropdown__retry:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
 		}
 	}

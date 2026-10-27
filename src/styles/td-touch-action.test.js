@@ -27,6 +27,8 @@ const TABLE = {
   '.td-cal__nav, .td-cal__title': 'manipulation',
   // v0.61.0 time wheel: a vertical swipe scrolls it (native momentum + CSS snap); no horizontal pan, no double-tap zoom
   '.td-dtp-wheel__list': 'pan-y',
+  // v0.86.0 dropdown retry button ("Thử lại"): a tap target — no double-tap zoom on iOS
+  '.td-dropdown__retry': 'manipulation',
 };
 
 test('touch-action declarations = the reviewed table (no new none, nothing on html / body)', async () => {

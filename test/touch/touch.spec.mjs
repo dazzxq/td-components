@@ -191,6 +191,9 @@ const PRESS_TYPES = [
   { name: 'timeline summary', sel: '#rsp-timeline .td-timeline__summary', token: '--td-color-pressed' },
   { name: 'option', sel: '.td-dropdown__menu[data-state="open"] .td-dropdown__option', token: '--td-option-pressed-bg',
     open: async (page) => { await page.tap('#g-dd .td-dropdown__trigger'); await page.locator('.td-dropdown__menu[data-state="open"] .td-dropdown__option').first().waitFor(); } },
+  // v0.86.0: the "Thử lại" button of a failed `load` (a tap retries and removes it — pressed only)
+  { name: 'dropdown retry', sel: '.td-dropdown__menu[data-state="open"] .td-dropdown__retry', token: '--td-option-pressed-bg', noTap: true,
+    open: async (page) => { await page.evaluate(() => { const d = document.createElement('td-dropdown'); d.id = 'g-dd-load'; d.setAttribute('aria-label', 'Tải'); document.body.prepend(d); window.scrollTo(0, 0); d.load = () => Promise.reject(new Error('x')); d.open(); }); await page.locator('.td-dropdown__menu[data-state="open"] .td-dropdown__retry').waitFor(); } },
   // the card's media opener is the innermost control under the finger: its ::after tints the image
   { name: 'picker card', sel: '.td-media-picker__card .td-media-grid__open', token: '--td-color-pressed', pseudo: '::after',
     open: async (page) => { await page.evaluate(() => { window.__openers.picker(); }); await page.locator('.td-media-picker__card').first().waitFor(); await settle(page, '.td-media-picker'); } },

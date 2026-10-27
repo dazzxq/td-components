@@ -76,6 +76,20 @@ const storiesPlugin = {
 };
 
 /**
+ * v0.86.0: `/__td-env.js` hands env flags to browser tests (they cannot read process.env). `strictPerf` = TD_PERF_STRICT=1
+ * (src/form/td-v086-dropdown-perf.browser-test.js: the real acceptance thresholds instead of the wide CI ones).
+ */
+const envPlugin = {
+  name: 'td-env',
+  serve(ctx) {
+    if (ctx.path === '/__td-env.js') {
+      return { body: `export default ${JSON.stringify({ strictPerf: process.env.TD_PERF_STRICT === '1' })};`, type: 'js' };
+    }
+    return undefined;
+  },
+};
+
+/**
  * v0.64.0 (ADR 0034, plan M3): TD_DIST=1 serves the COMMITTED minified bytes for every shipped kit module (/index.js,
  * /src/**\/*.js without tests / stories) and /td.css from dist/ — a URL rewrite only, no transform. Test files are untouched
  * and import the kit relatively, so the suite runs on dist. Rewritten responses carry `x-td-variant: dist`
@@ -111,7 +125,7 @@ export default {
     '!src/**/*.engines.browser-test.js', ...(DIST ? [] : ['!src/**/*.dist.browser-test.js'])],
   middleware: DIST ? [distMiddleware] : [],
   nodeResolve: true,
-  plugins: [storiesPlugin],
+  plugins: [storiesPlugin, envPlugin],
   browsers: [playwrightLauncher({ product: 'chromium' })],
   // Headless Playwright hides scrollbars (--hide-scrollbars); the scroll-lock gutter suite (v0.22.1) needs a real
   // classic scrollbar to prove the page does not jump sideways, so it runs in its own group with them shown.

@@ -83,6 +83,7 @@ v0.84.0: `rich` (icon tile + tones, description, status dot, meta, disabled rich
 v0.85.0: `action` (`mode="action"` + `keep-open` + `trigger-meta`, menu open: the trigger's `data-action` value span
 (normal text colour) with the default `plus` icon, the muted `.td-dropdown__trigger-meta`, a grouped list with a disabled rich row). The host live region `.td-dropdown__live` is NOT snapshotted: it is styled only by the
 `td-sr-only` utility, and its inherited `line-height` differs between the `td` and `legacy+td` profiles (invisible either way).
+v0.86.0: `load-error` (`load` rejected, menu open: the failed status line `.td-dropdown__empty` ("Không tải được") + the `.td-dropdown__retry` button; the rejection is awaited in `setup`).
 
 ### td-button (1 declarative — variant glass OR custom-color inline style)
 Styled el: inner `button` (bg/box-shadow/backdrop-filter from `_glassStyles[variant]`, or

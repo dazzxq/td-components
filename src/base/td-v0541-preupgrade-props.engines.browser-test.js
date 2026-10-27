@@ -199,6 +199,12 @@ const CASES = [
       expect(el.getValue()).to.equal(null);
     },
   },
+  // v0.86.0: the async loader, assigned before the upgrade (replayed on connect; the first open() runs it)
+  {
+    tag: 'td-dropdown', attrs: { 'aria-label': 'Nạp' },
+    props: () => ({ load: () => Promise.resolve([{ value: 'a', label: 'A' }]) }),
+    check(el) { expect(typeof el.load).to.equal('function'); expect(Object.prototype.hasOwnProperty.call(el, 'load')).to.equal(false); },
+  },
   {
     tag: 'td-chip-input', attrs: { label: 'Thẻ' },
     props: () => ({ options: [{ value: 'php', label: 'PHP' }], value: [{ value: 'php', label: 'PHP' }], search: fn(), create: fn(),

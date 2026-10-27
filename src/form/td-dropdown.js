@@ -8,12 +8,14 @@ import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 
 const CLEAR = '__CLEAR__';
 const OPTION_PX = 40; // --td-dropdown-option-h: `max-height` = visible options × 40 px
+/** v0.86.0: more option rows than this in the scroller → `data-many` (CSS `content-visibility: auto` per row) */
+const MANY_ROWS = 200;
 const TYPEAHEAD_MS = 500;
 // v0.82.0: the colourless dot; the colour is set only through circle.setAttribute('fill') (see _applySwatchFills)
 const SWATCH_SVG = '<svg class="td-dropdown__swatch" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><circle cx="6" cy="6" r="6"/></svg>';
 /** Properties that may be set on the element before it upgrades (they would shadow the class accessors). */
 const UPGRADE_PROPS = ['mode', 'keepOpen', 'triggerMeta', 'options', 'groups', 'onChange', 'onSelect', 'onCreate',
-  'createLabel', 'onPick']; // v0.85.0: `mode` first, so a pre-upgrade action mode is in force before the <select> read
+  'createLabel', 'onPick', 'load']; // v0.85.0: `mode` first, so a pre-upgrade action mode is in force before the <select> read
 /** v0.84.0: tones of the icon tile / status dot (anything else → neutral). */
 const TONES = ['neutral', 'accent', 'success', 'warning', 'danger', 'info'];
 /** v0.84.0: the fields `search-fields` may name (all three by default). */
@@ -96,7 +98,7 @@ function safeCall(fn, arg, what) {
  *     <div class="td-dropdown__options" role="listbox" id="{host}-listbox">          (not scrolling — v0.22.0)
  *       <div class="td-dropdown__scroller" role="presentation">                       (the scroll area, gets max-height)
  *         [<div class="td-dropdown__option td-dropdown__option--clear" role="option" id="{host}-opt-clear" data-value="__CLEAR__" data-nav>…]
- *         <div class="td-dropdown__option" role="option" id="{host}-opt-{i}" aria-selected data-value data-index data-nav [data-active]>…
+ *         <div class="td-dropdown__option" role="option" id="{host}-opt-{i}" aria-selected data-value data-index data-nav [data-cv] [data-active]>…
  *         v0.84.0 rich row (icon / description / status / meta), r = {host}-opt-{i}:
  *         <div class="td-dropdown__option td-dropdown__option--rich" role="option" id="r" aria-selected [aria-disabled]
  *              [aria-labelledby="r-label" aria-describedby="[r-desc] [r-meta]"] data-value data-index data-nav>
@@ -258,6 +260,10 @@ export class TdDropdown extends TdFormElement {
     resultCount: '{count} kết quả',
     /** v0.85.0 action mode: the polite announcement after a pick (`{label}` = the option's label text). '' = off. */
     picked: 'Đã chọn {label}',
+    /** v0.86.0 `load`: the menu status while the loader runs / after it failed, and the retry button. */
+    loading: 'Đang tải…',
+    loadError: 'Không tải được',
+    retry: 'Thử lại',
   };
 
   /** @type {TdDropdown[]} Track all open dropdowns for closeAllExcept */
@@ -270,6 +276,8 @@ export class TdDropdown extends TdFormElement {
     this._groups = [];
     /** @private v0.84.0: the rendered list has a rich row or a group header → measured listMax (see _placeMenu) */
     this._measured = false;
+    /** @private v0.86.0: first nav index that gets [data-cv] (long lists only; Infinity = none) */
+    this._cvFrom = Infinity;
     this._selectedItem = null;
     /** @private A value set before its option existed; resolved when options arrive. */
     this._pendingValue = null;
@@ -295,6 +303,15 @@ export class TdDropdown extends TdFormElement {
     this._onSelect = null;
     this._onCreate = null;
     this._onPick = null;
+
+    /** @private v0.86.0: the async options loader (`load` property) */
+    this._load = null;
+    /** @private v0.86.0: 'idle' (not run yet) | 'loading' | 'error' | 'done' */
+    this._loadState = 'idle';
+    /** @private v0.86.0: bumped by every run, every `load` assignment and destroy(); only the latest run applies */
+    this._loadToken = 0;
+    /** @private v0.86.0: the `active` mode of the last open() (re-applied when a load lands with no active row) */
+    this._openActive = 'selected';
 
     this._boundPointerOutside = (e) => {
       const t = e.target;
@@ -495,6 +512,7 @@ export class TdDropdown extends TdFormElement {
 
   get options() { return this._options; }
   set options(data) {
+    const snap = this._openSnapshot(); // v0.86.0: before setValue() below re-renders the rows
     this._options = Array.isArray(data) ? data : [];
     this._filteredData = this._ordered(this._options);
     if (!this._optionsInit) {
@@ -511,8 +529,8 @@ export class TdDropdown extends TdFormElement {
     if (this._pendingValue != null) {
       this.setValue(this._pendingValue);
     }
-    // v0.85.0: an OPEN action menu keeps its query / active row / scroll; else (and select mode always) as 0.84.0
-    if (this._isOpen && this._isAction()) this._refreshOpen();
+    // v0.85.0 (action) / v0.86.0 (select too): an OPEN menu keeps its query / active row / scroll
+    if (this._isOpen) this._refreshOpen(snap);
     else this._renderMenuOptions();
   }
 
@@ -538,6 +556,77 @@ export class TdDropdown extends TdFormElement {
   set onPick(fn) { this._onPick = typeof fn === 'function' ? fn : null; }
 
   /** v0.85.0: `'action'` | `'select'`; mirrors `mode` (anything but `'action'` removes the attribute). */
+  /**
+   * v0.86.0: `() => Promise<options[]>`. Runs once, at the first open(); again only through reload(), the retry
+   * button (Enter while failed) or a new assignment. Assigning (also `null`) drops a pending run.
+   */
+  get load() { return this._load; }
+  set load(fn) {
+    this._load = typeof fn === 'function' ? fn : null;
+    this._loadToken++;
+    this._loadState = 'idle';
+    this._renderMenuOptions();
+    if (this._isOpen && this._load) this._runLoad();
+  }
+
+  /** v0.86.0: run the loader now (open or closed). Resolves true once the options are assigned; never rejects. */
+  reload() { return this._runLoad(); }
+
+  /** @private */
+  async _runLoad() {
+    const fn = this._load;
+    if (!fn) return false;
+    const token = ++this._loadToken;
+    this._loadState = 'loading';
+    this._renderMenuOptions();
+    let data;
+    let failed = false;
+    try {
+      data = await fn.call(this);
+      if (!Array.isArray(data) || !data.every((o) => o !== null && typeof o === 'object')) {
+        throw new TypeError('load() did not resolve to an array of option objects');
+      }
+    } catch (err) {
+      failed = true;
+      if (token === this._loadToken) console.warn('td-dropdown: load failed', err);
+    }
+    if (token !== this._loadToken) return false; // superseded (a newer run, a new loader, destroy())
+    this._loadState = failed ? 'error' : 'done';
+    if (failed) {
+      this._renderMenuOptions();
+      return false;
+    }
+    const hadActive = this._activeIndex >= 0;
+    // transactional: a list the renderer cannot take (a field getter throws) restores everything it touched
+    const before = {
+      options: this._options, filtered: this._filteredData, selected: this._selectedItem,
+      pending: this._pendingValue, init: this._optionsInit, deferred: this._initialDeferred,
+      superseded: this._initialSuperseded, snap: this._openSnapshot(),
+    };
+    try {
+      this.options = data;
+    } catch (err) {
+      console.warn('td-dropdown: load failed', err); // reload() never rejects
+      this._loadState = 'error';
+      this._options = before.options;
+      this._filteredData = before.filtered;
+      this._selectedItem = before.selected;
+      this._pendingValue = before.pending;
+      this._optionsInit = before.init;
+      this._initialDeferred = before.deferred;
+      this._initialSuperseded = before.superseded;
+      try {
+        this._updateValueText();
+        if (this._initialized) this._syncForm();
+        if (this._isOpen) this._refreshOpen(before.snap);
+        else this._renderMenuOptions();
+      } catch { /* the previous list rendered before; nothing more to restore */ }
+      return false;
+    }
+    if (this._isOpen && !hadActive && this._activeIndex < 0) this._setActive(this._openActiveIndex(this._openActive));
+    return true;
+  }
+
   get mode() { return this._isAction() ? 'action' : 'select'; }
   set mode(v) {
     if (String(v ?? '').trim().toLowerCase() === 'action') this.setAttribute('mode', 'action');
@@ -1134,6 +1223,9 @@ export class TdDropdown extends TdFormElement {
     let openGroup = -1; // index of the group whose wrapper is open (-1 = none)
     let measured = false; // a rich row or a group header is rendered → measured listMax
     const wasMeasured = this._measured;
+    // v0.86.0: a long list skips off-screen rows (content-visibility, [data-cv]) — never the first max-height + 1 rows,
+    // which _placeMenu measures (a skipped row has only its estimated height)
+    this._cvFrom = this._filteredData.length > MANY_ROWS ? this._getMaxHeight() + 2 : Infinity;
     this._filteredData.forEach((item, index) => {
       if (groupIndex) {
         const n = this._groupOf(item, groupIndex);
@@ -1157,7 +1249,8 @@ export class TdDropdown extends TdFormElement {
         // the plain row: exactly the 0.83.0 string (hard compatibility rule)
         html += `<div class="td-dropdown__option" role="option" id="${id}-opt-${index}" aria-selected="${selected}"`
           + `${this._isItemDisabled(item) ? ' aria-disabled="true"' : ''}`
-          + ` data-value="${esc(item[valueKey])}" data-index="${index}" data-nav="${nav.length - 1}">`
+          + ` data-value="${esc(item[valueKey])}" data-index="${index}" data-nav="${nav.length - 1}"`
+          + `${nav.length - 1 >= this._cvFrom ? ' data-cv' : ''}>`
           + (this._swatchOf(item) ? SWATCH_SVG : '')
           + `<span class="td-dropdown__option-label">${esc(item[labelKey])}</span>`
           + (selected ? '<span class="td-dropdown__check" data-td-icon="check" aria-hidden="true"></span>' : '')
@@ -1170,6 +1263,8 @@ export class TdDropdown extends TdFormElement {
     if (openGroup >= 0) html += '</div>';
     this._measured = measured;
     scroller.innerHTML = html;
+    const many = this._cvFrom !== Infinity;
+    if (many !== scroller.hasAttribute('data-many')) scroller.toggleAttribute('data-many', many);
     this._applySwatchFills();
     // v0.22.0: the create row — last direct child of the listbox, outside the scroller, never filtered, never a value.
     for (const old of list.querySelectorAll(':scope > .td-dropdown__option--create')) old.remove();
@@ -1184,7 +1279,15 @@ export class TdDropdown extends TdFormElement {
     fillIconSlots(list);
     this._nav = nav;
     const empty = this._menuElement.querySelector('.td-dropdown__empty');
-    if (empty) {
+    this._syncLoadUi(list, empty);
+    const loadMsg = this._loadState === 'loading' ? TdDropdown.labels.loading
+      : this._loadState === 'error' ? TdDropdown.labels.loadError : null;
+    if (empty && loadMsg != null) {
+      // v0.86.0: loading / failed wins over "no results" and the result count
+      if (empty.hasAttribute('data-count')) empty.removeAttribute('data-count');
+      const msg = String(loadMsg ?? '');
+      if (empty.textContent !== msg) empty.textContent = msg;
+    } else if (empty) {
       let msg = this._filteredData.length ? '' : String(TdDropdown.labels.noResults ?? '');
       // v0.84.0: the result count (visually hidden via [data-count]) only with a typed query and ≥ 1 match
       let count = false;
@@ -1202,6 +1305,39 @@ export class TdDropdown extends TdFormElement {
     this._syncActive(false);
     // v0.84.0: rows of mixed heights → re-measure the scroller while open (also when leaving the measured layout)
     if (this._isOpen && (measured || wasMeasured)) this._updatePosition();
+  }
+
+  /**
+   * @private v0.86.0: the load state on the menu (`data-load`), the listbox (`aria-busy`) and the retry button right
+   * after the status line (only while failed; never focusable — the menu keeps focus on the trigger / search box).
+   */
+  _syncLoadUi(list, empty) {
+    const menu = this._menuElement;
+    const state = this._loadState === 'loading' || this._loadState === 'error' ? this._loadState : '';
+    if (menu && (menu.getAttribute('data-load') || '') !== state) {
+      if (state) menu.setAttribute('data-load', state);
+      else menu.removeAttribute('data-load');
+    }
+    if (list) {
+      if (state === 'loading') list.setAttribute('aria-busy', 'true');
+      else list.removeAttribute('aria-busy');
+    }
+    let retry = menu ? menu.querySelector('.td-dropdown__retry') : null;
+    if (state !== 'error') {
+      if (retry) retry.remove();
+      return;
+    }
+    if (!retry && empty) {
+      retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'td-dropdown__retry';
+      retry.tabIndex = -1;
+      empty.after(retry);
+    }
+    if (retry) {
+      const text = String(TdDropdown.labels.retry ?? '');
+      if (retry.textContent !== text) retry.textContent = text;
+    }
   }
 
   /**
@@ -1224,7 +1360,8 @@ export class TdDropdown extends TdFormElement {
       : '';
     return `<div class="td-dropdown__option td-dropdown__option--rich" role="option" id="${rid}" aria-selected="${selected}"`
       + `${this._isItemDisabled(item) ? ' aria-disabled="true"' : ''}${aria}`
-      + ` data-value="${esc(item[this._getValueKey()])}" data-index="${index}" data-nav="${navIndex}">`
+      + ` data-value="${esc(item[this._getValueKey()])}" data-index="${index}" data-nav="${navIndex}"`
+      + `${navIndex >= this._cvFrom ? ' data-cv' : ''}>`
       + (this._swatchOf(item) ? SWATCH_SVG : '')
       + (rich.icon ? `<span class="td-dropdown__icon" data-tone="${rich.tone}" data-td-icon="${esc(rich.icon)}" aria-hidden="true"></span>` : '')
       + `<span class="td-dropdown__text"><span class="td-dropdown__option-label" id="${rid}-label">${esc(item[this._getLabelKey()])}</span>${desc}</span>`
@@ -1435,6 +1572,10 @@ export class TdDropdown extends TdFormElement {
       if (!(e.target instanceof Element) || !e.target.closest('.td-dropdown__search')) e.preventDefault();
     });
     menu.addEventListener('click', (e) => {
+      if (e.target instanceof Element && e.target.closest('.td-dropdown__retry')) {
+        if (this._loadState === 'error') this._runLoad();
+        return;
+      }
       const option = e.target instanceof Element ? e.target.closest('.td-dropdown__option') : null;
       if (!option || !menu.contains(option)) return;
       if (option.getAttribute('aria-disabled') === 'true') return; // not selectable; the menu stays open
@@ -1524,7 +1665,9 @@ export class TdDropdown extends TdFormElement {
       case 'Enter':
         e.preventDefault();
         if (source === 'trigger') this._suppressClick = performance.now();
-        if (!this._commitActive() && source === 'trigger') this.close();
+        if (this._commitActive()) return;
+        if (this._loadState === 'error' && this._load) this._runLoad(); // v0.86.0: Enter = "Thử lại", stays open
+        else if (source === 'trigger') this.close();
         return;
       case ' ':
         if (source !== 'trigger') return; // typing a space in the search box
@@ -1729,14 +1872,9 @@ export class TdDropdown extends TdFormElement {
     });
 
     const mode = opts.active || 'selected';
-    let sel = this._selectedNavIndex();
-    if (sel >= 0 && !this._isNavEnabled(sel)) sel = -1; // a (programmatically) selected disabled option is never active
-    let active = sel;
-    if (mode === 'first') active = this._enabledFrom(0, 1);
-    else if (mode === 'last') active = this._enabledFrom(this._nav.length - 1, -1);
-    else if (mode === 'selected-or-first' && sel < 0) active = this._enabledFrom(0, 1);
+    this._openActive = mode;
     this._activeIndex = -1;
-    this._setActive(active);
+    this._setActive(this._openActiveIndex(mode));
 
     // Focus the search input — not on touch-first devices (any width: the on-screen keyboard would cover the list).
     const searchInput = this._search();
@@ -1749,6 +1887,17 @@ export class TdDropdown extends TdFormElement {
     }
 
     this._addGlobalListeners();
+    if (this._load && this._loadState === 'idle') this._runLoad(); // v0.86.0: the loader's one automatic run
+  }
+
+  /** @private the active row open() starts on for an `active` mode */
+  _openActiveIndex(mode) {
+    let sel = this._selectedNavIndex();
+    if (sel >= 0 && !this._isNavEnabled(sel)) sel = -1; // a (programmatically) selected disabled option is never active
+    if (mode === 'first') return this._enabledFrom(0, 1);
+    if (mode === 'last') return this._enabledFrom(this._nav.length - 1, -1);
+    if (mode === 'selected-or-first' && sel < 0) return this._enabledFrom(0, 1);
+    return sel;
   }
 
   /** @private covered by a newer blocking layer: close without handing focus to the (inert / leaving) trigger */
@@ -1933,6 +2082,7 @@ export class TdDropdown extends TdFormElement {
    * @param {Array<Object>} newData
    */
   updateData(newData) {
+    const snap = this._openSnapshot();
     this._options = Array.isArray(newData) ? newData : [];
     this._filteredData = this._ordered(this._options);
     this._optionsInit = true;
@@ -1941,26 +2091,20 @@ export class TdDropdown extends TdFormElement {
     if (this._pendingValue != null) {
       this.setValue(this._pendingValue);
     }
-    // v0.85.0: an OPEN action menu keeps its query / active row / scroll (see the `options` setter)
-    if (this._isOpen && this._isAction()) {
-      this._refreshOpen();
-      return;
-    }
-    this._renderMenuOptions();
-    if (this._isOpen) this._updatePosition();
+    // v0.85.0 / v0.86.0: an OPEN menu keeps its query / active row / scroll (see the `options` setter)
+    if (this._isOpen) this._refreshOpen(snap);
+    else this._renderMenuOptions();
   }
 
   /**
-   * @private v0.85.0 (action mode, menu open): the options were re-assigned — re-apply the current search text, keep
+   * @private v0.85.0 (v0.86.0: both modes; menu open): the options were re-assigned — re-apply the current search text, keep
    * the active row by value (gone / disabled → that index, moved to the nearest enabled row, forward first), keep the
    * scroller's scrollTop, reposition. Shared by the `options` setter and `updateData()` (v0.86.0 reuses it).
    */
-  _refreshOpen() {
-    const prevIndex = this._activeIndex;
-    const prev = this._nav[prevIndex];
+  _refreshOpen(snap = this._openSnapshot()) {
+    const { prevIndex, prev, top } = snap || { prevIndex: -1, prev: undefined, top: 0 };
     const vk = this._getValueKey();
     const scroller = this._scroller();
-    const top = scroller ? scroller.scrollTop : 0;
     this._filteredData = this._filtered(this._query());
     this._renderMenuOptions();
     let i = -1;
@@ -1969,6 +2113,8 @@ export class TdDropdown extends TdFormElement {
       i = this._nav.findIndex((n) => n.item && String(n.item[vk]) === v);
     } else if (prev && prev.create) {
       i = this._nav.findIndex((n) => n.create);
+    } else if (prev && prev.clear) {
+      i = this._nav.findIndex((n) => n.clear);
     }
     if (prevIndex >= 0 && (i < 0 || !this._isNavEnabled(i))) {
       const at = i >= 0 ? i : prevIndex;
@@ -1980,7 +2126,15 @@ export class TdDropdown extends TdFormElement {
     if (scroller && scroller.scrollTop !== top) scroller.scrollTop = top;
   }
 
+  /** @private v0.86.0: what _refreshOpen() keeps (taken before anything re-renders the rows); null while closed */
+  _openSnapshot() {
+    if (!this._isOpen) return null;
+    const scroller = this._scroller();
+    return { prevIndex: this._activeIndex, prev: this._nav[this._activeIndex], top: scroller ? scroller.scrollTop : 0 };
+  }
+
   destroy() {
+    this._loadToken++; // v0.86.0: a pending load never lands on a destroyed dropdown
     this._clearSearchFocusTimer();
     this._clearTypeahead();
     this._removeGlobalListeners();

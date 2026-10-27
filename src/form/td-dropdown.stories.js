@@ -157,3 +157,42 @@ export const ChonDeThem = {
       + 'đọc màn hình nghe "Đã chọn …".</p></div>';
   },
 };
+
+export const NapBatDongBo = {
+  name: 'Nạp bất đồng bộ (load)',
+  render: () => {
+    const ROWS = 2000;
+    const GROUPS = [0, 1, 2, 3, 4].map((i) => ({ key: `g${i}`, label: `Nhóm ${i + 1}` }));
+    // the loader runs ONCE, at the first open; the menu shows "Đang tải…" meanwhile
+    withOptions('dd-load', [], (el) => {
+      el.groups = GROUPS;
+      el.load = () => new Promise((resolve) => {
+        setTimeout(() => resolve(Array.from({ length: ROWS }, (_, i) => ({
+          value: `kh${i}`,
+          label: `Khách hàng số ${i + 1}`,
+          description: `Mã KH-${String(i + 1).padStart(4, '0')}`,
+          icon: 'user',
+          meta: String(i + 1),
+          group: `g${i % 5}`,
+        }))), 800);
+      });
+    });
+    // fails on the first run, succeeds on "Thử lại" (button, or Enter while no row is active)
+    withOptions('dd-load-retry', [], (el) => {
+      let attempt = 0;
+      el.load = () => new Promise((resolve, reject) => {
+        attempt += 1;
+        setTimeout(() => (attempt === 1
+          ? reject(new Error('Mạng lỗi (lần 1)'))
+          : resolve([{ value: 'hn', label: 'Hà Nội' }, { value: 'sg', label: 'TP. Hồ Chí Minh' }, { value: 'dn', label: 'Đà Nẵng' }])), 600);
+      });
+    });
+    return '<div class="sb-stack">'
+      + '<td-dropdown id="dd-load" label="Khách hàng (2000 dòng)" placeholder="Chọn khách hàng" max-height="6"></td-dropdown>'
+      + '<td-dropdown id="dd-load-retry" label="Lỗi lần đầu, rồi thành công" placeholder="Mở rồi bấm Thử lại"></td-dropdown>'
+      + '<p class="sb-note"><code>el.load = () =&gt; Promise&lt;options[]&gt;</code> chạy một lần khi mở menu lần đầu; menu hiện '
+      + '"Đang tải…" rồi các dòng. Lỗi → "Không tải được" + nút "Thử lại" (hoặc Enter); mở lại không tự gọi lại. '
+      + '<code>el.reload()</code> nạp lại bất cứ lúc nào. Danh sách trên 200 dòng dùng <code>content-visibility</code> '
+      + 'nên 2000 dòng vẫn mở dưới 100 ms.</p></div>';
+  },
+};

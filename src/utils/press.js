@@ -43,6 +43,7 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-diff__summary',
   '.td-drawer__close',
   '.td-dropdown__option',
+  '.td-dropdown__retry',
   '.td-dropdown__trigger',
   '.td-dropzone .td-dropzone__zone',
   '.td-dropzone__remove',

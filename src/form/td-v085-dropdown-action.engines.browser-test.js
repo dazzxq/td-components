@@ -614,8 +614,8 @@ describe('v0.85.0 td-dropdown action — mode switch + <select> upgrade (decisio
   });
 });
 
-describe('v0.85.0 td-dropdown — select mode open re-assign stays 0.84.0 (decision 5 is action-only)', () => {
-  it('options / updateData while open: the search text stays in the input, the list shows the full new options', async () => {
+describe('v0.85.0 td-dropdown — select mode open re-assign (0.86.0: filtered by the kept search text)', () => {
+  it('options / updateData while open: the search text stays in the input, the list stays filtered by it (0.86.0)', async () => {
     for (const via of ['options', 'updateData']) {
       const el = dd('aria-label="Chọn"');
       el.open();
@@ -626,7 +626,7 @@ describe('v0.85.0 td-dropdown — select mode open re-assign stays 0.84.0 (decis
       if (via === 'options') el.options = next;
       else el.updateData(next);
       expect(search(el).value, via).to.equal('an');
-      expect(values(el), via).to.deep.equal(['a', 'b', 'c', 'd', 'e', 'f']);
+      expect(values(el), via).to.deep.equal(['b', 'd']); // 0.86.0: filtered (0.85.0 showed the full list)
       el.close();
     }
   });

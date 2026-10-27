@@ -15,6 +15,10 @@
  * meta is NOT folded into the name), `aria-describedby` resolves to the meta, the polite live region is in the host and
  * says "Đã chọn {label}" after a pick.
  *
+ * v0.86.0 (plan docs/internal/plans/v0.86.0-dropdown-load.md, Step 4): a third page — `load`: while loading the status
+ * line says "Đang tải…" and the listbox is `aria-busy`; after a rejection the menu holds a status "Không tải được" and a
+ * button "Thử lại" (not focusable: DOM focus stays on the trigger), and a retry that succeeds clears both.
+ *
  *   node test/a11y/dropdown-rich.aria.mjs     (npm run test:a11y)
  */
 import { chromium } from 'playwright-core';
@@ -68,6 +72,17 @@ const PAGE_ACTION = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 </script></head><body><td-dropdown id="dda" mode="action" aria-label="Thêm kho" placeholder="Chọn kho để thêm"
   trigger-meta="4/10" searchable="false"></td-dropdown></body></html>`;
 
+const PAGE_LOAD = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="${ORIGIN}/td.css">
+<script type="module">
+  await import('${ORIGIN}/src/form/td-dropdown.js');
+  const el = document.getElementById('ddl');
+  window.__calls = [];
+  el.load = () => new Promise((resolve, reject) => { window.__calls.push({ resolve, reject }); });
+  window.__ready = true;
+</script></head><body><td-dropdown id="ddl" aria-label="Chọn kho"></td-dropdown></body></html>`;
+
 const tdCss = await readFile(join(ROOT, 'td.css'), 'utf8');
 const failures = [];
 const browser = await chromium.launch();
@@ -77,6 +92,7 @@ try {
     const url = new URL(route.request().url());
     if (url.pathname === '/') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE });
     if (url.pathname === '/action') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_ACTION });
+    if (url.pathname === '/load') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_LOAD });
     if (url.pathname === '/td.css') return route.fulfill({ status: 200, contentType: 'text/css', body: tdCss });
     if (/^\/src\//.test(url.pathname) && !url.pathname.includes('..')) {
       const ext = url.pathname.slice(url.pathname.lastIndexOf('.'));
@@ -123,6 +139,40 @@ try {
   await page.locator('#dda-opt-1').click();
   const said = await page.evaluate(() => document.querySelector('#dda > .td-dropdown__live').textContent);
   if (said !== 'Đã chọn Kho phụ') failures.push(`action: live text after a pick = ${JSON.stringify(said)}`);
+  // v0.86.0 load: loading → failed → retry
+  await page.goto(`${ORIGIN}/load`);
+  await page.waitForFunction(() => window.__ready === true);
+  await page.locator('#ddl-trigger').click();
+  await page.waitForFunction(() => !document.getElementById('ddl-menu').hidden && window.__calls.length === 1);
+  const read = () => page.evaluate(() => {
+    const menu = document.getElementById('ddl-menu');
+    const st = menu.querySelector('.td-dropdown__empty');
+    const rt = menu.querySelector('.td-dropdown__retry');
+    return {
+      status: st ? [st.getAttribute('role'), st.textContent] : null,
+      busy: menu.querySelector('[role="listbox"]').getAttribute('aria-busy'),
+      retry: rt ? [rt.textContent, rt.getAttribute('tabindex')] : null,
+      focusOnTrigger: document.activeElement === document.getElementById('ddl-trigger') || document.activeElement === menu.querySelector('.td-dropdown__search'),
+    };
+  });
+  let l = await read();
+  if (JSON.stringify(l.status) !== JSON.stringify(['status', 'Đang tải…']) || l.busy !== 'true' || l.retry) failures.push(`load (loading): ${JSON.stringify(l)}`);
+  const loadingTree = (await page.locator('#ddl-menu').ariaSnapshot()).trim();
+  if (!loadingTree.includes('Đang tải…')) failures.push(`load (loading): the status text is missing from the tree:\n${loadingTree}`);
+  await page.evaluate(() => window.__calls[0].reject(new Error('x')));
+  await page.waitForFunction(() => !!document.querySelector('#ddl-menu .td-dropdown__retry'));
+  l = await read();
+  if (JSON.stringify(l.status) !== JSON.stringify(['status', 'Không tải được']) || l.busy !== null || JSON.stringify(l.retry) !== JSON.stringify(['Thử lại', '-1'])) failures.push(`load (failed): ${JSON.stringify(l)}`);
+  const failedTree = (await page.locator('#ddl-menu').ariaSnapshot()).trim();
+  if (!failedTree.includes('Không tải được') || !/button "Thử lại"/.test(failedTree)) failures.push(`load (failed): expected the status and a button "Thử lại" in the tree, got:\n${failedTree}`);
+  await page.locator('#ddl-menu .td-dropdown__retry').click();
+  await page.waitForFunction(() => window.__calls.length === 2);
+  l = await read();
+  if (!l.focusOnTrigger) failures.push('load (retry click): DOM focus left the trigger / search box');
+  await page.evaluate(() => window.__calls[1].resolve([{ value: 'a', label: 'Kho chính' }]));
+  await page.waitForFunction(() => !document.querySelector('#ddl-menu .td-dropdown__retry') && document.querySelectorAll('#ddl-menu [role="option"]').length === 1);
+  l = await read();
+  if (l.status[1] !== '' || l.busy !== null || l.retry) failures.push(`load (done): ${JSON.stringify(l)}`);
   if (errors.length) failures.push(`page errors: ${errors.join(' | ')}`);
   await context.close();
 } finally {
@@ -133,4 +183,4 @@ if (failures.length) {
   process.exit(1);
 }
 console.log('dropdown-rich aria: OK (listbox > group > option names, disabled / selected, create row last; trigger name;'
-  + ' action mode: combobox name, aria-describedby → meta, polite live region "Đã chọn …")');
+  + ' action mode: combobox name, aria-describedby → meta, polite live region "Đã chọn …"; load: status "Đang tải…" + aria-busy, failed status + button "Thử lại", retry)');
