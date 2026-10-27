@@ -183,8 +183,9 @@ const CASES = [
   {
     tag: 'td-dropdown', attrs: { label: 'Chọn' },
     props: () => ({ options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }], value: 'b', searchable: false,
-      allowClear: false, onChange: fn(), onSelect: fn(), onCreate: fn(), createLabel: 'Tạo "{query}"' }),
-    check(el) { expect(el.textContent.includes('B')).to.equal(true); },
+      allowClear: false, onChange: fn(), onSelect: fn(), onCreate: fn(), createLabel: 'Tạo "{query}"',
+      groups: [{ key: 'g', label: 'Nhóm' }] }), // v0.84.0
+    check(el) { expect(el.textContent.includes('B')).to.equal(true); expect(el.groups).to.deep.equal([{ key: 'g', label: 'Nhóm' }]); },
   },
   {
     tag: 'td-chip-input', attrs: { label: 'Thẻ' },
