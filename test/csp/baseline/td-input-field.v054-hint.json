@@ -3,7 +3,9 @@
   "_state": "v054-hint",
   "_profile": "td",
   "_reducedMotion": false,
-  "_excludedProps": [],
+  "_excludedProps": [
+    "grid-template-columns"
+  ],
   "_sentinels": [
     {
       "class": ":root (td.css)",
@@ -70,7 +72,6 @@
       "outline-width": "3px",
       "outline-color": "rgb(28, 28, 30)",
       "outline-offset": "0px",
-      "grid-template-columns": "1214.19px 57.8125px",
       "column-gap": "8px",
       "row-gap": "normal",
       "touch-action": "auto",
@@ -154,7 +155,6 @@
       "outline-width": "3px",
       "outline-color": "rgb(107, 107, 115)",
       "outline-offset": "0px",
-      "grid-template-columns": "none",
       "column-gap": "normal",
       "row-gap": "normal",
       "touch-action": "auto",
@@ -238,7 +238,6 @@
       "outline-width": "3px",
       "outline-color": "rgb(107, 107, 115)",
       "outline-offset": "0px",
-      "grid-template-columns": "none",
       "column-gap": "normal",
       "row-gap": "normal",
       "touch-action": "auto",
