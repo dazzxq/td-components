@@ -155,3 +155,15 @@ export const SegmentedNarrow = {
       { value: 'map', label: 'Bản đồ', icon: 'search' }, { value: 'cal', label: 'Lịch', icon: 'calendar' }];
   },
 };
+
+/** v0.87.0: variant="tiles" — square tiles (icon above the label), radio keyboard like every variant. */
+export const Tiles = {
+  name: 'Ô icon lớn (tiles)',
+  render: () => `<div class="sb-side216"><td-choice-group id="cg-tiles" label="Biểu tượng" variant="tiles" value="star"></td-choice-group></div>`,
+  play: ({ canvasElement }) => {
+    canvasElement.querySelector('#cg-tiles').options = [
+      { value: 'star', label: 'Nổi bật', icon: 'star' }, { value: 'price', label: 'Giảm giá', icon: 'price' },
+      { value: 'brand', label: 'Thương hiệu', icon: 'brand' }, { value: 'send', label: 'Giao nhanh', icon: 'send' },
+      { value: 'clock', label: 'Có hạn', icon: 'clock', hint: 'Theo lịch' }, { value: 'lock', label: 'Riêng tư', icon: 'lock', disabled: true }];
+  },
+};

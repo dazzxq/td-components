@@ -3577,6 +3577,29 @@
         "width",
         "margin-left"
       ]
+    },
+    {
+      "state": "selection-create",
+      "setup": "const c=document.createElement('td-chip-input'); c.id='probe'; c.setAttribute('aria-label','Vai trò'); c.setAttribute('selection-only',''); c.setAttribute('create-label','Tạo vai trò mới'); window.__mount.appendChild(c); c.options=[{value:'an',label:'An'},{value:'binh',label:'Bình'}]; const i=c.querySelector('.td-chip-input__input'); i.focus(); c.open(); i.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true}));",
+      "selectors": [
+        ".td-chip-input__options[aria-multiselectable=\"true\"]",
+        ".td-chip-input__option--create",
+        ".td-chip-input__option--create[data-active]",
+        ".td-chip-input__create-icon"
+      ],
+      "settle": 450,
+      "excludeProps": [
+        "top",
+        "left",
+        "right",
+        "bottom"
+      ],
+      "portal": [
+        ".td-chip-input__options[aria-multiselectable=\"true\"]",
+        ".td-chip-input__option--create",
+        ".td-chip-input__option--create[data-active]",
+        ".td-chip-input__create-icon"
+      ]
     }
   ],
   "td-form-validation": [
@@ -7432,6 +7455,26 @@
         "grid-template-columns"
       ],
       "selectorNote": "v0.53.1 (plan v0.53.1-segmented-layout): a fixed-width container (CSSOM) — the layout level (data-layout) is decided after the upgrade; text-bearing boxes / track sizes follow the platform font metrics (height / width / margin-left / grid-template-columns excluded)."
+    },
+    {
+      "state": "tiles",
+      "setup": "const c=document.createElement('td-choice-group'); c.id='probe'; c.setAttribute('name','kind'); c.setAttribute('aria-label','Biểu tượng'); c.setAttribute('variant','tiles'); c.setAttribute('value','star'); window.__mount.appendChild(c); c.options=[{value:'star',label:'Nổi bật',icon:'star'},{value:'price',label:'Giảm giá',icon:'price',hint:'Theo đơn'},{value:'lock',label:'Riêng tư',icon:'lock',disabled:true}];",
+      "selectors": [
+        ".td-choice__options",
+        ".td-choice__option",
+        ".td-choice__face",
+        ".td-choice__icon",
+        ".td-choice__text",
+        ".td-choice__input:checked + .td-choice__face",
+        ".td-choice__input:disabled + .td-choice__face"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left",
+        "grid-template-columns"
+      ]
     }
   ],
   "td-rating": [

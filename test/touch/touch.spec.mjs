@@ -763,6 +763,36 @@ async function chromiumSemantics(browser) {
       const unchecked = '#rsp-choice .td-choice__option[data-td-value="512"] .td-choice__face';
       expect(rest.split(' | ')[1] === 'none' && (await bgOf(page, unchecked)).split(' | ')[1] === 'none', 'a pressed / hover layer stuck after the tap');
     });
+    // v0.87.0: variant="tiles" shares the option press / hover-gate rules (mounted for this case only)
+    await it(tag, 'choice tile: pressed while the finger is down, a tap selects (one change), hover not sticky', async () => {
+      await load(page);
+      await page.evaluate(() => {
+        const c = document.createElement('td-choice-group');
+        c.id = 'rsp-tiles'; c.setAttribute('name', 'kind'); c.setAttribute('aria-label', 'Biểu tượng'); c.setAttribute('variant', 'tiles');
+        document.querySelector('#rsp-choice').before(c);
+        c.options = [{ value: 'star', label: 'Nổi bật', icon: 'star' }, { value: 'price', label: 'Giảm giá', icon: 'price' }];
+        window.__tl = [];
+        c.addEventListener('change', (e) => window.__tl.push(e.detail.value));
+      });
+      const sel = '#rsp-tiles .td-choice__option[data-td-value="price"]';
+      await page.evaluate((s) => document.querySelector(s).scrollIntoView({ block: 'center' }), sel);
+      await frames(page, 2);
+      const pt = await centre(page, sel);
+      await touchDown(cdp, pt);
+      await frames(page, 2);
+      const face = `${sel} .td-choice__face`;
+      const pressed = await page.evaluate(([s, f]) => ({ attr: document.querySelector(s).hasAttribute('data-td-pressed'), img: getComputedStyle(document.querySelector(f)).backgroundImage }), [sel, face]);
+      const want = await tokenColour(page, '--td-color-pressed');
+      expect(pressed.attr && pressed.img.includes(want), `tile pressed look missing: ${JSON.stringify(pressed)} (want ${want})`);
+      await touchUp(cdp);
+      await page.waitForFunction(() => document.querySelector('#rsp-tiles').value === 'price', null, { timeout: 3000 }).catch(() => {});
+      const st = await page.evaluate(() => ({ value: document.querySelector('#rsp-tiles').value, log: window.__tl.join(',') }));
+      expect(st.value === 'price' && st.log === 'price', `tile tap: ${JSON.stringify(st)}`);
+      await quiet(page, sel);
+      const other = '#rsp-tiles .td-choice__option[data-td-value="star"] .td-choice__face';
+      expect((await bgOf(page, other)).split(' | ')[1] === 'none', 'a pressed / hover layer stuck on the other tile');
+      await page.evaluate(() => document.querySelector('#rsp-tiles').remove());
+    });
     await it(tag, 'choice: a vertical swipe starting on the options scrolls the page, selects nothing', async () => {
       await load(page);
       const sel = '#rsp-choice-long .td-choice__option';

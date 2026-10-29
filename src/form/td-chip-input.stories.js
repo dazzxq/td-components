@@ -260,3 +260,22 @@ export const MauSanPham = {
       + 'Nhãn phải nói tên màu; có <code>renderOption</code> / <code>renderChip</code> thì chấm built-in không hiện.</p></div>';
   },
 };
+
+/** v0.87.0: selection-only + create-label — a pinned "add new" row (`create` { query }); the site creates the record. */
+export const MultiSelectCreate = {
+  name: 'Chọn nhiều + dòng tạo mới',
+  render: () => {
+    const a = `ci-ms-${++seq}`;
+    withProps(a, (el) => {
+      el.options = ROLES;
+      el.addEventListener('create', (e) => {
+        const label = e.detail.query || `Vai trò ${el.options.length + 1}`;
+        const value = `new-${el.options.length + 1}`;
+        el.options = [...el.options, { value, label }];
+        el.value = [...el.getValue(), { value, label }];
+      });
+    });
+    return `<td-chip-input id="${a}" name="roles[]" label="Vai trò" selection-only create-label="Tạo vai trò mới"`
+      + ' show-on-focus min-chars="0"></td-chip-input>';
+  },
+};

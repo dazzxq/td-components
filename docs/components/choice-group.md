@@ -297,6 +297,31 @@ document.getElementById('theme-switch').addEventListener('change', (e) => {
 - Đặt công tắc **trong menu tài khoản** (`TdMenu`, 0.53.0): mục `type: 'custom'` trả về chính `td-choice-group` này —
   [công thức](menu.md#công-thức-chuyển-theme-trong-menu-tài-khoản).
 
+### 8. Ô icon lớn — `variant="tiles"` (0.87.0)
+
+Lưới ô **vuông**: icon to ở trên, nhãn ở dưới (căn giữa, tối đa 2 dòng, dài hơn thì cắt `…`). Hợp cho chọn loại / biểu
+tượng / kiểu hiển thị. Hành vi y như mọi variant: radio thật, ← → ↑ ↓ vòng quanh, `required`, `unavailable`, `disabled`,
+gửi form.
+
+```html
+<td-choice-group id="kind" name="kind" label="Biểu tượng" variant="tiles" value="star"></td-choice-group>
+<script type="module">
+  document.getElementById('kind').options = [
+    { value: 'star', label: 'Nổi bật', icon: 'star' },
+    { value: 'price', label: 'Giảm giá', icon: 'price', hint: 'Theo đơn' },
+    { value: 'lock', label: 'Riêng tư', icon: 'lock', disabled: true },
+  ];
+</script>
+```
+
+- Số cột tự tính theo chỗ: mỗi ô rộng tối thiểu `--td-choice-tile-min` (mặc định `5.5rem`), giãn đều cho kín hàng.
+  Cột hẹp hơn một ô → một cột.
+- `hint` và ghi chú `unavailable` không hiện chữ, chỉ là mô tả cho trình đọc màn hình (như segmented).
+- `size`, `icon-only`, `stretch` chỉ dành cho segmented; tiles bỏ qua. `swatch` / `image` không hiện ở tiles (cảnh báo
+  console một lần, như segmented).
+- **Adapter PHP chưa hỗ trợ `tiles`**: `td_choice_group([... 'variant' => 'tiles'])` rơi về `button` như mọi giá trị lạ.
+  Trang PHP muốn tiles thì để JS dựng (gán `options`).
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -304,7 +329,7 @@ document.getElementById('theme-switch').addEventListener('change', (e) => {
 | `name` | string | — | Tên field khi submit. |
 | `value` | string | `''` | Giá trị **mặc định** (`form.reset()` về đây). Đổi sau khi render → đặt luôn giá trị sống (không event). |
 | `label` | string | — | Nhãn nhóm hiển thị (tên của `role="radiogroup"`). |
-| `variant` | `button` \| `swatch` \| `segmented` | `button` | Dáng; giá trị lạ → `button`. `segmented` từ 0.52.0 ([mục 7](#7-thanh-chọn-segmented-0520)). |
+| `variant` | `button` \| `swatch` \| `segmented` \| `tiles` | `button` | Dáng; giá trị lạ → `button`. `segmented` từ 0.52.0 ([mục 7](#7-thanh-chọn-segmented-0520)), `tiles` từ 0.87.0 ([mục 8](#8-ô-icon-lớn--varianttiles-0870)). |
 | `size` | `sm` \| `md` \| `lg` | `md` | 0.52.0, chỉ `segmented`: chiều cao ô (32 / 40 / 48px; cảm ứng ≥ 44). |
 | `icon-only` | boolean | — | 0.52.0, chỉ `segmented`: nhãn ẩn trực quan (vẫn là tên truy cập). |
 | `stretch` | boolean | — | 0.53.1, chỉ `segmented`: thanh lấp cột chứa nó ([Bố cục ở chỗ hẹp](#bố-cục-ở-chỗ-hẹp-0531)). |
@@ -367,6 +392,8 @@ document.getElementById('theme-switch').addEventListener('change', (e) => {
 | `--td-choice-seg-font` | `var(--td-text-sm)` (sm `text-xs`, lg `text-base`) | 0.53.1: cỡ chữ nhãn |
 | `--td-choice-seg-icon` | `1.25rem` (sm `1rem`) | 0.53.1: cỡ icon (ở `stacked` tự thu nhỏ cho vừa chiều cao ô) |
 | `--td-choice-seg-icon-gap` | `0.375rem` (sm `0.25rem`) | 0.53.1: khe icon ↔ nhãn |
+| `--td-choice-tile-min` | `5.5rem` | 0.87.0: cạnh tối thiểu một ô `tiles` (số cột tự tính) |
+| `--td-choice-tile-icon` | `1.75rem` | 0.87.0: cỡ icon trong ô `tiles` |
 
 Giữ kiểu cũ (vòng mực, không tint, không tick):
 

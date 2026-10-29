@@ -196,3 +196,24 @@ export const NapBatDongBo = {
       + 'nên 2000 dòng vẫn mở dưới 100 ms.</p></div>';
   },
 };
+
+/** v0.87.0: renderOption — the site draws each row's label (a Node through DOM APIs); search still uses `label`. */
+export const RenderOption = {
+  name: 'Tự vẽ nhãn dòng (renderOption)',
+  render: () => {
+    withOptions('dd-render', [{ value: 'a', label: 'Áo thun', meta: '120k' }, { value: 'b', label: 'Quần jean', meta: '350k' },
+      { value: 'c', label: 'Mũ lưỡi trai', meta: '90k' }], (el) => {
+      el.renderOption = (item, { query }) => {
+        const span = document.createElement('span');
+        const text = String(item.label);
+        const i = query ? text.toLowerCase().indexOf(query.trim().toLowerCase()) : -1;
+        if (i < 0) return text;
+        const mark = document.createElement('mark');
+        mark.textContent = text.slice(i, i + query.trim().length);
+        span.append(text.slice(0, i), mark, text.slice(i + query.trim().length));
+        return span;
+      };
+    });
+    return '<td-dropdown id="dd-render" label="Sản phẩm" searchable placeholder="Chọn sản phẩm"></td-dropdown>';
+  },
+};

@@ -205,6 +205,23 @@ const CASES = [
     props: () => ({ load: () => Promise.resolve([{ value: 'a', label: 'A' }]) }),
     check(el) { expect(typeof el.load).to.equal('function'); expect(Object.prototype.hasOwnProperty.call(el, 'load')).to.equal(false); },
   },
+  // v0.87.0: renderOption (dropdown) + createLabel (chip-input selection-only), assigned before the upgrade
+  {
+    tag: 'td-dropdown', attrs: { 'aria-label': 'Vẽ' },
+    props: () => ({ options: [{ value: 'a', label: 'A' }], renderOption: (item) => `*${item.label}` }),
+    check(el) {
+      expect(typeof el.renderOption).to.equal('function');
+      expect(Object.prototype.hasOwnProperty.call(el, 'renderOption')).to.equal(false);
+    },
+  },
+  {
+    tag: 'td-chip-input', attrs: { 'aria-label': 'Vai trò', 'selection-only': '' },
+    props: () => ({ createLabel: 'Tạo mới' }),
+    check(el) {
+      expect(el.getAttribute('create-label')).to.equal('Tạo mới');
+      expect(Object.prototype.hasOwnProperty.call(el, 'createLabel')).to.equal(false);
+    },
+  },
   {
     tag: 'td-chip-input', attrs: { label: 'Thẻ' },
     props: () => ({ options: [{ value: 'php', label: 'PHP' }], value: [{ value: 'php', label: 'PHP' }], search: fn(), create: fn(),

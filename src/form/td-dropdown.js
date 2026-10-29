@@ -15,7 +15,7 @@ const TYPEAHEAD_MS = 500;
 const SWATCH_SVG = '<svg class="td-dropdown__swatch" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><circle cx="6" cy="6" r="6"/></svg>';
 /** Properties that may be set on the element before it upgrades (they would shadow the class accessors). */
 const UPGRADE_PROPS = ['mode', 'keepOpen', 'triggerMeta', 'options', 'groups', 'onChange', 'onSelect', 'onCreate',
-  'createLabel', 'onPick', 'load']; // v0.85.0: `mode` first, so a pre-upgrade action mode is in force before the <select> read
+  'createLabel', 'onPick', 'load', 'renderOption']; // v0.85.0: `mode` first, so a pre-upgrade action mode is in force before the <select> read
 /** v0.84.0: tones of the icon tile / status dot (anything else → neutral). */
 const TONES = ['neutral', 'accent', 'success', 'warning', 'danger', 'info'];
 /** v0.84.0: the fields `search-fields` may name (all three by default). */
@@ -216,6 +216,8 @@ function safeCall(fn, arg, what) {
  * @property {'select'|'action'} mode - v0.85.0: mirrors `mode` (setting anything but `'action'` removes the attribute)
  * @property {boolean} keepOpen - v0.85.0: mirrors `keep-open`
  * @property {string} triggerMeta - v0.85.0: mirrors `trigger-meta` ('' / null = removed)
+ * @property {Function} renderOption - v0.87.0: `(item, { query, selected }) => Node | string | null`, the label content
+ *   of each option row (DOM APIs; null / '' / a throw → the label text)
  * @property {Function} onPick - v0.85.0 action mode: callback receiving the picked item; runs before the `pick` event (a
  *   throw is logged, the event still fires). Options re-assigned (`options` / `updateData()`) while an action menu is
  *   OPEN keep the typed search text (re-filtered), the active row (by value, else the nearest enabled row) and the
@@ -302,6 +304,7 @@ export class TdDropdown extends TdFormElement {
     this._onChange = null;
     this._onSelect = null;
     this._onCreate = null;
+    this._renderOption = null; // v0.87.0
     this._onPick = null;
 
     /** @private v0.86.0: the async options loader (`load` property) */
@@ -552,6 +555,16 @@ export class TdDropdown extends TdFormElement {
   set onCreate(fn) { this._onCreate = typeof fn === 'function' ? fn : null; }
 
   /** v0.85.0: action mode → called with the picked item (before the `pick` event). */
+  /**
+   * v0.87.0: `renderOption(item, { query, selected }) => Node | string | null` — the content of each option row's label
+   * (plain and rich rows; never the trigger, the clear row or the create row). null / '' / a throw → the label text.
+   */
+  get renderOption() { return this._renderOption; }
+  set renderOption(fn) {
+    this._renderOption = typeof fn === 'function' ? fn : null;
+    this._renderMenuOptions(); // same rows → the active row is kept
+  }
+
   get onPick() { return this._onPick; }
   set onPick(fn) { this._onPick = typeof fn === 'function' ? fn : null; }
 
@@ -1261,8 +1274,10 @@ export class TdDropdown extends TdFormElement {
       html += this._richRowHtml(item, rich, `${id}-opt-${index}`, index, nav.length - 1, selected);
     });
     if (openGroup >= 0) html += '</div>';
-    this._measured = measured;
+    // v0.87.0: a renderOption Node may change the row height → listMax is measured
+    this._measured = measured || !!this._renderOption;
     scroller.innerHTML = html;
+    if (this._renderOption) this._applyRenderOption(scroller);
     const many = this._cvFrom !== Infinity;
     if (many !== scroller.hasAttribute('data-many')) scroller.toggleAttribute('data-many', many);
     this._applySwatchFills();
@@ -1304,7 +1319,7 @@ export class TdDropdown extends TdFormElement {
     if (this._activeIndex >= nav.length) this._activeIndex = -1;
     this._syncActive(false);
     // v0.84.0: rows of mixed heights → re-measure the scroller while open (also when leaving the measured layout)
-    if (this._isOpen && (measured || wasMeasured)) this._updatePosition();
+    if (this._isOpen && (this._measured || wasMeasured)) this._updatePosition();
   }
 
   /**
@@ -1337,6 +1352,34 @@ export class TdDropdown extends TdFormElement {
     if (retry) {
       const text = String(TdDropdown.labels.retry ?? '');
       if (retry.textContent !== text) retry.textContent = text;
+    }
+  }
+
+  /**
+   * @private v0.87.0: the site's label content for every option row, through DOM APIs (a Node is appended, a string is
+   * a text node — never HTML); null / '' / a throw keeps the escaped label text (a throw is logged). A replaced label
+   * no longer names the option: the row gets `aria-label` = the label text (rich rows drop `aria-labelledby`).
+   */
+  _applyRenderOption(scroller) {
+    const fn = this._renderOption;
+    const query = this._query();
+    for (const row of scroller.querySelectorAll('.td-dropdown__option[data-index]')) {
+      const item = this._filteredData[Number(row.getAttribute('data-index'))];
+      const label = row.querySelector('.td-dropdown__option-label');
+      if (!item || !label) continue;
+      let out;
+      try {
+        out = fn.call(this, item, { query, selected: this._isSelected(item) });
+      } catch (err) {
+        console.error('td-dropdown: renderOption failed', err);
+        continue;
+      }
+      const name = label.textContent;
+      if (out instanceof Node) label.replaceChildren(out);
+      else if (out != null && out !== '') label.replaceChildren(document.createTextNode(String(out)));
+      else continue;
+      row.setAttribute('aria-label', name);
+      row.removeAttribute('aria-labelledby');
     }
   }
 

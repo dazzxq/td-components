@@ -483,6 +483,31 @@ const ok = await dd.reload();  // true = đã gán options; false = lỗi / bị
 2000 option có icon + mô tả + nhóm: mở menu và gõ tìm đều dưới mức người dùng thấy giật (số đo ở CHANGELOG 0.86.0).
 Trình duyệt cũ (Firefox < 125, Safari < 18) vẫn đúng, chỉ chậm hơn.
 
+### 13. Tự vẽ nhãn dòng (`renderOption`, 0.87.0)
+
+`renderOption(item, { query, selected })` trả nội dung cho phần **nhãn** của mỗi dòng option (dòng thường và dòng giàu
+thông tin). Icon, mô tả, trạng thái, meta, dấu tích vẫn dựng từ field như cũ.
+
+```js
+dd.renderOption = (item, { query }) => {
+  const i = query ? item.label.toLowerCase().indexOf(query.toLowerCase()) : -1;
+  if (i < 0) return null; // nhãn chữ mặc định
+  const span = document.createElement('span');
+  const mark = document.createElement('mark');
+  mark.textContent = item.label.slice(i, i + query.length);
+  span.append(item.label.slice(0, i), mark, item.label.slice(i + query.length));
+  return span;
+};
+```
+
+- Trả **Node** → chèn vào nhãn; trả **chuỗi** → chèn dạng chữ (không bao giờ là HTML); `null` / `''` / ném lỗi → nhãn chữ
+  mặc định (lỗi ghi `console.error`).
+- Không áp cho trigger, dòng "Không chọn", dòng "Thêm mới". Tìm kiếm, type-ahead và tên đọc cho trình đọc màn hình vẫn
+  theo `label` / `keywords`.
+- Node **không được chứa phần tử nhận focus** (link, nút, input): cả dòng là một `option`. Site chịu trách nhiệm nội dung
+  Node của mình (dựng bằng DOM API, đừng gán `innerHTML` từ dữ liệu người dùng).
+- Có `renderOption` thì chiều cao menu luôn đo thật (Node có thể cao hơn dòng chuẩn).
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -519,6 +544,7 @@ Trình duyệt cũ (Firefox < 125, Safari < 18) vẫn đúng, chỉ chậm hơn.
 | `options` | `Array<Object>` (get/set) | Danh sách option. Lần gán đầu áp attribute `value`; các lần sau giữ lựa chọn hiện tại nếu còn trong danh sách (không còn → bỏ chọn). Luôn áp giá trị pending. Menu đang mở → giữ chữ tìm, dòng active, vị trí cuộn (0.86.0 ở cả hai chế độ). Gán trước khi component được define vẫn nhận. |
 | `onChange` | `(value) => void` \| `null` | Callback khi người dùng chọn/bỏ chọn; nhận value (`null` khi bỏ chọn). Chạy sau `onSelect`. |
 | `onSelect` | `(item) => void` \| `null` | Callback nhận cả object (`null` khi bỏ chọn). Chạy trước `onChange` (cả hai đều chạy nếu cùng đặt). |
+| `renderOption` | `(item, { query, selected }) => Node \| string \| null` \| `null` | **0.87.0** Nội dung nhãn của mỗi dòng option ([mục 13](#13-tự-vẽ-nhãn-dòng-renderoption-0870)). Gán / gỡ → vẽ lại danh sách. Khác hàm → `null`. Gán trước khi define vẫn nhận. |
 | `onCreate` | `(query) => void` \| `null` | Callback khi kích hoạt dòng "Thêm mới" (0.22.0); nhận `query` (chuỗi). Chạy trước event `create`; ném lỗi → ghi `console.error`, event vẫn phát. |
 | `createLabel` | `string` (get/set) | Phản chiếu attribute `create-label` (`''` = tắt). |
 | `load` | `() => Promise<Array>` \| `null` | **0.86.0** Hàm nạp danh sách bất đồng bộ ([mục 12](#12-nạp-danh-sách-bất-đồng-bộ-load-0860)). Tự gọi một lần ở lần mở đầu. Gán lại (kể cả `null`) → bỏ lần nạp đang chờ; menu đang mở thì nạp ngay. Gán trước khi define vẫn nhận. |

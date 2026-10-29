@@ -428,6 +428,37 @@
 		font-weight: var(--td-fw-medium);
 	}
 
+	/* v0.87.0 selection-only create row: the last row, pinned to the bottom of the scrolling list (sticky, the menu's own
+	   fill underneath so rows never show through), the dropdown create ink + its hairline; the list keeps the active row
+	   clear of it (scroll-padding) */
+	.td-chip-input__options[aria-multiselectable="true"][data-create-row] {
+		scroll-padding-bottom: calc(var(--td-dropdown-option-h) + 1px); /* the create row + its hairline */
+	}
+
+	.td-chip-input__options[aria-multiselectable="true"] .td-chip-input__option--create {
+		position: sticky;
+		bottom: 0;
+		z-index: 1;
+		padding-inline-start: var(--td-option-pad-x);
+		color: var(--td-dropdown-create-fg);
+		background-color: var(--_td-glass-fill, var(--td-glass-solid));
+		border-top: 1px solid var(--td-dropdown-hairline);
+	}
+
+	.td-chip-input__options[aria-multiselectable="true"] .td-chip-input__option--create[data-active] {
+		background-image: linear-gradient(var(--td-option-active-bg), var(--td-option-active-bg));
+	}
+
+	.td-chip-input__create-icon {
+		display: inline-flex;
+		flex: none;
+	}
+
+	.td-chip-input__create-icon .td-icon {
+		width: 1rem;
+		height: 1rem;
+	}
+
 	.td-chip-input__option-label {
 		display: flex;
 		gap: 6px;

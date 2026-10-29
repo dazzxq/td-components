@@ -2178,7 +2178,9 @@
     "--td-badge-info-glass-fg": {"light": "rgb(30, 58, 138)", "dark": "rgb(219, 234, 254)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-info-glass-fg"},
     "--td-badge-neutral-glass-fg": {"light": "rgb(39, 39, 42)", "dark": "rgb(244, 244, 245)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-neutral-glass-fg"},
     "--td-badge-success-glass-fg": {"light": "rgb(20, 83, 45)", "dark": "rgb(220, 252, 231)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-success-glass-fg"},
-    "--td-badge-warning-glass-fg": {"light": "rgb(124, 45, 18)", "dark": "rgb(255, 237, 213)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-warning-glass-fg"}
+    "--td-badge-warning-glass-fg": {"light": "rgb(124, 45, 18)", "dark": "rgb(255, 237, 213)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-warning-glass-fg"},
+    "--td-choice-tile-icon": {"light": "1.75rem", "dark": "1.75rem", "why": "v0.87.0 td-choice-group variant=tiles: icon size"},
+    "--td-choice-tile-min": {"light": "5.5rem", "dark": "5.5rem", "why": "v0.87.0 td-choice-group variant=tiles: minimum tile edge"}
   },
   "lightDeltas": {
     "--td-table-check-border": {

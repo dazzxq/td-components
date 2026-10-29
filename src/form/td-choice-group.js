@@ -6,11 +6,11 @@ import { normalizeOptions, sameValueList, CHOICE_LIMITS } from '../utils/choice-
 import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 import { decideLayout, minWidth } from '../utils/segmented-layout.js';
 
-const VARIANTS = ['button', 'swatch', 'segmented'];
+const VARIANTS = ['button', 'swatch', 'segmented', 'tiles']; // v0.87.0: tiles
 /** v0.52.0: segment sizes (segmented only) */
 const SIZES = ['sm', 'md', 'lg'];
 const GATES = { safeColor, safeMediaUrl: (u) => safeMediaUrl(u), hasIcon };
-/** v0.52.0: the icon slots of the segmented faces */
+/** v0.52.0: the icon slots of the segmented faces (v0.87.0: and the tiles) */
 const ICON_SLOTS = '.td-choice__face > .td-choice__icon[data-td-icon]';
 /** Every form-associated element (the adopted markup may hold the radios and nothing else). */
 const FORM_ASSOCIATED = 'input, textarea, select, button, fieldset, output, object';
@@ -92,7 +92,8 @@ let _groupCounter = 0;
  * @attr {string} name
  * @attr {string} value - default value (reset target); later changes set the live value too (no event)
  * @attr {string} label - visible group label
- * @attr {string} variant - button (default) | swatch | segmented (v0.52.0: compact pill segments, icon + label)
+ * @attr {string} variant - button (default) | swatch | segmented (v0.52.0: compact pill segments, icon + label) | tiles
+ *   (v0.87.0: a grid of square tiles, icon above the label; hint / note read as descriptions only)
  * @attr {string} size - sm | md (default) | lg — segmented only (v0.52.0)
  * @attr {boolean} icon-only - segmented only (v0.52.0): labels become visually hidden names
  * @attr {boolean} stretch - segmented only (v0.53.1): the rail fills its container
@@ -155,10 +156,10 @@ export class TdChoiceGroup extends TdFormElement {
 
   // --- resolved state ---
 
-  /** @private @returns {'button'|'swatch'|'segmented'} */
+  /** @private @returns {'button'|'swatch'|'segmented'|'tiles'} */
   _variant() {
     const v = this.getAttribute('variant');
-    return VARIANTS.includes(v) ? /** @type {'button'|'swatch'|'segmented'} */ (v) : 'button';
+    return VARIANTS.includes(v) ? /** @type {'button'|'swatch'|'segmented'|'tiles'} */ (v) : 'button';
   }
 
   /** @private v0.52.0 segment size (segmented only) */
@@ -225,6 +226,13 @@ export class TdChoiceGroup extends TdFormElement {
     const esc = (v) => this.escapeHtml(v);
     const oid = `${esc(this.id)}-o${o.index}`;
     const swatchMode = this._variant() === 'swatch';
+    if (this._variant() === 'tiles') {
+      // v0.87.0: [icon slot] + label + hint / note as descriptions only (no bold-width placeholder, no icon-only)
+      return (o.icon ? `<span class="td-choice__icon" data-td-icon="${esc(o.icon)}" aria-hidden="true"></span>` : '')
+        + `<span class="td-choice__text" id="${oid}-l">${esc(o.label)}</span>`
+        + (o.hint ? `<span class="td-choice__hint td-sr-only" id="${oid}-h">${esc(o.hint)}</span>` : '')
+        + (o.unavailable ? `<span class="td-choice__note td-sr-only" id="${oid}-n"${o.unavailableLabel ? ' data-td-custom' : ''}>${esc(this._noteText(o))}</span>` : '');
+    }
     if (this._variant() === 'segmented') {
       // v0.52.0: [icon slot] + label (bold-width placeholder via data-label) + hint / note as descriptions only
       const label = esc(o.label);
@@ -1096,15 +1104,18 @@ export class TdChoiceGroup extends TdFormElement {
 
   /**
    * @private v0.52.0: option fields the current variant does not show — one warning per kind, counts only (never a value):
-   * segmented ignores swatch / image and needs an icon per option when icon-only; icon shows only in segmented.
+   * segmented / tiles ignore swatch / image; segmented needs an icon per option when icon-only; icon shows only in
+   * segmented and tiles (v0.87.0).
    */
   _variantWarnings() {
-    const seg = this._variant() === 'segmented';
+    const variant = this._variant();
+    const seg = variant === 'segmented';
+    const iconic = seg || variant === 'tiles';
     const n = (f) => this._options.filter(f).length;
-    const visual = seg ? n((o) => o.swatch || o.image) : 0;
-    if (visual) this._warnOnce('seg-visual', `td-choice-group: ${visual} option(s) with swatch / image — not shown by the segmented variant.`);
-    const icons = seg ? 0 : n((o) => o.icon);
-    if (icons) this._warnOnce(`icon-${this._variant()}`, `td-choice-group: ${icons} option icon(s) ignored — icons show only in variant="segmented".`);
+    const visual = iconic ? n((o) => o.swatch || o.image) : 0;
+    if (visual) this._warnOnce(`${variant}-visual`, `td-choice-group: ${visual} option(s) with swatch / image — not shown by the ${variant} variant.`);
+    const icons = iconic ? 0 : n((o) => o.icon);
+    if (icons) this._warnOnce(`icon-${variant}`, `td-choice-group: ${icons} option icon(s) ignored — icons show only in variant="segmented" / "tiles".`);
     const bare = seg && this.hasAttribute('icon-only') ? n((o) => !o.icon) : 0;
     if (bare) this._warnOnce('seg-bare', `td-choice-group: icon-only — ${bare} option(s) without a valid icon keep their visible label.`);
   }

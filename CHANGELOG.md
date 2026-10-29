@@ -2,6 +2,36 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.87.0
+
+**P3 của yêu cầu dsuite: ô icon lớn, dòng tạo trong multi-select, tự vẽ nhãn dòng dropdown**
+([plan](docs/internal/plans/v0.87.0-p3-tiles-chip-create-render-option.md), Codex plan APPROVE r2). Không phá vỡ: không
+dùng ba tính năng mới → DOM và hành vi y như 0.86.0.
+
+### Added
+
+- `td-choice-group variant="tiles"` (R7): lưới ô vuông (`aspect-ratio: 1`), icon trên, nhãn dưới (tối đa 2 dòng, cắt
+  `…`); số cột tự tính theo `--td-choice-tile-min` (5.5rem), icon `--td-choice-tile-icon` (1.75rem). Radio / bàn phím /
+  form / `unavailable` / `disabled` dùng chung code; viền, nền chọn, nhấn, focus, forced colors dùng lại rule của
+  variant `button` (`:is(.td-choice--button, .td-choice--tiles)`, cùng specificity). `hint` + ghi chú unavailable chỉ cho
+  trình đọc. Cảnh báo swatch / image / icon viết lại cho cả segmented và tiles. Adapter PHP chưa hỗ trợ (rơi về `button`).
+- `td-chip-input selection-only` + attribute `create-label` (property `createLabel`) (R8): dòng tạo cuối danh sách, ghim
+  đáy khi cuộn (`position: sticky` + `scroll-padding-bottom`, dòng active cuối không bị che), icon `plus`; chữ là
+  `create-label` khi ô gõ rỗng, `labels.create` (`Thêm “{text}”`) khi có chữ. Kích hoạt → đóng popup, xoá chữ lọc, focus ở
+  ô gõ, event `create` `{ query }`; không `change`, không đổi giá trị. Hiện cả khi 0 kết quả / chưa có option, bấm được
+  khi đầy `max-items`; ↑ từ dòng đầu vòng về nó. Không có `selection-only` → cảnh báo một lần. Màu chữ dùng lại
+  `--td-dropdown-create-fg`.
+- `td-dropdown` property `renderOption(item, { query, selected }) => Node | string | null`: nội dung nhãn mỗi dòng option
+  (thường + giàu thông tin), chèn bằng DOM API sau khi dựng chuỗi (chuỗi là text, không HTML); `null` / `''` / ném lỗi →
+  nhãn chữ (`console.error`). Không áp cho trigger / dòng clear / dòng tạo; tìm kiếm vẫn theo `label`. Có hook → chiều
+  cao menu luôn đo thật. Gán trước khi define vẫn nhận.
+
+### Tests
+
+- 3 file WTR mới (Chromium / Firefox / WebKit): `td-v087-choice-tiles` (6), `td-v087-chip-create` (7),
+  `td-v087-dropdown-render-option` (4); `td-v0541-preupgrade-props` thêm `renderOption` + `createLabel`; CSP matrix thêm
+  `td-choice-group` `tiles` + `td-chip-input` `selection-create`; story Tiles / MultiSelectCreate / RenderOption.
+
 ## 0.86.0
 
 **`td-dropdown` nạp danh sách bất đồng bộ, danh sách lớn** (yêu cầu dsuite-40 R5;

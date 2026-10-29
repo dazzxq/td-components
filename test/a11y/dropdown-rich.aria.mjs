@@ -84,6 +84,21 @@ const PAGE_LOAD = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 </script></head><body><td-dropdown id="ddl" aria-label="Chọn kho"></td-dropdown></body></html>`;
 
 const tdCss = await readFile(join(ROOT, 'td.css'), 'utf8');
+// v0.87.0 (plan docs/internal/plans/v0.87.0-p3-tiles-chip-create-render-option.md): choice-group tiles + the chip-input
+// selection-only create row
+const PAGE_P3 = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="${ORIGIN}/td.css">
+<script type="module">
+  await import('${ORIGIN}/src/form/td-choice-group.js');
+  await import('${ORIGIN}/src/form/td-chip-input.js');
+  document.getElementById('cg').options = [{ value: 'star', label: 'Nổi bật', icon: 'star' },
+    { value: 'price', label: 'Giảm giá', icon: 'price', hint: 'Theo đơn' }, { value: 'lock', label: 'Riêng tư', icon: 'lock', disabled: true }];
+  document.getElementById('ci').options = [{ value: 'an', label: 'An' }, { value: 'binh', label: 'Bình' }];
+  window.__ready = true;
+</script></head><body><td-choice-group id="cg" name="kind" label="Biểu tượng" variant="tiles" value="star"></td-choice-group>
+<td-chip-input id="ci" aria-label="Vai trò" selection-only create-label="Tạo vai trò mới"></td-chip-input></body></html>`;
+
 const failures = [];
 const browser = await chromium.launch();
 try {
@@ -92,6 +107,7 @@ try {
     const url = new URL(route.request().url());
     if (url.pathname === '/') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE });
     if (url.pathname === '/action') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_ACTION });
+    if (url.pathname === '/p3') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_P3 });
     if (url.pathname === '/load') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_LOAD });
     if (url.pathname === '/td.css') return route.fulfill({ status: 200, contentType: 'text/css', body: tdCss });
     if (/^\/src\//.test(url.pathname) && !url.pathname.includes('..')) {
@@ -173,6 +189,29 @@ try {
   await page.waitForFunction(() => !document.querySelector('#ddl-menu .td-dropdown__retry') && document.querySelectorAll('#ddl-menu [role="option"]').length === 1);
   l = await read();
   if (l.status[1] !== '' || l.busy !== null || l.retry) failures.push(`load (done): ${JSON.stringify(l)}`);
+  // v0.87.0 tiles: a radiogroup of radios named by the label only (the hint is a description); chip create row last
+  await page.goto(`${ORIGIN}/p3`);
+  await page.waitForFunction(() => window.__ready === true);
+  const tiles = (await page.locator('#cg').ariaSnapshot()).trim();
+  for (const re of [/radiogroup "Biểu tượng"/, /radio "Nổi bật" \[checked\]/, /radio "Giảm giá"(?! \[checked\])/, /radio "Riêng tư" \[disabled\]/]) {
+    if (!re.test(tiles)) failures.push(`tiles: expected ${re} in:\n${tiles}`);
+  }
+  if (/radio "[^"]*Theo đơn/.test(tiles)) failures.push(`tiles: the hint folded into the radio name:\n${tiles}`);
+  const hintDesc = await page.evaluate(() => {
+    const r = document.querySelector('#cg input[value="price"]');
+    return (r.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean).map((id) => document.getElementById(id)?.textContent.trim());
+  });
+  if (!hintDesc.includes('Theo đơn')) failures.push(`tiles: aria-describedby should include the hint, got ${JSON.stringify(hintDesc)}`);
+  await page.locator('#ci .td-chip-input__input').click();
+  await page.evaluate(() => document.getElementById('ci').open());
+  await page.waitForFunction(() => !!document.querySelector('.td-chip-input__option--create'));
+  const chipTree = (await page.locator('.td-chip-input__options').first().ariaSnapshot()).trim();
+  const optLines = chipTree.split('\n').filter((x) => /- option /.test(x));
+  if (!/option "Tạo vai trò mới"/.test(optLines[optLines.length - 1] || '')) failures.push(`chip create: expected the last option "Tạo vai trò mới", got:\n${chipTree}`);
+  if (!/listbox[^\n]*multiselectable|aria-multiselectable/.test(chipTree)) {
+    const ms = await page.evaluate(() => document.querySelector('.td-chip-input__options').getAttribute('aria-multiselectable'));
+    if (ms !== 'true') failures.push(`chip create: the listbox is not multiselectable (${ms})`);
+  }
   if (errors.length) failures.push(`page errors: ${errors.join(' | ')}`);
   await context.close();
 } finally {
@@ -183,4 +222,5 @@ if (failures.length) {
   process.exit(1);
 }
 console.log('dropdown-rich aria: OK (listbox > group > option names, disabled / selected, create row last; trigger name;'
-  + ' action mode: combobox name, aria-describedby → meta, polite live region "Đã chọn …"; load: status "Đang tải…" + aria-busy, failed status + button "Thử lại", retry)');
+  + ' action mode: combobox name, aria-describedby → meta, polite live region "Đã chọn …"; load: status "Đang tải…" + aria-busy, failed status + button "Thử lại", retry; tiles: radios named'
+  + ' by label, hint described; chip-input create row = last option)');

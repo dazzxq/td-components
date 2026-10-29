@@ -314,6 +314,26 @@ mục **đang hiện** (sau lọc) không bị `disabled`. Chọn → thêm mọ
 element in `<td-chip-input data-td-ssr="chip-input@1" selection-only>` + select đó → component nâng cấp như trên. Xem
 [Adapter PHP › td_multiselect](../guides/php-adapter.md#td_multiselect-0280).
 
+**Dòng tạo mới trong multi-select (0.87.0).** `selection-only` không tạo chip từ chữ gõ (`allow-create` bị bỏ qua). Muốn
+có lối "thêm mục chưa có" thì đặt `create-label`: cuối danh sách có một dòng ghim đáy (luôn thấy khi cuộn), icon `+`.
+Ô gõ rỗng → dòng ghi `create-label`; có chữ → `Thêm “{chữ}”` (`labels.create`). Bấm / Enter trên dòng đó → popup đóng,
+chữ lọc bị xoá, focus ở lại ô gõ, rồi phát event `create` với `{ query }` (chữ đã gõ, `''` nếu rỗng). Component **không**
+tự thêm gì và không phát `change`: site tự tạo bản ghi (mở form, gọi API…) rồi gán `options` + `value`.
+
+```js
+roles.setAttribute('create-label', 'Tạo vai trò mới');
+roles.addEventListener('create', async (e) => {
+  const item = await api.createRole(e.detail.query); // site tự hỏi tên nếu query rỗng
+  roles.options = [...roles.options, item];
+  roles.value = [...roles.getValue(), item];
+});
+```
+
+- Bàn phím: dòng tạo là mục cuối; ↓ đi tới, ↑ từ mục đầu vòng về nó. Home / End vẫn là phím con trỏ của ô gõ.
+- Dòng hiện cả khi lọc không ra kết quả và khi chưa có option nào; không hiện lúc đang tải / lỗi. Đầy `max-items` vẫn
+  bấm được. "Chọn tất cả" không tính dòng này.
+- Không có `selection-only` → `create-label` không có tác dụng (cảnh báo console một lần; dùng `allow-create`).
+
 ### 12. Trước khi JS tải — `td_multiselect` element mode (0.51.1)
 
 Khi trình duyệt chạy JS (`@media (scripting: enabled)`), select `select.td-chip-input__native` của host chưa define cao
@@ -343,6 +363,7 @@ nguyên số dòng như cũ. Chế độ native (`div.td-multiselect`) không n�
 | `value-key` | string | `value` | Key giá trị trong object mục. |
 | `label-key` | string | `label` | Key chữ hiển thị. |
 | `max-length` | number | `200` | Độ dài tối đa chữ gõ / mục tạo mới (`maxlength` của ô). |
+| `create-label` | string | — | 0.87.0 (cùng `selection-only`): dòng "tạo mới" ghim đáy danh sách → event `create` `{ query }` ([mục 11](#11-chọn-nhiều-từ-danh-sách--multi-select-0280)). |
 | `selection-only` | boolean | `false` | 0.28.0: chỉ chọn từ `options` / `search()`, mục lật chọn, ô tick trên mỗi mục (0.36.0: ô tick chung) (mục 11). Tự bật khi nâng cấp `<select multiple>`. |
 | `select-all` | boolean | `false` | 0.28.0 (cùng `selection-only`): dòng "Chọn tất cả (N)" đầu danh sách. |
 | `close-on-select` | boolean | `false` | 0.28.0 (cùng `selection-only`): đóng popup (và xoá chữ lọc) sau mỗi lần chọn. |
@@ -383,6 +404,7 @@ Các attribute còn lại có property phản chiếu tự động (`maxItems`, 
 | Event | detail | Khi nào | bubbles? |
 |---|---|---|---|
 | `change` | `{ value, items, added? , removed? }` — `value` và `items` đều là mảng mục hiện tại; `added` là mục vừa thêm **hoặc** `removed` là mục vừa xoá. 0.28.0 dòng chọn-tất-cả: `{ value, items, addedItems }` hoặc `{ value, items, removedItems }` (mảng) | Người dùng thêm (chọn / tạo) hoặc xoá một chip (`selection-only`: mỗi lần lật chọn một mục). API code (`setValue`, `addItem`, …) và reset **không** phát. Sự kiện `change` gốc của ô `<input>` bên trong bị chặn, không lọt ra ngoài. | có |
+| `create` | `{ query }` | 0.87.0: kích hoạt dòng `create-label` (`selection-only`). `query` là chữ đã gõ (đã làm sạch, `''` nếu rỗng). Không kèm `change`. | có |
 | `search-error` | `{ query, error }` | Hàm `search` ném lỗi / reject (trừ `AbortError`, trừ phản hồi đã cũ). | có |
 
 ## Hook & tuỳ chọn
@@ -449,6 +471,7 @@ Tất cả chữ là **văn bản thuần**.
 | `--td-chip-remove-size` | `22px` | Kích thước nút xoá |
 | `--td-chip-remove-hover` | `var(--td-color-hover-strong)` (dark: `rgb(255 255 255 / 13%)`, trước 0.42.1: 16 %) | Nền nút xoá khi hover; nhấn = lớp này hai lần (dark: chữ 4.88:1) |
 | `--td-chip-input-min-w` | `8rem` | Độ rộng tối thiểu ô nhập trước khi xuống dòng |
+| `--td-dropdown-create-fg` | (token dropdown) | 0.87.0: màu chữ dòng `create-label` (dùng chung với dòng "Thêm mới" của dropdown) |
 | `--td-chip-swatch-size` | `0.75rem` | Cỡ chấm màu `swatch` của option / chip (0.82.0) |
 | `--td-chip-swatch-edge` | `var(--td-color-border-strong)` | Viền 1px quanh chấm (forced-colors: `CanvasText`) |
 

@@ -42,7 +42,7 @@ Trường mới trên mỗi object option (đều tùy chọn; thiếu = như 0.
 - Chữ đều escape (như hiện nay). Không HTML từ option, không `style` inline (CSP).
 - Chiều cao dòng: dòng có `description` cao hơn dòng một nhãn; `max-height` (tính theo số dòng) và PageUp / PageDown phải vẫn đúng khi trộn hai loại dòng (đo thật, không nhân `OPTION_PX` cố định).
 - Trigger (chế độ chọn giá trị thường): hiện `icon` + nhãn của option đã chọn (không mô tả). Có thuộc tính tắt được nếu muốn trigger chỉ chữ.
-- Tùy chọn mở rộng (P3): `renderOption(item, { query }) => Node` như `td-chip-input`, cho ca đặc biệt; R1 vẫn cần có sẵn để site không phải tự dựng DOM.
+- Tùy chọn mở rộng (P3, **xong v0.87.0**: `renderOption(item, { query, selected })`): `renderOption(item, { query }) => Node` như `td-chip-input`, cho ca đặc biệt; R1 vẫn cần có sẵn để site không phải tự dựng DOM.
 
 ### R2 (P1) - Nhóm có tiêu đề
 
@@ -80,11 +80,11 @@ Trường mới trên mỗi object option (đều tùy chọn; thiếu = như 0.
 - Dòng tạo vẫn là dòng cuối của mô hình điều hướng, nhận được bằng End.
 - Chế độ tối + `prefers-reduced-motion` + con trỏ thô (`isCoarsePointer`) như các dòng hiện có; vùng chạm ≥ 40 px.
 
-### R7 (P3) - `td-choice-group` biến thể ô icon lớn
+### R7 (P3) - `td-choice-group` biến thể ô icon lớn — **xong v0.87.0**
 
 - `variant="tiles"`: lưới ô vuông (icon trên, nhãn dưới), cùng hành vi radio / bàn phím của `segmented`. Dùng cho ô "Biểu tượng" (6 icon) trong modal tạo mẫu. dsuite tạm dùng `segmented` có icon nếu chưa có.
 
-### R8 (P3) - `td-chip-input selection-only` có dòng hành động
+### R8 (P3) - `td-chip-input selection-only` có dòng hành động — **xong v0.87.0** (`create-label`; `allow-create` vẫn bị bỏ qua với cảnh báo cũ)
 
 - Cho phép `create-label` + sự kiện `create` `{ query }` ở `selection-only` (dòng ghim cuối như `td-dropdown`), thay cho cảnh báo "allow-create is ignored". Không bắt buộc nếu có R1-R3.
 

@@ -10,7 +10,7 @@ const MAX_VISIBLE = 8;
 const LOADING_MS = 400; // "Đang tìm…" only for slow responses (no flash on fast ones)
 const RESULTS_MS = 500; // "{n} gợi ý" is announced once typing settles
 /** Instance properties a page may set before the element upgrades (re-applied through the class setters). */
-const UPGRADE_PROPS = ['value', 'options', 'search', 'create', 'renderOption', 'renderChip', 'messages'];
+const UPGRADE_PROPS = ['value', 'options', 'search', 'create', 'renderOption', 'renderChip', 'messages', 'createLabel'];
 
 /** `{key}` placeholders → values (function replacer: `$` in data is never special). */
 const format = (tpl, vars = {}) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
@@ -124,6 +124,8 @@ export function parseChipItems(str) {
  * @attr {boolean} selection-only - v0.28.0: pick only from options / results (multi-select, rows toggle, ✓ shown)
  * @attr {boolean} select-all - v0.28.0 (with selection-only): "select all shown" first row
  * @attr {boolean} close-on-select - v0.28.0 (with selection-only): close the popup after each toggle
+ * @attr {string} create-label - v0.87.0 (with selection-only): a pinned "add new" action row at the bottom of the list
+ *   (`create` event `{ query }`; empty = off)
  * @fires change - User add/remove only: detail `{ value: items, items, added? , removed? }` (programmatic API is silent);
  *   select-all: `{ value, items, addedItems | removedItems }`
  * @fires search-error - The provider rejected: detail `{ query, error }`
@@ -142,7 +144,7 @@ export class TdChipInput extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'label', 'placeholder', 'value', 'max-items', 'min-chars', 'search-delay',
       'allow-create', 'show-on-focus', 'value-key', 'label-key', 'max-length', 'error-text', 'aria-label',
-      'selection-only', 'select-all', 'close-on-select'];
+      'selection-only', 'select-all', 'close-on-select', 'create-label'];
   }
 
   static get booleanAttributes() {
@@ -378,6 +380,13 @@ export class TdChipInput extends TdFormElement {
   get create() { return this._create; }
   set create(fn) { this._create = typeof fn === 'function' ? fn : null; }
 
+  /** v0.87.0: mirrors `create-label` ('' = no create row) */
+  get createLabel() { return this.getAttribute('create-label') || ''; }
+  set createLabel(v) {
+    if (v == null || v === false || String(v) === '') this.removeAttribute('create-label');
+    else this.setAttribute('create-label', String(v));
+  }
+
   get renderOption() { return this._renderOption; }
   set renderOption(fn) { this._renderOption = typeof fn === 'function' ? fn : null; }
 
@@ -413,6 +422,9 @@ export class TdChipInput extends TdFormElement {
   }
   /** @private v0.28.0 multi-select mode */
   _selOnly() { return this.hasAttribute('selection-only'); }
+
+  /** @private v0.87.0: the create row's label — only with selection-only ('' = no row) */
+  _createRowLabel() { return this._selOnly() ? this.getAttribute('create-label') || '' : ''; }
   /** @private the RENDERED listbox is the multi-select one (rows in `_rowEls`, highlight = data-active) */
   _rendSel() { return this._list()?.getAttribute('aria-multiselectable') === 'true'; }
 
@@ -635,6 +647,12 @@ export class TdChipInput extends TdFormElement {
       case 'allow-create':
         this._warnCreate(); // read when used (as before)
         return;
+      case 'create-label':
+        // v0.87.0: the rows are rebuilt on the next open
+        this._warnCreate();
+        this._navQuery = null;
+        this.close();
+        return;
       case 'max-length':
         if (input) input.maxLength = this._maxLength();
         return;
@@ -726,6 +744,10 @@ export class TdChipInput extends TdFormElement {
 
   /** @private v0.28.0: `allow-create` has no effect with `selection-only` — one warning per element */
   _warnCreate() {
+    if (!this._warnedCreateLabel && !this._selOnly() && this.getAttribute('create-label')) {
+      this._warnedCreateLabel = true; // v0.87.0
+      console.warn('td-chip-input: create-label applies only with selection-only (use allow-create).', this);
+    }
     if (this._warnedCreate || !this._selOnly() || !this.hasAttribute('allow-create')) return;
     this._warnedCreate = true;
     console.warn('td-chip-input: allow-create is ignored with selection-only (items come only from the options).', this);
@@ -1334,11 +1356,14 @@ export class TdChipInput extends TdFormElement {
   _applySelResults(q, raw, activate) {
     const leaves = this._selEntries(raw);
     this._lastResults = leaves.map((e) => e.item);
-    const nav = this.hasAttribute('select-all') && leaves.length ? [{ all: true }, ...leaves] : leaves;
+    const nav = this.hasAttribute('select-all') && leaves.length ? [{ all: true }, ...leaves] : [...leaves];
+    // v0.87.0: the create row — the last entry, never filtered, never a value
+    const createRow = !!this._createRowLabel();
+    if (createRow) nav.push({ create: cleanText(q, this._maxLength()) });
     this._nav = nav;
     this._navQuery = q;
     this._renderOptions(q);
-    if (!leaves.length && !q) {
+    if (!leaves.length && !q && !createRow) {
       this._hide();
       return;
     }
@@ -1423,6 +1448,7 @@ export class TdChipInput extends TdFormElement {
       return;
     }
     list.removeAttribute('aria-multiselectable');
+    list.removeAttribute('data-create-row');
     const nodes = this._nav.map((entry, i) => {
       const el = document.createElement('div');
       el.setAttribute('role', 'option');
@@ -1464,6 +1490,8 @@ export class TdChipInput extends TdFormElement {
   _renderSelRows(query) {
     const list = this._list();
     list.setAttribute('aria-multiselectable', 'true');
+    // v0.87.0: marks a list holding the pinned create row (its scroll-padding; no :has() for Firefox < 121)
+    list.toggleAttribute('data-create-row', this._nav.some((e) => e && 'create' in e));
     const rows = [];
     const nodes = [];
     let group = null;
@@ -1473,6 +1501,23 @@ export class TdChipInput extends TdFormElement {
       const el = document.createElement('div');
       el.setAttribute('role', 'option');
       el.setAttribute('aria-selected', 'false');
+      if ('create' in entry) {
+        // v0.87.0: the pinned create row (no check mark; text through textContent)
+        el.className = 'td-chip-input__option td-chip-input__option--create';
+        el.id = `${this.id}-opt-create`;
+        const icon = document.createElement('span');
+        icon.className = 'td-chip-input__create-icon';
+        icon.setAttribute('data-td-icon', 'plus');
+        icon.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.className = 'td-chip-input__option-label';
+        label.append(icon, document.createTextNode(entry.create ? this._t('create', { text: entry.create }) : this._createRowLabel()));
+        el.append(label);
+        rows.push(el);
+        group = null;
+        nodes.push(el);
+        return;
+      }
       // v0.36.0 (ADR 0017): the shared td-checkbox mark, always visible (empty box = not selected)
       const check = createCheckMark('sm');
       check.classList.add('td-chip-input__check');
@@ -1542,6 +1587,7 @@ export class TdChipInput extends TdFormElement {
   _locked(i) {
     const entry = this._nav[i];
     if (!entry) return true;
+    if ('create' in entry) return false; // v0.87.0: an action, never locked (full list too)
     if (entry.all) return this._allState().mode === 'none';
     return !this._has(this._val(entry.item)) && (entry.off || this._isFull());
   }
@@ -1552,6 +1598,7 @@ export class TdChipInput extends TdFormElement {
     this._nav.forEach((entry, i) => {
       const el = this._rowEls[i];
       if (!el) return;
+      if ('create' in entry) return;
       if (entry.all) {
         const st = this._allState();
         el.setAttribute('aria-selected', st.mode === 'remove' ? 'true' : 'false');
@@ -1598,6 +1645,7 @@ export class TdChipInput extends TdFormElement {
     if (this._rendSel()) {
       if (entry.all) this._toggleAll();
       else if (entry.item) this._toggle(entry);
+      else if ('create' in entry) this._createAction();
       return;
     }
     if (entry.item) this._addUser(entry.item);
@@ -1715,6 +1763,20 @@ export class TdChipInput extends TdFormElement {
         if (this._activeIndex === a) this._setActive(-1);
       }
     }
+  }
+
+  /**
+   * @private v0.87.0 selection-only create row: (1) take the typed text (cleaned, '' if none); (2) clear the filter +
+   * close the popup (focus stays in the input); (3) `create` `{ query }`. No value change, no `change`.
+   */
+  _createAction() {
+    if (this._isDisabled()) return;
+    const input = this._input();
+    const query = cleanText(input ? input.value : '', this._maxLength());
+    if (input) input.value = '';
+    this._navQuery = null;
+    this.close();
+    this.emit('create', { query });
   }
 
   /** @private typed text → item (default `{value: text, label: text}` or the `create` hook) */
