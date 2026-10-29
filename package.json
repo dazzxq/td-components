@@ -10,7 +10,7 @@
   "scripts": {
     "test": "npm run check:css && npm run check:icons && npm run check:stories && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens && npm run test:golden && npm run test:contrast && npm run test:page-contrast && npm run test:theme && npm run test:engines && npm run test:responsive && npm run test:touch && npm run test:a11y",
     "test:ci": "npm run test:ci:static && npm run test:browser && npm run test:ci:csp && npm run test:ci:misc && npm run test:engines && npm run test:responsive",
-    "test:ci:static": "npm run check:css && npm run check:dist && npm run check:icons && npm run check:stories && npm run test:node && npm run test:golden",
+    "test:ci:static": "npm run check:css && npm run check:dist && npm run check:icons && npm run check:rich-text-engine && npm run check:stories && npm run test:node && npm run test:golden",
     "test:ci:csp": "npm run test:csp && npm run test:csp:combined",
     "test:ci:misc": "npm run test:tokens && npm run test:theme && npm run test:touch && npm run test:a11y",
     "test:browser:groups": "node scripts/wtr-groups.mjs --skip engines",
@@ -30,6 +30,8 @@
     "check:dist": "node scripts/build-dist.mjs --check",
     "build:icons": "node scripts/build-icons.mjs",
     "check:icons": "node scripts/build-icons.mjs --check",
+    "build:rich-text-engine": "node scripts/build-rich-text-engine.mjs",
+    "check:rich-text-engine": "node scripts/build-rich-text-engine.mjs --check",
     "build:csp-fixture": "tailwindcss -i test/csp/fixture/input.css -o test/csp/fixture/tailwind.css",
     "capture:baseline": "node test/csp/capture-baseline.mjs",
     "storybook": "storybook dev -p 6006",
@@ -201,6 +203,13 @@
     "@web/test-runner-playwright": "^0.11.1",
     "esbuild": "0.25.12",
     "playwright-core": "1.60.0",
+    "prosemirror-commands": "1.7.2",
+    "prosemirror-history": "1.5.1",
+    "prosemirror-keymap": "1.2.3",
+    "prosemirror-model": "1.25.12",
+    "prosemirror-state": "1.4.4",
+    "prosemirror-transform": "1.12.4",
+    "prosemirror-view": "1.42.8",
     "storybook": "^8.6.18",
     "vite": "^6.4.3"
   }

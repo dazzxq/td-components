@@ -334,6 +334,7 @@
     "src/form/field-affix.js": [
       "src/utils/escape.js"
     ],
+    "src/form/rich-text/rich-text-policy.js": [],
     "src/form/td-action-button.js": [
       "src/feedback/td-tooltip.js",
       "src/form/button-structure.js",
@@ -677,6 +678,7 @@
     ],
     "src/utils/typeahead.js": [],
     "src/utils/upgrade-props.js": [],
-    "src/utils/value-title.js": []
+    "src/utils/value-title.js": [],
+    "src/vendor/td-rich-text-engine.js": []
   }
 }

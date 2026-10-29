@@ -9,7 +9,8 @@ import { join } from 'node:path';
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
-    if (statSync(p).isDirectory()) walk(p, out);
+    // v0.88.0: src/vendor/ is generated third-party code (ProseMirror's own ProseMirror-* classes), not kit markup
+    if (statSync(p).isDirectory()) { if (p !== join('src', 'vendor')) walk(p, out); }
     else if (p.endsWith('.js') && !/\.(browser-)?test\.js$/.test(p)) out.push(p);
   }
   return out;

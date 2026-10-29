@@ -43,10 +43,13 @@ const MEASURE_OK = {
   'src/utils/keyboard-viewport.js': 'on-screen keyboard inset = innerHeight − visual viewport bottom (v0.36.2)',
 };
 
+const VENDOR_DIR = fileURLToPath(new URL('../vendor', import.meta.url));
+
 async function jsFiles(dir, out = []) {
   for (const e of await readdir(dir, { withFileTypes: true })) {
     const p = join(dir, e.name);
-    if (e.isDirectory()) await jsFiles(p, out);
+    // v0.88.0: src/vendor/ is generated third-party code (ProseMirror), not kit component JS
+    if (e.isDirectory()) { if (p !== VENDOR_DIR) await jsFiles(p, out); }
     else if (/\.js$/.test(e.name) && !/\.(test|browser-test|stories)\.js$/.test(e.name)) out.push(p);
   }
   return out;
