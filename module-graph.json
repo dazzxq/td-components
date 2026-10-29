@@ -334,7 +334,11 @@
     "src/form/field-affix.js": [
       "src/utils/escape.js"
     ],
+    "src/form/rich-text/rich-text-html.js": [],
     "src/form/rich-text/rich-text-policy.js": [],
+    "src/form/rich-text/rich-text-schema.js": [
+      "src/form/rich-text/rich-text-policy.js"
+    ],
     "src/form/td-action-button.js": [
       "src/feedback/td-tooltip.js",
       "src/form/button-structure.js",
@@ -495,6 +499,14 @@
       "src/utils/log-safe.js",
       "src/utils/ordered-collection.js",
       "src/utils/sortable-controller.js"
+    ],
+    "src/form/td-rich-text.js": [
+      "src/base/td-form-element.js",
+      "src/form/rich-text/rich-text-html.js",
+      "src/form/rich-text/rich-text-policy.js",
+      "src/form/rich-text/rich-text-schema.js",
+      "src/icons/td-icon.js",
+      "src/vendor/td-rich-text-engine.js"
     ],
     "src/form/td-scan-input.js": [
       "src/base/td-base-element.js",

@@ -434,3 +434,29 @@ test('v0.50.0: ./carousel export, sideEffects, barrel TdCarousel, carousel CSS b
   // C12: the strip never takes touch-action (vertical swipes on it scroll the page)
   assert.ok(!/td-carousel[^{]*\{[^}]*touch-action/.test(css), 'no touch-action in carousel rules');
 });
+
+test('v0.88.0: ./rich-text export + sideEffects, NOT in the root barrel; rich-text CSS before utilities', async () => {
+  assert.equal(pkg.exports['./rich-text'], './src/form/td-rich-text.js');
+  assert.ok(pkg.sideEffects.includes('./src/form/td-rich-text.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.ok(!/td-rich-text/.test(src), 'the ProseMirror engine never loads with the root barrel');
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/rich-text.css');
+  assert.ok(i > files.indexOf('components/field.css') && i > files.indexOf('components/action-button.css')
+    && i < files.indexOf('utilities.css'), 'rich-text.css after field.css / action-button.css, before utilities.css');
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['.td-rich-text__editor[data-empty][data-placeholder]::before', '.td-rich-text__tool[aria-pressed="true"]',
+    '--td-rich-text-min-height', '--td-rich-text-tool-on-bg']) {
+    assert.ok(css.includes(sel), sel);
+  }
+});
+
+test('v0.88.0: npm pack ships the rich-text engine, policy JSON + PHP helper (not fixtures / Symfony test project)', { timeout: 60000 }, () => {
+  assert.equal(pkg.exports['./rich-text-policy.json'], './src/form/rich-text/rich-text-policy.json');
+  const r = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { cwd: ROOT, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const paths = JSON.parse(r.stdout)[0].files.map((f) => f.path);
+  for (const f of ['src/vendor/td-rich-text-engine.js', 'src/form/td-rich-text.js', 'src/form/rich-text/rich-text-policy.js',
+    'src/form/rich-text/rich-text-policy.json', 'php/td-rich-text-policy.php', 'src/styles/components/rich-text.css']) assert.ok(paths.includes(f), f);
+  assert.ok(!paths.some((p) => /^test\/|td-rich-text\.(stories|browser-test)\.js$|rich-text-policy\.test\.js$/.test(p)), 'tests / fixtures not shipped');
+});

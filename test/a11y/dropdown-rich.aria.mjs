@@ -19,6 +19,10 @@
  * line says "Đang tải…" and the listbox is `aria-busy`; after a rejection the menu holds a status "Không tải được" and a
  * button "Thử lại" (not focusable: DOM focus stays on the trigger), and a retry that succeeds clears both.
  *
+ * v0.88.0 (plan docs/internal/plans/v0.88.0-rich-text.md): a fifth page — td-rich-text: a toolbar named "Định dạng" of
+ * buttons named by their labels (never the icon), `aria-pressed` following the caret (bold inside <strong>), the editor a
+ * multiline textbox named by the field label, the link button opening a dialog named by the URL label.
+ *
  *   node test/a11y/dropdown-rich.aria.mjs     (npm run test:a11y)
  */
 import { chromium } from 'playwright-core';
@@ -99,6 +103,15 @@ const PAGE_P3 = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 </script></head><body><td-choice-group id="cg" name="kind" label="Biểu tượng" variant="tiles" value="star"></td-choice-group>
 <td-chip-input id="ci" aria-label="Vai trò" selection-only create-label="Tạo vai trò mới"></td-chip-input></body></html>`;
 
+// v0.88.0 td-rich-text (plan docs/internal/plans/v0.88.0-rich-text.md)
+const PAGE_RT = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="${ORIGIN}/td.css">
+<script type="module">
+  await import('${ORIGIN}/src/form/td-rich-text.js');
+  window.__ready = true;
+</script></head><body><td-rich-text id="rt" label="Bình luận" value="&lt;p&gt;&lt;strong&gt;đậm&lt;/strong&gt; thường&lt;/p&gt;"></td-rich-text></body></html>`;
+
 const failures = [];
 const browser = await chromium.launch();
 try {
@@ -108,6 +121,7 @@ try {
     if (url.pathname === '/') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE });
     if (url.pathname === '/action') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_ACTION });
     if (url.pathname === '/p3') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_P3 });
+    if (url.pathname === '/rich-text') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_RT });
     if (url.pathname === '/load') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_LOAD });
     if (url.pathname === '/td.css') return route.fulfill({ status: 200, contentType: 'text/css', body: tdCss });
     if (/^\/src\//.test(url.pathname) && !url.pathname.includes('..')) {
@@ -212,6 +226,42 @@ try {
     const ms = await page.evaluate(() => document.querySelector('.td-chip-input__options').getAttribute('aria-multiselectable'));
     if (ms !== 'true') failures.push(`chip create: the listbox is not multiselectable (${ms})`);
   }
+  // v0.88.0 td-rich-text: toolbar + named, pressed buttons; multiline textbox named by the label; link dialog
+  await page.goto(`${ORIGIN}/rich-text`);
+  await page.waitForFunction(() => window.__ready === true && !!document.querySelector('#rt .td-rich-text__editor.ProseMirror'));
+  await page.locator('#rt .td-rich-text__editor strong').click();
+  await page.waitForFunction(() => document.querySelector('#rt .td-rich-text__tool[data-feature="bold"]').getAttribute('aria-pressed') === 'true');
+  const rtTree = (await page.locator('#rt').ariaSnapshot()).trim();
+  for (const re of [/- toolbar "Định dạng"/, /button "Đậm" \[pressed\]/, /button "Nghiêng"(?! \[pressed\])/, /button "Gạch chân"(?! \[pressed\])/,
+    /button "Gạch ngang"(?! \[pressed\])/, /button "Liên kết"(?! \[pressed\])/, /- textbox "Bình luận"/]) {
+    if (!re.test(rtTree)) failures.push(`rich-text: expected ${re} in:\n${rtTree}`);
+  }
+  if (/dialog/.test(rtTree)) failures.push(`rich-text: the hidden link dialog is in the tree:\n${rtTree}`);
+  const rtAria = await page.evaluate(() => {
+    const ed = document.querySelector('#rt .td-rich-text__editor');
+    const tb = document.querySelector('#rt .td-rich-text__toolbar');
+    const ln = document.querySelector('#rt .td-rich-text__tool[data-feature="link"]');
+    return {
+      role: ed.getAttribute('role'), multiline: ed.getAttribute('aria-multiline'), editable: ed.getAttribute('contenteditable'),
+      label: (ed.getAttribute('aria-labelledby') || '').split(/\s+/).map((id) => document.getElementById(id)?.textContent.trim()),
+      controls: tb.getAttribute('aria-controls') === ed.id,
+      pressed: [...tb.querySelectorAll('.td-rich-text__tool')].map((b) => [b.dataset.feature, b.getAttribute('aria-pressed')]),
+      link: [ln.getAttribute('aria-haspopup'), ln.getAttribute('aria-expanded')],
+    };
+  });
+  if (JSON.stringify(rtAria) !== JSON.stringify({ role: 'textbox', multiline: 'true', editable: 'true', label: ['Bình luận'], controls: true,
+    pressed: [['bold', 'true'], ['italic', 'false'], ['underline', 'false'], ['strike', 'false'], ['link', 'false']], link: ['dialog', 'false'] })) {
+    failures.push(`rich-text: aria ${JSON.stringify(rtAria)}`);
+  }
+  await page.locator('#rt .td-rich-text__tool[data-feature="link"]').click();
+  await page.waitForFunction(() => !document.querySelector('#rt .td-rich-text__link').hidden);
+  const dlg = (await page.locator('#rt .td-rich-text__link').ariaSnapshot()).trim();
+  for (const re of [/^- dialog "Địa chỉ liên kết"/, /textbox "Địa chỉ liên kết"/, /button "Áp dụng"/, /button "Gỡ liên kết" \[disabled\]/, /button "Huỷ"/]) {
+    if (!re.test(dlg)) failures.push(`rich-text link dialog: expected ${re} in:\n${dlg}`);
+  }
+  const expanded = await page.evaluate(() => [document.querySelector('#rt .td-rich-text__tool[data-feature="link"]').getAttribute('aria-expanded'),
+    document.activeElement?.classList.contains('td-rich-text__link-input')]);
+  if (JSON.stringify(expanded) !== '["true",true]') failures.push(`rich-text link dialog: aria-expanded / focus ${JSON.stringify(expanded)}`);
   if (errors.length) failures.push(`page errors: ${errors.join(' | ')}`);
   await context.close();
 } finally {
@@ -223,4 +273,5 @@ if (failures.length) {
 }
 console.log('dropdown-rich aria: OK (listbox > group > option names, disabled / selected, create row last; trigger name;'
   + ' action mode: combobox name, aria-describedby → meta, polite live region "Đã chọn …"; load: status "Đang tải…" + aria-busy, failed status + button "Thử lại", retry; tiles: radios named'
-  + ' by label, hint described; chip-input create row = last option)');
+  + ' by label, hint described; chip-input create row = last option;'
+  + ' rich-text: toolbar + named buttons, aria-pressed, multiline textbox named by the label, link dialog)');

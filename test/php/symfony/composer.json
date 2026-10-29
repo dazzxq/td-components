@@ -1,0 +1,16 @@
+{
+  "name": "td-components/rich-text-symfony-test",
+  "description": "Isolated project for test/php/td-rich-text-policy.test.js: runs the shared rich-text fixtures through symfony/html-sanitizer. Not part of the package.",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "php": ">=8.4.1",
+    "symfony/html-sanitizer": "^8.1"
+  },
+  "config": {
+    "platform": {
+      "php": "8.4.1"
+    },
+    "sort-packages": true
+  }
+}

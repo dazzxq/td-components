@@ -65,6 +65,7 @@
     "components/choice-group.css",
     "components/rating.css",
     "components/carousel.css",
+    "components/rich-text.css",
     "utilities.css"
   ]
 }

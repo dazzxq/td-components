@@ -27,6 +27,7 @@
  *   strip scrolls the PAGE (no pan-x trap), a tap on "next" moves exactly one page, buttons / dots show the pressed state,
  *   touch-action of the viewport stays auto; WebKit smoke: next / prev by tap.
  * v0.56.0: a disabled td-repeater's buttons show no pressed state (the readonly one has no button at all).
+ * v0.88.0: a td-rich-text toolbar button — hover not sticky after a tap, pressed while the finger is down.
  * Firefox is not in this lane (no reliable touch emulation). Synthetic pointer events only test state machines.
  *
  *   node test/touch/touch.spec.mjs            (npm run test:touch; TOUCH_ONLY=<case substring> for a subset)
@@ -71,8 +72,11 @@ const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
   extra.innerHTML = '<button type="button" class="td-btn td-btn--primary" id="t-primary"><span class="td-btn__label">Lưu</span></button>'
     + '<button type="button" class="td-btn td-btn--ghost" id="t-ghost"><span class="td-btn__label">Bỏ qua</span></button>'
     + '<button type="button" class="td-btn td-btn--plain" id="t-plain"><span class="td-btn__label">Gợi ý lại</span></button>'
-    + '<td-action-button id="t-action" action="edit"></td-action-button>';
+    + '<td-action-button id="t-action" action="edit"></td-action-button>'
+    // v0.88.0: td-rich-text toolbar buttons (.td-btn--action: hover gate + pressed state)
+    + '<td-rich-text id="t-rt" label="Bình luận" value="&lt;p&gt;x&lt;/p&gt;"></td-rich-text>';
   await import('${ORIGIN}/src/form/td-action-button.js');
+  await import('${ORIGIN}/src/form/td-rich-text.js');
   const { openers } = mountResponsiveFixture(document.getElementById('root'));
   window.__openers = openers;
   window.__ready = true;
@@ -178,6 +182,8 @@ const PRESS_TYPES = [
   // v0.69.0 plain: no fill in any state — its pressed look is the LABEL colour (the ghost hover tokens), so `prop: 'color'`
   { name: 'plain', sel: '#t-plain', token: '--td-btn-ghost-hover-fg', prop: 'color' },
   { name: 'action', sel: '#t-action .td-btn--action', token: '--td-action-btn-standard-pressed-bg' },
+  // v0.88.0: a td-rich-text toolbar button (a tap toggles the mark: aria-pressed, same state after the tap away)
+  { name: 'rich-text tool', sel: '#t-rt .td-rich-text__tool[data-feature="italic"]', token: '--td-action-btn-standard-pressed-bg' },
   { name: 'tab', sel: '#rsp-tabs .td-tabs__tab[aria-selected="true"]', token: '--td-color-pressed' },
   { name: 'page', sel: 'td-pagination .td-pagination__nav:not([aria-disabled="true"])', token: '--td-color-pressed' },
   // v0.37.0 review ISSUE-5: td-table row selection — the row checkbox and the "select all on this page" chip (card mode at 390)

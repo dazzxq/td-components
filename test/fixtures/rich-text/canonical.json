@@ -1,0 +1,21 @@
+[
+  {"name":"plain text wrapped in p","input":"Hello","expected":"<p>Hello</p>","serverExpected":"Hello","note":"Symfony does not wrap stray inline content in <p>"},
+  {"name":"empty document","input":"","expected":""},
+  {"name":"two paragraphs","input":"<p>a</p><p>b</p>","expected":"<p>a</p><p>b</p>"},
+  {"name":"hard break","input":"<p>a<br>b</p>","expected":"<p>a<br>b</p>"},
+  {"name":"b becomes strong","input":"<p><b>x</b></p>","serverExpected":"<p>x</p>","note":"Symfony does not rewrite b → strong; b is not allowed so only its text is kept","expected":"<p><strong>x</strong></p>"},
+  {"name":"i becomes em","input":"<p><i>x</i></p>","serverExpected":"<p>x</p>","note":"Symfony does not rewrite i → em","expected":"<p><em>x</em></p>"},
+  {"name":"strike and del become s","input":"<p><strike>a</strike><del>b</del></p>","serverExpected":"<p>ab</p>","note":"Symfony does not rewrite strike / del → s","expected":"<p><s>ab</s></p>"},
+  {"name":"em u s kept","input":"<p><em>a</em><u>b</u><s>c</s></p>","expected":"<p><em>a</em><u>b</u><s>c</s></p>"},
+  {"name":"mark nesting order a, strong, em, u, s","input":"<p><s><u><em><strong><a href=\"https://e.com/\">t</a></strong></em></u></s></p>","serverExpected":"<p><s><u><em><strong><a href=\"https://e.com/\" rel=\"nofollow noopener\">t</a></strong></em></u></s></p>","note":"Symfony keeps the input nesting order; the client reorders marks","expected":"<p><a href=\"https://e.com/\" rel=\"nofollow noopener\"><strong><em><u><s>t</s></u></em></strong></a></p>"},
+  {"name":"inline content mixed with marks","input":"a <strong>b</strong> c","expected":"<p>a <strong>b</strong> c</p>","serverExpected":"a <strong>b</strong> c","note":"Symfony does not wrap stray inline content in <p>"},
+  {"name":"whitespace runs collapse","input":"<p>a   \n  b\t\tc</p>","expected":"<p>a b c</p>"},
+  {"name":"text escaping","input":"<p>a &amp; b &lt;c&gt; d&nbsp;e</p>","expected":"<p>a &amp; b &lt;c&gt; d&nbsp;e</p>"},
+  {"name":"link, linkTarget none","input":"<p><a href=\"https://e.com/\">x</a></p>","expected":"<p><a href=\"https://e.com/\" rel=\"nofollow noopener\">x</a></p>"},
+  {"name":"link, linkTarget _blank","input":"<p><a href=\"https://e.com/\">x</a></p>","linkTarget":"_blank","expected":"<p><a href=\"https://e.com/\" rel=\"nofollow noopener\" target=\"_blank\">x</a></p>"},
+  {"name":"link, linkTarget _self","input":"<p><a href=\"https://e.com/\">x</a></p>","linkTarget":"_self","expected":"<p><a href=\"https://e.com/\" rel=\"nofollow noopener\" target=\"_self\">x</a></p>"},
+  {"name":"attribute order href, rel, target","input":"<p><a target=\"_top\" rel=\"x\" href=\"https://e.com/\">x</a></p>","linkTarget":"_blank","expected":"<p><a href=\"https://e.com/\" rel=\"nofollow noopener\" target=\"_blank\">x</a></p>"},
+  {"name":"partial marks","input":"<p><strong>a<em>b</em></strong>c</p>","expected":"<p><strong>a<em>b</em></strong>c</p>"},
+  {"name":"nested marks inside link","input":"<p><a href=\"https://e.com/\"><strong>b</strong> t</a></p>","expected":"<p><a href=\"https://e.com/\" rel=\"nofollow noopener\"><strong>b</strong> t</a></p>"},
+  {"name":"unknown span keeps text","input":"<p><span class=\"x\">a</span></p>","expected":"<p>a</p>"}
+]

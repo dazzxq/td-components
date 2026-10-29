@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "blocks": {
+    "tags": [
+      "p",
+      "br"
+    ]
+  },
+  "features": {
+    "bold": {
+      "tags": [
+        "strong"
+      ]
+    },
+    "italic": {
+      "tags": [
+        "em"
+      ]
+    },
+    "underline": {
+      "tags": [
+        "u"
+      ]
+    },
+    "strike": {
+      "tags": [
+        "s"
+      ]
+    },
+    "link": {
+      "tags": [
+        "a"
+      ],
+      "attrs": {
+        "a": [
+          "href"
+        ]
+      }
+    }
+  },
+  "presets": {
+    "comment": [
+      "bold",
+      "italic",
+      "underline",
+      "strike",
+      "link"
+    ]
+  },
+  "link": {
+    "schemes": [
+      "https",
+      "mailto",
+      "tel"
+    ],
+    "optionalSchemes": [
+      "http"
+    ],
+    "relative": true,
+    "fragment": true,
+    "rel": "nofollow noopener",
+    "targets": [
+      "_self",
+      "_blank"
+    ]
+  }
+}

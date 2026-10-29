@@ -2,6 +2,34 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.88.0
+
+**`<td-rich-text>` — trình soạn thảo bình luận (ProseMirror), cho dsuite** ([plan](docs/internal/plans/v0.88.0-rich-text.md),
+Codex plan APPROVE r2; [thiết kế](docs/internal/research/rich-text-design-2026-10-30.md)). Không phá vỡ: component mới,
+subpath opt-in, KHÔNG vào barrel gốc.
+
+### Added
+- `<td-rich-text>` (`@dazzxq/td-components/rich-text`): form control, preset `comment` = đậm, nghiêng, gạch chân, gạch
+  ngang, liên kết; `features` ghi đè preset; `link-target="none|_self|_blank"`, `allow-http`, `name`, `value`,
+  `required`, `maxlength` (đếm ký tự hiển thị), `disabled`, `readonly`, `label`, `placeholder`, helper/error. `value` =
+  HTML chuẩn đã sanitize (`''` khi rỗng); `input` mỗi lần sửa, `change` khi focus rời cả component. Toolbar
+  `role=toolbar` (roving tabindex, `aria-pressed`), phím Mod-b/i/u, Mod-Shift-x, Mod-k (hộp liên kết), Shift-Enter.
+  Sanitize phía client: parse trong document tách rời, chỉ giữ p/br/strong/em/u/s/a[href]; href qua `isSafeUrl`
+  (https/mailto/tel/tương đối/#, http khi `allow-http`); `rel="nofollow noopener"` luôn ép. Docs:
+  [rich-text.md](docs/components/rich-text.md).
+- Engine ProseMirror đóng gói sẵn `src/vendor/td-rich-text-engine.js` (model 1.25.12, state 1.4.4, view 1.42.8,
+  transform 1.12.4, commands 1.7.2, keymap 1.2.3, history 1.5.1; MIT) — ~68 KiB gzip ở `dist/`, chỉ tải khi import
+  `./rich-text`. `npm run build:rich-text-engine` / `check:rich-text-engine`.
+- Policy dùng chung client/server: `RICH_TEXT_POLICY` + `@dazzxq/td-components/rich-text-policy.json` (version 1) và
+  helper PHP `php/td-rich-text-policy.php` (`TdComponents\RichTextPolicy::load()` + `::symfonyConfig($policy,
+  $features, $allowHttp, $linkTarget)` → `HtmlSanitizerConfig` của `symfony/html-sanitizer ^8.1`; PHP 8.0, không
+  composer). Server PHẢI sanitize lại khi ghi. Fixture độc/chuẩn dùng chung `test/fixtures/rich-text/`.
+- Trusted Types: `value` đi qua policy có tên `td-rich-text` (site cho phép `trusted-types td-rich-text
+  ProseMirrorClipboard`); HTML quá 1.000.000 ký tự (value / dán / kéo thả) bị bỏ qua trước khi parse
+  (`RICH_TEXT_MAX_HTML`). Test 3 engine: parse `value` không phát request nào (img, iframe, media, link, srcset).
+- Icon lõi `bold`, `italic`, `underline`, `strikethrough` (Lucide).
+- CI: job `php84-symfony` chạy toàn bộ fixture qua Symfony thật (`composer.lock` được commit, cài `--no-scripts --no-plugins`); `check:rich-text-policy` trong `test:ci:static`.
+
 ## 0.87.0
 
 **P3 của yêu cầu dsuite: ô icon lớn, dòng tạo trong multi-select, tự vẽ nhãn dòng dropdown**

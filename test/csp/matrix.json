@@ -56,7 +56,8 @@
       "td-choice-group": "/src/form/td-choice-group.js",
       "td-rating": "/src/display/td-rating.js",
       "td-carousel": "/src/display/td-carousel.js",
-      "td-hint": "/src/form/td-hint.js"
+      "td-hint": "/src/form/td-hint.js",
+      "td-rich-text": "/src/form/td-rich-text.js"
     },
     "tokenNative": [
       "td-button",
@@ -113,7 +114,8 @@
       "td-choice-group",
       "td-rating",
       "td-carousel",
-      "td-hint"
+      "td-hint",
+      "td-rich-text"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -7601,6 +7603,39 @@
         "td-hint",
         "td-hint a",
         "td-hint code"
+      ],
+      "settle": 300
+    }
+  ],
+  "td-rich-text": [
+    {
+      "state": "comment",
+      "markup": "<td-rich-text label=\"Bình luận\" value=\"&lt;p&gt;Xem &lt;a href=&quot;https://e.com/&quot;&gt;quy định&lt;/a&gt; và &lt;strong&gt;đọc kỹ&lt;/strong&gt;.&lt;/p&gt;\"></td-rich-text>",
+      "selectors": [
+        ".td-rich-text",
+        ".td-rich-text > .td-field__label",
+        ".td-rich-text__toolbar",
+        ".td-rich-text__tool",
+        ".td-rich-text__tool .td-btn__icon",
+        ".td-rich-text__editor",
+        ".td-rich-text__editor p",
+        ".td-rich-text__editor a",
+        ".td-rich-text__editor strong"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-rich-text label=\"Bình luận\" disabled value=\"&lt;p&gt;Xem &lt;a href=&quot;https://e.com/&quot;&gt;quy định&lt;/a&gt;.&lt;/p&gt;\"></td-rich-text>",
+      "selectors": [
+        ".td-rich-text",
+        ".td-rich-text > .td-field__label",
+        ".td-rich-text__toolbar",
+        ".td-rich-text__tool",
+        ".td-rich-text__tool .td-btn__icon",
+        ".td-rich-text__editor",
+        ".td-rich-text__editor p",
+        ".td-rich-text__editor a"
       ],
       "settle": 300
     }

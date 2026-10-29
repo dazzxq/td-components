@@ -42,7 +42,7 @@ test('v0.56.0: the 6 new core icons exist with their Lucide source name; no alia
     assert.ok(listIcons().includes(name), name);
   }
   assert.equal(hasIcon('box'), false);
-  assert.equal(Object.keys(json.icons).length, 71); // v0.59.0: + price
+  assert.equal(Object.keys(json.icons).length, 75); // v0.59.0: + price; v0.88.0: + bold, italic, underline, strikethrough (td-rich-text toolbar)
 });
 
 test('icons.json aliases: the F6 table, every target a core icon, no alias shadows a core name', () => {

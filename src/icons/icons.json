@@ -1862,6 +1862,88 @@
           }
         ]
       ]
+    },
+    "bold": {
+      "lucide": "bold",
+      "viewBox": "0 0 24 24",
+      "paint": "stroke",
+      "nodes": [
+        [
+          "path",
+          {
+            "d": "M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"
+          }
+        ]
+      ]
+    },
+    "italic": {
+      "lucide": "italic",
+      "viewBox": "0 0 24 24",
+      "paint": "stroke",
+      "nodes": [
+        [
+          "path",
+          {
+            "d": "M19 4h-9"
+          }
+        ],
+        [
+          "path",
+          {
+            "d": "M14 20H5"
+          }
+        ],
+        [
+          "path",
+          {
+            "d": "M15 4 9 20"
+          }
+        ]
+      ]
+    },
+    "underline": {
+      "lucide": "underline",
+      "viewBox": "0 0 24 24",
+      "paint": "stroke",
+      "nodes": [
+        [
+          "path",
+          {
+            "d": "M6 4v6a6 6 0 0 0 12 0V4"
+          }
+        ],
+        [
+          "path",
+          {
+            "d": "M4 20h16"
+          }
+        ]
+      ]
+    },
+    "strikethrough": {
+      "lucide": "strikethrough",
+      "viewBox": "0 0 24 24",
+      "paint": "stroke",
+      "nodes": [
+        [
+          "path",
+          {
+            "d": "M16 4H9a3 3 0 0 0-2.83 4"
+          }
+        ],
+        [
+          "path",
+          {
+            "d": "M14 12a4 4 0 0 1 0 8H6"
+          }
+        ],
+        [
+          "path",
+          {
+            "d": "M4 12h16"
+          }
+        ]
+      ]
     }
   }
 }

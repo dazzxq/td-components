@@ -1510,6 +1510,11 @@
     "@color-scheme": "dark"
   },
   "added": {
+    "--td-rich-text-link": { "light": "rgb(29, 78, 216)", "dark": "rgb(96, 165, 250)", "why": "v0.88.0 td-rich-text: link text in the editor (= --td-color-info)" },
+    "--td-rich-text-max-height": { "light": "20rem", "dark": "20rem", "why": "v0.88.0 td-rich-text: editor height before it scrolls" },
+    "--td-rich-text-min-height": { "light": "6rem", "dark": "6rem", "why": "v0.88.0 td-rich-text: minimum editor height (~3 lines + padding)" },
+    "--td-rich-text-tool-on-bg": { "light": "rgba(0, 0, 0, 0.08)", "dark": "rgba(255, 255, 255, 0.1)", "why": "v0.88.0 td-rich-text: fill of an active toolbar tool (= --td-color-hover-strong)" },
+    "--td-rich-text-tool-on-fg": { "light": "rgb(28, 28, 30)", "dark": "rgb(245, 245, 247)", "why": "v0.88.0 td-rich-text: glyph of an active toolbar tool (= --td-color-text)" },
     "--td-dropdown-icon-size": { "light": "1.75rem", "dark": "1.75rem", "why": "v0.84.0 td-dropdown: the toned icon tile of a rich option row (the glyph is 60 % of it)" },
     "--td-dropdown-swatch-size": { "light": "0.75rem", "dark": "0.75rem", "why": "v0.82.0 td-dropdown: size of the option colour dot (menu rows + trigger)" },
     "--td-dropdown-swatch-edge": { "light": "rgb(212, 212, 216)", "dark": "rgb(69, 69, 75)", "why": "v0.82.0 td-dropdown: 1px ring of the option colour dot (= --td-color-border-strong) so a white / black dot shows on any surface" },

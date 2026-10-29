@@ -1,0 +1,221 @@
+/*
+ * td-rich-text (src/form/td-rich-text.js) — v0.88.0, plan v0.88.0-rich-text lane C. Minimal surfaces (ADR 0011): the
+ * editor is a field (same fill, border, radius, focus ring as td-input-field); the toolbar above it is a row of ghost
+ * action buttons (no surface of its own); the link dialog is an inline panel between them (no shadow, no blur).
+ * Toolbar buttons reuse .td-btn.td-btn--action (hover gate + pressed state + coarse-pointer size live there); a tool
+ * whose mark is active ([aria-pressed="true"]) gets the "on" fill.
+ * The editor node is the ProseMirror root (`.td-rich-text__editor.ProseMirror`, contenteditable); the rules from
+ * prosemirror-view's prosemirror.css that it needs are scoped below. Placeholder: `::before` of the editor while the
+ * document is empty ([data-empty], set by the view) — never text in the document, never an inline style.
+ * State: [aria-pressed] on a tool · [aria-disabled] / [aria-readonly] / [aria-invalid] on the editor · [hidden].
+ */
+@layer td.tokens {
+	:root {
+		--td-rich-text-min-height: 6rem;   /* ~3 lines + padding */
+		--td-rich-text-max-height: 20rem;  /* then the editor scrolls */
+	}
+
+	/* colour tokens re-resolve in every theme scope (ADR 0020); aliases of contract tokens */
+	:root, [data-td-theme] {
+		--td-rich-text-tool-on-bg: var(--td-color-hover-strong); /* fill of an active tool (mark on) */
+		--td-rich-text-tool-on-fg: var(--td-color-text);
+		--td-rich-text-link: var(--td-color-info);               /* link text in the editor */
+	}
+}
+
+@layer td.component {
+	td-rich-text {
+		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5) */
+	}
+
+	td-rich-text:not(:defined) {
+		display: block;
+		min-block-size: var(--td-rich-text-min-height);
+	}
+
+	.td-rich-text > .td-field__label[hidden],
+	.td-rich-text__toolbar[hidden],
+	.td-rich-text__link[hidden],
+	.td-rich-text__link-error[hidden] {
+		display: none;
+	}
+
+	/* --- toolbar --- */
+
+	.td-rich-text__toolbar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 2px;
+		align-items: center;
+		margin-block-end: var(--td-space-2xs);
+	}
+
+	.td-btn.td-btn--action.td-rich-text__tool[aria-pressed="true"] {
+		--td-btn-bg-v: var(--td-rich-text-tool-on-bg);
+		--td-btn-hover-v: var(--td-rich-text-tool-on-bg);
+		--td-btn-fg-v: var(--td-rich-text-tool-on-fg);
+	}
+
+	/* fallback letter while the icon registry has no bold / italic / underline / strikethrough icon */
+	.td-rich-text__glyph {
+		display: inline-block;
+		inline-size: 1em;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: 1;
+		text-align: center;
+	}
+
+	.td-rich-text__glyph--bold { font-weight: var(--td-fw-bold); }
+	.td-rich-text__glyph--italic { font-style: italic; font-family: Georgia, "Times New Roman", serif; }
+	.td-rich-text__glyph--underline { text-decoration: underline; text-underline-offset: 2px; }
+	.td-rich-text__glyph--strike { text-decoration: line-through; }
+
+	/* --- editor (= the field control) --- */
+
+	.td-rich-text__editor {
+		position: relative;
+		display: block;
+		inline-size: 100%;
+		min-block-size: var(--td-rich-text-min-height);
+		max-block-size: var(--td-rich-text-max-height);
+		padding: var(--_td-field-pad);
+		margin: 0;
+		overflow-y: auto;
+		font: inherit;
+		color: var(--td-field-fg);
+		overflow-wrap: anywhere;
+		white-space: break-spaces;
+		cursor: text;
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--_td-field-radius);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		font-variant-ligatures: none;
+		font-feature-settings: "liga" 0;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-rich-text__editor:focus {
+		background: var(--td-field-bg-focus);
+		border-color: var(--td-field-focus);
+	}
+
+	.td-rich-text__editor:focus-visible {
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	.td-rich-text__editor[aria-readonly="true"] {
+		background: var(--td-field-bg-readonly);
+	}
+
+	.td-rich-text__editor[aria-disabled="true"] {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-rich-text__editor[aria-invalid="true"],
+	.td-rich-text__editor[aria-invalid="true"]:focus {
+		border-color: var(--td-field-error);
+	}
+
+	.td-rich-text__editor p {
+		margin: 0;
+	}
+
+	.td-rich-text__editor p + p {
+		margin-block-start: var(--td-space-xs);
+	}
+
+	.td-rich-text__editor a {
+		color: var(--td-rich-text-link);
+		text-decoration: underline;
+		text-underline-offset: 2px;
+		cursor: text; /* editing text, not navigating */
+	}
+
+	.td-rich-text__editor[aria-disabled="true"] a {
+		color: inherit;
+		cursor: not-allowed;
+	}
+
+	.td-rich-text__editor[data-empty][data-placeholder]::before {
+		position: absolute;
+		inset-block-start: var(--_td-field-pad-y);
+		inset-inline: 14px;
+		overflow: hidden;
+		color: var(--td-field-placeholder);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		pointer-events: none;
+		content: attr(data-placeholder);
+	}
+
+	/* prosemirror-view essentials (prosemirror.css), scoped */
+	.td-rich-text .ProseMirror-hideselection *::selection { background: transparent; }
+	.td-rich-text .ProseMirror-hideselection *::-moz-selection { background: transparent; }
+	.td-rich-text .ProseMirror-hideselection { caret-color: transparent; }
+
+	.td-rich-text img.ProseMirror-separator {
+		display: inline !important;
+		border: none !important;
+		margin: 0 !important;
+	}
+
+	/* --- link dialog (inline panel) --- */
+
+	.td-rich-text__link {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		align-items: flex-end;
+		padding: var(--td-space-xs) 0;
+		margin-block-end: var(--td-space-2xs);
+	}
+
+	.td-rich-text__link-field {
+		flex: 1 1 14rem;
+		inline-size: auto;
+	}
+
+	.td-rich-text__link-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-2xs);
+		align-items: center;
+	}
+
+	@media (pointer: coarse) {
+		/* a phone keyboard must not zoom the page into the editor (≥ 16px) */
+		.td-rich-text__editor,
+		.td-rich-text__link-input {
+			font-size: max(1rem, 1em);
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-btn.td-btn--action.td-rich-text__tool[aria-pressed="true"] {
+			color: HighlightText;
+			background-color: Highlight;
+			forced-color-adjust: none;
+		}
+
+		.td-rich-text__editor {
+			border-color: CanvasText;
+		}
+
+		.td-rich-text__editor:focus-visible {
+			outline-color: Highlight;
+		}
+
+		.td-rich-text__editor a {
+			color: LinkText;
+		}
+	}
+}
