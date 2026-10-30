@@ -2,6 +2,15 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.88.1
+
+**Sửa `<td-color-picker>`: popup che đúng vùng cần hút màu** (dsuite báo). Không phá vỡ.
+
+### Fixed
+- Bấm nút lấy màu (`EyeDropper`): popup ẩn tạm (`data-picking` → `visibility: hidden`) trong lúc trình duyệt cho hút
+  màu, hiện lại khi xong (màu vào ô, `input` + `change` như cũ) hoặc khi Escape / bị từ chối (giữ giá trị cũ); focus
+  về lại nút lấy màu. Đóng popup giữa chừng vẫn huỷ lượt hút như trước. Test 3 engine với `EyeDropper` giả.
+
 ## 0.88.0
 
 **`<td-rich-text>` — trình soạn thảo bình luận (ProseMirror), cho dsuite** ([plan](docs/internal/plans/v0.88.0-rich-text.md),

@@ -715,6 +715,7 @@ export class TdColorPicker extends TdFormElement {
     for (const name of [...old.style]) if (name.startsWith('--') && !name.startsWith('--_td-cp-')) next.style.setProperty(name, old.style.getPropertyValue(name));
     if (old.hasAttribute('data-td-theme')) next.setAttribute('data-td-theme', old.getAttribute('data-td-theme'));
     next.setAttribute('data-state', 'open');
+    if (this._eyedrop) next.setAttribute('data-picking', ''); // v0.88.1: a rebuild mid-pick stays hidden
     old.replaceWith(next);
     this._panel = next;
     if (this._layer) { this._layer.release(); }
@@ -979,11 +980,20 @@ export class TdColorPicker extends TdFormElement {
     if (this._eyedrop) { try { this._eyedrop.abort(); } catch { /* ignore */ } }
     const ctl = new AbortController();
     this._eyedrop = ctl;
+    // v0.88.1: the popup is hidden while picking (it would cover the very pixels the user samples)
+    // (a rebuild mid-pick copies the state — _rebuildPanel), shown again after on whichever panel is current
+    if (this._panel) this._panel.setAttribute('data-picking', '');
     let res = null;
     try {
       res = await new window.EyeDropper().open({ signal: ctl.signal });
     } catch {
       res = null; // AbortError (Escape / closed) or refused: nothing happens
+    } finally {
+      const panel = this._panel;
+      if (panel && this._eyedrop === ctl) {
+        panel.removeAttribute('data-picking');
+        panel.querySelector('.td-color-panel__eyedropper')?.focus({ preventScroll: true });
+      }
     }
     if (this._eyedrop !== ctl) return;
     this._eyedrop = null;

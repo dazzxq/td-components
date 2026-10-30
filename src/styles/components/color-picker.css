@@ -292,6 +292,11 @@
 		}
 	}
 
+	/* v0.88.1: hidden while the EyeDropper samples the screen, so the popup never covers what the user picks */
+	.td-color-panel[data-picking] {
+		visibility: hidden;
+	}
+
 	.td-color-panel__area {
 		position: relative;
 		flex: 0 0 auto;

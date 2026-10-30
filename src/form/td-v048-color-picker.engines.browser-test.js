@@ -571,6 +571,64 @@ describe('td-color-picker — EyeDropper (stubbed)', () => {
     expect(!!panel().querySelector('.td-color-panel__eyedropper')).to.equal(false);
   });
 
+  it('v0.88.1: the popup is hidden while picking, shown again after resolve / reject with the focus on the button', async () => {
+    for (const outcome of ['resolve', 'reject']) {
+      let settle;
+      stub(() => new Promise((ok, no) => {
+        settle = () => (outcome === 'resolve' ? ok({ sRGBHex: '#00ff00' }) : no(new DOMException('aborted', 'AbortError')));
+      }));
+      const { el, trigger } = mount('value="#123456"');
+      trigger.click();
+      const p = panel();
+      const eye = p.querySelector('.td-color-panel__eyedropper');
+      eye.click();
+      expect(p.hasAttribute('data-picking')).to.equal(true);
+      expect(getComputedStyle(p).visibility).to.equal('hidden');
+      settle();
+      expect(await until(() => !p.hasAttribute('data-picking'))).to.equal(true);
+      expect(getComputedStyle(p).visibility).to.equal('visible');
+      expect(document.activeElement === eye).to.equal(true);
+      expect(el.value).to.equal(outcome === 'resolve' ? '#00ff00' : '#123456');
+      el.close();
+    }
+  });
+
+  it('v0.88.1: a panel rebuilt mid-pick stays hidden, then shows with the focus on its eyedropper', async () => {
+    let settle;
+    stub(() => new Promise((ok) => { settle = () => ok({ sRGBHex: '#0000ff' }); }));
+    const { el, trigger } = mount('value="#123456"');
+    trigger.click();
+    panel().querySelector('.td-color-panel__eyedropper').click();
+    el.setAttribute('contrast', '');
+    const p = panel();
+    expect(p.hasAttribute('data-picking')).to.equal(true);
+    expect(getComputedStyle(p).visibility).to.equal('hidden');
+    settle();
+    expect(await until(() => !p.hasAttribute('data-picking'))).to.equal(true);
+    expect(document.activeElement === p.querySelector('.td-color-panel__eyedropper')).to.equal(true);
+    expect(el.value).to.equal('#0000ff');
+    el.close();
+  });
+
+  it('v0.88.1: closing the popup while picking aborts it and leaves nothing behind', async () => {
+    let signal;
+    window.EyeDropper = class {
+      open(o) {
+        signal = o.signal;
+        return new Promise((_, no) => o.signal.addEventListener('abort', () => no(new DOMException('aborted', 'AbortError'))));
+      }
+    };
+    const { el, trigger } = mount('value="#123456"');
+    trigger.click();
+    const p = panel();
+    p.querySelector('.td-color-panel__eyedropper').click();
+    el.close();
+    await raf();
+    expect(signal.aborted).to.equal(true);
+    expect(p.isConnected).to.equal(false);
+    expect(el.value).to.equal('#123456');
+  });
+
   it('AbortError (the user pressed Escape) → nothing changes, no error', async () => {
     const errors = [];
     const onErr = (e) => errors.push(e);

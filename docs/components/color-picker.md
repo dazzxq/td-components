@@ -147,6 +147,8 @@ popup cuộn bình thường. Ô / nút ≥ 44px trên màn hình cảm ứng.
 
 - **Lấy màu** (nút ống hút): chỉ hiện khi trình duyệt có `EyeDropper` (Chromium máy tính). Firefox / Safari: nút **không
   có** (không phải nút mờ). Tắt bằng `eyedropper="false"`. Kết quả cũng qua bộ parse; người dùng nhấn Escape → không đổi gì.
+  Trong lúc hút màu popup **ẩn tạm** (0.88.1) để không che vùng cần lấy; xong (hoặc Escape) thì hiện lại, focus về nút
+  lấy màu. Đóng popup giữa chừng thì huỷ lượt hút.
 - **`contrast`**: hàng mẫu "Aa" chữ trắng và chữ đen trên màu đang chọn + tỉ số WCAG 2.x (1 chữ số thập phân) + chữ
   "Đạt AA" / "Chưa đạt" theo ngưỡng **4.5:1** (chữ thường). Chỉ hiển thị, **không** chặn chọn — quyết định là của app.
   Mặc định tắt.
