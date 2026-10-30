@@ -169,6 +169,28 @@ function makeButton(label, { variant = 'secondary', size, icon, cls, aria } = {}
 /** A user action on a `<td-button>` host — ignored while disabled / loading (a programmatic host.click() included). */
 const usable = (b) => !b.hasAttribute('disabled') && !b.hasAttribute('loading');
 
+/**
+ * v0.89.0: the grid pane's empty states — (a) a search / filter with no result, (b) a truly empty library. `empty` /
+ * `emptyHint` are the pre-0.89 keys: a site override of them still wins for (b) title / (a) hint (see `_tLegacy`). This
+ * frozen copy is the reference for "still the default".
+ */
+const EMPTY_LABELS = Object.freeze({
+  empty: 'Không có media nào',
+  emptyHint: 'Thử từ khoá khác',
+  emptyFiltered: 'Không tìm thấy ảnh phù hợp',
+  emptyFilteredHint: 'Đang lọc: {filters}',
+  emptyFilterKeyword: 'Từ khoá "{q}"',
+  emptyFilterMore: 'và {n} bộ lọc khác',
+  clearFilters: 'Xoá bộ lọc',
+  emptyLibrary: 'Chưa có ảnh nào',
+  emptyLibraryHint: 'Tải ảnh lên để bắt đầu',
+  emptyLibraryHintNoUpload: 'Ảnh tải lên sẽ hiện ở đây',
+  uploadAction: 'Tải ảnh lên',
+});
+/** v0.89.0: the filter hint lists at most this many items (the rest → `emptyFilterMore`); a keyword is cut at 40 chars */
+const EMPTY_FILTER_ITEMS = 3;
+const EMPTY_KEYWORD_MAX = 40;
+
 export class TdMediaPicker extends HTMLElement {
   /**
    * Default texts (Vietnamese); override per site (`TdMediaPicker.labels.title = 'Media library'`) or per open through
@@ -202,8 +224,7 @@ export class TdMediaPicker extends HTMLElement {
     prevPage: 'Trang trước',
     nextPage: 'Trang sau',
     resultsCount: '{n} kết quả',
-    empty: 'Không có media nào',
-    emptyHint: 'Thử từ khoá khác',
+    ...EMPTY_LABELS,
     retry: 'Thử lại',
     back: 'Quay lại',
     detail: 'Chi tiết',
@@ -376,6 +397,24 @@ export class TdMediaPicker extends HTMLElement {
     return formatLabel(TdMediaPicker.labels, this._s ? this._s.messages : {}, key, params || {});
   }
 
+  /**
+   * @private v0.89.0: a new label key that replaces an older one. Precedence: this open's `messages` (newKey, then
+   * oldKey), then `TdMediaPicker.labels` (newKey when changed from its default, then oldKey when changed from its
+   * default), then the default of newKey. An old template without the new `{name}` placeholders is used verbatim.
+   */
+  _tLegacy(newKey, oldKey, params = {}) {
+    const msgs = this._s ? this._s.messages : null;
+    const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
+    const given = (k) => own(msgs, k) && (typeof msgs[k] === 'string' || typeof msgs[k] === 'function');
+    if (given(newKey)) return this._t(newKey, params);
+    if (given(oldKey)) return this._t(oldKey, params);
+    const L = TdMediaPicker.labels;
+    const changed = (k) => own(L, k) && typeof L[k] === 'string' && L[k] !== EMPTY_LABELS[k];
+    if (changed(newKey)) return formatLabel(L, null, newKey, params);
+    if (changed(oldKey)) return formatLabel(L, null, oldKey, params);
+    return formatLabel(EMPTY_LABELS, null, newKey, params);
+  }
+
   /** @private */
   _emit(name, detail) {
     this.dispatchEvent(new CustomEvent(name, { bubbles: true, composed: true, detail }));
@@ -544,7 +583,7 @@ export class TdMediaPicker extends HTMLElement {
       + '<h3 class="td-sr-only td-media-picker__results-heading" tabindex="-1"></h3>'
       + '<td-media-grid class="td-media-picker__grid" select-mode="tick"></td-media-grid>'
       + '<div class="td-media-picker__skeleton" aria-hidden="true" hidden></div>'
-      + '<td-empty-state class="td-media-picker__empty" icon="image" size="sm" compact heading-level="3" hidden></td-empty-state>'
+      + '<td-empty-state class="td-media-picker__empty" icon="image" size="md" heading-level="3" hidden></td-empty-state>'
       + '<div class="td-media-picker__error" role="alert" hidden><p class="td-media-picker__error-text"></p></div>'
       + '</section>'
       + '<aside class="td-media-picker__detail" data-state="empty"></aside>'
@@ -1359,10 +1398,7 @@ export class TdMediaPicker extends HTMLElement {
       grid.appendChild(el);
     }
     if (!page.items.length) {
-      const filtered = !!s.query || Object.keys(s.filters).length > 0;
-      s.els.empty.setAttribute('title', this._t('empty'));
-      if (filtered) s.els.empty.setAttribute('message', this._t('emptyHint'));
-      else s.els.empty.removeAttribute('message');
+      this._renderEmpty();
       s.els.skeleton.hidden = true;
       s.els.error.hidden = true;
       grid.hidden = true;
@@ -1380,6 +1416,89 @@ export class TdMediaPicker extends HTMLElement {
     }
     if (s.els.itemsHead) this._syncSectionHeads();
     this._autoPreview(page);
+  }
+
+  /**
+   * @private v0.89.0: fill the grid pane's empty state — (a) a search / filter is in force: "Không tìm thấy ảnh phù
+   * hợp", the active filters as the hint, "Xoá bộ lọc"; (b) else "Chưa có ảnh nào" + "Tải ảnh lên" (the toolbar's
+   * upload handler) when the picker can upload, another hint and no action when it cannot. Text only (attributes /
+   * td-empty-state's textContent); `actions` reassignment replaces the previous listeners.
+   */
+  _renderEmpty() {
+    const s = this._s;
+    const es = /** @type {any} */ (s.els.empty);
+    const filtered = !!s.query || Object.keys(s.filters).length > 0;
+    es.setAttribute('data-variant', filtered ? 'filtered' : 'library');
+    if (filtered) {
+      es.setAttribute('icon', 'search');
+      es.setAttribute('title', this._t('emptyFiltered'));
+      es.setAttribute('message', this._tLegacy('emptyFilteredHint', 'emptyHint', { filters: this._describeFilters() }));
+      es.actions = [{ label: this._t('clearFilters'), variant: 'secondary', onClick: () => this._clearAllFilters() }];
+      return;
+    }
+    const up = s.els.uploadBtn;
+    es.setAttribute('icon', 'image');
+    es.setAttribute('title', this._tLegacy('emptyLibrary', 'empty'));
+    es.setAttribute('message', this._t(up ? 'emptyLibraryHint' : 'emptyLibraryHintNoUpload'));
+    es.actions = up
+      ? [{ label: this._t('uploadAction'), variant: 'primary', onClick: () => { if (this._live(s) && usable(up)) this._openUpload(); } }]
+      : [];
+  }
+
+  /**
+   * @private v0.89.0: the filters in force, as one line of text — `Từ khoá "<q>"` (cut at 40 chars + "…"), then each
+   * filter from the CURRENT facet descriptors: a toggle → its facet label; single / multiple → `<facet>: <option>[, …]`;
+   * no descriptor / no matching option → the facet label, else the key. ` · ` between items, at most 3 (+ "và N bộ lọc
+   * khác"). Raw values never appear.
+   * @returns {string}
+   */
+  _describeFilters() {
+    const s = this._s;
+    const parts = [];
+    if (s.query) {
+      const chars = Array.from(s.query);
+      const q = chars.length > EMPTY_KEYWORD_MAX ? `${chars.slice(0, EMPTY_KEYWORD_MAX).join('')}…` : s.query;
+      parts.push(this._t('emptyFilterKeyword', { q }));
+    }
+    const desc = new Map((s.facetList || []).map((f) => [f.key, f]));
+    for (const [key, value] of Object.entries(s.filters)) {
+      const f = desc.get(key);
+      const label = f && f.label ? f.label : key;
+      if (!f || f.type === 'toggle') {
+        parts.push(label);
+        continue;
+      }
+      const names = [];
+      for (const v of Array.isArray(value) ? value : [value]) {
+        const o = (f.options || []).find((op) => op.value === v);
+        if (o && o.label) names.push(o.label);
+      }
+      parts.push(names.length ? `${label}: ${names.join(', ')}` : label);
+    }
+    if (parts.length <= EMPTY_FILTER_ITEMS) return parts.join(' · ');
+    return `${parts.slice(0, EMPTY_FILTER_ITEMS).join(' · ')} ${this._t('emptyFilterMore', { n: parts.length - EMPTY_FILTER_ITEMS })}`;
+  }
+
+  /**
+   * @private v0.89.0 "Xoá bộ lọc" — ONE atomic reset: the pending search debounce cancelled, the search field and
+   * `s.query` emptied, every facet control back to its default (programmatic set: no change event, no extra request),
+   * `s.filters = {}`, the badge synced, then exactly one facet + one list (page 1) reload (+ the collection strip), focus
+   * on the search field. Never goes through `_applyFilters` (its "unchanged" early return precedes the query copy).
+   */
+  _clearAllFilters() {
+    const s = this._s;
+    if (!this._live(s)) return;
+    const f = s.els.search;
+    if (f) f.setValue('');
+    s.debounce.cancel();
+    s.query = '';
+    for (const c of s.facets.values()) c.set(undefined);
+    s.filters = {};
+    this._syncFilterCount();
+    this._loadFacets();
+    this._loadPage('reload', { reset: true });
+    if (s.collEnabled) this._loadCollections();
+    this._focus(this._searchInput() || s.els.heading);
   }
 
   /**
@@ -1552,6 +1671,7 @@ export class TdMediaPicker extends HTMLElement {
     box.hidden = list.length === 0;
     if (s.els.filterWrap) s.els.filterWrap.hidden = list.length === 0;
     this._syncFilterCount();
+    if (!filtersChanged && !s.els.empty.hidden) this._renderEmpty(); // v0.89.0: the hint follows the new descriptors
     if (filtersChanged && silent) return true;
     if (filtersChanged) {
       // impl review ISSUE-9: reconciliation changed the filters → facets (counts) AND list follow the filters now in force
@@ -1970,8 +2090,7 @@ export class TdMediaPicker extends HTMLElement {
       const es = document.createElement('td-empty-state');
       es.className = 'td-media-picker__detail-empty';
       es.setAttribute('icon', 'image');
-      es.setAttribute('size', 'sm');
-      es.setAttribute('compact', '');
+      es.setAttribute('size', 'md');
       es.setAttribute('heading-level', '3');
       es.setAttribute('title', t('detailEmpty'));
       es.setAttribute('message', t('detailEmptyHint'));

@@ -201,6 +201,16 @@ Từ trên xuống: **xem trước vuông 1:1** (`contain`; video = poster, khô
   đang sửa dở không bị thay. Dưới 720px không tự mở (lưới hiện trước). [ADR 0013 › Bổ sung v0.36](../internal/decisions/0013-media-picker-boundary.md#bổ-sung-v036).
 - Chưa xem gì (danh sách rỗng, hoặc < 720px): `td-empty-state` "Chọn một ảnh để xem chi tiết" / "Bấm vào ảnh trong danh
   sách bên trái". Đang tải bản mới (`get`): skeleton theo bố cục panel.
+- **Lưới rỗng** (0.89.0): empty state căn giữa ngang + dọc trong pane lưới, cùng kiểu với pane chi tiết (không viền đứt,
+  không nền khối; icon 40px trong vòng tròn nền nhạt, tiêu đề, một dòng gợi ý, nút khi có). Ba trường hợp:
+  - Có tìm / lọc mà không ra kết quả: "Không tìm thấy ảnh phù hợp", gợi ý nêu các bộ lọc đang bật (`Đang lọc: Từ khoá
+    "abc" · Album: Tin tức · Chỉ của tôi`; nhãn lấy từ descriptor facet hiện tại, tối đa 3 mục rồi "và N bộ lọc khác",
+    từ khoá quá 40 ký tự thì cắt + "…"), nút **"Xoá bộ lọc"**: xoá ô tìm, đưa mọi facet về mặc định, tải lại trang 1
+    bằng **một** request list (+ facet, + dải album nếu có), focus về ô tìm.
+  - Thư viện trống: "Chưa có ảnh nào" / "Tải ảnh lên để bắt đầu" + nút **"Tải ảnh lên"** (mở đúng dialog của nút Tải lên
+    trên toolbar). Picker không tải lên được (không có `upload` / `uploadFromUrl`) → gợi ý "Ảnh tải lên sẽ hiện ở đây",
+    không có nút.
+  - Đang tải: skeleton như cũ, không hiện empty state.
 - **Lưu tường minh**, không bao giờ autosave: nút "Lưu", **Enter trong ô một dòng** (chỉ trong phạm vi ô), Ctrl/⌘+Enter
   trong textarea. Lưu xong → toast "Đã lưu thay đổi" + live region.
 - Đổi sang mục khác khi form đang bẩn → hỏi "Bỏ thay đổi?" trước (dcms2 mất dữ liệu im lặng).
@@ -1168,7 +1178,11 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `collectionsTruncated` · `collectionEntered` · `collectionLeft` (0.66) | "Gõ thêm để thu hẹp" · "{label}: {n} kết quả" · "Tất cả: {n} kết quả" |
 | `collectionsMore` · `itemsHeading` (0.74) | "{n}+" · "Ảnh" |
 | `autoSelected` (0.67) | "Đã chọn sẵn: {name}" |
-| `empty` · `emptyHint` · `retry` · `back` | "Không có media nào" · "Thử từ khoá khác" · "Thử lại" · "Quay lại" |
+| `emptyFiltered` · `emptyFilteredHint` · `clearFilters` (0.89) | "Không tìm thấy ảnh phù hợp" · "Đang lọc: {filters}" · "Xoá bộ lọc" |
+| `emptyFilterKeyword` · `emptyFilterMore` (0.89) | `Từ khoá "{q}"` · "và {n} bộ lọc khác" (các mục của `{filters}`) |
+| `emptyLibrary` · `emptyLibraryHint` · `emptyLibraryHintNoUpload` · `uploadAction` (0.89) | "Chưa có ảnh nào" · "Tải ảnh lên để bắt đầu" · "Ảnh tải lên sẽ hiện ở đây" · "Tải ảnh lên" |
+| `empty` · `emptyHint` (cũ, trước 0.89) | "Không có media nào" · "Thử từ khoá khác" — xem ghi chú dưới bảng |
+| `retry` · `back` | "Thử lại" · "Quay lại" |
 | `detail` · `detailEmpty` · `detailEmptyHint` · `fileName` | "Chi tiết" · "Chọn một ảnh để xem chi tiết" · "Bấm vào ảnh trong danh sách bên trái" · "Tên file" |
 | `save` · `saved` | "Lưu" · "Đã lưu thay đổi" |
 | `discardTitle` · `discardMessage` · `discard` · `keepEditing` | "Bỏ thay đổi?" · "Các thay đổi chưa lưu hoặc file đang tải lên sẽ bị huỷ." · "Bỏ thay đổi" · "Tiếp tục sửa" |
@@ -1204,6 +1218,11 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 `error.*` chỉ dùng khi adapter không có `userMessage`. Key lồng nhau (`error`, `kind`, `status`, `meta`, `urlError`) đè
 bằng `messages: { 'error.network': '…' }` theo lần mở, hoặc thay cả object con trên `TdMediaPicker.labels`. Đổi nhãn so với
 0.32 ("Chọn (n)" → "Chèn (n)", "Huỷ" → "Đóng", …): [Nâng cấp](../upgrading/README.md).
+
+**Nhãn rỗng cũ (0.89.0).** `empty` / `emptyHint` không còn là chữ mặc định, nhưng site đã đè chúng vẫn thấy chữ của
+mình: `empty` → tiêu đề "thư viện trống", `emptyHint` → gợi ý "đang lọc" (dùng nguyên văn nếu không có `{filters}`).
+Thứ tự ưu tiên: `messages` của lần mở (khoá mới rồi khoá cũ) → `TdMediaPicker.labels` (khoá mới nếu khác mặc định, rồi
+khoá cũ nếu khác mặc định) → mặc định của khoá mới. Tiêu đề "đang lọc" và gợi ý "thư viện trống" chỉ đọc khoá mới.
 
 ```js
 Object.assign(TdMediaPicker.labels, { title: 'Media library', confirmCount: 'Insert ({n})' });

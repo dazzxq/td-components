@@ -679,11 +679,12 @@ describe('td-media-picker — list states', () => {
   it('empty with / without filter → the right empty text', async () => {
     const ad = createMockAdapter({ count: 0 });
     const { promise } = await openReady({ adapter: ad });
-    expect(q('.td-media-picker__empty').getAttribute('title')).to.equal('Không có media nào');
-    expect(q('.td-media-picker__empty').hasAttribute('message')).to.equal(false);
+    // v0.89.0: library empty → "Chưa có ảnh nào"; a search with no result → "Không tìm thấy ảnh phù hợp" + the filters
+    expect(q('.td-media-picker__empty').getAttribute('title')).to.equal('Chưa có ảnh nào');
+    expect(q('.td-media-picker__empty').getAttribute('message')).to.equal('Tải ảnh lên để bắt đầu');
     await search('zzz');
-    await until(() => q('.td-media-picker__empty').getAttribute('message') === 'Thử từ khoá khác');
-    expect(q('.td-media-picker__empty').getAttribute('title')).to.equal('Không có media nào');
+    await until(() => q('.td-media-picker__empty').getAttribute('message') === 'Đang lọc: Từ khoá "zzz"');
+    expect(q('.td-media-picker__empty').getAttribute('title')).to.equal('Không tìm thấy ảnh phù hợp');
     document.querySelector('td-media-picker').close();
     await promise;
   });

@@ -512,6 +512,42 @@
 
 	.td-media-picker__detail[data-state="empty"] {
 		justify-content: center;
+		padding-inline-end: 1rem; /* v0.89.0: symmetric while empty, so the empty state sits on the pane's centre line */
+	}
+
+	/* v0.89.0 (plan v0.89.0-media-picker-empty): both panes' empty states — centred in what is left of the pane (flex 1
+	   + a floor so a short pane scrolls instead of squashing it), no card (no dashed border, no fill), a 40px icon in a
+	   soft round tile, then title, one hint line, optional action. Scoped here: td-empty-state itself is unchanged. */
+	.td-media-picker__empty:not([hidden]),
+	.td-media-picker__detail-empty {
+		display: flex;
+		flex: 1 0 auto;
+		flex-direction: column;
+		min-block-size: 15rem;
+	}
+
+	.td-media-picker :is(.td-media-picker__empty, .td-media-picker__detail-empty) > .td-empty-state {
+		flex: 1 1 auto;
+		padding: var(--td-space-lg);
+		background: none;
+		border: 0;
+		border-radius: 0;
+	}
+
+	.td-media-picker :is(.td-media-picker__empty, .td-media-picker__detail-empty) .td-empty-state__icon {
+		align-items: center;
+		justify-content: center;
+		inline-size: 4.5rem;
+		block-size: 4.5rem;
+		margin-block-end: var(--td-space-md);
+		color: var(--td-color-text-subtle);
+		background: var(--td-color-fill);
+		border-radius: 50%;
+	}
+
+	.td-media-picker :is(.td-media-picker__empty, .td-media-picker__detail-empty) .td-empty-state__message {
+		max-inline-size: 32rem;
+		overflow-wrap: anywhere;
 	}
 
 	/* review ISSUE-3 (plan QĐ 56): the "Quay lại" arrow lives in the dialog header — only < 720 while the pane is open */
@@ -962,6 +998,12 @@
 		.td-media-picker__detail,
 		.td-media-picker__content {
 			border-color: CanvasText;
+		}
+
+		/* v0.89.0: the empty-state icon tile keeps its shape as an outline */
+		.td-media-picker :is(.td-media-picker__empty, .td-media-picker__detail-empty) .td-empty-state__icon {
+			color: CanvasText;
+			border: 1px solid CanvasText;
 		}
 	}
 

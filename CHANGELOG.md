@@ -2,6 +2,27 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.89.0
+
+**`<td-media-picker>`: trạng thái rỗng mới, căn giữa, có nút hành động** (owner nhờ dsuite chuyển lời). Không thêm
+attribute / event. Giao diện trạng thái rỗng đổi (hết viền đứt, khối nằm giữa pane).
+
+### Changed
+- Cả hai pane (lưới, chi tiết): trạng thái rỗng căn giữa ngang + dọc, cùng một kiểu: icon 40px trong vòng tròn nền nhạt,
+  tiêu đề, một dòng gợi ý; không viền đứt, không nền khối. Forced-colors: vòng tròn viền `CanvasText`.
+- Lưới rỗng có 2 biến thể: (a) có tìm kiếm / bộ lọc mà không ra kết quả: `Không tìm thấy ảnh phù hợp`, gợi ý liệt kê
+  bộ lọc đang bật (tối đa 3 mục + "và N bộ lọc khác", từ khoá cắt 40 ký tự), nút **Xoá bộ lọc** (xoá ô tìm + mọi bộ lọc,
+  tải lại đúng một lần, focus về ô tìm); (b) thư viện trống: `Chưa có ảnh nào` + nút **Tải ảnh lên** (như nút Tải lên
+  trên toolbar); picker không cho tải lên thì không có nút, gợi ý đổi theo. Đang tải vẫn là skeleton.
+
+### Added
+- Khoá nhãn mới: `emptyFiltered`, `emptyFilteredHint` (`{filters}`), `emptyFilterKeyword` (`{q}`), `emptyFilterMore`
+  (`{n}`), `clearFilters`, `emptyLibrary`, `emptyLibraryHint`, `emptyLibraryHintNoUpload`, `uploadAction`.
+
+### Compatibility
+- Ghi đè cũ vẫn có hiệu lực: `empty` (qua `messages` hoặc `TdMediaPicker.labels`) làm tiêu đề cho (b), `emptyHint` làm
+  gợi ý cho (a); khoá mới thắng khoá cũ, `messages` thắng `labels`.
+
 ## 0.88.1
 
 **Sửa `<td-color-picker>`: popup che đúng vùng cần hút màu** (dsuite báo). Không phá vỡ.
