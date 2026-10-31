@@ -238,7 +238,7 @@ const CASES = [
     skip: ['crop'], // the getter needs a loaded image
   },
   { tag: 'td-datetime-range', attrs: { label: 'Khoảng' }, props: () => ({ presets: [{ label: 'Một ngày', days: 1 }] }) },
-  { tag: 'td-dropzone', attrs: { label: 'Tệp' }, props: () => ({ upload: fn() }) },
+  { tag: 'td-dropzone', attrs: { label: 'Tệp' }, props: () => ({ upload: fn(), imageResize: { maxBytes: 500000 } }) },
   {
     tag: 'td-media-field', attrs: { label: 'Ảnh' },
     props: () => ({ adapter: { get: async () => null }, pickerOptions: { title: 'Chọn ảnh' }, value: 'img-1' }),
