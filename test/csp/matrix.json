@@ -3843,6 +3843,31 @@
       "settle": 300
     },
     {
+      "state": "optimizing",
+      "reducedMotion": true,
+      "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Ảnh'); d.setAttribute('multiple',''); window.__mount.appendChild(d); d.imageResize={metadata:'none',processor:()=>new Promise(()=>{})}; const b=Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='),c=>c.charCodeAt(0));d.addFiles([new File([b],'anh-1.png',{type:'image/png'}), new File([b],'anh-2.png',{type:'image/png'})]); await new Promise(r=>setTimeout(r,120));",
+      "selectors": [
+        ".td-dropzone__item",
+        ".td-dropzone__size",
+        ".td-dropzone__status",
+        ".td-dropzone__progress",
+        ".td-dropzone__progress .td-progress",
+        ".td-dropzone__progress .td-progress__bar"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "retry",
+      "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Ảnh'); d.setAttribute('multiple',''); window.__mount.appendChild(d); d.imageResize={metadata:'keep'}; d.upload=()=>Promise.reject(new Error('Máy chủ từ chối')); const b=Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='),c=>c.charCodeAt(0));d.addFiles([new File([b],'anh-1.png',{type:'image/png'})]); await new Promise(r=>setTimeout(r,300));",
+      "selectors": [
+        ".td-dropzone__item",
+        ".td-dropzone__status",
+        ".td-dropzone__retry",
+        ".td-dropzone__remove"
+      ],
+      "settle": 300
+    },
+    {
       "state": "disabled",
       "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Tệp'); d.setAttribute('multiple',''); window.__mount.appendChild(d); d.addFiles([new File(['abc'],'a.pdf',{type:'application/pdf'})]); d.setAttribute('disabled','');",
       "selectors": [

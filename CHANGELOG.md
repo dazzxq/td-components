@@ -2,6 +2,66 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.90.0
+
+**Resize / tối ưu ảnh ngay trong trình duyệt trước khi upload** (owner 2026-10-31: "mỗi site một chất lượng, ảnh Sony 30 MB về trần";
+[plan](docs/internal/plans/v0.90.0-image-resize.md), [ADR 0037](docs/internal/decisions/0037-client-image-resize.md),
+[hướng dẫn](docs/guides/image-upload-limits.md)). **Opt-in và không phá vỡ**: không đặt policy = hành vi 0.89 từng byte
+(kit không đọc file, hook upload nhận đúng `{ onProgress, signal }`, không đổi DOM / event).
+
+### Added
+- **`TdDropzone#imageResize`** (property, mặc định `null`) và **`upload.imageResize`** của `<td-media-picker>`
+  (`configureDefaults` hoặc từng lần `open()`): policy `maxBytes`, `maxPixels`, `maxWidth`, `maxHeight`, `quality` (0,9),
+  `minQuality` (0,65), `maxEncodes` (8), `metadata`, trần đầu vào `maxInputBytes` (64 MiB) / `maxInputPixels` (64 MP) /
+  `maxInputSide` (16384) / `maxHeaderBytes` (1 MiB), hook `processor`. Kit **không đặt trần mặc định**. Policy được chuẩn
+  hoá + đóng băng; sai → `TypeError` đồng bộ (policy cũ giữ nguyên); key lạ bị bỏ qua + warn một lần.
+- Engine (`src/utils/image-resize.js`, `image-bytes.js`, `image-metadata.js`; không dependency, không Worker, không `<img>`):
+  nhận diện định dạng bằng magic bytes; ảnh đã đạt trần + `keep` → gửi nguyên; JPEG vượt trần → thu nhỏ + encode lại (hạ quality
+  trước, thu kích thước sau, giữ bản nhỏ nhất đạt trần); PNG 8-bit → thu nhỏ giữ alpha; không bao giờ đổi định dạng. Từ chối
+  (không lén gửi) JPEG đặc biệt (MPF / gain map / C2PA / dữ liệu đuôi), APNG, PNG 16-bit, định dạng khác vượt trần, ảnh
+  vượt trần đầu vào.
+- **Metadata** `keep` (mặc định, **giữ cả GPS**) | `keep-no-gps` | `copyright` | `none`, xử lý ở mức byte (EXIF vá tại chỗ,
+  GPS xoá tại chỗ, IPTC dựng lại, XMP chép nguyên văn chỉ ở `keep`); chế độ khác `keep` mà ảnh đã đạt trần → viết lại không
+  mất dữ liệu (điểm ảnh giữ nguyên).
+- **Hàng đợi tối ưu** FIFO dùng chung toàn trang (một ảnh một lúc). `data-status` thêm `queued` ("Đang chờ tối ưu…") và
+  `optimizing` ("Đang tối ưu ảnh…"); dòng dung lượng `30 MB → 4,2 MB`; live region "Đã giảm {name} từ … xuống …".
+- **Nút "Thử lại"** (`.td-dropzone__retry`) cho dòng lỗi **upload** khi có policy + hook: gửi lại chính file đã tối ưu, không
+  tối ưu lại.
+- Hook upload (chỉ khi có policy) nhận thêm `optimization` (`null` với file không phải ảnh) và `originalFile`;
+  `adapter.upload` của picker nhận `optimization` (key chỉ có khi có policy; không có `originalFile`).
+- `files-change` có thêm `detail.added` (các `File` gốc được nhận ở lần thêm đó, phát trước khi tối ưu; `[]` khi xoá).
+- Nhãn mới `TdDropzone.labels`: `queued`, `optimizing`, `sizeChange`, `optimized`, `retry`, `retryLabel`, `pendingInvalid`,
+  `failedInvalid`, `optimizeError` (object theo mã lỗi: 5 thông điệp gom nhóm + `default`).
+- Docs: mục 7 của [dropzone](docs/components/dropzone.md), [media picker](docs/components/media-picker.md), hướng dẫn
+  [Giới hạn khi upload ảnh](docs/guides/image-upload-limits.md); ADR 0037.
+
+### Behaviour notes (chỉ khi có policy)
+- `files` / `FormData` chỉ chứa dòng đã sẵn sàng (bản đã tối ưu, giữ tên gốc). `uploading` cũng `true` khi còn dòng
+  chờ / đang tối ưu. Còn dòng đang tối ưu → `customError` (`pendingInvalid`); còn dòng lỗi tối ưu → `customError`
+  (`failedInvalid`) tới khi xoá dòng đó.
+- `max-size` / `upload.maxSize`: không còn chặn đồng bộ lúc nhận file; với ảnh là trần **đầu ra** (gộp vào `maxBytes`), file
+  không phải ảnh vẫn kiểm trên file gốc (dòng lỗi `rejectSize`). `accept` và `max-files` vẫn chặn đồng bộ. `addFiles()` /
+  `accepted` gồm cả file sẽ lỗi trong job.
+- Hộp tải lên của picker chỉ coi lô là xong (toast, tự đóng) khi không còn dòng chờ / đang tối ưu; đóng dialog lúc đó hỏi xác
+  nhận như khi đang tải; `uploadFields` được chụp lúc file được nhận (dùng lại khi "Thử lại").
+- Hộp tải lên của picker, **có hoặc không có policy** (sửa so với 0.89): tự đóng (sau lô file **và** sau khi tải từ URL
+  thành công) giờ còn đòi **không còn dòng `data-status="error"`** trong dropzone — trước đây một lần thành công sau đó có thể
+  đóng dialog đè lên dòng lỗi cũ. Toast `{ok}/{total}` đếm một kết quả cho mỗi file gốc: "Thử lại" thay thế kết quả lỗi của
+  file đó, không tính thêm file.
+- `removeFile(file)` nhận `File` gốc hoặc bản đã tối ưu. Ảnh vượt `max-size` mà engine không nén lại được (GIF / WebP / SVG /
+  nội dung đặc biệt) → lỗi nhóm "Không giảm được xuống trần" (`cannot-satisfy-limits`).
+- `open({ upload })` thay nguyên `upload` của defaults (như `accept` / `maxSize`): nhớ lặp lại `imageResize`.
+- Ảnh nén lại đi qua canvas sRGB (Display-P3 → sRGB; ICC gốc không chép) và đổi hash. Server vẫn là ranh giới tin cậy.
+
+### Tests
+- Node: 67 test byte layer + 65 test engine (encoder giả, fuzz seed cố định). Trình duyệt (3 engine): 20 test engine thật +
+  27 test tích hợp dropzone / picker (`src/form/td-v090-dropzone-resize.engines.browser-test.js`).
+- CSP: thêm `td-dropzone.optimizing`, `td-dropzone.retry` (451 → 453 case); baseline td-dropzone cũ không đổi.
+
+### Upgrade
+- Không cần làm gì nếu không dùng `imageResize`. Bật thì đọc [Giới hạn khi upload ảnh](docs/guides/image-upload-limits.md)
+  trước (đặc biệt `metadata: 'keep'` giữ GPS, và trần phía server).
+
 ## 0.89.0
 
 **`<td-media-picker>`: trạng thái rỗng mới, căn giữa, có nút hành động** (owner nhờ dsuite chuyển lời). Không thêm

@@ -5,7 +5,7 @@
 Vùng kéo-thả file kèm nút "Chọn file", lọc theo loại / kích thước / số lượng, danh sách file đã chọn (tên, kích
 thước, nút xoá) và lý do file bị loại. **Form-associated**: file được gửi cùng `<form>` dưới `name` như một
 `<input type="file">` thật. Tuỳ chọn: hook `upload` để tải lên ngay (thanh `<td-progress>` từng file, huỷ bằng nút
-xoá) và thumbnail cho ảnh.
+xoá), thumbnail cho ảnh và (0.90.0) tối ưu ảnh ngay trong trình duyệt trước khi upload (`imageResize`).
 
 | | |
 |---|---|
@@ -151,6 +151,156 @@ Ba attribute **chỉ đổi cách trình bày** (lọc, form, upload không đ�
 - Mọi chuỗi chỉ là **text** (`textContent` / escape), không nhận HTML, không có slot markup.
 - Hai kiểu độc lập: dùng riêng `hint-style="badges"` với prompt cũ, hoặc prompt xếp chồng với dòng gợi ý `<p>` cũ đều được.
 
+### 7. Tối ưu ảnh trước khi upload — `imageResize` (0.90.0)
+
+Opt-in. Đặt property `imageResize` (object **policy**) thì mỗi ảnh được nhận sẽ được **thu nhỏ / nén lại / lọc metadata
+ngay trong trình duyệt** trước khi vào `files`, `FormData` và hook `upload`. Kit **không đặt trần nào**: trần là của
+site. Không đặt (mặc định `null`) = hành vi y hệt 0.89 (kit không đọc file, không đổi file, markup và event không đổi).
+Hướng dẫn thực hành (ví dụ policy, trần phía server, ranh giới tin cậy): [Giới hạn khi upload ảnh](../guides/image-upload-limits.md).
+
+```js
+const dz = document.querySelector('td-dropzone');
+dz.imageResize = {
+  maxPixels: 12_000_000,   // ảnh Sony a7C II 33 MP -> về trần 12 MP
+  maxBytes: 5 * 1024 * 1024, // và <= 5 MiB mỗi file
+  quality: 0.9,            // JPEG: thử 90 % trước, hạ dần nếu còn quá trần byte
+  metadata: 'keep-no-gps', // giữ EXIF thường, bỏ vị trí GPS
+};
+dz.upload = (file, { onProgress, signal, optimization, originalFile }) => { /* file = bản đã tối ưu */ };
+```
+
+- Gán policy sai (kiểu / giá trị nằm ngoài khoảng) → `TypeError` ném **đồng bộ**, policy cũ giữ nguyên. Policy được
+  chuẩn hoá rồi `Object.freeze` (đọc lại `dz.imageResize` ra object đã đóng băng, đủ mọi key). Key lạ bị bỏ qua và
+  `console.warn` một lần. `null` = tắt.
+- Policy chỉ áp cho file **thêm sau khi gán**; hàng đã có giữ nguyên trạng thái.
+- Policy có thể không có trần đầu ra nào (chỉ `metadata: 'none'`, chẳng hạn) — khi đó kit chỉ lọc metadata.
+- Không có property/attribute HTML tương ứng: đây là cấu hình JS.
+
+#### Các key của policy
+
+| Key | Mặc định | Ý nghĩa |
+|---|---|---|
+| `maxBytes` | `null` | Trần **byte** của file đầu ra (số nguyên; không nhận chuỗi `'5MB'` để khỏi lệch MB / MiB). Đã tính cả metadata chèn vào. |
+| `maxPixels` | `null` | Trần tổng điểm ảnh đầu ra (rộng × cao). |
+| `maxWidth` / `maxHeight` | `null` | Trần mỗi cạnh đầu ra, theo hướng **hiển thị** (sau khi xoay theo EXIF). |
+| `quality` | `0.9` | Chất lượng JPEG của lần encode đầu (`0 < q ≤ 1`). Không ảnh hưởng PNG. |
+| `minQuality` | `0.65` | Sàn chất lượng khi hạ dần để lọt `maxBytes` (`≤ quality`). |
+| `maxEncodes` | `8` | Số lần encode tối đa cho một file (số nguyên 1–32). |
+| `metadata` | `'keep'` | Cách xử lý metadata: `keep` \| `keep-no-gps` \| `copyright` \| `none` (bảng dưới). |
+| `maxInputBytes` | `67108864` (64 MiB) | Chặn **đầu vào** (an toàn bộ nhớ, không phải trần của site). Không tắt được. |
+| `maxInputPixels` | `64000000` | Chặn đầu vào quá nhiều điểm ảnh (bom giải nén); 64 MP đủ cho máy ảnh 61 MP. Không tắt được. |
+| `maxInputSide` | `16384` | Cạnh đầu vào tối đa (giới hạn canvas). Không tắt được. |
+| `maxHeaderBytes` | `1048576` (1 MiB) | Phần đầu file được đọc để lấy kích thước / EXIF. Không tắt được. |
+| `processor` | `null` | Hook thay engine của kit: `(file, { policy, signal }) => File \| Blob \| null` (xem hướng dẫn). |
+
+Bốn trần đầu ra (`maxBytes`, `maxPixels`, `maxWidth`, `maxHeight`) là `null` hoặc số nguyên > 0. Bốn trần đầu vào
+(`maxInput*`, `maxHeaderBytes`) là số nguyên > 0 (`null` bị từ chối). Sai bất kỳ ràng buộc nào → `TypeError`.
+
+#### Metadata
+
+| `metadata` | EXIF | GPS | XMP | IPTC | Ghi chú |
+|---|---|---|---|---|---|
+| `keep` (mặc định) | giữ (vá Orientation / kích thước khi nén lại) | **giữ** | giữ nguyên nếu đủ điều kiện an toàn, không thì bỏ | giữ | Mặc định này **giữ vị trí GPS** của ảnh — ảnh từ điện thoại có thể lộ nơi ở. Site công khai nên chọn `keep-no-gps` trở lên. |
+| `keep-no-gps` | giữ | xoá | bỏ | giữ, trừ trường địa điểm | EXIF thường (máy ảnh, ngày chụp) còn lại. |
+| `copyright` | tối giản (Artist, Copyright; Orientation nếu cần) | xoá | bỏ | chỉ By-line và Copyright Notice | |
+| `none` | không có (trừ Orientation tối giản khi ảnh cần để hiển thị đúng hướng) | xoá | bỏ | bỏ | |
+
+Chế độ khác `keep` còn bỏ chú thích `COM` và các segment ứng dụng lạ. Kết quả từng họ metadata được báo trong
+`optimization.metadata` (`exact`, `patched`, `verbatim`, `rebuilt`, `dropped`, `absent`, `partial`).
+Ảnh nén lại đi qua canvas sRGB: **ảnh Display-P3 bị chuyển sang sRGB**; profile ICC gốc không được chép.
+
+#### Quyết định cho từng file (nhận diện bằng nội dung, không tin `file.type` / đuôi)
+
+1. Đọc những byte đầu để nhận diện. **Không phải ảnh** (PDF…): policy không áp, chỉ kiểm `max-size` trên file gốc rồi
+   gửi nguyên.
+2. File rỗng → lỗi `empty-file`. Vượt `maxInputBytes` → `input-too-large`. Kích thước đọc từ header vượt
+   `maxInputPixels` / `maxInputSide` → `input-dimensions-too-large` (ảnh panorama quá trần bị **từ chối**, không thu nhỏ).
+3. **Đã đạt mọi trần**: `metadata: 'keep'` → gửi **nguyên file** (cùng object `File`, không đọc lại); chế độ khác → JPEG /
+   PNG được **viết lại không mất dữ liệu** (giữ nguyên điểm ảnh, chỉ lọc metadata). GIF / WebP / AVIF / SVG… không viết
+   lại được: chế độ khác `keep` → `metadata-policy-unsupported`.
+4. **Vượt trần**: JPEG thường → giải mã, thu nhỏ, encode lại JPEG (hạ `quality` dần tới `minQuality`, rồi thu nhỏ thêm, tối
+   đa `maxEncodes` lần, giữ bản **nhỏ nhất** đạt trần); PNG 8-bit thường → thu nhỏ, giữ PNG và kênh alpha. Không bao
+   giờ đổi định dạng (PNG không thành JPEG). Hết cách → `cannot-satisfy-limits` (hoặc `metadata-too-large` khi riêng
+   metadata đã quá trần).
+5. Không xử lý được, chỉ gửi nguyên: JPEG đặc biệt (nhiều ảnh MPF, gain map HDR, C2PA / Content Credentials, dữ liệu sau
+   EOI), APNG, PNG 16-bit → `special-content-transform-required`; định dạng khác (GIF, WebP, AVIF, HEIC, BMP…) vượt
+   trần → `format-not-transformable`. GIF và WebP được đọc kích thước để so trần; AVIF / HEIC / BMP… chỉ được gửi nguyên
+   khi **không** có trần kích thước nào đang bật. SVG chỉ bị trần byte (vector, không có điểm ảnh).
+6. Có `processor` → nó thay engine ở nhánh "vượt trần" và "viết lại" (không gọi khi file đã đạt trần với `keep`). Kit
+   kiểm lại kết quả (cùng họ định dạng, đạt mọi trần và chế độ metadata) — sai → `processor-invalid-result`, ném lỗi →
+   `processor-failed`.
+
+Tối ưu chạy trên main thread, **một ảnh một lúc**: hàng đợi FIFO dùng chung toàn trang (mọi dropzone và hộp tải lên của
+[media picker](media-picker.md) cùng một slot). Ảnh quá lớn có thể làm trình duyệt máy yếu chậm hoặc bị kill — server
+vẫn là ranh giới tin cậy. Xoá một dòng đang chờ / đang tối ưu thì huỷ việc của nó (không upload, không báo lỗi).
+
+#### Trạng thái dòng, dòng dung lượng, thử lại
+
+`data-status` của dòng (`.td-dropzone__item`) có thêm hai giá trị:
+
+| `data-status` | Khi nào | Chữ (`labels`) |
+|---|---|---|
+| `queued` | Đã nhận, chờ tới lượt tối ưu | `queued` ("Đang chờ tối ưu…") |
+| `optimizing` | Đang tối ưu (thanh tiến độ không xác định) | `optimizing` ("Đang tối ưu ảnh…") |
+| `uploading` → `done` \| `error` | Có hook `upload`: sau khi tối ưu xong thì upload như mục 4 | như mục 4 |
+| `selected` | Không có hook: tối ưu xong, file đã vào `files` / `FormData` | — |
+| `error` | Lỗi tối ưu (không vào `FormData`, form không hợp lệ cho tới khi xoá dòng) hoặc lỗi upload | thông báo lỗi |
+
+- **Dòng dung lượng**: ảnh đổi dung lượng hiển thị `labels.sizeChange` (`'30 MB → 4,2 MB'`) thay vì chỉ dung lượng gốc.
+  Khi ảnh nhỏ đi, live region đọc một lần `labels.optimized` ("Đã giảm {name} từ {from} xuống {to}").
+- **Lỗi tối ưu** hiện thông điệp **gom nhóm** theo mã lỗi (`labels.optimizeError`, bảng dưới); mã không có trong bảng
+  dùng `default`. Dòng lỗi này không có nút thử lại (tối ưu lại cũng ra lỗi cũ) — người dùng xoá dòng rồi chọn lại.
+- **Thử lại**: dòng `error` do **upload** (hook reject), khi có policy **và** có hook, hiện nút
+  `<button class="td-dropzone__retry td-btn td-btn--ghost td-btn--sm" aria-label="Thử lại {tên file}">Thử lại</button>`.
+  Bấm → hook chạy lại với **chính file đã tối ưu** (không tối ưu lại, không encode lại), focus ở lại trong dòng. Không
+  có policy thì không có nút này (như 0.89).
+- **Hook `upload` nhận thêm trong tuỳ chọn thứ hai** (chỉ khi có policy): `optimization` (object tóm tắt, `null` với file
+  không phải ảnh) và `originalFile` (`File` gốc người dùng chọn). **Không có policy: đúng `{ onProgress, signal }`** như
+  trước. `file` truyền cho hook là bản đã tối ưu, **giữ tên file gốc**.
+
+```js
+// optimization (khi file là ảnh)
+{
+  changed: true,                       // file đầu ra khác file gốc
+  reasons: ['pixels', 'bytes'],        // 'bytes' | 'pixels' | 'width' | 'height' | 'metadata'
+  original: { name, type, size, width, height },
+  output:   { type, size, width, height },   // width / height: null nếu định dạng không đọc được kích thước
+  metadata: { mode, exif, xmp, iptc,         // 'exact' | 'patched' | 'verbatim' | 'rebuilt' | 'dropped' | 'absent' | 'partial'
+              gpsPresent,                    // true | false | 'unknown'
+              contentCredentials: false },
+}
+```
+
+#### `files`, `uploading`, tính hợp lệ
+
+- `files` (và `FormData`) chỉ chứa dòng **đã sẵn sàng** (tối ưu xong hoặc gửi nguyên); dòng đang chờ / đang tối ưu / lỗi
+  tối ưu **chưa** nằm trong đó. Nội dung của `File` trong `files` là bản đã tối ưu.
+- `uploading` là `true` cả khi còn dòng `queued` / `optimizing`.
+- Còn dòng `queued` / `optimizing` → `validity.customError` với thông báo `labels.pendingInvalid`; sau đó, còn dòng lỗi
+  tối ưu → `labels.failedInvalid` cho tới khi dòng đó bị xoá. Vì vậy form không submit được giữa chừng.
+- Event `files-change` có thêm `detail.added` (xem mục Event).
+
+#### `max-size` khi có policy
+
+`max-size` không còn chặn đồng bộ lúc nhận file (`accept` và `max-files` vẫn chặn đồng bộ):
+
+- **Ảnh kit xử lý**: `max-size` thành trần **đầu ra** (gộp vào `maxBytes` nếu nhỏ hơn). Đầu ra vẫn lớn hơn `max-size` →
+  lỗi `cannot-satisfy-limits`. Vì thế một ảnh 30 MB vẫn được nhận khi `max-size="5MB"`; đầu vào bị chặn bởi `maxInputBytes`.
+- Ảnh vượt `max-size` mà engine không nén lại được (GIF, WebP, SVG, nội dung đặc biệt) → dòng lỗi `cannot-satisfy-limits` ("Không giảm được xuống trần").
+- **File không phải ảnh**: kiểm `max-size` trên file gốc sau khi nhận diện, quá thì dòng `error` với `labels.rejectSize`.
+- Hệ quả: `addFiles()` / `files-change` coi các file này là `accepted` kể cả khi dòng sau đó lỗi; lý do `size` không còn
+  xuất hiện trong `rejected` khi có policy. Nên đặt `maxBytes ≤ max-size` (hoặc chỉ dùng một trong hai).
+
+#### Mã lỗi → thông điệp (`labels.optimizeError`)
+
+| Mã lỗi | Thông điệp mặc định |
+|---|---|
+| `empty-file`, `invalid-image`, `header-limit`, `decode-failed`, `decode-unsupported` | Không đọc được ảnh |
+| `input-too-large`, `input-dimensions-too-large`, `canvas-limit` | Ảnh quá lớn để xử lý |
+| `format-not-transformable`, `special-content-transform-required`, `metadata-policy-unsupported`, `resize-unsupported` | Định dạng này không tối ưu được |
+| `cannot-satisfy-limits`, `metadata-too-large` | Không giảm được xuống trần |
+| `encode-failed`, `output-type-mismatch`, `processor-failed`, `processor-invalid-result`, `default` | Tối ưu thất bại |
+
 ## Responsive (0.34.0)
 
 Host `<td-dropzone>` là **container** (`container: td-dropzone / inline-size`, thêm `min-inline-size: 0`). Khi dropzone
@@ -169,7 +319,7 @@ viewport < 360px.
 | `accept` | string | — (mọi loại) | Loại được nhận: `type/sub`, `type/*`, `.ext`, cách nhau bởi dấu phẩy. |
 | `accept-label` | string | — | Chữ hiển thị cho phần định dạng của dòng gợi ý (mục 2): không đặt = in `accept`; rỗng = bỏ phần định dạng. Không ảnh hưởng lọc. |
 | `multiple` | boolean | `false` | Cho chọn nhiều file (không có: file mới thay file cũ). |
-| `max-size` | string | — | Kích thước tối đa mỗi file: byte hoặc `KB`/`MB`/`GB`. |
+| `max-size` | string | — | Kích thước tối đa mỗi file: byte hoặc `KB`/`MB`/`GB`. Có `imageResize` (0.90.0): với ảnh là trần **đầu ra**, xem mục 7. |
 | `max-files` | number | — | Số file tối đa (khi có `multiple`). |
 | `preview` | boolean | `false` | Thumbnail cho ảnh (object URL). |
 | `required` | boolean | `false` | Bắt buộc có ít nhất một file. |
@@ -188,12 +338,13 @@ viewport < 360px.
 
 | Property / method | Kiểu | Mô tả |
 |---|---|---|
-| `files` | `File[]` (chỉ đọc, bản sao) | File đang chọn. `getValue()` trả cùng giá trị. |
-| `upload` | `(file, { onProgress, signal }) => Promise` \| `null` | Hook upload (mục 4). Gán trước khi gắn vào trang cũng được. |
-| `uploading` | boolean (chỉ đọc) | Còn file đang upload. |
+| `files` | `File[]` (chỉ đọc, bản sao) | File đang chọn. `getValue()` trả cùng giá trị. 0.90.0 (có `imageResize`): chỉ gồm dòng đã sẵn sàng (bản đã tối ưu). |
+| `upload` | `(file, { onProgress, signal }) => Promise` \| `null` | Hook upload (mục 4). Gán trước khi gắn vào trang cũng được. Có `imageResize`: tuỳ chọn thứ hai có thêm `optimization`, `originalFile` (mục 7). |
+| `imageResize` | object policy \| `null` | 0.90.0 — tối ưu ảnh trước khi upload (mục 7). Mặc định `null` = tắt. Chuẩn hoá + đóng băng khi gán; sai → `TypeError` đồng bộ, giữ policy cũ. Áp cho file thêm sau đó. |
+| `uploading` | boolean (chỉ đọc) | Còn file đang upload (0.90.0: hoặc còn dòng chờ / đang tối ưu). |
 | `addFiles(files)` | → `{ accepted, rejected }` | Thêm file bằng JS (có lọc + hook), **không** phát event. |
 | `setValue(files)` | → `{ accepted, rejected }` | Thay toàn bộ danh sách (có lọc), không phát event. |
-| `removeFile(indexOrFile)` | method | Xoá một file (huỷ upload của nó), không phát event. |
+| `removeFile(indexOrFile)` | method | Xoá một file (huỷ upload của nó), không phát event. 0.90.0: nhận `File` gốc hoặc bản đã tối ưu. |
 | `clear()` | method | Xoá hết (huỷ upload), không phát event. |
 | `openPicker()` | method | Mở hộp chọn file (không làm gì khi bị vô hiệu hoá; trình duyệt chỉ cho mở trong thao tác của người dùng). |
 | `form`, `validity`, `validationMessage`, `checkValidity()`, `reportValidity()`, `setCustomValidity()` | | Như control gốc. |
@@ -215,6 +366,11 @@ viewport < 360px.
 | `progress` | `'Tải lên {name}'` (tên thanh tiến độ) |
 | `required` | `'Vui lòng chọn file.'` |
 | `badgeAccept` / `badgeSize` / `badgeCount` | `'{accept}'` / `'Tối đa {size}'` / `'Tối đa {n} file'` (0.33.0, chỉ `hint-style="badges"`) |
+| `queued` / `optimizing` | `'Đang chờ tối ưu…'` / `'Đang tối ưu ảnh…'` (0.90.0, chỉ khi có `imageResize`) |
+| `sizeChange` / `optimized` | `'{from} → {to}'` / `'Đã giảm {name} từ {from} xuống {to}'` (0.90.0) |
+| `retry` / `retryLabel` | `'Thử lại'` / `'Thử lại {name}'` (0.90.0) |
+| `pendingInvalid` / `failedInvalid` | `'Đang tối ưu ảnh, vui lòng chờ'` / `'Có tệp không xử lý được, hãy gỡ ra'` (0.90.0, thông báo validity) |
+| `optimizeError` | object theo mã lỗi → 5 thông điệp gom nhóm + `default` (0.90.0, bảng ở mục 7) |
 
 ```js
 import { TdDropzone } from '@dazzxq/td-components';
@@ -227,7 +383,7 @@ Nhãn mới có hiệu lực ở lần dựng lại kế tiếp (đổi attribut
 
 | Event | `detail` | Khi nào |
 |---|---|---|
-| `files-change` | `{ files: File[], rejected: { file, reason: 'type'\|'size'\|'count', message }[] }` | Người dùng chọn / thả / xoá file (cả khi mọi file đều bị loại). API JS và reset form **không** phát. |
+| `files-change` | `{ files: File[], rejected: { file, reason: 'type'\|'size'\|'count', message }[], added: File[] }` | Người dùng chọn / thả / xoá file (cả khi mọi file đều bị loại). API JS và reset form **không** phát. 0.90.0: `added` = các `File` **gốc** được nhận ở lần thêm này, phát đồng bộ **trước** khi tối ưu bắt đầu (`[]` khi xoá); `files` giữ nghĩa cũ (chỉ dòng sẵn sàng, nên có policy thì chưa có file vừa thêm). |
 
 `change` / `input` của `<input type="file">` bên trong không lọt ra ngoài component.
 
@@ -276,11 +432,12 @@ xám nhạt + viền mảnh, như `<td-button variant="secondary">`). Thanh ti�
     </div>
     <ul class="td-dropzone__rejected" [hidden]><li class="td-dropzone__reject" data-reason="type|size|count">…</li></ul>
     <ul class="td-dropzone__list" aria-label="File đã chọn" [hidden]>
-      <li class="td-dropzone__item" data-id="1" data-status="selected|uploading|done|error" [data-waiting]>
+      <li class="td-dropzone__item" data-id="1" data-status="selected|queued|optimizing|uploading|done|error" [data-waiting]>
         [<img class="td-dropzone__thumb" alt="" src="blob:…">]
         <span class="td-dropzone__meta"><span class="td-dropzone__name">bao-cao.pdf</span>
           <span class="td-dropzone__size">1.5 KB</span><span class="td-dropzone__status" [hidden]>… (nhãn trạng thái / lý do lỗi)</span></span>
         <td-progress class="td-dropzone__progress" size="sm" label="Tải lên bao-cao.pdf" [value] [hidden]></td-progress>
+        [<button type="button" class="td-dropzone__retry td-btn td-btn--ghost td-btn--sm" aria-label="Thử lại bao-cao.pdf">Thử lại</button>]  <!-- 0.90.0: lỗi upload + có imageResize -->
         <button type="button" class="td-dropzone__remove" aria-label="Xoá bao-cao.pdf"><svg data-icon="close">…</svg></button>
       </li>
     </ul>
@@ -331,7 +488,7 @@ Danh sách được dựng bằng DOM API (`textContent`, `setAttribute`) — kh
   server (không stack trace, đường dẫn, câu SQL, mã nội bộ).
 - **Lọc phía client là gợi ý.** Server phải kiểm lại loại file theo nội dung, kích thước, số lượng, quyền; lưu với
   tên do server sinh, ngoài web root. Chi tiết: [Bảo mật › td-dropzone](../guides/security.md#td-dropzone-upload-file).
-- Kit không đọc nội dung file; object URL chỉ khi bật `preview` (ảnh), luôn được thu hồi.
+- Kit không đọc nội dung file; object URL chỉ khi bật `preview` (ảnh), luôn được thu hồi. Ngoại lệ: khi bật `imageResize` (0.90.0) kit đọc byte của ảnh để tối ưu — cục bộ trong trình duyệt, không gửi đi đâu, không cần `img-src blob:`, không `<img>` / `Worker`. Tối ưu phía client **không thay** kiểm tra phía server (server thấy file đã bị người dùng sửa được).
 
 ## Cảm ứng
 
@@ -353,4 +510,5 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 ## Xem thêm
 
 - [Progress](progress.md) · [Hướng dẫn Form](../guides/forms.md) · [Form validation](form-validation.md) ·
+  [Giới hạn khi upload ảnh](../guides/image-upload-limits.md) · [Media picker](media-picker.md) ·
   [Bảo mật](../guides/security.md#td-dropzone-upload-file) · [CSP](../guides/csp.md)

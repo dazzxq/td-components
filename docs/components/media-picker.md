@@ -408,7 +408,7 @@ TdMediaPicker.configureDefaults({
   uploadFields: [/* FieldDescriptor — các ô trên đầu dialog tải lên */],
   messages: { title: 'Kho ảnh' }, // ghi đè nhãn cho mọi lần mở
   context: { siteId: 3 },         // chuyển nguyên vào mọi lời gọi adapter
-  upload: { accept: 'image/*', maxSize: '10MB', acceptLabel: 'JPG, PNG, WEBP' },
+  upload: { accept: 'image/*', maxSize: '10MB', acceptLabel: 'JPG, PNG, WEBP' }, // 0.90: + imageResize: { … }
   pageSize: 30,
   pagination: 'cursor',           // hoặc 'pages'
 });
@@ -452,7 +452,7 @@ const outcome = await TdMediaPicker.open({
 | `title` | `string` | theo `selection.kinds` | "Chọn ảnh" / "Chọn video" / "Chọn tài liệu" / "Chọn media" |
 | `pageSize` | số 1–100 | `30` | → `limit` (0.32: 40) |
 | `pagination` | `'cursor'` \| `'pages'` | `'cursor'` | 0.33 — [Phân trang](#phân-trang--hai-chế-độ) |
-| `upload` | `{ accept?, maxSize?, multiple? = true, acceptLabel? }` | — | Chuyển cho `td-dropzone` ([dropzone](dropzone.md)). `acceptLabel` (0.33) chỉ là **chữ** trên badge / mô tả tab URL, không phải bộ lọc; thiếu thì suy từ `accept` |
+| `upload` | `{ accept?, maxSize?, multiple? = true, acceptLabel?, imageResize? }` | — | Chuyển cho `td-dropzone` ([dropzone](dropzone.md)). `acceptLabel` (0.33) chỉ là **chữ** trên badge / mô tả tab URL, không phải bộ lọc; thiếu thì suy từ `accept`. `imageResize` (0.90.0): policy tối ưu ảnh trước khi upload — xem [Tối ưu ảnh trước khi upload](#tối-ưu-ảnh-trước-khi-upload--uploadimageresize-0900). **Object `upload` của `open()` thay nguyên object `upload` của defaults** (không merge từng key) |
 | `initialCollection` | `{ id: string, label: string }` \| `null` | `null` | 0.66.0: mở **thẳng vào** bộ sưu tập này (breadcrumb + `collectionId` ngay từ request đầu). `capabilities: { collections: false }` của site thắng: khi đó `initialCollection` bị bỏ qua và phiên chạy như phiên thường. `id` ≤ 512 ký tự, `label` cắt còn 200 code point; sai hình dạng → `TypeError`; `null` = không có. **Không** lấy từ defaults. Focus vẫn ở ô tìm. Xem [Bộ sưu tập](#bộ-sưu-tập-0660) |
 | `collections` | `{ showWithoutQuery?: boolean }` | `{ showWithoutQuery: false }` | 0.66.0: `true` → dải bộ sưu tập hiện cả khi chưa gõ tìm. Không phải object → `TypeError`; `null` = bỏ qua |
 | `autoSelectFirst` | `boolean` | theo chế độ | 0.67.0 (opt-in) → bật mặc định từ 0.68.0 → **từ 0.72.0 mặc định chỉ bật cho picker chọn MỘT ảnh (`selection.mode: 'single'`), tắt cho `multiple`**: chọn sẵn asset đầu tiên chọn được của lần tải danh sách đầu — [Tự chọn ảnh đầu](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670). Giá trị đã đặt thắng ở cả hai chế độ: chỉ boolean `false` mới tắt, mọi giá trị khác có mặt (kể cả `true`) bật; `null` / vắng = mặc định theo chế độ; lấy được từ defaults; `open({ autoSelectFirst: false })` tắt riêng lần mở, `open({ autoSelectFirst: true, selection: { mode: 'multiple' } })` bật cho picker nhiều ảnh |
@@ -708,7 +708,7 @@ Nút "Tải lên" mở một dialog **lồng trên picker** (cùng tầng modal,
 full viewport với ≈ 110px trống) và **không có footer** — × ở header đủ để đóng.
 
 - **`uploadFields`** nằm trên cùng, dùng chung cho cả hai nguồn. Giá trị được **chụp lúc mỗi tác vụ bắt đầu** (sửa ô sau đó
-  không ảnh hưởng file đang tải). Field `required` chưa điền → **khoá cả hai nguồn** kèm gợi ý "Điền các trường bắt buộc
+  không ảnh hưởng file đang tải). Có `upload.imageResize` (0.90.0): chụp lúc file được **nhận** (trước khi tối ưu), dùng đúng giá trị đó khi upload và khi "Thử lại". Field `required` chưa điền → **khoá cả hai nguồn** kèm gợi ý "Điền các trường bắt buộc
   trước khi tải lên." — muốn dialog dùng được ngay thì đừng đánh dấu `required`, hoặc cho field một option mặc định.
 - **Tab** ([`td-tabs`](tabs.md) `size="sm"`): "Tải file" (khi có `upload`) và "Tải từ URL" (khi có `uploadFromUrl` và
   `capabilities.uploadFromUrl !== false`). Chỉ có một nguồn → không hiện tab.
@@ -721,7 +721,7 @@ full viewport với ≈ 110px trống) và **không có footer** — × ở head
 lớn, "Kéo thả file vào đây", "hoặc bấm để chọn file", badge định dạng (`upload.acceptLabel` hoặc suy từ `accept`) và
 "Tối đa {maxSize}". Cả zone là vùng bấm; nút "Chọn file" vẫn tới được bằng bàn phím.
 
-- Kit gọi `adapter.upload(file, { fields, context, signal, onProgress })`. Gọi `onProgress({ percent })` hoặc
+- Kit gọi `adapter.upload(file, { fields, context, signal, onProgress })` (0.90.0: có policy `upload.imageResize` thì thêm `optimization`, xem [mục dưới](#tối-ưu-ảnh-trước-khi-upload--uploadimageresize-0900)). Gọi `onProgress({ percent })` hoặc
   `onProgress({ loaded, total })` → thanh tiến độ của dòng file. Chưa gọi lần nào → dòng "Đang chờ…".
 - **Huỷ** = nút xoá của dòng file → `signal` bị abort (không báo lỗi). Kit **không** giới hạn số file tải song song —
   muốn xếp hàng thì adapter tự làm.
@@ -731,6 +731,43 @@ lớn, "Kéo thả file vào đây", "hoặc bấm để chọn file", badge đ�
 - **Tất cả xong**: toast "Đã tải lên {ok}/{total} tệp"; **không có lỗi thì dialog tự đóng**, có lỗi thì giữ mở để thấy dòng
   đỏ (`userMessage` / `labels.error.{code}`; `fieldErrors` → lỗi trên ô `uploadFields`).
 - Phát `asset-change { operation: 'upload', asset, deduplication }`.
+
+### Tối ưu ảnh trước khi upload — `upload.imageResize` (0.90.0)
+
+Opt-in. Đặt policy ở `configureDefaults({ upload: { imageResize } })` hoặc `open({ upload: { imageResize } })`; picker
+chuẩn hoá policy rồi đưa xuống `td-dropzone` của tab file, nên ảnh được thu nhỏ / nén lại / lọc metadata ngay trong
+trình duyệt trước khi tới `adapter.upload`. Không đặt = y hệt 0.89. **Tất cả key policy, quyết định cho từng file, mã
+lỗi và nhãn**: [dropzone › mục 7](dropzone.md#7-tối-ưu-ảnh-trước-khi-upload--imageresize-0900). Công thức thực hành:
+[Giới hạn khi upload ảnh](../guides/image-upload-limits.md).
+
+```js
+TdMediaPicker.configureDefaults({
+  adapter,
+  upload: {
+    accept: 'image/*',
+    maxSize: '5MB', // với ảnh: trần ĐẦU RA (gộp vào maxBytes), không còn chặn ảnh đầu vào lớn
+    imageResize: { maxPixels: 12_000_000, maxBytes: 5 * 1024 * 1024, metadata: 'keep-no-gps' },
+  },
+});
+```
+
+- Policy sai → `TypeError` **đồng bộ**: ở `configureDefaults` (defaults cũ giữ nguyên), ở `TdMediaPicker.open()` /
+  `picker.open()` (trước khi dựng DOM).
+- **`upload` của `open()` thay nguyên `upload` của defaults** (giống `accept` / `maxSize`): `open({ upload: { accept: 'image/png' } })`
+  làm mất `imageResize` đặt ở defaults. Muốn giữ, lặp lại `imageResize` trong `open()`.
+- **Tự đóng (0.90.0, có hoặc không có policy):** sau lô file và sau khi tải từ URL thành công, dialog chỉ tự đóng khi dropzone
+  không còn dòng lỗi (`data-status="error"`). Trước đó một lần tải thành công sau cùng có thể đóng dialog đè lên dòng lỗi cũ.
+  Toast `{ok}/{total}` đếm một kết quả cho mỗi file gốc; "Thử lại" thay thế kết quả lỗi của file đó.
+- Hộp tải lên: hàng đợi tối ưu dùng chung một slot; picker chỉ tính "xong cả lô" (toast, tự đóng) khi **không còn** dòng
+  chờ / đang tối ưu; dòng lỗi tối ưu tính là một file lỗi của lô. Đóng dialog khi còn dòng chờ / đang tối ưu → hỏi xác
+  nhận như khi đang tải.
+- Trường `uploadFields` được chụp lúc file được nhận (xem [Dialog tải lên](#dialog-tải-lên)).
+- **Adapter**: `adapter.upload(file, { fields, context, signal, onProgress, optimization })`. `file` là bản đã tối ưu
+  (giữ tên gốc); `optimization` (`changed`, `reasons`, `original`, `output`, `metadata`) có mặt **chỉ khi có policy**
+  (`null` với file không phải ảnh); không policy thì key này **không có**. Adapter **không** nhận `originalFile`.
+  Dùng `optimization` để ghi nhận kích thước gốc / kết quả ở server. Server vẫn phải tự kiểm file.
+- Ảnh đã nén lại có hash khác bản gốc: nếu server dedup theo hash chính xác (`exact-reused`), cùng một ảnh gốc có thể
+  ra hai hash khác nhau giữa lần có / không có policy.
 
 ### Tải từ URL
 
@@ -1509,7 +1546,7 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 ## Xem thêm
 
 - [Media field](media-field.md) · [Cropper](cropper.md) · [Media grid](media-grid.md) · [Dropzone](dropzone.md) · [Modal](modal.md) ·
-  [Pagination](pagination.md) · [Copy](copy.md)
+  [Pagination](pagination.md) · [Copy](copy.md) · [Giới hạn khi upload ảnh](../guides/image-upload-limits.md)
 - [Hook › TdMediaPicker](../customization/hooks.md#tdmediapicker) · [CSP](../guides/csp.md) · [Bảo mật](../guides/security.md)
 - [ADR 0013](../internal/decisions/0013-media-picker-boundary.md) (kèm "Bổ sung v0.33", "Bổ sung v0.35", "Bổ sung v0.66") · plan
   [v0.33.0](../internal/plans/v0.33.0-media-picker-dcms-parity.md) ·

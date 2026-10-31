@@ -85,6 +85,7 @@ import { TdMenu } from './td-menu.js';
 import { openUploadDialog, UPLOAD_LABELS } from './media-picker-upload.js';
 import { openFilterSheet, FILTER_LABELS } from './media-picker-filters.js';
 import { openCropDialog } from './crop-dialog.js';
+import { normalizeImageResizePolicy } from '../utils/image-resize.js';
 import '../display/td-media-grid.js';
 import '../display/td-empty-state.js';
 import '../display/td-pagination.js';
@@ -94,6 +95,21 @@ import '../form/td-input-field.js';
 import './td-alert.js';
 
 const registry = new DefaultsRegistry();
+
+const plainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/**
+ * v0.90.0: the `upload.imageResize` policy of one open, normalised (TypeError on a bad policy, thrown synchronously).
+ * Same layering as every other option key: the open's `upload` object (when given) wins over the defaults' one as a
+ * whole (`upload` is merged shallowly, per key of the options).
+ * @param {object} defaults @param {object|null|undefined} options @returns {Readonly<object>|null}
+ */
+function resolveImageResize(defaults, options) {
+  const pick = (o) => (plainObject(o) && o.upload !== undefined ? o.upload : undefined);
+  let up = pick(options);
+  if (up === undefined) up = pick(defaults);
+  return plainObject(up) && up.imageResize !== undefined ? normalizeImageResizePolicy(up.imageResize) : null;
+}
 /** @type {Set<() => void>} notified after each configureDefaults() (module-level, no global) */
 const defaultsListeners = new Set();
 
@@ -309,11 +325,17 @@ export class TdMediaPicker extends HTMLElement {
   /**
    * Module-level defaults (decision 6): REPLACES the whole default object on every call (one call in the site
    * bootstrap). Keys: adapter, capabilities, assetFields, uploadFields, messages, context, upload, pageSize,
-   * pagination. An adapter without list() / get() → TypeError (previous defaults kept).
+   * pagination. An adapter without list() / get() → TypeError (previous defaults kept). v0.90.0: an invalid
+   * `upload.imageResize` policy → TypeError too (previous defaults kept); a valid one is stored normalised.
    * @param {object} defaults
    */
   static configureDefaults(defaults) {
-    registry.configure(defaults);
+    let next = defaults;
+    if (plainObject(defaults) && plainObject(defaults.upload) && defaults.upload.imageResize !== undefined) {
+      const imageResize = normalizeImageResizePolicy(defaults.upload.imageResize); // TypeError → nothing changes
+      next = { ...defaults, upload: { ...defaults.upload, imageResize } };
+    }
+    registry.configure(next);
     for (const fn of [...defaultsListeners]) {
       try { fn(); } catch { /* a listener never breaks configure */ }
     }
@@ -332,6 +354,7 @@ export class TdMediaPicker extends HTMLElement {
    */
   static open(options) {
     resolveOptions(registry.get(), options); // TypeError now (sync), before any DOM
+    resolveImageResize(registry.get(), options); // v0.90.0: a bad upload.imageResize → TypeError (sync) too
     if (active) {
       warnOnce('busy', 'td-media-picker: a picker is already open — this open() resolves cancelled / programmatic.');
       return Promise.resolve(cancelledOutcome('programmatic'));
@@ -365,6 +388,8 @@ export class TdMediaPicker extends HTMLElement {
    */
   open() {
     const opts = resolveOptions(registry.get(), this.options); // TypeError (sync) without a valid adapter
+    // v0.90.0: the normalised image-resize policy rides on the resolved upload options (→ the upload dialog's dropzone)
+    opts.upload.imageResize = resolveImageResize(registry.get(), this.options);
     if (active) {
       warnOnce('busy', 'td-media-picker: a picker is already open — this open() resolves cancelled / programmatic.');
       return Promise.resolve(cancelledOutcome('programmatic'));

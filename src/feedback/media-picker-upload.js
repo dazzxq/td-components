@@ -17,7 +17,8 @@
  *     collectionId, // v0.66.0 (K8), optional: present (null | id) only in a collection-enabled picker session → passed
  *                   //   through to upload / uploadFromUrl options; absent → the options keep the v0.65 shape
  *     sources,      // { file: boolean, url: boolean } — which sources the picker allows (caps + methods resolved)
- *     upload,       // resolved OpenMediaPickerOptions.upload { accept?, maxSize?, multiple?, acceptLabel? }
+ *     upload,       // resolved OpenMediaPickerOptions.upload { accept?, maxSize?, multiple?, acceptLabel?, imageResize? }
+ *                   //   (v0.90.0 `imageResize`: a normalised policy or null → the dropzone's `imageResize`)
  *     uploadFields, // normalizeFields() output (may be [])
  *     metaKeys,     // string[] — metadata keys kept on normalized assets
  *     idPrefix,     // unique id prefix (picker id + '-up')
@@ -48,6 +49,12 @@
  * - File tab: one "batch" = the files started while none was running; when the last one settles → toast
  *   `uploadDone` ({ok}/{total}, aborted rows not counted; no toast when nothing succeeded) and, without errors (and no
  *   URL task running), the dialog closes.
+ * - v0.90.0 image resize (`upload.imageResize`): the batch ends only when no row is queued / optimising either
+ *   (`dz.uploading`); a row that fails optimisation counts as a failed file of the batch. The upload fields are captured
+ *   when a file is ADDED (`files-change` `detail.added`, WeakMap by the original File) and that snapshot is reused when
+ *   the file uploads and on "Thử lại"; the adapter gets `optimization` in its options. Batch outcomes are kept per
+ *   original File: a "Thử lại" replaces that file's failed outcome instead of counting as another file.
+ * - No auto-close (file batch or URL) while the dropzone still shows an error row (`[data-status="error"]`).
  * - URL tab: client checks are UX only (validateRemoteUrl); the normalised `href` is sent; no client preview (no request
  *   to the typed URL from the browser); single-flight; "Huỷ" aborts silently.
  *
@@ -180,7 +187,13 @@ export function openUploadDialog(o) {
   let confirm = null;
   /** @type {{ ctrl: AbortController }|null} */
   let urlTask = null;
-  const batch = { total: 0, ok: 0, fail: 0, inflight: 0 };
+  /** outcomes: per file of the batch ('pending' | 'ok' | 'fail'), keyed by the original File (v0.90.0: a retry
+   * replaces its earlier outcome) or, without a policy, by a key of its own per upload (v0.89 counting) */
+  const batch = { inflight: 0, outcomes: new Map() };
+  /** v0.90.0: an error row stays in the dropzone → the dialog must not auto-close over it */
+  const hasErrorRow = () => !!(dz && dz.querySelector('[data-status="error"]'));
+  /** v0.90.0: upload field values per original File, captured when the file was added */
+  const snapshots = new WeakMap();
 
   // --- shell (static markup only; every dynamic value through the DOM) ---
   const root = document.createElement('div');
@@ -294,10 +307,22 @@ export function openUploadDialog(o) {
     if (up.accept) dz.setAttribute('accept', String(up.accept));
     if (up.maxSize) dz.setAttribute('max-size', String(up.maxSize));
     if (acceptLabel) dz.setAttribute('accept-label', acceptLabel);
+    dz.imageResize = up.imageResize || null; // v0.90.0 (normalised by the picker)
     dz.setAttribute('prompt-title', t('uploadDropTitle'));
     dz.setAttribute('prompt-text', t('uploadDropText'));
     dz.setAttribute('hint-style', 'badges');
     dz.upload = (file, c) => uploadFile(file, c);
+    // v0.90.0: fields captured when the file is added (before its optimisation), once per original File
+    dz.addEventListener('files-change', (e) => {
+      const added = e.detail && Array.isArray(e.detail.added) ? e.detail.added : [];
+      for (const f of added) if (f && typeof f === 'object' && !snapshots.has(f)) snapshots.set(f, values());
+      if (batch.inflight === 0) queueMicrotask(finishBatch); // a removed queued row may end the batch
+    });
+    dz._onOptimizeError = (original) => {
+      if (closing || destroyed) return;
+      batch.outcomes.set(original || {}, 'fail');
+      if (batch.inflight === 0) queueMicrotask(finishBatch);
+    };
     panel.appendChild(dz);
     notes = document.createElement('ul');
     notes.className = 'td-media-picker-upload__notes';
@@ -446,16 +471,26 @@ export function openUploadDialog(o) {
   }
 
   // --- file upload hook (decision 21; v0.32 `_upload` logic) ---
-  function uploadFile(file, { onProgress, signal }) {
+  function uploadFile(file, c) {
+    const { onProgress, signal } = c;
     if (closing || destroyed) return Promise.reject(abortError());
-    if (batch.inflight === 0) { batch.total = 0; batch.ok = 0; batch.fail = 0; }
+    // (the batch counters are reset by finishBatch: v0.90.0 a batch may span rows still optimising)
     batch.inflight += 1;
-    batch.total += 1;
-    const fieldValues = values(); // captured when the file starts
+    const outKey = c.originalFile || {}; // retry (same original) replaces the failed outcome; no policy: one per call
+    batch.outcomes.set(outKey, 'pending');
+    // v0.90.0: the snapshot taken when the file was added; else (no policy: the hook runs inside the add) now
+    const key = c.originalFile || file;
+    let fieldValues = snapshots.get(key);
+    if (!fieldValues) {
+      fieldValues = values();
+      snapshots.set(key, fieldValues);
+    }
+    // v0.90.0: the optimisation summary goes to the adapter as it is (only when the dropzone has a policy)
+    const optOpt = 'optimization' in c ? { optimization: c.optimization } : {};
     let out;
     try {
       out = Promise.resolve(o.adapter.upload(file, { fields: fieldValues, context: o.context, ...collOpt, signal,
-        onProgress: progressBridge(onProgress) }));
+        onProgress: progressBridge(onProgress), ...optOpt }));
     } catch (err) {
       out = Promise.reject(err);
     }
@@ -482,9 +517,8 @@ export function openUploadDialog(o) {
     });
     const settle = () => {
       batch.inflight -= 1;
-      if (outcome === 'ok') batch.ok += 1;
-      else if (outcome === 'fail') batch.fail += 1;
-      else batch.total -= 1;
+      if (outcome === 'ok' || outcome === 'fail') batch.outcomes.set(outKey, outcome);
+      else batch.outcomes.delete(outKey); // aborted: not counted
       if (batch.inflight === 0) queueMicrotask(finishBatch);
     };
     done.then(settle, settle);
@@ -493,13 +527,17 @@ export function openUploadDialog(o) {
 
   function finishBatch() {
     if (destroyed || batch.inflight !== 0) return;
-    const { ok, total, fail } = batch;
-    batch.total = 0; batch.ok = 0; batch.fail = 0;
+    if (dz && dz.uploading) return; // v0.90.0: rows still queued / optimising belong to this batch
+    const all = [...batch.outcomes.values()];
+    batch.outcomes.clear();
+    const total = all.length;
+    const ok = all.filter((v) => v === 'ok').length;
+    const fail = all.filter((v) => v === 'fail').length;
     if (!total) return;
     if (ok) {
       try { TdToast.success(t('uploadDone', { ok, total }), { themeRoot: root }); } catch { /* ignore */ }
     }
-    if (!fail && ok && !closing && !urlTask) finish();
+    if (!fail && ok && !closing && !urlTask && !hasErrorRow()) finish();
   }
 
   /** one validated result → the picker; the exact-reused note stays visible in the dialog */
@@ -581,7 +619,7 @@ export function openUploadDialog(o) {
       urlField.value = '';
       urlField.removeAttribute('error-text');
       syncGate();
-      if (!closing && !(dz && dz.uploading)) finish();
+      if (!closing && !(dz && dz.uploading) && !hasErrorRow()) finish();
     }, (err) => {
       if (urlTask !== task || destroyed) return;
       const n = normalizeError(err, signal, { operation: 'upload-url' });

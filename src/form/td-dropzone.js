@@ -1,6 +1,7 @@
 import { TdFormElement } from '../base/td-form-element.js';
 import { fillIconSlots, tdIcon } from '../icons/td-icon.js';
 import { formatFileSize } from '../utils/dom-utils.js';
+import { optimizeImage, normalizeImageResizePolicy } from '../utils/image-resize.js';
 import '../feedback/td-progress.js';
 
 /** `{name}` placeholders from `vars`; unknown ones are kept as written. */
@@ -43,6 +44,16 @@ function uploadErrorMessage(err) {
   return out;
 }
 
+/**
+ * v0.90.0: the grouped message of each optimisation error code (`TdDropzone.labels.optimizeError[code]`, unknown →
+ * `default`). Five texts: unreadable / too large to process / format not optimisable / cannot reach the limits / failed.
+ */
+const UNREADABLE = 'Không đọc được ảnh';
+const TOO_LARGE = 'Ảnh quá lớn để xử lý';
+const NOT_OPTIMISABLE = 'Định dạng này không tối ưu được';
+const CANNOT_FIT = 'Không giảm được xuống trần';
+const FAILED = 'Tối ưu thất bại';
+
 let seq = 0;
 
 /**
@@ -74,6 +85,18 @@ let seq = 0;
  * characters — keep server messages user-safe), else `labels.uploadError`. An abort (remove / reset) shows no error.
  * Nothing is uploaded without a hook.
  *
+ * v0.90.0 — client image resize (opt-in property `imageResize`, a policy of utils/image-resize.js; default `null` = the
+ * v0.89 behaviour above, unchanged). With a policy every accepted file is queued (one module-global FIFO slot shared by
+ * every dropzone / picker) and optimised before it counts: row `data-status` `queued` → `optimizing` → then `uploading`
+ * → `done` | `error` with an upload hook, `selected` without one. Only optimised rows (or files sent as they are) are in
+ * `files` / the FormData; queued / optimising rows → validity `customError` (`labels.pendingInvalid`), a row that could
+ * not be processed → `customError` (`labels.failedInvalid`) until it is removed. `max-size` is not checked when the file
+ * is added: images the kit handles use it as an OUTPUT cap (merged into the policy's `maxBytes` when smaller), other
+ * files are checked on the original (`labels.rejectSize` on the row). The hook gets the optimised file (original name)
+ * plus `optimization` and `originalFile` in its options. An upload error row offers "Thử lại" (`.td-dropzone__retry`):
+ * the same optimised file goes to the hook again (no new optimisation). Removing a row aborts its optimisation (the
+ * upload never starts).
+ *
  * Markup:
  *   <div class="td-dropzone" role="group" aria-labelledby="{id}-label" data-state="idle|dragover" [data-disabled]>
  *     [<span class="td-dropzone__label" id="{id}-label">…[<span class="td-field__required" aria-hidden="true"> *</span>]</span>]
@@ -86,11 +109,12 @@ let seq = 0;
  *     </div>
  *     <ul class="td-dropzone__rejected" [hidden]><li class="td-dropzone__reject" data-reason="type|size|count">…</li></ul>
  *     <ul class="td-dropzone__list" aria-label="File đã chọn" [hidden]>
- *       <li class="td-dropzone__item" data-status="selected|uploading|done|error" [data-waiting]>
+ *       <li class="td-dropzone__item" data-status="selected|queued|optimizing|uploading|done|error" [data-waiting]>
  *         [<img class="td-dropzone__thumb" alt="" src="blob:…">]
  *         <span class="td-dropzone__meta"><span class="td-dropzone__name">…</span><span class="td-dropzone__size">…</span>
  *           [<span class="td-dropzone__status">…</span>]</span>
  *         [<td-progress class="td-dropzone__progress" size="sm" [value] label>]   (no value while waiting)
+ *         [<button type="button" class="td-dropzone__retry td-btn td-btn--ghost td-btn--sm" aria-label="Thử lại {name}">Thử lại</button>]   (v0.90.0)
  *         <button type="button" class="td-dropzone__remove" aria-label="Xoá {name}"><svg data-icon="close"></button></li>
  *     </ul>
  *     <span class="td-sr-only" aria-live="polite"></span>
@@ -117,7 +141,9 @@ let seq = 0;
  * @attr {string} hint-style - v0.33.0: `badges` → the hint is one `<span class="td-badge td-dropzone__badge">` per part
  *   (formats: `accept-label` or derived from `accept` · `labels.badgeSize` · `labels.badgeCount`) inside
  *   `<div class="td-dropzone__hint td-dropzone__hint--badges">`; anything else → the joined `<p>` hint.
- * @fires files-change - User add / drop / remove: detail `{ files: File[], rejected: { file, reason, message }[] }`
+ * @fires files-change - User add / drop / remove: detail `{ files: File[], rejected: { file, reason, message }[],
+ *   added: File[] }` (v0.90.0 `added`: the original Files accepted by this add, emitted before any optimisation runs; `[]`
+ *   on remove; `files` = the files ready to submit)
  */
 export class TdDropzone extends TdFormElement {
   /** Default texts (Vietnamese); override per site: `TdDropzone.labels.browse = 'Choose files'`. */
@@ -143,6 +169,36 @@ export class TdDropzone extends TdFormElement {
     badgeAccept: '{accept}',
     badgeSize: 'Tối đa {size}',
     badgeCount: 'Tối đa {n} file',
+    // v0.90.0 — image resize (`imageResize` policy only)
+    queued: 'Đang chờ tối ưu…',
+    optimizing: 'Đang tối ưu ảnh…',
+    sizeChange: '{from} → {to}',
+    optimized: 'Đã giảm {name} từ {from} xuống {to}',
+    retry: 'Thử lại',
+    retryLabel: 'Thử lại {name}',
+    pendingInvalid: 'Đang tối ưu ảnh, vui lòng chờ',
+    failedInvalid: 'Có tệp không xử lý được, hãy gỡ ra',
+    optimizeError: {
+      'empty-file': UNREADABLE,
+      'invalid-image': UNREADABLE,
+      'header-limit': UNREADABLE,
+      'decode-failed': UNREADABLE,
+      'decode-unsupported': UNREADABLE,
+      'input-too-large': TOO_LARGE,
+      'input-dimensions-too-large': TOO_LARGE,
+      'canvas-limit': TOO_LARGE,
+      'format-not-transformable': NOT_OPTIMISABLE,
+      'special-content-transform-required': NOT_OPTIMISABLE,
+      'metadata-policy-unsupported': NOT_OPTIMISABLE,
+      'resize-unsupported': NOT_OPTIMISABLE,
+      'cannot-satisfy-limits': CANNOT_FIT,
+      'metadata-too-large': CANNOT_FIT,
+      'encode-failed': FAILED,
+      'output-type-mismatch': FAILED,
+      'processor-failed': FAILED,
+      'processor-invalid-result': FAILED,
+      default: FAILED,
+    },
   };
 
   static get observedAttributes() {
@@ -159,12 +215,23 @@ export class TdDropzone extends TdFormElement {
   constructor() {
     super();
     this._uid = ++seq;
-    /** @private @type {Array<{ id: number, file: File, url: string|null, status: string, progress: number|null, controller: AbortController|null, error?: string, result?: * }>} */
+    /**
+     * @private `file` = what is submitted / uploaded (the optimised file once ready), `original` = the File added;
+     * `policy` = the image-resize policy at admission (null = v0.89 flow), `ready` = in `files` / FormData,
+     * `blocked` = could not be processed (never submitted), `uploadFailed` = error from the upload hook (retry).
+     * @type {Array<{ id: number, file: File, original: File, url: string|null, status: string, progress: number|null,
+     *   controller: AbortController|null, policy: object|null, maxSize: number|null, ready: boolean, blocked: boolean,
+     *   uploadFailed: boolean, optimization: object|null, error?: string, result?: * }>}
+     */
     this._items = [];
     /** @private rejected files of the latest add */
     this._rejected = [];
     /** @private upload hook */
     this._upload = null;
+    /** @private v0.90.0 normalised image-resize policy (null = off) */
+    this._imageResize = null;
+    /** @internal v0.90.0: called with the original File when a row fails optimisation (the picker's upload dialog) */
+    this._onOptimizeError = null;
     /** @private */
     this._itemSeq = 0;
   }
@@ -175,11 +242,20 @@ export class TdDropzone extends TdFormElement {
   get upload() { return this._upload; }
   set upload(fn) { this._upload = typeof fn === 'function' ? fn : null; }
 
-  /** @type {File[]} the selected files (a copy) */
-  get files() { return this._items.map((i) => i.file); }
+  /**
+   * v0.90.0 — opt-in client image resize policy (utils/image-resize.js `normalizeImageResizePolicy`): normalised and
+   * frozen on set; an invalid value throws a TypeError synchronously and the previous policy stays. `null` = off. Applies
+   * to files added afterwards.
+   * @type {Readonly<object>|null}
+   */
+  get imageResize() { return this._imageResize; }
+  set imageResize(policy) { this._imageResize = normalizeImageResizePolicy(policy); }
 
-  /** @type {boolean} an upload is running */
-  get uploading() { return this._items.some((i) => i.status === 'uploading'); }
+  /** @type {File[]} the files ready to submit (a copy; v0.90.0: optimised ones, rows still optimising are left out) */
+  get files() { return this._items.filter((i) => i.ready).map((i) => i.file); }
+
+  /** @type {boolean} an upload is running (v0.90.0: or a row is queued / optimising) */
+  get uploading() { return this._items.some((i) => i.status === 'uploading' || i.status === 'queued' || i.status === 'optimizing'); }
 
   /** @returns {File[]} */
   getValue() { return this.files; }
@@ -199,9 +275,13 @@ export class TdDropzone extends TdFormElement {
     return this._add([...(files || [])].filter((f) => f instanceof File));
   }
 
-  /** Remove one file (index or the File itself; aborts its upload; no event). @param {number|File} which */
+  /**
+   * Remove one file (index or the File itself — v0.90.0 the original or its optimised copy; aborts its upload; no
+   * event). @param {number|File} which
+   */
   removeFile(which) {
-    const item = typeof which === 'number' ? this._items[which] : this._items.find((i) => i.file === which);
+    const item = typeof which === 'number' ? this._items[which]
+      : this._items.find((i) => i.file === which || i.original === which);
     if (item) this._removeItem(item);
   }
 
@@ -339,6 +419,14 @@ export class TdDropzone extends TdFormElement {
     this.listen(this, 'click', (e) => {
       const t = e.target instanceof Element ? e.target : null;
       if (!t || t.closest('.td-dropzone__input')) return;
+      const retry = t.closest('.td-dropzone__retry');
+      if (retry) {
+        if (this._effectiveDisabled) return;
+        const li = retry.closest('.td-dropzone__item');
+        const item = this._items.find((i) => String(i.id) === li?.getAttribute('data-id'));
+        if (item) this._retry(item);
+        return;
+      }
       const remove = t.closest('.td-dropzone__remove');
       if (remove) {
         if (this._effectiveDisabled) return;
@@ -454,11 +542,15 @@ export class TdDropzone extends TdFormElement {
   }
 
   /**
-   * @private Filter + add. Without `multiple` the first acceptable file replaces the current one.
+   * @private Filter + add. Without `multiple` the first acceptable file replaces the current one. v0.90.0: with an
+   * `imageResize` policy `max-size` is not checked here (the optimisation job does it) and `onAdded` runs before any job
+   * starts (no policy: after the upload hooks started, as in v0.89).
    * @param {File[]} files
+   * @param {((accepted: File[], rejected: object[]) => void)|null} [onAdded]
    */
-  _add(files) {
+  _add(files, onAdded = null) {
     const L = TdDropzone.labels;
+    const policy = this._imageResize;
     const maxSize = parseFileSize(this.getAttribute('max-size'));
     const limit = this._limit();
     const single = !this.hasAttribute('multiple');
@@ -471,7 +563,7 @@ export class TdDropzone extends TdFormElement {
       if (!this._accepts(file)) {
         reason = 'type';
         message = format(L.rejectType, { name: file.name });
-      } else if (maxSize && file.size > maxSize) {
+      } else if (!policy && maxSize && file.size > maxSize) {
         reason = 'size';
         message = format(L.rejectSize, { name: file.name, max: formatFileSize(maxSize) });
       } else if (room <= 0) {
@@ -486,23 +578,29 @@ export class TdDropzone extends TdFormElement {
       room--;
     }
     if (single && accepted.length) this._clearItems();
-    const added = accepted.map((file) => ({ id: ++this._itemSeq, file, url: null, status: 'selected', progress: null, controller: null }));
+    const added = accepted.map((file) => ({
+      id: ++this._itemSeq, file, original: file, url: null, status: policy ? 'queued' : 'selected', progress: null,
+      controller: null, policy, maxSize, ready: !policy, blocked: false, uploadFailed: false, optimization: null,
+    }));
     this._items.push(...added);
     this._rejected = rejected;
     this._refresh();
-    for (const item of added) this._startUpload(item);
+    if (!policy) for (const item of added) this._startUpload(item);
+    if (onAdded) onAdded(accepted, rejected);
+    if (policy) for (const item of added) this._optimize(item);
     return { accepted, rejected };
   }
 
   /** @private user pick / drop: add + announce + event */
   _addUser(files) {
-    const { accepted, rejected } = this._add(files);
-    const L = TdDropzone.labels;
-    const parts = [];
-    if (accepted.length) parts.push(format(L.added, { n: accepted.length }));
-    for (const r of rejected) parts.push(r.message);
-    this._announce(parts.join('. '));
-    this.emit('files-change', { files: this.files, rejected: rejected.map((r) => ({ ...r })) });
+    this._add(files, (accepted, rejected) => {
+      const L = TdDropzone.labels;
+      const parts = [];
+      if (accepted.length) parts.push(format(L.added, { n: accepted.length }));
+      for (const r of rejected) parts.push(r.message);
+      this._announce(parts.join('. '));
+      this.emit('files-change', { files: this.files, rejected: rejected.map((r) => ({ ...r })), added: [...accepted] });
+    });
   }
 
   /** @private user remove button */
@@ -514,7 +612,7 @@ export class TdDropzone extends TdFormElement {
     const btns = [...this.querySelectorAll('.td-dropzone__remove')];
     const next = btns[Math.min(index, btns.length - 1)] || this._focusTarget();
     if (next) next.focus();
-    this.emit('files-change', { files: this.files, rejected: [] });
+    this.emit('files-change', { files: this.files, rejected: [], added: [] });
   }
 
   /** @private */
@@ -605,8 +703,7 @@ export class TdDropzone extends TdFormElement {
     name.textContent = item.file.name;
     name.title = item.file.name;
     const size = document.createElement('span');
-    size.className = 'td-dropzone__size';
-    size.textContent = formatFileSize(item.file.size);
+    size.className = 'td-dropzone__size'; // text: _paintItem
     const status = document.createElement('span');
     status.className = 'td-dropzone__status';
     meta.append(name, size, status);
@@ -638,17 +735,143 @@ export class TdDropzone extends TdFormElement {
     // Waiting = the hook has not reported any progress yet (queued / not started): indeterminate bar.
     const waiting = item.status === 'uploading' && item.progress == null;
     li.toggleAttribute('data-waiting', waiting);
+    // v0.90.0: an optimised file shows "30 MB → 4.2 MB"
+    const opt = item.optimization;
+    li.querySelector('.td-dropzone__size').textContent = opt && opt.changed && opt.output.size !== opt.original.size
+      ? format(L.sizeChange, { from: formatFileSize(opt.original.size), to: formatFileSize(opt.output.size) })
+      : formatFileSize(item.file.size);
     const status = li.querySelector('.td-dropzone__status');
     const text = waiting ? L.uploadWaiting : item.status === 'uploading' ? L.uploading : item.status === 'done' ? L.uploaded
-      : item.status === 'error' ? (item.error || L.uploadError) : '';
+      : item.status === 'queued' ? L.queued : item.status === 'optimizing' ? L.optimizing
+        : item.status === 'error' ? (item.error || L.uploadError) : '';
     status.textContent = String(text ?? '');
     status.hidden = !text;
     const progress = li.querySelector('.td-dropzone__progress');
-    progress.hidden = item.status === 'selected';
+    // queued / optimizing: indeterminate bar; a file that could not be processed has no progress to show
+    progress.hidden = item.status === 'selected' || !!item.blocked;
     if (item.progress == null) progress.removeAttribute('value');
     else progress.setAttribute('value', String(Math.round(item.progress)));
     const variant = item.status === 'done' ? 'success' : item.status === 'error' ? 'danger' : 'primary';
     progress.setAttribute('variant', variant);
+    // v0.90.0: "Thử lại" on an upload error (policy rows with a hook only; never after an optimisation error)
+    const canRetry = item.status === 'error' && !!item.uploadFailed && !!item.policy && !!this._upload;
+    let retry = li.querySelector('.td-dropzone__retry');
+    if (canRetry && !retry) {
+      retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'td-dropzone__retry td-btn td-btn--ghost td-btn--sm';
+      retry.textContent = String(L.retry ?? '');
+      retry.setAttribute('aria-label', format(L.retryLabel, { name: item.file.name }));
+      li.insertBefore(retry, li.querySelector('.td-dropzone__remove'));
+    } else if (!canRetry && retry) {
+      retry.remove();
+      retry = null;
+    }
+    if (retry) retry.disabled = this._effectiveDisabled;
+  }
+
+  /**
+   * @private v0.90.0 Optimise one queued row (module-global FIFO), then upload it (hook) or mark it ready. `max-size`
+   * caps the OUTPUT of images (merged into `maxBytes` when smaller) and the original of non-images.
+   */
+  _optimize(item) {
+    if (!this._items.includes(item)) return; // removed by a files-change listener
+    const L = TdDropzone.labels;
+    const controller = new AbortController();
+    item.controller = controller;
+    const { signal } = controller;
+    const live = () => !signal.aborted && this._items.includes(item);
+    let capByMaxSize = false; // max-size set the effective byte cap
+    let job;
+    try {
+      let policy = item.policy;
+      if (item.maxSize && (policy.maxBytes === null || policy.maxBytes > item.maxSize)) {
+        policy = normalizeImageResizePolicy({ ...policy, maxBytes: item.maxSize });
+        capByMaxSize = true;
+      }
+      job = optimizeImage(item.original, policy, {
+        signal,
+        onStart: () => {
+          if (!live()) return;
+          item.status = 'optimizing';
+          this._paintItem(item);
+        },
+      });
+    } catch (err) {
+      job = Promise.reject(err);
+    }
+    job.then((r) => {
+      if (!live()) return;
+      item.controller = null;
+      if (r.kind === 'not-image') {
+        if (item.maxSize && item.original.size > item.maxSize) {
+          this._failItem(item, format(L.rejectSize, { name: item.original.name, max: formatFileSize(item.maxSize) }));
+          return;
+        }
+      } else if (item.maxSize && r.file.size > item.maxSize) {
+        this._failItem(item, this._optimizeErrorText('cannot-satisfy-limits'));
+        return;
+      }
+      item.file = r.file;
+      item.optimization = r.optimization || null;
+      item.ready = true;
+      const o = item.optimization;
+      if (o && o.changed && o.output.size < o.original.size) {
+        this._announce(format(L.optimized, {
+          name: item.original.name, from: formatFileSize(o.original.size), to: formatFileSize(o.output.size),
+        }));
+      }
+      if (this._upload) this._startUpload(item);
+      else {
+        item.status = 'selected';
+        this._paintItem(item);
+      }
+      this._syncForm();
+    }, (err) => {
+      if (!live()) return; // removed / reset / single-file replace: no error state
+      item.controller = null;
+      let code = err && typeof err.code === 'string' ? err.code : '';
+      // an image the kit cannot re-encode (GIF / WebP / SVG / special content) over max-size: its output is over the
+      // cap — reported as such, not as a format problem
+      if (capByMaxSize && item.original.size > item.maxSize
+        && (code === 'format-not-transformable' || code === 'special-content-transform-required')) {
+        code = 'cannot-satisfy-limits';
+      }
+      this._failItem(item, this._optimizeErrorText(code));
+    });
+  }
+
+  /** @private v0.90.0 the grouped text of an optimisation error code */
+  _optimizeErrorText(code) {
+    const table = TdDropzone.labels.optimizeError || {};
+    const own = (k) => Object.prototype.hasOwnProperty.call(table, k);
+    return String((own(code) ? table[code] : table.default) ?? '') || String(TdDropzone.labels.uploadError ?? '');
+  }
+
+  /** @private v0.90.0 a row that could not be processed: error state, never submitted, the form stays invalid */
+  _failItem(item, message) {
+    item.status = 'error';
+    item.blocked = true;
+    item.ready = false;
+    item.progress = null;
+    item.error = message;
+    this._paintItem(item);
+    this._syncForm();
+    if (typeof this._onOptimizeError === 'function') {
+      try {
+        this._onOptimizeError(item.original);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }
+
+  /** @private v0.90.0 "Thử lại": the same (optimised) file goes to the hook again; focus stays in the row */
+  _retry(item) {
+    if (item.status !== 'error' || !item.uploadFailed || !this._upload) return;
+    const hadFocus = !!item.el && item.el.contains(document.activeElement);
+    this._startUpload(item);
+    if (hadFocus) item.el.querySelector('.td-dropzone__remove')?.focus();
   }
 
   /** @private Run the upload hook for a newly added file. */
@@ -660,6 +883,7 @@ export class TdDropzone extends TdFormElement {
     item.status = 'uploading';
     item.progress = null; // waiting until the first onProgress
     item.error = '';
+    item.uploadFailed = false;
     this._paintItem(item);
     const live = () => !controller.signal.aborted && this._items.includes(item);
     const onProgress = (loaded, total) => {
@@ -670,9 +894,13 @@ export class TdDropzone extends TdFormElement {
       item.progress = pct;
       this._paintItem(item);
     };
+    // v0.90.0: with a policy the hook also gets the optimisation summary and the File the user added
+    const ctx = item.policy
+      ? { onProgress, signal: controller.signal, optimization: item.optimization, originalFile: item.original }
+      : { onProgress, signal: controller.signal };
     let out;
     try {
-      out = hook(item.file, { onProgress, signal: controller.signal });
+      out = hook(item.file, ctx);
     } catch (err) {
       out = Promise.reject(err);
     }
@@ -689,23 +917,34 @@ export class TdDropzone extends TdFormElement {
         if (!live()) return; // aborted by remove / reset: no error state
         item.controller = null;
         item.status = 'error';
+        item.uploadFailed = true;
         item.error = uploadErrorMessage(err);
         this._paintItem(item);
       },
     );
   }
 
-  /** @private Files → FormData under `name`; required → valueMissing. */
+  /**
+   * @private Files → FormData under `name`; required → valueMissing. v0.90.0: only ready rows are submitted; a row
+   * still queued / optimising, or one that could not be processed → customError.
+   */
   _syncForm() {
+    const L = TdDropzone.labels;
     const name = this.getAttribute('name');
+    const ready = this._items.filter((i) => i.ready);
     let fd = null;
-    if (name && this._items.length) {
+    if (name && ready.length) {
       fd = new FormData();
-      for (const item of this._items) fd.append(name, item.file, item.file.name);
+      for (const item of ready) fd.append(name, item.file, item.file.name);
     }
     this._setFormValue(fd);
-    if (this.hasAttribute('required') && !this._items.length) {
-      this._setValidity({ valueMissing: true }, TdDropzone.labels.required, this._focusTarget() || undefined);
+    const anchor = this._focusTarget() || undefined;
+    if (this._items.some((i) => i.status === 'queued' || i.status === 'optimizing')) {
+      this._setValidity({ customError: true }, String(L.pendingInvalid ?? ''), anchor);
+    } else if (this._items.some((i) => i.blocked)) {
+      this._setValidity({ customError: true }, String(L.failedInvalid ?? ''), anchor);
+    } else if (this.hasAttribute('required') && !ready.length) {
+      this._setValidity({ valueMissing: true }, L.required, anchor);
     } else {
       this._setValidity({});
     }

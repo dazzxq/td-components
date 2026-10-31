@@ -11407,6 +11407,9 @@
  * button (.td-btn--secondary, G1/G3); file rows are plain fills; per-file progress = <td-progress size="sm">.
  * State: data-state="idle|dragover" + [data-disabled] on .td-dropzone · data-status on .td-dropzone__item
  * (selected|uploading|done|error) + [data-waiting] (v0.19.0: uploading, no progress yet → indeterminate bar) · data-reason on .td-dropzone__reject · [hidden] on hint / lists / status / progress.
+ * v0.90.0 image resize (an `imageResize` policy): data-status queued|optimizing (indeterminate bar, muted status text) ·
+ * .td-dropzone__size may read "30 MB → 4.2 MB" · .td-dropzone__retry ("Thử lại", the kit's ghost button, upload error
+ * rows only) takes its own column before the remove button.
  * v0.33.0 presentation (additive, dcms2 look): .td-dropzone--stacked (prompt-title / prompt-text: 64 px icon → title →
  * muted sub-line → button; 2px dashed, larger radius + padding) · .td-dropzone__hint--badges (hint-style="badges": a row
  * of .td-badge.td-dropzone__badge — the badge look is badge.css, __badge only spaces).
@@ -11697,6 +11700,21 @@
 	.td-dropzone__item:has(> .td-dropzone__thumb) {
 		grid-template-areas: "thumb meta remove" "thumb progress remove";
 		grid-template-columns: auto minmax(0, 1fr) auto;
+	}
+
+	/* v0.90.0: an upload error row with "Thử lại" — one more column before the remove button */
+	.td-dropzone__item:has(> .td-dropzone__retry) {
+		grid-template-areas: "meta retry remove" "progress retry remove";
+		grid-template-columns: minmax(0, 1fr) auto auto;
+	}
+
+	.td-dropzone__item:has(> .td-dropzone__thumb):has(> .td-dropzone__retry) {
+		grid-template-areas: "thumb meta retry remove" "thumb progress retry remove";
+		grid-template-columns: auto minmax(0, 1fr) auto auto;
+	}
+
+	.td-dropzone__retry {
+		grid-area: retry;
 	}
 
 	.td-dropzone__thumb {

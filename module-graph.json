@@ -279,6 +279,7 @@
       "src/icons/td-icon.js",
       "src/utils/breakpoints.js",
       "src/utils/dom-utils.js",
+      "src/utils/image-resize.js",
       "src/utils/keyboard-viewport.js",
       "src/utils/layers.js",
       "src/utils/media-picker-core.js",
@@ -443,7 +444,8 @@
       "src/base/td-form-element.js",
       "src/feedback/td-progress.js",
       "src/icons/td-icon.js",
-      "src/utils/dom-utils.js"
+      "src/utils/dom-utils.js",
+      "src/utils/image-resize.js"
     ],
     "src/form/td-hint.js": [
       "src/base/td-base-element.js"
