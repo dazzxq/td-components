@@ -632,6 +632,10 @@
     "src/utils/image-metadata.js": [
       "src/utils/image-bytes.js"
     ],
+    "src/utils/image-resize.js": [
+      "src/utils/image-bytes.js",
+      "src/utils/image-metadata.js"
+    ],
     "src/utils/inert-lock.js": [],
     "src/utils/justified.js": [],
     "src/utils/key-selection.js": [],
