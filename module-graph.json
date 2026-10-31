@@ -628,6 +628,10 @@
       "src/utils/form-dirty.js"
     ],
     "src/utils/gesture.js": [],
+    "src/utils/image-bytes.js": [],
+    "src/utils/image-metadata.js": [
+      "src/utils/image-bytes.js"
+    ],
     "src/utils/inert-lock.js": [],
     "src/utils/justified.js": [],
     "src/utils/key-selection.js": [],
