@@ -278,8 +278,11 @@ for (const [shell, vw, vh] of [['popover', 1280, 800], ['sheet', 393, 852]]) {
         $('.td-time-step [data-action="back"]').click();
         await settle();
       }
-      day('2026-10-16').click();
+      // the picker's "Hôm nay" uses the real clock (no TdDatetimeRange.now hook), so after that route the calendar may show
+      // another month than October 2026: re-enter the time screen through "Hôm nay" again (date-independent)
+      act('today').click();
       await settle();
+      expect(stepOf()).to.equal('time');
       act('now').click();
       await settle();
       expect(centred(), 'centred after "Bây giờ"').to.equal(true);

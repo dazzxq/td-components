@@ -7674,7 +7674,6 @@
         ".td-rich-text-link__url",
         ".td-rich-text-link__text",
         ".td-rich-text-link__check",
-        ".td-rich-text-link__check .td-checkbox__input",
         ".td-rich-text-link__check .td-checkbox__mark",
         ".td-rich-text-link__check .td-checkbox__label"
       ],
@@ -7685,7 +7684,6 @@
         ".td-rich-text-link__url",
         ".td-rich-text-link__text",
         ".td-rich-text-link__check",
-        ".td-rich-text-link__check .td-checkbox__input",
         ".td-rich-text-link__check .td-checkbox__mark",
         ".td-rich-text-link__check .td-checkbox__label"
       ],
