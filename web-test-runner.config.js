@@ -131,7 +131,8 @@ export default {
   // classic scrollbar to prove the page does not jump sideways, so it runs in its own group with them shown.
   groups: [{
     name: 'scrollbars',
-    files: ['src/**/*.scrollbar.browser-test.js'],
+    // v0.91.0: + the gutter-colour suite (real classic scrollbar → the scrollbar-gutter path; it also runs in the engines group)
+    files: ['src/**/*.scrollbar.browser-test.js', 'src/utils/scroll-lock.gutter.engines.browser-test.js'],
     browsers: [playwrightLauncher({ product: 'chromium', launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } })],
   }, {
     // v0.25.0 (ADR 0012): SSR hydrate in place must hold in every engine — Chromium, Firefox AND WebKit.

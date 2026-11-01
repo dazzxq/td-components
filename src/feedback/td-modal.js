@@ -278,6 +278,7 @@ export class TdModal {
       themeFrom: typeof Element !== 'undefined' && opts.themeRoot instanceof Element ? opts.themeRoot : null,
       viewport: { root, scroller: dialog.querySelector('.td-modal__body') }, // v0.36.2: above the keyboard
       layer: MODAL_LAYER,
+      scrim: root.querySelector('.td-modal__backdrop'), // v0.91.0: gutter colour lease (the stack pushed above holds the scroll one)
       opener,
       // ADR 0006: Escape never closes (consumed so it cannot reach a layer below) — except `escapeCloses` dialogs
       // whose close loses no user data (e.g. the datetime picker keeps a pending copy); never while busy.

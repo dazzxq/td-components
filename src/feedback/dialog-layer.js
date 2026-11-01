@@ -27,7 +27,7 @@ import {
   LAYERS, register as registerLayer, trapTab, setFocusHandoff, followFocusHandoff, floatingContains, coverFloatingIn,
   restoreFocus as restoreTopFocus, bridgeTheme,
 } from '../utils/layers.js';
-import { lockScroll } from '../utils/scroll-lock.js';
+import { lockScroll, holdGutterColor } from '../utils/scroll-lock.js';
 import { transitionEndMs } from '../utils/transition.js';
 import { ensurePressStates } from '../utils/press.js';
 import { watchKeyboardViewport } from '../utils/keyboard-viewport.js';
@@ -53,6 +53,8 @@ const FALLBACK_EXIT_MS = 240;
  * @param {HTMLElement|null} [o.opener] restore target (default: the focused element at open time, never <body>)
  * @param {(e: KeyboardEvent) => (boolean|void)} [o.onEscape] Escape on the top layer; anything but `false` consumes it
  * @param {() => (number|null)} [o.baseZ]
+ * @param {Element|null} [o.scrim] v0.91.0: the scrim element — one gutter-colour lease (scroll-lock.js) for the lifetime
+ *   of the layer, taken after the theme bridge + the scroll lease (TdModal: its stack's), released with the scroll lease
  * @param {boolean} [o.scrollLock=false] take a page scroll lease for the lifetime of the layer
  * @param {() => void} [o.onOpened] second animation frame after open, only while still open
  * @param {() => boolean} [o.wasTop] close-time "was on top" (default: the layer registration's isTop())
@@ -80,6 +82,7 @@ export function openDialogLayer(o) {
   const unbridge = o.themeFrom ? bridgeTheme(root, o.themeFrom) : () => {};
   if (!root.isConnected) document.body.appendChild(root);
   const releaseScroll = o.scrollLock ? lockScroll() : null;
+  const releaseColor = o.scrim ? holdGutterColor(o.scrim) : null; // after the bridge + the scroll lease (modal: pushed before)
   let stopViewport = o.viewport && o.viewport.root ? watchKeyboardViewport(o.viewport) : null;
 
   let closed = false;
@@ -175,6 +178,7 @@ export function openDialogLayer(o) {
       dialog.setAttribute('inert', '');
       if (typeof o.beforeRelease === 'function') o.beforeRelease(ctx);
       layer.release();
+      if (releaseColor) releaseColor();
       if (releaseScroll) releaseScroll();
       if (stopViewport) { stopViewport(); stopViewport = null; }
       if (typeof o.restoreFocus === 'function') o.restoreFocus(ctx);

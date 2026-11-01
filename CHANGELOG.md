@@ -4,6 +4,7 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+- Fix: the reserved scrollbar strip (classic scrollbars) no longer stays light while `td-modal`, `td-drawer`, `td-loading` or `td-lightbox` holds the scroll lock. `<html>` is painted with the topmost overlay scrim composited over the page background (one colour lease per overlay, any CSS colour incl. `oklch()` / `display-p3` normalised through a 1×1 canvas), and the previous inline `background-color` comes back exactly on the last release. Zero-config; only when a strip was reserved before the lock; instant (no fade). New `holdGutterColor(scrimEl)` in `utils/scroll-lock.js`.
 - Docs: docs-drift pass after 0.90.0 — `imageResize` exception to "the kit does not read file content" (security, dropzone), `td-dropzone` preview needs `img-src blob:` (csp), `--td-dropzone-bg-pressed` token, removed an unimplemented viewport fallback claim (dropzone), full form-associated control table incl. `td-table` (forms), event details for chip-input / datetime-picker, broken anchors + breadcrumb, duplicated tables replaced by links (hub-spoke), `php/README.md` mentions `td-rich-text-policy.php`.
 
 ## 0.90.0

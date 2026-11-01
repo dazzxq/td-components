@@ -527,6 +527,12 @@ Tương phản cao → nền `--td-color-surface`, viền rõ, không bóng.
   nếu trình duyệt không hỗ trợ hoặc không giữ được (ví dụ site tự style `::-webkit-scrollbar`) thì cộng bề rộng thanh
   cuộn vào `padding-inline-end` của `<html>` và đặt `--td-scroll-lock-gap` (modal dùng nó để giữ nguyên vị trí).
   Giá trị inline cũ của site trên `<html>` được trả lại y nguyên khi đóng modal cuối cùng.
+- **Dải thanh cuộn được tô màu scrim (0.91.0):** dải giữ chỗ ấy chỉ có nền của `<html>` và lớp phủ `position: fixed`
+  không che tới, nên trước đây còn một vệt sáng bên phải. Khi có overlay mở (modal, drawer, loading, lightbox), kit tô
+  `background-color` inline của `<html>` bằng màu scrim của overlay trên cùng hoà lên màu nền trang (nền `<html>`,
+  không có thì `<body>`, không có nữa thì trắng): không cần cấu hình, đổi tức thì (không fade), chỉ khi thực sự có dải
+  giữ chỗ (thanh cuộn overlay kiểu macOS mặc định không có dải thì kit không đụng nền). Nền inline cũ (kể cả
+  `!important`) được trả lại khi overlay cuối đóng.
 
 Đây là ngoại lệ có chủ ý với luật "không scale trang trí" của minimal surfaces — chỉ áp cho modal. Logic trạng thái
 (`data-state="opening|open|closing"`) không đổi; chỉ có CSS. Muốn modal chỉ mờ dần (không phóng):

@@ -17,7 +17,7 @@
  * Retry / Next, an optional filmstrip (`filmstrip: false|true|'auto'`, `item.thumb`) and a direction-aware slide.
  */
 
-import { lockScroll } from '../utils/scroll-lock.js';
+import { lockScroll, holdGutterColor } from '../utils/scroll-lock.js';
 import {
   LAYERS, register as registerLayer, hasActiveAbove, trapTab, setFocusHandoff, clearFocusHandoff, restoreFocus, followFocusHandoff,
   floatingContains, coverFloatingIn,
@@ -1665,6 +1665,7 @@ function openViewer(items, options = {}) {
     viewer = {
       savedFocus: document.activeElement instanceof HTMLElement ? document.activeElement : null,
       releaseScroll: lockScroll(),
+      releaseColor: holdGutterColor(ui.backdrop), // v0.91.0: gutter strip follows the scrim (--td-lb-backdrop)
       layer: registerLayer({ // blocking inert lease + keyboard boundary (shared with other overlays)
         layer: LIGHTBOX_LAYER, element: ui.overlay, blocking: true, onEscape: onLayerEscape, onTab: onLayerTab,
       }),
@@ -1721,6 +1722,7 @@ function closeViewer() {
   lastDownTarget = null;
   document.removeEventListener('keydown', onKeydown);
 
+  v.releaseColor();
   v.releaseScroll();
   v.layer.release();
   if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});

@@ -244,6 +244,7 @@ export class TdDrawer extends HTMLElement {
       viewport: { root, scroller: panel.querySelector('.td-drawer__body') }, // v0.36.2: above the keyboard
       layer: LAYERS.modal,
       scrollLock: true,
+      scrim: backdrop, // v0.91.0: gutter colour lease
       backdrop,
       onEscape: () => {
         if (this._dismissible()) this.requestClose('escape');

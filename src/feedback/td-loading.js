@@ -1,4 +1,4 @@
-import { lockScroll } from '../utils/scroll-lock.js';
+import { lockScroll, holdGutterColor } from '../utils/scroll-lock.js';
 import { LAYERS, register as registerLayer, trapTab, restoreFocus, bridgeTheme } from '../utils/layers.js';
 
 const LOADING_LAYER = LAYERS.loading; // --td-z-loading
@@ -102,6 +102,7 @@ export class TdLoading {
         savedFocus: saved,
       };
       el.hidden = false;
+      TdLoading._active.releaseColor = holdGutterColor(el); // v0.91.0: after the bridge + the scroll lease
       el.setAttribute('aria-busy', 'true');
       requestAnimationFrame(() => {
         if (!TdLoading._active) return;
@@ -149,6 +150,7 @@ export class TdLoading {
     if (!active) return;
     active.unbridge();
     active.layer.release();
+    if (active.releaseColor) active.releaseColor();
     active.releaseScroll();
     restoreFocus(active.savedFocus); // follows hand-offs of overlays closed meanwhile (e.g. a modal under us)
   }
