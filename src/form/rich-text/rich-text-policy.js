@@ -3,13 +3,17 @@
  * rich-text-policy.json (generated from RICH_TEXT_POLICY, read by php/td-rich-text-policy.php) gives the server the same
  * rules. Pure: no DOM, runs under node.
  *
- * The server never trusts the client: it picks the features / allowHttp / linkTarget of ITS field and sanitizes again.
+ * The server never trusts the client: it picks the features / allowHttp of ITS field and sanitizes again.
+ *
+ * v0.91.0 (plan v0.91.0-link-modal-gutter, B): `target` / `noreferrer` are chosen PER LINK. A link keeps `target`
+ * only when it is exactly `_blank`, and `noreferrer` only as a `rel` token; `rel="nofollow noopener"` is always there.
  */
 
 /** Feature order is fixed (toolbar order, policy order) — it never follows the order an author wrote. */
 export const RICH_TEXT_FEATURES = Object.freeze(['bold', 'italic', 'underline', 'strike', 'link']);
 
-/** Link targets an instance (or the server) may force. `none` = no `target` attribute. */
+/** Values of the `link-target` attribute (the default "open in a new tab" of a NEW link; `_self` behaves like `none`)
+ * and of the legacy PHP symfonyConfig() `$linkTarget`. `none` = no `target` attribute. */
 export const RICH_TEXT_LINK_TARGETS = Object.freeze(['none', '_self', '_blank']);
 
 const deepFreeze = (o) => {
@@ -27,7 +31,7 @@ export const RICH_TEXT_POLICY = deepFreeze({
     italic: { tags: ['em'] },
     underline: { tags: ['u'] },
     strike: { tags: ['s'] },
-    link: { tags: ['a'], attrs: { a: ['href'] } },
+    link: { tags: ['a'], attrs: { a: ['href', 'rel', 'target'] } },
   },
   presets: { comment: ['bold', 'italic', 'underline', 'strike', 'link'] },
   link: {
@@ -36,9 +40,12 @@ export const RICH_TEXT_POLICY = deepFreeze({
     optionalSchemes: ['http'],
     relative: true,
     fragment: true,
-    /** forced on every link; incoming rel / target are dropped */
+    /** always on every link (incoming rel tokens are dropped, except the ones in relOptional) */
     rel: 'nofollow noopener',
-    targets: ['_self', '_blank'],
+    /** rel tokens a link may add after `rel` (ASCII case-insensitive on input, written lowercase) */
+    relOptional: ['noreferrer'],
+    /** the only `target` a link may keep (exact match); any other value is dropped */
+    targets: ['_blank'],
   },
 });
 
@@ -104,13 +111,37 @@ export function isSafeUrl(href, { allowHttp = false } = {}) {
 }
 
 /**
+ * The rel / target a link keeps from its input attributes (the per-link contract; PHP RichTextPolicy::sanitize() does
+ * the same): `target` only when exactly `_blank`; `noreferrer` when the `noreferrer` token is in `rel` (ASCII
+ * case-insensitive, split on ASCII whitespace). Every other value / token is dropped.
+ * @param {unknown} target - the `target` attribute value (null when absent)
+ * @param {unknown} rel - the `rel` attribute value (null when absent)
+ * @returns {{ target: '_blank' | null, noreferrer: boolean }}
+ */
+export function linkAttrsFrom(target, rel) {
+  const tokens = typeof rel === 'string' ? rel.split(/[\t\n\f\r ]+/).map(asciiLower) : [];
+  return {
+    target: typeof target === 'string' && RICH_TEXT_POLICY.link.targets.includes(target) ? /** @type {'_blank'} */ (target) : null,
+    noreferrer: tokens.includes('noreferrer'),
+  };
+}
+
+/** The `rel` a link is written with. @param {boolean} noreferrer @returns {string} */
+export function linkRel(noreferrer) {
+  return noreferrer ? `${RICH_TEXT_POLICY.link.rel} noreferrer` : RICH_TEXT_POLICY.link.rel;
+}
+
+/** ASCII-only lower case (`toLowerCase()` would also fold non-ASCII, e.g. the Kelvin sign → `k`). */
+const asciiLower = (s) => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
+
+/**
  * The resolved rules for one field — what the server applies (the PHP loader mirrors this from the JSON).
  * @param {string[]} features from resolveFeatures
- * @param {{ allowHttp?: boolean, linkTarget?: string }} [opts]
+ * @param {{ allowHttp?: boolean }} [opts]
  * @returns {{ version: number, tags: Record<string, string[]>, link: null | { schemes: string[], relative: boolean,
- *   fragment: boolean, rel: string, target: string } }}
+ *   fragment: boolean, rel: string, relOptional: string[], targets: string[] } }}
  */
-export function policyFor(features, { allowHttp = false, linkTarget = 'none' } = {}) {
+export function policyFor(features, { allowHttp = false } = {}) {
   const on = RICH_TEXT_FEATURES.filter((f) => Array.isArray(features) && features.includes(f));
   /** @type {Record<string, string[]>} */
   const tags = {};
@@ -128,7 +159,8 @@ export function policyFor(features, { allowHttp = false, linkTarget = 'none' } =
       relative: L.relative,
       fragment: L.fragment,
       rel: L.rel,
-      target: normalizeLinkTarget(linkTarget),
+      relOptional: [...L.relOptional],
+      targets: [...L.targets],
     } : null,
   };
 }

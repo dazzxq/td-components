@@ -1,13 +1,14 @@
 // v0.88.0 (plan v0.88.0-rich-text, lane B) — the server side of <td-rich-text>:
 //   (a) PHP 8.0-safe part (no Symfony needed): RichTextPolicy::load() validation, symfonyConfig() argument checks, the
 //       LogicException when symfony/html-sanitizer is absent. CI job `php80` runs it on PHP 8.0.
-//   (b) Symfony fixture suite: test/fixtures/rich-text/{malicious,canonical}.json through symfony/html-sanitizer ^8.1
-//       (test/php/symfony: `composer install` there, PHP >= 8.4.1). Runs when test/php/symfony/vendor exists; with
+//   (b) Symfony fixture suite: test/fixtures/rich-text/{malicious,canonical}.json through RichTextPolicy::sanitize()
+//       (per-link rel / target, v0.91.0) on symfony/html-sanitizer ^8.1 (test/php/symfony: `composer install` there,
+//       PHP >= 8.4.1), plus the legacy symfonyConfig() regression. Runs when test/php/symfony/vendor exists; with
 //       TD_REQUIRE_SYMFONY=1 a missing vendor FAILS (CI job `php84-symfony`), never skips.
 // Server output is compared to (serverExpected ?? expected) SEMANTICALLY (normalize(): tag tokens, attributes as a set,
 // entity-decoded text with whitespace runs collapsed). EVERY case also gets the security assertions, independent of
 // the expectation: only allowed tags, no script / on* / style, every href passes isSafeUrl() of the client policy,
-// rel forced, target = the field's linkTarget.
+// every <a> has rel `nofollow noopener[ noreferrer]`, target only `_blank`, attribute order href, rel, target.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
@@ -131,9 +132,11 @@ function normalize(html) {
 const ALLOWED_TAGS = new Set(['p', 'br', 'strong', 'em', 'u', 's', 'a']);
 
 /** The security bar, applied to every server output whatever the expectation says. */
+const RELS = [RICH_TEXT_POLICY.link.rel, `${RICH_TEXT_POLICY.link.rel} noreferrer`];
+const LINK_ORDER = ['href', 'rel', 'target'];
+
 function assertSecure(c, html) {
   const label = `${c.name}: ${html}`;
-  const target = c.linkTarget ?? 'none';
   const features = c.features ?? ALL;
   for (const t of tokenize(html)) {
     if (t.text !== undefined) continue;
@@ -148,14 +151,14 @@ function assertSecure(c, html) {
         assert.ok(!/^[\u0000- ]*(?:javascript|data|vbscript)\s*:/i.test(v.replace(/[\t\n\r]/g, '')), `dangerous href ${v} — ${label}`);
         assert.notEqual(isSafeUrl(v, { allowHttp: c.allowHttp === true }), null, `href ${JSON.stringify(v)} fails the client policy — ${label}`);
       }
-      if (k === 'rel') assert.equal(v, RICH_TEXT_POLICY.link.rel, label);
-      if (k === 'target') assert.equal(v, target, label);
+      if (k === 'rel') assert.ok(RELS.includes(v), `rel ${JSON.stringify(v)} — ${label}`);
+      if (k === 'target') assert.equal(v, '_blank', label);
     }
     if (t.tag === 'a' && !t.close) {
       assert.ok(features.includes('link'), `<a> although link is disabled — ${label}`);
-      assert.equal(t.attrs.rel, RICH_TEXT_POLICY.link.rel, `rel not forced — ${label}`);
-      if (target !== 'none') assert.equal(t.attrs.target, target, `target not forced — ${label}`);
-      else assert.equal('target' in t.attrs, false, label);
+      assert.ok(RELS.includes(t.attrs.rel), `rel missing / not normalised — ${label}`);
+      const order = Object.keys(t.attrs);
+      assert.deepEqual(order, LINK_ORDER.filter((k) => order.includes(k)), `attribute order href, rel, target — ${label}`);
     }
     if (t.tag !== 'p' && t.tag !== 'br' && t.tag !== 'a') {
       const feature = { strong: 'bold', em: 'italic', u: 'underline', s: 'strike' }[t.tag];
@@ -165,6 +168,47 @@ function assertSecure(c, html) {
 }
 
 const symfonyOpts = { skip: (!HAS_PHP && 'php >= 8.0 CLI not found') || (!HAS_SYMFONY && 'test/php/symfony/vendor missing (composer install --working-dir test/php/symfony)') };
+
+// r2 #6: the legacy entry point keeps its v0.88.0 output — a[href] only, rel + target forced from $linkTarget, incoming
+// rel / target never survive (the policy JSON now lists a[href|rel|target]; symfonyConfig() must not pick that up).
+describe('php RichTextPolicy::symfonyConfig legacy output (Symfony)', symfonyOpts, () => {
+  const AUTOLOAD = join(SYMFONY_DIR, 'vendor', 'autoload.php');
+  const legacy = (input, linkTarget) => php(`require ${JSON.stringify(AUTOLOAD)};
+    $p = TdComponents\\RichTextPolicy::load(${JSON.stringify(POLICY_JSON)});
+    $c = TdComponents\\RichTextPolicy::symfonyConfig($p, ['bold', 'link'], false, ${JSON.stringify(linkTarget)});
+    echo json_encode((new Symfony\\Component\\HtmlSanitizer\\HtmlSanitizer($c))->sanitizeFor('body', ${JSON.stringify(input)}));`);
+  const input = '<p><a target="_blank" rel="noreferrer opener" href="https://e.com/">a</a> <a href="https://e.com/" target="_top" rel="NoReferrer">b</a> <a href="https://e.com/">c</a></p>';
+  const out = (attrs) => `<p><a href="https://e.com/" ${attrs}>a</a> <a href="https://e.com/" ${attrs}>b</a> <a href="https://e.com/" ${attrs}>c</a></p>`;
+
+  test('none: rel forced, no target, incoming rel / target dropped', () => {
+    assert.equal(legacy(input, 'none'), out('rel="nofollow noopener"'));
+  });
+  test('_self: target="_self" forced on every link', () => {
+    assert.equal(legacy(input, '_self'), out('rel="nofollow noopener" target="_self"'));
+  });
+  test('_blank: target="_blank" forced on every link, noreferrer never kept', () => {
+    assert.equal(legacy(input, '_blank'), out('rel="nofollow noopener" target="_blank"'));
+  });
+});
+
+describe('php RichTextPolicy::sanitize arguments (Symfony)', symfonyOpts, () => {
+  const AUTOLOAD = join(SYMFONY_DIR, 'vendor', 'autoload.php');
+  const run = (expr) => php(`require ${JSON.stringify(AUTOLOAD)};
+    $p = TdComponents\\RichTextPolicy::load(${JSON.stringify(POLICY_JSON)});
+    try { echo json_encode(['ok' => ${expr}]); } catch (Throwable $e) { echo json_encode([get_class($e), $e->getMessage()]); }`);
+
+  test('unknown feature / malformed policy → InvalidArgumentException', () => {
+    assert.equal(run(`TdComponents\\RichTextPolicy::sanitize('x', $p, ['blink'])`)[0], 'InvalidArgumentException');
+    assert.equal(run(`TdComponents\\RichTextPolicy::sanitize('x', ['version' => 1], ['bold'])`)[0], 'InvalidArgumentException');
+  });
+
+  test('allowHttp opts http: in; link disabled leaves no <a>; empty input → ""', () => {
+    assert.deepEqual(run(`TdComponents\\RichTextPolicy::sanitize('<a href="http://e.com/" target="_blank">x</a>', $p, ['link'], true)`),
+      { ok: '<a href="http://e.com/" rel="nofollow noopener" target="_blank">x</a>' });
+    assert.deepEqual(run(`TdComponents\\RichTextPolicy::sanitize('<a href="https://e.com/">x</a>', $p, ['bold'])`), { ok: 'x' });
+    assert.deepEqual(run(`TdComponents\\RichTextPolicy::sanitize('', $p, ['link'])`), { ok: '' });
+  });
+});
 
 describe('symfony/html-sanitizer fixture suite', symfonyOpts, () => {
   const files = ['malicious.json', 'canonical.json'];

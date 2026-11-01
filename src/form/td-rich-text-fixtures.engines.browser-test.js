@@ -24,7 +24,8 @@ for (const [set, cases] of Object.entries(SETS)) {
     it('has cases', () => { expect(cases.length).to.be.greaterThan(0); });
 
     for (const c of cases) {
-      const opts = { allowHttp: !!c.allowHttp, linkTarget: c.linkTarget ?? 'none' };
+      // v0.91.0: rel / target are per link (no field-wide linkTarget); the server runs RichTextPolicy::sanitize()
+      const opts = { allowHttp: !!c.allowHttp };
 
       it(`schema: ${c.name}`, () => {
         const schema = buildSchema(PM, featuresOf(c), opts);
@@ -39,7 +40,6 @@ for (const [set, cases] of Object.entries(SETS)) {
         el.setAttribute('label', 'Comment');
         if (Array.isArray(c.features)) el.setAttribute('features', c.features.join(' '));
         if (c.allowHttp) el.setAttribute('allow-http', '');
-        if (c.linkTarget) el.setAttribute('link-target', c.linkTarget);
         host.appendChild(el);
         el.value = c.input;
         expect(el.value).to.equal(c.expected);

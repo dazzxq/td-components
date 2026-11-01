@@ -2,7 +2,7 @@
 
 One plain PHP file (PHP ≥ 8.0 — CI job `php80` runs the suite on PHP 8.0; no framework, no composer). Declares only `TdComponents\Td` and `td_*` functions.
 
-`php/` also ships `td-rich-text-policy.php` (class `RichTextPolicy`, loads the rich-text allowlist for server-side sanitising), see [docs/components/rich-text.md](../docs/components/rich-text.md).
+`php/` also ships `td-rich-text-policy.php` (class `RichTextPolicy`, loads the rich-text allowlist for server-side sanitising; needs `symfony/html-sanitizer`): `RichTextPolicy::sanitize($html, $policy, $features, $allowHttp)` is the recommended entry point (per-link `target="_blank"` / `noreferrer`, same output as the editor); `symfonyConfig()` is the legacy v0.88.0 config (forces rel + one `target` on every link). See [docs/components/rich-text.md](../docs/components/rich-text.md#bảo-mật).
 
 ```php
 require_once $kitDir . '/php/td.php';

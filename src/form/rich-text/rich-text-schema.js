@@ -6,7 +6,7 @@
  * `PM` (the engine module) is a parameter so a test can pass ProseMirror from node_modules instead of the bundle.
  */
 
-import { RICH_TEXT_POLICY, isSafeUrl, normalizeLinkTarget } from './rich-text-policy.js';
+import { isSafeUrl, linkAttrsFrom, linkRel } from './rich-text-policy.js';
 
 /** feature → mark name, in mark order (outermost → innermost): link wraps strong wraps em wraps u wraps s. */
 export const RICH_TEXT_MARKS = Object.freeze([
@@ -20,13 +20,12 @@ export const RICH_TEXT_MARKS = Object.freeze([
 /**
  * @param {{ Schema: Function }} PM - engine module (needs `Schema`)
  * @param {string[]} features - from resolveFeatures
- * @param {{ allowHttp?: boolean, linkTarget?: string }} [opts]
+ * @param {{ allowHttp?: boolean }} [opts] - v0.91.0: `linkTarget` is no longer a schema option (target is per link);
+ *   it is ignored if passed
  * @returns {object} ProseMirror Schema
  */
-export function buildSchema(PM, features, { allowHttp = false, linkTarget = 'none' } = {}) {
+export function buildSchema(PM, features, { allowHttp = false } = {}) {
   const on = Array.isArray(features) ? features : [];
-  const target = normalizeLinkTarget(linkTarget);
-  const rel = RICH_TEXT_POLICY.link.rel;
 
   const nodes = {
     doc: { content: 'block+' },
@@ -49,19 +48,20 @@ export function buildSchema(PM, features, { allowHttp = false, linkTarget = 'non
 
   /** @type {Record<string, object>} */
   const defs = {
+    // v0.91.0: target / noreferrer per link (linkAttrsFrom). Output attribute order: href, rel, target.
     link: {
-      attrs: { href: {} },
+      attrs: { href: {}, target: { default: null }, noreferrer: { default: false } },
       inclusive: false,
       parseDOM: [{
         tag: 'a[href]',
         getAttrs: (dom) => {
           const href = isSafeUrl(dom.getAttribute('href'), { allowHttp: !!allowHttp });
-          return href == null ? false : { href };
+          return href == null ? false : { href, ...linkAttrsFrom(dom.getAttribute('target'), dom.getAttribute('rel')) };
         },
       }],
       toDOM: (mark) => {
-        const attrs = { href: mark.attrs.href, rel };
-        if (target !== 'none') attrs.target = target;
+        const attrs = { href: mark.attrs.href, rel: linkRel(mark.attrs.noreferrer === true) };
+        if (mark.attrs.target === '_blank') attrs.target = '_blank';
         return ['a', attrs, 0];
       },
     },

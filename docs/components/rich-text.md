@@ -57,8 +57,8 @@ Form gửi `body=<p>Xin <strong>chào</strong></p>`. `required` + rỗng → for
   liên kết), không theo thứ tự viết. Token lạ bị bỏ, cảnh báo console **một lần**.
 - `preset` lạ → `comment`.
 - Định dạng tắt thì HTML đầu vào có thẻ đó bị **bỏ thẻ, giữ chữ** (`<em>a</em>` → `a`).
-- Đổi `preset` / `features` / `allow-http` / `link-target` khi đang chạy: dựng lại từ HTML hiện tại, xoá lịch sử undo,
-  dựng lại toolbar.
+- Đổi `preset` / `features` / `allow-http` khi đang chạy: dựng lại từ HTML hiện tại, xoá lịch sử undo,
+  dựng lại toolbar. Đổi `link-target` (0.91.0) **không** dựng lại, không xoá undo: nó chỉ là mặc định cho liên kết mới.
 - Gỡ khỏi DOM rồi gắn lại (di chuyển phần tử): giữ nguyên nội dung, vùng soạn **và lịch sử undo**.
 
 ### 3. Liên kết
@@ -75,8 +75,12 @@ Form gửi `body=<p>Xin <strong>chào</strong></p>`. `required` + rỗng → for
   - Enter = Áp dụng, Esc / Huỷ = đóng không đổi gì. Mọi cách đóng đều trả focus + vùng chọn về ô soạn.
 - Địa chỉ nhận: `https:`, `mailto:`, `tel:`, đường dẫn tương đối (`/a`, `a/b`, `?q`), `#đoạn`; `http:` chỉ khi có
   `allow-http`. Bị bỏ: `javascript:`, `data:`, `vbscript:`, `//host` (rời site), ký tự điều khiển…
-- Mọi liên kết luôn có `rel="nofollow noopener"`; `link-target="_blank"` / `"_self"` thêm `target`, `none` (mặc định)
-  không có `target`. `rel` / `target` từ đầu vào luôn bị thay.
+- `target` và `noreferrer` theo **từng liên kết** (0.91.0): liên kết giữ `target="_blank"` khi đầu vào có đúng
+  `_blank` (`_self`, `_top`, rỗng, `_BLANK`… bị bỏ); có token `noreferrer` trong `rel` (không phân biệt hoa thường) thì
+  thêm `noreferrer`. Mọi liên kết luôn có `rel="nofollow noopener"`, các token `rel` khác bị bỏ. Thứ tự attribute khi
+  xuất: `href`, `rel`, `target`. HTML đã lưu từ bản cũ (có `target="_blank"`) đọc lại ra y hệt, không cần migrate.
+- `link-target` chỉ là **mặc định cho liên kết mới**: `_blank` → liên kết mới mở tab mới; `none` (mặc định) / `_self` →
+  không `target`. Sửa địa chỉ một liên kết có sẵn giữ nguyên `target` / `noreferrer` của nó.
 
 ### 4. Khoá, chỉ đọc, lỗi, gợi ý
 
@@ -98,7 +102,7 @@ Form gửi `body=<p>Xin <strong>chào</strong></p>`. `required` + rỗng → for
 |---|---|---|---|
 | `preset` | string | `comment` | Bộ định dạng; lạ → `comment` |
 | `features` | token | — | `bold italic underline strike link` (khoảng trắng / dấu phẩy); thắng `preset` |
-| `link-target` | `none` \| `_self` \| `_blank` | `none` | `target` ép lên mọi liên kết |
+| `link-target` | `none` \| `_self` \| `_blank` | `none` | Mặc định "mở tab mới" của liên kết **mới** (`_self` = `none`); không đụng liên kết có sẵn |
 | `allow-http` | boolean | — | Nhận liên kết `http:` |
 | `name` | string | — | Tên trường form |
 | `value` | string (HTML) | `''` | Giá trị đầu = giá trị reset |
@@ -162,21 +166,24 @@ Ghi `value` bằng code không phát event.
 
 - Đầu vào (attribute `value`, `el.value`, dán, kéo thả) được parse trong document **tách rời** (không chạy script, không
   tải ảnh), bỏ `script / style / template / iframe / object / embed / svg / math` cùng nội dung, rồi chỉ giữ thẻ có trong
-  schema. Không attribute nào sống sót ngoài `href` đã qua kiểm tra; `style` không bao giờ được đọc (không có "đậm theo
-  `font-weight`").
+  schema. Không attribute nào sống sót ngoài `href` đã qua kiểm tra và `rel` / `target` của liên kết (chuẩn hoá như mục
+  Liên kết); `style` không bao giờ được đọc (không có "đậm theo `font-weight`").
 - **Server phải lọc lại** — HTML gửi lên là dữ liệu người dùng, ai cũng gửi thẳng được. Dùng
-  `php/td-rich-text-policy.php` (đọc cùng allowlist JSON `rich-text-policy.json` với client) để dựng cấu hình
-  `symfony/html-sanitizer`:
+  `php/td-rich-text-policy.php` (đọc cùng allowlist JSON `rich-text-policy.json` với client, cần
+  `symfony/html-sanitizer`). Cách nên dùng (0.91.0) là `RichTextPolicy::sanitize()`: cùng luật `target` / `noreferrer`
+  theo từng liên kết như client, cùng thứ tự attribute:
 
   ```php
   use TdComponents\RichTextPolicy;
-  use Symfony\Component\HtmlSanitizer\HtmlSanitizer;
 
   $policy = RichTextPolicy::load(__DIR__ . '/vendor/dazzxq/td-components/src/form/rich-text/rich-text-policy.json');
-  // features / allowHttp / linkTarget của CHÍNH trường đó ở server — không lấy từ request
-  $config = RichTextPolicy::symfonyConfig($policy, ['bold', 'italic', 'underline', 'strike', 'link'], false, 'none');
-  $clean = (new HtmlSanitizer($config))->sanitize($_POST['body'] ?? '');
+  // features / allowHttp của CHÍNH trường đó ở server — không lấy từ request
+  $clean = RichTextPolicy::sanitize($_POST['body'] ?? '', $policy, ['bold', 'italic', 'underline', 'strike', 'link'], false);
   ```
+
+  `RichTextPolicy::symfonyConfig($policy, $features, $allowHttp, $linkTarget)` (cách của 0.88.0) vẫn chạy y như cũ:
+  `<a>` chỉ giữ `href`, ép `rel="nofollow noopener"` và ép `target` theo `$linkTarget` lên mọi liên kết — tức là bỏ
+  lựa chọn "tab mới" / `noreferrer` của từng liên kết. Site muốn giữ lựa chọn đó phải chuyển sang `sanitize()`.
 
 - **Trusted Types**: site bật `require-trusted-types-for 'script'` phải cho phép HAI policy có tên:
   `trusted-types td-rich-text ProseMirrorClipboard`. `td-rich-text` bọc HTML của `value` trước khi `DOMParser` đọc

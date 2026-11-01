@@ -65,18 +65,39 @@ describe('td-rich-text: value + sanitization', () => {
     expect(el.value).to.equal('');
   });
 
-  it('link-target / allow-http / features shape the output', () => {
+  it('target / noreferrer are per link; link-target does not touch parsed links; allow-http / features shape the output', () => {
     const el = mount('<td-rich-text link-target="_blank"></td-rich-text>');
-    el.value = '<p><a href="http://a.b">h</a> <a href="https://a.b" target="_self">s</a></p>';
-    expect(el.value).to.equal(`<p>h <a href="https://a.b" ${REL} target="_blank">s</a></p>`);
+    el.value = '<p><a href="http://a.b">h</a> <a href="https://a.b" target="_self">s</a> <a href="https://a.b" target="_blank" rel="NoReferrer x">n</a></p>';
+    expect(el.value).to.equal(`<p>h <a href="https://a.b" ${REL}>s</a> <a href="https://a.b" rel="nofollow noopener noreferrer" target="_blank">n</a></p>`);
     el.setAttribute('allow-http', '');
     el.value = '<p><a href="http://a.b">h</a></p>';
-    expect(el.value).to.equal(`<p><a href="http://a.b" ${REL} target="_blank">h</a></p>`);
+    expect(el.value).to.equal(`<p><a href="http://a.b" ${REL}>h</a></p>`);
     el.setAttribute('features', 'bold');
     expect(el.value).to.equal('<p>h</p>');
     expect(el.features).to.deep.equal(['bold']);
     el.value = '<p><strong>a</strong><em>b</em></p>';
     expect(el.value).to.equal('<p><strong>a</strong>b</p>');
+  });
+
+  it('changing link-target at runtime keeps the document, the schema and the undo history', async () => {
+    const el = mount('<td-rich-text value="<p>ab</p>"></td-rich-text>');
+    await focusEnd(el);
+    await sendKeys({ type: 'c' });
+    expect(el.value).to.equal('<p>abc</p>');
+    const schema = /** @type {any} */ (el)._schema;
+    el.setAttribute('link-target', '_blank');
+    el.setAttribute('link-target', '_self');
+    el.removeAttribute('link-target');
+    expect(/** @type {any} */ (el)._schema).to.equal(schema);
+    editor(el).focus();
+    await sendKeys({ press: `${MOD}+z` });
+    expect(el.value).to.equal('<p>ab</p>');
+  });
+
+  it('a pasted link keeps its own target _blank / noreferrer; other targets and rel tokens are dropped', () => {
+    const el = mount('<td-rich-text></td-rich-text>');
+    /** @type {any} */ (el)._view.pasteHTML('<p><a href="https://a.b" target="_blank" rel="noopener noreferrer" class="x">p</a> <a href="https://a.b" target="_top" rel="opener">q</a></p>');
+    expect(el.value).to.equal(`<p><a href="https://a.b" rel="nofollow noopener noreferrer" target="_blank">p</a> <a href="https://a.b" ${REL}>q</a></p>`);
   });
 
   it('a value set before connect is parsed with the final config', () => {
@@ -357,6 +378,34 @@ describe('td-rich-text: link dialog', () => {
     expect(panel(el).hidden).to.equal(true);
     expect(el.value).to.equal('<p><strong>abc</strong></p>');
     expect(document.activeElement === editor(el)).to.equal(true);
+  });
+
+  it('link-target is the default of a NEW link only (_blank → target, _self / none → no target)', async () => {
+    const el = mount('<td-rich-text link-target="_blank" value="<p>ab</p>"></td-rich-text>');
+    editor(el).focus();
+    await sendKeys({ press: `${MOD}+a` });
+    await sendKeys({ press: `${MOD}+k` });
+    await sendKeys({ type: 'https://a.b' });
+    await sendKeys({ press: 'Enter' });
+    expect(el.value).to.equal(`<p><a href="https://a.b" ${REL} target="_blank">ab</a></p>`);
+    el.setAttribute('link-target', '_self');
+    await focusEnd(el);
+    await sendKeys({ press: `${MOD}+k` });
+    await sendKeys({ type: 'https://c.d' });
+    await sendKeys({ press: 'Enter' });
+    expect(el.value).to.equal(`<p><a href="https://a.b" ${REL} target="_blank">ab</a><a href="https://c.d" ${REL}>https://c.d</a></p>`);
+  });
+
+  it('editing a link keeps its target / noreferrer whatever link-target says', async () => {
+    const el = mount(`<td-rich-text value='<p>x <a href="https://a.b" target="_blank" rel="noreferrer">hello</a> y</p>'></td-rich-text>`);
+    editor(el).focus();
+    await sendKeys({ press: `${MOD}+a` });
+    await sendKeys({ press: 'ArrowLeft' });
+    for (let i = 0; i < 4; i += 1) await sendKeys({ press: 'ArrowRight' }); // inside "hello"
+    tool(el, 'link').click();
+    urlInput(el).value = 'https://c.d';
+    el.querySelector('[data-action="apply"]').click();
+    expect(el.value).to.equal('<p>x <a href="https://c.d" rel="nofollow noopener noreferrer" target="_blank">hello</a> y</p>');
   });
 });
 

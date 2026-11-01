@@ -35,14 +35,15 @@ const LABEL_KEY = { bold: 'bold', italic: 'italic', underline: 'underline', stri
  *   </div>
  *
  * Lifecycle (plan "Vòng đời"): the shell and the editor node are built ONCE; every later render only syncs in place
- * (label, aria, editable, toolbar). A change of preset / features / allow-http / link-target rebuilds the schema and the
+ * (label, aria, editable, toolbar). A change of preset / features / allow-http rebuilds the schema and the
  * state from the current HTML (history cleared, toolbar rebuilt). Disconnect destroys the view and keeps the state;
  * reconnect mounts a new view on the same node.
  *
  * @element td-rich-text
  * @attr {string} preset - feature preset (`comment`, default)
  * @attr {string} features - feature tokens (space / comma separated), override `preset`
- * @attr {'none'|'_self'|'_blank'} link-target - `target` forced on every link (none = no attribute)
+ * @attr {'none'|'_self'|'_blank'} link-target - default of a NEW link: `_blank` opens it in a new tab; `none` / `_self` =
+ *   no `target`. Each link keeps its own target / noreferrer (v0.91.0); a change never rebuilds the schema
  * @attr {boolean} allow-http - accept `http:` links (https / mailto / tel / relative / #fragment always)
  * @attr {string} name
  * @attr {string} value - initial HTML (also the reset value)
@@ -268,7 +269,8 @@ export class TdRichText extends TdFormElement {
 
   /** @private @returns {string} */
   _configKey() {
-    return [this._resolve().features.join(','), this.hasAttribute('allow-http') ? 'h' : '', this._linkTarget()].join('|');
+    // v0.91.0: link-target is only the default of a new link, so it is NOT part of the schema key (no rebuild / undo loss)
+    return [this._resolve().features.join(','), this.hasAttribute('allow-http') ? 'h' : ''].join('|');
   }
 
   /** @private */
@@ -286,7 +288,7 @@ export class TdRichText extends TdFormElement {
         console.warn(`<td-rich-text>: unknown feature "${t}" — ignored`);
       }
     }
-    return buildSchema(PM, features, { allowHttp: this.hasAttribute('allow-http'), linkTarget: this._linkTarget() });
+    return buildSchema(PM, features, { allowHttp: this.hasAttribute('allow-http') });
   }
 
   /** @private New schema + state from `html` (history cleared); the view (if any) keeps its node. */
@@ -723,12 +725,16 @@ export class TdRichText extends TdFormElement {
     }
     const state = this._view.state;
     const type = this._schema.marks.link;
-    const mark = type.create({ href });
+    // editing a link keeps its target / noreferrer; a new link gets the link-target default (v0.91.0, per link)
+    const existing = this._currentLink();
+    const mark = type.create(existing
+      ? { href, target: existing.mark.attrs.target, noreferrer: existing.mark.attrs.noreferrer }
+      : { href, target: this._linkTarget() === '_blank' ? '_blank' : null, noreferrer: false });
     const { from, to } = this._linkRange;
     const tr = state.tr;
     let sel = null;
     if (from === to) {
-      const span = this._currentLink();
+      const span = existing;
       if (span) {
         tr.removeMark(span.from, span.to, type).addMark(span.from, span.to, mark);
         sel = PM.TextSelection.create(tr.doc, from);

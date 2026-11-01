@@ -33,7 +33,9 @@
       ],
       "attrs": {
         "a": [
-          "href"
+          "href",
+          "rel",
+          "target"
         ]
       }
     }
@@ -59,8 +61,10 @@
     "relative": true,
     "fragment": true,
     "rel": "nofollow noopener",
+    "relOptional": [
+      "noreferrer"
+    ],
     "targets": [
-      "_self",
       "_blank"
     ]
   }
