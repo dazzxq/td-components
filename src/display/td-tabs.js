@@ -4,6 +4,8 @@ import { safeLinkUrl } from '../utils/media-url.js';
 
 let _autoIdCounter = 0;
 const SIZES = ['sm', 'md'];
+/** v0.92.0: `layout` values (anything else / absent → 'equal') */
+const LAYOUTS = ['equal', 'fit'];
 /** v0.70.0 (K9): the td-badge tones a count pill can take (anything else → 'neutral') */
 const TONES = ['neutral', 'info', 'success', 'warning', 'danger'];
 
@@ -17,6 +19,11 @@ function countText(count) {
   if (typeof count === 'number') return Number.isFinite(count) ? String(count) : '';
   if (typeof count === 'string') return count.trim() === '' ? '' : count;
   return '';
+}
+/** v0.92.0: inline padding + border of a box (px) from its computed style */
+function edgeOf(cs) {
+  return (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)
+    + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0);
 }
 const CLASS_TOKEN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 const DEFAULT_NAME = 'Các thẻ';
@@ -57,6 +64,8 @@ const FOCUSABLE = [
  *   wide as its bold rendering, so switching the active (bold) tab never moves text or neighbours.
  *   </div>
  *   Empty: <div class="td-tabs td-tabs--{size}" data-state="empty"></div>
+ *   v0.92.0 (plan v0.92.0-tabs-fit-layout): `layout="fit"` adds ` td-tabs--fit` to the trough class (every render path; never
+ *   present for `equal`).
  *
  * Link mode (v0.83.0, plan v0.83.0-tabs-links) — at least one tab has a valid `href` (gate: safeLinkUrl; tabs without one
  * are dropped with a console.warn):
@@ -79,6 +88,10 @@ const FOCUSABLE = [
  * tab (measured once per render in the ACTIVE style via `data-measuring`) > slot, back when it is ≤ slot − 4px
  * (hysteresis). Labels never truncate. The trough scrolls itself, so the indicator (its absolute child) scrolls with
  * the tabs.
+ * v0.92.0 `layout="fit"`: every tab at its natural width (`flex: 0 0 auto`), the trough `fit-content` (hugs the tabs, start
+ * of the row, clamped to the host). Rule: need = Σ natural outer widths (same measuring pass) + gap × (n − 1); avail = the
+ * HOST's content width − the trough's padding + border (never the trough: it shrinks to `need`); overflow when need >
+ * avail + 1, back when need ≤ avail − 4px. Same `data-overflow` scroll row as `equal`.
  *
  * Keyboard: ← → (wrap, RTL-aware) / Home / End move focus. Default MANUAL activation: Enter/Space (native
  * button click) selects and fires `tab-change` once. `activation="auto"`: arrows also select.
@@ -90,6 +103,8 @@ const FOCUSABLE = [
  *
  * @element td-tabs
  * @attr {string} size - 'sm' | 'md' (default 'md')
+ * @attr {string} layout - v0.92.0: 'equal' (default; equal-width segments) | 'fit' (tabs as wide as their text, the trough
+ *   hugs them); any other value = 'equal'. Changed in place (no re-render).
  * @attr {string} active-tab - ID of the active tab (changes switch silently, no event)
  * @attr {string} activation - 'manual' (default) | 'auto'
  * @attr {string} aria-label - Tablist name (default "Các thẻ"; link-mode nav: "Điều hướng phụ"); `aria-labelledby` is
@@ -109,7 +124,7 @@ const FOCUSABLE = [
  */
 export class TdTabs extends TdBaseElement {
   static get observedAttributes() {
-    return ['size', 'active-tab', 'aria-label', 'aria-labelledby', 'match-hash'];
+    return ['size', 'layout', 'active-tab', 'aria-label', 'aria-labelledby', 'match-hash'];
   }
 
   static get booleanAttributes() { return ['match-hash']; }
@@ -132,9 +147,14 @@ export class TdTabs extends TdBaseElement {
     // v0.34.0 overflow decision (QĐ 9)
     /** widest tab's natural outer width in the active style (0 = not measured / not laid out) */
     this._maxOuter = 0;
+    /** v0.92.0 (fit): sum of the tabs' natural outer widths in the active style */
+    this._sumOuter = 0;
     this._gap = 0;
     /** trough content-box width (from the ResizeObserver) */
     this._avail = 0;
+    /** v0.92.0 (fit): host content-box width (from the ResizeObserver) and the trough's padding + border (inline) */
+    this._hostW = 0;
+    this._edge = 0;
     this._fontSize = '';
     this._overflow = false;
     /** @type {boolean|null} decision waiting for its frame */
@@ -263,6 +283,17 @@ export class TdTabs extends TdBaseElement {
     return SIZES.includes(size) ? size : 'md';
   }
 
+  /** v0.92.0: 'equal' | 'fit' (attribute only, like `size`) */
+  _layout() {
+    const layout = this.getAttribute('layout');
+    return LAYOUTS.includes(layout) ? layout : 'equal';
+  }
+
+  /** v0.92.0: the trough's class — `td-tabs td-tabs--{size}` (+ ` td-tabs--fit` only in fit), for every render path. */
+  _listClass() {
+    return `td-tabs td-tabs--${this._size()}${this._layout() === 'fit' ? ' td-tabs--fit' : ''}`;
+  }
+
   _iconMarkup(icon) {
     if (!icon) return '';
     if (hasIcon(icon)) {
@@ -283,11 +314,11 @@ export class TdTabs extends TdBaseElement {
       // _validateActive (their attribute callbacks return before _initialized) → validate again before the first markup
       this._validateActive();
     }
-    const size = this._size();
+    const cls = this._listClass();
     if (this._items.length === 0) {
-      return `<div class="td-tabs td-tabs--${size}" data-state="empty"></div>`;
+      return `<div class="${cls}" data-state="empty"></div>`;
     }
-    if (this._links) return this._renderLinks(size);
+    if (this._links) return this._renderLinks(cls);
     const tabs = this._items.map((tab, i) => {
       const selected = tab.id === this._activeTabId;
       const controls = tab.panel ? ` aria-controls="${this.escapeHtml(tab.panel)}"` : '';
@@ -298,12 +329,12 @@ export class TdTabs extends TdBaseElement {
     }).join('');
     // Keep the current mode on a re-render (no flash); afterRender re-decides from a fresh measurement.
     const overflow = this._overflow ? ' data-overflow=""' : '';
-    return `<div class="td-tabs td-tabs--${size}" role="tablist"${overflow}>`
+    return `<div class="${cls}" role="tablist"${overflow}>`
       + `<span class="td-tabs__indicator" aria-hidden="true"></span>${tabs}</div>`;
   }
 
   /** v0.83.0 link mode: `<nav>` of `<a class="td-tabs__tab">` (href = the gated original string, escaped). */
-  _renderLinks(size) {
+  _renderLinks(cls) {
     const tabs = this._items.map((tab) => {
       const current = tab.id === this._activeTabId ? ' aria-current="page"' : '';
       return `<a class="td-tabs__tab" href="${this.escapeHtml(tab.href)}" data-tab-id="${this.escapeHtml(tab.id)}"${current}>`
@@ -311,7 +342,7 @@ export class TdTabs extends TdBaseElement {
         + `${this.escapeHtml(tab.label)}</span>${this._countMarkup(tab)}</a>`;
     }).join('');
     const overflow = this._overflow ? ' data-overflow=""' : '';
-    return `<nav class="td-tabs td-tabs--${size}"${overflow}>`
+    return `<nav class="${cls}"${overflow}>`
       + `<span class="td-tabs__indicator" aria-hidden="true"></span>${tabs}</nav>`;
   }
 
@@ -446,6 +477,7 @@ export class TdTabs extends TdBaseElement {
     this._ro.disconnect();
     if (!this._list) return;
     this._ro.observe(this._list);
+    this._ro.observe(this); // v0.92.0: the host's width is `avail` in fit (the fit-content trough cannot tell)
     for (const b of this._buttons) this._ro.observe(b);
   }
 
@@ -486,15 +518,23 @@ export class TdTabs extends TdBaseElement {
   _measure() {
     const list = this._list;
     this._maxOuter = 0;
+    this._sumOuter = 0;
     if (!list || !list.isConnected || this._buttons.length === 0) return;
     list.setAttribute('data-measuring', '');
     let max = 0;
-    for (const b of this._buttons) max = Math.max(max, b.getBoundingClientRect().width);
+    let sum = 0;
+    for (const b of this._buttons) {
+      const w = b.getBoundingClientRect().width;
+      max = Math.max(max, w);
+      sum += w;
+    }
     const cs = getComputedStyle(list);
     this._gap = parseFloat(cs.columnGap) || 0;
     this._fontSize = cs.fontSize;
+    this._edge = edgeOf(cs);
     list.removeAttribute('data-measuring');
     this._maxOuter = max; // 0 when not laid out (hidden ancestor) → measured again on the next real resize
+    this._sumOuter = max ? sum : 0;
   }
 
   /** Re-measure (fonts loaded, size changed) and re-decide with the cached width. */
@@ -509,11 +549,7 @@ export class TdTabs extends TdBaseElement {
   _decideFromLayout() {
     const list = this._list;
     if (!list || !list.isConnected) return;
-    const cs = getComputedStyle(list);
-    const pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
-    const border = (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0);
-    const w = list.getBoundingClientRect().width;
-    if (w > 0) this._avail = Math.max(0, w - pad - border);
+    this._readWidths();
     if (this._modeRaf) cancelAnimationFrame(this._modeRaf);
     this._modeRaf = 0;
     this._pendingOverflow = null;
@@ -526,14 +562,26 @@ export class TdTabs extends TdBaseElement {
     if (this._overflow) this._scrollActiveIntoView();
   }
 
+  /** Trough + (v0.92.0) host content widths read from layout now (the ResizeObserver reports them a frame later). */
+  _readWidths() {
+    const list = this._list;
+    const w = list.getBoundingClientRect().width;
+    if (w > 0) this._avail = Math.max(0, w - edgeOf(getComputedStyle(list)));
+    // v0.92.0 (fit): the host's content box (the trough is fit-content → its own width says nothing about the room)
+    const hw = this.getBoundingClientRect().width;
+    if (hw > 0) this._hostW = Math.max(0, hw - edgeOf(getComputedStyle(this)));
+  }
+
   /** @param {ResizeObserverEntry[]} entries */
   _onResize(entries) {
     const list = this._list;
     if (!list || !list.isConnected) return;
     for (const e of entries) {
-      if (e.target !== list) continue;
+      if (e.target !== list && e.target !== this) continue;
       const box = Array.isArray(e.contentBoxSize) ? e.contentBoxSize[0] : e.contentBoxSize;
-      this._avail = box && typeof box.inlineSize === 'number' ? box.inlineSize : e.contentRect.width;
+      const w = box && typeof box.inlineSize === 'number' ? box.inlineSize : e.contentRect.width;
+      if (e.target === list) this._avail = w;
+      else this._hostW = w; // v0.92.0: avail of the fit layout
     }
     // Re-measure only when needed: not measured yet (was hidden) or the trough's font size changed.
     if ((!this._maxOuter && this._avail > 0) || getComputedStyle(list).fontSize !== this._fontSize) this._measure();
@@ -544,11 +592,20 @@ export class TdTabs extends TdBaseElement {
 
   /**
    * Hysteresis: enter when maxOuter > slot, leave when maxOuter ≤ slot − 4px.
+   * v0.92.0 fit: need = sumOuter + gap × (n − 1) against avail = host content width − trough padding + border; enter when
+   * need > avail + 1 (subpixel tolerance), leave when need ≤ avail − 4px.
    * @param {boolean} cur
    * @returns {boolean|null} null = cannot decide (not measured / no width)
    */
   _nextMode(cur) {
     const n = this._buttons.length;
+    if (this._layout() === 'fit') {
+      if (!n || !this._sumOuter || !(this._hostW > 0)) return null;
+      const need = this._sumOuter + this._gap * (n - 1);
+      const avail = this._hostW - this._edge;
+      if (cur) return need > avail - HYSTERESIS;
+      return need > avail + 1;
+    }
     if (!n || !this._maxOuter || !(this._avail > 0)) return null;
     const slot = (this._avail - this._gap * (n - 1)) / n;
     if (cur) return this._maxOuter > slot - HYSTERESIS;
@@ -681,8 +738,10 @@ export class TdTabs extends TdBaseElement {
         this._syncLocationListeners();
         this._resolveCurrent();
       }
-    } else if (name === 'size') {
-      if (this._list) this._list.className = `td-tabs td-tabs--${this._size()}`;
+    } else if (name === 'size' || name === 'layout') {
+      if (this._list) this._list.className = this._listClass(); // v0.92.0: `layout` too, in place (same nodes, focus kept)
+      // v0.92.0: the trough width just changed (fit-content ↔ full) — decide on it now, not on the stale RO value
+      if (name === 'layout' && this._list?.isConnected) this._readWidths();
       this._remeasure();
       this._scheduleIndicator();
     } else {

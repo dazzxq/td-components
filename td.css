@@ -3801,11 +3801,15 @@
  * synchronous JS pass (never painted): every tab at its natural width in the active (semibold) style.
  * v0.83.0 (plan v0.83.0-tabs-links): link mode = <nav class="td-tabs"> of <a class="td-tabs__tab">; the current page
  * [aria-current="page"] looks exactly like [aria-selected="true"]; no current page → no data-state → no pill.
+ * v0.92.0 (plan v0.92.0-tabs-fit-layout): .td-tabs--fit (host layout="fit") = natural-width tabs in a fit-content trough
+ * (start of the row, clamped to the host; JS decides [data-overflow] from the HOST width). --td-tabs-tab-px = the tab's
+ * inline padding in both layouts (default 12px = the previous md / sm value).
  */
 @layer td.tokens {
 	:root {
 		--td-tabs-radius: 12px;
 		--td-tabs-pad: 4px;
+		--td-tabs-tab-px: 12px; /* v0.92.0: inline padding of a tab (both sizes, both layouts) */
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
@@ -3902,7 +3906,7 @@
 		justify-content: center;
 		min-height: 24px; /* hit target ≥ 24 px (WCAG 2.5.8) */
 		margin: 0;
-		padding: 8px 12px;
+		padding: 8px var(--td-tabs-tab-px);
 		font: inherit;
 		font-weight: var(--td-fw-medium);
 		color: var(--td-tabs-fg);
@@ -3919,7 +3923,18 @@
 	}
 
 	.td-tabs--sm .td-tabs__tab {
-		padding: 6px 12px;
+		padding: 6px var(--td-tabs-tab-px);
+	}
+
+	/* v0.92.0 layout="fit": the trough hugs its tabs (segmented control at the start of the row), never wider than the host;
+	   when the tabs do not fit, JS sets [data-overflow] (same scroll row as below) and the trough is the host's width. */
+	.td-tabs--fit {
+		inline-size: fit-content;
+		max-inline-size: 100%;
+	}
+
+	.td-tabs--fit > .td-tabs__tab {
+		flex: 0 0 auto;
 	}
 
 	@media (hover: hover) and (pointer: fine) {

@@ -53,20 +53,20 @@ const opt = (v, level, label, extra = '') => `<option value="${v}" data-level="$
 describe('php/td.php — td_tree_select (v0.29.0 M8)', opts, () => {
   test('native mode (default): <td-tree-select> host (no marker) + label + preorder select, NBSP indent, data-level / data-label', () => {
     assert.equal(one('td_tree_select', ['t', SMALL, 'a1', { id: 't', label: 'Nhãn' }]),
-      '<td-tree-select id="t" label="Nhãn"><label class="td-field__label" for="t-select">Nhãn</label>'
+      '<td-tree-select id="t" name="t" label="Nhãn"><label class="td-field__label" for="t-select">Nhãn</label>'
       + '<select class="td-tree-select__native" id="t-select" name="t">'
       + opt('a', 0, 'A') + opt('a1', 1, 'A1', ' data-description="D" selected') + opt('b', 0, 'B')
       + '</select></td-tree-select>');
     // generated id, no label, int value selected
     const out = one('td_tree_select', ['cat', [{ value: 7, label: 'Bảy' }], 7, {}]);
-    assert.ok(out.startsWith('<td-tree-select id="td-cat-1"><select class="td-tree-select__native" id="td-cat-1-select" name="cat">'), out);
+    assert.ok(out.startsWith('<td-tree-select id="td-cat-1" name="cat"><select class="td-tree-select__native" id="td-cat-1-select" name="cat">'), out);
     assert.ok(out.includes(opt('7', 0, 'Bảy', ' selected')), out);
     assert.ok(!out.includes('—'), 'never an em dash in the label');
   });
 
   test('placeholder: single → first value="" option + allow-clear; required → host + select + label star', () => {
     const out = one('td_tree_select', ['t', SMALL, null, { id: 't', label: 'L', placeholder: '— Chọn —', required: true }]);
-    assert.equal(out, '<td-tree-select id="t" label="L" placeholder="— Chọn —" allow-clear required>'
+    assert.equal(out, '<td-tree-select id="t" name="t" label="L" placeholder="— Chọn —" allow-clear required>'
       + '<label class="td-field__label" for="t-select">L<span class="td-field__required" aria-hidden="true"> *</span></label>'
       + '<select class="td-tree-select__native" id="t-select" name="t" required><option value="">— Chọn —</option>'
       + opt('a', 0, 'A') + opt('a1', 1, 'A1', ' data-description="D"') + opt('b', 0, 'B') + '</select></td-tree-select>');
@@ -74,7 +74,7 @@ describe('php/td.php — td_tree_select (v0.29.0 M8)', opts, () => {
 
   test('multiple (native): size rows (default 8), every selected value, placeholder = text only (no empty option)', () => {
     const out = one('td_tree_select', ['m[]', SMALL, ['b', 'a1', ''], { id: 'm', multiple: true, placeholder: 'Chọn' }]);
-    assert.equal(out, '<td-tree-select id="m" placeholder="Chọn" multiple>'
+    assert.equal(out, '<td-tree-select id="m" name="m[]" placeholder="Chọn" multiple>'
       + '<select class="td-tree-select__native" id="m-select" name="m[]" multiple size="8">'
       + opt('a', 0, 'A') + opt('a1', 1, 'A1', ' data-description="D" selected') + opt('b', 0, 'B', ' selected') + '</select></td-tree-select>');
     assert.ok(one('td_tree_select', ['m[]', SMALL, [], { multiple: true, size: 3 }]).includes(' multiple size="3">'));
@@ -82,7 +82,7 @@ describe('php/td.php — td_tree_select (v0.29.0 M8)', opts, () => {
 
   test('cascade: parents disabled data-native-only, parent values dropped from the selection', () => {
     const out = one('td_tree_select', ['p[]', SMALL, ['a', 'a1'], { id: 'p', multiple: true, cascade: true }]);
-    assert.ok(out.startsWith('<td-tree-select id="p" multiple cascade>'), out);
+    assert.ok(out.startsWith('<td-tree-select id="p" name="p[]" multiple cascade>'), out);
     assert.ok(out.includes(opt('a', 0, 'A', ' disabled data-native-only')), out);
     assert.ok(out.includes(opt('a1', 1, 'A1', ' data-description="D" selected')), out);
     assert.ok(out.includes(opt('b', 0, 'B')), out);
@@ -102,7 +102,7 @@ describe('php/td.php — td_tree_select (v0.29.0 M8)', opts, () => {
   test('single with a LOCKED selection: that option selected + enabled, every other disabled data-native-only, no empty option, no allow-clear', () => {
     const tree = [{ value: 'a', label: 'A', disabled: true }, { value: 'b', label: 'B' }, { value: 'c', label: 'C', disabled: true }];
     const out = one('td_tree_select', ['t', tree, 'a', { id: 't', placeholder: 'P', required: true }]);
-    assert.equal(out, '<td-tree-select id="t" placeholder="P" required>'
+    assert.equal(out, '<td-tree-select id="t" name="t" placeholder="P" required>'
       + '<select class="td-tree-select__native" id="t-select" name="t" required>'
       + opt('a', 0, 'A', ' data-locked selected') + opt('b', 0, 'B', ' disabled data-native-only') + opt('c', 0, 'C', ' data-locked disabled')
       + '</select></td-tree-select>');
@@ -111,7 +111,7 @@ describe('php/td.php — td_tree_select (v0.29.0 M8)', opts, () => {
   test('multiple with a LOCKED selection: disabled selected + one hidden input each, no `required` on the select (host keeps it)', () => {
     const tree = [{ value: 'a', label: 'A', disabled: true }, { value: 'b', label: 'B' }, { value: 'c', label: 'C', disabled: true }];
     const out = one('td_tree_select', ['p[]', tree, ['a', 'b', 'c'], { id: 'p', multiple: true, required: true }]);
-    assert.equal(out, '<td-tree-select id="p" multiple required>'
+    assert.equal(out, '<td-tree-select id="p" name="p[]" multiple required>'
       + '<select class="td-tree-select__native" id="p-select" name="p[]" multiple size="8">'
       + opt('a', 0, 'A', ' data-locked selected disabled') + opt('b', 0, 'B', ' selected') + opt('c', 0, 'C', ' data-locked selected disabled')
       + '</select><input type="hidden" class="td-tree-select__locked" name="p[]" value="a">'
@@ -126,11 +126,11 @@ describe('php/td.php — td_tree_select (v0.29.0 M8)', opts, () => {
 
   test('element mode: marker, no size, value-label / value-labels, display', () => {
     assert.equal(one('td_tree_select', ['t', SMALL, 'a1', { id: 't', element: true, display: 'path' }]),
-      '<td-tree-select data-td-ssr="tree-select@1" id="t" display="path" value-label="A1">'
+      '<td-tree-select data-td-ssr="tree-select@1" id="t" name="t" display="path" value-label="A1">'
       + '<select class="td-tree-select__native" id="t-select" name="t">'
       + opt('a', 0, 'A') + opt('a1', 1, 'A1', ' data-description="D" selected') + opt('b', 0, 'B') + '</select></td-tree-select>');
     const m = one('td_tree_select', ['m[]', SMALL, ['b', 'a1'], { id: 'm', element: true, multiple: true }]);
-    assert.ok(m.startsWith(`<td-tree-select data-td-ssr="tree-select@1" id="m" multiple value-labels="${esc('{"a1":"A1","b":"B"}')}">`), m);
+    assert.ok(m.startsWith(`<td-tree-select data-td-ssr="tree-select@1" id="m" name="m[]" multiple value-labels="${esc('{"a1":"A1","b":"B"}')}">`), m);
     assert.ok(m.includes('<select class="td-tree-select__native" id="m-select" name="m[]" multiple>'), m);
   });
 
@@ -186,10 +186,10 @@ describe('php/td.php — td_tree_select (v0.29.0 M8)', opts, () => {
     const out = one('td_tree_select', ['t', SMALL, null, { id: 't', element: true, attrs: { 'data-x': '1', onclick: 'x()', Name: 'evil',
       value: 'a', multiple: '', 'data-td-ssr': 'x', 'aria-label': 'Tên', title: 'Gợi ý', 'allow-clear': '' } }]);
     const host = /<td-tree-select[^>]*>/.exec(out)[0];
-    assert.equal(host, '<td-tree-select data-td-ssr="tree-select@1" id="t" data-x="1" title="Gợi ý">');
+    assert.equal(host, '<td-tree-select data-td-ssr="tree-select@1" id="t" name="t" data-x="1" title="Gợi ý">');
     assert.ok(out.includes('<select class="td-tree-select__native" id="t-select" name="t" aria-label="Tên">'), out);
     assert.ok(!out.includes('onclick') && !out.includes('evil'), out);
-    assert.equal((out.match(/\sname=/g) || []).length, 1);
+    assert.equal((out.match(/\sname=/g) || []).length, 2, 'host + select, never a third (attrs Name dropped)');
   });
 
   test('escaping: name, ids, labels, values, descriptions, value-label(s)', () => {

@@ -212,7 +212,7 @@ và sau nâng cấp cùng **tập** giá trị, với hai ngoại lệ đã bi�
 ```
 
 Shell SSR (PHP element mode): `<td-tree-select data-td-ssr="tree-select@1" …>` + [nhãn] + `select.td-tree-select__native`
-(+ input khoá) — xem [adapter PHP](../guides/php-adapter.md#td_tree_select-0290).
+(+ input khoá) — xem [adapter PHP](../guides/php-adapter.md#td_tree_select-0290). Từ 0.92.0 host cũng mang `name` ngay từ server (form tách rời / clone tìm được `td-tree-select[name]` trước nâng cấp).
 
 ## Bàn phím & trợ năng
 

@@ -124,7 +124,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.91.0/
+public/assets/vendor/td-components/0.92.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
   dist/  module-graph.json                    (0.64.0+: bản minify + đồ thị preload)
 ```
@@ -133,7 +133,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.91.0';
+const TD_VERSION = '0.92.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -651,7 +651,7 @@ không JS thì select native không đổi. `td_multiselect` nhận `swatch` y n
 Markup:
 
 ```html
-<td-dropdown id="dd-role-3" label="Vai trò" searchable="false" allow-clear="false">
+<td-dropdown id="dd-role-3" name="role" label="Vai trò" searchable="false" allow-clear="false">
   <label class="td-field__label" for="dd-role-3-select">Vai trò<span class="td-field__required" aria-hidden="true"> *</span></label>
   <select id="dd-role-3-select" name="role" required>
     <option value="user" selected>Người dùng</option><option value="admin">Quản trị</option>
@@ -662,8 +662,9 @@ Markup:
 - **Không JS**: `<td-dropdown>` chỉ là thẻ lạ `display: block`; select native chạy, submit `role=user`.
 - **Nạp `@dazzxq/td-components/dropdown`**: component đọc `<option>` thành `options`, lấy lựa chọn **sống** của select
   (kể cả khi người dùng đã đổi trước khi JS tới), lấy `name`/`required`/`disabled` từ select, rồi gỡ select (component
-  form-associated thay nó — không submit trùng). Giá trị khi reset form = option `selected` trong HTML. `name` và
-  `required` nằm trên select, **không** trên host, nên không có gì trùng. Chi tiết: [Dropdown](../components/dropdown.md).
+  form-associated thay nó — không submit trùng). Giá trị khi reset form = option `selected` trong HTML. `required` nằm trên select, **không** trên host. Từ 0.92.0 `name` có trên **cả** host lẫn select (form tách rời / clone
+  tìm được `td-dropdown[name]` trước nâng cấp); sau nâng cấp select bị gỡ và host form-associated gửi đúng một giá trị,
+  nên vẫn không trùng. Chi tiết: [Dropdown](../components/dropdown.md).
 - Option `value=""` **đứng đầu** (placeholder của `td_dropdown`) **không** thành mục sau upgrade: nó thành
   `placeholder` của component và trạng thái "chưa chọn" (không gửi giá trị, `required` báo thiếu). Chỉ option
   `value=""` **không đứng đầu** mới là một mục chọn được (gửi `''`, thoả `required` — như `<select>` native). Nút
@@ -686,7 +687,7 @@ từng lần gọi hoặc `Td::configure(…, ['ssr_elements' => true])`; `'elem
 native** cộng hai thứ:
 
 ```html
-<td-dropdown data-td-ssr="dropdown@1" id="dd-role-3" label="Vai trò" searchable="false" allow-clear="false">
+<td-dropdown data-td-ssr="dropdown@1" id="dd-role-3" name="role" label="Vai trò" searchable="false" allow-clear="false">
   <label class="td-field__label" for="dd-role-3-select">Vai trò<span class="td-field__required" aria-hidden="true"> *</span></label>
   <select class="td-dropdown__native" id="dd-role-3-select" name="role" required>…</select>
 </td-dropdown>
@@ -700,6 +701,10 @@ native** cộng hai thứ:
   trần trong `<td-dropdown>` chưa define được tạo dáng y hệt — nâng cấp không xô lệch ở cả hai chế độ (gate
   `test/engines/ssr-fouc.spec.mjs`, Chromium / Firefox / WebKit). Forced colors: mũi tên hệ thống. Cảm ứng: chữ select
   16 px. Element mode vẫn có thêm: hoãn nâng cấp khi select đang focus.
+- **`name` ở cả host và select (0.92.0)**: host `<td-dropdown name="…">` mang `name` ngay từ server (cả chế độ native),
+  nên `form.querySelector('td-dropdown[name="x"]')` tìm thấy trên form tách rời / clone từ `<template>` trước khi
+  nâng cấp. Sau nâng cấp DOM không đổi (JS vốn chép đúng giá trị này lên host). `attrs` không đặt / không lặp được `name`.
+  Cùng quy tắc cho `td_multiselect` (element mode, `<td-chip-input>`) và `td_tree_select`.
 - **Không JS**: y như native (chọn, submit, `required` chặn submit, nhãn ngoài `<label for="{id}-select">`).
 - **Nạp module dropdown**: đường nâng cấp 0.17 như cũ (đọc option, lựa chọn sống, `name` / `required` / `disabled`, nhãn
   ngoài chuyển sang host, gỡ select), rồi gỡ dấu `data-td-ssr`. **Select đang focus** (người dùng đang chọn đúng lúc
@@ -1075,7 +1080,7 @@ một).
   `multiple` (`size` mặc định 4). Chạy đủ khi **không có JS**: mỗi option đã chọn (không `disabled`) gửi một entry dưới
   `name` **nguyên văn** — đặt `name="roles[]"` để PHP / Laravel nhận mảng (helper không tự thêm `[]`).
 - **Chế độ element** (`'element' => true` hoặc `Td::configure(…, ['ssr_elements' => true])`; `'element' => false` giữ
-  native): `<td-chip-input data-td-ssr="chip-input@1" selection-only …>` + [nhãn] + cùng select nhưng class
+  native): `<td-chip-input data-td-ssr="chip-input@1" name="…" selection-only …>` + [nhãn] + cùng select nhưng class
   `td-chip-input__native`. Chưa có JS: select multiple gốc (được tạo kiểu như khung chip, `min-height` bằng chiều cao tối
   thiểu của khung). Nạp `@dazzxq/td-components/chip-input` → component **nâng cấp** select (không phải hydrate tại chỗ):
   đọc option / nhóm / lựa chọn đang sống, lấy `name` / `required` / `disabled` / `aria-label` của select, gỡ select, vẽ
@@ -1111,7 +1116,7 @@ sau khi nâng cấp = thứ tự **chọn** của người dùng.
 Kết quả (element, thực tế in liền một dòng):
 
 ```html
-<td-chip-input data-td-ssr="chip-input@1" id="roles" label="Vai trò" selection-only>
+<td-chip-input data-td-ssr="chip-input@1" id="roles" name="roles[]" label="Vai trò" selection-only>
   <label class="td-field__label" for="roles-select">Vai trò</label>
   <select class="td-chip-input__native" id="roles-select" name="roles[]" multiple size="4">
     <option value="admin">Quản trị</option><option value="editor" selected>Biên tập</option>
@@ -1200,7 +1205,7 @@ Thụt lề = **NBSP ở đầu chữ** (2 mỗi cấp; popup native của Safar
 Kết quả (element, thực tế in liền một dòng):
 
 ```html
-<td-tree-select data-td-ssr="tree-select@1" id="parent" label="Danh mục cha" placeholder="— Gốc —" allow-clear value-label="Apple">
+<td-tree-select data-td-ssr="tree-select@1" id="parent" name="parent_id" label="Danh mục cha" placeholder="— Gốc —" allow-clear value-label="Apple">
   <label class="td-field__label" for="parent-select">Danh mục cha</label>
   <select class="td-tree-select__native" id="parent-select" name="parent_id">
     <option value="">— Gốc —</option>

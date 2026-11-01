@@ -90,7 +90,29 @@ dùng khi đổi thẻ rẻ (nội dung đã có sẵn); nếu mỗi lần đổ
 <td-tabs size="sm"></td-tabs>
 ```
 
-### 6. Icon trong thẻ
+### 6. Thẻ rộng theo chữ: `layout="fit"` (0.92.0)
+
+Mặc định (`equal`) các thẻ chia đều cả hàng: 2 thẻ trong khung 1093px thì mỗi thẻ ~541px. Với `layout="fit"` mỗi thẻ
+chỉ rộng bằng chữ + đệm, rãnh xám **ôm sát** các thẻ và nằm ở đầu dòng (kiểu segmented control iOS); phần còn lại của
+hàng không có nền.
+
+```html
+<td-tabs layout="fit" aria-label="Phiếu"></td-tabs>
+```
+
+- Giá trị khác `equal` / `fit` (hoặc không có) = `equal`. Đổi attribute lúc chạy có hiệu lực tại chỗ: không render lại,
+  nút thẻ giữ nguyên element, focus không mất.
+- Dùng được cho cả chế độ tablist lẫn [chế độ link](#điều-hướng-giữa-trang-0830).
+- Không đủ chỗ → cùng hàng thẻ cuộn ngang như `equal` (xem [Responsive](#responsive-v0340)).
+- Muốn chữ thoáng hơn: đặt [`--td-tabs-tab-px`](#tuỳ-biến-giao-diện), có thể chỉ cho fit:
+  `td-tabs[layout="fit"] { --td-tabs-tab-px: 16px; }`.
+- Căn giữa / căn phải rãnh là CSS của site (rãnh là khối `fit-content` nên `margin-inline: auto` đẩy được):
+  `td-tabs[layout="fit"] > .td-tabs { margin-inline: auto; }` (giữa) hoặc `margin-inline-start: auto` (phải).
+- **Không có xê dịch bố cục mới trước khi JS chạy**: rãnh `.td-tabs` chỉ được tạo khi element upgrade; trước đó hàng
+  `<a>` server in sẵn (`td-tabs:not(:defined)`) vốn đã rộng theo chữ. Nếu site tự in sẵn khối `.td-tabs` (xem
+  [Cấu trúc DOM](#cấu-trúc-dom--class)) thì thêm class `td-tabs--fit` vào khối đó cho khớp.
+
+### 7. Icon trong thẻ
 
 ```js
 tabs.tabs = [
@@ -199,6 +221,7 @@ Click **không** đổi `aria-current` (trang mới / `hashchange` / site làm v
 | Attribute | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
 | `size` | `'sm'` \| `'md'` | `md` | Kích thước; giá trị khác → `md`. Đổi tại chỗ. |
+| `layout` | `'equal'` \| `'fit'` | `equal` | **0.92.0**. `equal`: thẻ chia đều cả hàng. `fit`: thẻ rộng theo chữ, rãnh ôm sát ở đầu dòng (class `td-tabs--fit` trên `.td-tabs`). Giá trị khác → `equal`. Đổi tại chỗ (không render lại, giữ focus). Chỉ có attribute, không có property. Xem [`layout="fit"`](#6-thẻ-rộng-theo-chữ-layoutfit-0920). |
 | `active-tab` | string | — | `id` thẻ đang chọn. Đổi sau khi render → chọn im lặng (không event). Chế độ link: thẻ hiện tại tường minh (thắng khớp URL); xoá → về khớp URL. |
 | `activation` | `'manual'` \| `'auto'` | `manual` | Chỉ đúng chuỗi `auto` mới bật tự động. Đọc mỗi lần nhấn phím nên đổi lúc nào cũng có hiệu lực. |
 | `aria-label` | string | `Các thẻ` (chế độ link: `Điều hướng phụ`) | Tên của tablist / `<nav>`. Chế độ link: nên luôn đặt tên riêng. |
@@ -307,6 +330,7 @@ panel đó. Nên để sẵn `hidden` trên panel không mặc định chọn tr
 | `--td-tabs-fg-active` | `var(--td-color-text)` | Chữ thẻ đang chọn |
 | `--td-tabs-radius` | `12px` | Bo góc rãnh (bo góc viên thuốc tự tính đồng tâm) |
 | `--td-tabs-pad` | `4px` | Khoảng đệm rãnh và khoảng cách giữa thẻ |
+| `--td-tabs-tab-px` | `12px` | **0.92.0**. Đệm ngang của mỗi thẻ (cả `md` và `sm`, cả `equal` và `fit`; đệm dọc giữ 8px / 6px) |
 
 `--td-tabs-ind-x` / `--td-tabs-ind-w` do JS ghi (CSSOM) để đặt vị trí viên thuốc; không tự đặt.
 
@@ -315,7 +339,8 @@ panel đó. Nên để sẵn `hidden` trên panel không mặc định chọn tr
 .toolbar td-tabs { --td-tabs-bg: transparent; }  /* chỉ trong toolbar */
 ```
 
-Các thẻ chia đều chiều rộng (`flex: 1 1 0`) khi đủ chỗ (xem [Responsive](#responsive-v0340)). td-tabs không có glass
+Các thẻ chia đều chiều rộng (`flex: 1 1 0`) khi đủ chỗ; `layout="fit"` thì rộng theo chữ (xem
+[Responsive](#responsive-v0340)). td-tabs không có glass
 (lớp nội dung).
 
 ## Responsive (v0.34.0)
@@ -335,6 +360,10 @@ cột hẹp của trang desktop cũng đúng như trên điện thoại.
   cây truy cập, không bị tìm / copy. Site markup tay (SSR) nên in `data-label` = nhãn (escape thuộc tính); thiếu thì chỉ
   mất phần giữ chỗ.
 - **Nhãn không bao giờ bị cắt `…`** ở cả hai chế độ.
+- **`layout="fit"` (0.92.0)**: thẻ luôn rộng theo nhãn, rãnh `fit-content` (không rộng hơn host). Quy tắc riêng:
+  `cần = tổng bề rộng tự nhiên của các thẻ (đo ở kiểu đang chọn) + khoảng cách × (n − 1)`, `có = bề rộng nội dung của
+  host td-tabs − đệm + viền của rãnh` (đo trên **host**, không trên rãnh: rãnh co về đúng `cần` nên không cho biết còn
+  bao nhiêu chỗ). Vào chế độ cuộn khi `cần > có + 1px`, ra khi `cần ≤ có − 4px`. Khi cuộn, rãnh rộng bằng host.
 - Có **vùng trễ 4px** (vào chế độ cuộn khi thẻ rộng nhất > ô, ra khi ≤ ô − 4px) nên kéo cửa sổ qua lại quanh ngưỡng
   không làm bố cục nhảy. JS chỉ đo lại khi `tabs` / nhãn / icon / `size` đổi, khi web font tải xong
   (`document.fonts` `loadingdone`) hoặc khi cỡ chữ đổi — không đo lại mỗi lần resize.
@@ -350,7 +379,7 @@ cột hẹp của trang desktop cũng đúng như trên điện thoại.
 
 ```html
 <td-tabs id="t">
-  <div class="td-tabs td-tabs--md" role="tablist" aria-label="Các thẻ" data-state="ready"
+  <div class="td-tabs td-tabs--md [td-tabs--fit]" role="tablist" aria-label="Các thẻ" data-state="ready"
        [data-overflow] [data-scroll-start] [data-scroll-end]>
     <span class="td-tabs__indicator" aria-hidden="true"></span>
     <button type="button" role="tab" class="td-tabs__tab" id="t-tab-0" data-tab-id="profile"

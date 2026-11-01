@@ -50,7 +50,9 @@ describe('php/td.php — helper_text on every form helper (v0.54.0)', opts, () =
       return [c.fn, args];
     });
     const out = run(calls);
-    cases.forEach((c, i) => assert.equal(out[i].html, BASELINE[c.id], `${c.id}: byte-identical`));
+    // v0.92.0: the baseline predates the host `name` on td-dropdown / td-chip-input / td-tree-select — drop it before comparing
+    const noHostName = (h) => h.replace(/^(<td-(?:dropdown|chip-input|tree-select)\b[^>]*?) name="[^"]*"/, '$1');
+    cases.forEach((c, i) => assert.equal(noHostName(out[i].html), BASELINE[c.id], `${c.id}: byte-identical`));
   });
 
   test('host helper-text + the note (text, escaped) + the description; hidden and out of the description with an error', () => {

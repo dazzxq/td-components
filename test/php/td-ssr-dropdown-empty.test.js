@@ -45,6 +45,9 @@ function one(fn, args, options) {
 /** Element-mode output of a dropdown case (global → ssr_elements, else element: true). */
 const elementOf = (c) => (c.global ? one(c.fn, c.args, { ssr_elements: true }) : one(c.fn, withMode(c.args, true)));
 
+/** NATIVE (dropdown.native.json) predates v0.92.0: drop the host `name` the helper now also prints before comparing. */
+const stripHostName = (h) => h.replace(/^(<td-dropdown\b[^>]*?) name="[^"]*"/, '$1');
+
 /** The documented transformation: native markup + marker on the host + the native class on the select. */
 const expectElement = (native) => native.replace(/^<td-dropdown/, '<td-dropdown data-td-ssr="dropdown@1"')
   .replace('<select ', '<select class="td-dropdown__native" ');
@@ -56,8 +59,8 @@ describe('php/td.php — td_dropdown element mode (v0.26.0 part 2, contract drop
     const absent = runPhp(all.map((c) => ({ fn: c.fn, args: c.args })), { baseUrl: BASE });
     const off = runPhp(all.map((c) => ({ fn: c.fn, args: withMode(c.args, false) })), { baseUrl: BASE, options: { ssr_elements: true } });
     all.forEach((c, i) => {
-      assert.equal(absent[i].out, NATIVE[c.id], `${c.id}: native (absent)`);
-      assert.equal(off[i].out, NATIVE[c.id], `${c.id}: native (element => false under ssr_elements)`);
+      assert.equal(stripHostName(absent[i].out), NATIVE[c.id], `${c.id}: native (absent)`);
+      assert.equal(stripHostName(off[i].out), NATIVE[c.id], `${c.id}: native (element => false under ssr_elements)`);
     });
   });
 
@@ -66,7 +69,7 @@ describe('php/td.php — td_dropdown element mode (v0.26.0 part 2, contract drop
       for (const mode of DROPDOWN_FIXTURES.modes) {
         const out = one(mc.fn, withMode(mc.args, mode.call), mode.global ? { ssr_elements: true } : undefined);
         assert.equal(out.startsWith('<td-dropdown data-td-ssr="dropdown@1"'), mode.element, `${mc.id} ${JSON.stringify(mode)}: ${out.slice(0, 80)}`);
-        assert.equal(out, mode.element ? expectElement(NATIVE[mc.id]).replace(/dd-m-\d+/g, 'dd-m-1') : NATIVE[mc.id].replace(/dd-m-\d+/g, 'dd-m-1'),
+        assert.equal(stripHostName(out), mode.element ? expectElement(NATIVE[mc.id]).replace(/dd-m-\d+/g, 'dd-m-1') : NATIVE[mc.id].replace(/dd-m-\d+/g, 'dd-m-1'),
           `${mc.id} ${JSON.stringify(mode)}`);
       }
     }
@@ -83,18 +86,22 @@ describe('php/td.php — td_dropdown element mode (v0.26.0 part 2, contract drop
   test('reservation: owned names in attrs never reach the host (case-insensitive), data-td-* blocked, aria-label lifted to the select', () => {
     const c = DROPDOWN_FIXTURES.cases.find((x) => x.id === 'd-attrs');
     const out = elementOf(c);
-    assert.equal(out, '<td-dropdown data-td-ssr="dropdown@1" id="at" label="Thuộc tính" searchable="false" allow-clear="false" data-y="2" title="Gợi ý">'
+    assert.equal(out, '<td-dropdown data-td-ssr="dropdown@1" id="at" name="at" label="Thuộc tính" searchable="false" allow-clear="false" data-y="2" title="Gợi ý">'
       + '<label class="td-field__label" for="at-select">Thuộc tính</label>'
       + '<select class="td-dropdown__native" id="at-select" name="at" aria-label="Nhãn ARIA"><option value="a" selected>A</option></select></td-dropdown>');
     // an explicit aria_label option wins over attrs aria-label; required / disabled only through the options
     const both = one('td_dropdown', ['b', { a: 'A' }, 'a', { aria_label: 'Từ tuỳ chọn', required: true, attrs: { 'aria-label': 'Từ attrs', Required: false, 'data-td-x': '1' }, element: true }]);
     assert.ok(both.includes('<select class="td-dropdown__native" id="dd-b-1-select" name="b" required aria-label="Từ tuỳ chọn">'), both);
     assert.ok(!/<td-dropdown[^>]*(required|aria-label|data-td-x)/.test(both), both);
+    // `name` is reserved: attrs can neither override nor duplicate the host name (any case)
+    const dup = one('td_dropdown', ['real', { a: 'A' }, 'a', { attrs: { name: 'evil', NAME: 'evil2' }, element: true }]);
+    assert.equal(/<td-dropdown[^>]*>/.exec(dup)[0].match(/\sname=/g).length, 1, dup);
+    assert.ok(/<td-dropdown[^>]* name="real"/.test(dup) && !dup.includes('evil'), dup);
   });
 
   test('escaping: every value is escaped (XSS case)', () => {
     const out = elementOf(DROPDOWN_FIXTURES.cases.find((x) => x.id === 'd-xss'));
-    assert.ok(out.startsWith('<td-dropdown data-td-ssr="dropdown@1" id="x&quot;y" label="&lt;img src=x onerror=alert(1)&gt;"'), out);
+    assert.ok(out.startsWith('<td-dropdown data-td-ssr="dropdown@1" id="x&quot;y" name="x&quot;s" label="&lt;img src=x onerror=alert(1)&gt;"'), out);
     assert.ok(out.includes('<select class="td-dropdown__native" id="x&quot;y-select" name="x&quot;s">'), out);
     assert.ok(out.includes('<option value="&lt;b&gt;">&lt;script&gt;alert(1)&lt;/script&gt;</option>'), out);
     assert.ok(!/<script|<img|<b>/i.test(out), out);

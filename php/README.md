@@ -6,7 +6,7 @@ One plain PHP file (PHP ≥ 8.0 — CI job `php80` runs the suite on PHP 8.0; no
 
 ```php
 require_once $kitDir . '/php/td.php';
-TdComponents\Td::configure('/assets/vendor/td-components/0.91.0', $kitDir); // versioned URL + filesystem path
+TdComponents\Td::configure('/assets/vendor/td-components/0.92.0', $kitDir); // versioned URL + filesystem path
 
 echo td_stylesheet_tag($nonce);
 echo td_import_map_tag(['dompurify' => '/assets/vendor/dompurify/purify.es.js'], $nonce); // ONE import map per page
@@ -18,6 +18,8 @@ echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
 - `td_button` / `td_link` / `td_field` / `td_checkbox` / `td_toggle` print **standalone native controls** with the
   component's DOM contract (td.css styles them; native submit + validation; no JS, no upgrade).
 - `td_dropdown` prints `<td-dropdown>` wrapping a native `<select>` — upgraded when the dropdown module loads.
+  v0.92.0: `td_dropdown`, `td_tree_select` and `td_multiselect` (element mode) print `name` on the `<td-*>` host too, so a
+  detached / cloned form finds `td-dropdown[name="x"]` before the upgrade (the JS copies the same value anyway).
 - `td_icon` prints the full `svg.td-icon` geometry; site icons via `Td::registerIcons()`; aliases from the
   `aliases` object of `src/icons/icons.json`.
 - `td_badge` prints a CSS-only `span.td-badge`; `td_alert` prints a `<td-alert>` host already containing the full

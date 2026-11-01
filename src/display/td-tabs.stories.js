@@ -9,6 +9,7 @@ export default {
     size: { control: 'select', options: ['sm', 'md'] },
     'active-tab': { control: 'text' },
     activation: { control: 'select', options: ['manual', 'auto'] },
+    layout: { control: 'select', options: ['equal', 'fit'] },
   },
 };
 
@@ -24,12 +25,13 @@ export const Default = {
       <td-tabs
         size="${escapeHtml(String(args.size || 'md'))}"
         activation="${escapeHtml(String(args.activation || 'manual'))}"
+        layout="${escapeHtml(String(args.layout || 'equal'))}"
         ${args['active-tab'] ? `active-tab="${escapeHtml(String(args['active-tab']))}"` : ''}
       ></td-tabs>
       <p class="sb-note">← → / Home / End di chuyển focus; Enter / Space chọn (activation="auto": mũi tên chọn luôn).</p>
     </div>
   `,
-  args: { size: 'md', activation: 'manual' },
+  args: { size: 'md', activation: 'manual', layout: 'equal' },
   play: async ({ canvasElement }) => {
     const el = canvasElement.querySelector('td-tabs');
     el.tabs = THREE;
@@ -82,6 +84,26 @@ export const TwoTabs = {
       { id: 'edit', label: 'Sửa' },
       { id: 'preview', label: 'Xem trước' },
     ];
+  },
+};
+
+export const FitLayout = {
+  name: 'Layout fit (v0.92.0)',
+  render: () => `
+    <div class="sb-stack">
+      <td-tabs layout="fit" aria-label="Phiếu"></td-tabs>
+      <td-tabs aria-label="Phiếu (equal)"></td-tabs>
+      <p class="sb-note">layout="fit": mỗi thẻ rộng theo chữ, rãnh xám ôm sát các thẻ ở đầu dòng (trên). Mặc định equal: các thẻ
+        chia đều cả hàng (dưới). Không đủ chỗ → cùng hàng thẻ cuộn ngang như equal.</p>
+    </div>
+  `,
+  play: async ({ canvasElement }) => {
+    for (const el of canvasElement.querySelectorAll('td-tabs')) {
+      el.tabs = [
+        { id: 'info', label: 'Thông tin phiếu' },
+        { id: 'history', label: 'Lịch sử' },
+      ];
+    }
   },
 };
 

@@ -311,8 +311,8 @@ mục **đang hiện** (sau lọc) không bị `disabled`. Chọn → thêm mọ
   `data-td-ssr="chip-input@1"`) → không đụng gì cho tới khi nó **blur**, rồi nâng cấp một lần với lựa chọn lúc đó.
 
 **PHP**: `td_multiselect('roles[]', $options, $selected, [...])` in sẵn `<select multiple>` (chạy không cần JS); chế độ
-element in `<td-chip-input data-td-ssr="chip-input@1" selection-only>` + select đó → component nâng cấp như trên. Xem
-[Adapter PHP › td_multiselect](../guides/php-adapter.md#td_multiselect-0280).
+element in `<td-chip-input data-td-ssr="chip-input@1" name="…" selection-only>` + select đó → component nâng cấp như trên. Xem
+[Adapter PHP › td_multiselect](../guides/php-adapter.md#td_multiselect-0280). Từ 0.92.0 host cũng mang `name` ngay từ server (form tách rời / clone tìm được `td-chip-input[name]` trước nâng cấp).
 
 **Dòng tạo mới trong multi-select (0.87.0).** `selection-only` không tạo chip từ chữ gõ (`allow-create` bị bỏ qua). Muốn
 có lối "thêm mục chưa có" thì đặt `create-label`: cuối danh sách có một dòng ghim đáy (luôn thấy khi cuộn), icon `+`.

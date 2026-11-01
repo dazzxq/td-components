@@ -4,6 +4,21 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.92.0
+
+Hai yêu cầu từ dsuite (01–02/11/2026). [Plan](docs/internal/plans/v0.92.0-tabs-fit-layout.md).
+
+- **Added (`td-tabs`): `layout="equal|fit"`** (owner dsuite: "hỗ trợ 2 mode là tận dụng full width của tabs hoặc adapt
+  theo width của text"). `equal` (mặc định, giá trị lạ / vắng) = hành vi cũ từng byte. `fit`: mỗi tab rộng theo chữ,
+  trough ôm sát các tab (`fit-content`, đầu dòng; căn giữa: `td-tabs[layout="fit"] > .td-tabs { margin-inline: auto }`),
+  không vừa thì trough dừng ở bề rộng host và tab cuộn ngang như cũ (`data-overflow`). Quyết định tràn ở fit đo trên
+  host. Đổi `layout` lúc chạy không render lại (focus giữ). Cả tab lẫn link mode. Class trough `td-tabs--fit`.
+  Token mới `--td-tabs-tab-px` (padding ngang tab, mặc định `12px` = giá trị cũ, cả `md` / `sm`). CSP case `td-tabs.fit`.
+- **Fix (PHP): helper in `name` lên host** — `td_dropdown`, `td_tree_select`, `td_multiselect` (element mode,
+  `<td-chip-input>`) trước chỉ in `name` trên `<select>` bên trong, JS chép lên host khi upgrade → trên form tách rời /
+  clone (template, modal chưa gắn) `form.querySelector('td-dropdown[name="x"]')` không thấy gì. Nay host có `name` ngay
+  trong markup (như `td_choice_group`); sau upgrade DOM không đổi, `FormData` không trùng. Fixture SSR cập nhật.
+
 ## 0.91.0
 
 **Hộp thoại chèn link bằng td-modal + `target` / `noreferrer` theo từng link** (owner 2026-11-01: "phải là mở modal ra để

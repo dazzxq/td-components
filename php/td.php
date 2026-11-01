@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.91.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.91.0', __DIR__ . '/public/assets/vendor/td-components/0.91.0');
+ *   require_once '/path/to/vendor/td-components/0.92.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.92.0', __DIR__ . '/public/assets/vendor/td-components/0.92.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -448,7 +448,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.91.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.92.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool, assets?: string} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -1660,6 +1660,7 @@ namespace {
         $host = [
             'id' => $id,
             'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'name' => $name !== '' ? $name : null, // v0.92.0: also on the host (a detached / cloned form finds it before upgrade)
             'label' => $label,
             'placeholder' => $placeholder,
             'searchable' => $searchable ? null : 'false',
@@ -1820,6 +1821,7 @@ namespace {
                 'data-td-ssr' => Td::SSR_CHIP_INPUT,
                 'id' => $id,
                 'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+                'name' => $name !== '' ? $name : null, // v0.92.0: host name (see td_dropdown)
                 'label' => $label,
                 'placeholder' => td__str($o['placeholder'] ?? null),
                 'selection-only' => true,
@@ -2031,6 +2033,7 @@ namespace {
             'data-td-ssr' => $element ? Td::SSR_TREE_SELECT : null,
             'id' => $id,
             'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'name' => $name !== '' ? $name : null, // v0.92.0: host name (see td_dropdown)
             'label' => $label,
             'placeholder' => $placeholder,
             'multiple' => $multiple,

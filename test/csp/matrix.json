@@ -1814,6 +1814,21 @@
       ],
       "settle": 350,
       "selectorNote": "v0.83.0: link mode — <nav> of <a class=td-tabs__tab>, the explicit current page (aria-current) + a count pill"
+    },
+    {
+      "state": "fit",
+      "setup": "const t=document.createElement('td-tabs'); t.id='probe'; t.setAttribute('layout','fit'); window.__mount.appendChild(t); t.tabs=[{id:'a',label:'One'},{id:'b',label:'Two'}];",
+      "selectors": [
+        ".td-tabs",
+        ".td-tabs__indicator",
+        ".td-tabs__tab"
+      ],
+      "excludeProps": [
+        "transform",
+        "width"
+      ],
+      "settle": 350,
+      "selectorNote": "v0.92.0: layout=fit — .td-tabs--fit trough (inline-size fit-content, max-inline-size 100%), tabs flex 0 0 auto"
     }
   ],
   "td-pagination": [

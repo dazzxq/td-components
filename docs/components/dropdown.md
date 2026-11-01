@@ -318,10 +318,10 @@ Option `value=""` **đứng đầu** (dạng "Chọn…") là **placeholder**, g
 **Vỏ SSR không xô lệch (0.26.0, hợp đồng `dropdown@1`).** Select native mặc định cao / viền / font khác trigger, nên khi
 module tải xong trang bị xô lệch. Đánh dấu host `data-td-ssr="dropdown@1"` và cho select class `td-dropdown__native`
 (đây chính là markup `td_dropdown(…, ['element' => true])` của [adapter PHP](../guides/php-adapter.md#td_dropdown-ở-chế-độ-element-vỏ-không-xô-lệch-0260)
-in ra):
+in ra; từ 0.92.0 host cũng mang `name` ngay từ server, nên form tách rời / clone từ `<template>` tìm được `td-dropdown[name]` trước nâng cấp):
 
 ```html
-<td-dropdown data-td-ssr="dropdown@1" id="city" label="Thành phố" searchable="false" allow-clear="false">
+<td-dropdown data-td-ssr="dropdown@1" id="city" name="city" label="Thành phố" searchable="false" allow-clear="false">
   <label class="td-field__label" for="city-select">Thành phố</label>
   <select class="td-dropdown__native" id="city-select" name="city">…</select>
 </td-dropdown>

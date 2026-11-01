@@ -2185,7 +2185,8 @@
     "--td-badge-success-glass-fg": {"light": "rgb(20, 83, 45)", "dark": "rgb(220, 252, 231)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-success-glass-fg"},
     "--td-badge-warning-glass-fg": {"light": "rgb(124, 45, 18)", "dark": "rgb(255, 237, 213)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-warning-glass-fg"},
     "--td-choice-tile-icon": {"light": "1.75rem", "dark": "1.75rem", "why": "v0.87.0 td-choice-group variant=tiles: icon size"},
-    "--td-choice-tile-min": {"light": "5.5rem", "dark": "5.5rem", "why": "v0.87.0 td-choice-group variant=tiles: minimum tile edge"}
+    "--td-choice-tile-min": {"light": "5.5rem", "dark": "5.5rem", "why": "v0.87.0 td-choice-group variant=tiles: minimum tile edge"},
+    "--td-tabs-tab-px": {"light": "12px", "dark": "12px", "why": "v0.92.0 td-tabs: inline padding of a tab (both sizes, both layouts; = the previous fixed 12px)"}
   },
   "lightDeltas": {
     "--td-table-check-border": {

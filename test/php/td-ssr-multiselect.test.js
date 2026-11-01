@@ -69,17 +69,17 @@ describe('php/td.php — td_multiselect (v0.28.0)', opts, () => {
 
   test('element mode: <td-chip-input data-td-ssr="chip-input@1" selection-only> + label + select.td-chip-input__native', () => {
     assert.equal(one('td_multiselect', ['roles[]', ROLES, ['editor'], { element: true, label: 'Vai trò', id: 'roles' }]),
-      '<td-chip-input data-td-ssr="chip-input@1" id="roles" label="Vai trò" selection-only>'
+      '<td-chip-input data-td-ssr="chip-input@1" id="roles" name="roles[]" label="Vai trò" selection-only>'
       + '<label class="td-field__label" for="roles-select">Vai trò</label>'
       + `<select class="td-chip-input__native" id="roles-select" name="roles[]" multiple size="4">${ROLE_OPTS(['editor'])}</select></td-chip-input>`);
     assert.equal(one('td_multiselect', ['t[]', { a: 'A' }, [], { element: true, id: 't', class: 'k', placeholder: 'Tìm…', select_all: true,
       max_items: 3, close_on_select: true, required: true, disabled: true, aria_label: 'Thẻ', size: 2 }]),
-    '<td-chip-input data-td-ssr="chip-input@1" id="t" class="k" placeholder="Tìm…" selection-only select-all max-items="3" close-on-select>'
+    '<td-chip-input data-td-ssr="chip-input@1" id="t" class="k" name="t[]" placeholder="Tìm…" selection-only select-all max-items="3" close-on-select>'
       + '<select class="td-chip-input__native" id="t-select" name="t[]" multiple size="2" required disabled aria-label="Thẻ">'
       + '<option value="a">A</option></select></td-chip-input>');
     // generated host id
     assert.ok(one('td_multiselect', ['roles[]', ROLES, [], { element: true }])
-      .startsWith('<td-chip-input data-td-ssr="chip-input@1" id="td-roles-1" selection-only><select class="td-chip-input__native" id="td-roles-1-select"'));
+      .startsWith('<td-chip-input data-td-ssr="chip-input@1" id="td-roles-1" name="roles[]" selection-only><select class="td-chip-input__native" id="td-roles-1-select"'));
   });
 
   test('mode: global ssr_elements off/on × per call absent/false/true', () => {
@@ -95,9 +95,9 @@ describe('php/td.php — td_multiselect (v0.28.0)', opts, () => {
     const c = MULTISELECT_FIXTURES.cases.find((x) => x.id === 'm-attrs');
     const out = one('td_multiselect', [...c.args.slice(0, 3), { ...c.args[3], element: true }]);
     const host = /<td-chip-input[^>]*>/.exec(out)[0];
-    assert.equal(host, '<td-chip-input data-td-ssr="chip-input@1" id="m-attrs" class="a b" selection-only data-x="1" title="Gợi ý">');
+    assert.equal(host, '<td-chip-input data-td-ssr="chip-input@1" id="m-attrs" class="a b" name="p[]" selection-only data-x="1" title="Gợi ý">');
     for (const bad of c.dropped) assert.ok(!out.includes(bad), bad);
-    assert.equal((out.match(/\sname=/g) || []).length, 1);
+    assert.equal((out.match(/\sname=/g) || []).length, 2, 'host + select, never a third (attrs Name dropped)');
     assert.ok(!/\svalue="\[/.test(out), out);
     // native mode: attrs on the wrapper, id / class owned
     const nat = one('td_multiselect', ['p[]', { a: 'A' }, [], { id: 'p', attrs: { id: 'evil', 'data-y': '2', onclick: 'x()' } }]);

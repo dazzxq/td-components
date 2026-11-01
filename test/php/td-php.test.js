@@ -275,11 +275,12 @@ describe('php/td.php', opts, () => {
 
   test('td_dropdown: host + native select (E2 contract)', () => {
     const html = php1('td_dropdown', 'city', { hn: 'Hà Nội', sg: 'Sài Gòn', 7: 'Bảy' }, 7, { label: 'TP', id: 'c' });
-    assert.match(html, /^<td-dropdown id="c" label="TP" searchable="false" allow-clear="false"><label class="td-field__label" for="c-select">TP<\/label><select id="c-select" name="city">/);
+    assert.match(html, /^<td-dropdown id="c" name="city" label="TP" searchable="false" allow-clear="false"><label class="td-field__label" for="c-select">TP<\/label><select id="c-select" name="city">/);
     assert.match(html, /<option value="7" selected>Bảy<\/option>/);
     assert.match(html, /<\/select><\/td-dropdown>$/);
     assert.equal((html.match(/ selected/g) || []).length, 1);
-    assert.ok(!/<td-dropdown[^>]* (name|value|required)=/.test(html), 'name/value/required live on the select only');
+    assert.ok(!/<td-dropdown[^>]* (value|required)=/.test(html), 'value/required live on the select only');
+    assert.equal((html.match(/ name="city"/g) || []).length, 2, 'v0.92.0: name on the host AND on the select');
     const ph = php1('td_dropdown', 'x', { a: 'A' }, '', { placeholder: 'Chọn', required: true });
     assert.match(ph, /<select id="dd-x-1-select" name="x" required><option value="">Chọn<\/option><option value="a">A<\/option>/);
     assert.ok(!ph.includes(' allow-clear='), 'placeholder = clearable');
@@ -291,7 +292,7 @@ describe('php/td.php', opts, () => {
 
   test('td_dropdown create_label → create-label on the host, escaped (v0.22.0)', () => {
     const html = php1('td_dropdown', 'film', { k: 'Kodak' }, '', { id: 'f', create_label: 'Thêm film mới' });
-    assert.match(html, /^<td-dropdown id="f" searchable="false" allow-clear="false" create-label="Thêm film mới"><select id="f-select" name="film">/);
+    assert.match(html, /^<td-dropdown id="f" name="film" searchable="false" allow-clear="false" create-label="Thêm film mới"><select id="f-select" name="film">/);
     const P = '"><img src=x onerror=alert(1)>\'';
     const evil = php1('td_dropdown', 'film', { k: 'Kodak' }, '', { id: 'f', create_label: P });
     assert.ok(evil.includes(' create-label="&quot;&gt;&lt;img src=x onerror=alert(1)&gt;&#039;"'), evil);
