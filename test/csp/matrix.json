@@ -7663,6 +7663,33 @@
         ".td-rich-text__editor a"
       ],
       "settle": 300
+    },
+    {
+      "state": "link-dialog",
+      "setup": "const r=document.createElement('td-rich-text'); r.setAttribute('label','Bình luận'); r.setAttribute('link-target','_blank'); r.value='<p>Xem quy định</p>'; window.__mount.appendChild(r); r.querySelector('.td-rich-text__tool[data-feature=\"link\"]').click(); for (let i=0; i<200 && !document.querySelector('.td-rich-text-link__url'); i++) await new Promise((res)=>setTimeout(res,10));",
+      "selectors": [
+        ".td-rich-text-link",
+        ".td-rich-text-link .td-field",
+        ".td-rich-text-link .td-field__label",
+        ".td-rich-text-link__url",
+        ".td-rich-text-link__text",
+        ".td-rich-text-link__check",
+        ".td-rich-text-link__check .td-checkbox__input",
+        ".td-rich-text-link__check .td-checkbox__mark",
+        ".td-rich-text-link__check .td-checkbox__label"
+      ],
+      "portal": [
+        ".td-rich-text-link",
+        ".td-rich-text-link .td-field",
+        ".td-rich-text-link .td-field__label",
+        ".td-rich-text-link__url",
+        ".td-rich-text-link__text",
+        ".td-rich-text-link__check",
+        ".td-rich-text-link__check .td-checkbox__input",
+        ".td-rich-text-link__check .td-checkbox__mark",
+        ".td-rich-text-link__check .td-checkbox__label"
+      ],
+      "settle": 400
     }
   ]
 }

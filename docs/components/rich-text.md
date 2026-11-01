@@ -67,20 +67,29 @@ Form gửi `body=<p>Xin <strong>chào</strong></p>`. `required` + rỗng → for
 <td-rich-text link-target="_blank" allow-http></td-rich-text>
 ```
 
-- Nút liên kết hoặc **Ctrl/⌘ + K** mở hộp nhập địa chỉ ngay dưới toolbar.
-  - Có vùng chọn → gắn liên kết cho vùng chọn.
-  - Con trỏ trong một liên kết → sửa **cả** liên kết đó (ô nhập điền sẵn địa chỉ cũ); nút "Gỡ liên kết" bỏ liên kết.
-  - Con trỏ ngoài liên kết, không chọn gì → chèn chính địa chỉ đó thành chữ có liên kết.
-  - Địa chỉ không hợp lệ → báo "Địa chỉ không hợp lệ" trong hộp, hộp không đóng.
-  - Enter = Áp dụng, Esc / Huỷ = đóng không đổi gì. Mọi cách đóng đều trả focus + vùng chọn về ô soạn.
+- Nút liên kết hoặc **Ctrl/⌘ + K** mở hộp thoại liên kết (0.91.0: một [`td-modal`](modal.md) nằm trên mọi lớp, kể cả
+  khi ô soạn ở trong drawer / modal khác; `td-modal` chỉ được tải lúc mở lần đầu). Hộp có: ô **Địa chỉ liên kết**, ô
+  **Văn bản hiển thị**, ô tick **Mở trong tab mới** và **Không gửi thông tin trang nguồn (noreferrer)**; nút
+  **Áp dụng** / **Gỡ liên kết** (chỉ khi sửa) / **Huỷ**.
+  - Con trỏ trong một liên kết, hoặc vùng chọn chạm vào một liên kết → hộp **"Sửa liên kết"** cho **cả** liên kết đó:
+    điền sẵn địa chỉ, chữ và hai ô tick của nó; "Gỡ liên kết" bỏ liên kết.
+  - Có vùng chọn (không chạm liên kết) → ô văn bản điền sẵn chữ đang chọn; giữ nguyên chữ thì chỉ gắn liên kết (giữ
+    định dạng bên trong), đổi chữ thì thay vùng chọn bằng chữ mới.
+  - Không chọn gì → chèn ô văn bản thành chữ có liên kết (để trống → chèn chính địa chỉ).
+  - Một lần Áp dụng = **một** bước undo. Con trỏ đứng ngay sau liên kết.
+  - Địa chỉ không hợp lệ → báo "Địa chỉ không hợp lệ" dưới ô địa chỉ, hộp không đóng.
+  - Enter trong ô địa chỉ / ô văn bản = Áp dụng (không submit form bao ngoài), Esc / Huỷ = đóng không đổi gì. Mọi cách
+    đóng đều trả focus + vùng chọn về ô soạn.
+  - `disabled` / `readonly` / ghi `value` / gỡ khỏi DOM khi hộp đang mở → hộp đóng, không áp dụng gì.
 - Địa chỉ nhận: `https:`, `mailto:`, `tel:`, đường dẫn tương đối (`/a`, `a/b`, `?q`), `#đoạn`; `http:` chỉ khi có
   `allow-http`. Bị bỏ: `javascript:`, `data:`, `vbscript:`, `//host` (rời site), ký tự điều khiển…
 - `target` và `noreferrer` theo **từng liên kết** (0.91.0): liên kết giữ `target="_blank"` khi đầu vào có đúng
   `_blank` (`_self`, `_top`, rỗng, `_BLANK`… bị bỏ); có token `noreferrer` trong `rel` (không phân biệt hoa thường) thì
   thêm `noreferrer`. Mọi liên kết luôn có `rel="nofollow noopener"`, các token `rel` khác bị bỏ. Thứ tự attribute khi
   xuất: `href`, `rel`, `target`. HTML đã lưu từ bản cũ (có `target="_blank"`) đọc lại ra y hệt, không cần migrate.
-- `link-target` chỉ là **mặc định cho liên kết mới**: `_blank` → liên kết mới mở tab mới; `none` (mặc định) / `_self` →
-  không `target`. Sửa địa chỉ một liên kết có sẵn giữ nguyên `target` / `noreferrer` của nó.
+- `link-target` chỉ là **mặc định cho liên kết mới**: `_blank` → ô "Mở trong tab mới" tick sẵn; `none` (mặc định) /
+  `_self` → không tick. Ô noreferrer luôn bỏ tick cho liên kết mới. Sửa một liên kết có sẵn: hai ô tick lấy theo chính
+  liên kết đó, không theo `link-target`.
 
 ### 4. Khoá, chỉ đọc, lỗi, gợi ý
 
@@ -139,7 +148,9 @@ Object.assign(TdRichText.labels, { bold: 'Bold', link: 'Link', apply: 'Apply' })
 | Key | Mặc định |
 |---|---|
 | `bold` / `italic` / `underline` / `strike` / `link` | Đậm / Nghiêng / Gạch chân / Gạch ngang / Liên kết |
-| `linkUrl` | Địa chỉ liên kết |
+| `linkTitle` / `linkEditTitle` | Chèn liên kết / Sửa liên kết (tiêu đề hộp thoại) |
+| `linkUrl` / `linkText` | Địa chỉ liên kết / Văn bản hiển thị |
+| `newTab` / `noReferrer` | Mở trong tab mới / Không gửi thông tin trang nguồn (noreferrer) |
 | `apply` / `remove` / `cancel` | Áp dụng / Gỡ liên kết / Huỷ |
 | `invalidUrl` | Địa chỉ không hợp lệ |
 | `toolbar` | Định dạng (tên của toolbar) |
@@ -151,9 +162,9 @@ Object.assign(TdRichText.labels, { bold: 'Bold', link: 'Link', apply: 'Apply' })
 | Event | Khi nào | `detail` |
 |---|---|---|
 | `input` | Mỗi lần người dùng đổi nội dung (gõ, dán, định dạng, liên kết, undo) — bubbles, composed | `{ value }` |
-| `change` | Khi rời **cả component** (focus ra ngoài host) mà giá trị khác lúc vào. Chuyển qua lại ô soạn ↔ toolbar ↔ hộp liên kết **không** tính | `{ value }` |
+| `change` | Khi rời **cả component** (focus ra ngoài host) mà giá trị khác lúc vào. Chuyển qua lại ô soạn ↔ toolbar ↔ hộp thoại liên kết **không** tính; rời hẳn sau khi đóng hộp mới phát (một lần) | `{ value }` |
 
-Event `input` gốc của vùng `contenteditable` / ô địa chỉ không lọt ra ngoài — trang chỉ nhận một event của host.
+Event `input` gốc của vùng `contenteditable` không lọt ra ngoài — trang chỉ nhận một event của host.
 Ghi `value` bằng code không phát event.
 
 ## Form
@@ -199,18 +210,18 @@ Ghi `value` bằng code không phát event.
 |---|---|
 | Ctrl/⌘ + B / I / U | Đậm / nghiêng / gạch chân |
 | Ctrl/⌘ + Shift + X | Gạch ngang |
-| Ctrl/⌘ + K | Mở hộp liên kết |
+| Ctrl/⌘ + K | Mở hộp thoại liên kết |
 | Enter / Shift + Enter | Đoạn mới / xuống dòng trong đoạn (`<br>`) |
 | Ctrl/⌘ + Z / Ctrl/⌘ + Shift + Z (hoặc Ctrl/⌘ + Y) | Hoàn tác / làm lại |
 | ← / → / Home / End (trên toolbar) | Di chuyển giữa các nút (roving tabindex — toolbar là **một** điểm Tab) |
 | Tab (từ toolbar) | Vào ô soạn |
-| Enter / Esc (trong hộp liên kết) | Áp dụng / huỷ |
+| Enter (ô địa chỉ / văn bản) / Esc (trong hộp thoại liên kết) | Áp dụng / huỷ |
 
 - Ô soạn: `role="textbox"`, `aria-multiline="true"`, `aria-labelledby` (nhãn), `aria-required`, `aria-readonly`,
   `aria-invalid` + `aria-describedby` (gợi ý / lỗi), `aria-placeholder`.
 - Nút toolbar: `aria-pressed` theo định dạng ở vị trí con trỏ / vùng chọn, `aria-label` = `labels.*`. Nút liên kết thêm
-  `aria-haspopup="dialog"` + `aria-expanded`. Hộp liên kết: `role="dialog"` (không modal), ô địa chỉ có nhãn, lỗi qua
-  `aria-invalid` + `aria-describedby`.
+  `aria-haspopup="dialog"` + `aria-expanded`. Hộp thoại liên kết: `td-modal` (`role="dialog"`, `aria-modal="true"`,
+  focus bị giữ trong hộp), mọi ô có nhãn, lỗi địa chỉ qua `aria-invalid` + `aria-describedby`.
 
 ## Cấu trúc DOM & class
 
@@ -222,7 +233,6 @@ Ghi `value` bằng code không phát event.
       <button type="button" class="td-btn td-btn--action td-btn--action-sm td-rich-text__tool" data-feature="bold" aria-pressed="false" aria-label="Đậm">…</button>
       …
     </div>
-    <div class="td-rich-text__link" role="dialog" hidden> ô địa chỉ + Áp dụng / Gỡ liên kết / Huỷ </div>
     <div class="td-rich-text__editor ProseMirror" role="textbox" contenteditable="true" [data-empty] [data-placeholder]>
       <p>…</p>
     </div>
@@ -234,6 +244,11 @@ Ghi `value` bằng code không phát event.
 
 Node `.td-rich-text__editor` **bền**: đổi nhãn / required / disabled / gợi ý / lỗi không dựng lại nó (giữ vùng chọn và
 undo). Gỡ khỏi DOM rồi gắn lại giữ nguyên giá trị.
+
+Hộp thoại liên kết (0.91.0) không nằm trong host: thân `td-modal` (trên `<body>`) là `<div class="td-rich-text-link">`
+gồm hai `.td-field` (`.td-rich-text-link__url`, `.td-rich-text-link__text`, lỗi `.td-field-error`) và hai
+[checkbox](checkbox.md) `.td-checkbox.td-rich-text-link__check`. Các ô không có `name` (không vào form). Hộp liên kết cũ
+trong host (`.td-rich-text__link*`) đã bỏ.
 
 ## Tuỳ biến giao diện
 

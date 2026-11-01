@@ -4,6 +4,33 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.91.0
+
+**Hộp thoại chèn link bằng td-modal + `target` / `noreferrer` theo từng link** (owner 2026-11-01: "phải là mở modal ra để
+chèn link… xử lý open new tab hay không, thêm cả no referer"), và **dải thanh cuộn sáng khi mở overlay** (dsuite báo).
+[Plan](docs/internal/plans/v0.91.0-link-modal-gutter.md), [ADR 0038](docs/internal/decisions/0038-rich-text-per-link-target-rel.md).
+
+### Cho site đang dùng `td-rich-text` (đọc trước khi nâng)
+
+1. **Policy file đổi gì** (`src/form/rich-text/rich-text-policy.json`, `version` vẫn `1`):
+   `features.link.attrs.a`: `["href"]` → `["href","rel","target"]`; `link.targets`: `["_self","_blank"]` (giá trị hợp lệ của `link-target`) → `["_blank"]` (target duy nhất một link được giữ);
+   thêm `link.relOptional = ["noreferrer"]`; `link.rel` vẫn `"nofollow noopener"`. Hợp đồng: mỗi `<a>` ra
+   `href`, `rel="nofollow noopener"` (+ ` noreferrer` nếu link đó chọn), `target="_blank"` chỉ khi link đó chọn tab mới.
+   PHP: dùng `RichTextPolicy::sanitize($html, $policy, $features, $allowHttp)` để có hợp đồng per-link (cùng output với
+   client). `symfonyConfig(..., $linkTarget)` **vẫn chạy, output y như 0.88–0.90** (ép rel + target theo ô, bỏ
+   `noreferrer`); nâng JS + `php/td-rich-text-policy.php` cùng lúc.
+2. **HTML đã lưu không cần migrate.** Link `target="_blank"` cũ đi vòng nguyên vẹn (client và `sanitize()`); `_self`
+   bị bỏ (trùng mặc định trình duyệt). Thay đổi hành vi duy nhất: `target="_blank"` đầu vào (kể cả HTML dán) nay được
+   giữ theo từng link thay vì bị thay bằng `link-target` của ô.
+3. **Nhãn mới / event:** thêm `TdRichText.labels.linkTitle` ("Chèn liên kết"), `linkEditTitle` ("Sửa liên kết"),
+   `linkText` ("Văn bản hiển thị"), `newTab` ("Mở trong tab mới"), `noReferrer` ("Không gửi thông tin trang nguồn
+   (noreferrer)"); có mặc định tiếng Việt, ghi đè như nhãn cũ. **Không có event mới**, không attribute mới;
+   `link-target` giờ chỉ là giá trị tick sẵn của "Mở trong tab mới" cho link mới (đổi lúc chạy không còn xoá undo).
+   Gutter: zero-config, không có gì phải nối.
+
+### Thay đổi
+
+- **td-rich-text: hộp thoại link = `TdModal`** (import động khi mở): URL, văn bản hiển thị, "Mở trong tab mới", "noreferrer", Áp dụng / Gỡ liên kết (chỉ khi sửa) / Huỷ; chọn chồng lên link sẵn có = sửa cả link đó; áp dụng là một bước undo; Enter = Áp dụng (không submit form); vào modal không phát `change` sớm, `change` phát một lần ở blur thật; disabled / readonly / đổi `value` / gỡ khỏi trang khi đang mở hoặc đang tải → đóng / huỷ, không đụng nội dung. Panel inline `.td-rich-text__link*` bị bỏ (nút link giữ `aria-haspopup="dialog"`, `aria-expanded`). CSP case mới `td-rich-text.link-dialog`.
 - **Changed (td-rich-text link contract)**: each link keeps its own `target` (only `_blank` survives) and `noreferrer` (a `rel` token); `rel` is always `nofollow noopener` plus ` noreferrer` when chosen, attribute order href, rel, target. Before, the incoming `target` (also when pasting) was always replaced by the field's `link-target`; now an incoming `target="_blank"` is kept per link. Stored HTML needs no migration (links with `target="_blank"` round-trip unchanged; `_self` is dropped, same as browser default). `link-target` is now only the default for new links and no longer rebuilds the schema / clears undo when changed. Policy JSON (version 1): `features.link.attrs.a = ["href","rel","target"]`, `link.targets = ["_blank"]`, new `link.relOptional = ["noreferrer"]`; `policyFor()` returns `targets` + `relOptional` (no `linkTarget`).
 - PHP: new `RichTextPolicy::sanitize($html, $policy, $features, $allowHttp = false)` — per-link contract, same output as the client for the shared fixtures. `symfonyConfig()` keeps its v0.88.0 output (href-only allowlist, rel + target forced from `$linkTarget`); a site that wants per-link new tab / noreferrer must switch to `sanitize()`.
 - Fix: the reserved scrollbar strip (classic scrollbars) no longer stays light while `td-modal`, `td-drawer`, `td-loading` or `td-lightbox` holds the scroll lock. `<html>` is painted with the topmost overlay scrim composited over the page background (one colour lease per overlay, any CSS colour incl. `oklch()` / `display-p3` normalised through a 1×1 canvas), and the previous inline `background-color` comes back exactly on the last release. Zero-config; only when a strip was reserved before the lock; instant (no fade). New `holdGutterColor(scrimEl)` in `utils/scroll-lock.js`.

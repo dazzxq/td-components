@@ -23601,13 +23601,15 @@
 /*
  * td-rich-text (src/form/td-rich-text.js) — v0.88.0, plan v0.88.0-rich-text lane C. Minimal surfaces (ADR 0011): the
  * editor is a field (same fill, border, radius, focus ring as td-input-field); the toolbar above it is a row of ghost
- * action buttons (no surface of its own); the link dialog is an inline panel between them (no shadow, no blur).
+ * action buttons (no surface of its own). The link dialog (v0.91.0) is a td-modal whose body is `.td-rich-text-link`:
+ * kit field markup (.td-field, .td-field__control — touch font size from field.css) and native .td-checkbox ticks.
  * Toolbar buttons reuse .td-btn.td-btn--action (hover gate + pressed state + coarse-pointer size live there); a tool
  * whose mark is active ([aria-pressed="true"]) gets the "on" fill.
  * The editor node is the ProseMirror root (`.td-rich-text__editor.ProseMirror`, contenteditable); the rules from
  * prosemirror-view's prosemirror.css that it needs are scoped below. Placeholder: `::before` of the editor while the
  * document is empty ([data-empty], set by the view) — never text in the document, never an inline style.
- * State: [aria-pressed] on a tool · [aria-disabled] / [aria-readonly] / [aria-invalid] on the editor · [hidden].
+ * State: [aria-pressed] on a tool · [aria-disabled] / [aria-readonly] / [aria-invalid] on the editor · [hidden] on the
+ * label / toolbar / the dialog's URL error.
  */
 @layer td.tokens {
 	:root {
@@ -23636,8 +23638,7 @@
 
 	.td-rich-text > .td-field__label[hidden],
 	.td-rich-text__toolbar[hidden],
-	.td-rich-text__link[hidden],
-	.td-rich-text__link-error[hidden] {
+	.td-rich-text-link .td-field-error[hidden] {
 		display: none;
 	}
 
@@ -23768,33 +23769,22 @@
 		margin: 0 !important;
 	}
 
-	/* --- link dialog (inline panel) --- */
+	/* --- link dialog body (inside td-modal, portaled to <body>) --- */
 
-	.td-rich-text__link {
+	.td-rich-text-link {
 		display: flex;
-		flex-wrap: wrap;
-		gap: var(--td-space-xs);
-		align-items: flex-end;
-		padding: var(--td-space-xs) 0;
-		margin-block-end: var(--td-space-2xs);
+		flex-direction: column;
+		gap: var(--td-space-sm);
+		align-items: stretch;
 	}
 
-	.td-rich-text__link-field {
-		flex: 1 1 14rem;
-		inline-size: auto;
-	}
-
-	.td-rich-text__link-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--td-space-2xs);
-		align-items: center;
+	.td-rich-text-link__check {
+		align-self: flex-start; /* the whole row is the label: no hit area beyond the text */
 	}
 
 	@media (pointer: coarse) {
 		/* a phone keyboard must not zoom the page into the editor (≥ 16px) */
-		.td-rich-text__editor,
-		.td-rich-text__link-input {
+		.td-rich-text__editor {
 			font-size: max(1rem, 1em);
 		}
 	}

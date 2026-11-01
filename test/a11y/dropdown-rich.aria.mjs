@@ -254,14 +254,20 @@ try {
     failures.push(`rich-text: aria ${JSON.stringify(rtAria)}`);
   }
   await page.locator('#rt .td-rich-text__tool[data-feature="link"]').click();
-  await page.waitForFunction(() => !document.querySelector('#rt .td-rich-text__link').hidden);
-  const dlg = (await page.locator('#rt .td-rich-text__link').ariaSnapshot()).trim();
-  for (const re of [/^- dialog "Địa chỉ liên kết"/, /textbox "Địa chỉ liên kết"/, /button "Áp dụng"/, /button "Gỡ liên kết" \[disabled\]/, /button "Huỷ"/]) {
+  // v0.91.0: the link dialog is a TdModal on <body> (modal dialog, URL / text fields, two checkboxes; no Gỡ for a new link)
+  await page.waitForFunction(() => document.activeElement?.classList.contains('td-rich-text-link__url'));
+  const dlg = (await page.locator('.td-modal:not([data-state="closing"]) [role="dialog"]').ariaSnapshot()).trim();
+  for (const re of [/^- dialog "Chèn liên kết"/, /textbox "Địa chỉ liên kết"/, /textbox "Văn bản hiển thị"/, /checkbox "Mở trong tab mới"/,
+    /checkbox "Không gửi thông tin trang nguồn \(noreferrer\)"/, /button "Áp dụng"/, /button "Huỷ"/]) {
     if (!re.test(dlg)) failures.push(`rich-text link dialog: expected ${re} in:\n${dlg}`);
   }
+  if (/Gỡ liên kết/.test(dlg)) failures.push(`rich-text link dialog: "Gỡ liên kết" shown for a new link:\n${dlg}`);
   const expanded = await page.evaluate(() => [document.querySelector('#rt .td-rich-text__tool[data-feature="link"]').getAttribute('aria-expanded'),
-    document.activeElement?.classList.contains('td-rich-text__link-input')]);
-  if (JSON.stringify(expanded) !== '["true",true]') failures.push(`rich-text link dialog: aria-expanded / focus ${JSON.stringify(expanded)}`);
+    document.querySelector('.td-modal:not([data-state="closing"]) [role="dialog"]')?.getAttribute('aria-modal')]);
+  if (JSON.stringify(expanded) !== '["true","true"]') failures.push(`rich-text link dialog: aria-expanded / aria-modal ${JSON.stringify(expanded)}`);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => document.activeElement?.classList.contains('td-rich-text__editor')
+    && document.querySelector('#rt .td-rich-text__tool[data-feature="link"]').getAttribute('aria-expanded') === 'false');
   if (errors.length) failures.push(`page errors: ${errors.join(' | ')}`);
   await context.close();
 } finally {
@@ -274,4 +280,4 @@ if (failures.length) {
 console.log('dropdown-rich aria: OK (listbox > group > option names, disabled / selected, create row last; trigger name;'
   + ' action mode: combobox name, aria-describedby → meta, polite live region "Đã chọn …"; load: status "Đang tải…" + aria-busy, failed status + button "Thử lại", retry; tiles: radios named'
   + ' by label, hint described; chip-input create row = last option;'
-  + ' rich-text: toolbar + named buttons, aria-pressed, multiline textbox named by the label, link dialog)');
+  + ' rich-text: toolbar + named buttons, aria-pressed, multiline textbox named by the label, link dialog = modal with fields + checkboxes)');

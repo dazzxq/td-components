@@ -29,10 +29,13 @@ const LABEL_KEY = { bold: 'bold', italic: 'italic', underline: 'underline', stri
  *     <div class="td-rich-text__toolbar" role="toolbar" aria-label="Định dạng">
  *       <button type="button" class="td-btn td-btn--action td-btn--action-sm td-rich-text__tool" data-feature aria-pressed>…
  *     </div>
- *     <div class="td-rich-text__link" role="dialog" hidden> URL field + Áp dụng / Gỡ liên kết / Huỷ </div>
  *     <div class="td-rich-text__editor" role="textbox" aria-multiline="true" contenteditable> … </div> (+ the view's own class)
  *     [helper note] [error note]
  *   </div>
+ *
+ * Link dialog (v0.91.0, plan v0.91.0-link-modal-gutter § C): a `TdModal` (imported on first use, so the `/rich-text` subpath
+ * stays light) holding `div.td-rich-text-link` = URL + display text fields and two native `.td-checkbox` ticks (new tab,
+ * noreferrer); actions Gỡ liên kết (editing only) / Huỷ / Áp dụng. Moving focus into it is not a blur of the field.
  *
  * Lifecycle (plan "Vòng đời"): the shell and the editor node are built ONCE; every later render only syncs in place
  * (label, aria, editable, toolbar). A change of preset / features / allow-http rebuilds the schema and the
@@ -72,6 +75,11 @@ export class TdRichText extends TdFormElement {
     cancel: 'Huỷ',
     invalidUrl: 'Địa chỉ không hợp lệ',
     toolbar: 'Định dạng',
+    linkTitle: 'Chèn liên kết',
+    linkEditTitle: 'Sửa liên kết',
+    linkText: 'Văn bản hiển thị',
+    newTab: 'Mở trong tab mới',
+    noReferrer: 'Không gửi thông tin trang nguồn (noreferrer)',
   };
 
   /** Validation texts (Vietnamese); override per site. */
@@ -113,8 +121,17 @@ export class TdRichText extends TdFormElement {
     this._toolIndex = 0;
     /** @private @type {Set<string>} unknown feature tokens already warned about */
     this._warned = new Set();
-    /** @private @type {{from: number, to: number}|null} selection saved when the link dialog opened */
+    /** @private @type {{from: number, to: number, sel: object, doc: object, marks: object[]|null, gen: number}|null}
+     * selection saved when the link dialog opened */
     this._linkRange = null;
+    /** @private @type {null|'loading'|'open'} link dialog state: idle → loading (td-modal import) → open → idle */
+    this._linkDialog = null;
+    /** @private generation of the link dialog: bumped on every open and every cancel; stale continuations do nothing */
+    this._linkGen = 0;
+    /** @private @type {string|null} id of the open TdModal */
+    this._linkModalId = null;
+    /** @private @type {any} the TdModal class once loaded */
+    this._linkModal = null;
     this._bound = false;
     this._root = null;
   }
@@ -185,8 +202,8 @@ export class TdRichText extends TdFormElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._bound = false;
+    this._cancelLinkDialog();
     this._valueAtFocus = null;
-    this._hideLink();
     if (this._view) {
       this._state = this._view.state;
       this._view.destroy();
@@ -212,53 +229,14 @@ export class TdRichText extends TdFormElement {
     const toolbar = el('div', 'td-rich-text__toolbar');
     toolbar.setAttribute('role', 'toolbar');
 
-    const panel = el('div', 'td-rich-text__link');
-    panel.id = `${this.id}-link`;
-    panel.setAttribute('role', 'dialog');
-    panel.hidden = true;
-    const field = el('div', 'td-field td-field--sm td-rich-text__link-field');
-    const urlLabel = el('label', 'td-field__label');
-    const url = el('input', 'td-field__control td-rich-text__link-input');
-    url.type = 'text';
-    url.id = `${this.id}-link-url`;
-    url.setAttribute('inputmode', 'url');
-    url.setAttribute('autocomplete', 'off');
-    url.setAttribute('spellcheck', 'false');
-    urlLabel.htmlFor = url.id;
-    urlLabel.id = `${this.id}-link-label`;
-    panel.setAttribute('aria-labelledby', urlLabel.id);
-    const urlError = el('span', 'td-field-error td-rich-text__link-error');
-    urlError.id = `${this.id}-link-error`;
-    urlError.hidden = true;
-    field.append(urlLabel, url, urlError);
-    const actions = el('div', 'td-rich-text__link-actions');
-    const btn = (variant, action) => {
-      const b = el('button', `td-btn td-btn--${variant} td-btn--sm`);
-      b.type = 'button';
-      b.dataset.action = action;
-      return b;
-    };
-    const apply = btn('primary', 'apply');
-    const remove = btn('ghost', 'remove');
-    const cancel = btn('secondary', 'cancel');
-    actions.append(apply, remove, cancel);
-    panel.append(field, actions);
-
     const editor = el('div', 'td-rich-text__editor');
     editor.id = `${this.id}-editor`;
-    root.append(label, toolbar, panel, editor);
+    root.append(label, toolbar, editor);
     this.replaceChildren(root);
     this._root = root;
     this._label = label;
     this._labelText = labelText;
     this._toolbar = toolbar;
-    this._panel = panel;
-    this._urlLabel = urlLabel;
-    this._url = url;
-    this._urlError = urlError;
-    this._applyBtn = apply;
-    this._removeBtn = remove;
-    this._cancelBtn = cancel;
     this._editor = editor;
   }
 
@@ -293,7 +271,7 @@ export class TdRichText extends TdFormElement {
 
   /** @private New schema + state from `html` (history cleared); the view (if any) keeps its node. */
   _rebuild(html) {
-    this._hideLink();
+    this._cancelLinkDialog();
     this._schema = this._buildSchema(true);
     this._key = this._configKey();
     this._setState(this._newState(parseHtml(PM, this._schema, html)));
@@ -318,7 +296,7 @@ export class TdRichText extends TdFormElement {
 
   /** @private Programmatic value: parse + sanitize, new history, no event. */
   _replaceDoc(html) {
-    this._hideLink();
+    this._cancelLinkDialog();
     this._setState(this._newState(parseHtml(PM, this._schema, html)));
     if (this._valueAtFocus != null) this._valueAtFocus = this._html;
     if (this._initialized) {
@@ -423,15 +401,11 @@ export class TdRichText extends TdFormElement {
       this._editable = editable;
       this._view.setProps({ editable: () => this._canEdit() });
     }
-    if (!editable) this._hideLink();
+    if (!editable) this._cancelLinkDialog();
 
     const labels = this.constructor.labels;
     this._toolbar.setAttribute('aria-label', labels.toolbar);
     this._toolbar.setAttribute('aria-controls', ed.id);
-    this._urlLabel.textContent = labels.linkUrl;
-    this._applyBtn.textContent = labels.apply;
-    this._removeBtn.textContent = labels.remove;
-    this._cancelBtn.textContent = labels.cancel;
     this._syncToolbar();
     if (this._initialized) {
       this._syncForm();
@@ -471,8 +445,7 @@ export class TdRichText extends TdFormElement {
       b.setAttribute('data-tooltip', text);
       if (f === 'link') {
         b.setAttribute('aria-haspopup', 'dialog');
-        b.setAttribute('aria-expanded', 'false');
-        b.setAttribute('aria-controls', this._panel.id);
+        b.setAttribute('aria-expanded', this._linkDialog === 'open' ? 'true' : 'false');
       }
       const icon = document.createElement('span');
       icon.className = 'td-btn__icon';
@@ -548,18 +521,13 @@ export class TdRichText extends TdFormElement {
   afterRender() {
     this.listen(this, 'focusin', (e) => this._onFocusIn(e));
     this.listen(this, 'focusout', (e) => this._onFocusOut(e));
-    // the editor / URL field are native editables: their own input / change never reach the page (one host event)
+    // the editor is a native editable: its own input never reaches the page (one host event)
     this.listen(this._editor, 'input', (e) => e.stopPropagation());
     // disabled: a link inside is not activated (mouse or Enter — both arrive as click); readonly keeps links working.
     // Capture phase, so a handler on the link that stops propagation cannot skip it.
     this.listen(this._editor, 'click', (e) => {
       if (this._effectiveDisabled && /** @type {Element} */ (e.target).closest?.('a[href]')) e.preventDefault();
     }, { capture: true });
-    this.listen(this._url, 'input', (e) => {
-      e.stopPropagation();
-      this._setLinkError(false);
-    });
-    this.listen(this._url, 'change', (e) => e.stopPropagation());
     this.listen(this._label, 'click', (e) => {
       e.preventDefault();
       if (this._view && !this._effectiveDisabled) this._view.focus();
@@ -569,20 +537,11 @@ export class TdRichText extends TdFormElement {
     });
     this.listen(this._toolbar, 'click', (e) => this._onToolClick(e));
     this.listen(this._toolbar, 'keydown', (e) => this._onToolKey(e));
-    this.listen(this._panel, 'keydown', (e) => this._onPanelKey(e));
-    this.listen(this._panel, 'click', (e) => {
-      const action = e.target.closest('button[data-action]')?.dataset.action;
-      if (action === 'apply') this._applyLink();
-      else if (action === 'remove') this._removeLink();
-      else if (action === 'cancel') this._cancelLink();
-    });
   }
 
   /** @private */
   _onFocusIn(e) {
     if (this._valueAtFocus == null) this._valueAtFocus = this._html;
-    // the user went back to the text while the link dialog is open: it closes, nothing applied
-    if (e.target === this._editor && !this._panel.hidden && !this._closingLink) this._hideLink();
     const i = this._tools().indexOf(e.target);
     if (i >= 0 && i !== this._toolIndex) {
       this._toolIndex = i;
@@ -590,10 +549,21 @@ export class TdRichText extends TdFormElement {
     }
   }
 
-  /** @private Focus session: moving between editor, toolbar and link dialog is not a blur. */
+  /**
+   * @private Focus session: moving between editor and toolbar is not a blur, nor is moving into this field's own link
+   * dialog (a TdModal portaled to <body>; `_linkDialog` is 'open' BEFORE TdModal.show() takes the focus). A real blur
+   * while td-modal is still loading cancels the dialog.
+   */
   _onFocusOut(e) {
+    if (this._linkDialog === 'open') return;
     const to = e.relatedTarget;
     if (to && this.contains(to)) return;
+    this._cancelLinkDialog();
+    this._endFocusSession();
+  }
+
+  /** @private End of the focus session: one `change` when the value differs from the value at focus. */
+  _endFocusSession() {
     const start = this._valueAtFocus;
     this._valueAtFocus = null;
     if (start != null && this._html !== start) this.emit('change', { value: this._html });
@@ -679,20 +649,144 @@ export class TdRichText extends TdFormElement {
     return mark ? this._linkSpanAt(doc, first, mark) : null;
   }
 
-  /** @private @returns {boolean} (keymap command result) */
+  /**
+   * @private Toolbar button / Mod-k. Saves the selection, then loads td-modal (dynamic import) and opens the dialog.
+   * A press while loading / open is ignored. @returns {boolean} (keymap command result)
+   */
   _openLink() {
     if (!this._view || !this._canEdit() || !this._schema.marks.link) return false;
-    const sel = this._state.selection;
-    this._linkRange = { from: sel.from, to: sel.to, sel, doc: this._state.doc };
-    const span = this._currentLink();
-    this._url.value = span ? span.mark.attrs.href : '';
-    this._removeBtn.disabled = !span;
-    this._setLinkError(false);
-    this._panel.hidden = false;
-    this._linkButton()?.setAttribute('aria-expanded', 'true');
-    this._url.focus();
-    this._url.select();
+    if (this._linkDialog) return true;
+    const state = this._view.state;
+    const sel = state.selection;
+    const gen = ++this._linkGen;
+    this._linkRange = { from: sel.from, to: sel.to, sel, doc: state.doc, marks: state.storedMarks, gen };
+    this._linkDialog = 'loading';
+    // a toolbar click never focuses the field (mousedown is prevented): the focus session starts here, so the
+    // `change` at the real blur after the dialog compares with the value before it
+    if (this._valueAtFocus == null) this._valueAtFocus = this._html;
+    this._loadLinkDialog(gen);
     return true;
+  }
+
+  /** @private @param {number} gen */
+  async _loadLinkDialog(gen) {
+    let TdModal;
+    try {
+      ({ TdModal } = await import('../feedback/td-modal.js'));
+    } catch {
+      if (gen === this._linkGen) this._cancelLinkDialog();
+      console.warn('<td-rich-text>: the link dialog could not be loaded');
+      return;
+    }
+    if (gen !== this._linkGen || this._linkDialog !== 'loading') return; // cancelled meanwhile
+    const range = this._linkRange;
+    if (!this.isConnected || !this._view || !this._canEdit() || !range || this._view.state.doc !== range.doc) {
+      this._cancelLinkDialog();
+      return;
+    }
+    this._showLinkDialog(TdModal, gen);
+  }
+
+  /** @private @param {any} TdModal @param {number} gen */
+  _showLinkDialog(TdModal, gen) {
+    const L = this.constructor.labels;
+    const range = this._linkRange;
+    // overlap rule: a selection that touches a link edits that link's whole contiguous span; else a new link
+    const span = this._currentLink();
+    let { from, to } = span || range;
+    if (!span) { // a new link: the range inside text (an all-selection starts / ends outside the paragraphs)
+      const t = PM.TextSelection.between(range.doc.resolve(from), range.doc.resolve(to));
+      ({ from, to } = t);
+    }
+    const ui = this._buildLinkBody(L);
+    ui.url.value = span ? span.mark.attrs.href : '';
+    ui.text.value = range.doc.textBetween(from, to, ' ', ' ');
+    ui.newTab.checked = span ? span.mark.attrs.target === '_blank' : this._linkTarget() === '_blank';
+    ui.noReferrer.checked = span ? !!span.mark.attrs.noreferrer : false;
+    // what the field shows (a text input drops line breaks): "text unchanged" compares with this
+    const ctx = { gen, span, from, to, text0: ui.text.value, ui, applied: false };
+    ui.url.addEventListener('input', () => this._setLinkError(ui, false));
+    ui.root.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || e.isComposing || (e.target !== ui.url && e.target !== ui.text)) return;
+      e.preventDefault(); // Enter = Áp dụng; never submits a form
+      if (this._applyLink(ctx) && this._linkModalId) TdModal.closeById(this._linkModalId);
+    });
+    const actions = [];
+    if (span) actions.push({ label: L.remove, variant: 'secondary', onClick: () => this._removeLink(ctx) });
+    actions.push({ label: L.cancel, variant: 'secondary', value: false });
+    actions.push({ label: L.apply, variant: 'primary', onClick: () => this._applyLink(ctx) });
+    this._linkDialog = 'open'; // BEFORE show(): the focus moves into the modal synchronously (not a blur)
+    const id = TdModal.show({
+      themeRoot: this, // ADR 0020: the dialog follows the field's theme scope
+      title: span ? L.linkEditTitle : L.linkTitle,
+      body: ui.root,
+      size: 'sm',
+      escapeCloses: true, // closing loses nothing (the document is untouched until Áp dụng)
+      focusTarget: ui.url,
+      actions,
+      onShow: () => { if (document.activeElement === ui.url) ui.url.select(); },
+      onClose: () => this._onLinkDialogClosed(ctx),
+    });
+    if (gen !== this._linkGen) { // cancelled while show() ran
+      TdModal.closeById(id);
+      return;
+    }
+    this._linkModalId = id;
+    this._linkModal = TdModal;
+    this._linkButton()?.setAttribute('aria-expanded', 'true');
+  }
+
+  /**
+   * @private Modal body (DOM APIs only; labels are text): URL + display text (`.td-field` markup) and two native
+   * `label.td-checkbox` ticks (the kit's CSS-only checkbox markup). No `name`: the modal lives outside any form.
+   */
+  _buildLinkBody(L) {
+    const el = (tag, cls) => {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      return n;
+    };
+    const root = el('div', 'td-rich-text-link');
+    const field = (key, labelText, cls) => {
+      const box = el('div', 'td-field');
+      const label = el('label', 'td-field__label');
+      const input = el('input', `td-field__control ${cls}`);
+      input.type = 'text';
+      input.id = `${this.id}-link-${key}`;
+      input.setAttribute('autocomplete', 'off');
+      label.htmlFor = input.id;
+      label.textContent = labelText;
+      box.append(label, input);
+      root.appendChild(box);
+      return { box, input };
+    };
+    const url = field('url', L.linkUrl, 'td-rich-text-link__url');
+    url.input.setAttribute('inputmode', 'url');
+    url.input.setAttribute('spellcheck', 'false');
+    const error = el('span', 'td-field-error');
+    error.id = `${this.id}-link-error`;
+    error.hidden = true;
+    url.box.appendChild(error);
+    const text = field('text', L.linkText, 'td-rich-text-link__text');
+    const check = (labelText) => {
+      const label = el('label', 'td-checkbox td-checkbox--md td-rich-text-link__check');
+      const input = el('input', 'td-checkbox__input');
+      input.type = 'checkbox';
+      const mark = el('span', 'td-checkbox__mark');
+      mark.setAttribute('aria-hidden', 'true');
+      const icon = el('span', 'td-checkbox__icon');
+      const svg = tdIcon('check', { class: 'td-checkbox__svg' });
+      if (svg) icon.appendChild(svg);
+      mark.appendChild(icon);
+      const name = el('span', 'td-checkbox__label');
+      name.textContent = labelText;
+      label.append(input, mark, name);
+      root.appendChild(label);
+      return input;
+    };
+    const newTab = check(L.newTab);
+    const noReferrer = check(L.noReferrer);
+    return { root, url: url.input, error, text: text.input, newTab, noReferrer };
   }
 
   /** @private */
@@ -701,55 +795,55 @@ export class TdRichText extends TdFormElement {
   }
 
   /** @private */
-  _setLinkError(on) {
-    if (!this._url) return;
-    this._urlError.textContent = on ? this.constructor.labels.invalidUrl : '';
-    this._urlError.hidden = !on;
+  _setLinkError(ui, on) {
+    ui.error.textContent = on ? this.constructor.labels.invalidUrl : '';
+    ui.error.hidden = !on;
     if (on) {
-      this._url.setAttribute('aria-invalid', 'true');
-      this._url.setAttribute('aria-describedby', this._urlError.id);
+      ui.url.setAttribute('aria-invalid', 'true');
+      ui.url.setAttribute('aria-describedby', ui.error.id);
     } else {
-      this._url.removeAttribute('aria-invalid');
-      this._url.removeAttribute('aria-describedby');
+      ui.url.removeAttribute('aria-invalid');
+      ui.url.removeAttribute('aria-describedby');
     }
   }
 
-  /** @private */
-  _applyLink() {
-    if (!this._linkRange || !this._view) return;
-    const href = isSafeUrl(this._url.value, { allowHttp: this.hasAttribute('allow-http') });
+  /**
+   * @private Áp dụng (plan C 15), ONE transaction. Text unchanged → only the new link mark on the range; text changed or
+   * an insertion → the range replaced by the text (the non-link marks at its start + the link), caret after it; empty
+   * text → the URL. @returns {boolean} false = invalid URL, the dialog stays open
+   */
+  _applyLink(ctx) {
+    const range = this._linkRange;
+    if (ctx.gen !== this._linkGen || !this._view || !range) return true;
+    const { ui } = ctx;
+    const href = isSafeUrl(ui.url.value, { allowHttp: this.hasAttribute('allow-http') });
     if (!href) {
-      this._setLinkError(true);
-      this._url.focus();
-      return;
+      this._setLinkError(ui, true);
+      ui.url.focus();
+      return false;
     }
     const state = this._view.state;
+    if (state.doc !== range.doc) return true; // cannot happen while open (a value change cancels); never apply stale
     const type = this._schema.marks.link;
-    // editing a link keeps its target / noreferrer; a new link gets the link-target default (v0.91.0, per link)
-    const existing = this._currentLink();
-    const mark = type.create(existing
-      ? { href, target: existing.mark.attrs.target, noreferrer: existing.mark.attrs.noreferrer }
-      : { href, target: this._linkTarget() === '_blank' ? '_blank' : null, noreferrer: false });
-    const { from, to } = this._linkRange;
+    const mark = type.create({ href, target: ui.newTab.checked ? '_blank' : null, noreferrer: ui.noReferrer.checked });
+    const { from, to } = ctx;
     const tr = state.tr;
-    let sel = null;
-    if (from === to) {
-      const span = existing;
-      if (span) {
-        tr.removeMark(span.from, span.to, type).addMark(span.from, span.to, mark);
-        sel = PM.TextSelection.create(tr.doc, from);
-      } else {
-        const marks = type.removeFromSet(state.storedMarks || state.doc.resolve(from).marks());
-        tr.insert(from, this._schema.text(href, mark.addToSet(marks)));
-        sel = PM.TextSelection.create(tr.doc, from + href.length);
-      }
-    } else {
+    let sel;
+    if (from !== to && ui.text.value === ctx.text0) {
       tr.removeMark(from, to, type).addMark(from, to, mark);
-      sel = PM.TextSelection.between(tr.doc.resolve(from), tr.doc.resolve(to));
+      sel = PM.TextSelection.between(tr.doc.resolve(range.from), tr.doc.resolve(range.to));
+    } else {
+      const text = ui.text.value.trim() ? ui.text.value : href;
+      const $from = state.doc.resolve(from);
+      const first = $from.nodeAfter;
+      const base = from === to ? (range.marks || $from.marks()) : (first && first.isText ? first.marks : $from.marks());
+      tr.replaceWith(from, to, this._schema.text(text, mark.addToSet(type.removeFromSet(base))));
+      sel = PM.TextSelection.create(tr.doc, from + text.length);
     }
     tr.setSelection(sel);
     this._dispatch(tr);
-    this._closeLink(false);
+    ctx.applied = true;
+    return true;
   }
 
   /** @private The link run touching `pos` on either side (cursor right before / inside / right after a link). */
@@ -760,34 +854,33 @@ export class TdRichText extends TdFormElement {
     return mark ? this._linkSpanAt(doc, pos, mark) : null;
   }
 
-  /** @private Remove the link mark on the link span(s) the saved selection touches. */
-  _removeLink() {
-    if (!this._linkRange || !this._view) return;
-    const type = this._schema.marks.link;
-    const doc = this._view.state.doc;
-    let { from, to } = this._linkRange;
-    const head = this._currentLink() || this._linkAround(doc, from);
-    const tail = this._linkAround(doc, to);
-    if (head) { from = Math.min(from, head.from); to = Math.max(to, head.to); }
-    if (tail) to = Math.max(to, tail.to);
-    if (from !== to) this._dispatch(this._view.state.tr.removeMark(from, to, type));
-    this._closeLink(true);
-  }
-
-  /** @private */
-  _cancelLink() {
-    this._closeLink(true);
+  /**
+   * @private Gỡ liên kết: the link mark off the link being edited — only its own span (ctx.span), never other links the
+   * saved selection also touches (impl review r1). The button exists only in edit mode. @returns {boolean}
+   */
+  _removeLink(ctx) {
+    const range = this._linkRange;
+    if (ctx.gen !== this._linkGen || !this._view || !range || !ctx.span) return true;
+    const state = this._view.state;
+    if (state.doc !== range.doc) return true;
+    const { from, to } = ctx.span;
+    if (from !== to) this._dispatch(state.tr.removeMark(from, to, this._schema.marks.link));
+    return true;
   }
 
   /**
-   * @private Every close path: focus back to the editor (BEFORE hiding, so the focus never falls to the body — no false
-   * `change`) and the saved selection restored.
-   * @param {boolean} restore - put the saved selection back (apply already set its own)
+   * @private onClose of the dialog (every user close path; the modal already gave the focus back to its opener): the
+   * saved selection back (Áp dụng set its own), then the editor focused. A stale generation does nothing.
    */
-  _closeLink(restore) {
-    if (this._panel.hidden) return;
+  _onLinkDialogClosed(ctx) {
+    if (ctx.gen !== this._linkGen || this._linkDialog !== 'open') return;
     const range = this._linkRange;
-    if (restore && range && this._view) {
+    this._linkDialog = null;
+    this._linkModalId = null;
+    this._linkRange = null;
+    this._linkButton()?.setAttribute('aria-expanded', 'false');
+    if (!this._view) return;
+    if (!ctx.applied && range) {
       const doc = this._view.state.doc;
       const size = doc.content.size;
       const clamp = (n) => Math.max(0, Math.min(n, size));
@@ -795,33 +888,25 @@ export class TdRichText extends TdFormElement {
       const sel = doc === range.doc ? range.sel : PM.TextSelection.between(doc.resolve(clamp(range.from)), doc.resolve(clamp(range.to)));
       if (!sel.eq(this._view.state.selection)) this._dispatch(this._view.state.tr.setSelection(sel));
     }
-    this._closingLink = true;
-    try {
-      this._view?.focus();
-    } finally {
-      this._closingLink = false;
-    }
-    this._hideLink();
+    this._view.focus();
   }
 
-  /** @private Hide without moving focus (config / value change, disable, disconnect). */
-  _hideLink() {
-    if (!this._panel || this._panel.hidden) return;
-    this._panel.hidden = true;
+  /**
+   * @private Cancel (rebuild, value set by code, disabled / readonly, disconnect, a real blur while loading): the
+   * generation is bumped (a pending import or the old modal's onClose does nothing), an open modal is closed, nothing
+   * applied. The modal gives the focus back to its opener; if that left the field, the focus session ends here.
+   */
+  _cancelLinkDialog() {
+    if (!this._linkDialog) return;
+    const id = this._linkModalId;
+    this._linkGen += 1;
+    this._linkDialog = null;
+    this._linkModalId = null;
     this._linkRange = null;
-    this._setLinkError(false);
     this._linkButton()?.setAttribute('aria-expanded', 'false');
-  }
-
-  /** @private */
-  _onPanelKey(e) {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation(); // an enclosing dialog / drawer must not close too
-      this._cancelLink();
-    } else if (e.key === 'Enter' && e.target === this._url) {
-      e.preventDefault(); // never submits the form
-      this._applyLink();
+    if (id && this._linkModal) {
+      this._linkModal.closeById(id);
+      if (this._valueAtFocus != null && this.isConnected && !this.contains(document.activeElement)) this._endFocusSession();
     }
   }
 

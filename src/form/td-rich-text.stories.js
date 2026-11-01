@@ -31,7 +31,7 @@ export const Default = {
   },
 };
 
-/** Initial value: sanitized on the way in (the script, the onerror and the javascript: link are gone; rel is forced). */
+/** Initial value: sanitized on the way in (the script, the onerror and the javascript: link are gone; rel is normalised). */
 export const WithValue = {
   render: (args) => `<td-rich-text label="${esc(args.label)}" value="${esc(args.value)}"></td-rich-text>`,
   args: {
@@ -56,7 +56,11 @@ export const DisabledReadonly = {
     <td-rich-text label="Bị khoá" disabled value="&lt;p&gt;Không sửa được.&lt;/p&gt;"></td-rich-text></div>`,
 };
 
-/** `link-target="_blank"`: every link gets target="_blank" + rel="nofollow noopener"; `allow-http` accepts http: links. */
+/**
+ * Link dialog (Ctrl/⌘ + K or the toolbar button): URL + display text, "Mở trong tab mới" and noreferrer per link.
+ * `link-target="_blank"` only pre-ticks "Mở trong tab mới" for a NEW link (the existing link keeps its own target);
+ * `allow-http` accepts http: links.
+ */
 export const LinkTargetBlank = {
   render: (args) => `<td-rich-text label="${esc(args.label)}" link-target="_blank"${args.allowHttp ? ' allow-http' : ''} features="bold link"
     value="&lt;p&gt;Xem &lt;a href=&quot;https://example.com&quot;&gt;tài liệu&lt;/a&gt;.&lt;/p&gt;"></td-rich-text>`,
