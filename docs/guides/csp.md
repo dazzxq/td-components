@@ -94,7 +94,7 @@ Những thứ **không** cần và **không nên** thêm vì kit:
 - `'unsafe-inline'` trong `style-src` — kit không có style inline nào.
 - `'unsafe-eval'` — kit không dùng `eval`/`new Function`.
 - Host CDN cho script/style — kit ship source, bạn tự host.
-- `data:` / `blob:` trong `img-src` — td.css không có `url()`, icon là SVG dựng bằng DOM. Chevron của select trước nâng cấp (0.51.1) là `linear-gradient` — không phải tài nguyên ảnh, `img-src` không chi phối. (Site có thể cần vì lý do
+- `data:` / `blob:` trong `img-src` (trừ khi bật `preview` của `td-dropzone`, xem bảng nguồn ảnh bên dưới) — td.css không có `url()`, icon là SVG dựng bằng DOM. Chevron của select trước nâng cấp (0.51.1) là `linear-gradient` — không phải tài nguyên ảnh, `img-src` không chi phối. (Site có thể cần vì lý do
   khác, ví dụ icon CSS riêng dùng `mask-image: url("data:…")` — `img-src` **có** chi phối `mask-image`.)
 
 Vì sao giữ `'self'` cạnh nonce trong `script-src`: một số chỗ in `<link rel="modulepreload">` **không có nonce** (ví dụ
@@ -147,6 +147,7 @@ Kit tự nó chỉ cần `'self'`. Các chỉ thị dưới đây phụ thuộc 
 | `TdLightbox` nút toàn màn hình | — | Fullscreen API không chịu CSP |
 | `TdHovercard` `url` / `data-td-hovercard` | `connect-src 'self'` | hovercard chỉ fetch cùng origin |
 | `td-cropper` / bước cắt của media picker / "Cắt ảnh" của media field (0.35) | `img-src` | origin của ảnh cần cắt; **không** cần `connect-src`, `blob:` / `data:` hay CORS — cropper chỉ hiển thị `<img>`, không đọc pixel |
+| `td-dropzone` `preview` | `img-src blob:` | thumbnail ảnh dùng object URL (`blob:`); không bật `preview` thì không cần. `imageResize` (0.90.0) **không** cần `blob:`: xem [Bảo mật](security.md#td-dropzone-upload-file) |
 | `td-chip-input` `search()` | `connect-src` | tuỳ endpoint mà provider của bạn gọi |
 | Form AJAX | `connect-src`, `form-action` | `form-action 'self'` cho submit native |
 
@@ -174,11 +175,8 @@ Xem [Bảo mật](security.md#các-cửa-html-thô-raw-html-hatch).
 
 `require-trusted-types-for 'script'` chặn mọi phép gán chuỗi vào `innerHTML`.
 
-- Kit **chưa hỗ trợ** chế độ enforce cho toàn bộ: element render template bằng `innerHTML` (chuỗi đã escape).
-- `TdHovercard` được test riêng dưới Trusted Types: nhận `TrustedHTML` (ví dụ từ
-  `DOMPurify.sanitize(html, { RETURN_TRUSTED_TYPE: true })`), chuỗi thường thất bại an toàn (card hiện lỗi).
-- Muốn thử nghiệm: dùng `Content-Security-Policy-Report-Only: require-trusted-types-for 'script'; report-to …` để
-  thu báo cáo mà không làm vỡ trang.
+Kit **chưa hỗ trợ** chế độ enforce cho toàn bộ (template render bằng `innerHTML`); chi tiết, cách dùng `TrustedHTML` với
+hovercard và thử nghiệm bằng Report-Only: [Bảo mật › Trusted Types](security.md#trusted-types).
 
 ## Xử lý sự cố
 

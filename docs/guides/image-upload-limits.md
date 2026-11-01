@@ -58,9 +58,9 @@ byte nguyên** — cố ý không nhận chuỗi `'5MB'` để khỏi lệch gi�
 | Ảnh công khai, chỉ giữ thông tin bản quyền | `{ maxPixels: 8_000_000, metadata: 'copyright' }` |
 
 Cách kit áp trần: tính cùng lúc mọi trần đang bật và chọn hệ số thu nhỏ nhỏ nhất (giữ tỉ lệ khung hình, không phóng
-to). JPEG: encode ở `quality` (0,9), nếu còn quá `maxBytes` thì hạ dần tới `minQuality` (0,65), rồi mới thu nhỏ thêm; giữ
-bản **nhỏ nhất** đạt trần. PNG giữ nguyên là PNG (giữ alpha) và chỉ có đường thu nhỏ kích thước. Không bao giờ tự đổi
-PNG thành JPEG hay xuất WebP / AVIF.
+to). Giữ định dạng (JPEG vẫn JPEG, PNG vẫn PNG, không xuất WebP / AVIF), chọn bản **nhỏ nhất** đạt trần. Thuật toán
+từng bước (`quality` / `minQuality` mặc định, số lần encode): [dropzone › Quyết định cho từng
+file](../components/dropzone.md#quyết-định-cho-từng-file-nhận-diện-bằng-nội-dung-không-tin-filetype--đuôi).
 
 Nếu cùng dùng `max-size` của dropzone (hoặc `upload.maxSize` của picker): với ảnh, nó thành **trần đầu ra** (gộp vào
 `maxBytes`). Cứ đặt `maxBytes` ≤ `max-size`, hoặc chỉ dùng một trong hai cho khỏi nhầm.
@@ -76,8 +76,7 @@ Nếu cùng dùng `max-size` của dropzone (hoặc `upload.maxSize` của picke
 
 Mặc định `keep` là chủ ý (đa số kho ảnh muốn giữ), nhưng nghĩa là ảnh chụp bằng điện thoại **mang theo toạ độ nhà người
 đăng** nếu site không chọn chế độ khác. Nghĩ về điều này trước khi bật trên site cho người dùng công khai. (Lưu ý
-khác biệt: mặc định của Cloudflare Images là `copyright`.) Ảnh nén lại luôn qua canvas sRGB — ảnh Display-P3 bị chuyển
-sang sRGB và profile ICC gốc không được chép.
+khác biệt: mặc định của Cloudflare Images là `copyright`.) Lưu ý về màu khi nén lại qua canvas: xem [dropzone › Metadata](../components/dropzone.md#metadata).
 
 ## Trần phía server (đi kèm bắt buộc)
 
@@ -107,13 +106,15 @@ Những điều cần nhớ ở server:
   `resizeQuality`; khi bitmap ra sai kích thước đích kit tự thu nhỏ từng bước ≤ 2× trên canvas (`imageSmoothingQuality =
   'high'`), còn khi đúng kích thước nhưng chất lượng thấp hơn Chrome thì chấp nhận.
 - **Bộ nhớ**: ảnh 64 MP giải mã ≈ 256 MB. Kit xử lý **một ảnh một lúc** (hàng đợi dùng chung cả trang) và chặn đầu vào quá
-  trần (`maxInputBytes` 64 MiB, `maxInputPixels` 64 MP, `maxInputSide` 16384), nhưng trình duyệt trên máy yếu vẫn có
+  trần (các trần `maxInput*` mặc định: xem [bảng key](../components/dropzone.md#các-key-của-policy)), nhưng trình duyệt trên máy yếu vẫn có
   thể bị kill tab. Ảnh panorama vượt trần đầu vào bị **từ chối**, không thu nhỏ.
 - **Hướng xoay**: kit kiểm (probe) lần đầu xem trình duyệt có áp EXIF Orientation đúng khi giải mã JPEG / PNG không; sai
   thì ảnh cần xoay trả lỗi `resize-unsupported` thay vì xuất ảnh nằm ngang.
-- **Không xử lý được**: JPEG nhiều ảnh (MPF) / gain map HDR / Content Credentials (C2PA) / dữ liệu sau EOI, APNG, PNG
-  16-bit, và GIF / WebP / AVIF / HEIC… vượt trần đều **không** thu nhỏ được: dòng báo lỗi nhóm "Định dạng này không tối
-  ưu được" (người dùng đổi ảnh khác). Nếu cần cho các định dạng này, viết `processor`.
+- **Không xử lý được**: một số JPEG / PNG đặc biệt và các định dạng khác (GIF / WebP / AVIF / HEIC…) khi vượt trần
+  **không** thu nhỏ được: dòng báo lỗi nhóm "Định dạng này không tối ưu được" (người dùng đổi ảnh khác). Danh sách đầy
+  đủ: [dropzone › Quyết định cho từng
+  file](../components/dropzone.md#quyết-định-cho-từng-file-nhận-diện-bằng-nội-dung-không-tin-filetype--đuôi). Nếu cần,
+  viết `processor`.
 - Không dùng Worker / OffscreenCanvas / `<img>` → không đòi `img-src blob:` hay `worker-src`; CSP chặt vẫn chạy.
 - Tối ưu có thể mất vài trăm ms đến vài giây mỗi ảnh lớn; giao diện hiện "Đang chờ tối ưu…" / "Đang tối ưu ảnh…".
 

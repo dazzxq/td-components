@@ -2,6 +2,10 @@
 
 All notable changes to **td-components** are documented here.
 
+## Unreleased
+
+- Docs: docs-drift pass after 0.90.0 — `imageResize` exception to "the kit does not read file content" (security, dropzone), `td-dropzone` preview needs `img-src blob:` (csp), `--td-dropzone-bg-pressed` token, removed an unimplemented viewport fallback claim (dropzone), full form-associated control table incl. `td-table` (forms), event details for chip-input / datetime-picker, broken anchors + breadcrumb, duplicated tables replaced by links (hub-spoke), `php/README.md` mentions `td-rich-text-policy.php`.
+
 ## 0.90.0
 
 **Resize / tối ưu ảnh ngay trong trình duyệt trước khi upload** (owner 2026-10-31: "mỗi site một chất lượng, ảnh Sony 30 MB về trần";

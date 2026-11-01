@@ -2,6 +2,8 @@
 
 One plain PHP file (PHP ≥ 8.0 — CI job `php80` runs the suite on PHP 8.0; no framework, no composer). Declares only `TdComponents\Td` and `td_*` functions.
 
+`php/` also ships `td-rich-text-policy.php` (class `RichTextPolicy`, loads the rich-text allowlist for server-side sanitising), see [docs/components/rich-text.md](../docs/components/rich-text.md).
+
 ```php
 require_once $kitDir . '/php/td.php';
 TdComponents\Td::configure('/assets/vendor/td-components/0.90.0', $kitDir); // versioned URL + filesystem path

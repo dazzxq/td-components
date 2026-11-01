@@ -17,6 +17,7 @@ Tài liệu nội bộ cho người viết component: [security-model](../intern
 - [Các cửa HTML thô (raw-HTML hatch)](#các-cửa-html-thô-raw-html-hatch)
 - [TdHovercard: sanitize, cache và đổi phiên](#tdhovercard-sanitize-cache-và-đổi-phiên)
 - [td-dropzone: upload file](#td-dropzone-upload-file)
+- [td-diff: che dữ liệu ở server](#td-diff-che-dữ-liệu-ở-server)
 - [Chính sách URL](#chính-sách-url)
 - [Những thứ kit tin tưởng (trust assumptions)](#những-thứ-kit-tin-tưởng-trust-assumptions)
 - [CSS injection](#css-injection)
@@ -189,7 +190,8 @@ trên trình duyệt**. Việc lọc này chỉ là **gợi ý UX**, không ph�
 - Ảnh do người dùng tải lên: trả về kèm `Content-Type` đúng + `X-Content-Type-Options: nosniff`; SVG người dùng tải
   lên có thể chứa script — không phục vụ SVG đó cùng origin, hoặc chuyển sang ảnh raster.
 
-Kit không đọc nội dung file. Chỉ khi site bật `preview`, kit tạo object URL (`blob:`) cho **ảnh** để hiện thumbnail
+Mặc định kit không đọc nội dung file; ngoại lệ là khi site bật `imageResize` (opt-in, 0.90.0): kit đọc và ghi lại byte ảnh để
+nén/xoay/lọc metadata - xem [image-upload-limits](image-upload-limits.md) và [dropzone](../components/dropzone.md). Chỉ khi site bật `preview`, kit tạo object URL (`blob:`) cho **ảnh** để hiện thumbnail
 (thu hồi khi xoá / reset / rời trang) → CSP cần `img-src 'self' blob:`. Hook `upload(file, { onProgress, signal })`
 là **code của site**: endpoint upload phải có CSRF token / kiểm tra phiên như mọi request thay đổi dữ liệu.
 
@@ -219,6 +221,7 @@ nằm trong trình duyệt (DevTools, response JSON) dù ô hiện `[ĐÃ ẨN]`
   không phải của `td-diff`.
 - ID, mã, số tiền có thể vượt 2⁵³ − 1 → gửi **chuỗi** (số lớn hiện `[số quá lớn]`, không bao giờ một con số sai).
 
+## Chính sách URL
 
 | Nơi | Chính sách mặc định | Đổi thế nào |
 |---|---|---|

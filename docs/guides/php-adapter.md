@@ -307,7 +307,7 @@ Class `TdComponents\Td` (static): `configure` (+ option `ssr_elements`, 0.25.0),
 `registerIcons`, `siteIcons`, `hasIcon`, `iconAliases()`, `icon($name, $size, $label, $class)` (0.26.0: `$size` nhận cả số
 nguyên 8–128 = px → `width` / `height`, như `tdIcon(name, { size: n })`), và các tiện ích an toàn dùng lại được
 trong template của site: `e()` (escape), `attrs()` (in attribute đã lọc), `safeUrl()`, `classTokens()`, `uid()`,
-`safeFilename()`, `safeColor()` (0.49.0: màu CSS an toàn hoặc `''`, cùng bảng ca với `safeColor` của JS). Hằng
+`safeFilename()`, `safeColor()` (0.49.0: màu CSS an toàn hoặc `''`, cùng bảng ca với `safeColor` của JS), `registerActionPresets()` / `actionPreset()` (0.56.0: đăng ký / tra preset của `td_action_button`, xem [action-button](../components/action-button.md)). Hằng
 `Td::JSON_FLAGS` cho JSON in vào HTML.
 
 Mọi option không nhận ra bị **bỏ qua** (không lỗi); giá trị ngoài whitelist rơi về mặc định.

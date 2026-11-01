@@ -125,7 +125,7 @@ dz.upload = (file, { onProgress, signal }) => new Promise((resolve, reject) => {
 
 `preview` → ảnh (`image/*`) có thumbnail 40px từ `URL.createObjectURL(file)`. URL được thu hồi (`revokeObjectURL`)
 khi xoá file, reset, bỏ `preview`, hoặc component rời trang (tạo lại khi quay lại). Không bật `preview` thì kit
-không bao giờ tạo object URL và không đọc nội dung file. CSP cần `img-src … blob:`.
+không bao giờ tạo object URL; kit cũng không đọc nội dung file, trừ khi bật `imageResize` (xem mục 7 và phần Bảo mật bên dưới). CSP cần `img-src … blob:`.
 
 ### 6. Trình bày kiểu xếp chồng + badge (0.33.0)
 
@@ -307,8 +307,8 @@ Host `<td-dropzone>` là **container** (`container: td-dropzone / inline-size`, 
 **hẹp hơn 360px** (cỡ `2xs` chỉ dành cho container): câu "Kéo thả file vào đây hoặc" được **ẩn khỏi mắt** (vẫn trong
 DOM, trình đọc màn hình vẫn đọc), nút **Chọn file rộng 100%**; dòng gợi ý (định dạng / dung lượng / số file) vẫn hiện,
 tên trợ năng của nút không đổi. Dạng `prompt-title` / `prompt-text` giữ tiêu đề + dòng phụ, nút rộng 100%. ≥ 360px: như
-trước. Cần bề rộng từ cha (`display: block` — mặc định). Không có container query (Chrome / Edge 102–104): dự phòng theo
-viewport < 360px.
+trước. Cần bề rộng từ cha (`display: block` — mặc định). Trình duyệt không hỗ trợ container query (Chrome / Edge trước 105) thì
+không có bố cục hẹp này (không có dự phòng theo viewport); chức năng vẫn dùng được.
 
 ## Attribute
 
@@ -399,6 +399,7 @@ dz.addEventListener('files-change', (e) => {
 |---|---|---|
 | `--td-dropzone-bg` | `var(--td-field-bg)` | Nền vùng chọn |
 | `--td-dropzone-bg-active` | 6 % `--td-accent` trên nền field | Nền khi đang kéo file qua |
+| `--td-dropzone-bg-pressed` | `#f4f4f5` (sáng) / `#2c2c30` (tối) | 0.36.2 — nền vùng chọn khi đang nhấn (cảm ứng, trừ `disabled` / đang kéo) |
 | `--td-dropzone-bg-disabled` | `var(--td-field-bg-disabled)` | Nền khi vô hiệu hoá |
 | `--td-dropzone-border` | `var(--td-control-border-strong)` | Viền nét đứt (≥ 3:1) |
 | `--td-dropzone-border-active` | `var(--td-accent)` | Viền khi rê / kéo qua |

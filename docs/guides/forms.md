@@ -43,9 +43,20 @@ bên trong **không mang `name`** nên không bao giờ bị gửi trùng ([ADR 
 | `<td-datetime-picker>` | có | có | định dạng gửi chọn bằng `form-value-format` |
 | `<td-media-gallery>` | có | có | (0.43.0) danh sách ảnh: `name[]=id` hoặc `name[i][id\|alt\|crop\|focal]`; rỗng → một `name=`; hỏng / vượt `max` → **không gửi gì** ([Media gallery](../components/media-gallery.md#1-hai-dạng-gửi-form-api-công-khai-adr-0021)) |
 | `<td-check-matrix>` | có | — | (0.47.0) gửi **đủ tập nhóm theo cột** + marker cột + sentinel `_v` — xem [Check matrix](../components/check-matrix.md#formdata-hợp-đồng-công-khai) |
+| `<td-number-input>` | có | có | xem [Number input](../components/number-input.md) |
+| `<td-otp-input>` | có | có | xem [OTP input](../components/otp-input.md) |
+| `<td-scan-input>` | có | có | xem [Scan input](../components/scan-input.md) |
+| `<td-choice-group>` | có | có | xem [Choice group](../components/choice-group.md) |
+| `<td-color-picker>` | có | có | xem [Color picker](../components/color-picker.md) |
+| `<td-datetime-range>` | có | có | xem [Datetime range](../components/datetime-range.md) |
+| `<td-tree-select>`, `<td-tree>` | có | có | xem [Tree select](../components/tree-select.md), [Tree](../components/tree.md) |
+| `<td-media-field>` | có | có | xem [Media field](../components/media-field.md) |
+| `<td-dropzone>` | có | có | file gửi qua `FormData`; xem [Dropzone](../components/dropzone.md) |
+| `<td-rich-text>` | có | có | xem [Rich text](../components/rich-text.md) |
+| `<td-table>` | có | — | chỉ khi có đủ `selectable` + `row-key` + `name`: mỗi hàng đã chọn gửi một entry `name=key` (đặt `name="ids[]"` cho PHP); kế thừa `TdBaseElement`, **không** có error contract hay bộ API bên dưới, xem [Table › Gửi form](../components/table.md#gửi-form-name) |
 | `<td-button>` | **không** (cố ý) | — | bên trong là `<button>` native, form thấy nó như nút thường |
 
-Mọi control form-associated kế thừa [`TdFormElement`](../components/base-element.md) nên có chung bộ API native:
+Mọi control form-associated ở bảng trên (trừ `<td-table>`) kế thừa [`TdFormElement`](../components/base-element.md) nên có chung bộ API native:
 
 | Thành viên | Loại | Ý nghĩa |
 |---|---|---|
@@ -251,7 +262,7 @@ riêng) và hoạt động với cả control td lẫn `<input>`/`<select>`/`<te
 import { TdFormValidation } from '@dazzxq/td-components/form-validation';
 ```
 
-### Ba hàm chính
+### Bốn hàm chính
 
 | Hàm | Làm gì | Trả về |
 |---|---|---|
@@ -264,16 +275,8 @@ import { TdFormValidation } from '@dazzxq/td-components/form-validation';
 
 ### Tuỳ chọn
 
-| Tuỳ chọn | Dùng cho | Mặc định | Ý nghĩa |
-|---|---|---|---|
-| `rules` | validate, attach | — | `{ [name]: (value, control, root) => message | '' }`. Trả chuỗi khác rỗng = lỗi (đặt qua `setCustomValidity`). Rule **throw → ô bị coi là lỗi** (fail closed) với `messages.ruleError` |
-| `messages` | validate, attach | — | theo `name`: một chuỗi cho mọi lỗi, hoặc `{ valueMissing: '…', tooLong: '…' }` |
-| `summary` | cả ba | `'auto'` | `true` / `false` / `'auto'` (hiện khi ≥ 2 lỗi hoặc có lỗi server không map được) |
-| `summaryTarget` | cả ba | `null` | element để **append** summary; mặc định prepend vào `root` |
-| `focus` | cả ba | `true` | focus ô lỗi đầu tiên theo thứ tự tài liệu |
-| `fieldMap` | apply | — | `{ key: 'element-id' | Element }` khi tên key server khác `name` |
-| `live` | attach | `true` | revalidate khi sửa, sau lần submit hỏng đầu |
-| `onValid` | attach | — | `(event, form) => …`: có nó thì submit **luôn bị chặn** và hàm được gọi (SPA/AJAX) |
+Bảng đầy đủ tuỳ chọn (`rules`, `messages`, `summary`, `summaryTarget`, `focus`, `fieldMap`, `live`, `onValid`) và mặc
+định: [Form validation › API](../components/form-validation.md#api).
 
 Giá trị `value` mà rule nhận: control td có `getValue()` → kết quả `getValue()` (chip-input là mảng item,
 dropdown là value hoặc `null`); checkbox native → boolean; nhóm radio → value đang chọn; `<select multiple>` → mảng.
@@ -331,44 +334,15 @@ Hành vi của `attach()`:
 
 ### DOM mà helper sinh ra
 
-Với control td: gọi `setError()` (xem [error contract](#hiển-thị-lỗi-error-contract)). Với control native:
-
-```html
-<input … aria-invalid="true" aria-errormessage="{id}-error" aria-describedby="… {id}-error">
-<span class="td-field-error" id="{id}-error" data-for="{id}" data-td-fv="">{message}</span>
-```
-
-Note được chèn **sau** control (hoặc sau `<label>` bọc nó). Control native không có id sẽ được gán `td-fv-{n}`. Giá trị
-`aria-invalid`/`aria-errormessage` mà trang tự đặt được khôi phục khi lỗi gỡ. Style viền đỏ cho control native là việc
-của site: `input[aria-invalid="true"] { … }`.
-
-Summary:
-
-```html
-<div class="td-form-summary" role="alert" data-td-fv="">
-  <p class="td-form-summary__title">Vui lòng kiểm tra lại các trường sau:</p>
-  <ul class="td-form-summary__list">
-    <li class="td-form-summary__item"><button type="button" class="td-form-summary__link">Email: Email không hợp lệ</button></li>
-    <li class="td-form-summary__item">Lỗi server không gắn được vào ô nào</li>
-  </ul>
-</div>
-```
-
-Bấm một dòng trong summary sẽ focus ô tương ứng. Mọi chuỗi (thông báo, nhãn) được đặt bằng `textContent`.
+Control td gọi `setError()` (xem [error contract](#hiển-thị-lỗi-error-contract)); control native và khung tóm tắt có
+markup riêng (`aria-invalid`, `.td-field-error`, `.td-form-summary`): xem [Form validation › Cấu trúc DOM &
+class](../components/form-validation.md#cấu-trúc-dom--class).
 
 ## Lỗi từ server
 
-`apply(root, errors, opts)` nhận map kiểu Laravel: `{ field: 'msg' }` hoặc `{ field: ['msg1', 'msg2'] }` (lấy
-thông báo khác rỗng đầu tiên). Key được tìm **trong `root`** theo thứ tự:
-
-1. `fieldMap[key]` (id hoặc Element),
-2. `form.elements.namedItem(tên)` / `[name="tên"]` với các biến thể tên: key nguyên văn, dạng chấm → ngoặc
-   (`items.0.name` → `items[0][name]`), dạng mảng PHP (`tags` → `tags[]`, `tags.0` → `tags[]`),
-3. `[data-field="key"]`.
-
-Tìm thấy wrapper thì helper tự tìm control thật bên trong; tìm thấy `<input>` bên trong một host td thì dùng host.
-Key không tìm được → nằm trong `unmapped` (và vào summary nếu summary bật) — **không bao giờ throw**, kể cả với key lạ
-từ server.
+`apply(root, errors, opts)` nhận map kiểu Laravel: `{ field: 'msg' }` hoặc `{ field: ['msg1', 'msg2'] }`. Thứ tự tìm key
+(`fieldMap`, tên có dấu chấm / dạng mảng PHP, `data-field`) và key không tìm được → `unmapped` (không bao giờ throw):
+[Form validation › Key lỗi → field nào?](../components/form-validation.md#5-key-lỗi--field-nào-fieldmap-tên-có-dấu-chấm-data-field).
 
 ```js
 const res = await fetch('/api/profile', { method: 'POST', body: new FormData(form) });

@@ -158,9 +158,9 @@ Event chính theo component:
 | `td-toggle` | `commit-error` (khi `commit()` thất bại, đã hoàn lại) | `{ checked, error }` |
 | `td-slider` | `input` (khi kéo), `change` (khi thả) | `{ value }` (số) |
 | `td-dropdown` | `change` | `{ value, item }` (bỏ chọn: `null`, `null`) |
-| `td-chip-input` | `change` (chỉ khi người dùng thêm/xoá) | `{ value, items, added?, removed? }` |
+| `td-chip-input` | `change` (chỉ khi người dùng thêm/xoá) | `{ value, items, added? , removed? }`, thao tác nhiều chip: `addedItems` / `removedItems` ([chi tiết](../components/chip-input.md)) |
 | `td-chip-input` | `search-error` | `{ query, error }` |
-| `td-datetime-picker` | `change` (khi bấm xác nhận) | `{ value, dbValue }` |
+| `td-datetime-picker` | `change` (khi người dùng ghi giá trị: chọn ô ngày / tháng / năm, nút "Chọn" ở chế độ `datetime`, xoá, nhập tay) | `{ value, dbValue }` ([chi tiết](../components/datetime-picker.md)) |
 | `td-tabs` | `tab-change` | `{ tabId }` |
 | `td-pagination` | `page-change` | `{ page }` |
 | `td-table` | `sort-change`, `page-change` | `{ key, direction }`, `{ page }` |
@@ -195,29 +195,15 @@ submit được ngay cả khi JS chưa tải (dropdown là `<select>` được n
 Từ 0.2.0, các control nhập liệu là **form-associated custom element** thật, dùng `ElementInternals`
 ([ADR 0003](../internal/decisions/0003-elementinternals-form-association.md)). Lớp nền là `TdFormElement`.
 
-Áp dụng cho: `td-input-field`, `td-checkbox`, `td-toggle`, `td-slider`, `td-dropdown`, `td-chip-input`,
-`td-datetime-picker`. **Không** áp dụng cho `td-button`: nó không phải control form, nhưng `type="submit"`/`"reset"`
+Áp dụng cho các control nhập liệu của kit (danh sách đầy đủ: [Hướng dẫn form](../guides/forms.md#control-nào-là-form-associated)). **Không** áp dụng cho `td-button`: nó không phải control form, nhưng `type="submit"`/`"reset"`
 vẫn chạy vì bên trong là một `<button>` thật nằm trong form.
 
-Nghĩa là các control này cư xử y như `<input>`:
+Các control này cư xử như `<input>`: gửi giá trị theo `name` trong `FormData`, tham gia `checkValidity()` / `:invalid`, có
+`setCustomValidity()` / `setError()`, `form.reset()`, `<fieldset disabled>`, `<label for>` và khôi phục trạng thái (bfcache,
+autofill). Bảng chi tiết từng hành vi: [Hướng dẫn form](../guides/forms.md).
 
-| Tính năng | Chi tiết |
-|---|---|
-| Gửi giá trị | Có `name` + nằm trong `<form>` → có mặt trong `new FormData(form)` và khi POST. Giá trị do **thẻ host** gửi; `<input>` bên trong không có `name` |
-| Ràng buộc | `required`, và với input-field: `type="email"/"url"/"number"`, `min`/`max`/`step`, `max-length` → `form.checkValidity()`, `form.reportValidity()`, `:invalid` |
-| Đọc trạng thái | `el.form`, `el.validity`, `el.validationMessage`, `el.willValidate`, `el.labels`, `el.checkValidity()`, `el.reportValidity()` |
-| Lỗi tuỳ biến | `el.setCustomValidity('…')` (chặn submit, như native) |
-| Hiện lỗi | `el.setError('…')` / `el.clearError()` / attribute `error-text`: dòng lỗi + `aria-invalid` + `aria-errormessage`. Chỉ là **hiển thị**, không chặn submit |
-| Reset | `form.reset()` đưa về giá trị/`checked` ban đầu (chụp một lần lúc gắn), bỏ lỗi đang hiện |
-| Disabled | Attribute `disabled` **hoặc** nằm trong `<fieldset disabled>`; fieldset không ghi đè attribute của bạn |
-| Nhãn ngoài | `<label for="id-của-thẻ">` hoạt động: bấm nhãn sẽ focus control bên trong; thẻ tự có `id` nếu bạn không đặt |
-| Khôi phục | Back/forward (bfcache) và autofill khôi phục giá trị qua `formStateRestoreCallback` |
-| Focus | `el.focus()` chuyển focus vào control thật bên trong |
-
-Phân biệt hai loại lỗi rất quan trọng:
-
-- `setCustomValidity(msg)`: **luật** (form không hợp lệ, không submit được).
-- `setError(msg)`: **hiển thị** (người dùng thấy lỗi, ví dụ lỗi server trả về). Kết hợp cả hai nếu cần.
+Hai loại lỗi: `setCustomValidity(msg)` là **luật** (chặn submit), `setError(msg)` chỉ là **hiển thị** (ví dụ lỗi server): xem
+[error contract](../guides/forms.md#hiển-thị-lỗi-error-contract).
 
 `TdFormValidation` là helper nhẹ gom việc hiện lỗi, focus ô lỗi đầu tiên, tóm tắt lỗi và nhận lỗi từ server. Kit không
 có thư viện luật validation riêng: luật là constraint gốc của trình duyệt. Chi tiết: [Hướng dẫn form](../guides/forms.md).
@@ -263,9 +249,9 @@ Kit có **một** listener `keydown` duy nhất (capture) cho cả trang; compon
 - **Escape** đi tới lớp nổi **cao nhất** đang mở và bị "nuốt" ở đó, lớp dưới không nhận. Ví dụ menu dropdown mở trong
   modal: Escape đóng menu, modal vẫn mở.
   - Tooltip, menu, hovercard, dropdown, lightbox: Escape đóng chúng (lightbox nhường Escape cho trình phát video khi focus đang ở trong player).
-  - **Modal: Escape không đóng** (và cũng không lọt xuống lớp dưới). Bấm vào nền mờ cũng không đóng. Đây là quyết định có
-    chủ đích để người dùng không mất dữ liệu đang nhập ([ADR 0006](../internal/decisions/0006-modal-no-backdrop-close.md));
-    modal đóng bằng nút của nó.
+  - **Modal: mặc định Escape không đóng** (và cũng không lọt xuống lớp dưới) và bấm vào nền mờ cũng không đóng. Đây là
+    quyết định có chủ đích để người dùng không mất dữ liệu đang nhập ([ADR 0006](../internal/decisions/0006-modal-no-backdrop-close.md));
+    modal đóng bằng nút của nó. Site có thể bật riêng `escapeCloses` / `backdropCloses` (opt-in): xem [Modal](../components/modal.md).
   - Loading: Escape bị nuốt (người dùng không huỷ được overlay đang xử lý).
   - Khi đang gõ tiếng Việt bằng bộ gõ (IME đang ghép chữ), Escape để cho bộ gõ, không đóng gì.
 - **Tab**: lớp chặn giữ Tab trong nó (focus trap): Tab/Shift+Tab vòng quanh các phần tử trong dialog, không ra được
@@ -294,19 +280,9 @@ Chi tiết bàn phím và ARIA: [Hướng dẫn trợ năng](../guides/accessibi
 Cam kết từ 0.3.0: mọi thứ kit tự sinh ra chạy được dưới `Content-Security-Policy` **không có**
 `style-src 'unsafe-inline'`.
 
-| Cách áp style | Dưới CSP strict | Kit dùng? |
-|---|---|---|
-| Attribute `style="…"` trong HTML (kể cả qua `innerHTML`) | Bị chặn | **Không bao giờ** |
-| Chèn thẻ `<style>` bằng JS | Bị chặn | **Không bao giờ** |
-| File CSS ngoài (`<link rel="stylesheet">`) | Cho phép (`'self'` hoặc nonce) | Có: `td.css` |
-| CSSOM: `el.style.setProperty('--x', …)`, `el.style.x = …` | Cho phép (kể cả với `style-src-attr 'none'`) | Có: giá trị riêng từng phần tử |
-
-Cách kit chia việc:
-
-- **Mọi rule CSS** (layout, màu, `:hover`, `:focus-visible`, `@keyframes`, `@media`) nằm trong `td.css`.
-- **Giá trị riêng từng phần tử** (màu `color="…"` của một nút, toạ độ menu, độ rộng cột bảng, % của slider) được ghi
-  qua CSSOM, thường là một custom property trên chính phần tử, ví dụ `--td-btn-bg`. Rule trong `td.css` đọc biến đó.
-- Giá trị lấy từ attribute được kiểm tra trước khi ghi (màu qua `safeColor`, kích thước qua whitelist).
+Tóm tắt: attribute `style="…"` và thẻ `<style>` không bao giờ được dùng; mọi rule nằm trong file `td.css`; giá trị riêng từng
+phần tử đi qua CSSOM (`el.style.setProperty('--x', …)`, vẫn hợp lệ với `style-src-attr 'none'`). Bảng đầy đủ và cách chia
+việc: [Hướng dẫn CSP](../guides/csp.md).
 
 Kiểm chứng tự động: `npm run test:csp` (mọi component × mọi trạng thái, 0 vi phạm, style khớp baseline) và
 `npm run test:tokens` (Chromium, Firefox, WebKit × hồ sơ `'self'` và nonce-only).

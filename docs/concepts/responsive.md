@@ -1,3 +1,5 @@
+[Tài liệu](../README.md) › Khái niệm › Responsive
+
 # Responsive — breakpoint, container query, vùng chạm
 
 Từ 0.34.0 cả kit theo một bộ breakpoint ([ADR 0014](../internal/decisions/0014-breakpoints-container-queries.md)).
