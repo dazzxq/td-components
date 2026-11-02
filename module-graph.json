@@ -199,6 +199,13 @@
       "src/utils/scroll-lock.js",
       "src/utils/transition.js"
     ],
+    "src/feedback/media-picker-drop.js": [
+      "src/feedback/media-picker-upload.js",
+      "src/feedback/td-progress.js",
+      "src/form/td-dropzone.js",
+      "src/icons/td-icon.js",
+      "src/utils/upload-queue.js"
+    ],
     "src/feedback/media-picker-fields.js": [
       "src/form/td-chip-input.js",
       "src/form/td-datetime-picker.js",
@@ -225,6 +232,7 @@
       "src/form/td-dropzone.js",
       "src/form/td-input-field.js",
       "src/icons/td-icon.js",
+      "src/utils/dom-utils.js",
       "src/utils/keyboard-viewport.js",
       "src/utils/layers.js",
       "src/utils/media-picker-core.js",
@@ -266,6 +274,7 @@
       "src/display/td-pagination.js",
       "src/feedback/crop-dialog.js",
       "src/feedback/dialog-layer.js",
+      "src/feedback/media-picker-drop.js",
       "src/feedback/media-picker-fields.js",
       "src/feedback/media-picker-filters.js",
       "src/feedback/media-picker-upload.js",
@@ -283,7 +292,8 @@
       "src/utils/keyboard-viewport.js",
       "src/utils/layers.js",
       "src/utils/media-picker-core.js",
-      "src/utils/media-url.js"
+      "src/utils/media-url.js",
+      "src/utils/upload-queue.js"
     ],
     "src/feedback/td-menu.js": [
       "src/icons/td-icon.js",
@@ -445,7 +455,8 @@
       "src/feedback/td-progress.js",
       "src/icons/td-icon.js",
       "src/utils/dom-utils.js",
-      "src/utils/image-resize.js"
+      "src/utils/image-resize.js",
+      "src/utils/upload-queue.js"
     ],
     "src/form/td-hint.js": [
       "src/base/td-base-element.js"
@@ -700,6 +711,10 @@
     ],
     "src/utils/typeahead.js": [],
     "src/utils/upgrade-props.js": [],
+    "src/utils/upload-queue.js": [
+      "src/utils/dom-utils.js",
+      "src/utils/image-resize.js"
+    ],
     "src/utils/value-title.js": [],
     "src/vendor/td-rich-text-engine.js": []
   }

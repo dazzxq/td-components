@@ -26,6 +26,8 @@
 		--td-media-picker-card-hover: var(--td-media-picker-card-viewing);
 		--td-media-picker-card-checked: var(--td-color-success);
 		--td-media-picker-card-shadow: var(--td-shadow-1);
+		/* v0.93.0: the veil over a dropped file still uploading (its preview is greyed under it) */
+		--td-media-picker-upload-veil: color-mix(in srgb, var(--td-color-surface) 45%, transparent);
 	}
 
 	@media (min-width: 1280px) {
@@ -447,6 +449,105 @@
 
 	.td-media-picker[data-mode="single"] .td-media-grid__tick {
 		display: none;
+	}
+
+	/*
+	 * v0.93.0 (plan v0.93.0-media-picker-grid-drop): files dropped on the picker. The results pane shows the drag state
+	 * ([data-drop="over"], the dropzone's active tokens; information, never hover-dependent) + the lazily created hint;
+	 * a dropped file is a placeholder card first in the grid (.td-media-picker__card--upload [data-upload]) — greyed
+	 * canvas preview under a veil, progress bar, Thử lại / × — then a regular card once [data-upload="done"].
+	 */
+	.td-media-picker__results[data-drop="over"] {
+		outline: 2px dashed var(--td-dropzone-border-active);
+		outline-offset: -4px;
+		background-color: var(--td-dropzone-bg-active);
+	}
+
+	.td-media-picker__drop-hint {
+		display: none;
+	}
+
+	/* sticky at the top of the scrolling pane, zero height: the grid never moves while dragging */
+	.td-media-picker__results[data-drop="over"] > .td-media-picker__drop-hint {
+		position: sticky;
+		inset-block-start: 0;
+		z-index: 3;
+		order: -1;
+		display: flex;
+		justify-content: center;
+		height: 0;
+		margin-block-end: calc(-1 * var(--td-media-picker-gap));
+		overflow: visible;
+		pointer-events: none;
+	}
+
+	.td-media-picker__drop-hint-pill {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--td-space-xs);
+		height: max-content;
+		padding: 0.5rem 0.875rem;
+		border: 1px solid var(--td-dropzone-border-active);
+		border-radius: var(--td-radius-full);
+		background: var(--td-color-surface);
+		color: var(--td-color-text);
+		font-size: var(--td-text-sm);
+		font-weight: 500;
+	}
+
+	.td-media-picker__card--upload {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.td-media-picker__card--upload:not([data-upload="done"]) .td-media-grid__tick {
+		display: none;
+	}
+
+	.td-media-picker__card--upload:not([data-upload="done"]) .td-media-picker__open {
+		cursor: default;
+	}
+
+	.td-media-picker__upload-preview {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.td-media-picker__card--upload:not([data-upload="done"]) .td-media-picker__upload-preview {
+		filter: grayscale(1);
+	}
+
+	.td-media-picker__card--upload:not([data-upload="done"]) .td-media-picker__thumb::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		background: var(--td-media-picker-upload-veil);
+	}
+
+	.td-media-picker__card--upload[data-upload="error"] .td-media-picker__meta {
+		color: var(--td-color-error);
+	}
+
+	.td-media-picker__upload-progress {
+		display: block;
+		margin-inline: 0.75rem;
+	}
+
+	.td-media-picker__upload-progress[hidden] {
+		display: none;
+	}
+
+	.td-media-picker__upload-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--td-space-xs);
+		padding: 0.25rem 0.5rem 0.5rem;
+	}
+
+	.td-media-picker__upload-remove {
+		padding-inline: 0.5rem;
 	}
 
 	/* skeleton (decision 14): 30 cards — thumb 3:2 + 2 lines */
@@ -895,6 +996,12 @@
 			flex-wrap: nowrap;
 		}
 
+		/* v0.93.0 (ADR 0019): 44px touch targets on the dropped-file cards */
+		.td-media-picker__upload-actions .td-btn {
+			min-width: 44px;
+			min-height: 44px;
+		}
+
 		/* QĐ 67: the card meta line ≥ 14px on touch screens */
 		.td-media-picker__meta {
 			font-size: var(--td-text-sm);
@@ -993,6 +1100,14 @@
 		.td-media-picker__kind,
 		.td-media-picker__status {
 			border: 1px solid CanvasText;
+		}
+
+		.td-media-picker__results[data-drop="over"] {
+			outline-color: Highlight;
+		}
+
+		.td-media-picker__drop-hint-pill {
+			border-color: CanvasText;
 		}
 
 		.td-media-picker__detail,

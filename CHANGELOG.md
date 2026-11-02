@@ -4,6 +4,27 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.93.0
+
+**Thả file thẳng vào lưới `td-media-picker` đang mở** (owner chốt 31/10 + 02/11/2026). [Plan](docs/internal/plans/v0.93.0-media-picker-grid-drop.md).
+
+- **Added (`td-media-picker`): thả file vào picker.** Kéo file từ máy vào picker đang mở (khi adapter có `upload`):
+  - Site **không** khai báo `uploadFields` → tải ngay tại chỗ: mỗi file thành một card giữ chỗ đầu lưới, ảnh xem trước
+    xám + lớp phủ + thanh tiến trình; xong thì thành card ảnh bình thường và được chọn như luồng tải lên cũ. Lỗi → card
+    có "Thử lại" / "Gỡ"; đang tải → × huỷ. File sai `accept` / quá dung lượng không thành card, báo một toast.
+    Ảnh trùng (`exact-reused`) nhập vào asset có sẵn. Đang ở trang khác thì về trang 1 (giữ tìm kiếm / bộ lọc / album);
+    ảnh không khớp bộ lọc thì card biến mất sau khi tải lại, có thông báo, ảnh vẫn được chọn.
+  - Site **có bất kỳ** `uploadFields` (kể cả không bắt buộc) → mở dialog tải lên với khối "Tệp đã thả", chỉ tải khi bấm
+    nút tải lên.
+  - Ảnh xem trước vẽ bằng canvas, **không cần** `img-src blob:` trong CSP. File không phải ảnh → icon.
+  - Không thả vào ô album trong dải album (tải vào chỗ đang mở). Không có opt-out.
+- **Changed (`td-media-picker`): tối đa 3 file tải song song** trong cả picker (lưới + dialog dùng chung). Trước đây
+  dialog tải không giới hạn. `td-dropzone` dùng riêng **không đổi** (vẫn không giới hạn).
+- **Internal:** logic hàng đợi tải lên của `td-dropzone` tách thành `src/utils/upload-queue.js` (không đổi hành vi);
+  `createAdapterUpload()` dùng chung giữa dialog và lưới. Token mới `--td-media-picker-upload-veil` (lớp phủ card đang tải).
+  CSP case mới: `td-media-picker.dragover`, `.drop-uploading`, `.drop-error`, `.upload-held`.
+- **Nhãn mới** (tiếng Việt mặc định, đổi qua `TdMediaPicker.labels`): xem bảng nhãn trong docs media-picker.
+
 ## 0.92.0
 
 Hai yêu cầu từ dsuite (01–02/11/2026). [Plan](docs/internal/plans/v0.92.0-tabs-fit-layout.md).

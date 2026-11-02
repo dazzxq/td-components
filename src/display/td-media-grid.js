@@ -50,6 +50,8 @@ const INERT_CHILD = 'template, script, [hidden], .td-sr-only';
  * @attr {number} max - Optional cap (integer ≥ 1) on user selection; past it → `select-limit`.
  * @attr {string} select-mode - `tick`: opener click always activates; select via tick / Space / Ctrl·Cmd+click / Shift.
  * @attr {boolean} disabled - No selecting / flipping by the user (activate still works; the selection is kept).
+ * Item attribute `data-td-media-pending` (v0.93.0, set by td-media-picker on cards still uploading): a Shift range skips
+ * the item and does not count it against `max`.
  *
  * @fires select-change - User changed the selection. detail: { ids: string[] (DOM order), added, removed }
  * @fires activate - Opener clicked (nothing selected) or Enter. Cancelable. detail: { id, item, event }
@@ -678,7 +680,8 @@ export class TdMediaGrid extends TdBaseElement {
       const to = ids.indexOf(id);
       const step = to >= from ? 1 : -1;
       for (let i = from; ; i += step) {
-        if (!next.has(ids[i])) {
+        // v0.93.0: an item still uploading (`data-td-media-pending`, td-media-picker) is skipped, never counted
+        if (!next.has(ids[i]) && !items[i].hasAttribute('data-td-media-pending')) {
           if (next.size >= max) { limited = true; break; }
           next.add(ids[i]);
         }

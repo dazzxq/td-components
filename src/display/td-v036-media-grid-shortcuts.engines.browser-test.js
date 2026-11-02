@@ -104,6 +104,22 @@ describe('v0.36.0 td-media-grid shortcuts (real input)', () => {
     expect(lim.length).to.equal(1);
   });
 
+  it('v0.93.0 (Codex impl r2 #12): a [data-td-media-pending] item is skipped in a Shift range and not counted against max', async () => {
+    const g = mount(4, 'select-mode="tick" max="2"'); // A=m1, P=m2 (pending), B=m3, C=m4
+    await waitFor(() => g.querySelectorAll('.td-media-grid__tick').length === 4, 3000, 'ticks');
+    g.querySelector('[data-id="m2"]').setAttribute('data-td-media-pending', '');
+    const lim = record(g, 'select-limit');
+    await clickWith(openOf(g, 'm1'), 'Shift'); // no anchor yet → single flip, anchor = m1
+    expect(g.selectedIds).to.deep.equal(['m1']);
+    await clickWith(openOf(g, 'm3'), 'Shift');
+    expect(g.selectedIds).to.deep.equal(['m1', 'm3']);
+    expect(lim.length, 'the pending item takes no slot').to.equal(0);
+    // the cap still holds for real items: C is past max
+    await clickWith(openOf(g, 'm4'), 'Shift');
+    expect(g.selectedIds).to.deep.equal(['m1', 'm3']);
+    expect(lim.length).to.equal(1);
+  });
+
   it('keyboard: Space toggles, Shift+Space adds the range', async () => {
     const g = mount();
     await waitFor(() => g.querySelectorAll('.td-media-grid__tick').length === 6, 3000, 'ticks');

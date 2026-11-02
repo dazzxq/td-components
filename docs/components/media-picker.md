@@ -714,6 +714,8 @@ full viewport với ≈ 110px trống) và **không có footer** — × ở head
   `capabilities.uploadFromUrl !== false`). Chỉ có một nguồn → không hiện tab.
 - **Đóng dialog khi còn tác vụ chạy** → hỏi "Huỷ các tệp đang tải?"; "Huỷ tải lên" thì abort toàn bộ. Đóng hẳn picker
   cũng abort.
+- **Mở do thả file vào picker** (0.93.0, site có `uploadFields`) → trên dropzone có khối "Tệp đã thả (n)": file được
+  **giữ**, chỉ tải khi bấm "Tải lên {n} tệp" (giá trị field chụp lúc bấm). Xem [Thả file vào lưới](#thả-file-vào-lưới-0930).
 
 ### Tab file
 
@@ -723,8 +725,9 @@ lớn, "Kéo thả file vào đây", "hoặc bấm để chọn file", badge đ�
 
 - Kit gọi `adapter.upload(file, { fields, context, signal, onProgress })` (0.90.0: có policy `upload.imageResize` thì thêm `optimization`, xem [mục dưới](#tối-ưu-ảnh-trước-khi-upload--uploadimageresize-0900)). Gọi `onProgress({ percent })` hoặc
   `onProgress({ loaded, total })` → thanh tiến độ của dòng file. Chưa gọi lần nào → dòng "Đang chờ…".
-- **Huỷ** = nút xoá của dòng file → `signal` bị abort (không báo lỗi). Kit **không** giới hạn số file tải song song —
-  muốn xếp hàng thì adapter tự làm.
+- **Huỷ** = nút xoá của dòng file → `signal` bị abort (không báo lỗi). 0.93.0: picker gọi **tối đa 3**
+  `adapter.upload` cùng lúc (cả picker dùng chung 3 slot), file chờ slot hiện "Đang chờ…"; tải từ URL không tính vào
+  giới hạn. `<td-dropzone>` dùng riêng ngoài picker vẫn không giới hạn.
 - **Mỗi file xong**: kiểm hợp đồng (`created`, hoặc `exact-reused` với `matchedAssetId === asset.id`) → nạp lại **trang 1**
   → chọn theo chế độ (đơn: file xong sau cùng thắng; nhiều: thêm nếu còn chỗ) → mở chi tiết. `exact-reused` → không thêm
   mục trùng + chú thích "{name} đã có trong thư viện — dùng lại ảnh cũ". Mục chưa `ready` chỉ hiện, không chọn.
@@ -814,6 +817,38 @@ Endpoint đứng sau `uploadFromUrl` là một **máy tải URL tuỳ ý theo l�
 
 Site không làm được các điều trên → **đừng** cài `uploadFromUrl` (tab URL sẽ không hiện), hoặc đặt
 `capabilities.uploadFromUrl: false`.
+
+## Thả file vào lưới (0.93.0)
+
+Kéo file từ máy (Finder / Explorer) thả **thẳng vào picker đang mở** — không cần bấm "Tải lên". Luôn bật khi adapter có
+`upload` (không có option tắt); không có `upload` → con trỏ báo "không thả được", trang không mở file.
+
+- **Khi kéo vào**: vùng kết quả viền nét đứt + nền nhạt (`data-drop="over"` trên `.td-media-picker__results`) và một nhãn
+  "Thả tệp để tải lên" dính ở đầu vùng cuộn. Kéo chữ / link, hoặc kéo một thứ **từ trong** picker → không phản ứng gì.
+  Thả lên thẻ album → file vào **view hiện tại** (đang ở trong album nào thì vào album đó, `collectionId` như dialog).
+- **Site không có `uploadFields`** → tải **tại chỗ**: mỗi file thành một thẻ chờ đứng **đầu lưới** (ảnh: bản xem trước
+  vẽ lên `<canvas>` màu xám + lớp phủ mờ; file khác: icon loại), dưới tên là trạng thái ("Đang chờ…", "Đang tối ưu ảnh…",
+  "Đang tải lên…") và [`td-progress`](progress.md). Thẻ đang tải **không chọn được** (tick ẩn, Space / Shift-range bỏ
+  qua, không báo "chưa sẵn sàng"); nút × huỷ (abort `signal`, không báo lỗi). Lỗi → thẻ hiện thông báo + "Thử lại" +
+  "Gỡ". Xong → thẻ thành thẻ thường đã chọn (đơn: file xong sau cùng thắng; nhiều: thêm nếu còn chỗ, hết chỗ thì báo
+  giới hạn), mở chi tiết, phát `asset-change { operation: 'upload' }`, rồi trang 1 nạp lại và thẻ thật thế chỗ. Hết lô
+  → một toast "Đã tải lên {ok}/{total} tệp". `exact-reused` mà ảnh cũ đang trên trang → thẻ chờ biến mất ngay, ảnh cũ
+  được chọn.
+- Đang ở **trang 2+** → về trang 1 ngay (giữ ô tìm kiếm / bộ lọc), lưới không nhấp nháy skeleton. Ảnh mới **không khớp
+  bộ lọc / thứ tự** hiện tại → sau khi nạp lại thẻ biến mất, vẫn nằm trong lựa chọn, đọc "Đã tải lên {name} — không
+  hiện vì bộ lọc hoặc thứ tự hiện tại".
+- **Site có `uploadFields`** (kể cả chỉ field tuỳ chọn) → mở [dialog tải lên](#dialog-tải-lên) với file **được giữ**: khối
+  "Tệp đã thả (n)" (tên, cỡ, nút "Bỏ {name}") + nút "Tải lên {n} tệp" — **chưa gọi `adapter.upload` nào** cho tới khi bấm
+  nút (field `required` chưa điền → nút khoá). Focus vào field đầu tiên. Đóng dialog lúc file còn giữ → bỏ luôn, không hỏi.
+- **Kiểm file như dialog**: `upload.accept` / `upload.maxSize` / `upload.imageResize` / `upload.multiple`. File bị loại
+  không thành thẻ: một toast "{n} tệp không được nhận" + lý do từng file trong vùng đọc màn hình. Thả **thư mục** → báo
+  "Không tải được thư mục" (file đi kèm vẫn nhận). `upload.multiple: false` → giống dropzone của dialog: mỗi lần
+  thả chỉ nhận file đầu (các file sau bị loại, lý do "số lượng") và file mới **thay** thẻ đang tải / lỗi của lần thả trước
+  (lần trước bị huỷ, không báo lỗi); thẻ đã xong thì ở lại.
+- **Tối đa 3 `adapter.upload` cùng lúc trên cả picker** — lưới và dialog dùng chung 3 slot; thẻ chờ slot có
+  `data-waiting` và chữ "Đang chờ…". Đóng picker khi còn thẻ đang tải / chờ → hỏi như mọi việc dở; đồng ý → abort hết,
+  không gọi thêm upload nào.
+- Đang có lớp khác trên picker (dialog tải lên, hộp xác nhận, crop…) → thả vào picker không làm gì.
 
 ## Bộ sưu tập (0.66.0)
 
@@ -1154,7 +1189,7 @@ Cùng bộ control này dựng các ô `uploadFields` trong dialog tải lên.
 ## Đóng khi còn việc dở
 
 Mọi đường kết thúc **của người dùng** (×, "Đóng", Escape, "Chèn") đi qua **một cổng**: nếu form chi tiết đang có thay đổi
-chưa lưu hoặc còn upload / lưu đang chạy → hộp xác nhận ("Bỏ thay đổi" / "Tiếp tục sửa"). Đồng ý → abort mọi thứ rồi kết
+chưa lưu hoặc còn upload / lưu đang chạy (0.93.0: kể cả thẻ thả vào lưới đang tải / chờ) → hộp xác nhận ("Bỏ thay đổi" / "Tiếp tục sửa"). Đồng ý → abort mọi thứ rồi kết
 thúc **đúng loại đã yêu cầu** (từ "Chèn" vẫn resolve `selected` với lựa chọn lúc đồng ý). Không → picker giữ nguyên. Lựa
 chọn chưa xác nhận **không** tính là việc dở. `close()` bằng code và việc gỡ host khỏi DOM **không** qua cổng này.
 
@@ -1236,6 +1271,10 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `uploadDropTitle` · `uploadDropText` | "Kéo thả file vào đây" · "hoặc bấm để chọn file" |
 | `uploadNeedsFields` · `uploadDone` | "Điền các trường bắt buộc trước khi tải lên." · "Đã tải lên {ok}/{total} tệp" |
 | `uploaded` · `reused` · `uploadError` | "Đã tải lên {name}" · "{name} đã có trong thư viện — dùng lại ảnh cũ" · "Tải lên thất bại" |
+| `dropHint` · `dropStarted` · `dropRejected` · `dropFolder` (0.93.0) | "Thả tệp để tải lên" · "Đang tải lên {n} tệp" · "{n} tệp không được nhận" · "Không tải được thư mục" |
+| `dropCancel` · `dropRemove` · `dropRetry` · `dropRetryLabel` (0.93.0) | "Huỷ tải {name}" · "Gỡ {name}" · "Thử lại" · "Thử lại {name}" |
+| `dropFailed` · `uploadedHidden` · `uploadProgressLabel` (0.93.0) | "Tải lên {name} thất bại" · "Đã tải lên {name} — không hiện vì bộ lọc hoặc thứ tự hiện tại" · "Đang tải {name}" |
+| `uploadHeld` · `uploadHeldSubmit` · `uploadHeldRemove` (0.93.0, dialog tải lên) | "Tệp đã thả ({n})" · "Tải lên {n} tệp" · "Bỏ {name}" |
 | `uploadCancelTitle` · `uploadCancelMessage` | "Huỷ các tệp đang tải?" · "Các tệp đang tải lên sẽ bị huỷ." |
 | `uploadCancelConfirm` · `uploadCancelKeep` | "Huỷ tải lên" · "Tiếp tục tải" |
 | `urlDescription` · `urlDescriptionAny` | "Nhập URL ảnh để tải trực tiếp. Hỗ trợ: {accept}" · "Nhập URL ảnh để tải trực tiếp." |
@@ -1274,7 +1313,8 @@ TdMediaPicker.open({ selection: { mode: 'single' }, messages: { limit: ({ max })
 - **`img-src` của CSP phải cho phép origin ảnh mà adapter trả về** (CDN, bucket R2 / S3, domain ảnh ký). Ví dụ
   `img-src 'self' https://cdn.example.com`. Thiếu → thumbnail trống, console báo vi phạm CSP.
 - `blob:` trong `img-src` chỉ cần nếu muốn dropzone hiện thumbnail xem trước của file **đang chọn để tải**; thiếu thì dòng
-  file không có thumbnail, upload vẫn chạy.
+  file không có thumbnail, upload vẫn chạy. Thẻ thả vào lưới (0.93.0) vẽ bản xem trước lên `<canvas>`, **không** dùng
+  URL `blob:` — không cần mở thêm gì.
 - **Tải về**: nhánh `{ url }` khác origin mở **tab mới** (không phải fetch, không cần `connect-src`); nhánh `{ blob }` là
   `<a download>` cùng origin (không cần directive thêm). Nếu adapter tự `fetch` file gốc để trả blob thì `connect-src` phải
   cho phép origin đó, và CDN phải trả header CORS.

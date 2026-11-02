@@ -28,6 +28,11 @@
  *     onError,      // ({ operation: 'upload' | 'upload-url', code, retryable }) => void — picker emits operation-error
  *     announce,     // (text: string) => void — picker live region
  *     onClosed,     // () => void — after the dialog fully closed (picker returns focus to its "Tải lên" button)
+ *     uploadSlots,  // v0.93.0 (internal), optional: the picker-wide createUploadSlots(3) pool → the dropzone's
+ *                   //   `_uploadSlots` (grid + dialog share 3 concurrent adapter.upload calls); absent → unlimited
+ *     files,        // v0.93.0 (internal), optional File[]: dropped on the picker (a site with uploadFields) → HELD in a
+ *                   //   block above the dropzone, uploaded only by its "Tải lên {n} tệp" button (field values captured
+ *                   //   then, per File); never uploaded on their own; closing with held files asks nothing
  *   });
  *
  *   handle.root      HTMLElement — the dialog root (.td-modal…td-media-picker-upload)
@@ -46,14 +51,15 @@
  *   close exactly that instance; texts `uploadCancelTitle` / `uploadCancelMessage`; message as text.
  * - Every in-dialog status (per-file uploaded / reused, URL errors) goes to the dialog's own live region (the picker's
  *   region is inert while this dialog is open); `announce` (the picker's) is used only after the dialog closed.
- * - File tab: one "batch" = the files started while none was running; when the last one settles → toast
- *   `uploadDone` ({ok}/{total}, aborted rows not counted; no toast when nothing succeeded) and, without errors (and no
- *   URL task running), the dialog closes.
- * - v0.90.0 image resize (`upload.imageResize`): the batch ends only when no row is queued / optimising either
- *   (`dz.uploading`); a row that fails optimisation counts as a failed file of the batch. The upload fields are captured
- *   when a file is ADDED (`files-change` `detail.added`, WeakMap by the original File) and that snapshot is reused when
- *   the file uploads and on "Thử lại"; the adapter gets `optimization` in its options. Batch outcomes are kept per
- *   original File: a "Thử lại" replaces that file's failed outcome instead of counting as another file.
+ * - File tab: one "batch" = the files added while none was pending; v0.93.0 the dropzone's UploadQueue counts it
+ *   (`dz._onBatchEnd`, utils/upload-queue.js: rows waiting for a slot, queued / optimising rows, optimisation failures
+ *   and "Thử lại" included; aborted rows not counted) → toast `uploadDone` ({ok}/{total}; no toast when nothing
+ *   succeeded) and, without errors (and no URL task running), the dialog closes.
+ * - v0.90.0 image resize (`upload.imageResize`): the upload fields are captured when a file is ADDED (`files-change`
+ *   `detail.added`, WeakMap by the original File) and that snapshot is reused when the file uploads and on "Thử lại";
+ *   the adapter gets `optimization` in its options.
+ * - v0.93.0: the adapter call itself is `createAdapterUpload()` (shared with the picker's grid drop); URL uploads take
+ *   no upload slot.
  * - No auto-close (file batch or URL) while the dropzone still shows an error row (`[data-status="error"]`).
  * - URL tab: client checks are UX only (validateRemoteUrl); the normalised `href` is sent; no client preview (no request
  *   to the typed URL from the browser); single-flight; "Huỷ" aborts silently.
@@ -68,7 +74,13 @@
  *         [<td-tabs size="sm" class="td-media-picker-upload__tabs">]   (both sources only)
  *         <div class="td-media-picker-upload__panels">   (one grid cell: the inactive panel keeps its box, invisible →
  *                                                          one dialog height across tabs, like dcms2)
- *         [<div class="td-media-picker-upload__panel" data-source="file">td-dropzone + <ul class="td-media-picker-upload__notes"></div>]
+ *         [<div class="td-media-picker-upload__panel" data-source="file">
+ *            [v0.93.0 <div class="td-media-picker-upload__held" role="group" aria-labelledby="{id}-held">
+ *              <p class="td-media-picker-upload__held-title" id="{id}-held">Tệp đã thả (n)</p>
+ *              <ul class="td-media-picker-upload__held-list"><li class="td-media-picker-upload__held-item">
+ *                <span __held-name>{name}</span><span __held-size>{size}</span><button.td-btn ghost sm × "Bỏ {name}"></li></ul>
+ *              <td-button variant="primary" class="td-media-picker-upload__held-submit">Tải lên {n} tệp</td-button></div>]
+ *            td-dropzone + <ul class="td-media-picker-upload__notes"></div>]
  *         [<div class="td-media-picker-upload__panel" data-source="url"><p class="td-media-picker-upload__desc">
  *            <div class="td-media-picker-upload__url-row">td-input-field.td-media-picker-upload__url</div>
  *            <div class="td-media-picker-upload__url-actions">td-button submit · td-button abort</div>   (below the input, dcms2)
@@ -89,6 +101,8 @@ import { fillIconSlots } from '../icons/td-icon.js';
 import { safeMediaUrl } from '../utils/media-url.js';
 import { normalizeError, normalizeUploadResult, validateRemoteUrl } from '../utils/media-picker-core.js';
 import { FieldForm } from './media-picker-fields.js';
+import { tdIcon } from '../icons/td-icon.js';
+import { formatFileSize } from '../utils/dom-utils.js';
 import '../display/td-tabs.js';
 import '../form/td-dropzone.js';
 import '../form/td-input-field.js';
@@ -106,6 +120,10 @@ export const UPLOAD_LABELS = {
   uploadDropText: 'hoặc bấm để chọn file',
   uploadNeedsFields: 'Điền các trường bắt buộc trước khi tải lên.',
   uploadDone: 'Đã tải lên {ok}/{total} tệp',
+  /** v0.93.0: files dropped on the picker (site with uploadFields), held until the user submits them */
+  uploadHeld: 'Tệp đã thả ({n})',
+  uploadHeldSubmit: 'Tải lên {n} tệp',
+  uploadHeldRemove: 'Bỏ {name}',
   uploaded: 'Đã tải lên {name}',
   reused: '{name} đã có trong thư viện — dùng lại ảnh cũ',
   uploadError: 'Tải lên thất bại',
@@ -130,6 +148,9 @@ export const UPLOAD_LABELS = {
 };
 
 const abortError = () => Object.assign(new Error('aborted'), { name: 'AbortError' });
+/** marks the rejection of a malformed `adapter.upload` result (createAdapterUpload) */
+/** errors made here for a malformed result — a WeakSet never runs an adapter error's proxy traps (Codex impl r2 #11) */
+const malformedErrors = new WeakSet();
 
 /**
  * Formats text from `accept` ('.jpg,.png,image/webp,image/*' → 'JPG, PNG, WEBP, image/*'), '' without one.
@@ -164,6 +185,87 @@ function progressBridge(onProgress) {
 }
 
 /**
+ * @internal v0.93.0 — the upload hook shared by the upload dialog and the grid drop: `adapter.upload(file, { fields,
+ * context, collectionId?, signal, onProgress, optimization? })` → `normalizeUploadResult` / `normalizeError`. The hook
+ * (`(file, { onProgress, signal, optimization?, originalFile? }) => Promise`) resolves `{ asset, deduplication }`;
+ * rejects with an Error carrying the user message on failure (`onFieldErrors(n)` when the error has field errors —
+ * without that handler the field messages join the message; `onError({ operation: 'upload', code, retryable })`, a
+ * malformed result included: code 'server'), or with the raw error when aborted (no report). It neither counts
+ * batches (UploadQueue does) nor calls `onUploaded` (the caller decides the order).
+ * @param {{ adapter: object, context?: *, collectionId?: *, metaKeys?: string[], t: (k: string, p?: object) => string,
+ *   fieldsFor?: (original: File) => object, onError?: Function, onFieldErrors?: Function, isClosed?: () => boolean }} o
+ *   `collectionId`: sent only when the key is present (v0.66 shape)
+ * @returns {(file: File, c: { onProgress: Function, signal: AbortSignal, optimization?: object, originalFile?: File })
+ *   => Promise<{ asset: object, deduplication: object }>}
+ */
+export function createAdapterUpload(o) {
+  const t = (k, p) => {
+    try { return String(o.t(k, p) ?? ''); } catch { return ''; }
+  };
+  const collOpt = 'collectionId' in o && o.collectionId !== undefined ? { collectionId: o.collectionId } : {};
+  const metaKeys = Array.isArray(o.metaKeys) ? o.metaKeys : [];
+  const closed = () => {
+    try { return typeof o.isClosed === 'function' && !!o.isClosed(); } catch { return false; }
+  };
+  const report = (n) => {
+    try {
+      if (typeof o.onError === 'function') o.onError({ operation: 'upload', code: n.code, retryable: n.retryable });
+    } catch (err) { console.error(err); }
+  };
+  return (file, c) => {
+    const { onProgress, signal } = c;
+    if (closed()) return Promise.reject(abortError());
+    // v0.90.0: the field values of the original File (dialog: the snapshot taken when it was added)
+    const fieldValues = typeof o.fieldsFor === 'function' ? (o.fieldsFor(c.originalFile || file) || {}) : {};
+    // v0.90.0: the optimisation summary goes to the adapter as it is (only when the dropzone has a policy)
+    const optOpt = 'optimization' in c ? { optimization: c.optimization } : {};
+    let out;
+    try {
+      out = Promise.resolve(o.adapter.upload(file, { fields: fieldValues, context: o.context, ...collOpt, signal,
+        onProgress: progressBridge(onProgress), ...optOpt }));
+    } catch (err) {
+      out = Promise.reject(err);
+    }
+    // one path (Codex impl r1 #3): a malformed result is a normalised `server` failure, reported like any rejection
+    return out.then((raw) => {
+      if (closed() || signal.aborted) throw abortError();
+      let res = null;
+      try {
+        res = normalizeUploadResult(raw, { safeUrl: safeMediaUrl, metadataKeys: metaKeys });
+      } catch { res = null; }
+      if (!res) {
+        console.warn('td-media-picker: malformed upload result (ignored)'); // never the raw result (review SEC-2)
+        const e = new Error('malformed');
+        malformedErrors.add(e);
+        throw e;
+      }
+      return res;
+    }).catch((err) => {
+      if (closed()) throw err;
+      const malformed = typeof err === 'object' && err !== null && malformedErrors.has(err);
+      const n = malformed
+        ? normalizeError({ code: 'server' }, null, { warn: () => {}, operation: 'upload' })
+        : normalizeError(err, signal, { operation: 'upload' });
+      if (!n) throw err; // aborted (row removed / dialog closed): the dropzone shows nothing
+      const fieldHandler = typeof o.onFieldErrors === 'function';
+      if (n.fieldErrors.size && fieldHandler) {
+        try { o.onFieldErrors(n); } catch (e) { console.error(e); }
+      }
+      report(n);
+      if (malformed) throw new Error(t('uploadError'));
+      // no field form to show them (grid drop): the field messages go into the row / card text (Codex impl r1 #6)
+      const parts = n.userMessage ? [n.userMessage] : [];
+      if (n.fieldErrors.size && !fieldHandler) {
+        for (const msgs of n.fieldErrors.values()) {
+          for (const m of msgs) if (!parts.includes(m) && parts.length < 4) parts.push(m);
+        }
+      }
+      throw new Error(parts.join('. ') || t(`error.${n.code}`) || t('uploadError'));
+    });
+  };
+}
+
+/**
  * @param {object} o see the contract above
  * @returns {{ root: HTMLElement, busy(): boolean, close(): Promise<boolean>, destroy(): void }}
  */
@@ -187,9 +289,6 @@ export function openUploadDialog(o) {
   let confirm = null;
   /** @type {{ ctrl: AbortController }|null} */
   let urlTask = null;
-  /** outcomes: per file of the batch ('pending' | 'ok' | 'fail'), keyed by the original File (v0.90.0: a retry
-   * replaces its earlier outcome) or, without a policy, by a key of its own per upload (v0.89 counting) */
-  const batch = { inflight: 0, outcomes: new Map() };
   /** v0.90.0: an error row stays in the dropzone → the dialog must not auto-close over it */
   const hasErrorRow = () => !!(dz && dz.querySelector('[data-status="error"]'));
   /** v0.90.0: upload field values per original File, captured when the file was added */
@@ -291,6 +390,112 @@ export function openUploadDialog(o) {
   panels.className = 'td-media-picker-upload__panels';
   body.appendChild(panels);
 
+  // --- v0.93.0: files dropped on the picker, held until "Tải lên {n} tệp" (never uploaded on their own) ---
+  /** @type {File[]} */
+  let held = sources.file && Array.isArray(o.files) ? o.files.filter((f) => f && typeof f === 'object') : [];
+  /** @type {HTMLElement|null} */
+  let heldEl = null;
+  /** @type {any} */
+  let heldSubmit = null;
+  let heldTitle = null;
+  let heldList = null;
+  function buildHeld() {
+    heldEl = document.createElement('div');
+    heldEl.className = 'td-media-picker-upload__held';
+    heldEl.setAttribute('role', 'group');
+    heldTitle = document.createElement('p');
+    heldTitle.className = 'td-media-picker-upload__held-title';
+    heldTitle.id = `${id}-held`;
+    heldEl.setAttribute('aria-labelledby', heldTitle.id);
+    heldList = document.createElement('ul');
+    heldList.className = 'td-media-picker-upload__held-list';
+    for (const f of held) {
+      const li = document.createElement('li');
+      li.className = 'td-media-picker-upload__held-item';
+      const name = document.createElement('span');
+      name.className = 'td-media-picker-upload__held-name';
+      name.textContent = f.name; // user-controlled: text only
+      name.title = f.name;
+      const size = document.createElement('span');
+      size.className = 'td-media-picker-upload__held-size';
+      size.textContent = formatFileSize(f.size);
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'td-btn td-btn--ghost td-btn--sm td-media-picker-upload__held-remove';
+      rm.setAttribute('aria-label', t('uploadHeldRemove', { name: f.name }));
+      const icon = tdIcon('close', { size: 's' });
+      if (icon) rm.appendChild(icon);
+      rm.addEventListener('click', () => removeHeld(f, li));
+      li.append(name, size, rm);
+      heldList.appendChild(li);
+    }
+    heldSubmit = document.createElement('td-button');
+    heldSubmit.className = 'td-media-picker-upload__held-submit';
+    heldSubmit.setAttribute('variant', 'primary');
+    heldSubmit.addEventListener('click', () => submitHeld());
+    heldEl.append(heldTitle, heldList, heldSubmit);
+    paintHeld();
+    return heldEl;
+  }
+  function paintHeld() {
+    if (!heldEl) return;
+    heldTitle.textContent = t('uploadHeld', { n: held.length });
+    heldSubmit.textContent = t('uploadHeldSubmit', { n: held.length });
+  }
+  function dropHeld() {
+    if (!heldEl) return;
+    heldEl.remove();
+    heldEl = null;
+    heldSubmit = null;
+  }
+  function removeHeld(file, li) {
+    if (destroyed || closing) return;
+    const items = [...heldList.children];
+    const k = items.indexOf(li);
+    held = held.filter((f) => f !== file);
+    const had = li.contains(document.activeElement);
+    li.remove();
+    if (!held.length) {
+      dropHeld();
+      if (had) focusIn(dz);
+      return;
+    }
+    paintHeld();
+    if (had) {
+      const next = heldList.children[k] || heldList.children[k - 1];
+      focusIn(next || heldSubmit);
+    }
+  }
+  function submitHeld() {
+    if (destroyed || closing || !held.length || !dz) return;
+    if (missing()) {
+      syncGate();
+      return;
+    }
+    // dz.addFiles() emits no files-change: the field values are captured here, per original File
+    const v = values();
+    for (const f of held) snapshots.set(f, { ...v });
+    const files = held;
+    held = [];
+    const had = !!heldEl && heldEl.contains(document.activeElement);
+    dropHeld();
+    dz.addFiles(files);
+    if (had) focusIn(dz);
+  }
+  /** the first empty visible required field, else the first field (focus on open with held files) */
+  function firstField() {
+    if (!form) return null;
+    let first = null;
+    for (const c of form.controls.values()) {
+      if (!c.control || !c.visible) continue;
+      if (!first) first = c.el;
+      if (!c.descriptor.required) continue;
+      const v = c.get();
+      if (v === '' || v == null || (Array.isArray(v) && !v.length)) return c.el;
+    }
+    return first;
+  }
+
   // --- file source ---
   /** @type {any} */
   let dz = null;
@@ -302,6 +507,8 @@ export function openUploadDialog(o) {
     panel.setAttribute('data-source', 'file');
     panel.id = `${id}-file`;
     dz = document.createElement('td-dropzone');
+    dz._uploadSlots = o.uploadSlots || null; // v0.93.0 (internal): the picker-wide pool, before any file
+    dz._onBatchEnd = (r) => finishBatch(r); // v0.93.0 (internal): the dropzone's queue counts the batch
     dz.className = 'td-media-picker-upload__dropzone';
     if (up.multiple !== false) dz.setAttribute('multiple', '');
     if (up.accept) dz.setAttribute('accept', String(up.accept));
@@ -311,19 +518,17 @@ export function openUploadDialog(o) {
     dz.setAttribute('prompt-title', t('uploadDropTitle'));
     dz.setAttribute('prompt-text', t('uploadDropText'));
     dz.setAttribute('hint-style', 'badges');
-    dz.upload = (file, c) => uploadFile(file, c);
+    dz.upload = (file, c) => uploadFile(file, c).then((res) => {
+      uploaded(res.asset, res.deduplication, 'upload');
+      return res;
+    });
     // v0.90.0: fields captured when the file is added (before its optimisation), once per original File
     dz.addEventListener('files-change', (e) => {
       const added = e.detail && Array.isArray(e.detail.added) ? e.detail.added : [];
       for (const f of added) if (f && typeof f === 'object' && !snapshots.has(f)) snapshots.set(f, values());
-      if (batch.inflight === 0) queueMicrotask(finishBatch); // a removed queued row may end the batch
     });
-    dz._onOptimizeError = (original) => {
-      if (closing || destroyed) return;
-      batch.outcomes.set(original || {}, 'fail');
-      if (batch.inflight === 0) queueMicrotask(finishBatch);
-    };
     panel.appendChild(dz);
+    if (held.length) panel.insertBefore(buildHeld(), dz);
     notes = document.createElement('ul');
     notes.className = 'td-media-picker-upload__notes';
     notes.hidden = true;
@@ -467,72 +672,35 @@ export function openUploadDialog(o) {
     const lock = missing();
     hint.hidden = !lock;
     if (dz) dz.toggleAttribute('disabled', lock);
+    if (heldSubmit) heldSubmit.toggleAttribute('disabled', lock);
     if (submitBtn) submitBtn.toggleAttribute('disabled', lock || !!urlTask || !checkUrl().ok);
   }
 
-  // --- file upload hook (decision 21; v0.32 `_upload` logic) ---
-  function uploadFile(file, c) {
-    const { onProgress, signal } = c;
-    if (closing || destroyed) return Promise.reject(abortError());
-    // (the batch counters are reset by finishBatch: v0.90.0 a batch may span rows still optimising)
-    batch.inflight += 1;
-    const outKey = c.originalFile || {}; // retry (same original) replaces the failed outcome; no policy: one per call
-    batch.outcomes.set(outKey, 'pending');
+  // --- file upload hook (decision 21; v0.93.0 createAdapterUpload, the batch is counted by the dropzone's queue) ---
+  const uploadFile = createAdapterUpload({
+    adapter: o.adapter,
+    context: o.context,
+    ...collOpt,
+    metaKeys,
+    t,
     // v0.90.0: the snapshot taken when the file was added; else (no policy: the hook runs inside the add) now
-    const key = c.originalFile || file;
-    let fieldValues = snapshots.get(key);
-    if (!fieldValues) {
-      fieldValues = values();
-      snapshots.set(key, fieldValues);
-    }
-    // v0.90.0: the optimisation summary goes to the adapter as it is (only when the dropzone has a policy)
-    const optOpt = 'optimization' in c ? { optimization: c.optimization } : {};
-    let out;
-    try {
-      out = Promise.resolve(o.adapter.upload(file, { fields: fieldValues, context: o.context, ...collOpt, signal,
-        onProgress: progressBridge(onProgress), ...optOpt }));
-    } catch (err) {
-      out = Promise.reject(err);
-    }
-    let outcome = 'abort';
-    const done = out.then((raw) => {
-      if (destroyed || signal.aborted) throw abortError();
-      const res = normalizeUploadResult(raw, { safeUrl: safeMediaUrl, metadataKeys: metaKeys });
-      if (!res) {
-        console.warn('td-media-picker: malformed upload result (ignored)'); // never the raw result (review SEC-2)
-        outcome = 'fail';
-        throw new Error(t('uploadError'));
+    fieldsFor: (key) => {
+      let fieldValues = snapshots.get(key);
+      if (!fieldValues) {
+        fieldValues = values();
+        snapshots.set(key, fieldValues);
       }
-      outcome = 'ok';
-      uploaded(res.asset, res.deduplication, 'upload');
-      return res;
-    }, (err) => {
-      if (destroyed) throw err;
-      const n = normalizeError(err, signal, { operation: 'upload' });
-      if (!n) throw err; // aborted (row removed / dialog closed): the dropzone shows nothing
-      outcome = 'fail';
-      if (form && n.fieldErrors.size) form.applyErrors(n);
-      reportError('upload', n);
-      throw new Error(n.userMessage || t(`error.${n.code}`) || t('uploadError'));
-    });
-    const settle = () => {
-      batch.inflight -= 1;
-      if (outcome === 'ok' || outcome === 'fail') batch.outcomes.set(outKey, outcome);
-      else batch.outcomes.delete(outKey); // aborted: not counted
-      if (batch.inflight === 0) queueMicrotask(finishBatch);
-    };
-    done.then(settle, settle);
-    return done;
-  }
+      return fieldValues;
+    },
+    onFieldErrors: (n) => { if (form) form.applyErrors(n); },
+    onError: (d) => reportError(d.operation, d),
+    isClosed: () => closing || destroyed,
+  });
 
-  function finishBatch() {
-    if (destroyed || batch.inflight !== 0) return;
-    if (dz && dz.uploading) return; // v0.90.0: rows still queued / optimising belong to this batch
-    const all = [...batch.outcomes.values()];
-    batch.outcomes.clear();
-    const total = all.length;
-    const ok = all.filter((v) => v === 'ok').length;
-    const fail = all.filter((v) => v === 'fail').length;
+  /** v0.93.0: `{ ok, fail, total }` of one batch (once, from the dropzone's UploadQueue) */
+  function finishBatch(r) {
+    if (destroyed || !r) return;
+    const { ok, fail, total } = r;
     if (!total) return;
     if (ok) {
       try { TdToast.success(t('uploadDone', { ok, total }), { themeRoot: root }); } catch { /* ignore */ }
@@ -667,6 +835,10 @@ export function openUploadDialog(o) {
       const active = document.activeElement;
       if (active && active !== dialog && root.contains(active)) return; // the user moved on
       if (!handle.layer.isTop()) return;
+      if (heldEl) { // v0.93.0: dropped files held → the field to fill first, else the submit button
+        focusIn(firstField() || heldSubmit);
+        return;
+      }
       if (tabs) focusIn(tabs);
       else if (urlField && !dz) focusIn(urlField);
       else if (dz) focusIn(dz);

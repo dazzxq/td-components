@@ -5426,6 +5426,128 @@
       ],
       "settle": 600,
       "selectorNote": "v0.74: the collection strip above the grid (initialQuery) — Album / Ảnh headings + counts, stacked-photo cards (cover border, contain img, name, count); pseudo-elements are covered by the engines tests"
+    },
+    {
+      "state": "dragover",
+      "setup": "const { createMockAdapter } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const c = document.createElement('canvas'); c.width = 24; c.height = 16; const x = c.getContext('2d'); x.fillStyle = '#e11d48'; x.fillRect(0, 0, 24, 16); const b = await new Promise((r) => c.toBlob(r, 'image/png')); const png = (n) => new File([b], n, { type: 'image/png' }); const pdf = new File([new Uint8Array(64)], 'bao-cao.pdf', { type: 'application/pdf' }); const drop = (files, types = ['dragenter', 'dragover', 'drop']) => { const g = R().querySelector('.td-media-picker__grid'); const dt = new DataTransfer(); files.forEach((f) => dt.items.add(f)); for (const t of types) g.dispatchEvent(new DragEvent(t, { bubbles: true, cancelable: true, dataTransfer: dt })); }; TdMediaPicker.open({ autoSelectFirst: false, adapter: createMockAdapter({ count: 12 }) }); await w(600); drop([png('keo.png')], ['dragenter', 'dragover']); await w(100);",
+      "selectors": [
+        ".td-media-picker",
+        ".td-media-picker__content",
+        ".td-media-picker__results",
+        ".td-media-picker__drop-hint",
+        ".td-media-picker__drop-hint-pill",
+        ".td-media-picker__grid"
+      ],
+      "portal": [
+        ".td-media-picker",
+        ".td-media-picker__content",
+        ".td-media-picker__results",
+        ".td-media-picker__drop-hint",
+        ".td-media-picker__drop-hint-pill",
+        ".td-media-picker__grid"
+      ],
+      "settle": 600,
+      "selectorNote": "v0.93.0: OS files dragged over the open picker — results outlined (data-drop=over), sticky hint pill (icon + text)"
+    },
+    {
+      "state": "drop-uploading",
+      "setup": "const { createMockAdapter } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const c = document.createElement('canvas'); c.width = 24; c.height = 16; const x = c.getContext('2d'); x.fillStyle = '#e11d48'; x.fillRect(0, 0, 24, 16); const b = await new Promise((r) => c.toBlob(r, 'image/png')); const png = (n) => new File([b], n, { type: 'image/png' }); const pdf = new File([new Uint8Array(64)], 'bao-cao.pdf', { type: 'application/pdf' }); const drop = (files, types = ['dragenter', 'dragover', 'drop']) => { const g = R().querySelector('.td-media-picker__grid'); const dt = new DataTransfer(); files.forEach((f) => dt.items.add(f)); for (const t of types) g.dispatchEvent(new DragEvent(t, { bubbles: true, cancelable: true, dataTransfer: dt })); }; const ad = createMockAdapter({ count: 12 }); ad.upload = (f, o) => new Promise(() => { setTimeout(() => o.onProgress?.({ percent: 40 }), 50); }); TdMediaPicker.open({ autoSelectFirst: false, adapter: ad }); await w(600); drop([png('moi.png'), pdf]); await w(400);",
+      "selectors": [
+        ".td-media-picker",
+        ".td-media-picker__results",
+        ".td-media-picker__grid",
+        ".td-media-picker__card--upload",
+        ".td-media-picker__card--upload .td-media-picker__open",
+        ".td-media-picker__card--upload .td-media-picker__thumb",
+        ".td-media-picker__card--upload .td-media-picker__info",
+        ".td-media-picker__card--upload .td-media-picker__name",
+        ".td-media-picker__card--upload .td-media-picker__meta",
+        ".td-media-picker__upload-actions",
+        ".td-media-picker__upload-remove",
+        ".td-media-picker__upload-preview",
+        ".td-media-picker__thumb-icon",
+        ".td-media-picker__upload-progress"
+      ],
+      "portal": [
+        ".td-media-picker",
+        ".td-media-picker__results",
+        ".td-media-picker__grid",
+        ".td-media-picker__card--upload",
+        ".td-media-picker__card--upload .td-media-picker__open",
+        ".td-media-picker__card--upload .td-media-picker__thumb",
+        ".td-media-picker__card--upload .td-media-picker__info",
+        ".td-media-picker__card--upload .td-media-picker__name",
+        ".td-media-picker__card--upload .td-media-picker__meta",
+        ".td-media-picker__upload-actions",
+        ".td-media-picker__upload-remove",
+        ".td-media-picker__upload-preview",
+        ".td-media-picker__thumb-icon",
+        ".td-media-picker__upload-progress"
+      ],
+      "settle": 600,
+      "selectorNote": "v0.93.0: files dropped into the grid, upload held (40%) — placeholder cards first: greyed canvas preview (PNG) / kind icon (PDF), veil, td-progress, cancel ×; no blob: URL"
+    },
+    {
+      "state": "drop-error",
+      "setup": "const { createMockAdapter } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const c = document.createElement('canvas'); c.width = 24; c.height = 16; const x = c.getContext('2d'); x.fillStyle = '#e11d48'; x.fillRect(0, 0, 24, 16); const b = await new Promise((r) => c.toBlob(r, 'image/png')); const png = (n) => new File([b], n, { type: 'image/png' }); const pdf = new File([new Uint8Array(64)], 'bao-cao.pdf', { type: 'application/pdf' }); const drop = (files, types = ['dragenter', 'dragover', 'drop']) => { const g = R().querySelector('.td-media-picker__grid'); const dt = new DataTransfer(); files.forEach((f) => dt.items.add(f)); for (const t of types) g.dispatchEvent(new DragEvent(t, { bubbles: true, cancelable: true, dataTransfer: dt })); }; const ad = createMockAdapter({ count: 12 }); ad.upload = () => Promise.reject(Object.assign(new Error('x'), { code: 'server' })); TdMediaPicker.open({ autoSelectFirst: false, adapter: ad }); await w(600); drop([png('loi.png')]); await w(400);",
+      "selectors": [
+        ".td-media-picker",
+        ".td-media-picker__results",
+        ".td-media-picker__grid",
+        ".td-media-picker__card--upload",
+        ".td-media-picker__card--upload .td-media-picker__open",
+        ".td-media-picker__card--upload .td-media-picker__thumb",
+        ".td-media-picker__card--upload .td-media-picker__info",
+        ".td-media-picker__card--upload .td-media-picker__name",
+        ".td-media-picker__card--upload .td-media-picker__meta",
+        ".td-media-picker__upload-actions",
+        ".td-media-picker__upload-remove",
+        ".td-media-picker__upload-retry"
+      ],
+      "portal": [
+        ".td-media-picker",
+        ".td-media-picker__results",
+        ".td-media-picker__grid",
+        ".td-media-picker__card--upload",
+        ".td-media-picker__card--upload .td-media-picker__open",
+        ".td-media-picker__card--upload .td-media-picker__thumb",
+        ".td-media-picker__card--upload .td-media-picker__info",
+        ".td-media-picker__card--upload .td-media-picker__name",
+        ".td-media-picker__card--upload .td-media-picker__meta",
+        ".td-media-picker__upload-actions",
+        ".td-media-picker__upload-remove",
+        ".td-media-picker__upload-retry"
+      ],
+      "settle": 600,
+      "selectorNote": "v0.93.0: a dropped file whose upload failed — error meta, Thử lại + Gỡ"
+    },
+    {
+      "state": "upload-held",
+      "setup": "const { createMockAdapter } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const c = document.createElement('canvas'); c.width = 24; c.height = 16; const x = c.getContext('2d'); x.fillStyle = '#e11d48'; x.fillRect(0, 0, 24, 16); const b = await new Promise((r) => c.toBlob(r, 'image/png')); const png = (n) => new File([b], n, { type: 'image/png' }); const pdf = new File([new Uint8Array(64)], 'bao-cao.pdf', { type: 'application/pdf' }); const drop = (files, types = ['dragenter', 'dragover', 'drop']) => { const g = R().querySelector('.td-media-picker__grid'); const dt = new DataTransfer(); files.forEach((f) => dt.items.add(f)); for (const t of types) g.dispatchEvent(new DragEvent(t, { bubbles: true, cancelable: true, dataTransfer: dt })); }; TdMediaPicker.open({ autoSelectFirst: false, adapter: createMockAdapter({ count: 12 }), uploadFields: [{ key: 'title', label: 'Tiêu đề', control: 'text', required: true }] }); await w(600); drop([png('giu-1.png'), png('giu-2.png')]); await w(600);",
+      "selectors": [
+        ".td-media-picker-upload",
+        ".td-media-picker-upload__held",
+        ".td-media-picker-upload__held-title",
+        ".td-media-picker-upload__held-list",
+        ".td-media-picker-upload__held-item",
+        ".td-media-picker-upload__held-name",
+        ".td-media-picker-upload__held-size",
+        ".td-media-picker-upload__held-remove",
+        ".td-media-picker-upload__held-submit"
+      ],
+      "portal": [
+        ".td-media-picker-upload",
+        ".td-media-picker-upload__held",
+        ".td-media-picker-upload__held-title",
+        ".td-media-picker-upload__held-list",
+        ".td-media-picker-upload__held-item",
+        ".td-media-picker-upload__held-name",
+        ".td-media-picker-upload__held-size",
+        ".td-media-picker-upload__held-remove",
+        ".td-media-picker-upload__held-submit"
+      ],
+      "settle": 600,
+      "selectorNote": "v0.93.0: files dropped on a picker with uploadFields — the upload dialog holds them (list + Bỏ ×, submit locked until the required field is filled)"
     }
   ],
   "td-media-field": [

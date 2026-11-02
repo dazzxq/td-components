@@ -97,12 +97,71 @@
 		justify-content: flex-end;
 	}
 
+	/* v0.93.0: files dropped on the picker, held above the dropzone until "Tải lên {n} tệp" (plain rows, no surface) */
+	.td-media-picker-upload__held {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--td-space-sm);
+		min-width: 0;
+	}
+
+	.td-media-picker-upload__held-title {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		font-weight: 600;
+		color: var(--td-color-text);
+	}
+
+	.td-media-picker-upload__held-list {
+		display: flex;
+		flex-direction: column;
+		align-self: stretch;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.td-media-picker-upload__held-item {
+		display: flex;
+		align-items: center;
+		gap: var(--td-space-sm);
+		min-width: 0;
+		border-bottom: 1px solid var(--td-hairline);
+		font-size: var(--td-text-sm);
+	}
+
+	.td-media-picker-upload__held-name {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		color: var(--td-color-text);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-media-picker-upload__held-size {
+		flex: 0 0 auto;
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker-upload__held-remove {
+		flex: 0 0 auto;
+		padding-inline: 0.5rem;
+	}
+
 	/* v0.36.0 (plan QĐ 58, mobile UX audit — replaces v0.33 decision 20's full viewport): < 720 the upload dialog is the
 	   kit's ordinary bottom sheet, as tall as its content (≤ 90dvh, safe-area from modal.css); the footer held only
 	   "Đóng" — the header × does that, so the footer is dropped. */
 	@media (max-width: 719.98px) {
 		.td-modal.td-media-picker-upload .td-media-picker-upload__footer {
 			display: none;
+		}
+
+		/* ADR 0019: 44px touch targets */
+		.td-media-picker-upload__held-remove {
+			min-width: 44px;
+			min-height: 44px;
 		}
 	}
 }

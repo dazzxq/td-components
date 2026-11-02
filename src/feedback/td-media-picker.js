@@ -55,6 +55,14 @@
  * — "Album n" (`.td-media-picker__colls-heading`) and, right before the grid, "Ảnh n" (`h4.td-media-picker__items-heading`,
  * shown ONLY while the strip is shown). Each card's cover (`.td-media-picker__coll-cover`) carries the stacked-photos layer.
  *
+ * v0.93.0 (plan v0.93.0-media-picker-grid-drop): OS files dropped on the open picker (always on when the adapter has
+ * `upload`; no opt-out). Dragging files over it sets `data-drop="over"` on the results section and shows the lazily built
+ * `div.td-media-picker__drop-hint[aria-hidden]`. No `uploadFields` → placeholder cards (media-picker-drop.js:
+ * `[data-td-media-item].td-media-picker__card--upload[data-id="td-up-{token}-N"][data-upload][data-waiting][aria-busy]`, canvas
+ * preview, td-progress, × / Thử lại / Gỡ) first in the grid, uploaded in place, never selectable until done, then a regular
+ * selected card (data-id = asset id) replaced by the page-1 reload. Any `uploadFields` → the upload dialog with the files
+ * HELD until its "Tải lên {n} tệp" button. At most 3 `adapter.upload` at once picker-wide (grid + dialog share the slots).
+ *
  * @element td-media-picker
  * @property {object} options - OpenMediaPickerOptions (merged over TdMediaPicker.defaults at open())
  * @fires selection-change
@@ -83,6 +91,8 @@ import {
 import { createFacetControl, FieldForm, FIELD_LABELS } from './media-picker-fields.js';
 import { TdMenu } from './td-menu.js';
 import { openUploadDialog, UPLOAD_LABELS } from './media-picker-upload.js';
+import { createUploadSlots } from '../utils/upload-queue.js';
+import { createGridDrop } from './media-picker-drop.js';
 import { openFilterSheet, FILTER_LABELS } from './media-picker-filters.js';
 import { openCropDialog } from './crop-dialog.js';
 import { normalizeImageResizePolicy } from '../utils/image-resize.js';
@@ -293,6 +303,18 @@ export class TdMediaPicker extends HTMLElement {
     collectionEntered: '{label}: {n} kết quả',
     collectionLeft: 'Tất cả: {n} kết quả',
     autoSelected: 'Đã chọn sẵn: {name}',
+    /** v0.93.0: files dropped on the open picker (uploaded in place in the grid when the site has no uploadFields) */
+    dropHint: 'Thả tệp để tải lên',
+    dropStarted: 'Đang tải lên {n} tệp',
+    dropRejected: '{n} tệp không được nhận',
+    dropFolder: 'Không tải được thư mục',
+    dropCancel: 'Huỷ tải {name}',
+    dropRemove: 'Gỡ {name}',
+    dropRetry: 'Thử lại',
+    dropRetryLabel: 'Thử lại {name}',
+    dropFailed: 'Tải lên {name} thất bại',
+    uploadedHidden: 'Đã tải lên {name} — không hiện vì bộ lọc hoặc thứ tự hiện tại',
+    uploadProgressLabel: 'Đang tải {name}',
     kind: { image: 'Ảnh', video: 'Video', file: 'File' },
     status: { pending: 'Đang chờ', processing: 'Đang xử lý', failed: 'Lỗi', archived: 'Đã lưu trữ' },
     meta: {
@@ -495,6 +517,11 @@ export class TdMediaPicker extends HTMLElement {
       edit: null,
       blocked: null,
       upload: null,
+      /** v0.93.0: picker-wide upload slots — at most 3 concurrent `adapter.upload` (grid drop + upload dialog share them) */
+      uploadSlots: createUploadSlots(3),
+      /** v0.93.0: files dropped into the grid (media-picker-drop.js), created in _build; list request counter */
+      drop: null,
+      listSeq: 0,
       /** v0.36.0 (QĐ 49–50): the open filter sheet, the last descriptor list, a descriptor list that arrived meanwhile */
       filterSheet: null,
       facetList: [],
@@ -704,6 +731,7 @@ export class TdMediaPicker extends HTMLElement {
     Object.assign(e, { cancel, confirm });
     this._buildToolbar();
     this._bindGrid();
+    this._bindDrop();
     this._renderDetail();
     return root;
   }
@@ -1200,8 +1228,8 @@ export class TdMediaPicker extends HTMLElement {
 
   // --- upload dialog (decisions 20-22, lane D implements the dialog) ---
 
-  /** @private */
-  _openUpload() {
+  /** @private @param {{ files?: File[] }} [o] v0.93.0: files dropped on the picker, held in the dialog until submitted */
+  _openUpload(o = {}) {
     const s = this._s;
     if (!this._live(s) || s.upload) return;
     try {
@@ -1217,6 +1245,8 @@ export class TdMediaPicker extends HTMLElement {
         uploadFields: s.uploadFields,
         metaKeys: s.metaKeys,
         idPrefix: `${s.id}-up`,
+        uploadSlots: s.uploadSlots, // v0.93.0 (internal)
+        ...(o.files && o.files.length ? { files: o.files } : {}),
         onUploaded: (asset, dedup, operation) => { if (this._live(s)) this._onUploaded(asset, dedup, operation); },
         onError: (d) => {
           if (!this._live(s) || !d) return;
@@ -1323,6 +1353,7 @@ export class TdMediaPicker extends HTMLElement {
   _runPage(r, o = {}) {
     const s = this._s;
     const state = this._listState();
+    const seq = ++s.listSeq; // v0.93.0: requests started after a dropped file finished replace its card
     if (!o.keepGrid) this._showLoading();
     s.els.results.setAttribute('aria-busy', 'true');
     this._renderPager(o.button || null);
@@ -1361,7 +1392,7 @@ export class TdMediaPicker extends HTMLElement {
           return;
         }
       }
-      this._renderPage(page, !o.nav && !o.keepGrid, o.announce, o.autoFirst === true);
+      this._renderPage(page, !o.nav && !o.keepGrid, o.announce, o.autoFirst === true, seq);
       this._renderPager();
       if (o.nav) {
         s.els.results.scrollTop = 0;
@@ -1388,11 +1419,14 @@ export class TdMediaPicker extends HTMLElement {
 
   /** @private skeleton cards while a page loads */
   _showLoading() {
-    const e = this._s.els;
+    const s = this._s;
+    const e = s.els;
     e.error.hidden = true;
     e.empty.hidden = true;
-    e.grid.hidden = true;
-    e.skeleton.hidden = false;
+    // v0.93.0: dropped-file cards in the grid → the grid stays (no skeleton), like keepGrid
+    const keep = !!s.drop && s.drop.placeholders().length > 0;
+    e.grid.hidden = !keep;
+    e.skeleton.hidden = keep;
     if (e.itemsHead) this._syncSectionHeads();
   }
 
@@ -1411,7 +1445,7 @@ export class TdMediaPicker extends HTMLElement {
    * @param {(n: number) => string} [announceText] v0.66.0 (K8): the results count merged into one message
    * @param {boolean} [autoFirst] v0.67.0: select the first selectable asset first (`autoSelectFirst`, first load only)
    */
-  _renderPage(page, announce, announceText, autoFirst = false) {
+  _renderPage(page, announce, announceText, autoFirst = false, seq = this._s.listSeq) {
     const s = this._s;
     const grid = s.els.grid;
     if (typeof grid.clear === 'function') grid.clear();
@@ -1422,11 +1456,13 @@ export class TdMediaPicker extends HTMLElement {
       s.items.set(a.id, el);
       grid.appendChild(el);
     }
+    // v0.93.0: dropped-file cards back at the start; done ones leave when replaced (see media-picker-drop.js)
+    if (s.drop) s.drop.afterRender(page.items.map((a) => a.id), seq);
     if (!page.items.length) {
       this._renderEmpty();
       s.els.skeleton.hidden = true;
       s.els.error.hidden = true;
-      grid.hidden = true;
+      grid.hidden = !(s.drop && s.drop.placeholders().length); // the empty state shows under the dropped cards
       s.els.empty.hidden = false;
     } else {
       this._showResults();
@@ -1833,6 +1869,7 @@ export class TdMediaPicker extends HTMLElement {
   _markViewing() {
     const s = this._s;
     for (const [id, el] of s.items) el.toggleAttribute('data-viewing', id === s.detailId);
+    if (s.drop) for (const el of s.drop.placeholders()) el.toggleAttribute('data-viewing', el.getAttribute('data-id') === s.detailId);
   }
 
   /** @private */
@@ -1843,6 +1880,13 @@ export class TdMediaPicker extends HTMLElement {
     const itemOf = (node) => {
       const el = node instanceof Element ? node.closest('[data-td-media-item]') : null;
       return el && grid.contains(el) ? el : null;
+    };
+    // v0.93.0: a dropped file still uploading / failed — by the drop module's records, never by an id prefix
+    const pending = (id) => !!s.drop && s.drop.isPending(id);
+    /** a grid selection gesture on such a card never reaches td-media-grid (no commit, no anchor; Codex impl r1 #2) */
+    const swallow = (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
     };
     // Single mode (review R1-2, R2-2): a FLIP in the grid (tick, Ctrl/Cmd/Shift+click, Space) has no "before select"
     // hook — clear the grid SILENTLY in the capture phase of an ancestor (before the grid's own capture listener) when
@@ -1859,18 +1903,27 @@ export class TdMediaPicker extends HTMLElement {
       if (!item) return;
       const t = /** @type {Element} */ (ev.target);
       if (t.closest('.td-media-grid__tick')
-        || (t.closest('[data-td-media-open]') && (ev.shiftKey || ev.ctrlKey || ev.metaKey))) preClear(item);
+        || (t.closest('[data-td-media-open]') && (ev.shiftKey || ev.ctrlKey || ev.metaKey))) {
+        if (pending(item.getAttribute('data-id'))) swallow(ev);
+        else preClear(item);
+      }
     }, true);
     results.addEventListener('keydown', (ev) => {
-      if (ev.key !== ' ' || ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (ev.key !== ' ' || ev.ctrlKey || ev.metaKey || ev.altKey) return;
       const t = /** @type {Element} */ (ev.target);
       if (!t.closest || !t.closest('[data-td-media-open]')) return;
-      preClear(itemOf(t));
+      const item = itemOf(t);
+      if (item && pending(item.getAttribute('data-id'))) {
+        swallow(ev); // the grid never flips it (no page scroll either); its keyup still keeps Space from clicking
+        return;
+      }
+      if (!ev.repeat) preClear(item);
     }, true);
     // select-mode="tick": a plain click / Enter on the opener ALWAYS activates
     grid.addEventListener('activate', (ev) => {
       ev.preventDefault();
       const id = ev.detail.id;
+      if (pending(id)) return; // v0.93.0: a card still uploading — silently nothing
       const asset = s.cache.getAsset(id);
       if (!asset) { this._syncGrid(true); return; }
       if (s.mode === 'multiple') {
@@ -1880,6 +1933,162 @@ export class TdMediaPicker extends HTMLElement {
       this._selectSingle(id, asset);
     });
     grid.addEventListener('select-change', (ev) => this._onGridChange(ev.detail));
+  }
+
+  /**
+   * @private v0.93.0 (plan v0.93.0-media-picker-grid-drop): OS files dropped anywhere on the dialog. Only drags that
+   * carry 'Files' (text / link drags keep their default); a drag started inside the picker (a card thumbnail) is
+   * ignored. Enter / leave are counted by depth (Safari's null relatedTarget); reset on drop, dragend and window blur.
+   * The results pane shows `data-drop="over"` + the lazily created `.td-media-picker__drop-hint`. Disabled (no file
+   * source, settled, a layer over the picker): the drop is still swallowed (`dropEffect = 'none'`, the browser never
+   * opens the file), no highlight. Routing: any `uploadFields` → the upload dialog with the files held; else the
+   * files are uploaded in place in the grid (media-picker-drop.js), back to page 1 first when on another page.
+   */
+  _bindDrop() {
+    const s = this._s;
+    const e = s.els;
+    const t = (k, p) => this._t(k, p);
+    s.drop = createGridDrop({
+      grid: e.grid,
+      t,
+      adapter: s.adapter,
+      context: s.context,
+      metaKeys: s.metaKeys,
+      upload: s.opts.upload,
+      // the collection in view when the files are dropped (collection-enabled sessions only), like "Tải lên"
+      collection: () => (s.collEnabled ? { id: s.collection ? s.collection.id : null } : undefined),
+      slots: () => s.uploadSlots,
+      listSeq: () => s.listSeq,
+      hasCard: (id) => s.items.has(id),
+      paintCard: (el, asset) => this._paintItem(el, asset),
+      onUploaded: (asset, dedup) => { if (this._live(s)) this._onUploaded(asset, dedup, 'upload'); },
+      onError: (d) => {
+        if (!this._live(s) || !d) return;
+        this._emit('operation-error', { operation: d.operation, code: d.code, retryable: d.retryable });
+      },
+      announce: (text) => { if (this._live(s)) this._announce(text); },
+      toast: (type, text) => {
+        if (!this._live(s)) return;
+        try { (type === 'warning' ? TdToast.warning : TdToast.success).call(TdToast, text, this._toastOptions()); } catch { /* ignore */ }
+      },
+      syncGrid: () => { if (this._live(s)) this._syncGrid(); },
+      onCardsChange: () => { if (this._live(s)) this._onDropCards(); },
+      focusFallback: () => e.heading,
+      isLive: () => this._live(s),
+    });
+    const dialog = e.dialog;
+    const signal = s.ctrl.signal;
+    let depth = 0;
+    let internal = false;
+    const hasFiles = (ev) => {
+      const types = ev.dataTransfer && ev.dataTransfer.types;
+      return !!types && Array.from(types).includes('Files');
+    };
+    const enabled = () => this._live(s) && !!s.sources && !!s.sources.file && !!s.handle && s.handle.layer.isTop();
+    const setOver = (on) => {
+      if (on && !e.dropHint) {
+        const hint = document.createElement('div'); // created on the first drag only: older DOM / baselines unchanged
+        hint.className = 'td-media-picker__drop-hint';
+        hint.setAttribute('aria-hidden', 'true');
+        const pill = document.createElement('span');
+        pill.className = 'td-media-picker__drop-hint-pill';
+        const icon = tdIcon('upload', { size: 'm' });
+        if (icon) pill.appendChild(icon);
+        const text = document.createElement('span');
+        text.textContent = t('dropHint');
+        pill.appendChild(text);
+        hint.appendChild(pill);
+        e.results.appendChild(hint);
+        e.dropHint = hint;
+      }
+      if (on) e.results.setAttribute('data-drop', 'over');
+      else e.results.removeAttribute('data-drop');
+      if (e.dropHint) e.dropHint.hidden = !on;
+    };
+    const reset = () => {
+      depth = 0;
+      setOver(false);
+    };
+    dialog.addEventListener('dragstart', () => { internal = true; }, { signal });
+    dialog.addEventListener('dragend', () => { internal = false; reset(); }, { signal });
+    const over = (ev, enter) => {
+      if (internal || !hasFiles(ev)) return;
+      ev.preventDefault(); // never let the browser open the file over the picker
+      const on = enabled();
+      try { ev.dataTransfer.dropEffect = on ? 'copy' : 'none'; } catch { /* ignore */ }
+      if (!on) {
+        reset();
+        return;
+      }
+      if (enter) depth++;
+      setOver(true);
+    };
+    dialog.addEventListener('dragenter', (ev) => over(ev, true), { signal });
+    dialog.addEventListener('dragover', (ev) => over(ev, false), { signal });
+    dialog.addEventListener('dragleave', (ev) => {
+      if (internal || !hasFiles(ev)) return;
+      depth = Math.max(0, depth - 1);
+      if (!depth) setOver(false);
+    }, { signal });
+    dialog.addEventListener('drop', (ev) => {
+      if (internal || !hasFiles(ev)) return;
+      ev.preventDefault();
+      reset();
+      if (!enabled()) return;
+      const dt = ev.dataTransfer;
+      const files = [];
+      let folders = 0;
+      const items = dt.items ? Array.from(dt.items).filter((it) => it.kind === 'file') : [];
+      if (items.length) {
+        for (const it of items) {
+          let entry = null;
+          try { entry = typeof it.webkitGetAsEntry === 'function' ? it.webkitGetAsEntry() : null; } catch { entry = null; }
+          if (entry && entry.isDirectory) {
+            folders++;
+            continue;
+          }
+          const f = it.getAsFile();
+          if (f) files.push(f);
+        }
+      } else {
+        files.push(...Array.from(dt.files || []));
+      }
+      if (folders) {
+        this._announce(t('dropFolder'));
+        try { TdToast.warning(t('dropFolder'), this._toastOptions()); } catch { /* ignore */ }
+      }
+      this._onFilesDropped(files);
+    }, { signal });
+    // a drag that started in the picker and ended outside the window may never fire dragend here (Codex impl r1 #7)
+    window.addEventListener('blur', () => { internal = false; reset(); }, { signal });
+  }
+
+  /** @private v0.93.0: route dropped files (see _bindDrop) */
+  _onFilesDropped(files) {
+    const s = this._s;
+    if (!this._live(s) || !files.length) return;
+    if (s.uploadFields.length > 0) { // owner: any upload field (even optional ones) → the dialog, files held
+      this._openUpload({ files });
+      return;
+    }
+    const r = s.drop.accept(files);
+    // the upload reloads page 1 when done anyway: go there now, the dropped cards stay shown (keepGrid)
+    if (r.accepted.length && s.pages.page !== 1) this._loadPage('reload', { reset: true, keepGrid: true });
+  }
+
+  /** @private v0.93.0: the dropped-file cards changed — the grid shows while there are some (under an empty state too) */
+  _onDropCards() {
+    const s = this._s;
+    const e = s.els;
+    if (!e.error.hidden) return; // a list error hides the grid as before; the uploads go on (live region)
+    if (s.drop.placeholders().length) {
+      e.grid.hidden = false;
+      e.skeleton.hidden = true;
+    } else if (!s.items.size) {
+      e.grid.hidden = true;
+      if (s.els.results.getAttribute('aria-busy') === 'true') e.skeleton.hidden = false;
+    }
+    if (e.itemsHead) this._syncSectionHeads();
   }
 
   /**
@@ -1908,9 +2117,17 @@ export class TdMediaPicker extends HTMLElement {
   }
 
   /** @private a user flip in the grid → the model (the model is the source of truth) */
-  _onGridChange({ added = [], removed = [] }) {
+  _onGridChange({ added: added0 = [], removed: removed0 = [] }) {
     const s = this._s;
     const grid = s.els.grid;
+    // v0.93.0: cards still uploading never take part (the capture handlers of _bindGrid already stop the gestures;
+    // fallback, e.g. a Shift range across one) — silently out of the grid selection, no notReady
+    const pending = (id) => !!s.drop && s.drop.isPending(id);
+    const up = added0.filter(pending);
+    if (up.length) grid.deselect(up);
+    const added = up.length ? added0.filter((id) => !pending(id)) : added0;
+    const removed = removed0.filter((id) => !pending(id));
+    if (!added.length && !removed.length) return;
     if (s.mode === 'single') {
       if (added.length === 1) {
         const asset = s.cache.getAsset(added[0]);
@@ -1968,7 +2185,7 @@ export class TdMediaPicker extends HTMLElement {
     const s = this._s;
     const grid = s.els.grid;
     if (typeof grid.select !== 'function') return;
-    const view = [...s.items.keys()];
+    const view = s.drop ? [...s.items.keys(), ...s.drop.doneIds()] : [...s.items.keys()]; // v0.93.0: done dropped cards
     const { gridMax } = s.model.capacity(view);
     if (gridMax === null) grid.removeAttribute('max');
     else grid.setAttribute('max', String(gridMax));
@@ -2694,6 +2911,7 @@ export class TdMediaPicker extends HTMLElement {
     const s = this._s;
     let uploading = false;
     try { uploading = !!s.upload && s.upload.busy(); } catch { uploading = false; }
+    if (!uploading && s.drop) uploading = s.drop.busy(); // v0.93.0: files dropped into the grid
     return this._editBusy() || uploading;
   }
 
@@ -2863,7 +3081,11 @@ export class TdMediaPicker extends HTMLElement {
       if (s.initial) s.initial.invalidate();
       s.debounce.cancel();
       s.ctrl.abort();
+      // v0.93.0 (plan r2 #6): close the slot pool BEFORE the uploads are cancelled — a freed slot starts nobody
+      if (s.uploadSlots) s.uploadSlots.close();
       if (s.upload) { try { s.upload.destroy(); } catch { /* ignore */ } s.upload = null; }
+      if (s.drop) { try { s.drop.destroy(); } catch { /* ignore */ } s.drop = null; }
+      s.uploadSlots = null;
       if (s.filterSheet) { try { s.filterSheet.destroy(); } catch { /* ignore */ } s.filterSheet = null; }
       if (s.crop) { const c = s.crop; s.crop = null; c.ctrl.abort(); } // v0.35 decision 25: the crop step closes too
       if (s.edit) { try { s.edit.form.destroy(); } catch { /* ignore */ } s.edit = null; }

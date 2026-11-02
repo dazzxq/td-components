@@ -201,3 +201,19 @@ export const CropStep = {
     });
   },
 };
+
+/**
+ * v0.93.0: drop image files from the desktop anywhere on the open picker — no `uploadFields`, so they upload in place:
+ * a card per file at the start of the grid (preview, progress, × to cancel, "Thử lại" on an error), at most 3 uploads
+ * at once; done → the card becomes the asset and is selected. Files of another type / over 5 MB are rejected (toast).
+ */
+export const DropFiles = {
+  name: 'Thả file',
+  render: () => frame('mp-drop', 'Mở rồi thả ảnh vào'),
+  play: ({ canvasElement }) => {
+    const adapter = mock({ uploadStepMs: 300 });
+    wire(canvasElement, 'mp-drop', () => ({
+      adapter, selection: { mode: 'multiple' }, upload: { accept: 'image/*', maxSize: '5MB' },
+    }));
+  },
+};
