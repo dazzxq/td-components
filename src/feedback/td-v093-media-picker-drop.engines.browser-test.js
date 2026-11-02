@@ -1066,4 +1066,107 @@ describe('v0.93.0 td-media-picker — grid drop, Codex impl r2 regressions', () 
       window.createImageBitmap = orig;
     }
   });
+
+  // --- v0.93.1: cover preview (plan v0.93.1-preview-cover) ---
+
+  /** w×h image in three bands along its long side: red | green | blue (the centred square is all green) */
+  async function bands(w, h, type = 'image/png') {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d');
+    const long = Math.max(w, h);
+    ['#ff0000', '#00ff00', '#0000ff'].forEach((col, i) => {
+      ctx.fillStyle = col;
+      if (w >= h) ctx.fillRect((i * long) / 3, 0, long / 3 + 1, h);
+      else ctx.fillRect(0, (i * long) / 3, w, long / 3 + 1);
+    });
+    return new Uint8Array(await (await new Promise((r) => c.toBlob(r, type, 0.95))).arrayBuffer());
+  }
+  /** insert `extra` bytes right after the first `at` bytes */
+  const splice = (b, at, extra) => new Uint8Array([...b.slice(0, at), ...extra, ...b.slice(at)]);
+  const exifApp1 = (o) => {
+    const body = [0x45, 0x78, 0x69, 0x66, 0, 0, 0x4d, 0x4d, 0, 42, 0, 0, 0, 8, 0, 1, 0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, o, 0, 0, 0, 0, 0, 0];
+    return [0xff, 0xe1, (body.length + 2) >> 8, (body.length + 2) & 255, ...body];
+  };
+  /** PNG chunk with a zero CRC (decoders ignore ancillary CRC errors; the kit never decodes it anyway) */
+  const pngChunk = (type, data) => [0, 0, 0, data.length, ...[...type].map((c) => c.charCodeAt(0)), ...data, 0, 0, 0, 0];
+
+  async function previewOf(file, expectDecode = true) {
+    const orig = window.createImageBitmap;
+    const calls = [];
+    window.createImageBitmap = function (...args) { calls.push(args); return orig.apply(this, args); };
+    // the head read is the first step of every preview: wait for it, then for the decode it leads to (or not)
+    let head = null;
+    file.slice = (...args) => {
+      const blob = File.prototype.slice.apply(file, args);
+      const ab = blob.arrayBuffer();
+      head = ab;
+      blob.arrayBuffer = () => ab;
+      return blob;
+    };
+    try {
+      const { ad } = await openSettled();
+      holdUploads(ad);
+      dispatchDrop([file]);
+      await until(() => cards().length === 1 && head, 3000, 'card + head read');
+      await head;
+      if (expectDecode) await until(() => cards()[0].querySelector('canvas.td-media-picker__upload-preview'), 3000, 'canvas');
+      else await wait(100); // the size parse is synchronous after the head read: nothing may follow
+      const canvas = cards()[0].querySelector('canvas.td-media-picker__upload-preview');
+      return { calls: calls.map((a) => ({ w: a[1] && a[1].resizeWidth, h: a[1] && a[1].resizeHeight })), canvas, card: cards()[0] };
+    } finally {
+      window.createImageBitmap = orig;
+    }
+  }
+  /** colour name of the dominant channel of a canvas pixel */
+  const px = (canvas, x, y) => {
+    const [r, g, b, a] = canvas.getContext('2d').getImageData(x, y, 1, 1).data;
+    if (a < 200) return 'transparent';
+    if (g > 150 && g > r + 80 && g > b + 80) return 'green';
+    if (r > 150 && r > g + 80 && r > b + 80) return 'red';
+    if (b > 150 && b > r + 80 && b > g + 80) return 'blue';
+    return 'unknown';
+  };
+  const corners = (canvas) => [[2, 2], [317, 2], [2, 317], [317, 317], [160, 160]].map(([x, y]) => px(canvas, x, y));
+
+  it('cover: PNG 300×100 → one decode at 300×100 (no upscaling); the tile shows the centred square', async () => {
+    const r = await previewOf(new File([await bands(300, 100)], 'ngang.png', { type: 'image/png' }));
+    expect(r.calls).to.deep.equal([{ w: 300, h: 100 }]);
+    expect([r.canvas.width, r.canvas.height]).to.deep.equal([320, 320]);
+    expect(corners(r.canvas)).to.deep.equal(Array(5).fill('green'));
+  });
+
+  it('cover: PNG 3000×300 (10:1) → 320×32, aspect kept, centred square', async () => {
+    const r = await previewOf(new File([await bands(3000, 300)], 'toan-canh.png', { type: 'image/png' }));
+    expect(r.calls).to.deep.equal([{ w: 320, h: 32 }]);
+    expect(corners(r.canvas)).to.deep.equal(Array(5).fill('green'));
+  });
+
+  it('cover: JPEG 300×100 with EXIF orientation 6 → decoded as 100×300 (rotated), centred square', async () => {
+    const jpg = await bands(300, 100, 'image/jpeg');
+    const r = await previewOf(new File([splice(jpg, 2, exifApp1(6))], 'dien-thoai.jpg', { type: 'image/jpeg' }));
+    expect(r.calls).to.deep.equal([{ w: 100, h: 300 }]);
+    expect(corners(r.canvas)).to.deep.equal(Array(5).fill('green'));
+  });
+
+  it('cover: every decode has both dimensions ≤ 320 (portrait, square, small)', async () => {
+    for (const [w, h, want] of [[100, 900, { w: 36, h: 320 }], [640, 640, { w: 320, h: 320 }], [20, 10, { w: 20, h: 10 }]]) {
+      const r = await previewOf(new File([await bands(w, h)], `a-${w}.png`, { type: 'image/png' }));
+      expect(r.calls).to.deep.equal([want]);
+      await closeAll();
+    }
+  });
+
+  it('cover: size unknown (PNG eXIf orientation 6, unreadable header) → no decode, the kind icon stays', async () => {
+    const withExif = splice(await bands(300, 100), 33, pngChunk('eXIf', [0x4d, 0x4d, 0, 42, 0, 0, 0, 8, 0, 1, 0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, 6, 0, 0, 0, 0, 0, 0]));
+    for (const f of [new File([withExif], 'exif.png', { type: 'image/png' }),
+      new File([new Uint8Array(64).fill(7)], 'hong.png', { type: 'image/png' })]) {
+      const r = await previewOf(f, false);
+      expect(r.calls, f.name).to.deep.equal([]);
+      expect(r.canvas).to.equal(null);
+      expect(r.card.querySelector('.td-media-picker__thumb-icon svg')).to.not.equal(null);
+      await closeAll();
+    }
+  });
 });

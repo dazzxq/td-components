@@ -50,6 +50,7 @@
  * the progress bar + actions are removed; the card then mirrors the selection model until a page render replaces it.
  */
 import { UploadQueue, parseFileSize } from '../utils/upload-queue.js';
+import { readImageSize } from '../utils/image-size.js';
 import { TdDropzone } from '../form/td-dropzone.js';
 import { createAdapterUpload } from './media-picker-upload.js';
 import { tdIcon } from '../icons/td-icon.js';
@@ -78,14 +79,21 @@ const kindOf = (f) => {
 };
 
 /**
- * Decode `file` into a PREVIEW_SIZE × PREVIEW_SIZE bitmap (Codex security SEC-04: the ONLY decode, both resize
- * dimensions bounded — no aspect probe, no full-size fallback). The aspect ratio is not kept: the square tile shows the
- * whole image squeezed for the few seconds of the upload, then the real thumbnail replaces it. An engine without the
- * resize options (TypeError) keeps the kind icon.
- * @param {File} file @returns {Promise<ImageBitmap>}
+ * Decode `file` for the square preview (plan v0.93.1-preview-cover): the size comes from the file head
+ * (`readImageSize`, EXIF orientation applied), then ONE decode with one common scale — both resize dimensions ≤
+ * PREVIEW_SIZE (Codex security v0.93.0 SEC-04: no probe, no full-size fallback), aspect kept. Unknown size / a PNG or
+ * WebP orientation we cannot be sure of → null (the kind icon stays, no decode). An engine without the resize options
+ * (TypeError) keeps the icon too.
+ * @param {File} file @returns {Promise<{ bmp: ImageBitmap, dw: number, dh: number } | null>}
  */
-function decodePreview(file) {
-  return createImageBitmap(file, { resizeWidth: PREVIEW_SIZE, resizeHeight: PREVIEW_SIZE, resizeQuality: 'medium' });
+async function decodePreview(file) {
+  const size = await readImageSize(file);
+  if (!size) return null;
+  const scale = Math.min(1, PREVIEW_SIZE / Math.max(size.width, size.height));
+  const dw = Math.min(PREVIEW_SIZE, Math.max(1, Math.round(size.width * scale)));
+  const dh = Math.min(PREVIEW_SIZE, Math.max(1, Math.round(size.height * scale)));
+  const bmp = await createImageBitmap(file, { resizeWidth: dw, resizeHeight: dh, resizeQuality: 'medium' });
+  return { bmp, dw, dh };
 }
 
 /**
@@ -410,18 +418,20 @@ export function createGridDrop(o) {
       return;
     }
     previewing = true;
-    Promise.resolve().then(() => decodePreview(rec.item.original)).then((bmp) => { // a sync throw rejects too
+    Promise.resolve().then(() => decodePreview(rec.item.original)).then((r) => { // a sync throw rejects too
+      if (!r) return;
+      const { bmp, dw, dh } = r;
       try {
         if (destroyed || !recs.includes(rec)) return;
-        const w = PREVIEW_SIZE; // never the bitmap's own size (bounded by construction)
-        const h = PREVIEW_SIZE;
         const canvas = document.createElement('canvas');
         canvas.className = 'td-media-picker__upload-preview';
-        canvas.width = w;
-        canvas.height = h;
+        canvas.width = PREVIEW_SIZE;
+        canvas.height = PREVIEW_SIZE;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-        ctx.drawImage(bmp, 0, 0, w, h);
+        // cover: the centred square of the bitmap (dw / dh are ours, never the bitmap's own size), scaled to the tile
+        const side = Math.min(dw, dh);
+        ctx.drawImage(bmp, (dw - side) / 2, (dh - side) / 2, side, side, 0, 0, PREVIEW_SIZE, PREVIEW_SIZE);
         rec.canvas = canvas;
         rec.icon.replaceWith(canvas);
       } finally {

@@ -827,7 +827,8 @@ Kéo file từ máy (Finder / Explorer) thả **thẳng vào picker đang mở**
   "Thả tệp để tải lên" dính ở đầu vùng cuộn. Kéo chữ / link, hoặc kéo một thứ **từ trong** picker → không phản ứng gì.
   Thả lên thẻ album → file vào **view hiện tại** (đang ở trong album nào thì vào album đó, `collectionId` như dialog).
 - **Site không có `uploadFields`** → tải **tại chỗ**: mỗi file thành một thẻ chờ đứng **đầu lưới** (ảnh: bản xem trước
-  vẽ lên `<canvas>` màu xám + lớp phủ mờ; file khác: icon loại), dưới tên là trạng thái ("Đang chờ…", "Đang tối ưu ảnh…",
+  vẽ lên `<canvas>` màu xám + lớp phủ mờ, ô vuông kiểu cover — phần giữa ảnh, không méo (0.93.1; kích thước đọc từ đầu
+  file: PNG / GIF / WebP / JPEG kể cả ảnh xoay EXIF; định dạng khác, PNG có EXIF xoay hoặc WebP có EXIF → icon); file khác: icon loại), dưới tên là trạng thái ("Đang chờ…", "Đang tối ưu ảnh…",
   "Đang tải lên…") và [`td-progress`](progress.md). Thẻ đang tải **không chọn được** (tick ẩn, Space / Shift-range bỏ
   qua, không báo "chưa sẵn sàng"); nút × huỷ (abort `signal`, không báo lỗi). Lỗi → thẻ hiện thông báo + "Thử lại" +
   "Gỡ". Xong → thẻ thành thẻ thường đã chọn (đơn: file xong sau cùng thắng; nhiều: thêm nếu còn chỗ, hết chỗ thì báo

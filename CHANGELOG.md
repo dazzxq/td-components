@@ -4,6 +4,21 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.93.1
+
+### Fixed
+
+- `td-media-picker` thả file vào lưới: ảnh xem trước lúc đang tải giờ là **ô vuông kiểu cover** (phần giữa ảnh, đúng tỉ
+  lệ) thay vì cả ảnh bị ép méo vào 320×320 (owner 02/11/2026). Kích thước đọc từ 256 KiB đầu file (PNG / GIF / WebP /
+  JPEG, JPEG xoay theo EXIF như trình duyệt), rồi giải mã **một lần** với cả hai chiều ≤ 320 (giữ giới hạn bảo mật của
+  0.93.0). Không đọc được kích thước, định dạng khác, hoặc PNG có EXIF xoay / WebP có EXIF (hướng xoay không chắc giữa
+  các trình duyệt) → giữ icon loại, không giải mã. Không đổi CSS / token / CSP.
+  [Plan](docs/internal/plans/v0.93.1-preview-cover.md).
+
+### Internal
+
+- `src/utils/image-size.js` (không DOM): `parseImageSize(bytes)` / `readImageSize(file)`; test node.
+
 ## 0.93.0
 
 **Thả file thẳng vào lưới `td-media-picker` đang mở** (owner chốt 31/10 + 02/11/2026). [Plan](docs/internal/plans/v0.93.0-media-picker-grid-drop.md).

@@ -204,6 +204,7 @@
       "src/feedback/td-progress.js",
       "src/form/td-dropzone.js",
       "src/icons/td-icon.js",
+      "src/utils/image-size.js",
       "src/utils/upload-queue.js"
     ],
     "src/feedback/media-picker-fields.js": [
@@ -649,6 +650,7 @@
       "src/utils/image-bytes.js",
       "src/utils/image-metadata.js"
     ],
+    "src/utils/image-size.js": [],
     "src/utils/inert-lock.js": [],
     "src/utils/justified.js": [],
     "src/utils/key-selection.js": [],
