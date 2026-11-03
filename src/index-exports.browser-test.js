@@ -103,6 +103,11 @@ describe('index.js exports', () => {
     expect(typeof kit.TdColorPicker).to.equal('function');
     expect(customElements.get('td-color-picker')).to.equal(kit.TdColorPicker);
   });
+  it('registers <td-icon-picker> + registerIconSearchData from the root entry (v0.94.0)', () => {
+    expect(typeof kit.TdIconPicker).to.equal('function');
+    expect(customElements.get('td-icon-picker')).to.equal(kit.TdIconPicker);
+    expect(typeof kit.registerIconSearchData).to.equal('function');
+  });
   it('registers <td-rating> from the root entry (v0.50.0)', () => {
     expect(typeof kit.TdRating).to.equal('function');
     expect(customElements.get('td-rating')).to.equal(kit.TdRating);

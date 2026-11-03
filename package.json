@@ -1,6 +1,6 @@
 {
   "name": "@dazzxq/td-components",
-  "version": "0.93.1",
+  "version": "0.94.0",
   "description": "Shared UI Web Components library — single source of truth UI kit (token CSS + minimal surfaces)",
   "type": "module",
   "main": "index.js",
@@ -81,6 +81,7 @@
     "./datetime-picker": "./src/form/td-datetime-picker.js",
     "./datetime-range": "./src/form/td-datetime-range.js",
     "./color-picker": "./src/form/td-color-picker.js",
+    "./icon-picker": "./src/form/td-icon-picker.js",
     "./modal": "./src/feedback/td-modal.js",
     "./modal-stack": "./src/feedback/td-modal-stack.js",
     "./drawer": "./src/feedback/td-drawer.js",
@@ -167,6 +168,7 @@
     "./src/form/td-scan-input.js",
     "./src/form/td-datetime-range.js",
     "./src/form/td-color-picker.js",
+    "./src/form/td-icon-picker.js",
     "./src/display/td-copy.js",
     "./src/display/td-empty-state.js",
     "./src/display/td-media-grid.js",

@@ -57,7 +57,8 @@
       "td-rating": "/src/display/td-rating.js",
       "td-carousel": "/src/display/td-carousel.js",
       "td-hint": "/src/form/td-hint.js",
-      "td-rich-text": "/src/form/td-rich-text.js"
+      "td-rich-text": "/src/form/td-rich-text.js",
+      "td-icon-picker": "/src/form/td-icon-picker.js"
     },
     "tokenNative": [
       "td-button",
@@ -115,7 +116,8 @@
       "td-rating",
       "td-carousel",
       "td-hint",
-      "td-rich-text"
+      "td-rich-text",
+      "td-icon-picker"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -7825,6 +7827,176 @@
         ".td-rich-text-link__check .td-checkbox__label"
       ],
       "settle": 400
+    }
+  ],
+  "td-icon-picker": [
+    {
+      "state": "empty",
+      "markup": "<td-icon-picker name=\"icon\" label=\"Biểu tượng\"></td-icon-picker>",
+      "selectors": [
+        ".td-icon-picker",
+        ".td-icon-picker__label",
+        ".td-icon-picker__box",
+        ".td-icon-picker__trigger",
+        ".td-icon-picker__glyph",
+        ".td-icon-picker__text",
+        ".td-icon-picker__chevron"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.94.0: empty — field look, dashed empty glyph slot, placeholder text, no clear button",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front"
+    },
+    {
+      "state": "value",
+      "markup": "<td-icon-picker name=\"icon\" label=\"Biểu tượng\" value=\"trash\"></td-icon-picker>",
+      "selectors": [
+        ".td-icon-picker__glyph",
+        ".td-icon-picker__glyph > svg",
+        ".td-icon-picker__text[data-state=\"value\"]",
+        ".td-icon-picker__clear"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.94.0: a value — glyph SVG, canonical name, clear button",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front"
+    },
+    {
+      "state": "open",
+      "setup": "const t=document.createElement('td-icon-picker'); t.setAttribute('name','icon'); t.setAttribute('label','Biểu tượng'); t.setAttribute('value','trash'); t.setAttribute('suggestions','trash home user'); window.__mount.appendChild(t); t.open();",
+      "selectors": [
+        ".td-icon-picker-panel",
+        ".td-icon-picker-panel__search",
+        ".td-icon-picker-panel__input",
+        ".td-icon-picker-panel__body",
+        ".td-icon-picker-panel__heading",
+        ".td-icon-picker-panel__grid",
+        ".td-icon-picker-panel__row",
+        ".td-icon-picker-panel__cell",
+        ".td-icon-picker-panel__footer",
+        ".td-icon-picker-panel__cell[aria-selected=\"true\"]",
+        ".td-icon-picker-panel__cell > svg"
+      ],
+      "portal": [
+        ".td-icon-picker-panel",
+        ".td-icon-picker-panel__search",
+        ".td-icon-picker-panel__input",
+        ".td-icon-picker-panel__body",
+        ".td-icon-picker-panel__heading",
+        ".td-icon-picker-panel__grid",
+        ".td-icon-picker-panel__row",
+        ".td-icon-picker-panel__cell",
+        ".td-icon-picker-panel__footer",
+        ".td-icon-picker-panel__cell[aria-selected=\"true\"]",
+        ".td-icon-picker-panel__cell > svg"
+      ],
+      "settle": 450,
+      "selectorNote": "v0.94.0: popup (small popup surface) — search box (focused), \"Gợi ý\" + all-icons grids, selected cell (accent edge), footer",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "top",
+        "left",
+        "max-height",
+        "transform"
+      ],
+      "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front; the popup position (top / left) follows the trigger, its width / the body max-height are CSSOM values from the column count and the room left"
+    },
+    {
+      "state": "search-empty",
+      "setup": "const t=document.createElement('td-icon-picker'); t.setAttribute('name','icon'); t.setAttribute('label','Biểu tượng');  window.__mount.appendChild(t); t.open(); const i=document.querySelector('.td-icon-picker-panel__input'); i.value='zzqqxxkk'; i.dispatchEvent(new Event('input',{bubbles:true}));",
+      "selectors": [
+        ".td-icon-picker-panel__input",
+        ".td-icon-picker-panel__empty",
+        ".td-icon-picker-panel__status"
+      ],
+      "portal": [
+        ".td-icon-picker-panel__input",
+        ".td-icon-picker-panel__empty",
+        ".td-icon-picker-panel__status"
+      ],
+      "settle": 600,
+      "selectorNote": "v0.94.0: a query with no result — both groups hidden, \"no result\" line, status count (after STATUS_DELAY 300ms)",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "top",
+        "left",
+        "max-height",
+        "transform"
+      ],
+      "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front; the popup position (top / left) follows the trigger, its width / the body max-height are CSSOM values from the column count and the room left"
+    },
+    {
+      "state": "load-error",
+      "setup": "customElements.get('td-icon-picker').loadSearchData=()=>Promise.reject(new Error('csp-probe')); const t=document.createElement('td-icon-picker'); t.setAttribute('name','icon'); t.setAttribute('label','Biểu tượng');  window.__mount.appendChild(t); t.open();",
+      "selectors": [
+        ".td-icon-picker-panel__footer",
+        ".td-icon-picker-panel__status",
+        ".td-icon-picker-panel__retry"
+      ],
+      "portal": [
+        ".td-icon-picker-panel__footer",
+        ".td-icon-picker-panel__status",
+        ".td-icon-picker-panel__retry"
+      ],
+      "settle": 450,
+      "selectorNote": "v0.94.0: the loadSearchData hook rejects — error status + \"Thử lại\" button (search by name still runs)",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "top",
+        "left",
+        "max-height",
+        "transform"
+      ],
+      "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front; the popup position (top / left) follows the trigger, its width / the body max-height are CSSOM values from the column count and the room left"
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-icon-picker name=\"icon\" label=\"Biểu tượng\" value=\"trash\" disabled></td-icon-picker>",
+      "selectors": [
+        ".td-icon-picker__box",
+        ".td-icon-picker__trigger",
+        ".td-icon-picker__text",
+        ".td-icon-picker__clear"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.94.0: disabled — field disabled colours, not-allowed cursor, clear hidden",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front"
+    },
+    {
+      "state": "error",
+      "markup": "<td-icon-picker name=\"icon\" label=\"Biểu tượng\" error-text=\"Chọn một biểu tượng.\"></td-icon-picker>",
+      "selectors": [
+        ".td-icon-picker__box",
+        ".td-icon-picker__trigger[aria-invalid=\"true\"]",
+        ".td-field-error"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.94.0: error-text — error edge on the box + the shared error contract",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front"
     }
   ]
 }

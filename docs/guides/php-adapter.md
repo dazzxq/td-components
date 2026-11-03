@@ -47,6 +47,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_datetime_picker / td_date (0.56.0)](#td_datetime_picker--td_date-0560)
 - [td_check_matrix (0.47.0)](#td_check_matrix-0470)
 - [td_color_picker và td_color_value (0.48.0)](#td_color_picker-và-td_color_value-0480)
+- [td_icon_picker và td_icon_value (0.94.0)](#td_icon_picker-và-td_icon_value-0940)
 - [td_choice_group (0.49.0)](#td_choice_group-0490)
 - [td_toggle: tone / locked (0.52.0)](#td_toggle-tone--locked-0520)
 - [td_rating, td_carousel (0.50.0)](#td_rating-td_carousel-0500)
@@ -90,6 +91,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_check_matrix` (0.47.0) | **luôn** host `<td-check-matrix data-td-ssr="check-matrix@1" data="{JSON}">` + **form không JS đầy đủ**: một hidden `name[col]=""` mỗi cột (đầu), một checkbox `name[col][]=row` mỗi ô áp dụng được (ô khoá-tick: checkbox `disabled` + hidden ngay sau), `name[_v]=1` (cuối); ô hàng loạt / nút nhóm / chọn cột `disabled` | Không (form gửi đúng FormData của component, từng byte) | **Có** — nạp module `check-matrix`: so **từng node** với `data`, nhận **tại chỗ** (giữ ô đã tick trước khi JS tải), gỡ marker / hidden / sentinel |
 | `td_color_picker` (0.48.0) | `div.td-color` + ô màu xám + `input.td-color__input` **chữ** (`pattern="#[0-9a-fA-F]{6}"` — **không** `type=color`) | Không (chỉ nhận `#RRGGBB`) | Không |
 | `td_color_picker` — **chế độ element** (0.48.0, tự bật) | host `<td-color-picker data-td-ssr="color-picker@1">` + cùng ô | Không (ô chữ native chạy ngay) | **Có** — nạp module `color-picker`: nhận **tại chỗ**, bọc ô màu vào nút mở popup |
+| `td_icon_picker` (0.94.0) | **luôn** host `<td-icon-picker data-td-ssr="icon-picker@1">` + nút ô (icon + tên canonical) + nút xoá + `input type=hidden` mang `name` / `value` | Không (form vẫn gửi giá trị qua input ẩn; không mở được lưới) | **Có** — nạp module `icon-picker`: nhận **tại chỗ**, gỡ input ẩn |
 | `td_choice_group` (0.49.0) | **luôn** host `<td-choice-group data-td-ssr="choice-group@1">` + radio **native** mang `name` thật (`required` trên mọi radio, `checked` trên lựa chọn đang chọn), ô màu = `fill` của SVG, ảnh = `<img>` | Không (radio native: form gửi `name=value`, mũi tên chạy) | **Có** — nạp module `choice-group`: nhận **tại chỗ** (cùng radio, giữ lựa chọn + focus), radio sang nhóm riêng không form owner |
 | `td_number_input` — **`stepper`** (0.49.0, chỉ element) | như element + hai nút − / + trong hộp (ẩn, giữ chỗ tới khi module tải) | Không (ô native chạy) | **Có** — nhận tại chỗ cả hai nút |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** (0.51.1: host đã cao bằng nút khi JS bật — bề rộng đổi theo thiết kế) |
@@ -124,7 +126,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.93.1/
+public/assets/vendor/td-components/0.94.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
   dist/  module-graph.json                    (0.64.0+: bản minify + đồ thị preload)
 ```
@@ -133,7 +135,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.93.1';
+const TD_VERSION = '0.94.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -292,6 +294,10 @@ td_date(string $name, ?string $value = null, array $o = []): string             
 td_check_matrix(string $name, array $columns, array $rows, array $value = [], array $o = []): string   // 0.47.0 (luôn element + form không JS)
 td_color_picker(string $name, array $o = []): string   // 0.48.0
 td_color_value(mixed $v): ?string                      // 0.48.0: chuẩn hoá màu POST → '#rrggbb' | '' | null
+td_icon_picker(string $name, array $o = []): string    // 0.94.0 (luôn element)
+td_icon_value(mixed $v): ?string                       // 0.94.0: chuẩn hoá icon POST → tên canonical | '' | null
+Td::iconSearchData(): array                            // 0.94.0: nhãn + từ khoá tìm kiếm (kit + site), đọc lười
+Td::registerIconSearchData(array $defs): void          // 0.94.0: metadata tìm kiếm cho icon site
 td_choice_group(string $name, array $options, string|int|null $value = null, array $o = []): string   // 0.49.0 (luôn element)
 td_rating(int|float|string|null $value, array $o = []): string   // 0.50.0 (luôn element, chỉ đọc)
 td_carousel(array $slides, array $o = []): string   // 0.50.0 (luôn element; slide = Td::html(markup của template) | chuỗi = chữ)
@@ -842,7 +848,7 @@ TdComponents\Td::registerIcons(json_decode(file_get_contents(ROOT . '/data/icons
 // { "site-film": { "viewBox": "0 0 24 24", "paint": "stroke", "nodes": [["rect", {"x": "3", "y": "3", "width": "18", "height": "18", "rx": "2"}]] } }
 ```
 
-- Tên `[a-z][a-z0-9-]{0,63}`; trùng tên core hoặc đã đăng ký → `InvalidArgumentException` (đặt tiền tố `site-`).
+- Tên `[a-z][a-z0-9-]{0,63}`; trùng tên core hoặc đã đăng ký → `InvalidArgumentException` (**luôn** đặt tiền tố `site-`: 0.94.0 thêm 113 tên ngắn như `user`, `home`, `box`, tên không tiền tố sẽ va chạm khi kit thêm tên mới). Metadata tìm kiếm cho icon site: `Td::registerIconSearchData()` (xem [td_icon_picker](#td_icon_picker-và-td_icon_value-0940)).
 - Chỉ các thẻ `path circle rect line polyline polygon ellipse` và attribute hình học (`d`, `points`, `cx`…) với giá trị
   đúng định dạng; còn lại → `InvalidArgumentException`. Tối đa 64 hình.
 - JS cũng cần icon đó (ví dụ trong `TdMenu`)? In dữ liệu ra trang rồi đăng ký bên JS:
@@ -1930,6 +1936,61 @@ if ($v === null) { http_response_code(422); exit; }   // lưu $v: khớp ^#[0-9a
 | `''`, `null`, chỉ khoảng trắng | `''` |
 | `'#abcd'`, `'#aabbccdd'`, `'rgb(0,0,0)'`, `'red'`, `'#ggg'`, mảng, số, chuỗi > 64 ký tự | `null` |
 
+## td_icon_picker và td_icon_value (0.94.0)
+
+`td_icon_picker($name, $opts)` in ô của [Icon picker](../components/icon-picker.md) (hợp đồng `icon-picker@1`). **Luôn**
+chế độ element (không có bản native): host `<td-icon-picker data-td-ssr="icon-picker@1" name value label …>` chứa sẵn cây
+mà component dựng (nhãn, nút ô với icon + **tên canonical**, nút xoá, chevron) và một `input type="hidden"` mang `name` /
+`value` để form gửi được trước khi JS tải. Có JS: nhận **tại chỗ**, gỡ input ẩn (không trùng FormData). `name` in cả trên
+host.
+
+```php
+<?= td_icon_picker('menu_icon', [
+    'label' => 'Icon mục menu',
+    'value' => $menu->icon,                       // 'x' in ra 'close'
+    'suggestions' => ['home', 'user', 'settings'], // hoặc chuỗi 'home user settings'; tối đa 24
+    'icons' => 'home user settings folder bell',   // giới hạn tập lưới; rỗng = mọi icon
+    'required' => true,
+]) ?>
+```
+
+- Option: `label`, `aria_label`, `value`, `placeholder`, `suggestions`, `icons`, `required`, `disabled`, `readonly`,
+  `allow_clear` (`false` = không nút xoá), `helper_text` (hoặc `hint`), `error`, `class` (trên host), `id` (id host; nút
+  ô = `{id}-trigger`).
+- `value`: alias → tên canonical; tên đúng định dạng nhưng PHP **chưa** đăng ký (icon site chỉ có bên JS) → giữ nguyên +
+  một `E_USER_WARNING`; sai định dạng / không phải chuỗi → in rỗng + warning.
+- `suggestions` / `icons` (mảng hoặc chuỗi cách nhau bởi khoảng trắng / dấu phẩy): chuỗi dài hơn 2048 byte bị bỏ; chỉ
+  2000 mục đầu được xem; tên không đăng ký / sai định dạng bị bỏ + một warning; khử trùng; `suggestions` tối đa 24.
+  Danh sách chuẩn hoá được in thành attribute `suggestions` / `icons` trên host.
+- Cần `label` hoặc `aria_label` (không có → warning); chỉ `aria_label` thì in span ẩn `{host}-name` làm tên truy cập.
+- Chữ trên ô là tên canonical: `td_icon_picker()` (và `Td::icon()`) **không bao giờ** đọc dữ liệu tìm kiếm.
+- Hằng: `Td::SSR_ICON_PICKER` (`icon-picker@1`), `Td::ICON_PICKER_LABELS` (`placeholder` / `clear`, = `TdIconPicker.labels`).
+
+**`td_icon_value(mixed $v): ?string` — gọi khi nhận POST, trước khi kiểm / lưu** (client bất kỳ POST được chuỗi tuỳ ý;
+picker không phải ranh giới an toàn):
+
+```php
+$v = td_icon_value($_POST['menu_icon'] ?? null);
+if ($v === null) { http_response_code(422); exit; }   // lưu $v: tên icon đã đăng ký hoặc ''
+```
+
+| Vào | Ra |
+|---|---|
+| `'trash'`, `'x'` (alias của `close`) | `'trash'`, `'close'` |
+| `''`, `null` | `''` |
+| tên lạ, `'Trash'`, `'../x'`, chuỗi > 64 ký tự, mảng, số | `null` |
+
+Chỉ nhận tên mà `Td::hasIcon()` biết (core hoặc `Td::registerIcons()`); tên chỉ đăng ký bên JS → `null`.
+`Td::iconName($name): ?string` là phần lõi: tên đã đăng ký → chính nó, alias → tên đích, khác → `null`.
+
+**Dữ liệu tìm kiếm phía PHP.** `Td::iconSearchData()` trả `[tên => ['label' => …, 'keywords' => ['en' => […], 'vi' => […]]]` của
+kit (đọc lười `src/icons/icons-search.json` ở lần gọi đầu, cache theo request; file thiếu / hỏng → chỉ phần của site +
+một `E_USER_WARNING`) gộp phần của site. Dùng cho server tự render danh sách / tìm kiếm; **không** cần để render picker.
+`Td::registerIconSearchData($defs)` là bản đôi của `registerIconSearchData()` (JS): tên không phải icon core, chưa có
+metadata, `label` + `keywords.en` + `keywords.vi` đúng luật (chuỗi NFC, 1–48 ký tự, 1–12 từ khoá mỗi ngôn ngữ, tối đa 2000
+mục); sai → `InvalidArgumentException`, không mục nào được đăng ký. Hai phía không tự đồng bộ: đăng ký metadata ở JS để
+picker tìm được, ở PHP nếu server cần.
+
 ## td_choice_group (0.49.0)
 
 ```php
@@ -2046,7 +2107,7 @@ cũng vậy, kể cả `null` / `false` / `''`) là **ép chế độ element** 
 Mọi helper form có option `'helper_text'` (chữ, escape): `td_field`, `td_number_input`, `td_choice_group`,
 `td_media_field`, `td_media_gallery`, `td_dropdown`, `td_multiselect`, `td_tree_select`, `td_toggle`, `td_checkbox`,
 `td_otp_input`, `td_scan_input`, `td_datetime_range`, `td_datetime_picker` / `td_date` (0.56.0), `td_check_matrix`,
-`td_color_picker`.
+`td_color_picker`, `td_icon_picker` (0.94.0).
 
 ```php
 echo td_dropdown('city', $cities, '', ['label' => 'Thành phố', 'helper_text' => 'Nơi giao hàng', 'element' => true]);

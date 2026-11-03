@@ -42,8 +42,8 @@ note.prepend(tdIcon('info', { size: 'l', label: 'Thông tin' })); // icon có ng
 
 ## Danh sách icon core
 
-71 icon (0.59.0: + `price`). Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide. Bảng dưới là nhóm nền; các nhóm
-thêm sau (nút thao tác, toggle, theme, kho / danh mục) liệt kê ở các đoạn tiếp theo — danh sách đầy đủ: `listIcons()`.
+**188 icon** (0.94.0: +113; trước đó 75, và 71 ở 0.59.0). Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide. Bảng dưới là nhóm nền; các nhóm
+thêm sau (nút thao tác, toggle, theme, kho / danh mục, và 113 icon của 0.94.0) liệt kê ở các đoạn tiếp theo — danh sách đầy đủ: `listIcons()`.
 
 | Tên td | Lucide | | Tên td | Lucide |
 |---|---|---|---|---|
@@ -101,13 +101,59 @@ Lucide `lucide-static` 1.52.0):
 | `ban` | ban | ngừng / chặn (nút `discontinue`) | — |
 | `price` (0.59.0) | banknote | giá / tiền (tờ tiền, không ký hiệu `$` — hợp VNĐ) | `banknote` |
 
+### 113 icon mới của 0.94.0
+
+Thêm theo yêu cầu của dcms2 (chuyển admin sang kit, bỏ Font Awesome): 104 icon Lucide (đối chiếu `lucide-static` 1.66.0)
+và 9 hình owner tự vẽ ([bên dưới](#icon-owner-tự-vẽ-0940)). Tên theo quy tắc td, **không** có alias hay bảng đổi tên
+Font Awesome trong kit (site tự đổi tên phía mình). Mỗi icon core đều có dữ liệu tìm kiếm ([bên dưới](#dữ-liệu-tìm-kiếm-0940)).
+
+| Nhóm | Tên td |
+|---|---|
+| Mũi tên, thao tác | `arrow-left`, `arrow-right`, `swap`, `unpublish` (gỡ xuất bản, lucide `arrow-down-from-line`), `refresh`, `save`, `edit`, `unlink`, `pointer` |
+| Người dùng, bảo mật | `user`, `users`, `user-plus`, `user-minus`, `user-check`, `user-pen`, `shield`, `fingerprint`, `log-in`, `unlock`, `door-open`, `door-closed` |
+| Thư mục, tệp, nội dung | `folder`, `folder-open`, `folder-plus`, `folder-minus`, `file-text`, `file-image`, `file-spreadsheet`, `newspaper`, `tags`, `book`, `book-open`, `table`, `grid`, `sticky-note`, `clipboard`, `paperclip`, `quote`, `pilcrow`, `heading`, `type`, `mail`, `at-sign`, `message-circle`, `megaphone`, `bell` |
+| Phát, trạng thái | `play`, `stop`, `circle-pause`, `circle`, `circle-plus`, `circle-x`, `check-check`, `hourglass`, `activity`, `gauge`, `flame` |
+| Danh sách | `list`, `list-ordered`, `list-checks` |
+| Thiết bị | `keyboard`, `laptop`, `tablet`, `smartphone`, `phone`, `mouse`, `camera`, `mic`, `headphones`, `music` |
+| Hệ thống, dev | `globe`, `settings`, `help`, `bug`, `home`, `box`, `package-open`, `cloud`, `database`, `network`, `code`, `wrench`, `puzzle`, `square-terminal` |
+| Ảnh, vẽ, ý tưởng | `images`, `eraser`, `feather`, `paintbrush`, `paint-bucket`, `pencil-line`, `lightbulb`, `flask-conical`, `coffee`, `shapes`, `chart` |
+| Trình soạn thảo | `align-left`, `align-center`, `align-right`, `align-justify`, `indent-increase`, `indent-decrease`, `wrap-text`, `minimize`, `move-horizontal` |
+| Owner tự vẽ (bố cục) | `align-none`, `align-wide`, `align-full`, `float-left`, `float-right`, `float-wide-left`, `float-wide-right`, `photostory-left`, `photostory-right` |
+
+`align-left/center/right/justify` (căn **chữ**, Lucide) và `align-none/wide/full` (bề rộng **khối**, owner vẽ) là hai khái
+niệm khác nhau. Một số tên td giữ khác tên Lucide hiện hành (Lucide 1.x đã đổi tên: `music` ← eighth-notes, `heading` ←
+letter-h, `align-left` ← text-align-start, `wrap-text` ← text-wrap…): hình giống hệt, trường `lucide` ghi tên canonical
+(xem `THIRD_PARTY_NOTICES.md`). Nâng cấp: `box` trước là cố ý **không** có (không alias sang `product`); nay `box` là
+icon thật (khối lập phương, đúng khái niệm). `tags` và `images` vẽ chấm nhỏ bằng nét (registry không có `fill` theo node).
+
+### Icon owner tự vẽ (0.94.0)
+
+Chín icon bố cục (`align-none`, `align-wide`, `align-full`, `float-left`, `float-right`, `float-wide-left`,
+`float-wide-right`, `photostory-left`, `photostory-right`) là **hình owner tự vẽ** (lấy từ editor của dcms2), không phải
+Lucide: mục `icons.json` ghi `"source": "td"` thay `lucide` ([ADR 0039](../internal/decisions/0039-owner-drawn-icons.md),
+bổ sung ADR 0010). Chúng là hình **tô đặc** (`"paint": "fill"`, SSR in `fill="currentColor"`) nên token
+`--td-icon-stroke` **không tác dụng** lên chúng. Vẫn qua cùng allowlist, khung `0 0 24 24`, tên ngữ nghĩa td. Mỗi icon core
+có đúng một trong `lucide` hoặc `source: "td"`; `npm run build:icons` kiểm. Brand icon và Font Awesome vẫn **không** vào core.
+
+### Dữ liệu tìm kiếm (0.94.0)
+
+Cho mỗi icon core có **nhãn tiếng Việt + từ khoá tiếng Anh + tiếng Việt** (ví dụ `trash` → "Thùng rác", `delete` /
+`bin` / `xoá`), để [`<td-icon-picker>`](icon-picker.md) tìm có hoặc không dấu. Dữ liệu **tách khỏi registry** (không tăng
+dung lượng của `tdIcon()`), nguồn soạn `src/icons/icons-search.json` (có trong gói), sinh `src/icons/icons-search.js`; chỉ
+tải khi mở popup lần đầu. Phía PHP: `Td::iconSearchData()` đọc cùng file (lười, chỉ khi bạn gọi; `Td::icon()` không đọc).
+
+Icon của site: `registerIconSearchData({ 'site-x': { label, keywords: { en: [...], vi: [...] } } })` (export của
+`@dazzxq/td-components/icon-picker` và entry gốc; luật và giới hạn: xem [Icon picker](icon-picker.md#icon-của-site-và-dữ-liệu-tìm-kiếm)).
+
 Gắn **nhãn / tag**: dùng `tag` (alias của `brand` từ 0.56.0) — không có icon riêng thứ hai. Không alias `badge-dollar-sign` /
 `circle-dollar-sign` (hình khác).
 
-Không có alias `box`: Lucide có icon `box` **khác hình** (khối lập phương). Logo hãng thật (brand icon) không vào core
+Logo hãng thật (brand icon) không vào core
 ([ADR 0010](../internal/decisions/0010-icon-registry.md)) — site đăng ký bằng `registerIcons()`. **Lưu ý nâng cấp:** tên
-core mới làm `registerIcons()` của site **ném lỗi** nếu site đã dùng đúng tên đó
-([breaking-changes § 0.56.0](../upgrading/breaking-changes.md)).
+core mới làm `registerIcons()` của site **ném lỗi lúc khởi động** nếu site đã dùng đúng tên đó
+([breaking-changes § 0.56.0](../upgrading/breaking-changes.md)); 0.94.0 thêm 113 tên ngắn quen thuộc
+(`user`, `home`, `list`, `box`, `code`, `table`…). **Đặt tiền tố `site-` (hoặc tiền tố của site) cho mọi icon
+`registerIcons()`**: tên không tiền tố sẽ va chạm mỗi lần kit thêm tên mới.
 
 Danh sách luôn đúng nhất là lấy từ code, vì site có thể đã đăng ký thêm:
 
@@ -257,7 +303,7 @@ Gọi `registerIcons()` **một lần**, sớm (trong file khởi động của 
 | Quy tắc | Chi tiết |
 |---|---|
 | Tên | Khớp `^[a-z][a-z0-9-]{0,63}$` (chữ thường, số, gạch nối, bắt đầu bằng chữ). |
-| Không ghi đè | Tên đã tồn tại (kể cả core) → `Error: registerIcons: "x" already exists`. Nên đặt tiền tố site: `site-…`, `dwp-…`. |
+| Không ghi đè | Tên đã tồn tại (kể cả core) → `Error: registerIcons: "x" already exists`. Luôn đặt tiền tố site: `site-…`, `dwp-…` (kit thêm tên mới ở các bản sau; tên không tiền tố sẽ ném lỗi lúc khởi động khi trùng). |
 | Tất cả hoặc không gì | Một mục sai → **không mục nào** trong lần gọi đó được đăng ký. |
 | Định nghĩa | Phải là object (chuỗi SVG → lỗi "must be an object"). |
 | `viewBox` | 4 số cách nhau một khoảng trắng, ví dụ `0 0 24 24`. |
@@ -291,7 +337,7 @@ trong console để thử — trả `null` nghĩa là SVG có thành phần khô
 - Cỡ số → `width`/`height`, không có class `td-icon--*`.
 
 Adapter PHP đọc dữ liệu từ `src/icons/icons.json` của thư mục kit đã vendor (export `./icons.json`). Cấu trúc:
-`{ "icons": { "<tên>": { "lucide": "…", "viewBox": "…", "paint": "stroke|fill", "nodes": [["path", {"d": "…"}], …] } } }`.
+`{ "icons": { "<tên>": { "lucide": "…" (hoặc "source": "td"), "viewBox": "…", "paint": "stroke|fill", "nodes": [["path", {"d": "…"}], …] } } }`.
 Xem [Adapter PHP](../guides/php-adapter.md) và [WordPress & PHP](../guides/wordpress-php.md).
 
 ### Icon trong markup render sẵn
@@ -353,10 +399,14 @@ Class: `.td-icon` (khối), `.td-icon--s|m|l`; thuộc tính nhận diện `data
 
 ## Thêm icon vào core (người bảo trì kit)
 
-1. Sửa `src/icons/icons.json`: thêm mục `"<tên>": { "lucide": "<tên gốc>", "viewBox": "0 0 24 24", "paint": "stroke",
-   "nodes": [...] }` (hình học chép từ Lucide).
-2. `npm run build:icons` → sinh lại `src/icons/registry.js` (file sinh ra, không sửa tay).
-3. `npm run check:icons` (có trong `npm test`) báo lỗi nếu `registry.js` lệch với `icons.json`.
+1. Sửa `src/icons/icons.json`: thêm mục `"<tên>": { "lucide": "<tên gốc canonical>", "viewBox": "0 0 24 24", "paint": "stroke",
+   "nodes": [...] }` (hình học chép từ Lucide). Hình owner tự vẽ: `"source": "td"` thay `lucide` (chỉ owner, [ADR
+   0039](../internal/decisions/0039-owner-drawn-icons.md)). Đúng **một** trong hai.
+2. Thêm mục cùng tên vào `src/icons/icons-search.json` (nhãn + từ khoá EN / VI); khoá phải khớp **đúng** tập tên của
+   `icons.json`.
+3. `npm run build:icons` → sinh lại `src/icons/registry.js` và `src/icons/icons-search.js` (file sinh ra, không sửa tay).
+4. `npm run check:icons` (có trong `npm test`) báo lỗi nếu hai file sinh ra lệch nguồn, metadata thiếu / thừa khoá, hoặc
+   icon thiếu cả `lucide` lẫn `source`.
 
 Thêm alias: thêm `"<alias>": "<tên core>"` vào mục `aliases` rồi `npm run build:icons`. Build báo lỗi nếu alias trùng
 tên một icon core, sai dạng tên, hoặc trỏ tới icon không tồn tại.
@@ -378,5 +428,5 @@ kit thực sự dùng.
 
 ## Xem thêm
 
-- [Mở rộng: đăng ký icon](../customization/extending.md) · [Tự viết component](base-element.md) (`fillIconSlots`)
+- [Ô chọn icon `<td-icon-picker>`](icon-picker.md) · [Mở rộng: đăng ký icon](../customization/extending.md) · [Tự viết component](base-element.md) (`fillIconSlots`)
 - [WordPress & PHP](../guides/wordpress-php.md) · [CSP](../guides/csp.md) · [Bảo mật](../guides/security.md)

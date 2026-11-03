@@ -178,6 +178,25 @@ Dùng `TdFormElement`: checkbox, toggle, input-field, slider, dropdown, datetime
 **Feedback** (modal, toast, loading, tooltip) là class tĩnh, không phải custom element: container singleton
 gắn vào `document.body` khi cần. Tooltip tự khởi tạo singleton khi import.
 
+**Bổ sung 0.94.0 — `td-icon-picker` (`icon-picker@1`, plan v0.94.0-icons-picker):**
+
+- `TdIconPicker extends TdFormElement`, `static hydratable = true`. `render()` rỗng, `afterRender()` dựng cây bằng
+  `createElement` / `createElementNS` + `textContent` (không `innerHTML`); đây cũng là cây `td_icon_picker()` in ra
+  (nhãn, nút ô `button.td-icon-picker__trigger` với glyph + chữ + chevron, nút xoá). Host mang `data-td-ssr="icon-picker@1"`
+  và `name` (form tách / clone tìm `td-*[name]` trước nâng cấp). Cổng nhận markup so từng node với `render()`; input ẩn
+  `input.td-icon-picker__native` chỉ có ở SSR, **gỡ sau khi** `ElementInternals` đã nhận giá trị (FormData không trùng).
+  Lệch → render lại an toàn.
+- Chữ trên ô = **tên canonical**, độc lập metadata → JS và PHP giống nhau, không nháy chữ khi dữ liệu tìm kiếm tới.
+- **Tách dữ liệu tìm kiếm khỏi registry:** `src/icons/icons-search.json` (nguồn soạn) → `icons-search.js` (sinh bởi
+  `build:icons`, validator chung `icon-search-schema.js`) nạp bằng `import()` ở lần mở popup đầu (hook tĩnh
+  `TdIconPicker.loadSearchData`, một promise module-level dùng chung; lỗi → bỏ promise để lần sau thử lại). Registry vẫn
+  **một** (188 icon): tách phá SSR parity. `module-graph.json` không có cạnh tĩnh tới `icons-search.js`.
+- Mô hình tìm kiếm thuần `src/utils/icon-search-model.js` (`buildIconIndex` / `searchIcons` / `isIconIndexCurrent`, test
+  Node); chỉ mục dựng lại khi tập tên đã đăng ký hoặc metadata đổi (so theo identity).
+- Popup: `role="dialog"` portal `<body>` (lớp `popover`, `bridgeTheme`, `placeFloating`), dựng mỗi lần mở; mỗi nhóm một
+  `role="grid"` roving tabindex; ô tạo một lần mỗi lần mở và chỉ di chuyển khi lọc. Không virtualization.
+- ADR [0039](decisions/0039-owner-drawn-icons.md) bổ sung ADR 0010: icon core có thể là `source: "td"` (owner tự vẽ).
+
 ## Mô hình style (CSP strict, td.css + CSSOM)
 
 Xem [ADR 0008](decisions/0008-drop-tailwind-token-css.md) (CSSOM per-instance từ [ADR 0005](decisions/0005-csp-strict-cssom-adopted-sheets.md)).

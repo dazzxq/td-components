@@ -443,12 +443,18 @@ describe('php/td.php', opts, () => {
   test('icons: full geometry from icons.json, registerIcons validation', () => {
     const icons = JSON.parse(readFileSync(join(ROOT, 'src/icons/icons.json'), 'utf8')).icons;
     const names = Object.keys(icons);
+    assert.equal(names.length, 188); // v0.94.0: 75 + 113
     const res = runPhp(names.map((n) => ({ fn: 'td_icon', args: [n] })));
     names.forEach((n, i) => {
       const svg = res[i].out;
       assert.match(svg, new RegExp(`^<svg class="td-icon td-icon--m" data-icon="${n}" viewBox="${icons[n].viewBox}"`));
       assert.equal((svg.match(/<(path|circle|rect|line|polyline|polygon|ellipse) /g) || []).length, icons[n].nodes.length, n);
+      // v0.94.0 (ADR 0039): owner-drawn icons are painted with fill, Lucide icons with the 2px stroke
+      if (icons[n].paint === 'fill') assert.match(svg, / fill="currentColor" aria-hidden="true"/, n);
+      else assert.match(svg, / fill="none" stroke="currentColor" stroke-width="2"/, n);
     });
+    assert.equal(res[names.indexOf('align-none')].out, '<svg class="td-icon td-icon--m" data-icon="align-none" viewBox="0 0 24 24" '
+      + 'fill="currentColor" aria-hidden="true" focusable="false"><path d="M19 5.5H5V4h14v1.5ZM19 20H5v-1.5h14V20ZM5 9h14v6H5V9Z"/></svg>');
     const def = { viewBox: '0 0 24 24', paint: 'fill', nodes: [['circle', { cx: 12, cy: 12, r: 4 }]] };
     const out = runPhp([
       { fn: 'Td::registerIcons', args: [{ 'site-dot': def }] },

@@ -23,6 +23,11 @@
  * buttons named by their labels (never the icon), `aria-pressed` following the caret (bold inside <strong>), the editor a
  * multiline textbox named by the field label, the link button opening a dialog named by the URL label.
  *
+ * v0.94.0 (plan docs/internal/plans/v0.94.0-icons-picker.md §8.6 / §9.4): a sixth page — td-icon-picker: the trigger a
+ * button (aria-haspopup="dialog") named by the field label + the value text, or by the hidden `{host}-name` span when the
+ * host has only aria-label; the open popup a dialog "Chọn icon" > a search box + one grid per group ("Gợi ý", "Tất cả
+ * icon") > rows > gridcells named by the Vietnamese label, the value's cell `aria-selected` in both grids.
+ *
  *   node test/a11y/dropdown-rich.aria.mjs     (npm run test:a11y)
  */
 import { chromium } from 'playwright-core';
@@ -112,6 +117,16 @@ const PAGE_RT = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
   window.__ready = true;
 </script></head><body><td-rich-text id="rt" label="Bình luận" value="&lt;p&gt;&lt;strong&gt;đậm&lt;/strong&gt; thường&lt;/p&gt;"></td-rich-text></body></html>`;
 
+// v0.94.0 td-icon-picker (plan docs/internal/plans/v0.94.0-icons-picker.md §8.6)
+const PAGE_IP = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="${ORIGIN}/td.css">
+<script type="module">
+  await import('${ORIGIN}/src/form/td-icon-picker.js');
+  window.__ready = true;
+</script></head><body><td-icon-picker id="ip" name="icon" label="Biểu tượng mục" value="trash" suggestions="trash home"></td-icon-picker>
+<td-icon-picker id="ip2" name="icon2" aria-label="Icon nút" value="home"></td-icon-picker></body></html>`;
+
 const failures = [];
 const browser = await chromium.launch();
 try {
@@ -122,6 +137,7 @@ try {
     if (url.pathname === '/action') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_ACTION });
     if (url.pathname === '/p3') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_P3 });
     if (url.pathname === '/rich-text') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_RT });
+    if (url.pathname === '/icon-picker') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_IP });
     if (url.pathname === '/load') return route.fulfill({ status: 200, contentType: 'text/html', body: PAGE_LOAD });
     if (url.pathname === '/td.css') return route.fulfill({ status: 200, contentType: 'text/css', body: tdCss });
     if (/^\/src\//.test(url.pathname) && !url.pathname.includes('..')) {
@@ -268,6 +284,41 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => document.activeElement?.classList.contains('td-rich-text__editor')
     && document.querySelector('#rt .td-rich-text__tool[data-feature="link"]').getAttribute('aria-expanded') === 'false');
+  // v0.94.0 td-icon-picker: trigger names (visible label / aria-label only), popup dialog > grid > row > gridcell
+  await page.goto(`${ORIGIN}/icon-picker`);
+  await page.waitForFunction(() => window.__ready === true && !!document.querySelector('#ip .td-icon-picker__trigger') && !!document.querySelector('#ip2 .td-icon-picker__trigger'));
+  const ipTrig = (await page.locator('#ip .td-icon-picker__trigger').ariaSnapshot()).trim();
+  if (!/^- button "Biểu tượng mục trash"/.test(ipTrig)) failures.push(`icon-picker trigger: expected a button "Biểu tượng mục trash", got:\n${ipTrig}`);
+  const ip2Trig = (await page.locator('#ip2 .td-icon-picker__trigger').ariaSnapshot()).trim();
+  if (!/^- button "Icon nút home"/.test(ip2Trig)) failures.push(`icon-picker trigger (aria-label only): expected a button "Icon nút home", got:\n${ip2Trig}`);
+  const ipAria = await page.evaluate(() => {
+    const t = document.querySelector('#ip .td-icon-picker__trigger');
+    return [t.getAttribute('aria-haspopup'), t.getAttribute('aria-expanded')];
+  });
+  if (JSON.stringify(ipAria) !== '["dialog","false"]') failures.push(`icon-picker trigger: aria-haspopup / aria-expanded ${JSON.stringify(ipAria)}`);
+  await page.locator('#ip .td-icon-picker__trigger').click();
+  await page.waitForFunction(() => !!document.querySelector('body > .td-icon-picker-panel[data-state="open"] [role="gridcell"]'));
+  const ipTree = (await page.locator('body > .td-icon-picker-panel').ariaSnapshot()).trim();
+  for (const re of [/^- dialog "Chọn icon"/, /searchbox "Tìm icon"/, /- grid "Gợi ý":\n\s+- row "[^"]*":\n\s+- gridcell "[^"]+" \[selected\]/, /- grid "Tất cả icon"/, /- row /, /- heading "Gợi ý" \[level=3\]/, /- heading "Tất cả icon" \[level=3\]/]) {
+    if (!re.test(ipTree)) failures.push(`icon-picker popup: expected ${re} in:\n${ipTree.slice(0, 1200)}`);
+  }
+  const ipCells = await page.evaluate(() => {
+    const panel = document.querySelector('body > .td-icon-picker-panel');
+    const grids = [...panel.querySelectorAll('[role="grid"]')];
+    return {
+      expanded: document.querySelector('#ip .td-icon-picker__trigger').getAttribute('aria-expanded'),
+      controls: document.querySelector('#ip .td-icon-picker__trigger').getAttribute('aria-controls') === panel.id,
+      grids: grids.map((g) => [document.getElementById(g.getAttribute('aria-labelledby'))?.textContent, g.querySelectorAll('[role="row"]').length > 0]),
+      selected: [...panel.querySelectorAll('[role="gridcell"][aria-selected="true"]')].map((c) => c.getAttribute('data-icon')),
+      unnamed: [...panel.querySelectorAll('[role="gridcell"]')].filter((c) => !(c.getAttribute('aria-label') || '').trim()).length,
+      tabbable: grids.map((g) => g.querySelectorAll('[role="gridcell"][tabindex="0"]').length),
+    };
+  });
+  if (JSON.stringify(ipCells) !== JSON.stringify({ expanded: 'true', controls: true, grids: [['Gợi ý', true], ['Tất cả icon', true]], selected: ['trash', 'trash'], unnamed: 0, tabbable: [1, 1] })) {
+    failures.push(`icon-picker popup: aria ${JSON.stringify(ipCells)}`);
+  }
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('body > .td-icon-picker-panel') && document.activeElement === document.querySelector('#ip .td-icon-picker__trigger'));
   if (errors.length) failures.push(`page errors: ${errors.join(' | ')}`);
   await context.close();
 } finally {
@@ -280,4 +331,5 @@ if (failures.length) {
 console.log('dropdown-rich aria: OK (listbox > group > option names, disabled / selected, create row last; trigger name;'
   + ' action mode: combobox name, aria-describedby → meta, polite live region "Đã chọn …"; load: status "Đang tải…" + aria-busy, failed status + button "Thử lại", retry; tiles: radios named'
   + ' by label, hint described; chip-input create row = last option;'
-  + ' rich-text: toolbar + named buttons, aria-pressed, multiline textbox named by the label, link dialog = modal with fields + checkboxes)');
+  + ' rich-text: toolbar + named buttons, aria-pressed, multiline textbox named by the label, link dialog = modal with fields + checkboxes;'
+  + ' icon-picker: trigger button named by label / aria-label + value, dialog > heading (level 3) + grid > row > gridcell named, aria-selected in both grids)');

@@ -6,7 +6,7 @@ One plain PHP file (PHP ≥ 8.0 — CI job `php80` runs the suite on PHP 8.0; no
 
 ```php
 require_once $kitDir . '/php/td.php';
-TdComponents\Td::configure('/assets/vendor/td-components/0.93.1', $kitDir); // versioned URL + filesystem path
+TdComponents\Td::configure('/assets/vendor/td-components/0.94.0', $kitDir); // versioned URL + filesystem path
 
 echo td_stylesheet_tag($nonce);
 echo td_import_map_tag(['dompurify' => '/assets/vendor/dompurify/purify.es.js'], $nonce); // ONE import map per page
@@ -22,6 +22,14 @@ echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
   detached / cloned form finds `td-dropdown[name="x"]` before the upgrade (the JS copies the same value anyway).
 - `td_icon` prints the full `svg.td-icon` geometry; site icons via `Td::registerIcons()`; aliases from the
   `aliases` object of `src/icons/icons.json`.
+- v0.94.0 `td_icon_picker` always prints `<td-icon-picker data-td-ssr="icon-picker@1">` (the tree the component builds +
+  a hidden input carrying name / value until the upgrade; trigger text = the CANONICAL icon name, search metadata is
+  never read); options `label`, `aria_label`, `value`, `placeholder`, `suggestions` (max 24), `icons`, `required`,
+  `disabled`, `readonly`, `allow_clear`, `helper_text`, `error`, `class`, `id`. **`td_icon_value($_POST[…])` normalises
+  the POSTed value** (registered name or alias → canonical, `''` → `''`, anything else → `null`, answer 422) — always
+  call it. `Td::iconName()`, `Td::iconSearchData()` (kit + site search metadata, read lazily, only when you call it) and
+  `Td::registerIconSearchData()` are the explicit server API. Site icon names: prefix `site-` (the kit now has 188
+  core names).
 - `td_badge` prints a CSS-only `span.td-badge`; `td_alert` prints a `<td-alert>` host already containing the full
   styled `div.td-alert` (no JS needed; the alert module upgrades it in place and adds the close button).
 - `td_link(…, ['bare' => true])` prints a plain `<a>` (site class only, no button look).

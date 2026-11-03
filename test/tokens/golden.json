@@ -1510,6 +1510,9 @@
     "@color-scheme": "dark"
   },
   "added": {
+    "--td-icon-picker-cell": { "light": "2.5rem", "dark": "2.5rem", "why": "v0.94.0 td-icon-picker: one grid cell (coarse pointer: max(2.75rem, --td-touch-min))" },
+    "--td-icon-picker-columns": { "light": "8", "dark": "8", "why": "v0.94.0 td-icon-picker: most grid columns (fewer on a narrow viewport, >= 4)" },
+    "--td-icon-picker-max-height": { "light": "20rem", "dark": "20rem", "why": "v0.94.0 td-icon-picker: popup body cap before placeFloating trims it to the room left" },
     "--td-media-picker-upload-veil": { "light": "rgba(255, 255, 255, 0.45)", "dark": "rgba(28, 28, 30, 0.45)", "why": "v0.93.0 td-media-picker: veil over the greyed preview of a card still uploading (surface 45%)" },
     "--td-rich-text-link": { "light": "rgb(29, 78, 216)", "dark": "rgb(96, 165, 250)", "why": "v0.88.0 td-rich-text: link text in the editor (= --td-color-info)" },
     "--td-rich-text-max-height": { "light": "20rem", "dark": "20rem", "why": "v0.88.0 td-rich-text: editor height before it scrolls" },

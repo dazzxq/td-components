@@ -48,6 +48,7 @@ bên trong **không mang `name`** nên không bao giờ bị gửi trùng ([ADR 
 | `<td-scan-input>` | có | có | xem [Scan input](../components/scan-input.md) |
 | `<td-choice-group>` | có | có | xem [Choice group](../components/choice-group.md) |
 | `<td-color-picker>` | có | có | xem [Color picker](../components/color-picker.md) |
+| `<td-icon-picker>` | có | có | (0.94.0) gửi tên icon canonical hoặc rỗng; server chuẩn hoá bằng `td_icon_value()` — xem [Icon picker](../components/icon-picker.md) |
 | `<td-datetime-range>` | có | có | xem [Datetime range](../components/datetime-range.md) |
 | `<td-tree-select>`, `<td-tree>` | có | có | xem [Tree select](../components/tree-select.md), [Tree](../components/tree.md) |
 | `<td-media-field>` | có | có | xem [Media field](../components/media-field.md) |

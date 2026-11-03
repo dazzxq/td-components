@@ -15,6 +15,20 @@ package, `ban`) were checked against lucide-static 1.52.0 and follow the same ru
 `r=".5"` circle).
 The icon added in 0.59.0 (`price` ← banknote) was checked against lucide-static 1.53.0 and follows the same rules.
 Icons added in 0.88.0 for `<td-rich-text>` (`bold`, `italic`, `underline`, `strikethrough`) follow the same rules.
+The 104 Lucide icons added in 0.94.0 (arrows, users, folders, files, devices, editor tools, doodle set; the list is
+`src/icons/icons.json`, entries added after `megaphone` plus `pencil-line`) were checked against lucide-static 1.66.0
+(ISC). Where 1.x renamed an icon, `lucide` records the CANONICAL upstream name (old file names remain as aliases with
+the same drawing): `music` ← eighth-notes, `fingerprint` ← fingerprint-pattern, `heading` ← letter-h, `align-left` /
+`align-center` / `align-right` / `align-justify` ← text-align-start / -center / -end / -justify, `indent-increase` /
+`indent-decrease` ← list-indent-increase / -decrease, `wrap-text` ← text-wrap. The filled dots of `tags` and `images`
+(`circle r=".5" fill="currentColor"`) are stored as stroked `r=".5"` circles (the registry has no per-node `fill`), as for
+`brand` and `key-round`. The `lucide` field of icons added before 0.94.0 was NOT renamed (`trash` ← trash-2, `history`,
+`restore` ← archive-restore, `bold` are now `trash`, `rotate-ccw-clock`, `archive-arrow-up`, `letter-b` upstream, same
+drawing): the geometry was compared by drawing, not by name.
+Icons with `"source": "td"` instead of `lucide` (0.94.0, [ADR 0039](docs/internal/decisions/0039-owner-drawn-icons.md):
+`align-none`, `align-wide`, `align-full`, `float-left`, `float-right`, `float-wide-left`, `float-wide-right`,
+`photostory-left`, `photostory-right`) are original td artwork drawn by the owner, not Lucide: they are not covered by
+the Lucide ISC notice below and carry the same licence as this package.
 
 ISC License
 

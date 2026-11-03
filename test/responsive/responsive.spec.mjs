@@ -104,6 +104,7 @@ const SCENARIOS = [
   { name: 'datetime-popover-time', when: (c) => c.w >= 720, act: async (p) => { await p.click('#g-dtp .td-dtp__trigger'); await p.waitForSelector('.td-dtp-pop .td-cal__day[tabindex="0"]'); await p.click('.td-dtp-pop .td-cal__day[tabindex="0"]'); await p.waitForSelector('.td-dtp-pop .td-time-step:not([hidden])'); }, panel: '.td-dtp-pop', see: ['.td-dtp-pop [data-action="confirm"]'] },
   { name: 'datetime-range', act: (p) => p.click('#g-dtr .td-dtr__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer [data-action="clear"]'] }, // v0.40.0 (v0.61.0: the footer actions carry data-action; R-actions = whatever "Chọn" state, every shown action is in view)
   { name: 'color-picker', act: (p) => p.click('#g-color .td-color__trigger'), panel: '.td-color-panel' }, // v0.48.0
+  { name: 'icon-picker', act: (p) => p.click('#g-icon .td-icon-picker__trigger'), panel: '.td-icon-picker-panel[data-state="open"]', ready: '.td-icon-picker-panel__cell', see: ['.td-icon-picker-panel__input'] }, // v0.94.0
   { name: 'tree-select', act: (p) => p.click('#g-ts .td-tree-select__trigger'), panel: '.td-tree-select__menu[data-state="open"]' },
   { name: 'multiselect', act: async (p) => { await p.click('#g-chips .td-chip-input__input'); await p.keyboard.press('ArrowDown'); }, panel: '.td-chip-input__menu[data-state="open"]' },
   { name: 'menu', act: (p) => p.click('#rsp-menu-btn button'), panel: '.td-menu' },

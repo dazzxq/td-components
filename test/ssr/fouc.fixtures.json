@@ -106,6 +106,8 @@
     {"id": "fl-field-value", "kind": "parity", "module": "input-field", "width": 360, "element": true, "fn": "td_field", "args": ["city", "Huế", {"label": "Thành phố", "label_mode": "floating", "size": "lg", "required": true, "id": "fl-field-value"}]},
     {"id": "fl-field-textarea", "kind": "parity", "module": "input-field", "width": 480, "element": true, "fn": "td_field", "args": ["note", "", {"label": "Ghi chú", "label_mode": "floating", "type": "textarea", "max_length": 200, "id": "fl-field-textarea"}]},
     {"id": "fl-field-date", "kind": "parity", "module": "input-field", "width": 360, "element": true, "fn": "td_field", "args": ["dob", "2026-10-08", {"label": "Ngày sinh", "label_mode": "floating", "type": "date", "size": "sm", "id": "fl-field-date"}]},
-    {"id": "fl-field-affix", "kind": "parity", "module": "input-field", "width": 360, "element": true, "fn": "td_field", "args": ["site", "congty", {"label": "Website", "label_mode": "floating", "type": "url", "prefix": "https://", "placeholder": "ten-mien", "id": "fl-field-affix"}]}
+    {"id": "fl-field-affix", "kind": "parity", "module": "input-field", "width": 360, "element": true, "fn": "td_field", "args": ["site", "congty", {"label": "Website", "label_mode": "floating", "type": "url", "prefix": "https://", "placeholder": "ten-mien", "id": "fl-field-affix"}]},
+    {"id": "ip-value", "kind": "parity", "module": "icon-picker", "width": 360, "fn": "td_icon_picker", "args": ["menu_icon", {"label": "Icon mục", "value": "trash", "helper_text": "Hiện cạnh tên mục", "id": "ip-value"}]},
+    {"id": "ip-empty", "kind": "parity", "module": "icon-picker", "width": 360, "fn": "td_icon_picker", "args": ["menu_icon", {"label": "Icon mục", "required": true, "id": "ip-empty"}]}
   ]
 }

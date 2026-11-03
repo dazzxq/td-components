@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.93.1/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.93.1', __DIR__ . '/public/assets/vendor/td-components/0.93.1');
+ *   require_once '/path/to/vendor/td-components/0.94.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.94.0', __DIR__ . '/public/assets/vendor/td-components/0.94.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -141,6 +141,17 @@ namespace TdComponents {
         private static array $siteIcons = [];
         /** @var array<string,array{0:string,1:string,2:string}> v0.56.0 site action presets (registerActionPresets) */
         private static array $sitePresets = [];
+        /** @var array<string,array>|null v0.94.0: kit search metadata (src/icons/icons-search.json `icons`), read lazily */
+        private static ?array $kitSearch = null;
+        /** @var array<string,array> v0.94.0: site search metadata (registerIconSearchData) */
+        private static array $siteSearch = [];
+        /**
+         * v0.94.0: true → the icon search text rules run as if ext-intl were missing (NFC check + folding through the
+         * fallbacks below). Private, never set by the kit: the tests flip it through Reflection to cover both paths.
+         */
+        private static bool $noIntl = false;
+        /** @var array<string,string>|null v0.94.0: Vietnamese letter → ASCII base (built from VI_FOLD on first use) */
+        private static ?array $viFold = null;
         private static bool $allowHttp = false;
 
         /**
@@ -285,6 +296,34 @@ namespace TdComponents {
         public const COLOR_MAX_INPUT = 64;
         public const COLOR_PRESET_CANDIDATES = 192;
         public const COLOR_PRESET_STRING = 192 * 64;
+        /** v0.94.0: td_icon_picker (always the element <td-icon-picker data-td-ssr="icon-picker@1">). */
+        public const SSR_ICON_PICKER = 'icon-picker@1';
+        /** v0.94.0: texts of td_icon_picker = TdIconPicker.labels (placeholder / clear — the server-rendered part). */
+        public const ICON_PICKER_LABELS = ['placeholder' => 'Chọn icon', 'clear' => 'Xoá icon'];
+        /** v0.94.0 (= src/form/td-icon-picker.js): suggestions kept, bytes of a name-list string looked at, list entries inspected. */
+        public const ICON_PICKER_SUGGESTIONS = 24;
+        public const ICON_PICKER_LIST_STRING = 2048;
+        public const ICON_PICKER_LIST_CANDIDATES = 2000;
+        /** v0.94.0 (= src/icons/icon-search-schema.js ICON_SEARCH_LIMITS): label / keyword characters, keywords per language, entries per call. */
+        public const ICON_SEARCH_TEXT_MAX = 48;
+        public const ICON_SEARCH_KEYWORDS_MAX = 12;
+        public const ICON_SEARCH_ENTRIES_MAX = 2000;
+        /** v0.94.0: the `$schema` of src/icons/icons-search.json (= SEARCH_SCHEMA of scripts/build-icons.mjs). */
+        public const ICON_SEARCH_SCHEMA = 'td-icons-search/1';
+        /**
+         * v0.94.0: folding WITHOUT ext-intl — every precomposed Vietnamese letter (a ă â e ê i o ô ơ u ư y × 5 tones,
+         * lower + upper case, đ Đ) → its ASCII base, so foldSearchText() matches the JS foldSearchText() for Vietnamese +
+         * ASCII text. Limitation: other scripts' accented / upper-case letters are NOT folded without intl (JS folds them).
+         */
+        private const VI_FOLD = [
+            'a' => 'àáảãạăằắẳẵặâầấẩẫậÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬ',
+            'e' => 'èéẻẽẹêềếểễệÈÉẺẼẸÊỀẾỂỄỆ',
+            'i' => 'ìíỉĩịÌÍỈĨỊ',
+            'o' => 'òóỏõọôồốổỗộơờớởỡợÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢ',
+            'u' => 'ùúủũụưừứửữựÙÚỦŨỤƯỪỨỬỮỰ',
+            'y' => 'ỳýỷỹỵỲÝỶỸỴ',
+            'd' => 'đĐ',
+        ];
         /** v0.50.0: td_rating (always the element <td-rating> + stars / text — read-only, no JS needed). */
         public const SSR_RATING = 'rating@1';
         /** v0.50.0: texts of td_rating = TdRating.labels defaults (R13: one static set per site; a site overriding the JS
@@ -448,7 +487,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.93.1') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.94.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool, assets?: string} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -493,6 +532,7 @@ namespace TdComponents {
             self::$pkg = null;
             self::$kitIcons = null;
             self::$kitAliases = null;
+            self::$kitSearch = null;
             self::$ssrElements = $options['ssr_elements'] ?? false;
             self::$assets = $assets;
             self::$graph = null;
@@ -921,6 +961,222 @@ namespace TdComponents {
         public static function hasIcon(string $name): bool
         {
             return self::iconDef($name) !== null;
+        }
+
+        /**
+         * v0.94.0 (plan v0.94.0-icons-picker §7): the registered (canonical) name of `$name` — itself when registered
+         * (core / site), else the target of a kit alias, else null. Same rule as resolveIconName() in JS.
+         */
+        public static function iconName(string $name): ?string
+        {
+            $def = self::iconDef($name);
+            return $def === null ? null : (string) $def['_name'];
+        }
+
+        /**
+         * v0.94.0 (plan §7): the icon search metadata — `[name => ['label' => …, 'keywords' => ['en' => […], 'vi' => […]]]` —
+         * of the kit (src/icons/icons-search.json, read lazily on the FIRST call, then cached) merged with the site's
+         * (registerIconSearchData). A missing / broken file → the site entries only + one E_USER_WARNING. An explicit API for
+         * the server's own use (a server-side list / search); td_icon_picker() and Td::icon() never read it.
+         * @return array<string,array{label:string,keywords:array{en:array<int,string>,vi:array<int,string>}}>
+         */
+        public static function iconSearchData(): array
+        {
+            if (self::$kitSearch === null) {
+                // the WHOLE file is validated like scripts/build-icons.mjs does ($schema, keys = the kit icon set, every
+                // entry by the registerIconSearchData rules); the cache is set only when all of it passes
+                $file = self::kitDir() . '/src/icons/icons-search.json';
+                $raw = is_file($file) ? file_get_contents($file) : false;
+                try {
+                    if ($raw === false) {
+                        throw new RuntimeException('not found');
+                    }
+                    $json = json_decode($raw, true, 64, JSON_THROW_ON_ERROR);
+                    if (!is_array($json) || ($json['$schema'] ?? null) !== self::ICON_SEARCH_SCHEMA) {
+                        throw new RuntimeException('"$schema" must be "' . self::ICON_SEARCH_SCHEMA . '"');
+                    }
+                    $icons = $json['icons'] ?? null;
+                    if (!is_array($icons) || ($icons !== [] && self::isList($icons))) {
+                        throw new RuntimeException('no "icons" object');
+                    }
+                    $kit = self::kitIcons();
+                    if (count($icons) !== count($kit)) { // cheap first: no walk of an oversized / partial set
+                        throw new RuntimeException('"icons" must hold exactly the ' . count($kit) . ' kit icons, got ' . count($icons));
+                    }
+                    $clean = [];
+                    foreach ($icons as $name => $entry) {
+                        $name = (string) $name;
+                        if (!isset($kit[$name])) {
+                            throw new RuntimeException('"' . substr($name, 0, 80) . '" is not a kit icon');
+                        }
+                        $clean[$name] = self::validateSearchEntry($name, $entry);
+                    }
+                    self::$kitSearch = $clean;
+                } catch (\Throwable $e) {
+                    self::$kitSearch = [];
+                    trigger_error('Td::iconSearchData: src/icons/icons-search.json could not be read (' . $e->getMessage() . '); kit search metadata empty', E_USER_WARNING);
+                }
+            }
+            return self::$kitSearch + self::$siteSearch;
+        }
+
+        /**
+         * v0.94.0 (plan §7, twin of registerIconSearchData() in JS): search metadata for SITE icons. Rules of
+         * src/icons/icon-search-schema.js: name = icon name rule, not a core icon, not already given metadata; entry exactly
+         * `label` + `keywords` (`en` + `vi`); every text a string, NFC (without intl: no combining mark at all), trimmed, 1–48 characters, no control
+         * character; 1–12 keywords per language, no two equal after folding; at most 2000 entries per call. Anything invalid
+         * → InvalidArgumentException and NOTHING of the batch is registered. Register the same data in JS for the picker.
+         * @param array<string,array{label:string,keywords:array{en:array<int,string>,vi:array<int,string>}}> $defs
+         */
+        public static function registerIconSearchData(array $defs): void
+        {
+            if (count($defs) > self::ICON_SEARCH_ENTRIES_MAX) {
+                throw new InvalidArgumentException('Td::registerIconSearchData: at most ' . self::ICON_SEARCH_ENTRIES_MAX . ' entries per call');
+            }
+            $clean = [];
+            foreach ($defs as $name => $entry) {
+                $name = (string) $name;
+                if (!preg_match(self::ICON_NAME, $name)) {
+                    throw new InvalidArgumentException('Td::registerIconSearchData: invalid icon name "' . substr($name, 0, 80) . '"');
+                }
+                if (isset(self::kitIcons()[$name])) {
+                    throw new InvalidArgumentException("Td::registerIconSearchData: \"$name\" is a core icon (its metadata is the kit's)");
+                }
+                if (isset(self::$siteSearch[$name])) {
+                    throw new InvalidArgumentException("Td::registerIconSearchData: \"$name\" already has search metadata");
+                }
+                $clean[$name] = self::validateSearchEntry($name, $entry);
+            }
+            self::$siteSearch += $clean; // all or nothing
+        }
+
+        /** @internal search key of a text (= foldSearchText() in JS): no diacritics, lower case, đ → d, - _ → space, collapsed. */
+        public static function foldSearchText(string $s): string
+        {
+            if (self::hasIntl()) {
+                $s = (string) \Normalizer::normalize($s, \Normalizer::FORM_D);
+            } else {
+                // without intl: precomposed Vietnamese letters → ASCII base (VI_FOLD; other scripts are not folded)
+                $s = strtr($s, self::viFold());
+            }
+            $s = (string) preg_replace('/\p{M}/u', '', $s);
+            // no mbstring (plain PHP ≥ 8.0): ASCII always; other upper-case letters through IntlChar when intl is there
+            $s = strtolower($s);
+            if (self::hasIntl() && class_exists('IntlChar')) {
+                $s = (string) preg_replace_callback('/\p{Lu}/u', static fn (array $m): string => (string) \IntlChar::tolower($m[0]), $s);
+            }
+            $s = str_replace(['đ', 'Đ', '-', '_'], ['d', 'd', ' ', ' '], $s);
+            return trim((string) preg_replace('/[\s' . self::JS_WS . ']+/u', ' ', $s), ' ');
+        }
+
+        /** @internal ext-intl usable for the icon search text rules (false when missing or forced off by the tests). */
+        private static function hasIntl(): bool
+        {
+            return !self::$noIntl && class_exists('Normalizer');
+        }
+
+        /** @return array<string,string> Vietnamese letter → ASCII base (strtr map of VI_FOLD) */
+        private static function viFold(): array
+        {
+            if (self::$viFold === null) {
+                self::$viFold = [];
+                foreach (self::VI_FOLD as $to => $from) {
+                    foreach (preg_split('//u', $from, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $ch) {
+                        self::$viFold[$ch] = $to;
+                    }
+                }
+            }
+            return self::$viFold;
+        }
+
+        /** @internal PHP 8.0 array_is_list(). */
+        private static function isList(array $a): bool
+        {
+            $i = 0;
+            foreach ($a as $k => $_) {
+                if ($k !== $i++) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /** @return array{label:string,keywords:array{en:array<int,string>,vi:array<int,string>}} */
+        private static function validateSearchEntry(string $name, mixed $entry): array
+        {
+            $where = "Td::registerIconSearchData(\"$name\")";
+            $keys = static function (mixed $obj, array $allowed, string $at): void {
+                if (!is_array($obj)) {
+                    throw new InvalidArgumentException("$at must be an object");
+                }
+                // one pass, early exit on the first non-string / unknown key (no array_keys / isList over a huge array)
+                foreach ($obj as $k => $_) {
+                    if (!is_string($k)) {
+                        throw new InvalidArgumentException("$at must be an object");
+                    }
+                    if (!in_array($k, $allowed, true)) {
+                        throw new InvalidArgumentException("$at: unknown key \"$k\"");
+                    }
+                }
+                foreach ($allowed as $k) {
+                    if (!array_key_exists($k, $obj)) {
+                        throw new InvalidArgumentException("$at: missing \"$k\"");
+                    }
+                }
+            };
+            $text = static function (mixed $v, string $at): string {
+                if (!is_string($v)) {
+                    throw new InvalidArgumentException("$at must be a UTF-8 string");
+                }
+                // cheap byte guard before any regex work: 48 code points are at most 4 × 48 bytes
+                if (strlen($v) > self::ICON_SEARCH_TEXT_MAX * 4) {
+                    throw new InvalidArgumentException("$at must be 1–" . self::ICON_SEARCH_TEXT_MAX . ' characters');
+                }
+                if (!preg_match('//u', $v)) {
+                    throw new InvalidArgumentException("$at must be a UTF-8 string");
+                }
+                $n = (int) preg_match_all('/./us', $v);
+                if ($n < 1 || $n > self::ICON_SEARCH_TEXT_MAX) {
+                    throw new InvalidArgumentException("$at must be 1–" . self::ICON_SEARCH_TEXT_MAX . ' characters');
+                }
+                if ((string) preg_replace('/^[' . self::JS_WS . ']+|[' . self::JS_WS . ']+$/u', '', $v) !== $v) {
+                    throw new InvalidArgumentException("$at must be trimmed");
+                }
+                if (preg_match('/\p{Cc}/u', $v)) {
+                    throw new InvalidArgumentException("$at contains a control character");
+                }
+                // without intl: any combining mark is refused (stricter than NFC, safe: every Vietnamese letter exists
+                // precomposed; a text of another script that needs a mark in NFC is refused there)
+                if (self::hasIntl() ? !\Normalizer::isNormalized($v, \Normalizer::FORM_C) : preg_match('/\p{M}/u', $v)) {
+                    throw new InvalidArgumentException("$at must be NFC");
+                }
+                return $v;
+            };
+            $keys($entry, ['label', 'keywords'], $where);
+            $label = $text($entry['label'], "$where: label");
+            $keys($entry['keywords'], ['en', 'vi'], "$where: keywords");
+            $out = [];
+            foreach (['en', 'vi'] as $lang) {
+                $list = $entry['keywords'][$lang];
+                if (!is_array($list) || !self::isList($list) || count($list) < 1 || count($list) > self::ICON_SEARCH_KEYWORDS_MAX) {
+                    throw new InvalidArgumentException("$where: keywords.$lang must be a list of 1–" . self::ICON_SEARCH_KEYWORDS_MAX . ' strings');
+                }
+                $seen = [];
+                $out[$lang] = [];
+                foreach ($list as $i => $kw) {
+                    $s = $text($kw, "$where: keywords.$lang" . "[$i]");
+                    $key = self::foldSearchText($s);
+                    if ($key === '') {
+                        throw new InvalidArgumentException("$where: keywords.$lang" . "[$i] has no searchable character");
+                    }
+                    if (isset($seen[$key])) {
+                        throw new InvalidArgumentException("$where: keywords.$lang" . "[$i] duplicates another keyword");
+                    }
+                    $seen[$key] = true;
+                    $out[$lang][] = $s;
+                }
+            }
+            return ['label' => $label, 'keywords' => $out];
         }
 
         /**
@@ -8142,6 +8398,161 @@ namespace {
             'error-text' => $error,
             'aria-label' => $aria,
         ], $hostTaken) . '><div class="td-color">' . $labelHtml . $box . '</div>' . $note . '</td-color-picker>';
+    }
+
+    /**
+     * v0.94.0 (plan v0.94.0-icons-picker §7): THE server normalisation of an icon setting (td_icon_picker) — call it on
+     * every POSTed value BEFORE validating / storing (the picker is not a safety boundary). A string matching the icon
+     * name rule AND known to Td::hasIcon() → its canonical name (alias → target); `''` / null → `''` (no icon); anything
+     * else (unknown name, bad format, another type) → null — answer 422.
+     *
+     *   $v = td_icon_value($request->input('menu_icon'));
+     *   if ($v === null) abort(422);
+     */
+    function td_icon_value(mixed $v): ?string
+    {
+        if ($v === null || $v === '') {
+            return '';
+        }
+        if (!is_string($v) || strlen($v) > 64 || !preg_match('/^[a-z][a-z0-9-]{0,63}$/D', $v)) {
+            return null;
+        }
+        return Td::iconName($v);
+    }
+
+    /**
+     * @internal v0.94.0: a name list option of td_icon_picker (`suggestions` / `icons`): a list or a string (space / comma
+     * separated; over Td::ICON_PICKER_LIST_STRING bytes → ignored) → canonical registered names, deduped, at most `$max`;
+     * unknown / bad entries dropped + ONE warning naming the option. Same rules as the JS property / attribute.
+     * @return array<int,string>
+     */
+    function td__icon_names(mixed $src, string $opt, int $max): array
+    {
+        $list = [];
+        $bad = false;
+        if (is_string($src)) {
+            if (strlen($src) > Td::ICON_PICKER_LIST_STRING) {
+                trigger_error("td_icon_picker: $opt is longer than " . Td::ICON_PICKER_LIST_STRING . ' bytes; ignored', E_USER_WARNING);
+                return [];
+            }
+            $list = preg_split('/[\s,]+/', $src, Td::ICON_PICKER_LIST_CANDIDATES + 1, PREG_SPLIT_NO_EMPTY) ?: [];
+        } elseif (is_array($src)) {
+            $list = array_slice(array_values($src), 0, Td::ICON_PICKER_LIST_CANDIDATES);
+        } elseif ($src !== null) {
+            $bad = true;
+        }
+        $out = [];
+        foreach ($list as $n) {
+            $c = is_string($n) && preg_match('/^[a-z][a-z0-9-]{0,63}$/D', $n) ? Td::iconName($n) : null;
+            if ($c === null) {
+                $bad = true;
+            } elseif (!in_array($c, $out, true) && count($out) < $max) {
+                $out[] = $c;
+            }
+        }
+        if ($bad) {
+            trigger_error("td_icon_picker: some $opt entries were dropped (not a registered icon name)", E_USER_WARNING);
+        }
+        return $out;
+    }
+
+    /**
+     * v0.94.0 (plan v0.94.0-icons-picker §7, contract icon-picker@1): an icon field — ALWAYS the element
+     * `<td-icon-picker data-td-ssr="icon-picker@1">` + the tree <td-icon-picker> builds (adopted IN PLACE by
+     * `@dazzxq/td-components/icon-picker`), plus a hidden input carrying name / value for the form until the upgrade (then
+     * removed: ElementInternals submits). The trigger shows the icon + its CANONICAL name (never the search metadata;
+     * Td::iconSearchData() is not read). Options: label, aria_label, value, placeholder, suggestions (list or string, max 24),
+     * icons (list or string: the grid's set; empty = every icon), required, disabled, readonly, allow_clear (false = no clear
+     * button), helper_text (or hint), error, class (host), id (host id). `value`: alias → canonical; a well-formed name PHP
+     * does not know (a JS-only site icon) is kept + one E_USER_WARNING; a bad name → empty + one warning. ALWAYS normalise
+     * the POSTed value with td_icon_value().
+     */
+    function td_icon_picker(string $name, array $o = []): string
+    {
+        $h = td__str($o['id'] ?? null) ?? td__host_uid($name);
+        $label = td__str($o['label'] ?? null);
+        $aria = td__str($o['aria_label'] ?? null);
+        $placeholder = td__str($o['placeholder'] ?? null);
+        $error = td__str($o['error'] ?? null);
+        $required = !empty($o['required']);
+        $disabled = !empty($o['disabled']);
+        $readonly = !empty($o['readonly']);
+        $allowClear = !(array_key_exists('allow_clear', $o) && $o['allow_clear'] !== null && !$o['allow_clear']);
+        $nameAttr = $name !== '' ? $name : null;
+        $help = array_key_exists('helper_text', $o) ? td__helper_opt($o) : td__str($o['hint'] ?? $o['helper'] ?? null);
+        $value = '';
+        $known = false;
+        if (array_key_exists('value', $o) && $o['value'] !== null && $o['value'] !== '') {
+            $raw = $o['value'];
+            if (is_string($raw) && preg_match('/^[a-z][a-z0-9-]{0,63}$/D', $raw)) {
+                $canon = Td::iconName($raw);
+                $known = $canon !== null;
+                $value = $canon ?? $raw;
+                if (!$known) {
+                    trigger_error('td_icon_picker: value is not an icon registered in PHP; kept as is (register the site icon with Td::registerIcons() to print it)', E_USER_WARNING);
+                }
+            } else {
+                trigger_error('td_icon_picker: value is not a valid icon name; printed empty', E_USER_WARNING);
+            }
+        }
+        $suggestions = array_key_exists('suggestions', $o) ? td__icon_names($o['suggestions'], 'suggestions', Td::ICON_PICKER_SUGGESTIONS) : [];
+        $icons = array_key_exists('icons', $o) ? td__icon_names($o['icons'], 'icons', Td::ICON_PICKER_LIST_CANDIDATES) : [];
+        if ($label === null && $aria === null) {
+            trigger_error('td_icon_picker: give a label or an aria_label (the field has no accessible name)', E_USER_WARNING);
+        }
+        $locked = $disabled || $readonly;
+        $errId = $h . '-error';
+        $ownDesc = trim(($help !== null && $error === null ? $h . '-note ' : '') . ($error !== null ? $errId : ''));
+        $by = trim(($label !== null ? $h . '-label' : ($aria !== null ? $h . '-name' : '')) . ' ' . $h . '-text');
+        $state = $value === '' ? 'empty' : ($known ? 'value' : 'unknown');
+        $t = [];
+        $trigger = '<button' . Td::ownAttrs([
+            'type' => 'button',
+            'class' => 'td-icon-picker__trigger',
+            'id' => $h . '-trigger',
+            'aria-haspopup' => 'dialog',
+            'aria-expanded' => 'false',
+            'aria-labelledby' => $by,
+            'aria-invalid' => $error !== null ? 'true' : null,
+            'aria-errormessage' => $error !== null ? $errId : null,
+            'aria-describedby' => $ownDesc !== '' ? $ownDesc : null,
+            'disabled' => $locked,
+        ], $t) . '><span class="td-icon-picker__glyph" aria-hidden="true">' . ($known ? Td::icon($value, 'm') : '') . '</span>'
+            . '<span class="td-icon-picker__text" id="' . Td::e($h . '-text') . '" data-state="' . $state . '">'
+            . Td::e($value !== '' ? $value : ($placeholder ?? Td::ICON_PICKER_LABELS['placeholder'])) . '</span>'
+            . Td::icon('down', 's', '', 'td-icon-picker__chevron') . '</button>';
+        $clearHidden = $value === '' || $required || $locked || !$allowClear;
+        $clear = '<button type="button" class="td-icon-picker__clear" aria-label="' . Td::e(Td::ICON_PICKER_LABELS['clear']) . '"'
+            . ($clearHidden ? ' hidden' : '') . '>' . Td::icon('close', 's') . '</button>';
+        $root = '<div class="td-icon-picker">'
+            . ($label !== null ? '<label class="td-icon-picker__label" id="' . Td::e($h . '-label') . '" for="' . Td::e($h . '-trigger') . '">' . Td::e($label) . '</label>' : '')
+            . '<div class="td-icon-picker__box">' . $trigger . $clear . '</div>'
+            . ($label === null && $aria !== null ? '<span class="td-sr-only" id="' . Td::e($h . '-name') . '">' . Td::e($aria) . '</span>' : '')
+            . ($nameAttr !== null ? '<input type="hidden" class="td-icon-picker__native" name="' . Td::e($nameAttr) . '"'
+                . ($value !== '' ? ' value="' . Td::e($value) . '"' : '') . ($disabled ? ' disabled' : '') . '>' : '')
+            . '</div>';
+        $note = td__helper_note($help, $h, $error !== null) . ($error !== null
+            ? '<span class="td-field-error" id="' . Td::e($errId) . '" data-for="' . Td::e($h) . '">' . Td::e($error) . '</span>'
+            : '');
+        $hostTaken = [];
+        return '<td-icon-picker' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_ICON_PICKER,
+            'id' => $h,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'name' => $nameAttr,
+            'value' => $value !== '' ? $value : null,
+            'label' => $label,
+            'placeholder' => $placeholder,
+            'suggestions' => $suggestions ? implode(' ', $suggestions) : null,
+            'icons' => $icons ? implode(' ', $icons) : null,
+            'allow-clear' => $allowClear ? null : 'false',
+            'required' => $required,
+            'disabled' => $disabled,
+            'readonly' => $readonly,
+            'helper-text' => $help,
+            'error-text' => $error,
+            'aria-label' => $aria,
+        ], $hostTaken) . '>' . $root . $note . '</td-icon-picker>';
     }
 
     /**

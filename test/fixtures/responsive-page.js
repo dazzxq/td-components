@@ -25,6 +25,7 @@
  * v0.45.0: section `steps-timeline` — td-steps (6 steps horizontal, vertical, clickable in a 280 px column) and
  * td-timeline (40 items, details open, fixed `now`; again in the 280 px column).
  * v0.48.0: td-color-picker (form grid + 280 px column via controls(); opener `#g-color`).
+ * v0.94.0: td-icon-picker (form grid + 280 px column via controls(); value + suggestions; opener `#g-icon`).
  * v0.50.0: section `carousel` — `#rsp-carousel` (16 product cards with a td-rating, per-view 2) + `#rsp-carousel-narrow`
  *   (4 cards in the 280 px column).
  */
@@ -70,6 +71,7 @@ import { TdCropper } from '../../src/form/td-cropper.js';
 import '../../src/form/td-media-field.js';
 import '../../src/form/td-scan-input.js'; // v0.38.0
 import '../../src/form/td-color-picker.js'; // v0.48.0
+import '../../src/form/td-icon-picker.js'; // v0.94.0
 import '../../src/form/td-datetime-range.js'; // v0.40.0
 import '../../src/form/td-media-gallery.js'; // v0.43.0
 import '../../src/display/td-steps.js'; // v0.45.0
@@ -106,7 +108,8 @@ const controls = (p) => `
   <td-number-input label="Giá bán" suffix="₫" value="32990000"></td-number-input>
   <td-otp-input label="Mã xác thực"></td-otp-input>
   <td-tree id="${p}-tree" label="Quyền" selection="multiple" searchable></td-tree>
-  <td-color-picker id="${p}-color" name="${p}-color" label="Màu thương hiệu" value="#1d4ed8" contrast></td-color-picker>`;
+  <td-color-picker id="${p}-color" name="${p}-color" label="Màu thương hiệu" value="#1d4ed8" contrast></td-color-picker>
+  <td-icon-picker id="${p}-icon" name="${p}-icon" label="Biểu tượng chuyên mục" value="trash" suggestions="trash home user settings"></td-icon-picker>`;
 
 const ORDERS = Array.from({ length: 12 }, (_, i) => ({
   code: `DH${10240 + i}`,

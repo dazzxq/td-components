@@ -169,6 +169,15 @@ export function renderColorPickerFixture() {
   return renderPhp('color-picker-fixture.php');
 }
 
+// v0.94.0: td_icon_picker (always element mode, icon-picker@1).
+export const ICON_PICKER_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'icon-picker.fixtures.json'), 'utf8'));
+export const ICON_PICKER_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'icon-picker.html');
+
+/** Render test/ssr/icon-picker-fixture.php (the HTML loaded by the icon-picker SSR browser test). */
+export function renderIconPickerFixture() {
+  return renderPhp('icon-picker-fixture.php');
+}
+
 // v0.49.0: td_choice_group (always element mode, choice-group@1).
 export const CHOICE_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'choice.fixtures.json'), 'utf8'));
 export const CHOICE_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'choice.html');

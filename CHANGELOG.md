@@ -4,6 +4,64 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.94.0
+
+**+113 icon, dữ liệu tìm kiếm EN + VI cho mọi icon, và `<td-icon-picker>`** (yêu cầu dcms2 02–03/11/2026, 2026-11-03).
+[Plan](docs/internal/plans/v0.94.0-icons-picker.md), [ADR 0039](docs/internal/decisions/0039-owner-drawn-icons.md).
+
+### Added
+
+- **`<td-icon-picker>`** (`@dazzxq/td-components/icon-picker`, form-associated): ô chọn một icon đã đăng ký (core + site).
+  Ô hiện icon + tên canonical; popup có ô tìm (không dấu; tên, alias, nhãn VI, từ khoá EN + VI), nhóm "Gợi ý" theo từng
+  instance (`suggestions`, tối đa 24), lưới ô vuông A–Z (WAI-ARIA grid, một điểm Tab, mũi tên / Home / End / Ctrl+Home /
+  Ctrl+End / PageUp / PageDown), dòng chú thích "{nhãn} · {tên}", nút xoá, `icons` giới hạn tập lưới. Sự kiện `input` /
+  `change` `{ value }`; `value` lưu dạng canonical (alias `x` → `close`); tên chưa đăng ký được giữ
+  (`data-state="unknown"`). Cảm ứng: mở vào ô đang chọn, không bật bàn phím ảo. Token `--td-icon-picker-cell`,
+  `--td-icon-picker-columns`, `--td-icon-picker-max-height`. [Docs](docs/components/icon-picker.md).
+- **Registry 75 → 188 icon** (+104 Lucide đối chiếu lucide-static 1.66.0, +9 hình owner tự vẽ): mũi tên, người dùng,
+  thư mục / tệp, thiết bị, trình soạn thảo (`align-left/center/right/justify`, `indent-*`, `paint-bucket`, `wrap-text`…),
+  `unpublish`, `pencil-line`…; danh sách ở [icons.md](docs/components/icons.md#113-icon-mới-của-0940).
+- **Icon owner tự vẽ** (`align-none`, `align-wide`, `align-full`, `float-left`, `float-right`, `float-wide-left`,
+  `float-wide-right`, `photostory-left`, `photostory-right`; ADR 0039): mục `icons.json` ghi `"source": "td"` thay
+  `lucide`, tô đặc (`paint: "fill"`, `--td-icon-stroke` không tác dụng). Build kiểm: đúng một trong `lucide` / `source`.
+- **Dữ liệu tìm kiếm** cho cả 188 icon: nhãn VI + từ khoá EN + VI trong `src/icons/icons-search.json` → sinh
+  `src/icons/icons-search.js` (`build:icons` / `check:icons`), **nạp lười ở lần mở popup đầu** (hook
+  `TdIconPicker.loadSearchData`; lỗi → tìm theo tên + nút "Thử lại"). Trang chỉ dùng `tdIcon()` không tải nó.
+- **`registerIconSearchData(defs)`** (export của `icon-picker` và entry gốc): nhãn + từ khoá cho icon site; một validator
+  dùng chung (NFC, 1–48 ký tự, 1–12 từ khoá mỗi ngôn ngữ, ≤ 2000 mục; trùng tên core → ném, cả lô hoặc không gì).
+- **PHP:** `td_icon_picker()` (luôn element, hợp đồng `icon-picker@1`, nhận tại chỗ, không trùng FormData),
+  **`td_icon_value()`** (chuẩn hoá giá trị POST: tên đã đăng ký / alias → canonical, `''` → `''`, còn lại `null`; server
+  **luôn** gọi), `Td::iconName()`, `Td::iconSearchData()` (đọc lười, `Td::icon()` / `td_icon_picker()` không đọc),
+  `Td::registerIconSearchData()`, hằng `Td::SSR_ICON_PICKER`, `Td::ICON_PICKER_LABELS`.
+- Story `td-icon-picker`; CSP cases `td-icon-picker.*`; ca FOUC; fixture SSR `icon-picker`.
+
+### Changed
+
+- Dung lượng (đo trên nhánh): `icons.json` 37 → 96 KB, `registry.js` 30,8 → 81 KB raw, **3,9 → 10 KB gzip** (≈ +6 KB trên
+  **mọi** trang dùng icon; một registry, không tách, để SSR parity đúng). PHP giải mã ~96 KB JSON mỗi request có `Td::icon`.
+  Dữ liệu tìm kiếm (`icons-search.js` ~26 KB raw, ~8 KB gzip) chỉ tải khi mở picker.
+- `box` trước đây cố ý **không** có (v0.56.0 không alias sang `product`); nay `box` là icon thật (khối lập phương), nên
+  `hasIcon('box')` là `true`.
+- `press.js` `PRESS_TARGETS` thêm ô, nút xoá, ô lưới và nút "Thử lại" của icon picker (hình nhấn kit-wide).
+
+### Internal
+
+- `src/utils/icon-search-model.js` (không DOM; chuẩn hoá VI, xếp hạng 0–4), `src/icons/icon-search-schema.js`,
+  `scripts/build-icons.mjs` mở rộng (kiểm nguồn icon, khoá metadata, sinh `icons-search.js`, `--check` báo từng file cũ),
+  test Node + browser (3 engine) + PHP + SSR fixture; CSS `src/styles/components/icon-picker.css` vào manifest.
+
+### Site upgrade notes
+
+- **Tên icon mới có thể trùng `registerIcons()` không tiền tố của site** → `registerIcons()` **ném lỗi lúc khởi động**
+  (đã quét 135 / dsuite / dcms2: không trùng). Đổi icon site sang tiền tố (`site-…`, `ds-…`); docs khuyên mọi icon site
+  đặt tiền tố.
+- **dcms2:** đổi tên Font Awesome → tên kit là việc phía dcms2 (kit **không** có alias hay bảng FA; bảng đề xuất ở
+  [v0.94.0-icon-list.md](docs/internal/plans/v0.94.0-icon-list.md), không ship). Bỏ `registerIcons` riêng cho 9 glyph bố
+  cục sau khi nâng. Ghi chú: level-down-alt → `unpublish`, users-slash → `user-x`, stream → `activity`, rectangle-ad →
+  `megaphone`, pdf / word → `file-text`, spinner → `td-loading`.
+- **Server:** dùng `td_icon_value()` trên mọi giá trị icon nhận từ client; picker không phải ranh giới an toàn.
+- Không đổi API `tdIcon` / `registerIcons` / `Td::icon`; không migrate dữ liệu; không breaking change nếu site đã dùng tiền tố.
+
 ## 0.93.1
 
 ### Fixed

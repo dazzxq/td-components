@@ -1,6 +1,7 @@
 # 0010. Icon registry: render icon theo tên, dữ liệu Lucide, không hardcode SVG
 
 - **Status:** Accepted
+- **Amended by:** [0039](0039-owner-drawn-icons.md) (2026-11-03): icon owner tự vẽ, `"source": "td"` thay `lucide`, `paint: "fill"`.
 - **Date:** 2026-09-27 (user đề xuất; debate Claude ↔ Codex `/codex-think-about`, đồng thuận vòng 1)
 
 ## Context

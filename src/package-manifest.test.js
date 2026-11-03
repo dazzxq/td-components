@@ -310,6 +310,26 @@ test('v0.48.0: ./color-picker export, sideEffects, barrel TdColorPicker, color-p
   }
 });
 
+test('v0.94.0: ./icon-picker export, sideEffects, barrel TdIconPicker + registerIconSearchData, icon-picker CSS after color-picker; the search data stays lazy', async () => {
+  assert.equal(pkg.exports['./icon-picker'], './src/form/td-icon-picker.js');
+  assert.ok(pkg.sideEffects.includes('./src/form/td-icon-picker.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdIconPicker, registerIconSearchData \} from '\.\/src\/form\/td-icon-picker\.js';/);
+  // the metadata (icons-search.js) is a dynamic import of the default loader only: never a static import of the picker
+  const picker = await readFile(join(ROOT, 'src/form/td-icon-picker.js'), 'utf8');
+  assert.ok(!/^import[^;]*icons-search/m.test(picker), 'icons-search.js is not statically imported');
+  assert.match(picker, /import\('\.\.\/icons\/icons-search\.js'\)/);
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/icon-picker.css');
+  assert.equal(i, files.indexOf('components/color-picker.css') + 1, 'icon-picker.css right after color-picker.css');
+  assert.ok(i < files.indexOf('utilities.css'));
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['.td-icon-picker__box', '.td-icon-picker__text[data-state="unknown"]', '.td-icon-picker-panel__cell[aria-selected="true"]',
+    'td-icon-picker:not(:defined):not([data-td-ssr])', '--td-icon-picker-cell', '--td-icon-picker-columns', '--td-icon-picker-max-height']) {
+    assert.ok(css.includes(sel), sel);
+  }
+});
+
 test('v0.42.0: ./theme subpath (pure: not in sideEffects); the palette golden is not shipped from src', () => {
   assert.equal(pkg.exports['./theme'], './src/theme/index.js');
   assert.ok(!pkg.sideEffects.some((f) => f.startsWith('./src/theme/')), 'theme modules have no side effect');

@@ -26,6 +26,7 @@ export { TdDatetimePicker } from './src/form/td-datetime-picker.js';
 export { TdDatetimeRange } from './src/form/td-datetime-range.js';
 export { TdCheckMatrix } from './src/form/td-check-matrix.js';
 export { TdColorPicker } from './src/form/td-color-picker.js';
+export { TdIconPicker, registerIconSearchData } from './src/form/td-icon-picker.js';
 export { TdChoiceGroup } from './src/form/td-choice-group.js';
 export { TdHint } from './src/form/td-hint.js';
 export { TdModalStackManager } from './src/feedback/td-modal-stack.js';

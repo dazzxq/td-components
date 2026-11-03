@@ -44,6 +44,7 @@
       "src/form/td-dropdown.js",
       "src/form/td-dropzone.js",
       "src/form/td-hint.js",
+      "src/form/td-icon-picker.js",
       "src/form/td-input-field.js",
       "src/form/td-media-field.js",
       "src/form/td-media-gallery.js",
@@ -462,6 +463,17 @@
     "src/form/td-hint.js": [
       "src/base/td-base-element.js"
     ],
+    "src/form/td-icon-picker.js": [
+      "src/base/td-base-element.js",
+      "src/base/td-form-element.js",
+      "src/icons/icon-search-schema.js",
+      "src/icons/registry.js",
+      "src/icons/td-icon.js",
+      "src/utils/breakpoints.js",
+      "src/utils/floating.js",
+      "src/utils/icon-search-model.js",
+      "src/utils/layers.js"
+    ],
     "src/form/td-input-field.js": [
       "src/base/td-base-element.js",
       "src/base/td-form-element.js",
@@ -562,6 +574,8 @@
     "src/form/typed-mask.js": [
       "src/utils/datetime.js"
     ],
+    "src/icons/icon-search-schema.js": [],
+    "src/icons/icons-search.js": [],
     "src/icons/registry.js": [],
     "src/icons/td-icon-element.js": [
       "src/icons/td-icon.js"
@@ -642,6 +656,9 @@
       "src/utils/form-dirty.js"
     ],
     "src/utils/gesture.js": [],
+    "src/utils/icon-search-model.js": [
+      "src/icons/icon-search-schema.js"
+    ],
     "src/utils/image-bytes.js": [],
     "src/utils/image-metadata.js": [
       "src/utils/image-bytes.js"

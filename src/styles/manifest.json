@@ -62,6 +62,7 @@
     "components/diff.css",
     "components/check-matrix.css",
     "components/color-picker.css",
+    "components/icon-picker.css",
     "components/choice-group.css",
     "components/rating.css",
     "components/carousel.css",

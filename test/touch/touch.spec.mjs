@@ -220,6 +220,12 @@ const PRESS_TYPES = [
     open: async (page) => { await page.evaluate(() => window.__openers.toast()); await page.locator('.td-toast--error[data-state="open"]').waitFor(); await settle(page, '.td-toast--error'); } },
   // v0.46.0: td-diff <summary> (native <details>: a tap toggles it — pressed only)
   { name: 'diff summary', sel: '#rsp-diff .td-diff__json > .td-diff__summary', token: '--td-color-pressed', noTap: true },
+  // v0.94.0: td-icon-picker — the trigger (a tap opens the popup; the tap away closes it) and a grid cell (a tap picks
+  // and closes the popup — pressed only)
+  { name: 'icon-picker trigger', sel: '#g-icon .td-icon-picker__trigger', token: '--td-color-pressed' },
+  { name: 'icon-picker cell', sel: '.td-icon-picker-panel[data-state="open"] [data-group="all"] .td-icon-picker-panel__cell:not([aria-selected="true"])',
+    token: '--td-option-pressed-bg', noTap: true,
+    open: async (page) => { await page.tap('#g-icon .td-icon-picker__trigger'); await page.locator('.td-icon-picker-panel[data-state="open"] .td-icon-picker-panel__cell').first().waitFor(); await settle(page, '.td-icon-picker-panel'); } },
 ];
 
 /**

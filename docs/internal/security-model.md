@@ -702,3 +702,23 @@ người dùng [datetime-range.md](../components/datetime-range.md#bảo-mật))
   `td_color_picker()` escape mọi thuộc tính, `value` không hợp lệ ≤ 64 ký tự được giữ nguyên **đã escape** + warning,
   dài hơn thì **không in** (không phản chiếu chuỗi lớn), preset lỗi bị bỏ, `attrs` qua allowlist (tên của component + `data-td-*` giữ chỗ). Kiểm định dạng ở trình duyệt **không phải** kiểm
   soát bảo mật: server luôn gọi `td_color_value()` rồi mới lưu.
+
+**Ghi chú v0.94.0 — `td-icon-picker`, dữ liệu tìm kiếm icon** (plan [v0.94.0-icons-picker](plans/v0.94.0-icons-picker.md) §8.7;
+trang người dùng [icon-picker.md](../components/icon-picker.md#bảo-mật-và-csp)):
+
+- **Metadata tìm kiếm là dữ liệu site → validator duy nhất.** `registerIconSearchData()` (JS), `Td::registerIconSearchData()`
+  (PHP), file kit và hook `TdIconPicker.loadSearchData` đều đi qua `validateSearchEntry()` (`src/icons/icon-search-schema.js`;
+  PHP có bản đôi, test so cùng giới hạn): đúng khoá `label` + `keywords{en,vi}`, mọi chuỗi NFC + trim + 1–48 ký tự + không
+  ký tự điều khiển, 1–12 từ khoá mỗi ngôn ngữ không trùng sau fold, khoá lạ / kiểu sai → lỗi. Tên metadata không được là
+  icon core (kit sở hữu) hoặc đã có. Đăng ký **cả lô hoặc không gì**. Dữ liệu tải qua hook: mục sai bị bỏ + một cảnh
+  báo (không phản chiếu nội dung).
+- **Công việc có giới hạn:** tối đa 2000 mục mỗi lần gọi / mỗi dữ liệu tải; query ≤ 64 ký tự, ≤ 8 từ; `suggestions` ≤ 24
+  tên, `icons` ≤ 2000 mục được xem; chuỗi danh sách tên > 2048 byte bị bỏ trước khi tách. JS và PHP cùng giới hạn.
+- **Không HTML mới:** nhãn / từ khoá / tên vào DOM bằng `textContent` / `setAttribute('aria-label')`; hình icon chỉ qua
+  `tdIcon()` (allowlist registry). Test XSS: nhãn site `<img onerror>` hiện nguyên văn.
+- **Server là ranh giới tin cậy:** giá trị form chỉ là tên icon; picker chặn ở client nhưng client bất kỳ POST được
+  chuỗi tuỳ ý → `td_icon_value()` (chuỗi khớp `^[a-z][a-z0-9-]{0,63}$` `/D` **và** `Td::hasIcon()`; khác → `null`) phải
+  được gọi trước khi lưu. Tên chỉ đăng ký bên JS bị PHP từ chối (đăng ký cả hai phía).
+- **CSP:** không `style=""`, không `<style>`, không `blob:` / `data:`; dynamic import cùng origin (`script-src 'self'`).
+  Bề rộng popup + `max-height` ghi qua CSSOM.
+- **Registry:** icon `source: "td"` (ADR 0039) vẫn qua allowlist tag / thuộc tính, khung 24, ≤ 64 node như mọi icon.
