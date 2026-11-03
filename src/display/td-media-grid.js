@@ -2,6 +2,7 @@ import { TdBaseElement } from '../base/td-base-element.js';
 import { createCheckMark } from '../utils/check-mark.js';
 import { hasActiveAbove } from '../utils/layers.js';
 import { packRows, rowStyles, parseAr } from '../utils/justified.js';
+import { acquireGroup, syncGridGroup } from '../utils/media-selection-group.js';
 
 const ITEM = '[data-td-media-item]';
 const OPEN = '[data-td-media-open]';
@@ -45,21 +46,34 @@ const INERT_CHILD = 'template, script, [hidden], .td-sr-only';
  * context menu there). Keyboard on the opener only: Space flips (Shift+Space = range), Enter = `activate` (always, the
  * selection is not changed). Escape clears unless an overlay layer is open (layers.js) or an IME is composing.
  *
+ * v0.95.0 selection group (plan v0.95.0-selection-bar §4, src/utils/media-selection-group.js): grids with the same
+ * `selection-group` (same root node) — or listed in a `<td-selection-bar for="a b">` — share ONE Shift anchor (a range
+ * crosses grids in DOM order, each grid stops at its own `max`), "selecting" = the group total > 0 (a plain opener
+ * click in a grid without a selection flips while another member selects; `[data-selecting]` on every member), one
+ * Escape clears every member that is not disabled, and the TOTAL is announced once (by the bar when there is one).
+ * Each grid keeps its own selection and fires its own `select-change`. No group → the code paths above, unchanged.
+ * v0.95.0 `item-remove`: upgraded items that left the grid since the last sync (one event per microtask batch).
+ *
  * @element td-media-grid
  * @attr {string} label - Accessible name of the list (aria-label).
  * @attr {number} max - Optional cap (integer ≥ 1) on user selection; past it → `select-limit`.
  * @attr {string} select-mode - `tick`: opener click always activates; select via tick / Space / Ctrl·Cmd+click / Shift.
  * @attr {boolean} disabled - No selecting / flipping by the user (activate still works; the selection is kept).
+ * @attr {string} selection-group - v0.95.0: name of a selection group (grids of one page section selected together).
  * Item attribute `data-td-media-pending` (v0.93.0, set by td-media-picker on cards still uploading): a Shift range skips
  * the item and does not count it against `max`.
  *
  * @fires select-change - User changed the selection. detail: { ids: string[] (DOM order), added, removed }
  * @fires activate - Opener clicked (nothing selected) or Enter. Cancelable. detail: { id, item, event }
  * @fires select-limit - A user add would pass `max`. detail: { max }
+ * @fires item-remove - v0.95.0: upgraded items left the grid (one event per sync batch, after `select-change`; not on
+ *   connect / reconnect, not for an item moved inside the grid or only re-keyed). detail: { ids: string[] (the ids they
+ *   had), items: HTMLElement[], containers: Element[] (still in the grid, the parents they were removed from, DOM order) }
  *
  * @property {string[]} selectedIds - Selected ids in DOM order (read only).
  * @property {HTMLElement[]} items - Upgraded items in DOM order (read only).
  * @property {Function} onSelectChange - Hook receiving ids, runs before `select-change` (a throw is logged).
+ * @property {string} selectionGroup - v0.95.0: reflects `selection-group`.
  */
 export class TdMediaGrid extends TdBaseElement {
   /** Default texts (Vietnamese); override per site: `TdMediaGrid.labels.select = 'Select {name}'`. */
@@ -70,7 +84,16 @@ export class TdMediaGrid extends TdBaseElement {
   };
 
   static get observedAttributes() {
-    return ['label', 'max', 'disabled', 'layout'];
+    return ['label', 'max', 'disabled', 'layout', 'selection-group'];
+  }
+
+  /**
+   * @internal v0.95.0 — handle of a selection group for td-selection-bar (NOT public API, may change without notice).
+   * The bar reaches it through `customElements.get('td-media-grid')`, so every bundle talks to the defined class's store.
+   * @param {{ name?: string, ids?: string[], root: Node }} opts
+   */
+  static _selectionGroup(opts) {
+    return acquireGroup(opts);
   }
 
   static get booleanAttributes() {
@@ -103,6 +126,12 @@ export class TdMediaGrid extends TdBaseElement {
     this._owned = new Set();
     /** @type {Set<HTMLElement>} items carrying the justified row vars */
     this._varItems = new Set();
+    /** v0.95.0: selection group this grid belongs to (src/utils/media-selection-group.js), null = none */
+    this._group = null;
+    /** @type {Map<HTMLElement, string>} v0.95.0: valid upgraded items at the last sync → their id then (item-remove) */
+    this._known = new Map();
+    /** @type {MutationRecord[]} v0.95.0: childList records with removed nodes since the last sync */
+    this._removals = [];
   }
 
   get onSelectChange() { return this._onSelectChange; }
@@ -135,7 +164,12 @@ export class TdMediaGrid extends TdBaseElement {
       if (this.isConnected) this._schedule(true);
       return;
     }
+    if (name === 'selection-group') {
+      if (this.isConnected) syncGridGroup(this); // leave the old group, join the new one; the selection is kept
+      return;
+    }
     this._syncAttrs();
+    if (name === 'disabled') this._group?.note(this, false); // a bar locks when every member is disabled
   }
 
   /**
@@ -155,7 +189,10 @@ export class TdMediaGrid extends TdBaseElement {
     this.listen(this, 'keyup', (e) => this._onKeyup(e));
     if (typeof MutationObserver === 'function') {
       this._mo = new MutationObserver((records) => {
-        if (records.every((r) => this._live && (r.target === this._live || this._live.contains(r.target)))) return;
+        const inLive = (r) => this._live && (r.target === this._live || this._live.contains(r.target));
+        if (records.every(inLive)) return;
+        // v0.95.0 item-remove: where removed nodes came from (containers to re-pack)
+        for (const r of records) if (r.type === 'childList' && r.removedNodes.length && !inLive(r)) this._removals.push(r);
         this._queueSync();
       });
       // data-id changes too: the selection is reconciled (an id that no longer exists leaves it)
@@ -164,6 +201,9 @@ export class TdMediaGrid extends TdBaseElement {
     }
     this._cleanups.push(() => this._setDocKey(false));
     this._setDocKey(this._selected.size > 0);
+    // v0.95.0: join the selection group (named, or a bar's `for`); leaving the DOM leaves it (selected ids = removed)
+    syncGridGroup(this);
+    this._cleanups.push(() => syncGridGroup(this, true));
 
     // token reads (tick corner…) happen in one rAF read phase; a resize may cross a breakpoint that changes them
     if (typeof ResizeObserver === 'function') {
@@ -464,6 +504,9 @@ export class TdMediaGrid extends TdBaseElement {
    */
   _sync(initial) {
     this._ensureLiveRegion();
+    const prevKnown = this._known;
+    const removals = this._removals;
+    this._removals = [];
     const items = this.items;
     const present = new Set();
     for (const item of items) {
@@ -473,13 +516,44 @@ export class TdMediaGrid extends TdBaseElement {
     const removed = [...this._selected].filter((id) => !present.has(id));
     for (const id of removed) this._selected.delete(id);
     if (this._anchor != null && !present.has(this._anchor)) this._anchor = null;
+    // group mode: same rule for the group's anchor when it lives here (an id gone from this grid stops being the anchor)
+    const ga = this._group ? this._group.anchorIn(this) : null;
+    if (ga != null && !present.has(ga)) this._group.setAnchor(null, null);
     this._paint(items);
     this._prune(items);
     if (!initial && this._mode) {
       for (const item of items) this._size(item); // new items are sized at once (writes only), rows in the next rAF
       this._schedule(true);
     }
+    const known = new Map();
+    for (const item of items) known.set(item, item.getAttribute('data-id'));
+    this._known = known;
     if (removed.length && !initial) this._changed([], removed, true);
+    if (!initial) this._itemRemoved(prevKnown, removals);
+  }
+
+  /**
+   * v0.95.0 (plan §6): `item-remove` for the valid items of the last sync that are no longer inside the grid. Ids are the
+   * ids they had then; containers = targets (still in the grid) of the first record that removed each item (the item
+   * itself or an ancestor of it), deduplicated, DOM order. An item moved inside the grid in the same task is still
+   * contained → no event.
+   * @private
+   */
+  _itemRemoved(prevKnown, removals) {
+    const gone = [];
+    for (const [el, id] of prevKnown) if (!this.contains(el)) gone.push([el, id]);
+    if (!gone.length) return;
+    const containers = new Set();
+    for (const [el] of gone) {
+      const rec = removals.find((r) => [...r.removedNodes].some((n) => n === el || n.contains(el)));
+      if (rec && rec.target instanceof Element && this.contains(rec.target)) containers.add(rec.target);
+    }
+    const list = [...containers].sort((a, b) => {
+      if (a === b) return 0;
+      // eslint-disable-next-line no-bitwise
+      return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+    });
+    this.emit('item-remove', { ids: gone.map((g) => g[1]), items: gone.map((g) => g[0]), containers: list });
   }
 
   /**
@@ -552,8 +626,14 @@ export class TdMediaGrid extends TdBaseElement {
       item.toggleAttribute('data-selected', on);
       this._tickOf(item)?.setAttribute('aria-pressed', on ? 'true' : 'false');
     }
-    this.toggleAttribute('data-selecting', this._selected.size > 0);
-    if (this.isConnected) this._setDocKey(this._selected.size > 0);
+    this.toggleAttribute('data-selecting', this._isSelecting());
+    // v0.95.0: in a group the Escape listener belongs to the group (one for every member)
+    if (this.isConnected) this._setDocKey(!this._group && this._selected.size > 0);
+  }
+
+  /** @private v0.95.0: "selecting" = own selection, or the group total when the grid is in a selection group (Q1) */
+  _isSelecting() {
+    return this._group ? this._group.count > 0 : this._selected.size > 0;
   }
 
   // --- events ---
@@ -590,7 +670,7 @@ export class TdMediaGrid extends TdBaseElement {
       ? (e.shiftKey || e.ctrlKey || e.metaKey)
       // v0.36.0 (plan QĐ 7b): Ctrl/Cmd+click on a <button> opener starts / extends the selection; on an <a href>
       // opener it stays the browser's "open in a new tab"
-      : (this._selected.size > 0 || e.shiftKey || ((e.ctrlKey || e.metaKey) && !open.matches('a[href]')));
+      : (this._isSelecting() || e.shiftKey || ((e.ctrlKey || e.metaKey) && !open.matches('a[href]')));
     if (!disabled && flip) {
       e.preventDefault();
       e.stopPropagation();
@@ -668,13 +748,21 @@ export class TdMediaGrid extends TdBaseElement {
 
   /** @private user flip / Shift range (disabled already checked) */
   _userFlip(item, shift) {
+    const group = this._group;
+    // v0.95.0: anchor in another member of the group → range across grids (DOM order)
+    if (group && shift && group.anchor && group.anchor.grid !== this && group.rangeTo(this, item)) return;
     const items = this.items;
     const ids = items.map((el) => el.getAttribute('data-id'));
     const id = item.getAttribute('data-id');
     const max = this._max();
     const next = new Set(this._selected);
     let limited = false;
-    const from = this._anchor != null ? ids.indexOf(this._anchor) : -1;
+    const anchor = group ? group.anchorIn(this) : this._anchor;
+    const setAnchor = (v) => {
+      if (group) group.setAnchor(v == null ? null : this, v);
+      else this._anchor = v;
+    };
+    const from = anchor != null ? ids.indexOf(anchor) : -1;
     if (shift && from >= 0) {
       // range in DOM order from the anchor towards the item (adds only; fills up to the cap), anchor kept
       const to = ids.indexOf(id);
@@ -689,18 +777,23 @@ export class TdMediaGrid extends TdBaseElement {
       }
     } else if (next.has(id)) {
       next.delete(id);
-      this._anchor = next.size ? id : null;
+      // in a group: the anchor stays while the GROUP still has a selection
+      const rest = group ? group.count - this._selected.size + next.size : next.size;
+      setAnchor(rest ? id : null);
     } else if (next.size >= max) {
       limited = true;
     } else {
       next.add(id);
-      this._anchor = id;
+      setAnchor(id);
     }
     this._commit(next, true);
-    if (limited) {
-      this.emit('select-limit', { max });
-      this._announce(String(TdMediaGrid.labels.limit ?? '').replace('{max}', String(max)));
-    }
+    if (limited) this._limit(max);
+  }
+
+  /** @private a user add would pass `max`: event + announcement (also used by a group range) */
+  _limit(max) {
+    this.emit('select-limit', { max });
+    this._announce(String(TdMediaGrid.labels.limit ?? '').replace('{max}', String(max)));
   }
 
   /**
@@ -721,6 +814,7 @@ export class TdMediaGrid extends TdBaseElement {
 
   /** @private */
   _changed(added, removed, emit) {
+    this._group?.note(this, emit); // v0.95.0: the group repaints "selecting" + batches the total for the bar
     if (!emit) return;
     const order = this.items.map((el) => el.getAttribute('data-id'));
     const sort = (list) => list.slice().sort((a, b) => order.indexOf(a) - order.indexOf(b));
@@ -729,11 +823,17 @@ export class TdMediaGrid extends TdBaseElement {
       try { this._onSelectChange(ids.slice()); } catch (err) { console.error(err); }
     }
     this.emit('select-change', { ids, added: sort(added), removed: removed.slice() });
-    this._announce(String(TdMediaGrid.labels.count ?? '').replace('{n}', String(ids.length)));
+    // v0.95.0: in a group the TOTAL is announced once (by the bar, or by the group through the grid changed last)
+    if (!this._group) this._announce(String(TdMediaGrid.labels.count ?? '').replace('{n}', String(ids.length)));
   }
 
-  /** @private one live-region update per action (the last message of the task wins) */
-  _announce(text) {
+  /**
+   * @private one live-region update per action (the last message of the task wins)
+   * @param {string} text
+   * @param {boolean} [soft] v0.95.0 (group total): never replaces a message already queued in this task (a limit)
+   */
+  _announce(text, soft = false) {
+    if (soft && this._announceQueued) return;
     this._pendingAnnounce = text;
     if (this._announceQueued) return;
     this._announceQueued = true;

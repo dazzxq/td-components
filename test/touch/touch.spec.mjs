@@ -17,6 +17,10 @@
  *     finger is down, a tap clears (one change, focus on the trigger, no dialog); the "Không hạn" toggle of the range
  *     dialog ≥ 44 px tall and a tap empties the end. v0.59.1: label-position="start" — the label + control box ≥ 44 px, a
  *     tap on the label (now on the start side) flips the toggle / ticks the checkbox once, pressed while the finger is down.
+ *     v0.95.0: td-selection-bar — ×, action, danger, "…" pressed looks; a tap on grid B extends the group selection; an
+ *     action tap acts once + clears, no stuck hover. .td-card — pressed layer over the image, a drag past the slop lifts it
+ *     and scrolls the page. td-check-matrix mode="override" — two quick taps on a cell = two steps + two changes, no zoom
+ *     (also in the WebKit smoke).
  * (b) Chromium CDP Input.dispatchTouchEvent — continuous swipes and two-finger pinches: lightbox swipe-follow
  *     (commit / spring / flick / RTL / one item rubber band / edge / zoomed / cancel / reduced motion / settle races),
  *     cropper pinch + touchcancel.
@@ -226,7 +230,34 @@ const PRESS_TYPES = [
   { name: 'icon-picker cell', sel: '.td-icon-picker-panel[data-state="open"] [data-group="all"] .td-icon-picker-panel__cell:not([aria-selected="true"])',
     token: '--td-option-pressed-bg', noTap: true,
     open: async (page) => { await page.tap('#g-icon .td-icon-picker__trigger'); await page.locator('.td-icon-picker-panel[data-state="open"] .td-icon-picker-panel__cell').first().waitFor(); await settle(page, '.td-icon-picker-panel'); } },
+  // v0.95.0 td-selection-bar (plan v0.95.0-selection-bar §11.3): 3 selected across the two grouped grids → the bar shows; ×,
+  // an action and "…" (6 actions overflow at 390) take the ghost pressed fill, the danger action its own pressed fill (the
+  // site hides 3 actions by permission so it stays in the tray). Pressed only: a tap clears / acts (auto-clear) / opens the menu.
+  { name: 'selection-bar ×', sel: '#rsp-selbar .td-selection-bar__clear', token: '--td-btn-ghost-pressed', noTap: true, open: (page) => selBarOpen(page) },
+  { name: 'selection-bar action', sel: '#rsp-selbar .td-selection-bar__action:not(.td-selection-bar__action--danger)', token: '--td-btn-ghost-pressed', noTap: true, open: (page) => selBarOpen(page) },
+  { name: 'selection-bar "…"', sel: '#rsp-selbar .td-selection-bar__more', token: '--td-btn-ghost-pressed', noTap: true, open: (page) => selBarOpen(page) },
+  { name: 'selection-bar danger', sel: '#rsp-selbar .td-selection-bar__action--danger', token: '--td-selection-bar-danger-pressed-bg', noTap: true, open: (page) => selBarOpen(page, true) },
+  // v0.95.0 .td-card (plan v0.95.0-card §11.5): the whole-card link — pressed = the --td-color-pressed layer over the image
+  // (the ::after of .td-card__media); a tap follows the link (an in-page hash)
+  { name: 'card', sel: '#rsp-card-link', look: '#rsp-card-link .td-card__media', token: '--td-color-pressed', pseudo: '::after' },
 ];
+
+/** v0.95.0: select a1, a2 (grid A) + b1 (grid B) of the `rsp-lib` group; `danger` → the site hides 3 actions so the danger one fits. */
+async function selBarOpen(page, danger = false) {
+  await page.evaluate((d) => {
+    if (d) for (const a of ['album', 'share', 'move']) document.querySelector(`#rsp-selbar [data-td-action="${a}"]`).hidden = true;
+    document.getElementById('rsp-sel-a').select(['a1', 'a2'], { emit: true });
+    document.getElementById('rsp-sel-b').select(['b1'], { emit: true });
+  }, danger);
+  await page.waitForFunction((d) => {
+    const bar = document.getElementById('rsp-selbar');
+    if (!bar || bar.hasAttribute('data-empty') || bar.count !== 3) return false;
+    const more = bar.querySelector('.td-selection-bar__more');
+    const dz = bar.querySelector('.td-selection-bar__action--danger');
+    return d ? !dz.hasAttribute('data-td-overflow') && more.hidden : !more.hidden;
+  }, danger, { polling: 'raf', timeout: 4000 });
+  await settle(page, '#rsp-selbar');
+}
 
 /**
  * The control-type matrix (A3 hover not sticky, A4 pressed) for one engine. `input` abstracts the finger: CDP touch in
@@ -428,6 +459,32 @@ async function pressedMatches(page, t) {
 }
 
 /* ------------------------------------------------------------------ (a) Chromium semantics */
+
+/** v0.95.0 td-check-matrix mode="override" (plan v0.95.0-check-matrix §8.3 / §13.3): two quick taps on one inherit cell =
+ * two steps (inherit → grant → deny) + two `change`, never a double-tap zoom (`.td-check-matrix__tri` touch-action
+ * manipulation, visualViewport.scale stays 1). Chromium semantics + WebKit iPhone smoke. */
+const ovCell = '#rsp-matrix-ov tr[data-r="3"] .td-check-matrix__cell[data-col-active]';
+async function ovDoubleTap(page) {
+  await load(page);
+  await page.evaluate(() => {
+    window.__ov = [];
+    document.querySelector('#rsp-matrix-ov').addEventListener('change', (e) => {
+      if (e instanceof CustomEvent) window.__ov.push(e.detail.changes.map((c) => c.slice(2).join('>')).join(';'));
+    });
+  });
+  const pt = await centre(page, ovCell);
+  const st0 = await page.evaluate((s) => ({ state: document.querySelector(s).dataset.state,
+    ta: getComputedStyle(document.querySelector(s).querySelector('.td-check-matrix__tri')).touchAction }), ovCell);
+  expect(st0.state === 'inherit' && st0.ta === 'manipulation', `before: ${JSON.stringify(st0)}`);
+  await page.touchscreen.tap(pt.x, pt.y);
+  await page.touchscreen.tap(pt.x, pt.y);
+  await page.waitForFunction((s) => document.querySelector(s).dataset.state === 'deny', ovCell, { timeout: 3000 }).catch(() => {});
+  await frames(page, 2);
+  const st = await page.evaluate((s) => ({ state: document.querySelector(s).dataset.state, changes: window.__ov,
+    scale: window.visualViewport ? window.visualViewport.scale : 1 }), ovCell);
+  expect(st.state === 'deny' && st.changes.join(',') === 'inherit>grant,grant>deny', `taps: ${JSON.stringify(st)}`);
+  expect(Math.abs(st.scale - 1) < 0.01, `zoomed: scale ${st.scale}`);
+}
 
 async function chromiumSemantics(browser) {
   const tag = 'chromium-390';
@@ -1298,6 +1355,72 @@ async function chromiumSemantics(browser) {
       expect(await page.evaluate((s) => getComputedStyle(document.querySelector(s).querySelector('.td-check')).backgroundImage, matrixCell) === 'none', 'not back to rest');
     });
 
+    // v0.95.0 td-check-matrix override: two quick taps (ovDoubleTap above)
+    await it(tag, 'check-matrix override: two quick taps on a cell = two steps (inherit → grant → deny), two changes, no zoom', () => ovDoubleTap(page));
+
+    // v0.95.0 td-selection-bar (plan v0.95.0-selection-bar §11.3): grid A has a selection → a tap on a tile of grid B (same
+    // group) extends the group's selection (no activate); a tap on an action fires ONE selection-action, the bar clears itself
+    // and hides; selected again, the action shows its resting fill (no hover stuck under the finger).
+    await it(tag, 'selection-bar: a tap on grid B extends the group selection; a tap on an action acts once, clears, no hover stuck', async () => {
+      await load(page);
+      await page.evaluate(() => {
+        window.__sb = { act: [], activate: 0 };
+        document.getElementById('rsp-selbar').addEventListener('selection-action', (e) => window.__sb.act.push(e.detail.action));
+        document.getElementById('rsp-sel-b').addEventListener('activate', () => { window.__sb.activate += 1; });
+        document.getElementById('rsp-sel-a').select(['a1'], { emit: true });
+      });
+      await page.waitForFunction(() => document.getElementById('rsp-selbar').count === 1, null, { polling: 'raf', timeout: 4000 });
+      const tile = await centre(page, '#rsp-sel-b [data-id="b2"] [data-td-media-open]');
+      await page.touchscreen.tap(tile.x, tile.y);
+      await page.waitForFunction(() => document.getElementById('rsp-selbar').count === 2, null, { polling: 'raf', timeout: 4000 }).catch(() => {});
+      const st = await page.evaluate(() => ({ count: document.getElementById('rsp-selbar').count, ids: document.getElementById('rsp-selbar').selectedIds.join(','), activate: window.__sb.activate, lb: !!document.querySelector('.td-lightbox') }));
+      expect(st.count === 2 && st.ids === 'a1,b2' && st.activate === 0 && !st.lb, `after the tap on grid B: ${JSON.stringify(st)}`);
+      const act = '#rsp-selbar .td-selection-bar__action[data-td-action="download"]';
+      await settle(page, '#rsp-selbar');
+      const rest = await bgOf(page, act);
+      const pt = await centre(page, act);
+      await page.touchscreen.tap(pt.x, pt.y);
+      await page.waitForFunction(() => document.getElementById('rsp-selbar').hasAttribute('data-empty'), null, { polling: 'raf', timeout: 4000 }).catch(() => {});
+      const after = await page.evaluate(() => ({ act: window.__sb.act.join(','), empty: document.getElementById('rsp-selbar').hasAttribute('data-empty'), count: document.getElementById('rsp-selbar').count }));
+      expect(after.act === 'download' && after.empty && after.count === 0, `after the action tap: ${JSON.stringify(after)}`);
+      await page.evaluate(() => document.getElementById('rsp-sel-a').select(['a1'], { emit: true }));
+      await page.waitForFunction(() => !document.getElementById('rsp-selbar').hasAttribute('data-empty'), null, { polling: 'raf', timeout: 4000 });
+      await quiet(page, act);
+      const again = await bgOf(page, act);
+      expect(again === rest, `action fill after the tap ${again} ≠ rest ${rest} (hover stuck)`);
+    });
+
+    // v0.95.0 .td-card (plan v0.95.0-card §11.5): a finger down holds data-td-pressed + the pressed layer over the image; a
+    // drag past the slop lifts it and the PAGE scrolls (the card never blocks scrolling); after a tap the image edge is at rest.
+    const cardSel = '#rsp-card-link';
+    const cardLook = () => page.evaluate((s) => {
+      const a = document.querySelector(s);
+      const m = a.querySelector('.td-card__media');
+      return { attr: a.hasAttribute('data-td-pressed'), layer: getComputedStyle(m, '::after').backgroundColor, edge: getComputedStyle(m).borderColor };
+    }, cardSel);
+    await it(tag, 'card: pressed while the finger is down, a drag past the slop lifts it and scrolls the page', async () => {
+      await load(page);
+      const want = await tokenColour(page, '--td-color-pressed');
+      const pt = await centre(page, cardSel);
+      const rest = await cardLook();
+      await touchDown(cdp, pt);
+      await frames(page, 2);
+      const down = await cardLook();
+      expect(down.attr && down.layer === want, `pressed look missing: ${JSON.stringify(down)} (want ${want})`);
+      const y0 = await page.evaluate(() => window.scrollY);
+      await touchMoveTo(cdp, { x: pt.x, y: pt.y - 30 });
+      await touchMoveTo(cdp, { x: pt.x, y: Math.max(pt.y - 200, 10) });
+      await frames(page, 2);
+      const moved = await cardLook();
+      await touchUp(cdp);
+      const y1 = await stable(() => window.scrollY);
+      expect(!moved.attr && moved.layer !== want, `still pressed after the drag: ${JSON.stringify(moved)}`);
+      expect(y1 > y0 + 20, `page did not scroll (${y0} → ${y1})`);
+      await quiet(page, cardSel);
+      const back = await cardLook();
+      expect(back.edge === rest.edge && back.layer === rest.layer, `not at rest after the drag: ${JSON.stringify(back)} vs ${JSON.stringify(rest)}`);
+    });
+
     // v0.50.0 td-carousel: native scrolling only (C12)
     const car = '#rsp-carousel';
     const carVp = `${car} .td-carousel__viewport`;
@@ -1609,6 +1732,7 @@ async function webkitSmoke(browser) {
       await page.waitForFunction(() => window.__lb.index === 0);
       expect(true, '');
     });
+    await it(tag, 'check-matrix override: two quick taps on a cell = two steps, two changes, no zoom', () => ovDoubleTap(page));
     await it(tag, 'dropdown opens inside the viewport', async () => {
       await load(page);
       await tap('#g-dd .td-dropdown__trigger');
@@ -1778,6 +1902,15 @@ async function webkitSmoke(browser) {
       await tap('#rsp-lp-head .td-switch__label');
       await page.waitForTimeout(50);
       expect((await page.evaluate(() => document.getElementById('rsp-lp-head').checked)) === !m.before, 'tap on the label did not flip the toggle');
+    });
+
+    await it(tag, 'card: one tap follows the link once (v0.95.0)', async () => {
+      await load(page);
+      await page.evaluate(() => { window.__hc = 0; window.addEventListener('hashchange', () => { window.__hc += 1; }); });
+      await tap('#rsp-card-link');
+      await page.waitForFunction(() => location.hash === '#album-tet-2026', null, { timeout: 5000 });
+      await frames(page, 4);
+      expect(await page.evaluate(() => window.__hc) === 1, `hashchange ×${await page.evaluate(() => window.__hc)}`);
     });
 
     await it(tag, 'carousel: next / prev by tap (v0.50.0)', async () => {

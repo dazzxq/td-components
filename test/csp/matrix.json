@@ -58,7 +58,9 @@
       "td-carousel": "/src/display/td-carousel.js",
       "td-hint": "/src/form/td-hint.js",
       "td-rich-text": "/src/form/td-rich-text.js",
-      "td-icon-picker": "/src/form/td-icon-picker.js"
+      "td-icon-picker": "/src/form/td-icon-picker.js",
+      "td-selection-bar": "/src/display/td-selection-bar.js",
+      "td-card": "/src/icons/td-icon.js"
     },
     "tokenNative": [
       "td-button",
@@ -117,7 +119,9 @@
       "td-carousel",
       "td-hint",
       "td-rich-text",
-      "td-icon-picker"
+      "td-icon-picker",
+      "td-selection-bar",
+      "td-card"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -1589,6 +1593,37 @@
         ".td-dropdown__retry"
       ],
       "settle": 350,
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left"
+      ]
+    },
+    {
+      "state": "image",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Album'); d.setAttribute('searchable','false'); d.setAttribute('value','a'); window.__mount.appendChild(d); d.options=[{value:'a',label:'Album A',image:'/test/fixtures/1.svg'},{value:'b',label:'Album B',image:'/test/fixtures/2.svg',description:'48 ảnh'}]; d.open();",
+      "selectors": [
+        ".td-dropdown__value",
+        ".td-dropdown__value-image",
+        ".td-dropdown__menu",
+        ".td-dropdown__option--rich",
+        ".td-dropdown__image",
+        ".td-dropdown__text",
+        ".td-dropdown__desc"
+      ],
+      "portal": [
+        ".td-dropdown__menu",
+        ".td-dropdown__option--rich",
+        ".td-dropdown__image",
+        ".td-dropdown__text",
+        ".td-dropdown__desc"
+      ],
+      "settle": 350,
+      "selectorNote": "v0.95.0: option `image` (same-origin: the harness is default-src 'self', safeMediaUrl refuses data:) leads the menu rows and the trigger (selected a)",
       "excludeProps": [
         "height",
         "width",
@@ -4075,6 +4110,17 @@
       ],
       "settle": 400,
       "selectorNote": "v0.33: layout=justified — rows packed from img width/height; per-item CSSOM --td-mg-w / --td-mg-sub / --td-mg-k (width + aspect-ratio), opener + img sized by inline !important (width / height / max-width / object-fit); last short row keeps the target height"
+    },
+    {
+      "state": "group-selecting",
+      "setup": "window.__mount.innerHTML = \"<td-media-grid id=\\\"a\\\" label=\\\"L\\u01b0\\u1edbi a\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"a1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-media-grid id=\\\"b\\\" label=\\\"L\\u01b0\\u1edbi b\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"b1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid>\"; await customElements.whenDefined('td-media-grid'); window.__mount.querySelector('#a').select(['a1']);",
+      "selectors": [
+        "#b.td-media-grid[data-selecting]",
+        "#b .td-media-grid__item:not([data-selected]) .td-media-grid__tick",
+        "#b .td-media-grid__item:not([data-selected]) .td-media-grid__tick .td-check"
+      ],
+      "settle": 450,
+      "selectorNote": "v0.95.0: selection-group=\"lib\": grid b selects nothing itself but carries [data-selecting] (its ticks shown) because grid a has a selection"
     }
   ],
   "td-lightbox": [
@@ -5522,6 +5568,40 @@
       ],
       "settle": 600,
       "selectorNote": "v0.93.0: a dropped file whose upload failed — error meta, Thử lại + Gỡ"
+    },
+    {
+      "state": "drop-failed-strip",
+      "setup": "const { createMockAdapter } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const c = document.createElement('canvas'); c.width = 24; c.height = 16; c.getContext('2d').fillRect(0, 0, 24, 16); const b = await new Promise((r) => c.toBlob(r, 'image/png')); const png = (n) => new File([b], n, { type: 'image/png' }); const ad = createMockAdapter({ count: 12 }); ad.upload = () => Promise.reject(Object.assign(new Error('x'), { code: 'server' })); TdMediaPicker.open({ autoSelectFirst: false, adapter: ad }); await w(600); document.querySelector('td-media-picker')._onFilesDropped([png('loi-1.png'), png('loi-2.png'), png('loi-3.png')]); await w(500);",
+      "selectors": [
+        ".td-media-picker__upload-failed",
+        ".td-media-picker__upload-failed-icon",
+        ".td-media-picker__upload-failed-text",
+        ".td-media-picker__upload-failed-actions",
+        ".td-media-picker__upload-retry-all",
+        ".td-media-picker__upload-remove-all"
+      ],
+      "portal": [
+        ".td-media-picker__upload-failed",
+        ".td-media-picker__upload-failed-icon",
+        ".td-media-picker__upload-failed-text",
+        ".td-media-picker__upload-failed-actions",
+        ".td-media-picker__upload-retry-all",
+        ".td-media-picker__upload-remove-all"
+      ]
+    },
+    {
+      "state": "drop-reused",
+      "setup": "const { createMockAdapter } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const c = document.createElement('canvas'); c.width = 24; c.height = 16; c.getContext('2d').fillRect(0, 0, 24, 16); const b = await new Promise((r) => c.toBlob(r, 'image/png')); const ad = createMockAdapter({ count: 60 }); TdMediaPicker.open({ autoSelectFirst: false, adapter: ad, selection: { mode: 'multiple' } }); await w(600); document.querySelector('td-media-picker')._onFilesDropped([new File([b], 'anh-60.jpg', { type: 'image/png' }), new File([b], 'anh-1.jpg', { type: 'image/png' })]); await w(800);",
+      "selectors": [
+        ".td-media-picker__card[data-reused]",
+        ".td-media-picker__card[data-reused] .td-media-picker__info",
+        ".td-media-picker__reused"
+      ],
+      "portal": [
+        ".td-media-picker__card[data-reused]",
+        ".td-media-picker__card[data-reused] .td-media-picker__info",
+        ".td-media-picker__reused"
+      ]
     },
     {
       "state": "upload-held",
@@ -7278,6 +7358,72 @@
         "margin-left"
       ],
       "excludeNote": "font-metric dependent (label wrap / row heights) — excluded up front"
+    },
+    {
+      "state": "override",
+      "setup": "const m=document.createElement('td-check-matrix');m.setAttribute('name','perms');m.setAttribute('label','Quyền riêng');m.setAttribute('mode','override');m.setAttribute('layout','grid');window.__mount.appendChild(m); m.setData({columns:[{key:'owner',label:'Chủ cửa hàng',description:'Toàn quyền'},{key:'sales',label:'Bán hàng'},{key:'ship',label:'Kho',locked:true}],rows:[{key:'dash',label:'Xem tổng quan'},{key:'cat',label:'Sản phẩm',rows:[{key:'cat.view',label:'Xem'},{key:'cat.edit',label:'Sửa'},{key:'cat.del',label:'Xoá'}]}],cells:{dash:{owner:{inherited:true},sales:{inherited:false}},'cat.view':{owner:{inherited:true}},'cat.del':{owner:{locked:true,note:'Không tự sửa role'},sales:{na:true}}},value:{owner:{dash:'grant','cat.edit':'deny'},sales:{'cat.view':'grant',dash:'deny'}}});",
+      "selectors": [
+        ".td-check-matrix[data-mode=\"override\"]",
+        ".td-check-matrix[data-mode=\"override\"] > .td-check-matrix__bar",
+        ".td-check-matrix__reset",
+        ".td-check-matrix__tri",
+        ".td-check-matrix__tri:disabled",
+        ".td-check-matrix__cell[data-state=\"inherit\"] .td-check-matrix__glyph",
+        ".td-check-matrix__cell[data-state=\"inherit\"][data-inherited=\"on\"] .td-check-matrix__glyph",
+        ".td-check-matrix__cell[data-state=\"grant\"] .td-check-matrix__glyph",
+        ".td-check-matrix__cell[data-state=\"deny\"] .td-check-matrix__glyph",
+        ".td-check-matrix__bulk[data-state=\"mixed\"] .td-check-matrix__glyph",
+        ".td-check-matrix__na"
+      ],
+      "settle": 300,
+      "selectorNote": "v0.95.0 (ADR 0040): mode=override, grid: inherit (with / without inherited right) / grant / deny cells, a locked column + a locked cell, n/a, a mixed bulk, the \"Đặt lại về kế thừa\" button",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent (label wrap / row heights) — excluded up front"
+    },
+    {
+      "state": "override-column",
+      "setup": "const m=document.createElement('td-check-matrix');m.setAttribute('name','perms');m.setAttribute('label','Quyền riêng');m.setAttribute('mode','override');m.setAttribute('layout','column');window.__mount.appendChild(m); m.setData({columns:[{key:'owner',label:'Chủ cửa hàng',description:'Toàn quyền'},{key:'sales',label:'Bán hàng'},{key:'ship',label:'Kho',locked:true}],rows:[{key:'dash',label:'Xem tổng quan'},{key:'cat',label:'Sản phẩm',rows:[{key:'cat.view',label:'Xem'},{key:'cat.edit',label:'Sửa'},{key:'cat.del',label:'Xoá'}]}],cells:{dash:{owner:{inherited:true},sales:{inherited:false}},'cat.view':{owner:{inherited:true}},'cat.del':{owner:{locked:true,note:'Không tự sửa role'},sales:{na:true}}},value:{owner:{dash:'grant','cat.edit':'deny'},sales:{'cat.view':'grant',dash:'deny'}}});",
+      "selectors": [
+        ".td-check-matrix[data-mode=\"override\"] > .td-check-matrix__bar",
+        ".td-check-matrix__colpick-label",
+        ".td-check-matrix__colpick",
+        ".td-check-matrix__bar .td-check-matrix__bulk",
+        ".td-check-matrix__reset",
+        ".td-check-matrix__grid tr > [data-col-active]"
+      ],
+      "settle": 300,
+      "selectorNote": "v0.95.0: mode=override, one column at a time: the bar (column picker, its 3-state bulk, reset button)",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent (label wrap / row heights) — excluded up front"
+    },
+    {
+      "state": "override-ssr",
+      "module": "/src/icons/td-icon.js",
+      "setup": "const t=await (await fetch('/test/ssr/fixtures/check-matrix.html')).text(); const tpl=document.createElement('template'); tpl.innerHTML=t; window.__mount.appendChild(tpl.content.querySelector('form[data-case=\"override-basic\"] > td-check-matrix').cloneNode(true));",
+      "selectors": [
+        "td-check-matrix:not(:defined) > .td-check-matrix[data-mode=\"override\"]",
+        "td-check-matrix:not(:defined) .td-check-matrix__bar",
+        "td-check-matrix:not(:defined) .td-check-matrix__select",
+        "td-check-matrix:not(:defined) .td-check-matrix__bulk > .td-check-matrix__tri > .td-check",
+        "td-check-matrix:not(:defined) .td-check-matrix__reset"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.95.0: php td_check_matrix(mode=override) BEFORE the element is defined (only the icon module; fixture case override-basic, SSR contract check-matrix@2): one <select> per cell, disabled bar controls",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left",
+        "line-height"
+      ],
+      "excludeNote": "font-metric dependent (label wrap / native select text) — excluded up front"
     }
   ],
   "td-color-picker": [
@@ -7997,6 +8143,259 @@
         "margin-left"
       ],
       "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front"
+    }
+  ],
+  "td-selection-bar": [
+    {
+      "state": "empty",
+      "setup": "await import('/src/display/td-media-grid.js'); const w=document.createElement('div'); w.style.setProperty('width',\"720px\"); window.__mount.appendChild(w); w.innerHTML=\"<td-media-grid id=\\\"a\\\" label=\\\"L\\u01b0\\u1edbi a\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"a1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-media-grid id=\\\"b\\\" label=\\\"L\\u01b0\\u1edbi b\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"b1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-selection-bar group=\\\"lib\\\"><button type=\\\"button\\\" data-td-action=\\\"download\\\" data-td-action-icon=\\\"download\\\">T\\u1ea3i v\\u1ec1</button><button type=\\\"button\\\" data-td-action=\\\"tag\\\" data-td-action-icon=\\\"tag\\\">G\\u1eafn th\\u1ebb</button><button type=\\\"button\\\" data-td-action=\\\"album\\\" data-td-action-icon=\\\"folder-plus\\\">Th\\u00eam v\\u00e0o album</button><button type=\\\"button\\\" data-td-action=\\\"delete\\\" data-td-action-icon=\\\"trash\\\" data-td-tone=\\\"danger\\\">Xo\\u00e1</button></td-selection-bar>\"; await customElements.whenDefined('td-selection-bar'); const bar=w.querySelector('td-selection-bar'); for (let i=0;i<60 && bar.grids.length<2;i++) await new Promise((r)=>requestAnimationFrame(r)); ",
+      "selectors": [
+        "td-selection-bar.td-selection-bar[data-empty]",
+        ".td-selection-bar[data-empty] .td-selection-bar__panel"
+      ],
+      "settle": 300,
+      "selectorNote": "v0.95.0: nothing selected in the group → host [data-empty], panel hidden (no box)",
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left",
+        "inset-block-end",
+        "inset-block-start"
+      ],
+      "excludeNote": "font-metric dependent (label / button text widths, wrap) — excluded up front"
+    },
+    {
+      "state": "active",
+      "setup": "await import('/src/display/td-media-grid.js'); const w=document.createElement('div'); w.style.setProperty('width',\"720px\"); window.__mount.appendChild(w); w.innerHTML=\"<td-media-grid id=\\\"a\\\" label=\\\"L\\u01b0\\u1edbi a\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"a1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-media-grid id=\\\"b\\\" label=\\\"L\\u01b0\\u1edbi b\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"b1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-selection-bar group=\\\"lib\\\"><button type=\\\"button\\\" data-td-action=\\\"download\\\" data-td-action-icon=\\\"download\\\">T\\u1ea3i v\\u1ec1</button><button type=\\\"button\\\" data-td-action=\\\"tag\\\" data-td-action-icon=\\\"tag\\\">G\\u1eafn th\\u1ebb</button><button type=\\\"button\\\" data-td-action=\\\"album\\\" data-td-action-icon=\\\"folder-plus\\\">Th\\u00eam v\\u00e0o album</button><button type=\\\"button\\\" data-td-action=\\\"delete\\\" data-td-action-icon=\\\"trash\\\" data-td-tone=\\\"danger\\\">Xo\\u00e1</button></td-selection-bar>\"; await customElements.whenDefined('td-selection-bar'); const bar=w.querySelector('td-selection-bar'); for (let i=0;i<60 && bar.grids.length<2;i++) await new Promise((r)=>requestAnimationFrame(r)); w.querySelector('#a').select([\"a1\", \"a2\", \"a3\"]);",
+      "selectors": [
+        ".td-selection-bar",
+        ".td-selection-bar__panel",
+        ".td-selection-bar__clear",
+        ".td-selection-bar__count",
+        ".td-selection-bar__actions",
+        ".td-selection-bar__action[data-td-action=\"download\"]",
+        ".td-selection-bar__action[data-td-action=\"download\"] .td-selection-bar__icon",
+        ".td-selection-bar__action[data-td-action=\"download\"] .td-selection-bar__label",
+        ".td-selection-bar__action--danger",
+        ".td-selection-bar__action--danger .td-selection-bar__label"
+      ],
+      "settle": 450,
+      "selectorNote": "v0.95.0: 3 selected in grid a (group lib), 4 actions incl. danger (data-td-tone=danger → --danger modifier); wide (720px): labels shown, no overflow",
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left",
+        "inset-block-end",
+        "inset-block-start"
+      ],
+      "excludeNote": "font-metric dependent (label / button text widths, wrap) — excluded up front"
+    },
+    {
+      "state": "compact",
+      "setup": "await import('/src/display/td-media-grid.js'); const w=document.createElement('div'); w.style.setProperty('width',\"520px\"); window.__mount.appendChild(w); w.innerHTML=\"<td-media-grid id=\\\"a\\\" label=\\\"L\\u01b0\\u1edbi a\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"a1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-media-grid id=\\\"b\\\" label=\\\"L\\u01b0\\u1edbi b\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"b1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-selection-bar group=\\\"lib\\\"><button type=\\\"button\\\" data-td-action=\\\"download\\\" data-td-action-icon=\\\"download\\\">T\\u1ea3i v\\u1ec1</button><button type=\\\"button\\\" data-td-action=\\\"tag\\\" data-td-action-icon=\\\"tag\\\">G\\u1eafn th\\u1ebb</button><button type=\\\"button\\\" data-td-action=\\\"album\\\" data-td-action-icon=\\\"folder-plus\\\">Th\\u00eam v\\u00e0o album</button><button type=\\\"button\\\" data-td-action=\\\"delete\\\" data-td-action-icon=\\\"trash\\\" data-td-tone=\\\"danger\\\">Xo\\u00e1</button></td-selection-bar>\"; await customElements.whenDefined('td-selection-bar'); const bar=w.querySelector('td-selection-bar'); for (let i=0;i<60 && bar.grids.length<2;i++) await new Promise((r)=>requestAnimationFrame(r)); w.querySelector('#a').select([\"a1\", \"a2\", \"a3\"]);",
+      "selectors": [
+        ".td-selection-bar[data-compact]",
+        ".td-selection-bar[data-compact] .td-selection-bar__action--icon",
+        ".td-selection-bar[data-compact] .td-selection-bar__action--icon .td-selection-bar__label"
+      ],
+      "settle": 450,
+      "selectorNote": "v0.95.0: narrow (320px < 36rem, set by JS from the measured width): icon-only buttons, overflow from the end into \"…\" v0.95.0: 520px, under the 36rem compact breakpoint and wide enough that the four icon actions fit under both profiles.",
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left",
+        "inset-block-end",
+        "inset-block-start"
+      ],
+      "excludeNote": "font-metric dependent (label / button text widths, wrap) — excluded up front"
+    },
+    {
+      "state": "overflow",
+      "setup": "await import('/src/display/td-media-grid.js'); const w=document.createElement('div'); w.style.setProperty('width',\"320px\"); window.__mount.appendChild(w); w.innerHTML=\"<td-media-grid id=\\\"a\\\" label=\\\"L\\u01b0\\u1edbi a\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"a1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-media-grid id=\\\"b\\\" label=\\\"L\\u01b0\\u1edbi b\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"b1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-selection-bar group=\\\"lib\\\"><button type=\\\"button\\\" data-td-action=\\\"download\\\" data-td-action-icon=\\\"download\\\">T\\u1ea3i v\\u1ec1</button><button type=\\\"button\\\" data-td-action=\\\"tag\\\" data-td-action-icon=\\\"tag\\\">G\\u1eafn th\\u1ebb</button><button type=\\\"button\\\" data-td-action=\\\"album\\\" data-td-action-icon=\\\"folder-plus\\\">Th\\u00eam v\\u00e0o album</button><button type=\\\"button\\\" data-td-action=\\\"delete\\\" data-td-action-icon=\\\"trash\\\" data-td-tone=\\\"danger\\\">Xo\\u00e1</button></td-selection-bar>\"; await customElements.whenDefined('td-selection-bar'); const bar=w.querySelector('td-selection-bar'); for (let i=0;i<60 && bar.grids.length<2;i++) await new Promise((r)=>requestAnimationFrame(r)); w.querySelector('#a').select([\"a1\", \"a2\", \"a3\"]);",
+      "selectors": [
+        ".td-selection-bar__more"
+      ],
+      "settle": 450,
+      "selectorNote": "v0.95.0: 320px, some actions overflow into \"…\". Which ones depends on the profile font metrics, so only the visible \"…\" button is snapshotted; the overflowed (hidden) actions and the menu are gated by td-v095-selection-bar.engines.browser-test.js.",
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left",
+        "inset-block-end",
+        "inset-block-start"
+      ],
+      "excludeNote": "font-metric dependent (label / button text widths, wrap) — excluded up front"
+    },
+    {
+      "state": "disabled",
+      "setup": "await import('/src/display/td-media-grid.js'); const w=document.createElement('div'); w.style.setProperty('width',\"720px\"); window.__mount.appendChild(w); w.innerHTML=\"<td-media-grid id=\\\"a\\\" label=\\\"L\\u01b0\\u1edbi a\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"a1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-media-grid id=\\\"b\\\" label=\\\"L\\u01b0\\u1edbi b\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"b1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-selection-bar group=\\\"lib\\\" disabled><button type=\\\"button\\\" data-td-action=\\\"download\\\" data-td-action-icon=\\\"download\\\">T\\u1ea3i v\\u1ec1</button><button type=\\\"button\\\" data-td-action=\\\"tag\\\" data-td-action-icon=\\\"tag\\\">G\\u1eafn th\\u1ebb</button><button type=\\\"button\\\" data-td-action=\\\"album\\\" data-td-action-icon=\\\"folder-plus\\\">Th\\u00eam v\\u00e0o album</button><button type=\\\"button\\\" data-td-action=\\\"delete\\\" data-td-action-icon=\\\"trash\\\" data-td-tone=\\\"danger\\\">Xo\\u00e1</button></td-selection-bar>\"; await customElements.whenDefined('td-selection-bar'); const bar=w.querySelector('td-selection-bar'); for (let i=0;i<60 && bar.grids.length<2;i++) await new Promise((r)=>requestAnimationFrame(r)); w.querySelector('#a').select([\"a1\", \"a2\", \"a3\"]);",
+      "selectors": [
+        ".td-selection-bar[data-disabled] .td-selection-bar__panel",
+        ".td-selection-bar[data-disabled] .td-selection-bar__clear",
+        ".td-selection-bar[data-disabled] .td-selection-bar__action",
+        ".td-selection-bar[data-disabled] .td-selection-bar__action--danger"
+      ],
+      "settle": 450,
+      "selectorNote": "v0.95.0: disabled bar: every control aria-disabled, nothing acts",
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left",
+        "inset-block-end",
+        "inset-block-start"
+      ],
+      "excludeNote": "font-metric dependent (label / button text widths, wrap) — excluded up front"
+    },
+    {
+      "state": "touch",
+      "touch": true,
+      "setup": "await import('/src/display/td-media-grid.js'); const w=document.createElement('div'); w.style.setProperty('width',\"720px\"); window.__mount.appendChild(w); w.innerHTML=\"<td-media-grid id=\\\"a\\\" label=\\\"L\\u01b0\\u1edbi a\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"a1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-media-grid id=\\\"b\\\" label=\\\"L\\u01b0\\u1edbi b\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"b1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-selection-bar group=\\\"lib\\\"><button type=\\\"button\\\" data-td-action=\\\"download\\\" data-td-action-icon=\\\"download\\\">T\\u1ea3i v\\u1ec1</button><button type=\\\"button\\\" data-td-action=\\\"tag\\\" data-td-action-icon=\\\"tag\\\">G\\u1eafn th\\u1ebb</button><button type=\\\"button\\\" data-td-action=\\\"album\\\" data-td-action-icon=\\\"folder-plus\\\">Th\\u00eam v\\u00e0o album</button><button type=\\\"button\\\" data-td-action=\\\"delete\\\" data-td-action-icon=\\\"trash\\\" data-td-tone=\\\"danger\\\">Xo\\u00e1</button></td-selection-bar>\"; await customElements.whenDefined('td-selection-bar'); const bar=w.querySelector('td-selection-bar'); for (let i=0;i<60 && bar.grids.length<2;i++) await new Promise((r)=>requestAnimationFrame(r)); w.querySelector('#a').select([\"a1\", \"a2\", \"a3\"]);",
+      "selectors": [
+        ".td-selection-bar__clear",
+        ".td-selection-bar__action[data-td-action=\"download\"]",
+        ".td-selection-bar__action--danger"
+      ],
+      "settle": 450,
+      "selectorNote": "v0.95.0: touch context (hasTouch + isMobile; matchMedia('(hover: none), (pointer: coarse)') asserted first): 44px targets",
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left",
+        "inset-block-end",
+        "inset-block-start"
+      ],
+      "excludeNote": "font-metric dependent (label / button text widths, wrap) — excluded up front"
+    }
+  ],
+  "td-card": [
+    {
+      "state": "link",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','240px'); window.__mount.appendChild(w); w.innerHTML=\"<a class=\\\"td-card\\\" href=\\\"/album/tet-2026\\\"><span class=\\\"td-card__media\\\"><img src=\\\"/test/fixtures/photo.svg\\\" alt=\\\"\\\" loading=\\\"eager\\\" decoding=\\\"async\\\" width=\\\"640\\\" height=\\\"480\\\"></span> <span class=\\\"td-card__body\\\"><span class=\\\"td-card__title\\\">T\\u1ebft 2026</span> <span class=\\\"td-card__badges\\\"><span class=\\\"td-badge td-badge--danger\\\">Live</span></span> <span class=\\\"td-card__meta\\\"><span>42 \\u1ea3nh</span> <span class=\\\"td-card__sep\\\" aria-hidden=\\\"true\\\">\\u00b7</span> <time datetime=\\\"2026-02-12\\\">12/02/2026</time></span></span></a>\";",
+      "selectors": [
+        "a.td-card",
+        ".td-card__media",
+        ".td-card__media img",
+        ".td-card__body",
+        ".td-card__title",
+        ".td-card__badges",
+        ".td-card__badges .td-badge",
+        ".td-card__meta",
+        ".td-card__sep"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.95.0 CSS-only (.td-card has no JS); 240px wrapper (CSSOM); text boxes follow the platform font metrics: width / height / margin-left excluded up front: bare default, whole-card link, cover image + badge + meta",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ]
+    },
+    {
+      "state": "placeholder",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','240px'); window.__mount.appendChild(w); w.innerHTML=\"<a class=\\\"td-card\\\" href=\\\"/album/tet-2026\\\"><span class=\\\"td-card__media\\\"><span class=\\\"td-card__placeholder\\\" aria-hidden=\\\"true\\\"><svg class=\\\"td-icon td-icon--l\\\" data-icon=\\\"image\\\" viewBox=\\\"0 0 24 24\\\" fill=\\\"none\\\" stroke=\\\"currentColor\\\" stroke-width=\\\"2\\\" stroke-linecap=\\\"round\\\" stroke-linejoin=\\\"round\\\" aria-hidden=\\\"true\\\" focusable=\\\"false\\\"><rect x=\\\"3\\\" y=\\\"3\\\" width=\\\"18\\\" height=\\\"18\\\" rx=\\\"2\\\" ry=\\\"2\\\"/><circle cx=\\\"9\\\" cy=\\\"9\\\" r=\\\"2\\\"/><path d=\\\"m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21\\\"/></svg></span></span> <span class=\\\"td-card__body\\\"><span class=\\\"td-card__title\\\">Ch\\u01b0a c\\u00f3 \\u1ea3nh b\\u00eca</span> <span class=\\\"td-card__meta\\\"><span>42 \\u1ea3nh</span> <span class=\\\"td-card__sep\\\" aria-hidden=\\\"true\\\">\\u00b7</span> <time datetime=\\\"2026-02-12\\\">12/02/2026</time></span></span></a>\";",
+      "selectors": [
+        ".td-card__media",
+        ".td-card__placeholder",
+        ".td-card__placeholder .td-icon"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.95.0 CSS-only (.td-card has no JS); 240px wrapper (CSSOM); text boxes follow the platform font metrics: width / height / margin-left excluded up front: no image → placeholder tile + image glyph",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ]
+    },
+    {
+      "state": "surface",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','240px'); window.__mount.appendChild(w); w.innerHTML=\"<a class=\\\"td-card td-card--surface\\\" href=\\\"/album/tet-2026\\\"><span class=\\\"td-card__media\\\"><img src=\\\"/test/fixtures/photo.svg\\\" alt=\\\"\\\" loading=\\\"eager\\\" decoding=\\\"async\\\" width=\\\"640\\\" height=\\\"480\\\"></span> <span class=\\\"td-card__body\\\"><span class=\\\"td-card__title\\\">T\\u1ebft 2026</span> <span class=\\\"td-card__badges\\\"><span class=\\\"td-badge td-badge--danger\\\">Live</span></span> <span class=\\\"td-card__meta\\\"><span>42 \\u1ea3nh</span> <span class=\\\"td-card__sep\\\" aria-hidden=\\\"true\\\">\\u00b7</span> <time datetime=\\\"2026-02-12\\\">12/02/2026</time></span></span></a>\";",
+      "selectors": [
+        "a.td-card.td-card--surface",
+        ".td-card--surface .td-card__media",
+        ".td-card--surface .td-card__body",
+        ".td-card--surface .td-card__title"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.95.0 CSS-only (.td-card has no JS); 240px wrapper (CSSOM); text boxes follow the platform font metrics: width / height / margin-left excluded up front: framed variant (fill + edge + shadow)",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ]
+    },
+    {
+      "state": "static",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','240px'); window.__mount.appendChild(w); w.innerHTML=\"<div class=\\\"td-card\\\"><span class=\\\"td-card__media\\\"><img src=\\\"/test/fixtures/photo.svg\\\" alt=\\\"\\\" loading=\\\"eager\\\" decoding=\\\"async\\\" width=\\\"640\\\" height=\\\"480\\\"></span> <span class=\\\"td-card__body\\\"><span class=\\\"td-card__title\\\">T\\u1ebft 2026</span> <span class=\\\"td-card__badges\\\"><span class=\\\"td-badge td-badge--danger\\\">Live</span></span> <span class=\\\"td-card__meta\\\"><span>42 \\u1ea3nh</span> <span class=\\\"td-card__sep\\\" aria-hidden=\\\"true\\\">\\u00b7</span> <time datetime=\\\"2026-02-12\\\">12/02/2026</time></span></span></div>\";",
+      "selectors": [
+        "div.td-card",
+        ".td-card__media",
+        ".td-card__title",
+        ".td-card__meta"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.95.0 CSS-only (.td-card has no JS); 240px wrapper (CSSOM); text boxes follow the platform font metrics: width / height / margin-left excluded up front: no link (div): no pointer cursor, no hover / press",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ]
+    },
+    {
+      "state": "ratio-1x1",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','240px'); window.__mount.appendChild(w); w.innerHTML=\"<a class=\\\"td-card td-card--ratio-1x1\\\" href=\\\"/album/tet-2026\\\"><span class=\\\"td-card__media\\\"><img src=\\\"/test/fixtures/photo.svg\\\" alt=\\\"\\\" loading=\\\"eager\\\" decoding=\\\"async\\\" width=\\\"640\\\" height=\\\"480\\\"></span> <span class=\\\"td-card__body\\\"><span class=\\\"td-card__title\\\">T\\u1ebft 2026</span> <span class=\\\"td-card__badges\\\"><span class=\\\"td-badge td-badge--danger\\\">Live</span></span> <span class=\\\"td-card__meta\\\"><span>42 \\u1ea3nh</span> <span class=\\\"td-card__sep\\\" aria-hidden=\\\"true\\\">\\u00b7</span> <time datetime=\\\"2026-02-12\\\">12/02/2026</time></span></span></a>\";",
+      "selectors": [
+        "a.td-card.td-card--ratio-1x1",
+        ".td-card--ratio-1x1 .td-card__media",
+        ".td-card--ratio-1x1 .td-card__media img"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.95.0 CSS-only (.td-card has no JS); 240px wrapper (CSSOM); text boxes follow the platform font metrics: width / height / margin-left excluded up front: --ratio-1x1 sets --td-card-ratio from the allowlist (never a style attribute)",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ]
+    },
+    {
+      "state": "focus",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','240px'); window.__mount.appendChild(w); w.innerHTML=\"<a class=\\\"td-card\\\" href=\\\"/album/tet-2026\\\"><span class=\\\"td-card__media\\\"><img src=\\\"/test/fixtures/photo.svg\\\" alt=\\\"\\\" loading=\\\"eager\\\" decoding=\\\"async\\\" width=\\\"640\\\" height=\\\"480\\\"></span> <span class=\\\"td-card__body\\\"><span class=\\\"td-card__title\\\">T\\u1ebft 2026</span> <span class=\\\"td-card__badges\\\"><span class=\\\"td-badge td-badge--danger\\\">Live</span></span> <span class=\\\"td-card__meta\\\"><span>42 \\u1ea3nh</span> <span class=\\\"td-card__sep\\\" aria-hidden=\\\"true\\\">\\u00b7</span> <time datetime=\\\"2026-02-12\\\">12/02/2026</time></span></span></a>\";",
+      "pseudo": "focus",
+      "focusSelector": "a.td-card",
+      "selectors": [
+        "a.td-card",
+        ".td-card__media"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.95.0 CSS-only (.td-card has no JS); 240px wrapper (CSSOM); text boxes follow the platform font metrics: width / height / margin-left excluded up front: keyboard focus ring on the whole-card link",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ]
     }
   ]
 }

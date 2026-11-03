@@ -17,7 +17,7 @@ Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm** (+
 
 | Lớp | Selector (class JS phát ra, không đổi) | Công thức |
 |---|---|---|
-| Đặc | `.td-modal__dialog`, `.td-loading__card`, `.td-scroll-top` | `--td-glass-solid`, không blur; viền `--td-glass-border` + `--td-glass-shadow` (modal: `--td-glass-shadow-lg`) |
+| Đặc | `.td-modal__dialog`, `.td-loading__card`, `.td-scroll-top`, `.td-selection-bar__panel` (0.95.0, token `--td-selection-bar-*`) | `--td-glass-solid`, không blur; viền `--td-glass-border` + `--td-glass-shadow` (modal: `--td-glass-shadow-lg`) |
 | Tooltip (0.21.0) | `.td-tooltip` | **Đen** `--td-tooltip-bg` `#18181b` + chữ `#fff` (dark 0.41.0: chip xám nổi `#3a3a3e` + viền `rgb(255 255 255 / 16%)`), đặc, không blur, `--td-glass-shadow`; tương phản cao / forced colours vẫn thắng (`--_td-glass-fill-a11y`) |
 | Popup nhỏ | `.td-menu`, `.td-dropdown__menu`, `.td-chip-input__menu`, `.td-hovercard` | `--td-glass-bg-strong` (94 %) + `--td-glass-blur` (12px) + viền + `--td-glass-shadow` |
 | Toast (0.21.0) | `.td-toast--{type}` | Viên kiểu dcms, **đặc** pastel theo loại (`--td-pastel-{type}-*`) + viền cùng tông + `--td-glass-shadow`; không blur, không icon hiển thị (tiền tố loại cho trình đọc màn hình) |
@@ -27,6 +27,7 @@ Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm** (+
 | Nút thao tác (0.36.0) | `.td-btn--action` (`<td-action-button>`) | Vuông chỉ icon, **trong suốt**, không shadow; icon theo tone (standard `--td-gray-700`, warning `#b45309`, danger `#b91c1c`, ≥ 4.7:1 trên trắng và trên nền hover); hover = nền nhạt theo tone; focus ring kit |
 | Badge (0.76.0) | `.td-badge--{v}` | **Tinted** (nền ~200, chữ ~800; dark ~900 / ~200) + viền 1px trong suốt + bóng mềm hai lớp `--td-badge-shadow`; opt-in `.td-badge--glass` (85 % alpha `color-mix` + `blur(12px) saturate(160%)` + mép sáng + highlight; chữ `--td-badge-{v}-glass-fg`; fallback tint đặc khi thiếu `backdrop-filter` / `color-mix`, reduced-transparency, `data-td-glass="off"`, contrast more, forced-colors; không tác dụng với outline / stamp); outline / stamp trong suốt, mực `--td-badge-{v}-ink`, không bóng |
 | Alert (0.36.0; 0.62.0 bỏ vạch) | `.td-alert--{v}` | Thân nền nhạt (đọc chữ / liên kết / nút con), viền mảnh ~300 bốn cạnh; nhận diện = icon màu của loại trong **ô** `--td-alert-{v}-tile` (icon trộn 12 % vào nền) + tiêu đề. **Không có vạch cạnh** (ADR 0033) |
+| Card (0.95.0) | `.td-card`, `.td-card--surface` | Mặc định **bare** (không nền, không viền; ảnh bìa bo `--td-card-radius` trên `--td-card-media-bg`); `--surface` đặc `--td-card-bg` + viền `--td-card-border` + **một** `--td-card-shadow` (cùng giá trị hai theme), hover `--td-card-hover-bg` / `-hover-border`; badge đè ảnh |
 | Control nội dung | switch, slider, checkbox, chip, field, bảng, tab | Đặc; thumb / nút một shadow nhẹ |
 
 ### Bảng màu (0.21.0; màu ngữ nghĩa đặc 0.36.0)

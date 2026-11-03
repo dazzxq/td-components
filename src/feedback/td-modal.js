@@ -31,6 +31,8 @@
  *   On close, focus returns to the opener only when this dialog was on top (else it stays where it is); if the
  *   opener is gone/outside the new top dialog, the new top dialog is focused. Restored BEFORE `onClose`.
  * - z-index: `var(--td-z-modal)` for every dialog; DOM order stacks. Covered dialogs `[data-covered]` go solid.
+ * - v0.95.0 (K7): `TdModal.setActionDisabled(id, index, disabled)` changes the base disabled state of an `actions`
+ *   button at runtime; it survives the busy cycles of other actions.
  *
  * Trusted-HTML hatches (developer content ONLY, never user input): `show({ body: '<html string>' })` and
  * `messageHtml` on the Promise dialogs. `title`, `message`, button labels are always text — v0.59.0: `message` may also be
@@ -191,7 +193,8 @@ export class TdModal {
    *   [options.actions] - Footer buttons (`.td-btn`; wins over `footer`). `onClick` returning a thenable keeps
    *   the dialog open with that button busy (`aria-busy`) and the other actions + X disabled; resolved `false`,
    *   sync `false`, `close:false` or a rejection keep it open; otherwise it closes and `onClose(value)` gets the
-   *   action's `value`.
+   *   action's `value`. `disabled` is the button's BASE state: a busy cycle restores it when it ends; change it at
+   *   runtime with `TdModal.setActionDisabled(id, index, disabled)` (never by assigning `ctx.button.disabled`).
    * @param {string} [options.size='md'] - xs, sm, md, lg, xl, 2xl, 3xl, 4xl, 5xl, full.
    * @param {string|null} [options.width=null] - Custom width (any valid CSS width without url()/var()).
    * @param {string|null} [options.height=null] - Custom height (same rule).
@@ -444,6 +447,33 @@ export class TdModal {
       if (TdModalStackManager.getTop() !== inst || (inst.handle && !inst.handle.layer.isTop())) return;
       TdModal._requestClose(inst, 'backdrop');
     });
+  }
+
+  /**
+   * v0.95.0 (K7): change the BASE disabled state of an `actions` button of an open `show()` dialog at runtime. The
+   * state survives the busy cycles of other actions (a busy cycle ends by restoring the base state, never the
+   * initial `actions[i].disabled`). Idle → applied at once; the button that is busy keeps its busy state and takes
+   * the new value when its cycle ends; other buttons during a busy cycle take it when the cycle ends. A focused button
+   * that becomes disabled hands focus to the dialog first (focus never drops out of the modal).
+   * @param {string} modalId id returned by `show()`
+   * @param {number} index position in the ORIGINAL `actions` array (non-object entries keep their index)
+   * @param {boolean} disabled
+   * @returns {boolean} true when applied; false for an unknown / closed modal, a dialog without `actions` (own
+   *   `footer`, Promise dialogs), or an index that is not an integer naming a rendered button. Never throws.
+   */
+  static setActionDisabled(modalId, index, disabled) {
+    const inst = TdModalStackManager.stack.find((m) => m.id === modalId);
+    if (!inst || inst.closed || !Array.isArray(inst.actionEntries) || !Number.isInteger(index)) return false;
+    const entry = inst.actionEntries[index];
+    if (!entry) return false;
+    entry.disabled = !!disabled;
+    // the busy button keeps its state until its cycle ends; the others are disabled by the cycle and read
+    // entry.disabled when it ends (setBusy) — only an idle dialog applies at once
+    if (!inst.busy) {
+      if (entry.disabled && document.activeElement === entry.btn) inst.dialog.focus({ preventScroll: true });
+      entry.btn.disabled = entry.disabled;
+    }
+    return true;
   }
 
   /** Close the top modal. */
@@ -1026,23 +1056,37 @@ export class TdModal {
    */
   static _renderActions(footerEl, actions, instance, root) {
     const buttons = [];
+    // v0.95.0 (K7): entries by ORIGINAL index (sparse) for TdModal.setActionDisabled(); entry.disabled = base state
+    const byIndex = [];
+    if (instance) instance.actionEntries = byIndex;
     // v0.44.0 (QĐ 14): a closing action goes through the guard too (it is the user asking to close)
     const closeWith = (value) => (instance ? TdModal._requestClose(instance, 'action', value) : TdModal.closeById(root.id));
     const setBusy = (busyBtn, busy) => {
       if (instance) instance.busy = busy;
       for (const b of buttons) {
-        if (b.btn === busyBtn) setButtonBusy(b.btn, busy);
-        else b.btn.disabled = busy || b.disabled;
+        if (b.btn === busyBtn) {
+          setButtonBusy(b.btn, busy);
+          if (!busy) {
+            // v0.95.0 (K7): the busy button takes its (possibly changed) base state; it held focus all cycle, so a
+            // newly disabled one hands focus to the dialog first (else focus would drop to <body>, outside the trap)
+            if (b.disabled && document.activeElement === b.btn) {
+              const dlg = root.querySelector('.td-modal__dialog');
+              if (dlg) dlg.focus({ preventScroll: true });
+            }
+            b.btn.disabled = b.disabled;
+          }
+        } else b.btn.disabled = busy || b.disabled;
       }
       const x = root.querySelector('.td-modal__close');
       if (x) x.disabled = busy;
     };
-    for (const a of actions) {
-      if (!a || typeof a !== 'object') continue;
+    actions.forEach((a, index) => {
+      if (!a || typeof a !== 'object') return;
       const btn = makeButton(a.label, typeof a.variant === 'string' ? a.variant : 'secondary');
       const entry = { btn, disabled: !!a.disabled };
       btn.disabled = entry.disabled;
       buttons.push(entry);
+      byIndex[index] = entry;
       btn.addEventListener('click', () => {
         if ((instance && (instance.busy || instance.closed || instance.guarding))
           || btn.getAttribute('aria-busy') === 'true') return;
@@ -1070,7 +1114,7 @@ export class TdModal {
         });
       });
       footerEl.appendChild(btn);
-    }
+    });
   }
 
   /**

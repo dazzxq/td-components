@@ -217,3 +217,30 @@ export const DropFiles = {
     }));
   },
 };
+
+/**
+ * v0.95.0: drop several images — the FIRST try of each file fails (≥ 2 failures → the strip "Thử lại tất cả" / "Gỡ tất
+ * cả lỗi"), "Thử lại" succeeds. Dropping a file whose name is already in the library → "Đã có trong thư viện". Close
+ * the picker while files upload: they go on in the background; reopen to see their cards again.
+ */
+export const DropBulk = {
+  name: 'Thả hàng loạt: lỗi + ảnh trùng',
+  render: () => frame('mp-drop-bulk', 'Mở rồi thả nhiều ảnh vào'),
+  play: ({ canvasElement }) => {
+    const base = mock({ uploadStepMs: 400 });
+    const tried = new Set();
+    const adapter = {
+      ...base,
+      upload: (file, opts) => {
+        if (!tried.has(file.name)) {
+          tried.add(file.name);
+          return new Promise((_, reject) => setTimeout(() => reject({ code: 'server' }), 600));
+        }
+        return base.upload(file, opts);
+      },
+    };
+    wire(canvasElement, 'mp-drop-bulk', () => ({
+      adapter, selection: { mode: 'multiple' }, upload: { accept: 'image/*', maxSize: '5MB' },
+    }));
+  },
+};

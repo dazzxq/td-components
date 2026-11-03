@@ -18,7 +18,7 @@ Mọi import đều theo dạng `@dazzxq/td-components/<tên>` (xem [Cài đặt
 nạp `td.css` một lần cho cả trang.
 
 **Render phía server (SSR) từ PHP:** dùng [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói —
-`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field`, `td_media_gallery`, `td_scan_input`, `td_filter_chips`, `td_datetime_range`, `td_datetime_picker` / `td_date`, `td_check_matrix`, `td_rating`, `td_carousel`, `td_hint` in đúng markup của component
+`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_card`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field`, `td_media_gallery`, `td_scan_input`, `td_filter_chips`, `td_datetime_range`, `td_datetime_picker` / `td_date`, `td_check_matrix`, `td_rating`, `td_carousel`, `td_hint` in đúng markup của component
 (control native, chạy không cần JS). Component không có helper PHP (menu, table, tabs, pagination, empty-state, trigger
 lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
 
@@ -86,8 +86,10 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 | [Tabs](tabs.md) | `<td-tabs>` | `/tabs` | Tab (chuẩn APG, kích hoạt thủ công); số đếm có màu cạnh nhãn, cập nhật tại chỗ bằng `setTabCount` (0.70.0) |
 | [Pagination](pagination.md) | `<td-pagination>` | `/pagination` | Phân trang |
 | [Empty state](empty-state.md) | `<td-empty-state>` | `/empty-state` | Màn "chưa có dữ liệu" có hành động |
-| [Media grid](media-grid.md) | `<td-media-grid>` | `/media-grid` | Lưới ảnh chọn được: nâng cấp markup site/PHP, tick khi rê/focus, chế độ chọn, Shift chọn dải, Space/Enter/Esc, `select-change` / `activate` |
+| [Media grid](media-grid.md) | `<td-media-grid>` | `/media-grid` | Lưới ảnh chọn được: nâng cấp markup site/PHP, tick khi rê/focus, chế độ chọn, Shift chọn dải, Space/Enter/Esc, `select-change` / `activate` / `item-remove`; nhóm nhiều lưới `selection-group` (0.95) |
+| [Selection bar](selection-bar.md) | `<td-selection-bar>` | `/selection-bar` | Thanh thao tác hàng loạt dính đáy cho một hoặc nhiều media grid: tổng đã chọn, × bỏ chọn, nút thao tác của site (ghost, danger), hẹp thì chỉ icon + "…", `selection-action` rồi tự bỏ chọn (giữ bằng `preventDefault()`) (0.95) |
 | [Badge](badge.md) | class CSS `.td-badge` | — (chỉ `td.css`) | Nhãn trạng thái dạng viên thuốc, viền, con dấu (`--stamp`); thuần CSS, PHP `td_badge` |
+| [Card](card.md) | class CSS `.td-card` | — (chỉ `td.css`) | Card ảnh bìa, cả card là một link (`<a class="td-card">`), bare hoặc `--surface`, badge đè ảnh, ô giữ chỗ; thuần CSS, PHP `td_card` |
 | [Sortable](sortable.md) | `<td-sortable>` | `/sortable` | Sắp thứ tự danh sách / lưới của app bằng kéo tay nắm **và** bàn phím (Space nhấc, mũi tên, Space thả, Escape huỷ), chạm-để-chuyển, thông báo cho trình đọc màn hình, `order-change` khi thả; công thức lưới ảnh với media grid |
 | [Masked value](masked-value.md) | `<td-masked-value>` | `/masked-value` | Giá trị nhạy cảm bị che (`09xx xxx 123`) + nút "Hiện": gọi hook async của app (quyền / 2FA / audit), tự che lại sau N giây, không giữ giá trị trong DOM / event; PHP `td_masked_value` |
 | [Copy](copy.md) | `<td-copy>` | `/copy` | Nút icon chép một giá trị (mã, ID, đường dẫn) vào clipboard, phản hồi bằng icon + thông báo cho trình đọc màn hình; PHP `td_copy` |

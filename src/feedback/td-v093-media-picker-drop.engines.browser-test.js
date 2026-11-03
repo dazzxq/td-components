@@ -167,6 +167,7 @@ async function closeAll() {
   obs?.disconnect();
   obs = null;
   for (const h of document.querySelectorAll('td-media-picker')) if (h.isOpen) h.close('programmatic');
+  TdMediaPicker.cancelUploads(); // v0.95.0: grid drops upload in the background — never leak into the next test's pool
   TdModal.closeAll();
   TdToast.clear();
   await until(() => !document.body.querySelector(':scope > .td-media-picker, :scope > .td-modal, :scope > .td-media-picker-upload'), 4000, 'closed').catch(() => {});
@@ -384,7 +385,7 @@ describe('v0.93.0 td-media-picker — drop files into the grid', () => {
     await until(() => !card.isConnected, 3000, 'replaced by the later reload');
   });
 
-  it('teardown mix: grid (3 running, 2 waiting) + dialog files waiting → close, confirm → no adapter.upload after', async () => {
+  it('teardown mix: grid (3 running, 2 waiting) + dialog files waiting → close, confirm → the dialog files never upload, the grid goes on', async () => {
     const { ad } = await openSettled();
     const held = holdUploads(ad);
     const files = [];
@@ -402,11 +403,17 @@ describe('v0.93.0 td-media-picker — drop files into the grid', () => {
     await until(() => discardDialog(), 3000, 'discard confirm');
     clickDiscard(true);
     await until(() => !pickerRoot(), 4000, 'closed');
-    const n = held.length;
     await wait(150);
-    expect(held.length).to.equal(n);
-    expect(n).to.equal(3);
-    expect(held.every((h) => h.done)).to.equal(true);
+    // v0.95.0: the grid files upload in the background (3 running, never aborted); the dialog's never start
+    expect(held.length).to.equal(3);
+    expect(held.some((h) => h.done)).to.equal(false);
+    held[0].resolve();
+    await until(() => held.length === 4, 3000, 'a background waiter starts');
+    expect(held.every((h) => /^t-/.test(h.file.name))).to.equal(true);
+    expect(TdMediaPicker.cancelUploads()).to.equal(4);
+    await wait(50);
+    expect(held.length).to.equal(4);
+    expect(held.slice(1).every((h) => h.opts.signal.aborted)).to.equal(true);
   });
 
   it('a filter the new asset does not match → card removed after the reload, uploadedHidden, still selected', async () => {
@@ -557,15 +564,17 @@ describe('v0.93.0 td-media-picker — drop files into the grid', () => {
     dz.remove();
   });
 
-  it('closing while uploading asks; yes → every signal aborted', async () => {
+  it('v0.95.0: closing while grid files upload does not ask; the uploads go on; cancelUploads() aborts them', async () => {
     const { ad } = await openSettled();
     const held = holdUploads(ad);
     dispatchDrop([await png('c-1.png'), await png('c-2.png')]);
     await until(() => held.length === 2);
     click(q('.td-modal__close'));
-    await until(() => discardDialog(), 3000, 'asks');
-    clickDiscard(true);
-    await until(() => !pickerRoot(), 4000, 'closed');
+    await until(() => !pickerRoot(), 4000, 'closed without a question');
+    expect(discardDialog()).to.equal(null);
+    expect(held.some((h) => h.opts.signal.aborted)).to.equal(false);
+    expect(TdMediaPicker.uploads.running).to.equal(2);
+    expect(TdMediaPicker.cancelUploads()).to.equal(2);
     expect(held.every((h) => h.opts.signal.aborted)).to.equal(true);
   });
 

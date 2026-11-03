@@ -28,6 +28,13 @@
  * v0.94.0: td-icon-picker (form grid + 280 px column via controls(); value + suggestions; opener `#g-icon`).
  * v0.50.0: section `carousel` — `#rsp-carousel` (16 product cards with a td-rating, per-view 2) + `#rsp-carousel-narrow`
  *   (4 cards in the 280 px column).
+ * v0.95.0: section `selection` — two td-media-grid of one `selection-group` (`#rsp-sel-a`, `#rsp-sel-b`) + the
+ *   td-selection-bar `#rsp-selbar` (6 actions, one danger) as the section's LAST child (sticky bottom). Empty at load
+ *   (hidden: the generic probes never meet it); the gate selects through the grids itself.
+ *   Section `card` — `.td-card` (CSS only): `#rsp-card` (the site's own `@container` grid, like dwp) + `#rsp-card-grid`
+ *   (`.td-card-grid`), both full width and again in the 280 px column; link / placeholder / surface / static / ratio-1x1.
+ *   Section `check-matrix` + `#rsp-matrix-ov` — td-check-matrix `mode="override"` (6 users × 12 permissions, inherited
+ *   hints, a locked cell, grant + deny): < 720 the one-column mode with the column picker, its bulk and the reset button.
  */
 import '../../src/form/td-button.js';
 import '../../src/form/td-action-button.js'; // v0.36.0
@@ -80,12 +87,30 @@ import '../../src/form/td-check-matrix.js'; // v0.47.0
 import '../../src/form/td-choice-group.js'; // v0.49.0
 import '../../src/display/td-carousel.js'; // v0.50.0
 import '../../src/display/td-rating.js'; // v0.50.0
+import '../../src/display/td-selection-bar.js'; // v0.95.0
 import { createMockAdapter } from './media-adapter.js';
 
 const LONG = 'Lưu và xuất bản bài viết lên trang chủ ngay bây giờ';
 /** v0.50.0: product cards (a link + a rating) for the carousel section. */
 const rspCards = (n) => Array.from({ length: n }, (_, i) => `<div><a class="rsp-card" href="#sp${i + 1}">
   <span>Điện thoại mẫu ${i + 1} — bản 256GB chính hãng</span><td-rating value="${(3.6 + (i % 5) * 0.3).toFixed(1)}" count="${(i + 1) * 37}" size="s"></td-rating></a></div>`).join('');
+/** v0.95.0: selection-bar section — two grouped grids (8 + 6 tiles) and a bar with 6 actions (overflow at 390 px). */
+const selItems = (p, n) => Array.from({ length: n }, (_, i) => `<div data-td-media-item data-id="${p}${i + 1}"><a href="/test/fixtures/${(i % 4) + 1}.svg" data-td-media-open aria-label="Ảnh ${p} ${i + 1}"><img src="/test/fixtures/${(i % 4) + 1}.svg" alt="" class="rsp-thumb"></a></div>`).join('');
+const SEL_ACTIONS = [['download', 'download', 'Tải về'], ['tag', 'tag', 'Gắn thẻ'], ['album', 'folder-plus', 'Thêm vào album'],
+  ['share', 'link', 'Chia sẻ'], ['move', 'folder', 'Chuyển thư mục'], ['delete', 'trash', 'Xoá']]
+  .map(([a, icon, label]) => `<button type="button" data-td-action="${a}" data-td-action-icon="${icon}"${a === 'delete' ? ' data-td-tone="danger"' : ''}>${label}</button>`).join('');
+/** v0.95.0: .td-card markup (same tree as td_card() of php/td.php). */
+const CARD_ICON = '<svg class="td-icon td-icon--l" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h16v14H4z" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+const rspCardsV095 = (p) => `
+  <li><a class="td-card" id="${p}-link" href="#album-tet-2026"><span class="td-card__media"><img src="/test/fixtures/photo.svg" alt="" loading="lazy" decoding="async" width="640" height="480"></span>
+    <span class="td-card__body"><span class="td-card__title">Tết 2026</span> <span class="td-card__badges"><span class="td-badge td-badge--danger">Live</span></span> <span class="td-card__meta"><span>42 ảnh</span> <span class="td-card__sep" aria-hidden="true">·</span> <time datetime="2026-02-12">12/02/2026</time></span></span></a></li>
+  <li><a class="td-card" href="#album-empty"><span class="td-card__media"><span class="td-card__placeholder" aria-hidden="true">${CARD_ICON}</span></span>
+    <span class="td-card__body"><span class="td-card__title">Album chưa có ảnh nào — tiêu đề rất dài để kiểm tra kẹp hai dòng trong cột hẹp của trang</span> <span class="td-card__meta"><span>0 ảnh</span></span></span></a></li>
+  <li><a class="td-card td-card--surface" href="#album-surface"><span class="td-card__media"><img src="/test/fixtures/portrait.svg" alt=""></span>
+    <span class="td-card__body"><span class="td-card__title">Hội nghị khách hàng</span> <span class="td-card__badges"><span class="td-badge td-badge--success">Mới</span><span class="td-badge">Nội bộ</span></span> <span class="td-card__meta"><span>128 ảnh</span> <span class="td-card__sep" aria-hidden="true">·</span> <time datetime="2026-03-01">01/03/2026</time></span></span></a></li>
+  <li><article class="td-card td-card--ratio-1x1"><span class="td-card__media"><img src="/test/fixtures/square.svg" alt=""></span>
+    <span class="td-card__body"><span class="td-card__title">Ảnh tĩnh (không link)</span> <span class="td-card__meta"><span>KhôngCóKhoảngTrắngNàoTrongChuỗiMetaNàyCả_KhôngCóKhoảngTrắngNàoTrongChuỗiMetaNàyCả</span></span></span></article></li>`;
+
 const TABS = ['Tất cả đơn hàng', 'Chờ xác nhận', 'Đang giao hàng', 'Đã giao thành công', 'Đã huỷ bởi khách', 'Hoàn tiền', 'Khiếu nại', 'Lưu trữ'];
 
 const tree = () => [
@@ -287,6 +312,7 @@ export function mountResponsiveFixture(root) {
   </section>
   <section class="rsp-section" data-section="check-matrix"><h2>Ma trận quyền</h2>
     <td-check-matrix id="rsp-matrix" name="perms" label="Quyền theo vai trò" max-height="24rem"></td-check-matrix>
+    <td-check-matrix id="rsp-matrix-ov" name="ov" mode="override" label="Quyền riêng của người dùng" max-height="24rem"></td-check-matrix>
   </section>
   <section class="rsp-section" data-section="tabs"><h2>Tab</h2>
     <td-tabs id="rsp-tabs"></td-tabs>
@@ -389,6 +415,21 @@ export function mountResponsiveFixture(root) {
     <!-- v0.53.1: the dsuite sidebar (216 px, sm, stretch, caption) and a 140 px column -->
     <div class="rsp-side216"><td-choice-group id="rsp-seg-side" name="theme-side" label="Giao diện" variant="segmented" size="sm" stretch value="auto"></td-choice-group></div>
     <div class="rsp-side140"><td-choice-group id="rsp-seg-140" name="theme-140" aria-label="Giao diện" variant="segmented" size="sm" stretch value="dark"></td-choice-group></div>
+  </section>
+  <section class="rsp-section" data-section="card"><h2>Thẻ album (v0.95)</h2>
+    <div class="rsp-card-cq" id="rsp-card"><ul class="rsp-card-list">${rspCardsV095('rsp-card')}</ul></div>
+    <ul class="td-card-grid rsp-card-plain" id="rsp-card-grid">${rspCardsV095('rsp-card-grid')}</ul>
+    <div class="rsp-narrow">
+      <div class="rsp-card-cq" id="rsp-card-narrow"><ul class="rsp-card-list">${rspCardsV095('rsp-card-narrow')}</ul></div>
+      <ul class="td-card-grid rsp-card-plain" id="rsp-card-grid-narrow">${rspCardsV095('rsp-card-grid-narrow')}</ul>
+    </div>
+  </section>
+  <section class="rsp-section" data-section="selection"><h2>Chọn nhiều ảnh (v0.95)</h2>
+    <h3 class="rsp-sel-day">12/02/2026</h3>
+    <td-media-grid id="rsp-sel-a" label="Ảnh ngày 12/02" selection-group="rsp-lib">${selItems('a', 8)}</td-media-grid>
+    <h3 class="rsp-sel-day">13/02/2026</h3>
+    <td-media-grid id="rsp-sel-b" label="Ảnh ngày 13/02" selection-group="rsp-lib">${selItems('b', 6)}</td-media-grid>
+    <td-selection-bar id="rsp-selbar" group="rsp-lib" label="Thao tác với ảnh đã chọn">${SEL_ACTIONS}</td-selection-bar>
   </section>`;
 
   const options = [
@@ -463,6 +504,17 @@ export function mountResponsiveFixture(root) {
       rows: Array.from({ length: 10 }, (_, k) => ({ key: `m${g}.p${k}`, label: `${label}: quyền thao tác số ${k + 1}` })) })),
     cells: { 'm0.p0': { role0: { locked: true, note: 'Không tự sửa role của mình' }, role2: { na: true } } },
     value: { role0: ['m0.p0', 'm0.p1', 'm1.p3'], role1: ['m0.p2'] },
+  });
+  // v0.95.0: override mode — 6 users × 12 permissions in 2 groups; inherited hints on column u0, a locked cell, grant + deny
+  const ovUsers = ['Nguyễn Văn An', 'Trần Thị Bình', 'Lê Hoàng Cường', 'Phạm Minh Dũng', 'Võ Thị Hồng Nhung', 'Đặng Quốc Khánh'];
+  const ovCells = { 'o0.p0': { u0: { inherited: true, locked: true, note: 'Quyền chủ tài khoản' } } };
+  for (let k = 1; k < 6; k++) ovCells[`o0.p${k}`] = { u0: { inherited: k % 2 === 1 } };
+  root.querySelector('#rsp-matrix-ov').setData({
+    columns: ovUsers.map((label, i) => ({ key: `u${i}`, label })),
+    rows: ['Sản phẩm', 'Đơn hàng'].map((label, g) => ({ key: `o${g}`, label,
+      rows: Array.from({ length: 6 }, (_, k) => ({ key: `o${g}.p${k}`, label: `${label}: quyền riêng số ${k + 1}` })) })),
+    cells: ovCells,
+    value: { u0: { 'o0.p1': 'grant', 'o0.p2': 'deny' }, u1: { 'o1.p0': 'deny' } },
   });
   // v0.39.0: filter bar → chips → controlled server table (column menu, one hidden column)
   root.querySelector('#rsp-filter-status').options = [{ value: '', label: 'Tất cả' }, { value: 'new', label: 'Chờ xác nhận' }, { value: 'ship', label: 'Đang giao' }];

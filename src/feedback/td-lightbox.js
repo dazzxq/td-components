@@ -15,6 +15,10 @@
  * v0.24.0 (docs/internal/plans/v0.24.0-lightbox-nav.md): side navigation (the SAME prev / next buttons move between the
  * toolbar and a nav mount in the column — `data-nav="side|side-compact|toolbar"`), adjacent preload, an error state with
  * Retry / Next, an optional filmstrip (`filmstrip: false|true|'auto'`, `item.thumb`) and a direction-aware slide.
+ *
+ * v0.95.0 (docs/internal/plans/v0.95.0-small-kit.md §6): `preload` also takes `{ ahead, behind, allowCrossOrigin }`
+ * (0..5 positions each side, default ±1; a cross-origin gate hook run after `isAllowedUrl`); in-flight requests that
+ * leave the window are cancelled on every slide change; a preload in flight is taken over by the main load.
  */
 
 import { lockScroll, holdGutterColor } from '../utils/scroll-lock.js';
@@ -29,6 +33,7 @@ import { tdIcon } from '../icons/td-icon.js';
 import { matchesBelow, isCoarsePointer, isShort } from '../utils/breakpoints.js';
 import { ensurePressStates } from '../utils/press.js';
 import { axisLock, dragSlop, releaseVelocity, rubberBand, swipeOutcome } from '../utils/gesture.js';
+import { normalizePreload, preloadWindow } from '../utils/preload-window.js';
 
 const DEFAULT_LABELS = {
   dialog: 'Trình xem ảnh',
@@ -1130,28 +1135,68 @@ function showImage(src, item, token) {
   img.setAttribute('data-loading', '');
   spinner.hidden = true;
   const spinTimer = setTimeout(() => { if (token === renderToken) spinner.hidden = false; }, 1000);
-  const pre = new Image();
-  pre.onload = () => {
+  const finish = (ok) => {
     clearTimeout(spinTimer);
     if (token !== renderToken) return; // slide changed meanwhile
-    img.src = src;
-    img.alt = item.alt || '';
     spinner.hidden = true;
     img.removeAttribute('data-loading');
-    startSlide(token);       // N5: the new image is displayable now
-    preloadAdjacent(token);  // N2
-  };
-  pre.onerror = () => {
-    clearTimeout(spinTimer);
-    if (token !== renderToken) return;
-    spinner.hidden = true;
-    img.removeAttribute('data-loading');
+    if (ok) {
+      img.src = src;
+      img.alt = item.alt || '';
+      startSlide(token);       // N5: the new image is displayable now
+      preloadAdjacent(token);  // N2
+      return;
+    }
     img.removeAttribute('src');
     img.hidden = true;
     showError();             // N3 (was: an empty frame)
     startSlide(token);
   };
-  pre.src = src;
+  // v0.95.0 (§6.2): a request for this src still in flight (a preload, or the main load of a slide passed by) is taken
+  // over — no duplicate request. A speculative one (no Referer) that fails gets ONE retry with a normal main load
+  // (an anti-hotlink CDN may refuse a request without Referer); a second failure is the error state.
+  const rec = session.preloads.get(src);
+  if (rec && rec.state === 'loading') {
+    rec.owner = 'main';
+    rec.onSettle = (ok) => {
+      if (ok || !rec.speculative) { finish(ok); return; }
+      if (token !== renderToken) { clearTimeout(spinTimer); return; }
+      loadMain(src, finish);
+    };
+    return;
+  }
+  loadMain(src, finish);
+}
+
+/**
+ * v0.95.0 (§6.2): one record per Image in flight (preloads AND main loads), keyed by src in `session.preloads`.
+ * The handlers are set ONCE here and only mark the state, then call `rec.onSettle` (the display logic of the slide
+ * that currently owns it) — so a record handed between owners is always marked done / error correctly.
+ * @param {string} src
+ * @param {'preload'|'main'} owner
+ * @param {boolean} speculative true for a preload (no Referer)
+ */
+function track(src, owner, speculative) {
+  const image = new Image();
+  if (speculative) image.referrerPolicy = 'no-referrer';
+  const rec = { src, image, state: 'loading', owner, speculative, onSettle: null };
+  const settle = (ok) => {
+    rec.state = ok ? 'done' : 'error';
+    const fn = rec.onSettle;
+    rec.onSettle = null;
+    if (fn) fn(ok);
+  };
+  image.onload = () => settle(true);
+  image.onerror = () => settle(false);
+  session.preloads.set(src, rec);
+  return rec;
+}
+
+/** A main load (default Referer, like before v0.95.0): a new Image whose settle runs `onSettle`. */
+function loadMain(src, onSettle) {
+  const rec = track(src, 'main', false);
+  rec.onSettle = onSettle;
+  rec.image.src = src;
 }
 
 /* ------------------------------------------------------------------ v0.24.0 N3: error state */
@@ -1187,47 +1232,87 @@ function retryImage() {
 
 /* ------------------------------------------------------------------ v0.24.0 N2: adjacent preload */
 
-/** Drop every speculative preload of the session (only on close / session replacement). */
+/** Drop every request of the session (close / session replacement): in-flight ones are cancelled. */
 function cancelPreloads() {
   if (!session || !session.preloads) return;
-  for (const { image } of session.preloads.values()) {
-    image.onload = null;
-    image.onerror = null;
-    image.src = '';
+  for (const rec of session.preloads.values()) {
+    rec.onSettle = null;
+    rec.image.onload = null;
+    rec.image.onerror = null;
+    rec.image.src = '';
   }
   session.preloads.clear();
 }
 
-/** `preload` option (v0.24.0 SEC-01): false | 'same-origin' (default) | 'all'. */
-function preloadMode(opt) {
-  if (opt === false) return false;
-  return opt === 'all' ? 'all' : 'same-origin';
+/** Save-Data on (v0.24.0): no speculative request at all. */
+function saveDataOn() {
+  try { return !!(navigator.connection && navigator.connection.saveData); } catch { return false; }
 }
 
 /**
- * After the current image loaded: fetch the previous + next IMAGE (wrapping) so the next step is instant. Records are
- * keyed by the stable (canonical) source string and kept for the whole session — each neighbour is requested at most
- * once. Speculative requests carry no Referer; cross-origin ones only with `preload: 'all'`.
+ * v0.95.0 SEC (§6.4): may this (already `isAllowedUrl`-approved) image be fetched speculatively? Same origin always;
+ * another origin only with `'all'` / `allowCrossOrigin: true`, or when the `allowCrossOrigin(url, item)` hook says so
+ * (a throw → no, never logged: the URL may be signed). It only narrows `'all'`, never widens the display policy.
+ */
+function preloadAllowed(it) {
+  if (sameOrigin(it.src)) return true;
+  const cross = session.preload && session.preload.cross;
+  if (cross === 'all') return true;
+  if (typeof cross !== 'function') return false;
+  try { return !!cross(it.src, { ...it }); } catch { return false; }
+}
+
+/** The srcs to preload around the current position, nearest first (+1, −1, +2, …), gates applied. */
+function preloadTargets() {
+  const cfg = session.preload;
+  const n = session.items.length;
+  if (!cfg || n < 2 || saveDataOn()) return [];
+  const out = [];
+  for (const i of preloadWindow(session.index, n, cfg.ahead, cfg.behind)) {
+    const it = session.items[i];
+    if (!it || it.type !== 'image' || !it.src || out.includes(it.src)) continue;
+    if (preloadAllowed(it)) out.push(it.src);
+  }
+  return out;
+}
+
+/**
+ * v0.95.0 (§6.2, D7 / D13): on every slide change, cancel the requests still in flight that left the window (the
+ * current src + the preload targets) — fast swiping no longer leaves old neighbours / passed main loads downloading.
+ * An in-flight main load of a slide passed by that is still in the window becomes a preload (kept, not re-requested).
+ * Finished records are kept for the whole session (never requested again).
+ */
+function prunePreloads() {
+  if (!session || !session.preloads.size) return;
+  const item = session.items[session.index];
+  const keep = new Set(preloadTargets());
+  const cur = item.type === 'video' ? item.poster : item.src;
+  if (cur) keep.add(cur);
+  for (const [src, rec] of session.preloads) {
+    if (rec.state !== 'loading') continue;
+    if (keep.has(src)) {
+      if (rec.owner === 'main') { rec.owner = 'preload'; rec.onSettle = null; }
+      continue;
+    }
+    rec.onSettle = null;
+    rec.image.onload = null;
+    rec.image.onerror = null;
+    rec.image.src = '';
+    session.preloads.delete(src);
+  }
+}
+
+/**
+ * After the current image loaded: fetch the images of the preload window (default ±1, wrapping; v0.95.0 `{ ahead,
+ * behind }`) so the next step is instant. Records are keyed by the stable (canonical) source string; a finished one is
+ * never requested again in the session. Speculative requests carry no Referer; cross-origin ones only with
+ * `preload: 'all'` or `allowCrossOrigin`.
  */
 function preloadAdjacent(token) {
   if (!session || token !== renderToken) return;
-  const mode = preloadMode(session.opts.preload);
-  if (!mode) return;
-  let saveData = false;
-  try { saveData = !!(navigator.connection && navigator.connection.saveData); } catch { saveData = false; }
-  const n = session.items.length;
-  if (saveData || n < 2) return;
-  for (const d of [-1, 1]) {
-    const i = (session.index + d + n) % n;
-    const it = session.items[i];
-    if (i === session.index || !it || it.type !== 'image' || !it.src) continue;
-    const src = it.src;
+  for (const src of preloadTargets()) {
     if (session.preloads.has(src)) continue;
-    if (mode === 'same-origin' && !sameOrigin(src)) continue;
-    const image = new Image();
-    image.referrerPolicy = 'no-referrer';
-    image.src = src;
-    session.preloads.set(src, { src, image });
+    track(src, 'preload', true).image.src = src;
   }
 }
 
@@ -1453,6 +1538,7 @@ function show(idx, dir = 0) {
   clearSlide();
   hideError();
   const token = ++renderToken;
+  prunePreloads(); // v0.95.0: cancel in-flight requests that left the window
 
   ui.counter.textContent = n > 1 ? session.labels.counter(session.index + 1, n) : '';
   ui.caption.textContent = item.caption || '';
@@ -1638,7 +1724,9 @@ function openViewer(items, options = {}) {
     videoAbort: null,
     isVideo: false,
     slideDir: 0,
-    preloads: new Map(), // src → { src, image } (v0.24.0: stable records for the whole session)
+    preload: normalizePreload(opts.preload), // v0.95.0: false | { ahead, behind, cross }
+    // src → { src, image, state, owner, speculative, onSettle } — every Image in flight (preload + main, v0.95.0)
+    preloads: new Map(),
     filmstrip: wantsFilmstrip(opts.filmstrip, list.length),
     handle: null,
     groupEl: typeof Element !== 'undefined' && opts.groupEl instanceof Element ? opts.groupEl : null,

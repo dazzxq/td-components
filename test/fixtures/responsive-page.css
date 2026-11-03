@@ -113,3 +113,32 @@
 	--td-text-sm: 1.75rem;
 	--td-text-base: 2rem;
 }
+
+/* v0.95.0: .td-card in the SITE's own container-query grid (like dwp) — the kit card sets no container itself */
+.rsp-card-cq {
+	container-type: inline-size;
+}
+
+.rsp-card-list,
+.rsp-card-plain {
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+
+.rsp-card-list {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+}
+
+@container (width >= 600px) {
+	.rsp-card-list {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+}
+
+.rsp-sel-day {
+	margin: 0;
+	font-size: 1rem;
+}

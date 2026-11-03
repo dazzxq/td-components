@@ -12,7 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { HAS_PHP, PHP_BIN, ROOT, runPhp } from './php.mjs';
-import { MATRIX_CASES, validateMatrix, canonicalMatrix, matrixEntries } from '../../src/utils/check-matrix-model.js';
+import { MATRIX_CASES, validateMatrix, canonicalMatrix, matrixEntries, OVERRIDE_CASES, OverrideState, overrideEntries } from '../../src/utils/check-matrix-model.js';
 import { renderMatrix, renderMatrixState, MATRIX_LABELS } from '../../src/utils/check-matrix-render.js';
 import { CHECK_MATRIX_FIXTURE_FILE, renderCheckMatrixFixture } from '../ssr/ssr.mjs';
 import { denseMatrixData } from '../fixtures/check-matrix-dense.js';
@@ -35,19 +35,26 @@ function phpCalls(calls, ini = []) {
 /** JSON-able args of a case (undefined → null) */
 const args = (d) => [d.columns ?? null, d.rows ?? null, d.cells ?? null, d.value ?? null];
 
-/** The inputs a browser submits from this markup, in document order. */
+/** The inputs a browser submits from this markup, in document order (v0.95.0: a <select> sends its selected option). */
 function submitted(html) {
   const out = [];
-  for (const [tag] of html.matchAll(/<input\b[^>]*>/g)) {
+  for (const [tag, body] of html.matchAll(/<input\b[^>]*>|<select\b[^>]*>([\s\S]*?)<\/select>/g)) {
     const attr = (n) => {
-      const m = new RegExp(`\\s${n}(?:="([^"]*)")?(?=[\\s>])`).exec(tag);
+      const head = /^<[^>]*>/.exec(tag)[0];
+      const m = new RegExp(`\\s${n}(?:="([^"]*)")?(?=[\\s>])`).exec(head);
       return m ? (m[1] ?? '') : null;
     };
     const name = attr('name');
     if (name === null || attr('disabled') !== null) continue;
+    const un = (s) => s.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    if (tag.startsWith('<select')) {
+      const opts = [...body.matchAll(/<option value="([^"]*)"( selected)?>/g)];
+      const sel = opts.find((o) => o[2]) ?? opts[0];
+      out.push([un(name), un(sel[1])]);
+      continue;
+    }
     const type = attr('type');
     if (type === 'checkbox' && attr('checked') === null) continue;
-    const un = (s) => s.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
     out.push([un(name), un(attr('value') ?? 'on')]);
   }
   return out;
@@ -210,6 +217,116 @@ describe('php/td.php — td_check_matrix (v0.47.0, contract check-matrix@1)', op
     const [r] = runPhp([{ fn: 'td_check_matrix', args: ['p', COLS, ROWS, VALUE, { cells: CELLS }] }], { baseUrl: '/' });
     assert.equal(r.error, undefined);
     assert.match(r.out, /^<td-check-matrix data-td-ssr="check-matrix@1" id="td-cm-\d+"/);
+  });
+
+  // ---- v0.95.0 (plan docs/internal/plans/v0.95.0-check-matrix.md §13.3, ADR 0040): 'mode' => 'override', check-matrix@2
+  const argsO = (d) => [...args(d), 'override'];
+  /** The JS render of the override mode: bulk cells show the state of their set from the defaults (the component does the same) */
+  const jsSsrO = (model, o = {}) => {
+    const st = new OverrideState(model, model.value, model.value);
+    return renderMatrix({ model, def: model.value, collapsed: model.groups.map((g) => g.collapsed), id: o.id ?? 'm', label: o.label ?? '',
+      ariaLabel: o.ariaLabel ?? '', labels: MATRIX_LABELS, layout: o.layout ?? 'auto', disabled: !!o.disabled, ssr: { name: o.name ?? 'p' },
+      bulkState: (kind, a, b) => st.bulkState(kind, a, b) });
+  };
+  const OCOLS = [{ key: 'owner', label: 'Chủ <cửa hàng>', description: 'Toàn quyền' }, { key: 'sales', label: "Bán 'hàng'" }, { key: 0, label: 'Số 0', locked: true }];
+  const OCELLS = { 'cat.del': { owner: { locked: true, note: 'Không tự <sửa> role', inherited: true }, sales: { na: true } },
+    'dash.view': { owner: { inherited: true }, sales: { inherited: false } }, 7: { sales: { note: 'ghi chú' } } };
+  const OVALUE = { owner: { 'cat.del': 'deny', 'dash.view': 'grant' }, sales: { 'ord.list': 'grant', 7: 'deny' }, 0: { 7: 'grant' } };
+
+  test('override: td__check_matrix_data == validateMatrix(…, "override") on OVERRIDE_CASES (reason; ok → canonical, markup, FormData)', () => {
+    const cases = OVERRIDE_CASES.filter((c) => c.json !== false);
+    const { out } = phpCalls(cases.map((c) => ({ fn: 'td__check_matrix_data', args: argsO(c.data) })));
+    cases.forEach((c, i) => {
+      assert.equal(out[i].reason, c.phpReason ?? c.reason, `php reason: ${c.name}`);
+      assert.equal(out[i].ok, (c.phpReason ?? c.reason) === null, c.name);
+    });
+    const okCases = cases.filter((c) => c.reason === null);
+    const { out: html, stderr } = phpCalls(okCases.map((c) => ({ fn: 'td_check_matrix',
+      args: ['p', c.data.columns, c.data.rows, c.data.value ?? [], { id: 'm', mode: 'override', cells: c.data.cells ?? null }] })));
+    assert.equal(stderr, '');
+    okCases.forEach((c, i) => {
+      const model = validateMatrix(c.data, 'override').model;
+      const { open, inner } = hostSplit(html[i]);
+      assert.ok(open.startsWith('<td-check-matrix data-td-ssr="check-matrix@2" id="m" name="p" mode="override" data="'), open);
+      assert.deepEqual(dataAttr(open), { v: 2, ...JSON.parse(JSON.stringify(canonicalMatrix(model))) }, `data: ${c.name}`);
+      assert.equal(inner, jsSsrO(model), `markup: ${c.name}`);
+      assert.deepEqual(submitted(html[i]), overrideEntries('p', model, model.value), `FormData: ${c.name}`);
+      if (c.entries) assert.deepEqual(submitted(html[i]), c.entries, `entries: ${c.name}`);
+    });
+  });
+
+  test('override: full grid (groups, locks, n/a, notes, inherited hints, escaping) == renderMatrix({ ssr }), selects + locked hidden', () => {
+    const { out: [html], stderr } = phpCalls([{ fn: 'td_check_matrix', args: ['role[perms]', OCOLS, ROWS, OVALUE,
+      { id: 'pm', mode: 'override', cells: OCELLS, label: 'Quyền <vai trò>', layout: 'column', attrs: { mode: 'check', 'data-x': '1' } }] }]);
+    assert.equal(stderr, '');
+    const model = validateMatrix({ columns: OCOLS, rows: ROWS, cells: OCELLS, value: OVALUE }, 'override').model;
+    const { open, inner } = hostSplit(html);
+    assert.equal(inner, jsSsrO(model, { id: 'pm', name: 'role[perms]', label: 'Quyền <vai trò>', layout: 'column' }));
+    assert.ok(open.includes(' mode="override" ') && !open.includes('mode="check"') && open.includes(' data-x="1"'), open);
+    assert.ok(!/ style="/.test(html), 'never a style attribute');
+    // locked cat.del / owner: disabled select without a name + the hidden input carrying its state
+    assert.ok(html.includes('<select class="td-check-matrix__select" aria-labelledby="pm-r2 pm-c0" aria-describedby="pm-n0" disabled>'
+      + '<option value="inherit">Kế thừa (có quyền)</option><option value="grant">Cấp quyền</option><option value="deny" selected>Từ chối</option></select>'
+      + '<input type="hidden" name="role[perms][owner][cat.del]" value="deny">'), 'locked cell');
+    assert.ok(html.includes('<option value="inherit" selected>Kế thừa (không có quyền)</option>'), 'inherited: false hint');
+    const sent = submitted(html);
+    assert.deepEqual(sent, overrideEntries('role[perms]', model, model.value));
+    assert.deepEqual(sent.slice(0, 3), [['role[perms][owner]', ''], ['role[perms][sales]', ''], ['role[perms][0]', '']]);
+    assert.deepEqual(sent.at(-1), ['role[perms][_v]', '2']);
+    assert.ok(html.includes('id="pm-keys">Space: đổi trạng thái.'), 'the keys line');
+    assert.ok(html.includes('<button type="button" class="td-btn td-btn--ghost td-btn--sm td-check-matrix__reset" disabled>Đặt lại về kế thừa</button>'));
+  });
+
+  test('override: PHP parse_str reads every applicable cell (markers first, `cat.view` dot kept, 12 vs 012); max_input_vars drops `_v`', () => {
+    const cols = [{ key: 'a' }, { key: 'b' }];
+    const rows = [{ key: 'cat.view' }, { key: 12 }, { key: '012' }];
+    const { out: [html] } = phpCalls([{ fn: 'td_check_matrix', args: ['perms', cols, rows, { a: { 'cat.view': 'grant', 12: 'deny' }, b: [] },
+      { mode: 'override', cells: { '012': { b: { na: true } } } }] }]);
+    const body = new URLSearchParams(submitted(html)).toString();
+    const parse = (ini) => {
+      const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-d', 'log_errors=0', ...ini, '-r',
+        'parse_str(stream_get_contents(STDIN), $o); echo json_encode($o);'], { input: body, encoding: 'utf8' });
+      return { out: JSON.parse(r.stdout), stderr: r.stderr };
+    };
+    const full = parse([]);
+    // the marker `perms[a]=''` comes first: the child keys that follow turn it into an array
+    assert.deepEqual(full.out, { perms: { a: { 'cat.view': 'grant', 12: 'deny', '012': 'inherit' }, b: { 'cat.view': 'inherit', 12: 'inherit' }, _v: '2' } });
+    const cut = parse(['-d', 'max_input_vars=6']);
+    assert.equal(cut.out.perms._v, undefined, 'the sentinel is the first entry lost');
+    assert.match(cut.stderr, /max_input_vars/);
+  });
+
+  test('override: disabled → nothing submitted, same markup as JS; Td::SSR_CHECK_MATRIX_OVERRIDE', () => {
+    const { out: [html, ver] } = phpCalls([
+      { fn: 'td_check_matrix', args: ['perms', OCOLS, ROWS, OVALUE, { id: 'd', mode: 'override', cells: OCELLS, disabled: true }] },
+      { fn: 'constant', args: ['TdComponents\\Td::SSR_CHECK_MATRIX_OVERRIDE'] },
+    ]);
+    assert.equal(ver, 'check-matrix@2');
+    assert.deepEqual(submitted(html), []);
+    const model = validateMatrix({ columns: OCOLS, rows: ROWS, cells: OCELLS, value: OVALUE }, 'override').model;
+    assert.equal(hostSplit(html).inner, jsSsrO(model, { id: 'd', name: 'perms', disabled: true }));
+  });
+
+  test('override: unknown mode → check + one sanitised warning (length only, never the raw value); fail closed like check mode', () => {
+    const secret = 'SECRET-mode\u2028"x';
+    const { out, stderr } = phpCalls([
+      { fn: 'td_check_matrix', args: ['p', OCOLS, ROWS, [], { id: 'u', mode: secret }] },
+      { fn: 'td_check_matrix', args: ['p', OCOLS, ROWS, [], { id: 'v', mode: 'check' }] },
+      { fn: 'td_check_matrix', args: ['p', OCOLS, ROWS, { owner: ['dash.view'] }, { id: 'w', mode: 'override', label: 'L' }] },
+      { fn: 'td_check_matrix', args: ['p', OCOLS, ROWS, { owner: { 'dash.view': 'Grant' } }, { id: 'x', mode: 'override', label: 'L' }] },
+    ]);
+    assert.match(out[0], /^<td-check-matrix data-td-ssr="check-matrix@1" id="u"/);
+    assert.ok(!out[0].includes('mode='), 'no mode attribute');
+    assert.match(out[1], /^<td-check-matrix data-td-ssr="check-matrix@1" id="v"/);
+    assert.equal((stderr.match(/Warning: +td_check_matrix: unknown mode/g) || []).length, 1, stderr);
+    assert.ok(!stderr.includes('\u2028'), 'non-ASCII dropped from the warning');
+    assert.match(stderr, /unknown mode "SECRET-mode\\"x" \(\d+ bytes\)/);
+    for (const [i, id] of [[2, 'w'], [3, 'x']]) {
+      assert.ok(!/<input|<select class="td-check-matrix__select"/.test(out[i]), out[i]);
+      assert.ok(out[i].endsWith(`${renderMatrixState({ id, label: 'L', labels: MATRIX_LABELS }, 'broken')}</td-check-matrix>`), out[i]);
+    }
+    assert.match(stderr, /value-unknown-row/);
+    assert.match(stderr, /value-state/);
   });
 
   test('test/ssr/fixtures/check-matrix.html (browser fixture) is up to date', () => {

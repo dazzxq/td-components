@@ -550,6 +550,37 @@
 		padding-inline: 0.5rem;
 	}
 
+	/* v0.95.0 (plan E): ≥ 2 failed dropped files → one strip right before the grid (td-alert--danger look) */
+	.td-media-picker__upload-failed {
+		flex: none;
+		flex-wrap: wrap;
+		align-items: center;
+	}
+
+	.td-media-picker__upload-failed[hidden] {
+		display: none;
+	}
+
+	.td-media-picker__upload-failed-text {
+		flex: 1 1 12rem;
+		min-width: 0;
+	}
+
+	.td-media-picker__upload-failed-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+	}
+
+	.td-media-picker__upload-failed-actions .td-btn[hidden] {
+		display: none;
+	}
+
+	/* v0.95.0 (plan F): "Đã có trong thư viện" — an exact-reused drop resolved to this asset */
+	.td-media-picker__reused {
+		align-self: flex-start;
+	}
+
 	/* skeleton (decision 14): 30 cards — thumb 3:2 + 2 lines */
 	.td-media-picker__skeleton {
 		display: grid;
@@ -997,7 +1028,8 @@
 		}
 
 		/* v0.93.0 (ADR 0019): 44px touch targets on the dropped-file cards */
-		.td-media-picker__upload-actions .td-btn {
+		.td-media-picker__upload-actions .td-btn,
+		.td-media-picker__upload-failed-actions .td-btn {
 			min-width: 44px;
 			min-height: 44px;
 		}

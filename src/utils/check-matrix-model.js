@@ -10,6 +10,10 @@
  * - `MatrixState` — the live ticks + incremental counters (QĐ 8: O(1) per cell) + bulk rules (QĐ 7) + FormData (QĐ 10–12)
  *   + restore state (QĐ 14).
  *
+ * - v0.95.0 `mode = 'override'` (plan docs/internal/plans/v0.95.0-check-matrix.md): three states per cell (inherit /
+ *   grant / deny), `OverrideState`, `overrideEntries()` (`name[col][row]=state` for EVERY applicable cell + `_v=2`).
+ *   The check mode (`MatrixState`, `matrixEntries`, `MATRIX_CASES`) is untouched.
+ *
  * Cell index = row × columnCount + column. Rows are the LEAF rows in display order; groups (one level) own a contiguous
  * range [start, end) of them.
  */
@@ -31,6 +35,10 @@ export const MATRIX_LIMITS = Object.freeze({
 export function matrixJsonBytes(str) {
   return new TextEncoder().encode(String(str)).length;
 }
+
+/** v0.95.0: the two modes (`mode` attribute) and the three override states (index = the state code 0 / 1 / 2). */
+export const MATRIX_MODES = Object.freeze(['check', 'override']);
+export const OVERRIDE_STATES = Object.freeze(['inherit', 'grant', 'deny']);
 
 /** Bit flags of a cell. */
 const LOCK = 1;
@@ -136,20 +144,24 @@ function header(def, kind, keys) {
 }
 
 /**
- * The ONE validation path (QĐ 6). Never throws.
+ * The ONE validation path (QĐ 6). Never throws. v0.95.0: `mode = 'override'` reads `value` as
+ * `{ col: { row: 'inherit'|'grant'|'deny' } }` (model.value = state codes) and the cell flag `inherited` (model.inh:
+ * 0 unknown, 1 yes, 2 no); every other rule is shared.
  * @param {{ columns?: unknown, rows?: unknown, cells?: unknown, value?: unknown }} data
+ * @param {'check'|'override'} [mode]
  * @returns {{ ok: true, model: MatrixModel, reason: null } | { ok: false, model: null, reason: string }}
  */
-export function validateMatrix(data) {
+export function validateMatrix(data, mode = 'check') {
   try {
-    return { ok: true, model: build(data || {}), reason: null };
+    return { ok: true, model: build(data || {}, mode === 'override' ? 'override' : 'check'), reason: null };
   } catch (e) {
     if (e instanceof Fail) return { ok: false, model: null, reason: e.reason };
     throw e;
   }
 }
 
-function build({ columns, rows, cells, value }) {
+function build({ columns, rows, cells, value }, mode) {
+  const override = mode === 'override';
   if (!Array.isArray(columns) || !columns.length) fail('columns-shape');
   if (!Array.isArray(rows) || !rows.length) fail('rows-shape');
   if (columns.length > MATRIX_LIMITS.columns) fail('too-many-columns');
@@ -202,6 +214,7 @@ function build({ columns, rows, cells, value }) {
   const flags = new Uint8Array(R * C);
   const cellLock = new Uint8Array(R * C); // the cell's OWN locked flag (canonical data keeps it apart from row / column locks)
   const notes = new Map();
+  const inh = override ? new Uint8Array(R * C) : null; // v0.95.0: inherited value shown (0 unknown, 1 yes, 2 no)
   if (!isEmptyMap(cells)) {
     if (!isPlain(cells)) fail('cells-shape');
     for (const rk of Object.keys(cells)) {
@@ -217,9 +230,13 @@ function build({ columns, rows, cells, value }) {
         const locked = flag(cell.locked);
         const na = flag(cell.na);
         if (locked === FLAG_ERR || na === FLAG_ERR) fail('cells-flag');
+        // v0.95.0: `inherited` only means something in the override mode (check mode: an unknown field, ignored)
+        const inherited = override && cell.inherited !== undefined && cell.inherited !== null ? cell.inherited : null;
+        if (inherited !== null && typeof inherited !== 'boolean') fail('cells-flag');
         const note = text(cell.note, MATRIX_LIMITS.text);
         if (note === null) fail('cells-note');
         const i = r * C + c;
+        if (inh) inh[i] = inherited === null ? 0 : inherited ? 1 : 2;
         cellLock[i] = locked ? 1 : 0;
         flags[i] = (locked ? LOCK : 0) | (na ? NA : 0);
         if (note) notes.set(i, note);
@@ -230,6 +247,10 @@ function build({ columns, rows, cells, value }) {
     for (let c = 0; c < C; c++) if (leaves[r].locked || cols[c].locked) flags[r * C + c] |= LOCK;
   }
 
+  if (override) {
+    const st = overrideValue(value, rowIndex, colIndex, flags, R, C);
+    return { mode, columns: cols, rows: leaves, groups, segments, flags, cellLock, notes, value: st, inh, rowIndex, colIndex, groupIndex };
+  }
   // value (ticked cells, by column)
   const on = new Uint8Array(R * C);
   if (!isEmptyMap(value)) {
@@ -250,7 +271,37 @@ function build({ columns, rows, cells, value }) {
       }
     }
   }
-  return { columns: cols, rows: leaves, groups, segments, flags, cellLock, notes, value: on, rowIndex, colIndex, groupIndex };
+  return { mode, columns: cols, rows: leaves, groups, segments, flags, cellLock, notes, value: on, rowIndex, colIndex, groupIndex };
+}
+
+/**
+ * v0.95.0 override `value` (plan §5): `{ col: { row: 'inherit'|'grant'|'deny' } }`; a missing column / row = inherit.
+ * Exact strings only (no trim, no case folding). An empty array counts as an empty map (PHP cannot tell `[]` from `{}`);
+ * any other array (the check-mode `{ col: [row…] }` shape) → value-shape.
+ * @returns {Uint8Array} state codes
+ */
+function overrideValue(value, rowIndex, colIndex, flags, R, C) {
+  const st = new Uint8Array(R * C);
+  if (isEmptyMap(value)) return st;
+  if (!isPlain(value)) fail('value-shape');
+  for (const ck of Object.keys(value)) {
+    const c = colIndex.get(ck);
+    if (c === undefined) fail('value-unknown-column');
+    const map = value[ck];
+    if (Array.isArray(map) && map.length === 0) continue;
+    if (!isPlain(map)) fail('value-shape');
+    for (const rk of Object.keys(map)) {
+      const r = rowIndex.get(rk);
+      if (r === undefined) fail('value-unknown-row');
+      const s = map[rk];
+      const code = typeof s === 'string' ? OVERRIDE_STATES.indexOf(s) : -1;
+      if (code < 0) fail('value-state');
+      const i = r * C + c;
+      if (code > 0 && (flags[i] & NA)) fail('value-na');
+      st[i] = code;
+    }
+  }
+  return st;
 }
 
 /** Is cell `i` not applicable? */
@@ -300,10 +351,12 @@ export function canonicalMatrix(model, on = model.value) {
       const na = (model.flags[i] & NA) !== 0;
       const lock = model.cellLock[i] === 1;
       const note = model.notes.get(i);
-      if (!na && !lock && !note) continue;
+      const inh = model.inh ? model.inh[i] : 0; // v0.95.0 (override only)
+      if (!na && !lock && !note && !inh) continue;
       const cell = {};
       if (lock) cell.locked = true;
       if (na) cell.na = true;
+      if (inh) cell.inherited = inh === 1;
       if (note) cell.note = note;
       const rk = model.rows[r].key;
       if (!Object.hasOwn(cells, rk)) cells[rk] = Object.create(null);
@@ -311,6 +364,18 @@ export function canonicalMatrix(model, on = model.value) {
     }
   }
   const value = Object.create(null);
+  if (model.mode === 'override') {
+    // v0.95.0: every column, a map of the overridden rows only (inherit is the default — never printed)
+    model.columns.forEach((col, c) => {
+      const map = Object.create(null);
+      for (let r = 0; r < model.rows.length; r++) {
+        const s = on[r * C + c];
+        if (s) map[model.rows[r].key] = OVERRIDE_STATES[s];
+      }
+      value[col.key] = map;
+    });
+    return { columns, rows, cells, value };
+  }
   model.columns.forEach((col, c) => {
     const list = [];
     for (let r = 0; r < model.rows.length; r++) if (on[r * C + c]) list.push(model.rows[r].key);
@@ -528,13 +593,253 @@ export class MatrixState {
 }
 
 /**
+ * v0.95.0 FormData of the override mode (plan §6): `name[col]=''` for every column (first, column order),
+ * `name[col][row]=inherit|grant|deny` for EVERY applicable cell incl. locked ones (row-major display order), `name[_v]=2`
+ * last. null (= no entry at all) when `name` is empty or ends with `[]`.
+ * @param {string} name
+ * @param {MatrixModel} model
+ * @param {Uint8Array} st state codes
+ * @returns {Array<[string, string]>|null}
+ */
+export function overrideEntries(name, model, st) {
+  if (typeof name !== 'string' || name === '' || name.endsWith('[]')) return null;
+  const C = model.columns.length;
+  const out = model.columns.map((c) => [`${name}[${c.key}]`, '']);
+  for (let r = 0; r < model.rows.length; r++) {
+    for (let c = 0; c < C; c++) {
+      const i = r * C + c;
+      if (!(model.flags[i] & NA)) out.push([`${name}[${model.columns[c].key}][${model.rows[r].key}]`, OVERRIDE_STATES[st[i]]]);
+    }
+  }
+  out.push([`${name}[_v]`, '2']);
+  return out;
+}
+
+/** The cell indexes of a bulk set (row-major display order). */
+function setCells(m, kind, a, b) {
+  const C = m.columns.length;
+  let r0 = 0;
+  let r1 = m.rows.length;
+  let c0 = 0;
+  let c1 = C;
+  if (kind === 'row') { r0 = a; r1 = a + 1; }
+  if (kind === 'column') { c0 = a; c1 = a + 1; }
+  if (kind === 'group' || kind === 'group-column') { r0 = m.groups[a].start; r1 = m.groups[a].end; }
+  if (kind === 'group-column') { c0 = b; c1 = b + 1; }
+  const out = [];
+  for (let r = r0; r < r1; r++) for (let c = c0; c < c1; c++) out.push(r * C + c);
+  return out;
+}
+
+/**
+ * v0.95.0 live states of the override mode (plan §7) + incremental counters (O(1) per cell, like MatrixState). Every set
+ * keeps `total` (applicable cells), `n[0..2]` (cells per state, locked included), `free` (applicable + not locked) and
+ * `f[0..2]` (free cells per state). A change list is `[[index, from, to], …]` (state codes).
+ */
+export class OverrideState {
+  /**
+   * @param {MatrixModel} model an override model (validateMatrix(…, 'override'))
+   * @param {Uint8Array} [st] live states (default: the model's value)
+   * @param {Uint8Array} [def] defaults (changed = st ≠ default; default: the model's value)
+   */
+  constructor(model, st = model.value, def = model.value) {
+    this.model = model;
+    this.st = Uint8Array.from(st);
+    this.def = Uint8Array.from(def);
+    const R = model.rows.length;
+    const C = model.columns.length;
+    const G = model.groups.length;
+    const mk = (n) => ({ total: new Int32Array(n), free: new Int32Array(n), n: [0, 1, 2].map(() => new Int32Array(n)), f: [0, 1, 2].map(() => new Int32Array(n)) });
+    this.rowS = mk(R);
+    this.colS = mk(C);
+    this.gcS = mk(G * C);
+    this.grpS = mk(G);
+    this.allS = mk(1);
+    this.changed = 0;
+    for (let r = 0; r < R; r++) {
+      for (let c = 0; c < C; c++) {
+        const i = r * C + c;
+        if (model.flags[i] & NA) continue;
+        const locked = (model.flags[i] & LOCK) !== 0;
+        const s = this.st[i];
+        this._each(r, c, (x, k) => {
+          x.total[k]++;
+          x.n[s][k]++;
+          if (!locked) {
+            x.free[k]++;
+            x.f[s][k]++;
+          }
+        });
+        if (s !== this.def[i]) this.changed++;
+      }
+    }
+  }
+
+  /** @private run `fn(stats, index)` for the 3–5 sets containing cell (r, c) */
+  _each(r, c, fn) {
+    const g = this.model.rows[r].group;
+    fn(this.rowS, r);
+    fn(this.colS, c);
+    fn(this.allS, 0);
+    if (g >= 0) {
+      fn(this.gcS, g * this.model.columns.length + c);
+      fn(this.grpS, g);
+    }
+  }
+
+  /** @private set one applicable cell (no lock check); the change, or null when already there */
+  _set(i, v) {
+    const was = this.st[i];
+    if (was === v) return null;
+    const C = this.model.columns.length;
+    const r = Math.floor(i / C);
+    const c = i - r * C;
+    const locked = (this.model.flags[i] & LOCK) !== 0;
+    this._each(r, c, (x, k) => {
+      x.n[was][k]--;
+      x.n[v][k]++;
+      if (!locked) {
+        x.f[was][k]--;
+        x.f[v][k]++;
+      }
+    });
+    const before = was !== this.def[i];
+    this.st[i] = v;
+    const now = v !== this.def[i];
+    if (before !== now) this.changed += now ? 1 : -1;
+    return [i, was, v];
+  }
+
+  /** Cell (r, c) can change (applicable + not locked). */
+  editable(r, c) {
+    return (this.model.flags[r * this.model.columns.length + c] & (LOCK | NA)) === 0;
+  }
+
+  /**
+   * Counters of a bulk set.
+   * @param {'all'|'row'|'column'|'group'|'group-column'} kind
+   * @returns {{ total: number, free: number, n: number[], f: number[] }}
+   */
+  stats(kind, a = 0, b = 0) {
+    const pick = (x, k) => ({ total: x.total[k], free: x.free[k], n: x.n.map((t) => t[k]), f: x.f.map((t) => t[k]) });
+    switch (kind) {
+      case 'row': return pick(this.rowS, a);
+      case 'column': return pick(this.colS, a);
+      case 'group': return pick(this.grpS, a);
+      case 'group-column': return pick(this.gcS, a * this.model.columns.length + b);
+      default: return pick(this.allS, 0);
+    }
+  }
+
+  /**
+   * Shown state of a bulk cell: every applicable cell (locked ones included) in one state → that state; else mixed.
+   * `disabled` = no unlocked applicable cell left.
+   * @returns {{ state: 'inherit'|'grant'|'deny'|'mixed', disabled: boolean }}
+   */
+  bulkState(kind, a, b) {
+    const s = this.stats(kind, a, b);
+    const one = s.n.findIndex((n) => n === s.total);
+    return { state: s.total === 0 ? 'inherit' : one >= 0 ? OVERRIDE_STATES[one] : 'mixed', disabled: s.free === 0 };
+  }
+
+  /** Free cells of a set that are not `inherit` (the reset button is enabled while > 0). */
+  resettable(kind, a, b) {
+    const s = this.stats(kind, a, b);
+    return s.free - s.f[0];
+  }
+
+  /**
+   * One cell to its next state in the cycle inherit → grant → deny → inherit (`dir` -1: backwards). null when locked /
+   * n/a.
+   * @returns {Array<[number, number, number]>|null}
+   */
+  cycle(r, c, dir = 1) {
+    if (!this.editable(r, c)) return null;
+    const i = r * this.model.columns.length + c;
+    return [this._set(i, (this.st[i] + (dir < 0 ? 2 : 1)) % 3)];
+  }
+
+  /** One cell to state `s` (0 / 1 / 2). null when locked / n/a; [] when already there. */
+  setCell(r, c, s) {
+    if (!this.editable(r, c)) return null;
+    const ch = this._set(r * this.model.columns.length + c, s);
+    return ch ? [ch] : [];
+  }
+
+  /** Every free cell of a set to state `s`; locked / n/a cells never change. */
+  setSet(kind, a, b, s) {
+    const out = [];
+    for (const i of setCells(this.model, kind, a, b)) {
+      if (this.model.flags[i] & (LOCK | NA)) continue;
+      const ch = this._set(i, s);
+      if (ch) out.push(ch);
+    }
+    return out;
+  }
+
+  /**
+   * Bulk click (plan §7, owner Q5): the free cells of the set all in one state → all to the next one (`dir` -1: the
+   * previous one); mixed → all to inherit. Locked / n/a cells never change (so the cycle never sticks).
+   */
+  cycleSet(kind, a, b, dir = 1) {
+    const s = this.stats(kind, a, b);
+    if (s.free === 0) return [];
+    const one = s.f.findIndex((n) => n === s.free);
+    return this.setSet(kind, a, b, one < 0 ? 0 : (one + (dir < 0 ? 2 : 1)) % 3);
+  }
+
+  /** The reset button: every free cell of the set back to inherit. */
+  resetSet(kind, a, b) {
+    return this.setSet(kind, a, b, 0);
+  }
+
+  /** Replace every state (programmatic / reset / restore; locked cells included — the caller decides). */
+  setAll(st) {
+    const out = [];
+    for (let i = 0; i < st.length; i++) {
+      if (this.model.flags[i] & NA) continue;
+      const ch = this._set(i, st[i] > 2 ? 0 : st[i]);
+      if (ch) out.push(ch);
+    }
+    return out;
+  }
+
+  /** Number of cells that differ from the defaults. */
+  get changedCount() { return this.changed; }
+
+  /** FormData entries for `name` (null = none). */
+  entries(name) { return overrideEntries(name, this.model, this.st); }
+
+  /** `{ col: { row: 'grant'|'deny' } }` with the app's ORIGINAL keys, every column (own properties only). */
+  valueObject() {
+    const m = this.model;
+    const C = m.columns.length;
+    return Object.fromEntries(m.columns.map((col, c) => {
+      const list = [];
+      for (let r = 0; r < m.rows.length; r++) {
+        const s = this.st[r * C + c];
+        if (s) list.push([m.rows[r].raw, OVERRIDE_STATES[s]]);
+      }
+      return [col.raw, Object.fromEntries(list)];
+    }));
+  }
+
+  /** Restore state: `{"v":2,"value":{col:{row:state}}}` with string keys. */
+  encodeState() {
+    return JSON.stringify({ v: 2, value: canonicalMatrix(this.model, this.st).value });
+  }
+}
+
+/**
  * Decode a restore state against the CURRENT data (QĐ 14): the value must pass validateMatrix with that data, else
- * null (the whole state is dropped).
+ * null (the whole state is dropped). v0.95.0: the override mode reads `{"v":2,…}` only (a `v:1` state is dropped, and
+ * the other way round).
  * @param {unknown} state
  * @param {{ columns: any, rows: any, cells: any }} data
+ * @param {'check'|'override'} [mode]
  * @returns {Uint8Array|null}
  */
-export function decodeMatrixState(state, data) {
+export function decodeMatrixState(state, data, mode = 'check') {
   if (typeof state !== 'string' || state.length > MATRIX_LIMITS.state) return null;
   let o;
   try {
@@ -542,8 +847,9 @@ export function decodeMatrixState(state, data) {
   } catch {
     return null;
   }
-  if (!isPlain(o) || o.v !== 1) return null;
-  const res = validateMatrix({ ...data, value: o.value });
+  const override = mode === 'override';
+  if (!isPlain(o) || o.v !== (override ? 2 : 1)) return null;
+  const res = validateMatrix({ ...data, value: o.value }, override ? 'override' : 'check');
   return res.ok ? res.model.value : null;
 }
 
@@ -628,4 +934,56 @@ export const MATRIX_CASES = Object.freeze([
   { name: 'cells: a Map', data: base({ cells: new Map([['dash.view', {}]]) }), reason: 'cells-shape', json: false },
   { name: 'cells: a class instance', data: base({ cells: new (class X { constructor() { this['dash.view'] = {}; } })() }), reason: 'cells-shape', json: false },
   { name: 'cells: a null-prototype object', data: base({ cells: Object.assign(Object.create(null), { 'dash.view': { owner: { na: true } } }) }), reason: null, json: false },
+].map((c) => Object.freeze(c)));
+
+/**
+ * v0.95.0 parity table of the override mode (plan §13.1): validateMatrix(data, 'override') in JS and
+ * td__check_matrix_data(…, 'override') in PHP give the same `reason`; the ok cases also the same canonical data and
+ * FormData entries for name `p` (`entries` when listed). `json: false` = not expressible in JSON (JS only).
+ */
+export const OVERRIDE_CASES = Object.freeze([
+  { name: 'minimal (every cell inherit)', data: base({}), reason: null,
+    entries: [['p[owner]', ''], ['p[sales]', ''], ['p[owner][dash.view]', 'inherit'], ['p[sales][dash.view]', 'inherit'],
+      ['p[owner][cat.view]', 'inherit'], ['p[sales][cat.view]', 'inherit'], ['p[owner][cat.del]', 'inherit'], ['p[sales][cat.del]', 'inherit'], ['p[_v]', '2']] },
+  { name: 'overrides + locked + n/a + inherited + notes', data: base({
+    cells: { 'dash.view': { owner: { inherited: true }, sales: { inherited: false, locked: true, note: 'Khoá' } }, 'cat.del': { sales: { na: true, inherited: true } } },
+    value: { owner: { 'cat.view': 'grant', 'cat.del': 'deny' }, sales: { 'dash.view': 'deny' } } }), reason: null,
+  entries: [['p[owner]', ''], ['p[sales]', ''], ['p[owner][dash.view]', 'inherit'], ['p[sales][dash.view]', 'deny'],
+    ['p[owner][cat.view]', 'grant'], ['p[sales][cat.view]', 'inherit'], ['p[owner][cat.del]', 'deny'], ['p[_v]', '2']] },
+  { name: 'explicit inherit is accepted and dropped; inherit on n/a ok', data: base({ cells: { 'cat.del': { sales: { na: true } } },
+    value: { owner: { 'dash.view': 'inherit' }, sales: { 'cat.del': 'inherit' } } }), reason: null },
+  { name: 'empty column map / empty array', data: base({ value: { owner: {}, sales: [] } }), reason: null },
+  { name: 'value: [] empty', data: base({ value: [] }), reason: null },
+  { name: 'int keys → strings', data: { columns: [{ key: 3, label: 'Ba' }], rows: [{ key: 0, label: 'Không' }, { key: 12 }], value: { 3: { 0: 'deny', 12: 'grant' } } },
+    reason: null, entries: [['p[3]', ''], ['p[3][0]', 'deny'], ['p[3][12]', 'grant'], ['p[_v]', '2']] },
+  { name: 'row / column / group locks: locked cells keep their state', data: { columns: [{ key: 'a', locked: true }, { key: 'b' }],
+    rows: [{ key: 'r1' }, { key: 'g', label: 'G', locked: true, rows: [{ key: 'r2' }] }], value: { a: { r1: 'grant' }, b: { r2: 'deny' } } }, reason: null,
+  entries: [['p[a]', ''], ['p[b]', ''], ['p[a][r1]', 'grant'], ['p[b][r1]', 'inherit'], ['p[a][r2]', 'inherit'], ['p[b][r2]', 'deny'], ['p[_v]', '2']] },
+  { name: 'keys like constructor / toString / assign', data: { columns: [{ key: 'assign' }, { key: 'constructor' }], rows: [{ key: 'constructor' }, { key: 'toString' }],
+    cells: { constructor: { assign: { inherited: true } } }, value: { constructor: { toString: 'deny' } } }, reason: null },
+  { name: 'cells: inherited null = unknown', data: base({ cells: { 'dash.view': { owner: { inherited: null } } } }), reason: null },
+  // structural errors → fail closed
+  // PHP cannot tell a list from a map: a list's int keys are row keys there (`0` is not a row → unknown row)
+  { name: 'value: check-mode shape (list of rows)', data: base({ value: { owner: ['dash.view'] } }), reason: 'value-shape', phpReason: 'value-unknown-row' },
+  { name: 'value: a string', data: base({ value: 'owner' }), reason: 'value-shape' },
+  { name: 'value: column map is a string', data: base({ value: { owner: 'grant' } }), reason: 'value-shape' },
+  { name: 'value: unknown column', data: base({ value: { admin: {} } }), reason: 'value-unknown-column' },
+  { name: 'value: unknown row', data: base({ value: { owner: { nope: 'grant' } } }), reason: 'value-unknown-row' },
+  { name: 'value: group key', data: base({ value: { owner: { cat: 'grant' } } }), reason: 'value-unknown-row' },
+  { name: 'value: state "Grant"', data: base({ value: { owner: { 'dash.view': 'Grant' } } }), reason: 'value-state' },
+  { name: 'value: state " grant"', data: base({ value: { owner: { 'dash.view': ' grant' } } }), reason: 'value-state' },
+  { name: 'value: state 1', data: base({ value: { owner: { 'dash.view': 1 } } }), reason: 'value-state' },
+  { name: 'value: state null', data: base({ value: { owner: { 'dash.view': null } } }), reason: 'value-state' },
+  { name: 'value: state true', data: base({ value: { owner: { 'dash.view': true } } }), reason: 'value-state' },
+  { name: 'value: deny on an n/a cell', data: base({ cells: { 'cat.view': { owner: { na: true } } }, value: { owner: { 'cat.view': 'deny' } } }), reason: 'value-na' },
+  { name: 'value: grant on an n/a cell', data: base({ cells: { 'cat.view': { owner: { na: true } } }, value: { owner: { 'cat.view': 'grant' } } }), reason: 'value-na' },
+  { name: 'cells: inherited "true"', data: base({ cells: { 'dash.view': { owner: { inherited: 'true' } } } }), reason: 'cells-flag' },
+  { name: 'cells: inherited 1', data: base({ cells: { 'dash.view': { owner: { inherited: 1 } } } }), reason: 'cells-flag' },
+  { name: 'value: __proto__ row from JSON', data: base({ value: JSON.parse('{"owner":{"__proto__":"grant"}}') }), reason: 'value-unknown-row' },
+  { name: 'value: __proto__ column from JSON', data: base({ value: JSON.parse('{"__proto__":{"dash.view":"grant"}}') }), reason: 'value-unknown-column' },
+  // the shared rules still apply
+  { name: 'duplicate row', data: { columns: COLS, rows: [{ key: 'x' }, { key: 'x' }] }, reason: 'duplicate-row' },
+  // JS only (not expressible in JSON)
+  { name: 'value: a Map', data: base({ value: new Map([['owner', {}]]) }), reason: 'value-shape', json: false },
+  { name: 'value: column map is a Map', data: base({ value: { owner: new Map([['dash.view', 'grant']]) } }), reason: 'value-shape', json: false },
 ].map((c) => Object.freeze(c)));

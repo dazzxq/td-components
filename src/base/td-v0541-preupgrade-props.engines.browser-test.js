@@ -89,6 +89,19 @@ const CASES = [
     },
   },
   { tag: 'td-media-grid', props: () => ({ onSelectChange: fn() }) },
+  // v0.95.0: selection group (reflects `selection-group`) on the grid; td-selection-bar's attribute properties
+  {
+    tag: 'td-media-grid', props: () => ({ selectionGroup: 'pp-lib' }),
+    check(el) { expect(el.getAttribute('selection-group')).to.equal('pp-lib'); },
+  },
+  {
+    tag: 'td-selection-bar', props: () => ({ group: 'pp-lib', label: 'Ảnh đã chọn', disabled: true }),
+    check(el) {
+      expect(el.getAttribute('group')).to.equal('pp-lib');
+      expect(el.hasAttribute('disabled')).to.equal(true);
+    },
+  },
+  { tag: 'td-selection-bar', props: () => ({ for: 'pp-a pp-b' }), check(el) { expect(el.getAttribute('for')).to.equal('pp-a pp-b'); } },
   {
     tag: 'td-hint', attrs: { id: 'pp-hint-$' }, before: '<input id="pp-ctl-$">',
     props: (n) => ({ htmlFor: `pp-ctl-${n}` }),
@@ -273,6 +286,16 @@ const CASES = [
     tag: 'td-check-matrix', attrs: { label: 'Quyền' },
     props: () => ({ columns: [{ key: 'r', label: 'Đọc' }], rows: [{ key: 'u', label: 'User' }], cells: {}, value: { r: ['u'] } }),
     check(el) { expect(el.textContent.includes('Đọc') && el.textContent.includes('User')).to.equal(true); },
+  },
+  // v0.95.0 (ADR 0040): `mode` (reflects the attribute) assigned before the upgrade, then override-shaped data
+  {
+    tag: 'td-check-matrix', attrs: { label: 'Quyền', name: 'pp' },
+    props: () => ({ mode: 'override', columns: [{ key: 'r', label: 'Đọc' }], rows: [{ key: 'u', label: 'User' }], value: { r: { u: 'deny' } } }),
+    skip: ['value'],
+    check(el) {
+      expect(el.getAttribute('mode')).to.equal('override');
+      expect(el.querySelector('.td-check-matrix__tri') !== null, 'tri-state buttons rendered').to.equal(true);
+    },
   },
   // v0.56.0: td-repeater `value` (data-td-field rows) — read back directly; then the hooks (value read through them → skipped)
   {

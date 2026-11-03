@@ -183,6 +183,9 @@ PHP in markup đúng hợp đồng (escape mọi giá trị):
 <p data-sel-bar hidden><span data-sel-count></span> <button type="button" data-sel-clear>Bỏ chọn</button></p>
 ```
 
+(Từ 0.95.0 có sẵn thanh thao tác [`<td-selection-bar>`](selection-bar.md) — đếm, ×, nút thao tác, dính đáy — thay cho
+`<p data-sel-bar>` tự làm dưới đây.)
+
 JS của site:
 
 ```js
@@ -270,6 +273,49 @@ Kéo thả sắp xếp dùng y như §7: bọc ô trong `<td-sortable role="none
 Giá trị inline gốc của site trên ảnh / phần tử mở được chụp lại ở lần ghi đầu và **trả lại đúng** (cả `!important`) khi
 ô bị gỡ khỏi lưới hoặc lưới bị gỡ khỏi DOM. Inline style khác của site không bị đụng tới.
 
+### 11. Nhóm nhiều lưới — `selection-group` (0.95.0)
+
+Thư viện ảnh theo ngày có một lưới mỗi ngày nhưng người dùng chọn như **một danh sách**. Đặt cùng tên nhóm:
+
+```html
+<td-media-grid selection-group="lib" label="Thứ Hai">…</td-media-grid>
+<td-media-grid selection-group="lib" label="Chủ Nhật">…</td-media-grid>
+<td-selection-bar group="lib">…</td-selection-bar>   <!-- tuỳ chọn: thanh thao tác -->
+```
+
+Trong nhóm (cùng document / shadow root):
+
+- **Đang chọn theo nhóm**: một lưới có lựa chọn thì mọi lưới hiện tick (`[data-selecting]`) và bấm ảnh ở lưới khác là
+  **lật chọn**, không `activate` (`select-mode="tick"` vẫn `activate` như cũ).
+- **Shift + bấm / Shift + Space** chọn dải từ điểm neo của nhóm, xuyên lưới theo thứ tự DOM. Mỗi lưới dừng ở `max` của
+  nó, dải đi tiếp sang lưới sau (không có `max` cho cả nhóm).
+- **Esc** bỏ chọn cả nhóm, trừ lưới `disabled`.
+- Mỗi lưới vẫn có lựa chọn và `select-change` **riêng** (`grid.selectedIds` chỉ là ô của lưới đó); tổng nằm ở
+  [`<td-selection-bar>`](selection-bar.md) (`bar.count`, `bar.selectedIds`).
+- Trình đọc màn hình nghe **một** câu tổng mỗi lần đổi ("Đã chọn 6"); có thanh thì thanh đọc, lưới im.
+- Lưới thêm sau (append một ngày) vào nhóm ngay, kể cả khi đang chọn. Lưới bị gỡ khỏi DOM rời nhóm cùng lựa chọn của nó.
+- Đổi / gỡ `selection-group` tại chỗ: lưới rời nhóm cũ, giữ lựa chọn của mình.
+
+Không có `selection-group` → lưới hành xử y như trước.
+
+### 12. Ô bị gỡ: `item-remove` (0.95.0)
+
+Khi site gỡ ô khỏi lưới (xoá ảnh, `innerHTML` mới, gỡ cả một dòng wrapper), lưới phát **một** `item-remove` cho mỗi đợt
+(sau `select-change` nếu ô đã chọn) — tiện để xếp lại dòng, cập nhật số đếm, gỡ wrapper rỗng:
+
+```js
+grid.addEventListener('item-remove', (e) => {
+  if (e.target !== grid) return;                        // event bubble: bỏ qua lưới lồng (vd. trong media-picker)
+  for (const row of e.detail.containers) {
+    if (row !== grid && !row.querySelector('[data-td-media-item]')) row.remove();   // dòng rỗng
+  }
+  counter.textContent = String(grid.items.length);
+});
+```
+
+`detail.ids` là id lúc ô còn trong lưới (đổi `data-id` rồi gỡ cùng lúc → id cũ). Ô **di chuyển** trong lưới (sang
+wrapper khác trong cùng task), đổi `data-id`, hay lưới tự rời / vào lại DOM → không phát.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -279,6 +325,7 @@ Giá trị inline gốc của site trên ảnh / phần tử mở được chụ
 | `disabled` | boolean | — | Người dùng không chọn / lật được (tick bị `disabled`); `activate` vẫn chạy; lựa chọn hiện có giữ nguyên (Esc cũng không bỏ). |
 | `select-mode` | `tick` | — | 0.33.0. Bấm ảnh luôn `activate`; chọn qua tick / Space / Ctrl·Cmd + bấm / Shift (§2). |
 | `layout` | `justified` | — | 0.33.0. Lưới justified (§9). Đổi tại chỗ, xếp lại trong frame kế tiếp. |
+| `selection-group` | string | — | 0.95.0. Tên nhóm chọn chung với các lưới cùng tên (§11). Đổi tại chỗ. Property `selectionGroup`. |
 
 Đổi attribute **không** render lại: con của host (ảnh, nút của site) giữ nguyên node.
 
@@ -305,6 +352,7 @@ Method lập trình **không** phát event (giống `setValue`) trừ khi truy�
 | `select-change` | `{ ids, added, removed }` | Người dùng đổi lựa chọn (tick, bấm ảnh khi đang chọn, Shift, Space, Esc), ô đã chọn bị gỡ khỏi DOM, hoặc method có `{ emit: true }`. `ids` theo thứ tự DOM. | có (composed) |
 | `activate` | `{ id, item, event }` | Bấm phần tử mở khi chưa chọn gì (hoặc khi `disabled`; với `select-mode="tick"`: mọi lần bấm không kèm Ctrl / Cmd / Shift), hoặc Enter trên phần tử mở. **Cancelable**: `preventDefault()` chặn hành vi mặc định của phần tử mở. `event` là click / keydown gốc. | có (composed) |
 | `select-limit` | `{ max }` | Người dùng thêm vượt `max`. | có (composed) |
+| `item-remove` | `{ ids, items, containers }` | 0.95.0. Một hoặc nhiều ô bị gỡ khỏi lưới (một event mỗi đợt, sau `select-change`). `items`: các ô đã gỡ; `containers`: phần tử còn trong lưới mà ô (hoặc wrapper chứa ô) bị gỡ ra từ đó — gỡ ô → wrapper của ô, gỡ cả dòng → lưới; không trùng, thứ tự DOM. Không phát khi ô chỉ di chuyển (§12). | có (composed) |
 
 ## Tuỳ biến giao diện
 

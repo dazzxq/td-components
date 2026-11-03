@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.94.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.94.0', __DIR__ . '/public/assets/vendor/td-components/0.94.0');
+ *   require_once '/path/to/vendor/td-components/0.95.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.95.0', __DIR__ . '/public/assets/vendor/td-components/0.95.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -40,6 +40,7 @@
  *     in place after a node-by-node check against `data`. Invalid data / name → the fail-closed state (no input at all).
  *   - td_icon prints `svg.td-icon` with the full geometry of src/icons/icons.json (+ Td::registerIcons()).
  *   - td_badge prints a CSS-only `span.td-badge…` (no JS, no custom element).
+ *   - td_card prints a CSS-only `a.td-card` (the whole card is one link) or, without a safe href, a static `div.td-card`.
  *   - td_alert prints a `<td-alert>` host that ALREADY contains the full styled markup `div.td-alert` (icon, heading,
  *     message): td.css styles it without JS; `@dazzxq/td-components/alert` upgrades it IN PLACE (text kept) and adds
  *     the close button when `dismissible` (no close button without JS — no dead control).
@@ -272,6 +273,8 @@ namespace TdComponents {
         ];
         /** v0.47.0: td_check_matrix (always the element <td-check-matrix> + the full no-JS form: markers, checkboxes, sentinel). */
         public const SSR_CHECK_MATRIX = 'check-matrix@1';
+        /** v0.95.0 (ADR 0040): td_check_matrix 'mode' => 'override' (one <select> per cell, `_v=2`; never adopted in place). */
+        public const SSR_CHECK_MATRIX_OVERRIDE = 'check-matrix@2';
         /** v0.47.0: default texts of td_check_matrix = TdCheckMatrix.labels (src/utils/check-matrix-render.js MATRIX_LABELS). */
         public const CHECK_MATRIX_LABELS = [
             'grid' => 'Ma trận chọn',
@@ -285,6 +288,21 @@ namespace TdComponents {
             'na' => 'Không áp dụng',
             'broken' => 'Không đọc được dữ liệu ma trận',
             'changed' => 'Đã đổi {n} ô',
+            // v0.95.0 'mode' => 'override'
+            'inherit' => 'Kế thừa',
+            'inheritOn' => 'Kế thừa (có quyền)',
+            'inheritOff' => 'Kế thừa (không có quyền)',
+            'grant' => 'Cấp quyền',
+            'deny' => 'Từ chối',
+            'mixed' => 'Lẫn lộn',
+            'cycleAll' => 'Đổi tất cả',
+            'cycleRow' => 'Đổi cả hàng {row}',
+            'cycleColumn' => 'Đổi cả cột {col}',
+            'cycleGroup' => 'Đổi cả nhóm {group}',
+            'cycleGroupColumn' => 'Đổi cả nhóm {group}, cột {col}',
+            'resetAll' => 'Đặt lại về kế thừa',
+            'resetColumn' => 'Đặt lại cột {col}',
+            'keys' => 'Space: đổi trạng thái. +: cấp, −: từ chối, Delete: về kế thừa',
         ];
         /** v0.48.0: td_color_picker (native by default; element mode <td-color-picker data-td-ssr="color-picker@1">). */
         public const SSR_COLOR = 'color-picker@1';
@@ -487,7 +505,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.94.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.95.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool, assets?: string} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -1870,7 +1888,10 @@ namespace {
      * v0.84.0 rich rows (each printed as a `data-*` on the `<option>` only when valid, all escaped): `icon` (icon name →
      * `data-icon`), `icon_tone` / `iconTone` (neutral|accent|success|warning|danger|info → `data-icon-tone`; needs an icon),
      * `description` (`data-description`), `status` (['text' => …, 'tone'? => tone] → `data-status` + `data-status-tone`),
-     * `meta` (`data-meta`), `keywords` (string, or a list of scalars joined with a space → `data-keywords`). Groups (v0.84.0,
+     * `meta` (`data-meta`), `keywords` (string, or a list of scalars joined with a space → `data-keywords`). v0.95.0 `image`
+     * (a thumbnail URL, td__media_url() gate like td_choice_group: https: / scheme-less; http: only with
+     * Td::allowHttpLinks(true); refused → not printed) → `data-image`: the component draws it before the label (it wins
+     * over the dot and the icon) and on the trigger when selected; the native select ignores it. Groups (v0.84.0,
      * one level, like td_multiselect): ['label' => …, 'disabled' => bool, 'options' => [leaves]] → `<optgroup>`; the placeholder
      * option stays first, outside any group; the search threshold counts the leaves.
      * Options: label, placeholder (⇒ an empty first option + the component's clear option), searchable
@@ -1989,7 +2010,7 @@ namespace {
      */
     function td__dd_leaf(int|string $k, mixed $v): ?array
     {
-        $blank = ['description' => '', 'icon' => '', 'icon_tone' => '', 'status' => '', 'status_tone' => '', 'meta' => '', 'keywords' => ''];
+        $blank = ['image' => '', 'description' => '', 'icon' => '', 'icon_tone' => '', 'status' => '', 'status_tone' => '', 'meta' => '', 'keywords' => ''];
         if (is_array($v)) {
             if (!isset($v['value']) || !is_scalar($v['value'])) {
                 return null;
@@ -2011,6 +2032,7 @@ namespace {
             }
             return ['value' => (string) $v['value'], 'label' => (string) ($v['label'] ?? $v['value']), 'disabled' => !empty($v['disabled']),
                 'swatch' => Td::safeColor($v['swatch'] ?? null), // v0.82.0: colour dot (same gate as td_choice_group)
+                'image' => td__media_url($v['image'] ?? null) ?? '', // v0.95.0: same gate as td_choice_group
                 'description' => $text($v['description'] ?? null),
                 'icon' => $icon,
                 'icon_tone' => $icon !== '' ? $tone($v['icon_tone'] ?? $v['iconTone'] ?? null) : '',
@@ -2025,13 +2047,18 @@ namespace {
         return null;
     }
 
-    /** @internal v0.84.0 one td_dropdown `<option>` (attribute order: value, selected, disabled, data-swatch, then the rich data-*). */
+    /**
+     * @internal v0.84.0 one td_dropdown `<option>` (attribute order: value, selected, disabled, data-swatch, data-image
+     * (v0.95.0), then the rich data-*: data-icon, data-icon-tone, data-description, data-status, data-status-tone,
+     * data-meta, data-keywords).
+     */
     function td__dd_option(array $opt, string $current): string
     {
         return '<option value="' . Td::e($opt['value']) . '"'
             . ($current !== '' && $opt['value'] === $current ? ' selected' : '')
             . ($opt['disabled'] ? ' disabled' : '')
             . ($opt['swatch'] !== '' ? ' data-swatch="' . Td::e($opt['swatch']) . '"' : '')
+            . ($opt['image'] !== '' ? ' data-image="' . Td::e($opt['image']) . '"' : '')
             . ($opt['icon'] !== '' ? ' data-icon="' . Td::e($opt['icon']) . '"' : '')
             . ($opt['icon_tone'] !== '' ? ' data-icon-tone="' . Td::e($opt['icon_tone']) . '"' : '')
             . ($opt['description'] !== '' ? ' data-description="' . Td::e($opt['description']) . '"' : '')
@@ -2501,6 +2528,133 @@ namespace {
             'class' => $class,
             'id' => isset($o['id']) && is_scalar($o['id']) && (string) $o['id'] !== '' ? (string) $o['id'] : null,
         ], $taken) . Td::attrs(is_array($o['attrs'] ?? null) ? $o['attrs'] : [], $taken) . '>' . $body . '</span>';
+    }
+
+    /**
+     * CSS-only card with a cover image (plan v0.95.0-card): `a.td-card` (the whole card is ONE link) or, without a
+     * usable link, the same tree on a `div.td-card` (static card — no dead link, no warning). No JS, no custom element.
+     * Tree: `span.td-card__media` (img or placeholder icon) · `span.td-card__body` (title, `span.td-card__badges`, meta).
+     * $title is TEXT (escaped). Options: href (Td::safeUrl; mailto: / tel: refused), target (Td::TARGETS; _blank →
+     * rel="noopener noreferrer"), image (src string, or ['src', 'srcset', 'sizes', 'alt', 'width', 'height'] — src and
+     * every srcset URL through td__media_url, ONE bad srcset candidate drops the whole srcset; no usable src → the
+     * placeholder), eager (bool: no loading="lazy"), placeholder_icon (registry name, default `image`), meta (string or
+     * list of string | ['text', 'datetime'] → `time`), badges (list of string | [text, td_badge options]), heading
+     * (2–6 → hN title), ratio (1x1|4x3|3x2|16x9|3x4), surface (bool), id, class, attrs (allowlisted; role, tabindex,
+     * aria-label, aria-labelledby and data-td-* are reserved and dropped).
+     */
+    function td_card(string $title, array $o = []): string
+    {
+        $href = '';
+        if (isset($o['href']) && is_string($o['href'])) {
+            $h = Td::safeUrl($o['href']);
+            $href = $h !== '' && preg_match('/^(mailto|tel):/i', $h) !== 1 ? $h : '';
+        }
+        $isLink = $href !== '';
+        $target = $isLink && in_array($o['target'] ?? null, Td::TARGETS, true) ? $o['target'] : null;
+        $ratios = ['1x1', '4x3', '3x2', '16x9', '3x4'];
+        $ratio = is_string($o['ratio'] ?? null) && in_array($o['ratio'], $ratios, true) ? $o['ratio'] : null;
+        $class = 'td-card' . (!empty($o['surface']) ? ' td-card--surface' : '') . ($ratio !== null ? ' td-card--ratio-' . $ratio : '')
+            . Td::classTokens($o['class'] ?? null);
+
+        // image
+        $img = $o['image'] ?? null;
+        $img = is_string($img) ? ['src' => $img] : (is_array($img) ? $img : []);
+        $src = td__media_url($img['src'] ?? null);
+        $media = '';
+        if ($src !== null) {
+            $srcset = null;
+            if (isset($img['srcset']) && is_string($img['srcset']) && trim($img['srcset']) !== '' && strlen($img['srcset']) <= 8192) {
+                $parts = [];
+                foreach (explode(',', $img['srcset']) as $cand) {
+                    $bits = preg_split('/\s+/', trim($cand), -1, PREG_SPLIT_NO_EMPTY);
+                    $u = is_array($bits) && count($bits) === 2 ? td__media_url($bits[0]) : null;
+                    if ($u === null || preg_match('/^\d+(\.\d+)?[wx]$/D', $bits[1]) !== 1 || count($parts) >= 32) {
+                        $parts = [];
+                        break;
+                    }
+                    $parts[] = $u . ' ' . $bits[1];
+                }
+                $srcset = $parts !== [] ? implode(', ', $parts) : null;
+            }
+            $sizes = isset($img['sizes']) && is_string($img['sizes']) && trim($img['sizes']) !== '' && strlen($img['sizes']) <= 512
+                && preg_match('//u', $img['sizes']) === 1 ? trim($img['sizes']) : null;
+            $dim = static function (mixed $v): ?string {
+                return (is_int($v) || (is_string($v) && preg_match('/^\d{1,5}$/D', $v) === 1)) && (int) $v >= 1 && (int) $v <= 10000
+                    ? (string) (int) $v : null;
+            };
+            $media = '<img' . Td::ownAttrs([
+                'src' => $src,
+                'srcset' => $srcset,
+                'sizes' => $srcset !== null ? $sizes : null,
+                'alt' => is_string($img['alt'] ?? null) ? $img['alt'] : '',
+                'loading' => !empty($o['eager']) ? null : 'lazy',
+                'decoding' => 'async',
+                'width' => $dim($img['width'] ?? null),
+                'height' => $dim($img['height'] ?? null),
+            ]) . '>';
+        } else {
+            $icon = isset($o['placeholder_icon']) && is_string($o['placeholder_icon']) && Td::hasIcon($o['placeholder_icon'])
+                ? $o['placeholder_icon'] : 'image';
+            $media = '<span class="td-card__placeholder" aria-hidden="true">' . Td::icon($icon, 'l') . '</span>';
+        }
+        $html = '<span class="td-card__media">' . $media . '</span> ';
+
+        // title
+        $level = isset($o['heading']) && is_scalar($o['heading']) && preg_match('/^[2-6]$/D', trim((string) $o['heading'])) === 1
+            ? (int) trim((string) $o['heading']) : null;
+        $tag = $level !== null ? 'h' . $level : 'span';
+        $body = '<' . $tag . ' class="td-card__title">' . Td::e($title) . '</' . $tag . '>';
+
+        // badges (after the title in the DOM: the link name reads "title badge meta")
+        $badges = [];
+        foreach (is_array($o['badges'] ?? null) ? $o['badges'] : [] as $b) {
+            $text = is_array($b) ? ($b[0] ?? null) : $b;
+            if (!is_string($text) || trim($text) === '') {
+                continue;
+            }
+            $badges[] = td_badge($text, is_array($b) && is_array($b[1] ?? null) ? $b[1] : []);
+        }
+        if ($badges !== []) {
+            $body .= ' <span class="td-card__badges">' . implode(' ', $badges) . '</span>';
+        }
+
+        // meta
+        $metaIn = $o['meta'] ?? null;
+        $metaIn = is_string($metaIn) ? [$metaIn] : (is_array($metaIn) ? $metaIn : []);
+        $items = [];
+        foreach ($metaIn as $m) {
+            $text = is_array($m) ? ($m['text'] ?? ($m[0] ?? null)) : $m;
+            if (!is_string($text) || trim($text) === '') {
+                continue;
+            }
+            $dt = is_array($m) ? ($m['datetime'] ?? null) : null;
+            $items[] = is_string($dt) && preg_match('/^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?(Z|[+-]\d{2}:\d{2})?)?$/D', $dt) === 1
+                ? '<time datetime="' . Td::e($dt) . '">' . Td::e($text) . '</time>'
+                : '<span>' . Td::e($text) . '</span>';
+        }
+        if ($items !== []) {
+            $body .= ' <span class="td-card__meta">' . implode(' <span class="td-card__sep" aria-hidden="true">·</span> ', $items) . '</span>';
+        }
+        $html .= '<span class="td-card__body">' . $body . '</span>';
+
+        // root: kit-owned names are reserved against `attrs`
+        $extra = [];
+        foreach (is_array($o['attrs'] ?? null) ? $o['attrs'] : [] as $k => $v) {
+            $l = strtolower((string) $k);
+            if (in_array($l, ['role', 'tabindex', 'aria-label', 'aria-labelledby'], true) || str_starts_with($l, 'data-td-')) {
+                continue;
+            }
+            $extra[$k] = $v;
+        }
+        $taken = [];
+        $root = $isLink ? 'a' : 'div';
+        return '<' . $root . Td::ownAttrs([
+            'class' => $class,
+            'id' => isset($o['id']) && is_scalar($o['id']) && (string) $o['id'] !== '' ? (string) $o['id'] : null,
+            'href' => $isLink ? $href : null,
+            'target' => $target,
+            'rel' => $target === '_blank' ? 'noopener noreferrer' : null,
+        ], $taken) . Td::attrs($extra, $taken) . '>' . $html . '</' . $root . '>';
     }
 
     /**
@@ -7754,10 +7908,13 @@ namespace {
     /**
      * @internal The ONE validation path of td_check_matrix — same rules, same order and same `reason` as validateMatrix()
      * in src/utils/check-matrix-model.js (parity table MATRIX_CASES). A structural error fails CLOSED as a whole.
+     * v0.95.0: $mode 'override' (parity table OVERRIDE_CASES) reads $value as ['col' => ['row' => 'inherit'|'grant'|
+     * 'deny']] (model 'st': cell index => 1 grant / 2 deny) and the cell flag `inherited` (model 'inh': index => 1 / 2).
      * @return array{ok: bool, reason: ?string, model: ?array}
      */
-    function td__check_matrix_data(mixed $columns, mixed $rows, mixed $cells = null, mixed $value = null): array
+    function td__check_matrix_data(mixed $columns, mixed $rows, mixed $cells = null, mixed $value = null, string $mode = 'check'): array
     {
+        $override = $mode === 'override';
         $fail = static fn (string $r): array => ['ok' => false, 'reason' => $r, 'model' => null];
         // a row / column / group definition: a map (JSON object), never a non-empty list
         $isMap = static fn (mixed $d): bool => is_array($d) && ($d === [] || !td__check_matrix_list($d));
@@ -7879,6 +8036,7 @@ namespace {
         $lock = [];  // cell index => own lock
         $na = [];
         $notes = [];
+        $inh = [];   // v0.95.0 (override only): cell index => 1 inherited yes / 2 no
         if ($cells !== null && $cells !== []) {
             if (!is_array($cells)) {
                 return $fail('cells-shape');
@@ -7904,12 +8062,20 @@ namespace {
                     if ($l === null || $n === null) {
                         return $fail('cells-flag');
                     }
+                    // v0.95.0: `inherited` only means something in the override mode (check mode: an unknown field)
+                    $ih = $override && isset($cell['inherited']) ? $cell['inherited'] : null;
+                    if ($ih !== null && !is_bool($ih)) {
+                        return $fail('cells-flag');
+                    }
                     $note = $text($cell['note'] ?? null, 300);
                     if ($note === null) {
                         return $fail('cells-note');
                     }
                     $i = $r * $C + $c;
-                    unset($lock[$i], $na[$i], $notes[$i]);
+                    unset($lock[$i], $na[$i], $notes[$i], $inh[$i]);
+                    if ($ih !== null) {
+                        $inh[$i] = $ih ? 1 : 2;
+                    }
                     if ($l) {
                         $lock[$i] = true;
                     }
@@ -7921,6 +8087,49 @@ namespace {
                     }
                 }
             }
+        }
+        if ($override) {
+            // v0.95.0: ['col' => ['row' => state]]; exact strings only; an empty array = an empty map
+            $st = [];
+            if ($value !== null && $value !== []) {
+                if (!is_array($value)) {
+                    return $fail('value-shape');
+                }
+                foreach ($value as $ck => $map) {
+                    $c = $colIndex[(string) $ck] ?? null;
+                    if ($c === null) {
+                        return $fail('value-unknown-column');
+                    }
+                    if ($map === []) {
+                        continue;
+                    }
+                    if (!is_array($map)) {
+                        return $fail('value-shape');
+                    }
+                    foreach ($map as $rk => $s) {
+                        $r = $rowIndex[(string) $rk] ?? null;
+                        if ($r === null) {
+                            return $fail('value-unknown-row');
+                        }
+                        $code = is_string($s) ? array_search($s, ['inherit', 'grant', 'deny'], true) : false;
+                        if ($code === false) {
+                            return $fail('value-state');
+                        }
+                        $i = $r * $C + $c;
+                        if ($code > 0 && isset($na[$i])) {
+                            return $fail('value-na');
+                        }
+                        if ($code > 0) {
+                            $st[$i] = $code;
+                        } else {
+                            unset($st[$i]);
+                        }
+                    }
+                }
+            }
+            return ['ok' => true, 'reason' => null, 'model' => ['mode' => 'override', 'columns' => $cols, 'rows' => $leaves,
+                'groups' => $groups, 'segments' => $segments, 'lock' => $lock, 'na' => $na, 'notes' => $notes, 'on' => [],
+                'st' => $st, 'inh' => $inh]];
         }
         $on = [];
         if ($value !== null && $value !== []) {
@@ -8019,6 +8228,9 @@ namespace {
                 if (isset($m['na'][$i])) {
                     $cell['na'] = true;
                 }
+                if (isset($m['inh'][$i])) {
+                    $cell['inherited'] = $m['inh'][$i] === 1; // v0.95.0 (override only)
+                }
                 if (isset($m['notes'][$i])) {
                     $cell['note'] = $m['notes'][$i];
                 }
@@ -8028,6 +8240,21 @@ namespace {
             }
         }
         $value = [];
+        if (($m['mode'] ?? 'check') === 'override') {
+            // v0.95.0: every column, a map of the overridden rows only (inherit is the default — never printed)
+            foreach ($m['columns'] as $c => $col) {
+                $map = [];
+                foreach ($m['rows'] as $r => $row) {
+                    $s = $m['st'][$r * $C + $c] ?? 0;
+                    if ($s > 0) {
+                        $map[$row['key']] = $s === 1 ? 'grant' : 'deny';
+                    }
+                }
+                $value[$col['key']] = (object) $map;
+            }
+            return ['columns' => $columns, 'rows' => $rows,
+                'cells' => (object) array_map(static fn (array $x): object => (object) $x, $cells), 'value' => (object) $value];
+        }
         foreach ($m['columns'] as $c => $col) {
             $list = [];
             foreach ($m['rows'] as $r => $row) {
@@ -8039,6 +8266,159 @@ namespace {
         }
         return ['columns' => $columns, 'rows' => $rows,
             'cells' => (object) array_map(static fn (array $x): object => (object) $x, $cells), 'value' => (object) $value];
+    }
+
+    /**
+     * @internal v0.95.0 (ADR 0040) the override-mode markup of td_check_matrix — byte for byte what renderMatrix({ ssr })
+     * prints in src/utils/check-matrix-render.js (renderOverride): one native <select> per applicable cell (a locked
+     * cell: disabled select without a name + a hidden input carrying its state), bulk cells as disabled buttons showing
+     * the state of their set, the bar (column picker + reset button, disabled), the keys line; markers first, `_v=2` last.
+     */
+    function td__check_matrix_override_html(array $m, string $name, string $hid, array $L, callable $fill, bool $disabled, string $layout, string $nameEl): string
+    {
+        $C = count($m['columns']);
+        $R = count($m['rows']);
+        $states = ['inherit', 'grant', 'deny'];
+        $dis = $disabled ? ' disabled' : '';
+        $glyph = '<span class="td-check td-check--md td-check--drawn td-check-matrix__glyph" aria-hidden="true"></span>';
+        $lbl = static fn (string $key, array $vars): string => Td::e($fill($L[$key], $vars));
+        // the shown state of a set: every applicable cell (locked included) in one state → that state, else mixed
+        $setState = static function (int $r0, int $r1, int $c0, int $c1) use ($m, $C, $states): string {
+            $total = 0;
+            $n = [0, 0, 0];
+            for ($r = $r0; $r < $r1; $r++) {
+                for ($c = $c0; $c < $c1; $c++) {
+                    if (td__check_matrix_cell($m, $r, $c) === 'na') {
+                        continue;
+                    }
+                    $total++;
+                    $n[$m['st'][$r * $C + $c] ?? 0]++;
+                }
+            }
+            if ($total === 0) {
+                return 'inherit';
+            }
+            foreach ($n as $s => $count) {
+                if ($count === $total) {
+                    return $states[$s];
+                }
+            }
+            return 'mixed';
+        };
+        $stateText = static fn (int $s, int $inh): string => $s === 1 ? $L['grant'] : ($s === 2 ? $L['deny']
+            : ($inh === 1 ? $L['inheritOn'] : ($inh === 2 ? $L['inheritOff'] : $L['inherit'])));
+        $k = 0;
+        $bulkBtn = static fn (string $aria, string $desc, string $state, string $id, bool $roving = true): string => '<button type="button" class="td-check-matrix__tri"'
+            . ($roving ? ' tabindex="-1"' : '') . ' aria-labelledby="' . $id . ' ' . $id . 's"'
+            . ($desc !== '' ? ' aria-describedby="' . $desc . '"' : '') . ' disabled>' . $glyph
+            . '<span class="td-sr-only" id="' . $id . '">' . $aria . '</span><span class="td-sr-only" id="' . $id . 's">'
+            . Td::e($L[$state]) . '</span></button>';
+        $bulk = static function (string $kind, string $state, string $aria, string $desc, string $more = '') use ($hid, $bulkBtn, &$k): string {
+            $id = $hid . '-k' . ($k++);
+            return '<td class="td-check-matrix__bulk" data-kind="' . $kind . '" data-state="' . $state . '"' . $more . ' tabindex="-1">'
+                . $bulkBtn($aria, $desc !== '' ? $hid . '-keys ' . $desc : $hid . '-keys', $state, $id) . '</td>';
+        };
+
+        $out = '';
+        foreach ($m['columns'] as $col) {
+            $out .= '<input type="hidden" name="' . Td::e($name . '[' . $col['key'] . ']') . '" value=""' . $dis . '>';
+        }
+        $out .= '<div class="td-check-matrix" data-state="ready" data-layout="' . $layout . '" data-mode="override">' . $nameEl
+            . '<div class="td-check-matrix__bar"><label class="td-check-matrix__colpick-label" for="' . $hid . '-colpick">' . Td::e($L['columnPick'])
+            . '</label><select class="td-check-matrix__colpick" id="' . $hid . '-colpick" disabled>';
+        foreach ($m['columns'] as $j => $col) {
+            $out .= '<option value="' . $j . '">' . Td::e($col['label']) . '</option>';
+        }
+        $col0 = $setState(0, $R, 0, 1);
+        $out .= '</select><span class="td-check-matrix__bulk" data-kind="column-active" data-state="' . $col0 . '">'
+            . $bulkBtn($lbl('cycleColumn', ['col' => $m['columns'][0]['label']]), '', $col0, $hid . '-kb', false) . '</span>'
+            . '<button type="button" class="td-btn td-btn--ghost td-btn--sm td-check-matrix__reset" disabled>' . Td::e($L['resetAll']) . '</button></div>';
+        $out .= '<div class="td-check-matrix__scroll"><table class="td-check-matrix__grid" role="grid" aria-labelledby="' . $hid . '-label"><thead>'
+            . '<tr class="td-check-matrix__head"><td class="td-check-matrix__corner" tabindex="-1"></td>'
+            . '<th scope="col" class="td-check-matrix__rowtitle" tabindex="-1">' . Td::e($L['rows']) . '</th>';
+        foreach ($m['columns'] as $j => $col) {
+            $out .= '<th scope="col" class="td-check-matrix__colhead" id="' . $hid . '-c' . $j . '" data-c="' . $j . '" tabindex="-1">'
+                . '<span class="td-check-matrix__label">' . Td::e($col['label']) . '</span>'
+                . ($col['description'] !== '' ? '<span class="td-check-matrix__desc" id="' . $hid . '-c' . $j . 'd" aria-hidden="true">' . Td::e($col['description']) . '</span>' : '')
+                . '</th>';
+        }
+        $out .= '</tr><tr class="td-check-matrix__bulkrow">' . $bulk('all', $setState(0, $R, 0, $C), $lbl('cycleAll', []), '')
+            . '<td class="td-check-matrix__gap" tabindex="-1"></td>';
+        foreach ($m['columns'] as $j => $col) {
+            $out .= $bulk('column', $setState(0, $R, $j, $j + 1), $lbl('cycleColumn', ['col' => $col['label']]),
+                $col['description'] !== '' ? $hid . '-c' . $j . 'd' : '', ' data-c="' . $j . '"');
+        }
+        $out .= '</tr></thead>';
+        $note = 0;
+        $row = static function (int $r) use ($m, $C, $hid, $name, $dis, $glyph, $lbl, $bulk, $setState, $stateText, $states, $L, &$note): string {
+            $rw = $m['rows'][$r];
+            $s = '<tr class="td-check-matrix__row" data-r="' . $r . '">'
+                . $bulk('row', $setState($r, $r + 1, 0, $C), $lbl('cycleRow', ['row' => $rw['label']]), $rw['description'] !== '' ? $hid . '-r' . $r . 'd' : '')
+                . '<th scope="row" class="td-check-matrix__rowhead" id="' . $hid . '-r' . $r . '" tabindex="-1"><span class="td-check-matrix__label">'
+                . Td::e($rw['label']) . '</span>'
+                . ($rw['description'] !== '' ? '<span class="td-check-matrix__desc" id="' . $hid . '-r' . $r . 'd" aria-hidden="true">' . Td::e($rw['description']) . '</span>' : '')
+                . '</th>';
+            for ($c = 0; $c < $C; $c++) {
+                $i = $r * $C + $c;
+                $text = $m['notes'][$i] ?? null;
+                $nid = $text !== null ? $hid . '-n' . ($note++) : '';
+                $noteEl = $text !== null ? '<span class="td-sr-only" id="' . $nid . '">' . Td::e($text) . '</span>' : '';
+                $noteAttr = $text !== null ? ' data-note' : '';
+                $kind = td__check_matrix_cell($m, $r, $c);
+                if ($kind === 'na') {
+                    $s .= '<td class="td-check-matrix__cell" data-c="' . $c . '" data-na' . $noteAttr . ' tabindex="-1">'
+                        . '<span class="td-check-matrix__na" aria-hidden="true">–</span><span class="td-sr-only">' . Td::e($L['na']) . '</span>' . $noteEl . '</td>';
+                    continue;
+                }
+                $locked = $kind === 'locked';
+                $st = $m['st'][$i] ?? 0;
+                $inh = $m['inh'][$i] ?? 0;
+                $field = Td::e($name . '[' . $m['columns'][$c]['key'] . '][' . $rw['key'] . ']');
+                $s .= '<td class="td-check-matrix__cell" data-c="' . $c . '" data-state="' . $states[$st] . '"'
+                    . ($inh !== 0 ? ' data-inherited="' . ($inh === 1 ? 'on' : 'off') . '"' : '') . ($locked ? ' data-locked' : '') . $noteAttr . ' tabindex="-1">'
+                    . '<select class="td-check-matrix__select" aria-labelledby="' . $hid . '-r' . $r . ' ' . $hid . '-c' . $c . '"'
+                    . ($nid !== '' ? ' aria-describedby="' . $nid . '"' : '')
+                    . ($locked ? ' disabled' : ' name="' . $field . '"' . $dis) . '>';
+                foreach ($states as $v => $sn) {
+                    $s .= '<option value="' . $sn . '"' . ($v === $st ? ' selected' : '') . '>' . Td::e($stateText($v, $inh)) . '</option>';
+                }
+                $s .= '</select>' . ($locked ? '<input type="hidden" name="' . $field . '" value="' . $states[$st] . '"' . $dis . '>' : '')
+                    . $noteEl . '</td>';
+            }
+            return $s . '</tr>';
+        };
+        foreach ($m['segments'] as $seg) {
+            if ($seg['group'] < 0) {
+                $out .= '<tbody class="td-check-matrix__body">';
+                for ($r = $seg['start']; $r < $seg['end']; $r++) {
+                    $out .= $row($r);
+                }
+                $out .= '</tbody>';
+                continue;
+            }
+            $g = $seg['group'];
+            $grp = $m['groups'][$g];
+            $shut = $grp['collapsed'];
+            $out .= '<tbody class="td-check-matrix__group" id="' . $hid . '-g' . $g . '" data-g="' . $g . '"' . ($shut ? ' data-collapsed' : '') . '>'
+                . '<tr class="td-check-matrix__grouprow">' . $bulk('group', $setState($grp['start'], $grp['end'], 0, $C), $lbl('cycleGroup', ['group' => $grp['label']]), '')
+                . '<th scope="row" class="td-check-matrix__grouphead"><button type="button" class="td-check-matrix__group-toggle" tabindex="-1" aria-expanded="'
+                . ($shut ? 'false' : 'true') . '" aria-controls="' . $hid . '-g' . $g . '" disabled>'
+                . '<span class="td-check-matrix__chevron" data-td-icon="next" data-td-icon-size="s" aria-hidden="true">' . Td::icon('next', 's') . '</span>'
+                . '<span class="td-check-matrix__label">' . Td::e($grp['label']) . '</span> <span class="td-check-matrix__count">(' . ($grp['end'] - $grp['start'])
+                . ')</span></button></th>';
+            foreach ($m['columns'] as $j => $col) {
+                $out .= $bulk('group-column', $setState($grp['start'], $grp['end'], $j, $j + 1),
+                    $lbl('cycleGroupColumn', ['group' => $grp['label'], 'col' => $col['label']]), '', ' data-c="' . $j . '"');
+            }
+            $out .= '</tr>';
+            for ($r = $seg['start']; $r < $seg['end']; $r++) {
+                $out .= $row($r);
+            }
+            $out .= '</tbody>';
+        }
+        return $out . '</table></div><p class="td-check-matrix__note" aria-hidden="true"></p><p class="td-sr-only" role="status"></p>'
+            . '<span class="td-sr-only" id="' . $hid . '-keys">' . Td::e($L['keys']) . '</span></div>'
+            . '<input type="hidden" name="' . Td::e($name . '[_v]') . '" value="2"' . $dis . '>';
     }
 
     /**
@@ -8058,6 +8438,13 @@ namespace {
      * labels (TdCheckMatrix.labels keys). Invalid data / name (empty or ending in `[]`) / a `data` JSON over 512 KiB of
      * UTF-8 (the JS limit) → the fail-closed state: NO
      * input at all (the server sees no key → keeps everything) + one E_USER_WARNING naming the reason only.
+     *
+     * v0.95.0 (ADR 0040) 'mode' => 'override': three states per cell — $value ['col' => ['row' => 'grant'|'deny'|
+     * 'inherit']] (missing = inherit), cells may carry 'inherited' => bool (shown only); host `mode="override"`
+     * `data-td-ssr="check-matrix@2"` + data `"v":2`; the no-JS form is one <select name="name[col][row]"> per applicable
+     * cell (a locked cell: disabled select + a hidden input with its state), markers first, `name[_v]=2` last. PHP reads
+     * ['col' => ['row' => 'inherit'|'grant'|'deny', …], 'empty-col' => '', '_v' => '2'] — EVERY applicable cell, always
+     * (max_input_vars ≥ cells + columns + 1). Unknown 'mode' → check + one E_USER_WARNING.
      */
     function td_check_matrix(string $name, array $columns, array $rows, array $value = [], array $o = []): string
     {
@@ -8086,13 +8473,21 @@ namespace {
             && preg_match('/^(none|\d{1,4}(\.\d{1,2})?(px|rem|em|vh|svh|dvh|lvh|%))$/D', $o['max_height']) === 1 ? $o['max_height'] : null;
         $disabled = !empty($o['disabled']);
         $help = td__helper_opt($o); // v0.54.0: the helper note (last child; the component puts its id on the active cell)
+        // v0.95.0 (D1): 'mode' => 'override' | 'check' (default); anything else → check + one sanitised warning (SEC-02)
+        $modeOpt = $o['mode'] ?? null;
+        $override = $modeOpt === 'override';
+        if ($modeOpt !== null && $modeOpt !== 'check' && !$override) {
+            $rawMode = is_scalar($modeOpt) && !is_bool($modeOpt) ? (string) $modeOpt : get_debug_type($modeOpt);
+            $shownMode = addcslashes(substr((string) preg_replace('/[^\x20-\x7E]/', '', $rawMode), 0, 64), '\\"');
+            trigger_error('td_check_matrix: unknown mode "' . $shownMode . '" (' . strlen($rawMode) . ' bytes) — treated as "check"', E_USER_WARNING);
+        }
         $res = $name === '' || str_ends_with($name, '[]') ? ['ok' => false, 'reason' => 'name', 'model' => null]
-            : td__check_matrix_data($columns, $rows, $o['cells'] ?? null, $value);
+            : td__check_matrix_data($columns, $rows, $o['cells'] ?? null, $value, $override ? 'override' : 'check');
         // review r1 #2: the `data` attribute obeys the JS limit — 512 KiB of UTF-8 (strlen of the JSON printed; the
         // attribute escaping is undone by the HTML parser, so the component measures this very string)
         $json = null;
         if ($res['ok']) {
-            $json = json_encode(['v' => 1] + td__check_matrix_canonical($res['model']), Td::JSON_FLAGS | JSON_UNESCAPED_UNICODE);
+            $json = json_encode(['v' => $override ? 2 : 1] + td__check_matrix_canonical($res['model']), Td::JSON_FLAGS | JSON_UNESCAPED_UNICODE);
             if (strlen($json) > 524288) {
                 $res = ['ok' => false, 'reason' => 'data-size', 'model' => null];
                 $json = null;
@@ -8100,18 +8495,19 @@ namespace {
         }
         $taken = [];
         $host = '<td-check-matrix' . Td::ownAttrs([
-            'data-td-ssr' => Td::SSR_CHECK_MATRIX,
+            'data-td-ssr' => $override ? Td::SSR_CHECK_MATRIX_OVERRIDE : Td::SSR_CHECK_MATRIX,
             'id' => $h,
             'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
             'name' => $name !== '' ? $name : null,
             'label' => $label !== '' ? $label : null,
+            'mode' => $override ? 'override' : null,
             'layout' => $layout,
             'max-height' => $maxH,
             'disabled' => $disabled,
             'data' => $json,
             'helper-text' => $help,
         ], $taken);
-        $taken = td__reserve(['id', 'class', 'name', 'label', 'layout', 'max-height', 'disabled', 'data', 'value', 'helper-text'],
+        $taken = td__reserve(['id', 'class', 'name', 'label', 'mode', 'layout', 'max-height', 'disabled', 'data', 'value', 'helper-text'],
             $extra, $taken);
         $host .= Td::attrs($extra, $taken) . '>';
         $nameEl = $label !== '' ? '<p class="td-field__label" id="' . $hid . '-label">' . Td::e($label) . '</p>'
@@ -8123,6 +8519,10 @@ namespace {
                 . '<p class="td-check-matrix__broken">' . Td::e($L['broken']) . '</p></div>' . td__helper_note($help, $h, false) . '</td-check-matrix>';
         }
         $m = $res['model'];
+        if ($override) {
+            return $host . td__check_matrix_override_html($m, $name, $hid, $L, $fill, $disabled, $layout ?? 'auto', $nameEl)
+                . td__helper_note($help, $h, false) . '</td-check-matrix>';
+        }
         $C = count($m['columns']);
         $dis = $disabled ? ' disabled' : '';
         $mark = '<span class="td-check td-check--md td-check--drawn" aria-hidden="true"></span>';

@@ -29,7 +29,7 @@ Khai báo ở `tokens.css` / `theme-dark.css` (chung, nút), `action-button.css`
 
 | Token | Light | Dark | Dùng cho |
 |---|---|---|---|
-| `--td-color-pressed` | `rgb(0 0 0 / 12%)` | `rgb(255 255 255 / 14%)` | nút icon, tab, trang, card, scroll-top (lớp phủ `background-image`); v0.49.0: lựa chọn của `td-choice-group` (chữ phụ / ghi chú lấy màu chữ đầy đủ khi nhấn: chữ muted trên 12 % đen chỉ 4.0:1) và nút − / + của stepper |
+| `--td-color-pressed` | `rgb(0 0 0 / 12%)` | `rgb(255 255 255 / 14%)` | nút icon, tab, trang, card, scroll-top (lớp phủ `background-image`); v0.95.0: `a.td-card` / `a.td-card.td-card--surface` (cả card là một link) và nút thường của `td-selection-bar`; v0.49.0: lựa chọn của `td-choice-group` (chữ phụ / ghi chú lấy màu chữ đầy đủ khi nhấn: chữ muted trên 12 % đen chỉ 4.0:1) và nút − / + của stepper |
 | `--td-option-pressed-bg` | `var(--td-color-pressed)` | — | hàng option / menu / tree / bánh xe datetime |
 | `--td-btn-primary-pressed` | `#52525b` | `#a1a1aa` | primary (đen sáng thêm một bậc; dark tối thêm) |
 | `--td-btn-secondary-pressed` | `--td-gray-300` | `#45454b` | |
@@ -39,6 +39,7 @@ Khai báo ở `tokens.css` / `theme-dark.css` (chung, nút), `action-button.css`
 | `--td-action-btn-standard-pressed-bg` | `var(--td-color-pressed)` | — | |
 | `--td-action-btn-warning-pressed-bg` / `-fg` | `#fef3c7` / `#92400e` | `rgb(245 158 11 / 26%)` / như fg thường | không nền amber nào giữ `#b45309` ≥ 4.7, nên icon đậm thêm một bậc |
 | `--td-action-btn-danger-pressed-bg` | `#fdd5d5` | `rgb(220 38 38 / 30%)` | |
+| `--td-selection-bar-danger-pressed-bg` | `#fdd5d5` | `rgb(220 38 38 / 30%)` | nút nguy hiểm `.td-selection-bar__action--danger` (v0.95.0; như action-button danger) |
 | `--td-form-summary-pressed-bg` | `var(--td-color-pressed)` | `rgb(0 0 0 / 40%)` (0.42.1) | link trong khung tóm tắt lỗi — dark làm **tối** nền tint: không lớp trắng nào giữ chữ lỗi ≥ 4.7 (14 % = 3.30), đen 40 % = 6.34 |
 | `--td-chip-remove-hover` (nhấn = hai lớp) | `var(--td-color-hover-strong)` | `rgb(255 255 255 / 13%)` (0.42.1, trước 16 %) | nút × của chip-input: chữ chip 4.88 khi nhấn (trước 4.22) |
 | `--td-dropzone-bg-pressed` | `#f4f4f5` (+ viền `--td-dropzone-border-active`; gray-100 chỉ 4.64 với dòng phụ) | `#2c2c30` | vùng dropzone |
@@ -79,10 +80,13 @@ trạng thái ở mọi compound và coi luật có tổ tiên là phủ control
 | `.td-number__step` | `manipulation` | nút − / + của `td-number-input stepper` (v0.49.0): bấm liên tục là thao tác chính — không phóng to khi chạm nhanh hai lần trên iOS |
 | `.td-dtp-wheel__list` | `pan-y` | bánh xe giờ / phút (v0.61.0): vuốt dọc cuộn bánh xe (quán tính + CSS scroll-snap), không pan ngang, `overscroll-behavior: contain` (không dây chuyền ra trang), không phóng to khi chạm đúp |
 | `.td-cal__nav, .td-cal__title` | `manipulation` | nút ‹ › và nút tháng / năm của lịch `td-datetime-picker` (v0.60.0): đổi tháng liên tục là thao tác chính — không phóng to khi chạm nhanh hai lần trên iOS. Ô ngày / tháng / năm không đặt `touch-action` (cuộn trang bình thường) |
+| `.td-check-matrix__tri` | `manipulation` | nút ba trạng thái của `td-check-matrix mode=override` (v0.95.0): chạm nhanh liên tục để xoay vòng — không phóng to khi chạm nhanh hai lần trên iOS |
 
 **Không có dòng cho `td-carousel` (v0.50.0, ADR 0024)** — có chủ đích: viewport của carousel giữ `touch-action: auto`
 (cuộn native + scroll-snap; vuốt dọc bắt đầu trên dải cuộn trang). Không listener pointer / touch / wheel; nút `.td-carousel__btn`
 và chấm `.td-carousel__dot` có luật nhấn (`--td-btn-secondary-pressed` / `--td-color-pressed`) và nằm trong `PRESS_TARGETS`.
+
+v0.95.0 `PRESS_TARGETS` +3: `.td-selection-bar__action--danger`, `a.td-card`, `a.td-card.td-card--surface`.
 Lane touch: vuốt ngang cuộn dải, vuốt dọc cuộn trang, chạm "tiếp" đi đúng một trang, hình nhấn nút / chấm.
 
 ## Ngưỡng và cử chỉ

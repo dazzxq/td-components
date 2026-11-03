@@ -15,6 +15,9 @@
 		--td-dropdown-option-h: 40px; /* JS mirrors it: max-height = visible options × 40 px */
 		--td-dropdown-swatch-size: 0.75rem; /* v0.82.0: option colour dot (trigger + rows) */
 		--td-dropdown-icon-size: 1.75rem; /* v0.84.0: the toned icon tile of a rich row (the glyph is 60 % of it) */
+		--td-dropdown-image-size: 2rem; /* v0.95.0: option `image` in a menu row (matches width/height="32") */
+		--td-dropdown-image-trigger-size: 1.25rem; /* v0.95.0: the selected option's image on the trigger */
+		--td-dropdown-image-radius: var(--td-radius-sm); /* v0.95.0: a cover thumbnail, square with a light rounding */
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
@@ -592,6 +595,40 @@
 		height: var(--td-icon-s);
 	}
 
+	/* v0.95.0: option `image` (a site thumbnail, alt="": the label names the option) — wins over the icon / dot. A fixed
+	   box: a host reset (Tailwind preflight img { max-width: 100%; height: auto }) must not change it; the fill shows
+	   while it loads and when it fails (no broken-image frame). */
+	.td-dropdown__image,
+	.td-dropdown__value-image {
+		max-width: none;
+		max-height: none;
+		/* the preflight's height: auto is unlayered → it beats the fixed height below; a square ratio keeps the box
+		   (else the picture's own ratio, e.g. 32×21) — the reset never sets aspect-ratio */
+		aspect-ratio: 1;
+		object-fit: cover;
+		forced-color-adjust: none; /* the picture is content */
+		background-color: var(--td-color-fill);
+		border-radius: var(--td-dropdown-image-radius);
+	}
+
+	/* in a menu row: a direct child of the flex row */
+	.td-dropdown__image {
+		display: block;
+		flex: none;
+		width: var(--td-dropdown-image-size);
+		height: var(--td-dropdown-image-size);
+	}
+
+	/* on the trigger: inside the clipping, nowrap value span (not a flex container) → inline-level like the dot / icon,
+	   so the label stays on the same line and its ellipsis still works; 1px in from the start edge (v0.84.0 icon) */
+	.td-dropdown__value-image {
+		display: inline-block;
+		width: var(--td-dropdown-image-trigger-size);
+		height: var(--td-dropdown-image-trigger-size);
+		margin-inline: 1px var(--td-space-xs);
+		vertical-align: middle;
+	}
+
 	.td-dropdown__empty {
 		padding: 8px var(--td-option-pad-x);
 		margin: 0;
@@ -696,6 +733,11 @@
 
 		.td-dropdown__swatch {
 			box-shadow: 0 0 0 1px CanvasText;
+		}
+
+		.td-dropdown__image,
+		.td-dropdown__value-image {
+			background-color: Canvas;
 		}
 
 		/* the system arrow (in system colours) instead of the gradient chevron */

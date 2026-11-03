@@ -339,15 +339,38 @@ TdLightbox.bind(document, { filmstrip: 'auto' }); // bind() truyền tiếp như
 ### 10. Tải sẵn, lỗi ảnh, hiệu ứng trượt (0.24.0)
 
 - **Tải sẵn ảnh kề:** ảnh đang xem tải xong → kit tải ngầm ảnh trước và ảnh sau (chỉ ảnh, bỏ video; có quay vòng), cùng
-  URL nên lần chuyển sau lấy từ cache. Mỗi ảnh kề được tải **tối đa một lần** trong phiên; huỷ khi đóng / thay gallery.
-  Bỏ qua khi người dùng bật tiết kiệm dữ liệu (`navigator.connection.saveData`). Option `preload`:
+  URL nên lần chuyển sau lấy từ cache. Ảnh **đã tải xong** không bao giờ bị xin lại trong phiên; request **đang bay**
+  (chưa tải xong) bị huỷ khi bạn chuyển ảnh mà nó đã ra khỏi cửa sổ tải sẵn (lướt nhanh không còn kéo theo ảnh cũ,
+  0.95.0) — quay lại gần nó thì có thể được xin lại. Mọi request huỷ khi đóng / thay gallery. Chuyển tới ảnh đang được
+  tải sẵn → kit dùng luôn request đó (không tải trùng). Bỏ qua khi người dùng bật tiết kiệm dữ liệu
+  (`navigator.connection.saveData`), với mọi dạng option. Option `preload`:
   - `'same-origin'` (**mặc định**): chỉ tải sẵn ảnh **cùng origin** với trang — không gửi request tới host ngoài cho ảnh
     người dùng chưa xem (tránh rò IP / theo dõi qua ảnh do người khác nhập).
   - `'all'`: tải sẵn cả ảnh khác origin — dùng khi media nằm trên **CDN tin cậy** của site
     (`TdLightbox.bind(document, { preload: 'all' })`).
   - `false`: tắt hẳn.
+  - Object `{ ahead, behind, allowCrossOrigin }` (0.95.0): tải sẵn nhiều ảnh hơn và/hoặc chỉ mở cho CDN của bạn.
 
-  Request tải sẵn không gửi `Referer` (`referrerPolicy = 'no-referrer'`), không đặt `crossOrigin`.
+    ```js
+    TdLightbox.bind(document, {
+      preload: {
+        ahead: 2,   // số ảnh phía sau (chiều "Ảnh sau"), số nguyên 0..5, mặc định 1
+        behind: 1,  // số ảnh phía trước, 0..5, mặc định 1
+        allowCrossOrigin: (url, item) => new URL(url).origin === 'https://img.example.com',
+      },
+    });
+    ```
+
+    - `ahead` / `behind`: số → làm tròn xuống → kẹp vào `0..5` (trần 5 để cấu hình nhầm không kéo cả album); thiếu /
+      không phải số → `1`. Cả hai `0` = không tải sẵn. Thứ tự request: gần nhất trước, xen kẽ `+1, −1, +2, −2, …`;
+      đếm theo **vị trí** (video chiếm chỗ, không bị bù).
+    - `allowCrossOrigin`: hàm `(url, item) => boolean`, **chỉ** được gọi cho ảnh khác origin (ảnh cùng origin luôn được
+      tải sẵn). `url` là URL tuyệt đối đã qua `isAllowedUrl` — đúng URL sẽ được tải; `item` là bản sao item đã chuẩn
+      hoá. Trả truthy → tải; falsy hoặc ném lỗi → không tải. `true` = như `'all'`; thiếu / giá trị khác = chỉ cùng origin.
+
+  Request tải sẵn không gửi `Referer` (`referrerPolicy = 'no-referrer'`), không đặt `crossOrigin`. Nếu một ảnh đang
+  được tải sẵn bị lỗi đúng lúc bạn chuyển tới nó, kit thử lại **một lần** bằng request thường (có `Referer`, cho CDN
+  chống hotlink); lỗi tiếp → khối "Không tải được ảnh".
 - **Ảnh lỗi:** thay vì khung trống, hiện khối `role="alert"`: "Không tải được ảnh" + nút **Thử lại** (tải lại cùng URL)
   và **Ảnh sau** (khi gallery > 1 ảnh). Thử lại nhận focus nếu focus đang ở trong lightbox mà không ở nút nào khác.
   Nhãn: `labels.loadError`, `labels.retry`, `labels.next`.
@@ -424,7 +447,7 @@ Mọi tuỳ chọn đều không bắt buộc.
 | `history` | `false \| true \| adapter` | `false` | Nút Back của trình duyệt đóng lightbox |
 | `panel` | `false \| true \| (ctx) => Element \| null` | `false` | Panel thông tin |
 | `toolbar` | `Array<spec>` | `[]` | Nút toolbar riêng |
-| `preload` | `false \| 'same-origin' \| 'all'` | `'same-origin'` | Tải sẵn ảnh kề (0.24.0); `'all'` khi media ở CDN tin cậy. Xem [mục 10](#10-tải-sẵn-lỗi-ảnh-hiệu-ứng-trượt-0240) |
+| `preload` | `false \| 'same-origin' \| 'all' \| { ahead?, behind?, allowCrossOrigin? }` | `'same-origin'` | Tải sẵn ảnh kề (0.24.0); `'all'` khi media ở CDN tin cậy; object (0.95.0): số ảnh mỗi phía (0..5, mặc định 1) + hook `allowCrossOrigin(url, item)` mở riêng cho CDN của bạn. Xem [mục 10](#10-tải-sẵn-lỗi-ảnh-hiệu-ứng-trượt-0240) |
 | `filmstrip` | `false \| true \| 'auto'` | `false` | Dải thumbnail dưới ảnh (0.24.0); `'auto'` = khi ≥ 8 ảnh. Xem [Filmstrip](#9-filmstrip--dải-ảnh-nhỏ-0240-tuỳ-chọn) |
 | `closeOnBackdrop` | `boolean` | `true` | Click nền (ngoài ảnh) để đóng. Khác `TdModal` (không đóng khi click nền): trình xem ảnh không có gì để mất |
 | `isForeignLayerOpen` | `() => boolean` | xem dưới | Có lớp khác đang nằm trên lightbox không |
@@ -846,6 +869,10 @@ Những giả định tin cậy mà site phải biết:
   phải được bảo vệ ở server.
 - **Media cross-origin HTTPS được phép mặc định** → rò IP/Referer tới host ngoài; dùng allowlist origin khi nội dung
   do người dùng nhập.
+- **Tải sẵn chỉ cùng origin mặc định**: không request tới host ngoài cho ảnh người dùng chưa xem. `allowCrossOrigin`
+  (0.95.0) chỉ **thu hẹp** so với `'all'`: nó chạy **sau** `isAllowedUrl` (không tải sẵn được thứ mà chính sách hiển thị
+  đã loại), lỗi trong hook = không tải, kit không log URL (URL ký có thể lọt console). Request tải sẵn không gửi
+  `Referer`.
 - Link tải (cả từng biến thể của `downloads` và mục trong menu tải) cũng qua `isAllowedUrl`; tên file `filename` được
   lọc ký tự đường dẫn / điều khiển; `attrPrefix` được whitelist trước khi vào selector.
 
@@ -912,6 +939,7 @@ Navigation API) ở lại dwp dưới dạng hook.
 | `ownedByVideoModule(itemEl, group)` (nhường click cho `@dwp/video`) | `filter: (el) => !ownedByVideoModule(el, el.closest('[data-dwp-lightbox-group]'))` |
 | Né `.dwp-menu` / `.dwp-modal` khi xử lý phím | `isForeignLayerOpen: () => …` |
 | Icon chuỗi SVG qua `innerHTML` | Icon từ registry dựng bằng DOM API |
+| Tải sẵn nhiều ảnh kề, ảnh nằm trên CDN khác origin | `preload: { ahead, behind, allowCrossOrigin }` (0.95.0) — xem [mục 10](#10-tải-sẵn-lỗi-ảnh-hiệu-ứng-trượt-0240); `saveData` vẫn được tôn trọng |
 
 Khác biệt td giữ lại (tốt hơn bản gốc): dải caption dưới ảnh ẩn khi có panel, `Escape` trong player không đóng viewer,
 `alt` tách khỏi caption, nút fullscreen ẩn khi không hỗ trợ, index gallery theo phần tử (không theo `src`), chỉ khôi
@@ -928,6 +956,7 @@ TdLightbox.bind(document, {
   history: navHistory,                                          // adapter Navigation API ở trên
   filter: (el) => !ownedByVideoModule(el, el.closest('[data-dwp-lightbox-group]')),
   isAllowedUrl: (url) => defaultIsAllowedUrl(url) && isGatewayUrl(url),
+  preload: { ahead: 2, behind: 1, allowCrossOrigin: (url) => isGatewayUrl(url) }, // 0.95.0: CDN ảnh khác origin
   download: (item) => {
     const base = window.DWP && window.DWP.mediaDownloadUrl;
     if (!base || item.type !== 'image') return null;

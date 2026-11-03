@@ -47,6 +47,7 @@ export { TdTabs } from './src/display/td-tabs.js';
 export { TdPagination } from './src/display/td-pagination.js';
 export { TdEmptyState } from './src/display/td-empty-state.js';
 export { TdMediaGrid } from './src/display/td-media-grid.js';
+export { TdSelectionBar } from './src/display/td-selection-bar.js';
 export { TdSortable } from './src/display/td-sortable.js';
 export { TdCopy } from './src/display/td-copy.js';
 export { TdMaskedValue } from './src/display/td-masked-value.js';

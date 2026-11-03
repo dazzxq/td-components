@@ -183,6 +183,38 @@ toàn; `XOÁ`, `DELETE` (Telex `ee` → `ê`) thì không.
 
 Chỉ có trên `confirm()` — dialog khác cần kiểu này thì tự dựng bằng `footer`.
 
+### 3c. Khoá nút cho tới khi dữ liệu sẵn sàng (`setActionDisabled`, 0.95.0)
+
+Nút "Xoá" chỉ mở khi bản xem trước (tải async) đã xong. `TdModal.setActionDisabled(id, index, disabled)` đổi trạng
+thái **gốc** của nút: trạng thái này giữ nguyên qua mọi vòng bận của action khác (khi "Xem trước" chạy, mọi nút khác
+tạm `disabled`; xong thì từng nút về trạng thái gốc **hiện tại** của nó, không về `disabled` lúc `show()`).
+
+```js
+const id = TdModal.show({
+  title: 'Xoá album',
+  body,
+  actions: [
+    { label: 'Hủy' },
+    { label: 'Xem trước', close: false, onClick: () => loadPreview() },  // Promise → bận
+    { label: 'Xoá', variant: 'danger', disabled: true, onClick: () => api.remove() },
+  ],
+});
+
+// … bản xem trước đã sẵn sàng:
+TdModal.setActionDisabled(id, 2, false);
+// … dữ liệu đổi, cần khoá lại:
+TdModal.setActionDisabled(id, 2, true);
+```
+
+- `index` là vị trí trong **mảng `actions` bạn truyền** (phần tử không phải object vẫn giữ chỗ, chỉ số bạn thấy trong
+  code luôn đúng).
+- Trả `true` khi đã ghi nhận; `false` (không throw) khi id không có / modal đã đóng / modal không có `actions` (footer
+  tự dựng, `confirm()` / `success()` / `error()` / `info()`) / `index` không phải số nguyên hoặc không ứng với nút nào.
+- Modal rảnh → áp ngay. Đang bận → nút khác áp khi vòng bận kết thúc; chính nút đang bận giữ trạng thái bận, nhả xong mới
+  nhận giá trị mới.
+- Nút đang giữ focus mà bị khoá → focus chuyển về khung dialog trước (không rơi ra ngoài modal, Tab vẫn trong modal).
+- **Không** gán `ctx.button.disabled` trong `onClick`: kit ghi đè nó khi một vòng bận kết thúc. Dùng API này.
+
 ### 4. Footer tự dựng, đóng bằng code
 
 ```js
@@ -325,6 +357,7 @@ Chỉ modal trên cùng phản ứng; khi action đang bận thì không đóng.
 | `TdModal.closeById(id)` | `void` | Đóng modal theo id (ở bất kỳ vị trí nào trong chồng). Id không tồn tại → không làm gì. |
 | `TdModal.closeAll()` | `void` | Đóng mọi modal, trên cùng trước. |
 | `TdModal.requestClose(id, value?)` | `Promise<boolean>` | 0.44.0: xin đóng **qua** `beforeClose` (reason `'request'`). `true` = đã đóng; `false` = guard từ chối, action đang bận hoặc id không tồn tại. `close` / `closeById` / `closeAll` **không** qua guard. |
+| `TdModal.setActionDisabled(id, index, disabled)` | `boolean` | 0.95.0: đổi trạng thái `disabled` **gốc** của nút `actions[index]` lúc modal đang mở; bền qua vòng bận của action khác. `false` = id không có / đã đóng / không có `actions` / `index` sai. Xem [3c](#3c-khoá-nút-cho-tới-khi-dữ-liệu-sẵn-sàng-setactiondisabled-0950). |
 | `TdModal.labels` | `object` | Nhãn mặc định, sửa được: `{ close: 'Đóng', confirm: 'Xác nhận', cancel: 'Hủy', ok: 'OK', confirmTitle: 'Xác nhận', confirmMessage: 'Bạn có chắc chắn?', successTitle: 'Thành công', errorTitle: 'Lỗi', infoTitle: 'Thông tin', typeToConfirmLabel: 'Gõ {phrase} để xác nhận', typeToConfirmMismatch: 'Chưa khớp — hãy gõ đúng {phrase}', typeToConfirmMatched: 'Đã khớp, có thể xác nhận' }` (`*Title` / `confirmMessage` từ 0.16.0, ba khoá `typeToConfirm*` từ 0.44.0). |
 
 Không có `TdModal.loading()` — đã bỏ, dùng [`TdLoading`](loading.md).
@@ -393,7 +426,7 @@ window.addEventListener('beforeunload', (e) => {
   variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning' | 'info',  // mặc định / lạ → 'secondary'
   value?: any,                   // truyền cho onClose(value) khi action làm modal đóng
   close?: boolean,               // false → bấm không đóng modal (mặc định đóng)
-  disabled?: boolean,            // nút bị disabled từ đầu
+  disabled?: boolean,            // trạng thái disabled gốc lúc mở; đổi lúc chạy bằng TdModal.setActionDisabled() (0.95.0)
   onClick?: (ctx: { id: string, value: any, button: HTMLButtonElement }) => boolean | void | PromiseLike<any>,
 }
 ```
@@ -409,6 +442,10 @@ Bảng kết quả của `onClick`:
 
 Trong lúc bận, bấm lại nút đó hay nút khác đều bị bỏ qua, và Escape cũng không đóng modal kể cả khi `escapeCloses`.
 Đóng bằng code (`closeById`, `closeAll`) thì **vẫn** đóng được; kết quả Promise về sau bị bỏ qua.
+
+Khi vòng bận kết thúc, mỗi nút về trạng thái `disabled` **gốc** của nó: lúc đầu là `disabled` của action, sau đó là giá
+trị bạn đặt bằng `TdModal.setActionDisabled()` (0.95.0). Vì vậy gán thẳng `ctx.button.disabled` không bền (bị ghi đè sau
+vòng bận) — xem [3c](#3c-khoá-nút-cho-tới-khi-dữ-liệu-sẵn-sàng-setactiondisabled-0950).
 
 ### Tuỳ chọn `confirm()`
 

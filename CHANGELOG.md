@@ -4,6 +4,101 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.95.0
+
+**Thanh thao tác hàng loạt, ma trận quyền ba trạng thái, upload nền của media picker, `.td-card` và ba nâng cấp nhỏ**
+(yêu cầu dwp K5–K9, dcms2, dsuite; một lô song song, 2026-11-04). [Plan lô](docs/internal/plans/v0.95.0-batch.md),
+[ADR 0040](docs/internal/decisions/0040-check-matrix-override-mode.md),
+[ADR 0041](docs/internal/decisions/0041-media-picker-background-uploads.md).
+
+### Added
+
+- **`<td-selection-bar>`** (`@dazzxq/td-components/selection-bar`, class `TdSelectionBar`): thanh dính đáy cho lựa chọn
+  của một hoặc nhiều `td-media-grid` (`group="…"` hoặc `for="id1 id2"`): nút × bỏ chọn tất cả, số **tổng** ("Đã chọn
+  n"), các nút thao tác của site (`data-td-action`, `data-td-action-icon`, `data-td-tone="danger"` = ghost đỏ). Dưới 36rem
+  chỉ còn icon (nhãn giữ làm tên nút), tràn từ cuối vào menu "…"; safe-area; chiều cao thanh lộ qua biến runtime
+  `--td-selection-bar-offset` trên `<html>` (CSSOM, CSP-strict). Sự kiện `selection-change` `{ count, ids }`,
+  `selection-action` `{ action, ids, count, button }` — **sau một thao tác thanh tự bỏ chọn**, trừ khi handler
+  `selection-action` gọi `preventDefault()`. API `count`, `selectedIds` / `getSelected()`, `grids`, `clear({ emit })`,
+  `disabled`; `TdSelectionBar.labels`. Kit không tự hỏi xác nhận thao tác nguy hiểm. [Docs](docs/components/selection-bar.md).
+- **`td-media-grid` `selection-group`** (property `selectionGroup`): nhiều lưới chọn chung — Shift chọn dải xuyên lưới theo
+  thứ tự DOM, Escape bỏ chọn cả nhóm, một thông báo tổng, lưới thêm / gỡ tại chỗ giữ lựa chọn. **Event `item-remove`**
+  `{ ids, items, containers }` (một lần mỗi đợt, sau `select-change`).
+- **`td-check-matrix` `mode="override"`** (ADR 0040, bổ sung ADR 0022; yêu cầu dcms2): mỗi ô ba trạng thái **kế thừa →
+  cấp → từ chối** (chạm / Space / Enter = bậc kế, Shift+Space = lùi, `+` `=` `-` Delete Backspace `0`), cờ ô `inherited`
+  (✓ mờ = vai trò đang cho quyền; chỉ là gợi ý hiển thị), ô khoá không bao giờ đổi và luôn gửi, ô hàng loạt (đồng nhất →
+  bậc kế, lẫn lộn → kế thừa), nút **"Đặt lại về kế thừa"** (lưới = cả bảng, hẹp = cột đang hiện, không hỏi).
+  `value` = `{ cột: { hàng: 'inherit' | 'grant' | 'deny' } }`; FormData `name[col]=''` đầu, `name[col][row]=state` mỗi ô áp
+  dụng được, `name[_v]=2` cuối; `change` `{ changes: [[hàng, cột, từ, thành]…], trigger }` (+ trigger `inherit`). Dữ liệu
+  sai → fail closed (lý do mới `value-shape` / `value-state` / `value-na`). Nhãn mới `inherit` / `inheritOn` /
+  `inheritOff`, `grant` / `deny` / `mixed`, `cycleAll` / `cycleRow` / `cycleColumn` / `cycleGroup` / `cycleGroupColumn`,
+  `resetAll` / `resetColumn`, `keys`. Chế độ check **không đổi một byte**.
+- **PHP `td_check_matrix(…, ['mode' => 'override'])`**: hợp đồng SSR mới **`check-matrix@2`** (hằng
+  `Td::SSR_CHECK_MATRIX_OVERRIDE`), một `<select>` gốc mỗi ô (form không JS gửi đủ), FormData giống JS từng byte; không
+  nhận tại chỗ (giá trị chọn trước JS được đọc rồi render một lần). Recipe server (Laravel + PHP thuần, kiểm `_v === '2'`,
+  `max_input_vars` tính theo số ô) trong [check-matrix.md](docs/components/check-matrix.md#chế-độ-kế-thừa--cấp--từ-chối-modeoverride).
+- **`td-media-picker` tải hàng loạt** (ADR 0041; yêu cầu dsuite): **upload nền** — đóng picker (×, "Đóng", Escape, "Chèn",
+  `close()`) hoặc gỡ host khi file thả vào lưới còn đang tải → không hỏi, file **tải tiếp ở nền**; mở lại với cùng object
+  adapter + cùng `context` thấy lại thẻ đang tải / lỗi; lô xong khi không picker nào hiện nó → một toast. **Dải lỗi** từ 2
+  thẻ lỗi: "{n} tệp tải lên lỗi" + "Thử lại tất cả" + "Gỡ tất cả lỗi". Kết quả adapter `deduplication.outcome:
+  'exact-reused'` → chip "Đã có trong thư viện" + thẻ ghim đầu lưới khi asset không nằm trên trang. Trần mỗi adapter **100
+  file chưa xong / 256 MiB ước tính** (vượt → `rejectCount`). API trang `TdMediaPicker.uploads` (`{ running, waiting,
+  failed }`) + `TdMediaPicker.cancelUploads()` (gọi khi đăng xuất). Nhãn mới `uploadFailedStrip`, `retryAll`,
+  `removeAllFailed`, `retryAllStarted`, `removedFailed`, `reusedBadge`, `uploadsResumed`, `uploadFailedClosed`.
+- **`UploadQueue.release(item)`** (`src/utils/upload-queue.js`, chỉ thêm): nhả item đã `done` khỏi sổ lô (byte của
+  `original` được thả); `td-dropzone` không gọi → không đổi hành vi.
+- **`td-dropdown` option `image`** (K6): ảnh vuông 32px đầu dòng (thắng icon + chấm màu; cổng `safeMediaUrl` như
+  `td-choice-group`, `loading="lazy"`, `alt=""`) và 20px trên trigger khi đã chọn (tắt bằng `trigger-icon="none"`, không
+  có ở action mode); `<option data-image>` khi nâng cấp `<select>`. Token `--td-dropdown-image-size`,
+  `--td-dropdown-image-trigger-size`, `--td-dropdown-image-radius`. **PHP `td_dropdown`** option `image` → `data-image`
+  (qua `td__media_url`).
+- **`TdModal.setActionDisabled(id, index, disabled)`** (K7): đổi trạng thái `disabled` gốc của một nút action lúc modal
+  đang mở, bền qua vòng bận của action khác; nút đang focus bị khoá → focus về dialog.
+- **`td-lightbox` `preload: { ahead, behind, allowCrossOrigin }`**: tải sẵn tới 5 ảnh mỗi phía (xen kẽ +1, −1, +2…), huỷ
+  request cũ mỗi lần chuyển ảnh, ảnh tải sẵn dở được lần tải chính tiếp nhận; hook `allowCrossOrigin(url)` mở cho CDN khác
+  origin (chỉ thu hẹp so với `'all'`, chạy sau `isAllowedUrl`); Save-Data vẫn tắt preload.
+- **`.td-card`** (K9, thuần CSS — không JS, không custom element): ảnh bìa theo tỉ lệ token (mặc định 4/3; `.td-card--ratio-1x1` / `-4x3` / `-3x2` / `-16x9` / `-3x4`),
+  ô giữ chỗ icon `image`, tiêu đề kẹp 2 dòng, dòng meta, badge đè góc ảnh, **cả card là một link**, mặc định không khung
+  (`.td-card--surface` = có khung), hover chỉ đổi viền ảnh (không zoom), viền focus; lưới `.td-card-grid`. **PHP
+  `td_card($title, $o)`** in `a.td-card` hoặc `div.td-card` tĩnh (href qua `Td::safeUrl`, srcset hỏng bỏ cả srcset).
+  [Docs](docs/components/card.md).
+- Token mới: `--td-selection-bar-*` (bg / fg / border / shadow / radius / gap / pad-block / pad-inline / position / z /
+  enter / danger-fg / danger-hover-bg / danger-pressed-bg), `--td-check-matrix-grant-bg` / `-deny-bg` / `-deny-fg` /
+  `-inherit-mark` / `-inherit-edge` (viền ô kế thừa = `--td-control-border-strong`, ≥ 3:1), `--td-dropdown-image-*`,
+  `--td-card-*` (danh sách ở [theming.md](docs/customization/theming.md)).
+- Story `td-selection-bar`, `td-card`, check-matrix Override / OverrideNarrow, dropdown Images, modal ActionState; CSP cases
+  mới (card, check-matrix override, dropdown image, media-grid group, media-picker drop, selection-bar); ca FOUC
+  `cm-override`.
+
+### Changed
+
+- `td-media-picker`: tối đa **3 `adapter.upload` cùng lúc trên cả trang** (trước: trên mỗi picker) — lưới, dialog và
+  upload nền dùng chung một pool. File thả vào lưới không còn tính vào hộp xác nhận "Bỏ thay đổi" khi đóng (chúng tải nền);
+  dialog tải lên giữ hành vi cũ (đóng picker = bỏ file của dialog, có hỏi).
+- `td-dropdown`: object option có sẵn khoá `image` trước đây bị bỏ qua, nay hiện ảnh — dữ liệu API mang `image` không phải
+  thumbnail thì đổi khoá hoặc map trước khi gán.
+- `press.js` `PRESS_TARGETS` thêm nút danger của selection-bar, `a.td-card` và `a.td-card.td-card--surface` (hình nhấn
+  kit-wide, ADR 0019). `.td-check-matrix__tri` `touch-action: manipulation` (hai chạm nhanh = hai bậc, không phóng to).
+
+### Internal
+
+- `src/utils/media-selection-group.js` (điều phối nhóm chọn), `src/utils/preload-window.js`, `media-picker-uploads.js`
+  (kho upload theo object adapter); test node + browser 3 engine + PHP + SSR fixture `override-*`, `card`; responsive
+  (selection-bar 390, card, check-matrix override bar), touch (selection-bar, card, check-matrix override hai chạm),
+  contrast (check-matrix override, card); 18 baseline CSP mới; security-model §6p–6s.
+
+### Site upgrade notes
+
+- **dwp:** `<td-selection-bar>` tự bỏ chọn sau mỗi thao tác — thao tác cần giữ lựa chọn (vd. mở hộp hỏi xác nhận rồi mới
+  xoá) gọi `e.preventDefault()` trong `selection-action` rồi tự `clear()` khi xong. Nội dung / nút nổi cuối trang chừa chỗ
+  bằng `var(--td-selection-bar-offset, 0px)` (vd. `--td-scroll-top-bottom`, xem docs §5).
+- **dcms2:** override là opt-in (`mode="override"`), server đọc `$_POST[name]` với `_v === '2'`, enum chặt
+  `inherit|grant|deny`, 422 khi thiếu `_v` (cắt bởi `max_input_vars`); ô khoá: server tự bỏ qua giá trị gửi lên.
+- **dsuite:** server dedup trả `deduplication.outcome: 'exact-reused'` (không có alias `reused: true`); gọi
+  `TdMediaPicker.cancelUploads()` khi đăng xuất; kit không gắn `beforeunload` (recipe trong docs). Upload nền mất khi tải
+  lại / rời trang.
+- Không breaking change; không migrate dữ liệu; chế độ check của check-matrix và form không có `mode` không đổi.
+
 ## 0.94.0
 
 **+113 icon, dữ liệu tìm kiếm EN + VI cho mọi icon, và `<td-icon-picker>`** (yêu cầu dcms2 02–03/11/2026, 2026-11-03).

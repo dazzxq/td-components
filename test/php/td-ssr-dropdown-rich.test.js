@@ -1,8 +1,12 @@
 // v0.84.0 (plan v0.84.0-dropdown-rich, Decisions 11) — PHP side: td_dropdown prints <optgroup> and the rich
 // per-option data-* (icon, icon-tone, description, status, status-tone, meta, keywords), each only when valid, escaped.
+// v0.95.0 (plan v0.95.0-small-kit §4.2, K6): `image` → `data-image` through td__media_url (td_choice_group parity).
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { HAS_PHP, runPhp } from './php.mjs';
+import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { join } from 'node:path';
+import { HAS_PHP, PHP_BIN, ROOT, runPhp } from './php.mjs';
 
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
 const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
@@ -79,5 +83,74 @@ describe('td_dropdown rich rows + groups (PHP)', opts, () => {
     const html = one(['f', { a: 'A', b: 'B' }, 'a']);
     assert.ok(!/data-(icon|description|status|meta|keywords)|optgroup/.test(html));
     assert.match(html, /<option value="a" selected>A<\/option><option value="b">B<\/option>/);
+  });
+});
+
+/** td_dropdown calls in one php process, optionally with Td::allowHttpLinks(true) (the shared harness has no switch). */
+function runDropdown(calls, { allowHttp = false } = {}) {
+  const code = `require ${JSON.stringify(join(ROOT, 'php/td.php'))}; TdComponents\\Td::configure('/', ${JSON.stringify(ROOT)});`
+    + (allowHttp ? ' TdComponents\\Td::allowHttpLinks(true);' : '')
+    + ` $calls = json_decode(${JSON.stringify(JSON.stringify(calls))}, true, 64, JSON_THROW_ON_ERROR); $out = [];`
+    + ' foreach ($calls as $a) { $out[] = td_dropdown(...$a); }'
+    + ' echo json_encode($out, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);';
+  const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-d', 'log_errors=0', '-d', 'error_reporting=E_ALL', '-d', 'xdebug.mode=off', '-r', code], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stderr, '', r.stderr);
+  return JSON.parse(r.stdout);
+}
+
+describe('td_dropdown option image (v0.95.0, PHP)', opts, () => {
+  test('a valid image → data-image after data-swatch, before data-icon (fixed attribute order)', () => {
+    const html = one(['f', [{
+      value: 'a12', label: 'Lễ hội 2026', swatch: '#ff0000', image: 'https://cdn.example.com/albums/12/cover-96.webp',
+      icon: 'folder', description: '48 ảnh',
+    }], 'a12']);
+    assert.match(html, /<option value="a12" selected data-swatch="#ff0000" data-image="https:\/\/cdn\.example\.com\/albums\/12\/cover-96\.webp" data-icon="folder" data-description="48 ảnh">Lễ hội 2026<\/option>/);
+  });
+
+  test('scheme-less / relative URLs are kept; javascript: / data: / blob: / non-strings are not printed', () => {
+    const html = one(['f', [
+      { value: 'a', label: 'A', image: '/media/a.webp' },
+      { value: 'b', label: 'B', image: 'javascript:alert(1)' },
+      { value: 'c', label: 'C', image: 'data:image/svg+xml,<svg onload=alert(1)>' },
+      { value: 'd', label: 'D', image: 'blob:https://x.example/1' },
+      { value: 'e', label: 'E', image: ['https://x.example/a.png'] },
+      { value: 'f', label: 'F', image: '' },
+    ], '']);
+    assert.match(html, /<option value="a" data-image="\/media\/a\.webp">A<\/option>/);
+    for (const v of ['b', 'c', 'd', 'e', 'f']) assert.match(html, new RegExp(`<option value="${v}">${v.toUpperCase()}</option>`));
+  });
+
+  test('http: only with Td::allowHttpLinks(true)', () => {
+    const call = ['f', [{ value: 'a', label: 'A', image: 'http://cdn.example.com/a.png' }], ''];
+    assert.ok(!runDropdown([call])[0].includes('data-image'));
+    assert.match(runDropdown([call], { allowHttp: true })[0], /data-image="http:\/\/cdn\.example\.com\/a\.png"/);
+  });
+
+  test('escaped in the attribute: a quote-breaking URL never makes markup', () => {
+    const html = one(['f', [{ value: 'a', label: 'A', image: 'https://x.example/a.png?"><svg onload=alert(1)>' }], '']);
+    assert.ok(!html.includes('<svg'), html);
+    assert.match(html, /data-image="https:\/\/x\.example\/a\.png\?&quot;&gt;&lt;svg onload=alert\(1\)&gt;"/);
+  });
+
+  test('same gate as td_choice_group — test/ssr/media-url.cases.json (php column), with and without allowHttpLinks', () => {
+    const { cases } = JSON.parse(readFileSync(join(ROOT, 'test/ssr/media-url.cases.json'), 'utf8'));
+    for (const allowHttp of [false, true]) {
+      const list = cases.filter((c) => c.allowHttp === allowHttp);
+      const out = runDropdown(list.map((c) => ['f', [{ value: 'a', label: 'A', image: c.url }], '']), { allowHttp });
+      list.forEach((c, k) => assert.equal(out[k].includes('data-image="') ? 'keep' : 'refuse', c.php, `${c.url.slice(0, 50)} allowHttp=${allowHttp}`));
+    }
+  });
+
+  test('element mode prints the same data-image; group leaves too', () => {
+    const html = one(['f', [{ label: 'G', options: [{ value: 'a', label: 'A', image: 'https://x.example/a.png' }] }], '', { element: true }]);
+    assert.match(html, /data-td-ssr="dropdown@1"/);
+    assert.match(html, /<optgroup label="G"><option value="a" data-image="https:\/\/x\.example\/a\.png">A<\/option><\/optgroup>/);
+  });
+
+  test('no image → byte-identical option (no data-image)', () => {
+    const html = one(['f', [{ value: 'a', label: 'A', swatch: '#00ff00', icon: 'check' }], '']);
+    assert.match(html, /<option value="a" data-swatch="#00ff00" data-icon="check">A<\/option>/);
+    assert.ok(!html.includes('data-image'));
   });
 });

@@ -104,11 +104,11 @@ WordPress in modulepreload cho dependency của script module). `'self'` cho ph�
 
 ```php
 <?php $nonce = csp_nonce(); // chuỗi ngẫu nhiên >= 128 bit, base64, sinh MỘT lần mỗi request ?>
-<link rel="stylesheet" href="/vendor/td-components/0.94.0/td.css" nonce="<?= h($nonce) ?>">
+<link rel="stylesheet" href="/vendor/td-components/0.95.0/td.css" nonce="<?= h($nonce) ?>">
 <script type="importmap" nonce="<?= h($nonce) ?>">
 <?= json_encode(['imports' => [
-    '@dazzxq/td-components/button' => '/vendor/td-components/0.94.0/src/form/td-button.js',
-    '@dazzxq/td-components/toast'  => '/vendor/td-components/0.94.0/src/feedback/td-toast.js',
+    '@dazzxq/td-components/button' => '/vendor/td-components/0.95.0/src/form/td-button.js',
+    '@dazzxq/td-components/toast'  => '/vendor/td-components/0.95.0/src/feedback/td-toast.js',
 ]], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>
 </script>
 <script type="module" nonce="<?= h($nonce) ?>">
@@ -160,6 +160,8 @@ Kit tự nó chỉ cần `'self'`. Các chỉ thị dưới đây phụ thuộc 
 - **Không `setAttribute('style', …)`**. Giá trị per-instance (màu tuỳ chỉnh, vị trí popup, % slider, kích thước modal…)
   đi qua **CSSOM** `el.style.setProperty('--td-…', value)` sau khi lọc (`safeColor`, `safeCssDimension`,
   `CSS.supports`).
+  Biến runtime toàn trang `--td-selection-bar-offset` (0.95.0, chiều cao thanh chọn đang hiện, để nội dung cuối trang không bị
+  che) cũng chỉ ghi bằng `document.documentElement.style.setProperty(…)` — đúng một writer.
 - **Không inline event handler** (`onclick="…"`); mọi listener gắn bằng `addEventListener`.
 - **Không `eval`, `new Function`, `setTimeout(string)`**.
 - **Không nạp gì từ bên ngoài**: không CDN, không font, không ảnh; `td.css` không có `url()`. Mạng chỉ được dùng khi

@@ -550,3 +550,43 @@ describe('UploadQueue — two-phase cancel', () => {
     assert.equal(ran, false);
   });
 });
+
+describe('release (v0.95.0 plan G)', () => {
+  it('50 done items released + 1 pending → items.length 1, bytes dropped, the batch counts every outcome', async () => {
+    const h = manualHook();
+    const released = [];
+    const m = makeQueue({ upload: h.hook });
+    const q = m.q;
+    q._o.onChange = (item, kind) => { if (kind === 'done') released.push([item, q.release(item)]); };
+    q.admit(files(51));
+    for (let i = 0; i < 50; i++) h.calls[i].resolve({ n: i });
+    await tick();
+    assert.equal(q.items.length, 1);
+    assert.equal(released.length, 50);
+    assert.ok(released.every(([item, ok]) => ok && item.file === null && item.original === null));
+    assert.deepEqual(released[3][0].result, { n: 3 });
+    assert.equal(m.batches.length, 0);
+    h.calls[50].reject(new Error('boom'));
+    await tick();
+    assert.equal(m.batches.length, 1);
+    assert.equal(m.batches[0].ok, 50);
+    assert.equal(m.batches[0].fail, 1);
+    assert.equal(m.batches[0].total, 51);
+  });
+  it('anything but a done item of this queue → false, nothing changes', async () => {
+    const h = manualHook();
+    const { q } = makeQueue({ upload: h.hook });
+    q.admit(files(2));
+    const [a, b] = q.items;
+    assert.equal(q.release(a), false);
+    assert.equal(q.items.length, 2);
+    assert.ok(a.file);
+    assert.equal(q.release({ status: 'done' }), false);
+    h.calls[0].resolve({});
+    await tick();
+    assert.equal(a.status, 'done');
+    assert.equal(q.release(a), true);
+    assert.equal(q.release(a), false);
+    assert.deepEqual(q.items, [b]);
+  });
+});

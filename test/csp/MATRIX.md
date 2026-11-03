@@ -84,6 +84,8 @@ v0.85.0: `action` (`mode="action"` + `keep-open` + `trigger-meta`, menu open: th
 (normal text colour) with the default `plus` icon, the muted `.td-dropdown__trigger-meta`, a grouped list with a disabled rich row). The host live region `.td-dropdown__live` is NOT snapshotted: it is styled only by the
 `td-sr-only` utility, and its inherited `line-height` differs between the `td` and `legacy+td` profiles (invisible either way).
 v0.86.0: `load-error` (`load` rejected, menu open: the failed status line `.td-dropdown__empty` ("Không tải được") + the `.td-dropdown__retry` button; the rejection is awaited in `setup`).
+v0.95.0: `image` (option `image`, same-origin `/test/fixtures/{1,2}.svg`, menu open: the 32px `.td-dropdown__image` leading
+the rows + the 20px `.td-dropdown__value-image` on the trigger).
 
 ### td-button (1 declarative — variant glass OR custom-color inline style)
 Styled el: inner `button` (bg/box-shadow/backdrop-filter from `_glassStyles[variant]`, or
@@ -162,6 +164,21 @@ States: `default` (hand-written slides wrapped once, 2 per view, wide inline con
 aria-disabled), `end` (after `goTo(5)`: next aria-disabled, last dot current — `scrollTo()` only), `undefined` (module not
 loaded: the PHP frame is a native scroll-snap strip, JS-only controls `visibility: hidden` with their box). `width` /
 `height` / `margin-left` (+ `transform` in `end`) excluded up front (font metrics). (3)
+
+### td-card (v0.95.0, new component — td.css only, module `/src/icons/td-icon.js`)
+States: `link` (bare default `a.td-card`: cover image + badge + meta), `placeholder` (no image: tile + image glyph),
+`surface` (`.td-card--surface` framed variant), `static` (`div.td-card`, no link), `ratio-1x1`, `focus` (`pseudo: focus`
+on the link). 240px wrapper through CSSOM; `width` / `height` / `margin-left` excluded up front (font metrics). (6)
+
+### td-selection-bar (v0.95.0, new component)
+Two `td-media-grid[selection-group="lib"]` + a `td-selection-bar group="lib"` with 4 actions (one `data-td-tone="danger"`).
+States: `empty` (nothing selected: host `[data-empty]`, panel hidden), `active` (3 selected, 720px: labels shown), `compact`
+(520px: `[data-compact]` set by JS, icon-only, all four fit), `overflow` (320px: only the "…" button is snapshotted, since
+which actions overflow depends on the profile font metrics), `disabled`, `touch`. Layout boxes and insets excluded up front. (6)
+Also v0.95.0: `td-media-grid.group-selecting` (grid b selects nothing but carries `[data-selecting]` for its group),
+`td-media-picker.drop-failed-strip` (3 failed grid uploads → the failure strip) / `drop-reused` (exact-reused chip + pinned
+card), `td-check-matrix.override` / `override-column` / `override-ssr` (mode=override grid, narrow bar with reset, the
+check-matrix@2 `<select>` tree before define).
 
 ### td-modal (1 declarative; portaled to body)
 Styled el: `.td-modal-content` (box-shadow + backdrop-filter), `.td-modal-backdrop`.

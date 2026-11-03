@@ -254,6 +254,21 @@ export class UploadQueue {
   }
 
   /**
+   * v0.95.0 (plan v0.95.0-media-picker-bulk G): let a `done` item go — out of `items` (no longer counted by `limit`),
+   * its outcome KEPT in the open batch (no `onRemoved`, no batch change), `file` / `original` set to null so the bytes
+   * can be freed; `result` stays. Anything but a done item of this queue → false, nothing changes. `td-dropzone` never
+   * calls it. @returns {boolean} released
+   */
+  release(item) {
+    const i = this.items.indexOf(item);
+    if (i < 0 || item.status !== 'done') return false;
+    this.items.splice(i, 1);
+    item.file = null;
+    item.original = null;
+    return true;
+  }
+
+  /**
    * "Thử lại" of an upload error: the same (optimised) file goes to the hook again — no new optimisation; the item
    * asks for a slot again. @returns {boolean} started
    */

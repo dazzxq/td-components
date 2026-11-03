@@ -846,10 +846,55 @@ Kéo file từ máy (Finder / Explorer) thả **thẳng vào picker đang mở**
   "Không tải được thư mục" (file đi kèm vẫn nhận). `upload.multiple: false` → giống dropzone của dialog: mỗi lần
   thả chỉ nhận file đầu (các file sau bị loại, lý do "số lượng") và file mới **thay** thẻ đang tải / lỗi của lần thả trước
   (lần trước bị huỷ, không báo lỗi); thẻ đã xong thì ở lại.
-- **Tối đa 3 `adapter.upload` cùng lúc trên cả picker** — lưới và dialog dùng chung 3 slot; thẻ chờ slot có
-  `data-waiting` và chữ "Đang chờ…". Đóng picker khi còn thẻ đang tải / chờ → hỏi như mọi việc dở; đồng ý → abort hết,
-  không gọi thêm upload nào.
+- **Tối đa 3 `adapter.upload` cùng lúc trên cả trang** (0.95.0; trước đó: trên cả picker) — lưới, dialog và upload nền
+  của mọi adapter dùng chung 3 slot; thẻ chờ slot có `data-waiting` và chữ "Đang chờ…".
 - Đang có lớp khác trên picker (dialog tải lên, hộp xác nhận, crop…) → thả vào picker không làm gì.
+
+### Tải hàng loạt: chạy nền, dải lỗi, ảnh trùng (0.95.0)
+
+- **Đóng picker không huỷ upload**: ×, "Đóng", Escape, "Chèn", `close()` hay gỡ host khi file thả vào lưới còn đang tải /
+  chờ → **không hỏi**, file tải tiếp ở nền. Mở lại picker với **cùng object adapter** và **cùng `context`** → thẻ đang tải /
+  lỗi hiện lại đầu lưới (đọc "{n} tệp đang tải, {k} tệp lỗi"). `context` khác → không thấy thẻ của nhau (vẫn chiếm slot).
+  `context` được giữ **theo tham chiếu** (kit không đọc, không sao chép): mỗi site / tenant một object riêng, **đừng sửa
+  object `context` tại chỗ** khi đổi tenant (file đang chờ sẽ được gửi với giá trị mới) → tạo object mới.
+  File của lần mở trước xong khi picker đang mở → thẻ thành thẻ thường, trang 1 nạp lại, **không** tự chọn, **không**
+  `asset-change` (file không thả trong lần mở này). Lô xong khi không picker nào hiện nó → một toast: có lỗi → "{n} tệp
+  tải lên lỗi — mở thư viện để thử lại", không lỗi → "Đã tải lên {ok}/{total} tệp". **Tải lại / rời trang thì mất**
+  (không lưu bền); dialog tải lên vẫn như cũ (đóng picker là bỏ file của dialog, có hỏi).
+- **Dải lỗi**: từ **2 thẻ lỗi** trở lên, một dải `td-alert--danger` ngay trên lưới: "{n} tệp tải lên lỗi" + "Thử lại tất
+  cả" (mọi thẻ lỗi do upload; ẩn khi chỉ còn lỗi tối ưu ảnh) + "Gỡ tất cả lỗi". Một thẻ lỗi thì dùng "Thử lại" / "Gỡ"
+  trên thẻ. Bấm xong dải biến mất → focus về tiêu đề kết quả.
+- **"Đã có trong thư viện"**: kết quả `exact-reused` → asset được gắn chip `td-badge` "Đã có trong thư viện" (và nhãn đọc
+  màn hình) trong suốt lần mở này, kể cả thẻ thật trên trang. Asset cũ **không** nằm trên trang hiện tại → thẻ của nó
+  được **ghim** đầu lưới qua các lần nạp lại do upload; tìm / lọc / đổi trang / vào album → thẻ ghim rời đi (asset vẫn
+  được chọn). Trùng xong khi picker đóng → lần mở sau (cùng adapter + `context`) thấy thẻ ghim, không tự chọn.
+- **Giới hạn mỗi adapter**: tối đa **100 file chưa xong** và **256 MiB ước tính** (file có `imageResize` tính theo
+  min(cỡ file, `maxBytes`, `maxSize`) tới khi tối ưu xong, rồi theo cỡ bản tối ưu; file không có policy tính 0 — chỉ là
+  tham chiếu tới File). Vượt → file bị loại với lý do "số lượng" (`rejectCount`, `{n}` = 100).
+- **API trang**: `TdMediaPicker.uploads` → `{ running, waiting, failed }` (gộp mọi adapter; không tính dialog);
+  `TdMediaPicker.cancelUploads()` → abort hết (hai pha), bỏ file lỗi, không toast, không event, trả số file đã huỷ.
+  **Gọi `cancelUploads()` khi đăng xuất** — adapter có thể đang giữ credential. Kit **không** tự gắn `beforeunload`:
+
+```js
+// cảnh báo khi rời trang lúc còn upload nền (code của site)
+window.addEventListener('beforeunload', (e) => {
+  const u = TdMediaPicker.uploads;
+  if (u.running + u.waiting > 0) e.preventDefault();
+});
+// đăng xuất
+logoutButton.addEventListener('click', () => { TdMediaPicker.cancelUploads(); /* … */ });
+```
+
+- **Server dedup theo sha256** → trả `deduplication.outcome: 'exact-reused'` (không có alias `reused: true`):
+
+```js
+upload: async (file, { signal, onProgress, context }) => {
+  const res = await sendFile(file, { signal, onProgress, context }); // code của site
+  return { asset: toAsset(res.media), deduplication: res.sha256Existing
+    ? { outcome: 'exact-reused', matchedAssetId: String(res.media.id) }
+    : { outcome: 'created' } };
+},
+```
 
 ## Bộ sưu tập (0.66.0)
 
@@ -1190,7 +1235,7 @@ Cùng bộ control này dựng các ô `uploadFields` trong dialog tải lên.
 ## Đóng khi còn việc dở
 
 Mọi đường kết thúc **của người dùng** (×, "Đóng", Escape, "Chèn") đi qua **một cổng**: nếu form chi tiết đang có thay đổi
-chưa lưu hoặc còn upload / lưu đang chạy (0.93.0: kể cả thẻ thả vào lưới đang tải / chờ) → hộp xác nhận ("Bỏ thay đổi" / "Tiếp tục sửa"). Đồng ý → abort mọi thứ rồi kết
+chưa lưu hoặc còn upload / lưu đang chạy trong dialog tải lên (0.95.0: file thả vào lưới **không** tính — chúng tải tiếp ở nền) → hộp xác nhận ("Bỏ thay đổi" / "Tiếp tục sửa"). Đồng ý → abort mọi thứ rồi kết
 thúc **đúng loại đã yêu cầu** (từ "Chèn" vẫn resolve `selected` với lựa chọn lúc đồng ý). Không → picker giữ nguyên. Lựa
 chọn chưa xác nhận **không** tính là việc dở. `close()` bằng code và việc gỡ host khỏi DOM **không** qua cổng này.
 
@@ -1275,6 +1320,9 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `dropHint` · `dropStarted` · `dropRejected` · `dropFolder` (0.93.0) | "Thả tệp để tải lên" · "Đang tải lên {n} tệp" · "{n} tệp không được nhận" · "Không tải được thư mục" |
 | `dropCancel` · `dropRemove` · `dropRetry` · `dropRetryLabel` (0.93.0) | "Huỷ tải {name}" · "Gỡ {name}" · "Thử lại" · "Thử lại {name}" |
 | `dropFailed` · `uploadedHidden` · `uploadProgressLabel` (0.93.0) | "Tải lên {name} thất bại" · "Đã tải lên {name} — không hiện vì bộ lọc hoặc thứ tự hiện tại" · "Đang tải {name}" |
+| `uploadFailedStrip` · `retryAll` · `removeAllFailed` (0.95.0) | "{n} tệp tải lên lỗi" · "Thử lại tất cả" · "Gỡ tất cả lỗi" |
+| `retryAllStarted` · `removedFailed` · `reusedBadge` (0.95.0) | "Đang thử lại {n} tệp" · "Đã gỡ {n} tệp lỗi" · "Đã có trong thư viện" |
+| `uploadsResumed` · `uploadFailedClosed` (0.95.0) | "{n} tệp đang tải, {k} tệp lỗi" · "{n} tệp tải lên lỗi — mở thư viện để thử lại" (toast khi picker đã đóng: dùng `messages` của lần mở gần nhất) |
 | `uploadHeld` · `uploadHeldSubmit` · `uploadHeldRemove` (0.93.0, dialog tải lên) | "Tệp đã thả ({n})" · "Tải lên {n} tệp" · "Bỏ {name}" |
 | `uploadCancelTitle` · `uploadCancelMessage` | "Huỷ các tệp đang tải?" · "Các tệp đang tải lên sẽ bị huỷ." |
 | `uploadCancelConfirm` · `uploadCancelKeep` | "Huỷ tải lên" · "Tiếp tục tải" |
@@ -1471,7 +1519,12 @@ Ghi nhớ khi viết adapter:
             <p class="td-media-picker__colls-hint" hidden>Gõ thêm để thu hẹp</p>
           </div>
           <h4 class="td-media-picker__items-heading" hidden>Ảnh <span class="td-media-picker__section-count">50</span></h4>  <!-- 0.74, chỉ khi dải hiện -->
-          <td-media-grid class="td-media-picker__grid" select-mode="tick">.td-media-picker__card …</td-media-grid>
+          <div class="td-media-picker__upload-failed td-alert td-alert--danger" hidden>  <!-- 0.95.0: ≥ 2 thẻ thả lỗi -->
+            span.td-alert__icon.td-media-picker__upload-failed-icon · span.td-media-picker__upload-failed-text ·
+            span.td-media-picker__upload-failed-actions > .td-media-picker__upload-retry-all · .td-media-picker__upload-remove-all
+          </div>
+          <td-media-grid class="td-media-picker__grid" select-mode="tick">.td-media-picker__card[data-reused] …</td-media-grid>
+          <!-- 0.95.0: [data-reused] → span.td-badge.td-media-picker__reused "Đã có trong thư viện" trong __info -->
           .td-media-picker__skeleton | td-empty-state.td-media-picker__empty | .td-media-picker__error[role=alert] + .td-media-picker__retry
         </section>
         <aside class="td-media-picker__detail" data-state="empty|ready" aria-label="Chi tiết">

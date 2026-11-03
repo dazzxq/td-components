@@ -267,6 +267,14 @@ Test: `media-picker-core.test.js` (normalizer: giới hạn, id trùng, `coverUr
 boolean), `td-v066-media-picker-collections.engines.browser-test.js` (ca XSS: `label` HTML hiện thành chữ, `description` nguyên văn trong
 `title`, `coverUrl` `javascript:` / `data:` → icon).
 
+- **Upload nền từ lưới (v0.95.0, [ADR 0041](decisions/0041-media-picker-background-uploads.md)):** file thả vào lưới tiếp tục
+  upload **sau khi picker đóng** (store theo **object adapter**; `context` / `collectionId` chụp lúc thả, không đọc lại). Adapter
+  vẫn gửi request bằng credential nó đang giữ → site **phải** gọi `TdMediaPicker.cancelUploads()` khi đăng xuất / đổi tài khoản.
+  `context` là **tham chiếu** chụp lúc thả (kit không clone: `context` là `unknown`, có thể chứa hàm / instance) → site
+  **không được sửa object `context` tại chỗ** để đổi tenant (file đang chờ / thử lại sẽ mang giá trị mới, và `Object.is` vẫn
+  khớp); đổi tenant = object mới. Thẻ của một store chỉ hiện cho picker có **cùng object adapter VÀ cùng `context`** (`Object.is`); không lưu gì (reload trang = mất);
+  tên file vẫn là `textContent`; không URL `blob:`.
+
 ## 6b. Chọn dòng `td-table` (v0.37.0)
 
 [ADR 0018](decisions/0018-table-row-selection.md). Mô hình đe doạ: dữ liệu dòng (tên hiển thị, khoá) do người dùng khác
@@ -474,6 +482,7 @@ trang người dùng [check-matrix.md](../components/check-matrix.md#bảo-mật
 | FormData + `max_input_vars` | Đủ tập, ô khoá-tick gửi đúng một lần; sentinel `name[_v]=1` **cuối cùng** — PHP cắt im lặng mục vượt `max_input_vars` (mục cắt = quyền thu hồi); server bắt buộc 422 khi thiếu `_v` (test PHP chứng minh `_v` mất trước) | `test/php/td-ssr-check-matrix.test.js` |
 | Hydrate SSR (`check-matrix@1`) | Cổng so **từng node** với `renderMatrix({ ssr })` của `data` (attribute đúng tập + giá trị, chữ, số marker / hidden / sentinel, `name` / `value` mỗi checkbox khớp ô, id / `aria-controls` nhóm, ô icon chỉ nhận một SVG allowlist). Lệch bất kỳ (thêm `formaction` / `onclick` / hidden input, đổi cột của checkbox, input nhét trong ô icon, `data` hỏng) → **không lấy giá trị nào từ markup**, render an toàn từ `data`. Gắn lại (review r1 #4): `canRebind()` so **từng node** với `render()` của model / state hiện tại — chỉ cho phép trạng thái sống đã liệt kê (`tabindex` -1→0, `data-changed` / `data-col-active` / `data-active` / `data-layout-js` / `data-td-pressed` không giá trị, `aria-labelledby` của table, `aria-label` / `disabled` của ô hàng loạt trên thanh, chữ của dòng ghi chú / live region, SVG allowlist trong ô icon); lệch chỉ số, kind, `disabled` của ô khoá, id, quan hệ ARIA, attribute / handler / node thừa → render lại an toàn | `td-check-matrix.ssr.engines.browser-test.js` |
 | CSP | Không `style=""` (PHP và JS); CSSOM theo instance chỉ một scalar `--td-check-matrix-max-height` (regex chặt + `CSS.supports`, không `calc()` / `var()` / `url()` / `;`) | CSP states `td-check-matrix.*` (gồm `max-height` 24rem và `calc(1px)` bị từ chối) |
+| `mode="override"` (v0.95.0, [ADR 0040](decisions/0040-check-matrix-override-mode.md)) | Giá trị là enum chính xác `inherit` / `grant` / `deny` (so nghiêm ngặt JS + PHP). SSR `check-matrix@2` **không bao giờ được nhận tại chỗ**: cổng so từng node, chỉ đọc `<select>` của ô không khoá có giá trị thuộc enum, ngược lại render từ `data`; `mode` / marker / `data.v` phải khớp nhau. Server phải bắt buộc `_v === "2"`, ép khoá về chuỗi, từ chối mọi thứ ngoài ba chuỗi và **tự cưỡng chế khoá** | `src/form/td-check-matrix.js`, `php/td.php`, `td-v095-check-matrix.engines.browser-test.js` |
 ## 6j. `td-choice-group` + number stepper (v0.49.0)
 
 | Bề mặt | Luật | Ở đâu |
@@ -602,6 +611,35 @@ Server **vẫn phải** kiểm giá trị lựa chọn thuộc tập hợp lệ 
   `_structureOk()` + `edit()` như mọi phím (không có đường chèn ký tự mới).
 - Test: `src/form/td-v055-affix.engines.browser-test.js`, `src/form/td-v055-number.engines.browser-test.js`,
   `test/php/td-v055-php.test.js` (escape chữ / tên icon / `unit_label`, byte cũ), `test/ssr/number-locale.cases.json`.
+
+## 6p. `td-selection-bar` (v0.95.0)
+
+- **Nhãn chỉ là chữ**: `label`, nhãn đếm (`labels.count` với `{n}`), chữ nút hành động → `textContent` / `setAttribute`; không lối
+  HTML. Nút hành động là node của chính trang (DOM tin cậy của dev): kit chỉ thêm class / `aria-label` / icon từ registry
+  (`data-td-action-icon` là **tên**, tên lạ → không icon), không đọc / ghi `innerHTML` của chúng.
+- **Id là dữ liệu từ DOM, không phải quyền**: `selectedIds` / `detail.ids` đọc từ `data-id` của các mục lưới — markup sửa được
+  → server **phải** kiểm quyền từng id trước mọi thao tác hàng loạt (xoá, gắn thẻ, chuyển album) và coi danh sách là input không tin cậy.
+- Biến runtime `--td-selection-bar-offset` chỉ đặt qua CSSOM trên `<html>` (một writer), giá trị là số px đã đo — không chuỗi từ site.
+
+## 6q. Ảnh option `td-dropdown` (v0.95.0)
+
+`image` đi qua `safeMediaUrl` (JS) / `td__media_url` (PHP) — cùng cổng và cùng trần 8 KiB như ảnh của choice-group (§6j) — rồi
+`escapeHtml` / `Td::e` vào thuộc tính `src` trong nháy kép. Không bao giờ vào `url()` của CSS. Không `referrerpolicy` (đồng bộ
+choice-group). Chỉ được tải khi menu mở (`loading="lazy"`) hoặc cho option đang chọn trên trigger. Site muốn CDN phải mở `img-src`.
+
+## 6r. Cửa sổ preload của lightbox (v0.95.0)
+
+`ahead` / `behind` trần 5. Preload khác origin **tắt mặc định**; `allowCrossOrigin` chỉ thu hẹp: hàm được gọi với (URL chuẩn hoá,
+bản sao item) **chỉ cho ảnh khác origin**, bọc `try/catch`, ném lỗi = từ chối; `true` = mọi origin. Request suy đoán dùng
+`referrerPolicy = 'no-referrer'`. URL vẫn qua cổng SEC-01/02 trước mọi request. `Save-Data` tắt preload. Request cũ đang bay bị
+huỷ (gỡ handler, `src = ''`).
+
+## 6s. `.td-card` / `td_card()` (v0.95.0)
+
+CSS-only, không JS. `href` qua `Td::safeUrl`, **`mailto:` / `tel:` bị từ chối** (thẻ tĩnh `div.td-card`, không link chết);
+`target` trong `Td::TARGETS`, `_blank` → `rel="noopener noreferrer"`. Ảnh **fail closed**: `src` và **từng** URL trong `srcset` qua
+`td__media_url`, một ứng viên hỏng → bỏ cả `srcset`; không `src` dùng được → ô placeholder (icon registry). Tiêu đề / meta / badge là
+chữ (`Td::e`). `attrs` qua allowlist; `role`, `tabindex`, `aria-label`, `aria-labelledby`, `data-td-*` là của kit và bị bỏ.
 
 ## 7. Trách nhiệm của site
 

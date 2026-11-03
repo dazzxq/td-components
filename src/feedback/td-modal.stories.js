@@ -88,6 +88,33 @@ export const AsyncActions = {
   },
 };
 
+export const ActionState = {
+  name: 'setActionDisabled — khoá nút tới khi xem trước xong',
+  render: () => `<div class="sb-stack">${trigger('m-state', 'Xoá album', 'danger')}
+    <p class="sb-note">Nút "Xoá" khoá tới khi bấm "Xem trước" và bản xem trước tải xong (1 giây). Vòng bận của
+    "Xem trước" không mở khoá "Xoá" (0.95.0).</p></div>`,
+  play: ({ canvasElement }) => {
+    bind(canvasElement, 'm-state', () => {
+      const body = text('Album "Lễ hội 2026" có 48 ảnh. Xem trước trước khi xoá.');
+      let id = '';
+      const loadPreview = () => new Promise((r) => setTimeout(() => {
+        body.textContent = 'Đã tải bản xem trước: 48 ảnh sẽ bị xoá.';
+        TdModal.setActionDisabled(id, 2, false);
+        r();
+      }, 1000));
+      id = TdModal.show({
+        title: 'Xoá album',
+        body,
+        actions: [
+          { label: 'Hủy' },
+          { label: 'Xem trước', close: false, onClick: () => loadPreview() },
+          { label: 'Xoá', variant: 'danger', disabled: true },
+        ],
+      });
+    });
+  },
+};
+
 export const SuccessErrorInfo = {
   name: 'Success / Error / Info',
   render: () => `<div class="sb-row">${trigger('m-ok', 'Thành công', 'success')}${trigger('m-err', 'Lỗi', 'danger')}${trigger('m-info', 'Thông tin', 'secondary')}</div>`,

@@ -5,6 +5,7 @@ import { placeFloating, isReferenceHidden, watchReference } from '../utils/float
 import { LAYERS, register as registerLayer, bridgeTheme } from '../utils/layers.js';
 import { TdFormElement } from '../base/td-form-element.js';
 import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
+import { safeMediaUrl } from '../utils/media-url.js';
 
 const CLEAR = '__CLEAR__';
 const OPTION_PX = 40; // --td-dropdown-option-h: `max-height` = visible options × 40 px
@@ -83,6 +84,7 @@ function safeCall(fn, arg, what) {
  *       <button type="button" class="td-dropdown__trigger" id="{host}-trigger" role="combobox" aria-haspopup="listbox"
  *               aria-expanded aria-controls="{host}-listbox" [aria-activedescendant] [aria-required] [aria-invalid] …>
  *         <span class="td-dropdown__value" [data-placeholder | data-action]>[swatch svg][<span class="td-dropdown__value-icon" data-td-icon aria-hidden="true">]…</span>
+ *           (v0.95.0: an option `image` replaces dot + icon: [<img class="td-dropdown__value-image" src alt="" width="20" height="20" decoding="async">])
  *         [<span class="td-dropdown__trigger-meta" id="{host}-trigger-meta">…</span>]   (v0.85.0 `trigger-meta`, in aria-describedby)
  *         <span class="td-dropdown__arrow" data-td-icon="down" aria-hidden="true"></span>
  *       </button>
@@ -201,7 +203,10 @@ function safeCall(fn, arg, what) {
  *   `label-key`): `icon` (registered icon name, in a toned tile; also shown on the trigger), `iconTone`, `description`
  *   (second line), `status` ({ tone, text }: dot + text), `meta` (muted, inline end), `keywords` (string | array, search
  *   only), `group` (a `groups` key). Tones: neutral / accent / success / warning / danger / info (else neutral). An
- *   option with none of icon / description / status / meta renders the plain 0.83.0 row.
+ *   option with none of image / icon / description / status / meta renders the plain 0.83.0 row. v0.95.0: `image`
+ *   (thumbnail URL through the safeMediaUrl gate, like td-choice-group; invalid → no image): a rich row led by
+ *   `<img class="td-dropdown__image" alt="" width="32" height="32" loading="lazy" decoding="async">` instead of the
+ *   dot + icon tile; also on the trigger (`td-dropdown__value-image`) unless `trigger-icon` is off. Never searched.
  * @property {Array<{key: string, label: string}>} groups - v0.84.0: ordered group headers (may be set before the
  *   element is defined). Non-empty → options are shown group by group (`group` = a key), then the options of no / an
  *   unknown group as a trailing section without a header. Empty / not an array → `group` is ignored.
@@ -426,6 +431,7 @@ export class TdDropdown extends TdFormElement {
       if (sw) item.swatch = sw;
       // v0.84.0 data-* → the rich fields (gated at render); an absent / empty attribute adds no key
       const d = opt.dataset;
+      if (d.image) item.image = d.image; // v0.95.0 (raw string, gated at render)
       if (d.icon) item.icon = d.icon;
       if (d.iconTone) item.iconTone = d.iconTone;
       if (d.description) item.description = d.description;
@@ -775,20 +781,21 @@ export class TdDropdown extends TdFormElement {
   }
 
   /**
-   * @private v0.84.0: the gated rich parts of an option, or null for a plain (0.83.0) row. Rich = a registered `icon`,
-   * a non-empty `description`, a `status` with a non-empty `text` or a non-empty `meta`.
-   * @returns {{ icon: string, tone: string, desc: string, status: {tone: string, text: string}|null, meta: string }|null}
+   * @private v0.84.0: the gated rich parts of an option, or null for a plain (0.83.0) row. Rich = a valid `image`
+   * (v0.95.0), a registered `icon`, a non-empty `description`, a `status` with a non-empty `text` or a non-empty `meta`.
+   * @returns {{ image: string, icon: string, tone: string, desc: string, status: {tone: string, text: string}|null, meta: string }|null}
    */
   _richOf(item) {
     if (!item || typeof item !== 'object') return null;
+    const image = this._imageOf(item);
     const icon = iconOf(item.icon);
     const desc = textOf(item.description);
     const st = item.status && typeof item.status === 'object' ? item.status : null;
     const stText = st ? textOf(st.text) : '';
     const status = stText ? { tone: toneOf(st.tone), text: stText } : null;
     const meta = textOf(item.meta);
-    if (!icon && !desc && !status && !meta) return null;
-    return { icon, tone: toneOf(item.iconTone), desc, status, meta };
+    if (!image && !icon && !desc && !status && !meta) return null;
+    return { image, icon, tone: toneOf(item.iconTone), desc, status, meta };
   }
 
   /** @private v0.84.0: does `item` match the folded query `q` in the `search-fields`? */
@@ -815,10 +822,9 @@ export class TdDropdown extends TdFormElement {
     const action = this._isAction(); // v0.85.0: never a selection → placeholder text, `data-action`, fixed icon
     const placeholder = !this._selectedItem;
     const text = placeholder ? this._getPlaceholder() : this._selectedItem[this._getLabelKey()];
-    // v0.82.0: a valid swatch prints a colourless dot; _applySwatchFills() sets its `fill` after render
-    const dot = !placeholder && this._swatchOf(this._selectedItem) ? SWATCH_SVG : '';
-    // v0.84.0: the option icon (filled by fillIconSlots in afterRender), after the dot
-    const icon = placeholder && !action ? '' : this._triggerIconHtml(this._selectedItem);
+    // v0.82.0 dot (colourless; _applySwatchFills() sets its `fill`) + v0.84.0 icon (filled in afterRender), or the
+    // v0.95.0 option image instead of both — one helper shared with _updateValueText (render and update never differ)
+    const lead = placeholder && !action ? '' : this._triggerLeadHtml(this._selectedItem);
     const valueAttr = action ? ' data-action' : placeholder ? ' data-placeholder' : '';
     // v0.85.0: `trigger-meta` (absent → '' : the 0.84.0 string); the live region of action mode, outside the portal
     const meta = this._triggerMetaText();
@@ -830,7 +836,7 @@ export class TdDropdown extends TdFormElement {
     return `<div class="td-dropdown" data-state="${this._isOpen ? 'open' : 'closed'}">${labelHtml}`
       + `<button type="button" class="td-dropdown__trigger" id="${id}-trigger" role="combobox" aria-haspopup="listbox"`
       + ` aria-expanded="${this._isOpen}" aria-controls="${id}-listbox"${this._isDisabled() ? ' disabled' : ''}>`
-      + `<span class="td-dropdown__value"${valueAttr}>${dot}${icon}${esc(text)}</span>${metaHtml}`
+      + `<span class="td-dropdown__value"${valueAttr}>${lead}${esc(text)}</span>${metaHtml}`
       + '<span class="td-dropdown__arrow" data-td-icon="down" aria-hidden="true"></span>'
       + `</button></div>${live}`;
   }
@@ -993,7 +999,7 @@ export class TdDropdown extends TdFormElement {
       span.textContent = this._getPlaceholder();
       span.removeAttribute('data-placeholder');
       span.setAttribute('data-action', '');
-      const icon = this._triggerIconHtml(null);
+      const icon = this._triggerLeadHtml(null);
       if (icon) {
         span.insertAdjacentHTML('afterbegin', icon);
         fillIconSlots(span, '.td-dropdown__value-icon');
@@ -1001,17 +1007,39 @@ export class TdDropdown extends TdFormElement {
     } else if (this._selectedItem) {
       span.textContent = String(this._selectedItem[this._getLabelKey()]);
       span.removeAttribute('data-placeholder');
-      // dot, then the v0.84.0 icon slot (re-created: textContent above wiped it), filled here
-      const icon = this._triggerIconHtml(this._selectedItem);
-      const lead = (this._swatchOf(this._selectedItem) ? SWATCH_SVG : '') + icon;
+      // the lead (re-created: textContent above wiped it): v0.95.0 image, else dot + v0.84.0 icon slot, filled here
+      const lead = this._triggerLeadHtml(this._selectedItem);
       if (lead) span.insertAdjacentHTML('afterbegin', lead);
-      if (icon) fillIconSlots(span, '.td-dropdown__value-icon');
+      if (span.querySelector('.td-dropdown__value-icon')) fillIconSlots(span, '.td-dropdown__value-icon');
     } else {
       span.textContent = this._getPlaceholder();
       span.setAttribute('data-placeholder', '');
     }
     this._applySwatchFills();
     this._scheduleValueTitle();
+  }
+
+  /**
+   * @private v0.95.0: what leads the trigger text for `item` ('' = none). A valid option `image` wins (§11 Q1) and
+   * replaces the dot + icon; `trigger-icon` off hides it (Q2); action mode never shows it (no selection). Otherwise the
+   * 0.84.0 lead: the v0.82.0 dot (only for a selected item) + the v0.84.0 icon slot.
+   */
+  _triggerLeadHtml(item) {
+    if (item && !this._isAction()) {
+      const image = this._imageOf(item);
+      if (image) {
+        return this._triggerIconOff()
+          ? ''
+          : `<img class="td-dropdown__value-image" src="${this.escapeHtml(image)}" alt="" width="20" height="20" decoding="async">`;
+      }
+    }
+    const dot = item && !this._isAction() && this._swatchOf(item) ? SWATCH_SVG : '';
+    return dot + this._triggerIconHtml(item);
+  }
+
+  /** @private v0.95.0: the option's image URL when it passes the safeMediaUrl gate (as td-choice-group), else ''. */
+  _imageOf(item) {
+    return item && typeof item.image === 'string' ? safeMediaUrl(item.image) : '';
   }
 
   /**
@@ -1405,8 +1433,11 @@ export class TdDropdown extends TdFormElement {
       + `${this._isItemDisabled(item) ? ' aria-disabled="true"' : ''}${aria}`
       + ` data-value="${esc(item[this._getValueKey()])}" data-index="${index}" data-nav="${navIndex}"`
       + `${navIndex >= this._cvFrom ? ' data-cv' : ''}>`
-      + (this._swatchOf(item) ? SWATCH_SVG : '')
-      + (rich.icon ? `<span class="td-dropdown__icon" data-tone="${rich.tone}" data-td-icon="${esc(rich.icon)}" aria-hidden="true"></span>` : '')
+      + (rich.image
+        // v0.95.0: the image wins over the dot and the icon tile (one picture leads the row); alt="" — the label names it
+        ? `<img class="td-dropdown__image" src="${esc(rich.image)}" alt="" width="32" height="32" loading="lazy" decoding="async">`
+        : (this._swatchOf(item) ? SWATCH_SVG : '')
+          + (rich.icon ? `<span class="td-dropdown__icon" data-tone="${rich.tone}" data-td-icon="${esc(rich.icon)}" aria-hidden="true"></span>` : ''))
       + `<span class="td-dropdown__text"><span class="td-dropdown__option-label" id="${rid}-label">${esc(item[this._getLabelKey()])}</span>${desc}</span>`
       + (rich.meta ? `<span class="td-dropdown__meta" id="${rid}-meta">${esc(rich.meta)}</span>` : '')
       + (selected ? '<span class="td-dropdown__check" data-td-icon="check" aria-hidden="true"></span>' : '')

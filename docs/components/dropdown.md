@@ -75,6 +75,7 @@ dd.options = [
   tên truy cập của option và trigger chỉ là nhãn.
 - Từ 0.84.0: icon, dòng mô tả, trạng thái, chữ phụ, từ khoá tìm kiếm và nhóm có tiêu đề, xem
   [mục 1b](#1b-dòng-giàu-thông-tin-và-nhóm-084-0).
+- Từ 0.95.0: ảnh nhỏ đầu dòng (`image`), xem [mục 1c](#1c-ảnh-đầu-dòng-image-0950).
 - Không hỗ trợ: HTML trong label, chọn nhiều.
 
 ```js
@@ -132,7 +133,8 @@ dd.options = [
 - **Tìm kiếm:** mặc định tìm trên `label`, `description` và `keywords` (không dấu, không phân biệt hoa thường).
   - `search-fields="label"` trở lại hành vi trước 0.84.0. Nhận một danh sách con của `label description keywords`, cách nhau bởi dấu cách hoặc dấu phẩy.
   - Trình đọc màn hình nghe số kết quả khi đang gõ ("12 kết quả", từ `TdDropdown.labels.resultCount`). Câu này ẩn với mắt; "Không tìm thấy kết quả" vẫn hiện như cũ.
-- **Trigger:** option đã chọn có `icon` thì trigger hiện icon (màu chữ, không ô nền) + nhãn, không có mô tả.
+- **Trigger:** option đã chọn có `icon` thì trigger hiện icon (màu chữ, không ô nền) + nhãn, không có mô tả (có `image`
+  thì ảnh thay icon, [mục 1c](#1c-ảnh-đầu-dòng-image-0950)).
   - `trigger-icon="none"` để trigger chỉ có chữ.
   - Ở chế độ chọn giá trị, các giá trị `trigger-icon` khác bị bỏ qua. Ở chế độ "chọn để thêm" chúng là tên icon cố định ([mục 11](#11-chế-độ-chọn-để-thêm-modeaction-0850)).
 - **`max-height`** vẫn là **số dòng**. Khi có dòng giàu thông tin hoặc nhóm, chiều cao được đo thật: đúng N dòng option nhìn thấy, tính từ trên xuống, tiêu đề nhóm cộng thêm chiều cao nhưng không tính là một dòng. PageUp / PageDown nhảy N dòng.
@@ -157,6 +159,34 @@ PHP (`td_dropdown`, in `<optgroup>` và `data-*` cho bản nâng cấp đọc l�
 
 Mỗi trường chỉ được in khi hợp lệ: tên icon đúng mẫu, tone thuộc danh sách (và chỉ khi có icon), chữ không rỗng. Mọi giá
 trị đều escape.
+
+### 1c. Ảnh đầu dòng (`image`, 0.95.0)
+
+`image` (string, tuỳ chọn) là URL một **ảnh nhỏ** (ảnh bìa album, logo, ảnh sản phẩm). Ảnh vuông 32px đứng đầu dòng,
+dòng thành dòng giàu thông tin (cao hơn 40px). Tên trường cố định, không đổi theo `value-key` / `label-key`.
+
+```js
+dd.options = [
+  { value: 'a12', label: 'Lễ hội 2026', image: '/media/albums/12/cover-96.webp', description: '48 ảnh' },
+  { value: 'a13', label: 'Khai trương', image: 'https://cdn.example.com/a13-96.webp' },
+  { value: 'none', label: 'Chưa có ảnh bìa', icon: 'image' }, // không ảnh → icon như 0.84.0
+];
+```
+
+- **Thứ tự ưu tiên đầu dòng:** `image` > `icon` > chấm `swatch`. Option có ảnh hợp lệ thì **không** vẽ ô icon và chấm
+  màu, ở cả dòng và trigger.
+- **Trigger:** option đang chọn có ảnh → ảnh 20px trước nhãn, chiều cao trigger không đổi, nhãn dài vẫn một dòng và cắt
+  `…`. `trigger-icon="none"` tắt cả ảnh. Chế độ `mode="action"` không bao giờ hiện ảnh trên trigger.
+- **Cổng URL:** giống `image` của [`td-choice-group`](choice-group.md) (`safeMediaUrl`): `https:`, `http:` (trên trang
+  `http:`), đường dẫn tương đối / scheme-less, tối đa 8 KiB. `javascript:`, `data:`, `blob:`, giá trị không phải chuỗi →
+  **không vẽ ảnh**, không báo lỗi; option vẫn hiện (rơi về `icon` / chấm nếu có).
+- Ảnh tải `loading="lazy"`: chỉ khi menu mở, hoặc khi option có ảnh đang được chọn (trigger).
+- `alt=""`: tên của option vẫn là nhãn chữ; ảnh không mang thông tin riêng. Không tìm kiếm theo `image`.
+- Ảnh lỗi / đang tải → ô nền xám (`--td-color-fill`) giữ nguyên khung, dòng không giật.
+- `max-height` vẫn đếm **dòng**: chiều cao được đo theo dòng có ảnh thật (5 dòng ảnh hiện đủ 5 dòng).
+
+PHP: `'image' => '…'` trong mỗi option của `td_dropdown` → `data-image` (cùng cổng `td__media_url` như
+`td_choice_group`: `https:` / scheme-less; `http:` chỉ khi `Td::allowHttpLinks(true)`; sai → không in).
 
 ### 2. Dữ liệu từ API có key khác (`value-key` / `label-key`)
 
@@ -283,7 +313,8 @@ Khi gắn vào trang **lần đầu**, nếu host có con trực tiếp `<select
 - **options**: mỗi `<option>` → `{ value, label }` (`label` = chữ hiển thị đã trim, hoặc attribute `label` của option
   nếu có), theo đúng thứ tự. `data-swatch` của `<option>` → `swatch` (0.82.0; qua cùng cổng màu, sai → bỏ). Từ 0.84.0 `<optgroup label>` thành **nhóm** (`groups` tự sinh khoá `g0`, `g1`…; option nằm ngoài mọi optgroup xếp cuối,
   không tiêu đề), và `<option>` đọc thêm `data-icon`, `data-icon-tone`, `data-description`, `data-status` +
-  `data-status-tone`, `data-meta`, `data-keywords` (trước 0.84.0 optgroup bị làm phẳng). Option `disabled` hoặc nằm trong
+  `data-status-tone`, `data-meta`, `data-keywords` (trước 0.84.0 optgroup bị làm phẳng). Từ 0.95.0 `data-image` →
+  `image` (giữ nguyên chuỗi; cổng URL chạy lúc vẽ, sai → không ảnh). Option `disabled` hoặc nằm trong
   `<optgroup disabled>` → `disabled: true`. Key theo `value-key` / `label-key` nếu host có đặt.
 - **lựa chọn**: (1) attribute `value` của host nếu có; (2) nếu không, giá trị **đang chọn** của select — gồm cả lựa chọn
   người dùng đã đổi trước khi JS chạy, và option đầu tiên (không bị vô hiệu) khi không option nào `selected`, như native.
@@ -636,6 +667,9 @@ Token riêng của dropdown (khai báo trong `@layer td.tokens`, file `component
 | `--td-dropdown-swatch-size` | `0.75rem` | Cỡ chấm màu của option (0.82.0). |
 | `--td-dropdown-swatch-edge` | `var(--td-color-border-strong)` | Viền 1px quanh chấm để chấm trắng / đen vẫn thấy trên mọi nền (forced-colors: `CanvasText`). |
 | `--td-dropdown-icon-size` | `1.75rem` | **0.84.0** Cạnh ô vuông chứa `icon` của option; hình bên trong bằng 60% cạnh ô. Màu ô lấy theo token `--td-badge-{tone}-*`. |
+| `--td-dropdown-image-size` | `2rem` | **0.95.0** Cạnh ảnh `image` ở dòng menu (`object-fit: cover`). |
+| `--td-dropdown-image-trigger-size` | `1.25rem` | **0.95.0** Cạnh ảnh của option đang chọn trên trigger. |
+| `--td-dropdown-image-radius` | `var(--td-radius-sm)` | **0.95.0** Bo góc ảnh (dòng + trigger). |
 | `--td-dropdown-search-bg` | `var(--td-color-hover)` (dark: `rgb(255 255 255 / 6%)`) | Nền ô tìm kiếm. |
 | `--td-dropdown-search-border` | `var(--td-control-border-soft)` | Viền ô tìm kiếm. |
 | `--td-dropdown-hairline` | `var(--td-color-border)` | Đường kẻ dưới ô tìm kiếm và trên dòng "Thêm mới". |
@@ -710,6 +744,15 @@ Từ 0.84.0, khi option dùng trường mới (xem [mục 1b](#1b-dòng-giàu-th
 ```html
 <!-- trigger: option đã chọn có icon (tắt bằng trigger-icon="none") -->
 <span class="td-dropdown__value"><span class="td-dropdown__value-icon" data-td-icon="{icon}" aria-hidden="true">…</span>Kho Hà Nội</span>
+
+<!-- 0.95.0: option đã chọn có image (tắt bằng trigger-icon="none") -->
+<span class="td-dropdown__value"><img class="td-dropdown__value-image" src="{image}" alt="" width="20" height="20" decoding="async">Lễ hội 2026</span>
+
+<!-- 0.95.0: dòng có image — ảnh thay ô icon / chấm màu, phần còn lại như dòng giàu thông tin -->
+<div class="td-dropdown__option td-dropdown__option--rich" role="option" …>
+  <img class="td-dropdown__image" src="{image}" alt="" width="32" height="32" loading="lazy" decoding="async">
+  <span class="td-dropdown__text">…</span>
+</div>
 
 <!-- vùng trạng thái khi đang gõ và có kết quả: ẩn với mắt, chỉ trình đọc màn hình đọc -->
 <p class="td-dropdown__empty" role="status" data-count>12 kết quả</p>
@@ -826,6 +869,9 @@ Chi tiết: [Trợ năng](../guides/accessibility.md).
   dạng chuỗi thô — site **tự** escape khi đưa `query` vào HTML của mình (ví dụ dùng `value` / `textContent`, như ví dụ
   ở [mục 10](#10-dòng--thêm-mới-ở-cuối-menu-create-label-0220)).
 - Id nội bộ (`{host}-opt-{i}`) sinh từ chỉ số, không từ dữ liệu.
+- `image` (0.95.0) qua cổng `safeMediaUrl` (cùng cổng với `td-choice-group`; PHP `td__media_url`) rồi escape vào
+  attribute `src`; không bao giờ vào CSS `url()`. Không `referrerpolicy` (giống choice-group: site chống hotlink vẫn đọc
+  được Referer). Ảnh từ CDN khác origin cần CSP của site cho phép trong `img-src`.
 
 Xem [Bảo mật](../guides/security.md).
 
@@ -856,6 +902,10 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - **Menu nằm ở `<body>`**, không nằm trong host: selector kiểu `#city .td-dropdown__option` sẽ không khớp; dùng
   `#city-menu .td-dropdown__option`.
 - Không có sự kiện `open`/`close`; theo dõi `data-state` hoặc `aria-expanded` nếu cần.
+- **`image` dùng ảnh thu nhỏ (0.95.0).** Ảnh vẽ 32px; đưa ảnh gốc nhiều MB làm menu tải chậm. Dùng bản thumbnail (vd
+  96px cho màn hình mật độ cao).
+- **Object có sẵn khoá `image` (0.95.0).** Trước 0.95.0 khoá này bị bỏ qua; từ 0.95.0 nó hiện ảnh. Nếu dữ liệu API có
+  `image` mà không muốn hiện, map sang object mới không có khoá đó.
 
 ## Xem thêm
 

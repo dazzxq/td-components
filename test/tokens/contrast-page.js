@@ -213,6 +213,16 @@ for (const state of ['day', 'outside', 'ring', 'selected', 'hover', 'pressed', '
 // description ≥ 4.7 on the crosshair row (focus), group label / count ≥ 4.7 on the group fill, the note line ≥ 4.7 on the
 // page; the changed triangle and the note dot ≥ 3 on the cell (graphics); a locked-ticked mark (50 %) ≥ 2.2 on the cell.
 for (const state of ['head', 'crosshair', 'group', 'note', 'marks']) CASES.push({ kind: 'matrix', v: 'check-matrix', state, pageOnly: true });
+// v0.95.0 td-check-matrix mode="override" (plan v0.95.0-check-matrix §11): the grant ✓ (--td-accent-contrast on
+// --td-check-matrix-grant-bg) and the deny ✕ (--td-check-matrix-deny-fg on --td-check-matrix-deny-bg) ≥ 3.2 on their solid
+// square, each square ≥ 3 vs the cell (non-text); the inherited ✓ ≥ 3.2 on the cell and on the focused (crosshair) row; the
+// inherit square edge ≥ 3 vs the cell — computed colours, light + dark (the fills are not palette tokens, so measured here).
+CASES.push({ kind: 'matrix', v: 'check-matrix', state: 'override', pageOnly: true });
+// v0.95.0 .td-card (CSS only; plan v0.95.0-card §11.6), computed colours, light + dark: the title ≥ 4.7 and the meta ≥ 4.7
+// on 4 page colours (the theme page, --td-color-bg, --td-color-surface, --td-color-surface-muted), on the --surface card
+// fill (--td-card-bg) and on its hover fill (--td-card-hover-bg); the placeholder icon ≥ 3.2 on the image tile
+// (--td-card-media-bg). The badge over the image keeps its own fill (badge gate).
+CASES.push({ kind: 'card', v: 'card', state: 'rest', pageOnly: true });
 // v0.49.0 td-choice-group + number stepper (content layer → page only), computed colours, light + dark: option text / hint /
 // unavailable text + note ≥ 4.7 on the button fill, also on the pressed fill; the selected ink ring ≥ 3 vs the page and vs
 // the button fill; a disabled option ≥ 2.2; the swatch selected ring ≥ 3 vs the page; the unavailable slash (two-tone: the
@@ -1191,6 +1201,58 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     const b = target.getBoundingClientRect();
     host.remove();
     return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `cal:${c.v}:${c.state}`, pairs };
+  } else if (c.kind === 'card') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const probe = document.createElement('span');
+    stage.appendChild(probe);
+    const tok = (name) => { probe.style.setProperty('color', `var(${name})`); return getComputedStyle(probe).color; };
+    const mk = (cls, media) => {
+      const a = document.createElement('a');
+      a.className = `td-card${cls}`;
+      a.href = '#c';
+      const m = document.createElement('span');
+      m.className = 'td-card__media';
+      if (media === 'placeholder') {
+        const ph = document.createElement('span');
+        ph.className = 'td-card__placeholder';
+        ph.setAttribute('aria-hidden', 'true');
+        ph.appendChild(tdIcon('image'));
+        m.appendChild(ph);
+      }
+      const body = document.createElement('span');
+      body.className = 'td-card__body';
+      const t = document.createElement('span');
+      t.className = 'td-card__title';
+      t.textContent = 'Tết 2026';
+      const meta = document.createElement('span');
+      meta.className = 'td-card__meta';
+      meta.textContent = '42 ảnh · 12/02/2026';
+      body.append(t, meta);
+      a.append(m, body);
+      stage.appendChild(a);
+      return a;
+    };
+    const bare = mk('', 'placeholder');
+    const surf = mk(' td-card--surface', 'placeholder');
+    const fg = (el, sel) => getComputedStyle(el.querySelector(sel)).color;
+    const pages = [['page', page], ['--td-color-bg', overRgb(tok('--td-color-bg'), page)], ['--td-color-surface', overRgb(tok('--td-color-surface'), page)],
+      ['--td-color-surface-muted', overRgb(tok('--td-color-surface-muted'), page)]];
+    const pairs = [];
+    for (const [n, bg] of pages) {
+      pairs.push({ what: `title on ${n}`, fg: fg(bare, '.td-card__title'), bg, min: 4.7 }, { what: `meta on ${n}`, fg: fg(bare, '.td-card__meta'), bg, min: 4.7 });
+    }
+    const cardBg = overRgb(getComputedStyle(surf).backgroundColor, page);
+    if (cardBg !== overRgb(tok('--td-card-bg'), page)) throw new Error(`card: --surface fill ${cardBg} ≠ --td-card-bg`);
+    const hoverBg = overRgb(tok('--td-card-hover-bg'), page);
+    for (const [n, bg] of [['--td-card-bg', cardBg], ['--td-card-hover-bg', hoverBg]]) {
+      pairs.push({ what: `title on ${n}`, fg: fg(surf, '.td-card__title'), bg, min: 4.7 }, { what: `meta on ${n}`, fg: fg(surf, '.td-card__meta'), bg, min: 4.7 });
+    }
+    const media = bare.querySelector('.td-card__media');
+    const icon = bare.querySelector('.td-card__placeholder');
+    if (!icon.querySelector('svg')) throw new Error('card: placeholder icon missing (tdIcon)');
+    pairs.push({ what: 'placeholder icon on --td-card-media-bg', fg: getComputedStyle(icon).color, bg: overRgb(getComputedStyle(media).backgroundColor, page), min: 3.2 });
+    const b = bare.getBoundingClientRect();
+    return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `card:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'matrix') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     const over = overRgb;
@@ -1227,6 +1289,50 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       const fill = bgOf(target);
       pairs = [{ what: 'group label vs group fill', fg: fg(target.querySelector('.td-check-matrix__group-toggle')), bg: fill, min: 4.7 },
         { what: 'group count vs group fill', fg: fg(target.querySelector('.td-check-matrix__count')), bg: fill, min: 4.7 }];
+    } else if (c.state === 'override') {
+      host.remove();
+      const om = document.createElement('td-check-matrix');
+      om.setAttribute('label', 'Quyền riêng');
+      om.setAttribute('layout', 'grid');
+      om.setAttribute('mode', 'override');
+      stage.appendChild(om);
+      om.setData({
+        columns: [{ key: 'publish', label: 'Xuất bản' }, { key: 'media', label: 'Xem mọi media' }, { key: 'del', label: 'Xoá' }],
+        rows: [{ key: 'u12', label: 'Nguyễn A' }, { key: 'u31', label: 'Trần B' }],
+        cells: { u12: { publish: { inherited: true }, media: { inherited: false } }, u31: { del: { inherited: true } } },
+        value: { publish: { u31: 'grant' }, media: { u31: 'deny' } },
+      });
+      const cellOf = (r, col) => om.querySelector(`tr[data-r="${r}"]`).cells[2 + col];
+      const glyph = (cell) => cell.querySelector('.td-check-matrix__glyph');
+      const grant = cellOf(1, 0); const deny = cellOf(1, 1); const inh = cellOf(0, 0); const inhOff = cellOf(0, 1);
+      for (const [cell, st] of [[grant, 'grant'], [deny, 'deny'], [inh, 'inherit'], [inhOff, 'inherit']]) {
+        if (cell.getAttribute('data-state') !== st) throw new Error(`matrix override: cell ${cell.getAttribute('data-state')} (want ${st})`);
+      }
+      if (inh.getAttribute('data-inherited') !== 'on') throw new Error('matrix override: inherited cell not data-inherited="on"');
+      const gs = getComputedStyle(glyph(grant)); const ds = getComputedStyle(glyph(deny));
+      // the ✓ is the drawn L of .td-check--drawn::before (border-right / -bottom in currentcolor); fail when it is not shown
+      const markOf = (g) => { const ps = getComputedStyle(g, '::before'); if (ps.visibility !== 'visible') throw new Error('matrix override: ✓ not visible'); return ps.borderRightColor; };
+      const cellBg = bgOf(grant);
+      const grantFill = over(gs.backgroundColor, cellBg);
+      const denyFill = over(ds.backgroundColor, bgOf(deny));
+      const pairsO = [
+        { what: 'grant ✓ vs grant square', fg: markOf(glyph(grant)), bg: grantFill, min: 3.2 },
+        { what: 'grant square vs cell', fg: grantFill, bg: cellBg, min: 3 },
+        { what: 'deny ✕ vs deny square', fg: ds.color, bg: denyFill, min: 3.2 },
+        { what: 'deny ✕ bar vs deny square', fg: getComputedStyle(glyph(deny), '::before').backgroundColor, bg: denyFill, min: 3.2 },
+        { what: 'deny square vs cell', fg: denyFill, bg: bgOf(deny), min: 3 },
+        { what: 'inherited ✓ vs cell', fg: markOf(glyph(inh)), bg: bgOf(inh), min: 3.2 },
+        { what: 'inherit square edge vs cell', fg: getComputedStyle(glyph(inhOff)).borderTopColor, bg: bgOf(inhOff), min: 3 },
+      ];
+      // the inherited ✓ on the focused (crosshair) row
+      inh.querySelector('.td-check-matrix__tri').focus();
+      const wash = layer(inh)[0];
+      if (!wash) throw new Error('matrix override: no crosshair wash on the focused row');
+      pairsO.push({ what: 'inherited ✓ vs crosshair row', fg: markOf(glyph(inh)), bg: over(wash, bgOf(inh)), min: 3.2 });
+      inh.querySelector('.td-check-matrix__tri').blur();
+      const b = grant.getBoundingClientRect();
+      om.remove();
+      return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `matrix:${c.v}:${c.state}`, pairs: pairsO };
     } else if (c.state === 'note') {
       const locked = host.querySelector('tr[data-r="1"]').cells[2];
       locked.focus();

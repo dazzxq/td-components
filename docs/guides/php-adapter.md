@@ -33,6 +33,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
   - [td_toggle / td_checkbox ở chế độ element (0.26.0)](#td_toggle--td_checkbox-ở-chế-độ-element-0260)
 - [td_icon và icon riêng của site](#td_icon-và-icon-riêng-của-site)
 - [td_badge và td_alert](#td_badge-và-td_alert)
+- [td_card (0.95.0)](#td_card-0950)
 - [td_empty (0.26.0)](#td_empty-0260)
 - [td_otp_input (0.27.0)](#td_otp_input-0270)
 - [td_copy (0.27.0)](#td_copy-0270)
@@ -88,7 +89,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_datetime_picker` / `td_date` (0.56.0; hợp đồng `@2` từ 0.60.0) | **luôn** host `<td-datetime-picker data-td-ssr="datetime-picker@2">` + **một** `<input type="date\|datetime-local">` **native** (`name`, `min` / `max`, `required`, `disabled`) tạo dáng như trigger + trigger ẩn | Không (ô ngày native chạy ngay) | **Có** — nạp module `datetime-picker`: nhận **tại chỗ**, giữ giá trị đã sửa, gỡ ô native (cùng hộp: không xô lệch) |
 | `td_datetime_range` (0.40.0) | **luôn** host `<td-datetime-range data-td-ssr="datetime-range@1">` + hai `<input type="date\|datetime-local">` **native** (`{name}[start]` / `{name}[end]`, `min` / `max`, `required` theo mốc) + trigger ẩn | Không (hai ô ngày native chạy ngay) | **Có** — nạp module `datetime-range`: nhận **tại chỗ**, giữ giá trị đã sửa, gỡ ô native (0.51.1: khi JS bật, hai ô nằm trong một hộp giống trigger — không xô lệch) |
 | `td_diff` / `td_diff_snapshots` (0.46.0) | **luôn** host `<td-diff data-td-ssr="diff@1">` chứa sẵn bảng so sánh đầy đủ (hàng không đổi / JSON / giá trị dài là `<details>` native) | Không (đọc được ngay, `<details>` mở được không cần JS) | **Có** — nạp module `diff`: nhận **tại chỗ** (không đọc dữ liệu ngược từ DOM) |
-| `td_check_matrix` (0.47.0) | **luôn** host `<td-check-matrix data-td-ssr="check-matrix@1" data="{JSON}">` + **form không JS đầy đủ**: một hidden `name[col]=""` mỗi cột (đầu), một checkbox `name[col][]=row` mỗi ô áp dụng được (ô khoá-tick: checkbox `disabled` + hidden ngay sau), `name[_v]=1` (cuối); ô hàng loạt / nút nhóm / chọn cột `disabled` | Không (form gửi đúng FormData của component, từng byte) | **Có** — nạp module `check-matrix`: so **từng node** với `data`, nhận **tại chỗ** (giữ ô đã tick trước khi JS tải), gỡ marker / hidden / sentinel |
+| `td_check_matrix` (0.47.0) | **luôn** host `<td-check-matrix data-td-ssr="check-matrix@1" data="{JSON}">` + **form không JS đầy đủ**: một hidden `name[col]=""` mỗi cột (đầu), một checkbox `name[col][]=row` mỗi ô áp dụng được (ô khoá-tick: checkbox `disabled` + hidden ngay sau), `name[_v]=1` (cuối); ô hàng loạt / nút nhóm / chọn cột `disabled`. **0.95.0** `'mode' => 'override'`: `check-matrix@2`, một `<select>` `name[col][row]` mỗi ô, `name[_v]=2` — component đọc lựa chọn trước JS rồi render lại (không nhận tại chỗ) | Không (form gửi đúng FormData của component, từng byte) | **Có** — nạp module `check-matrix`: so **từng node** với `data`, nhận **tại chỗ** (giữ ô đã tick trước khi JS tải), gỡ marker / hidden / sentinel |
 | `td_color_picker` (0.48.0) | `div.td-color` + ô màu xám + `input.td-color__input` **chữ** (`pattern="#[0-9a-fA-F]{6}"` — **không** `type=color`) | Không (chỉ nhận `#RRGGBB`) | Không |
 | `td_color_picker` — **chế độ element** (0.48.0, tự bật) | host `<td-color-picker data-td-ssr="color-picker@1">` + cùng ô | Không (ô chữ native chạy ngay) | **Có** — nạp module `color-picker`: nhận **tại chỗ**, bọc ô màu vào nút mở popup |
 | `td_icon_picker` (0.94.0) | **luôn** host `<td-icon-picker data-td-ssr="icon-picker@1">` + nút ô (icon + tên canonical) + nút xoá + `input type=hidden` mang `name` / `value` | Không (form vẫn gửi giá trị qua input ẩn; không mở được lưới) | **Có** — nạp module `icon-picker`: nhận **tại chỗ**, gỡ input ẩn |
@@ -99,6 +100,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_carousel` (0.50.0) | **luôn** host `<td-carousel data-td-ssr="carousel@1">` + khung (viewport > track > slide **HTML tin cậy của site**) + thanh điều khiển JS-only giữ chỗ + live region | Không (dải cuộn snap native) | **Có** — nạp module `carousel`: nhận khung tại chỗ, **không chạm slide**, thêm nút / chấm |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
+| `td_card` (0.95.0) | `a.td-card` (cả card là một link) hoặc `div.td-card` (thuần CSS) | Không | — |
 | `td_alert` | host `<td-alert>` chứa sẵn khối `div.td-alert` đầy đủ | Không (có dáng ngay) | **Có** — nạp module `alert`: nâng cấp tại chỗ + nút đóng |
 
 - Bốn helper đầu in **control native đứng riêng** mang đúng class BEM của component. `td.css` tạo dáng giống hệt
@@ -126,7 +128,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.94.0/
+public/assets/vendor/td-components/0.95.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
   dist/  module-graph.json                    (0.64.0+: bản minify + đồ thị preload)
 ```
@@ -135,7 +137,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.94.0';
+const TD_VERSION = '0.95.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -271,6 +273,7 @@ td_dropdown(string $name, array $options, string|int|null $value = '', array $op
 td_toggle(string $name, bool $checked = false, string $label = '', array $opts = []): string
 td_checkbox(string $name, bool $checked = false, string $label = '', array $opts = []): string
 td_badge(string $text, array $opts = []): string          // 0.18.0
+td_card(string $title, array $o = []): string              // 0.95.0
 td_alert(string $message, array $opts = []): string       // 0.18.0
 td_empty(string $title, string $message = '', array $opts = []): string   // 0.26.0 (luôn element)
 td_otp_input(string $name, array $opts = []): string      // 0.27.0
@@ -643,6 +646,9 @@ dạng chuỗi với value của option; khớp → `selected`.
 `swatch` (0.82.0, tuỳ chọn, trong dạng danh sách): một màu CSS → `data-swatch="…"` (đã escape) trên `<option>`, qua
 `Td::safeColor` (cùng cổng với `td_choice_group`; sai → không in). Khi JS nạp, component vẽ chấm màu trước nhãn;
 không JS thì select native không đổi. `td_multiselect` nhận `swatch` y như vậy.
+`image` (0.95.0, tuỳ chọn, trong dạng danh sách): URL ảnh → `data-image="…"` trên `<option>`, qua `td__media_url` (`https:` /
+không scheme; `http:` chỉ khi `Td::allowHttpLinks(true)`; bị từ chối → không in) — cùng cổng với ảnh của `td_choice_group`.
+Khi JS nạp, component vẽ ảnh 32px đầu mỗi dòng menu và trên trigger cho option đang chọn.
 
 | Option | Ý nghĩa |
 |---|---|
@@ -861,6 +867,24 @@ TdComponents\Td::registerIcons(json_decode(file_get_contents(ROOT . '/data/icons
 import { registerIcons } from '@dazzxq/td-components/icons';
 registerIcons(JSON.parse(document.getElementById('site-icons').textContent));
 ```
+
+## td_card (0.95.0)
+
+```php
+<?= td_card('Tết 2026', [
+    'href' => '/album/tet-2026',
+    'image' => ['src' => $cover, 'srcset' => $srcset, 'sizes' => '240px', 'width' => 640, 'height' => 480],
+    'meta' => ['42 ảnh', ['12/02/2026', '2026-02-12']],
+    'badges' => [['Live', ['variant' => 'danger']]],
+]) ?>
+```
+
+In `a.td-card` (cả card là **một** link) hoặc, khi không có `href` dùng được, cùng cây đó trên `div.td-card` (card tĩnh, không
+cảnh báo). Không JS, không custom element. `$title` là chữ. Option: `href` (`Td::safeUrl`; `mailto:` / `tel:` bị từ chối),
+`target`, `image` (chuỗi src hoặc `['src', 'srcset', 'sizes', 'alt', 'width', 'height']` — một ứng viên srcset hỏng bỏ cả
+srcset; không src dùng được → ô giữ chỗ), `eager`, `placeholder_icon`, `meta`, `badges`, `heading` (2–6), `ratio`
+(`1x1|4x3|3x2|16x9|3x4`), `surface`, `id`, `class`, `attrs` (`role` / `tabindex` / `aria-label` / `aria-labelledby` /
+`data-td-*` bị bỏ). Chi tiết: [Card](../components/card.md#php-td_card).
 
 ## td_badge và td_alert
 
@@ -1890,6 +1914,17 @@ nguyên ≥ 0. Cờ `locked` / `na` / `collapsed` phải là **bool** thật.
 | `disabled` | bool | Mọi input `disabled` → không gửi gì |
 | `id`, `class`, `attrs` | | Host (`attrs` theo allowlist; tên của component + `data-td-*` bị chặn) |
 | `labels` | array | Ghi đè chữ (`Td::CHECK_MATRIX_LABELS` = `TdCheckMatrix.labels`) |
+| `mode` | `check` \| `override` | **0.95.0** `override` = ba trạng thái kế thừa / cấp / từ chối ([ADR 0040](../internal/decisions/0040-check-matrix-override-mode.md)). Giá trị lạ → `check` + một `E_USER_WARNING` |
+
+**`'mode' => 'override'` (0.95.0, hợp đồng `check-matrix@2`, hằng `Td::SSR_CHECK_MATRIX_OVERRIDE`):** `$value` thành
+`['cột' => ['hàng' => 'grant' | 'deny' | 'inherit']]` (đúng ba chuỗi, so khớp chặt; dạng danh sách của chế độ check → fail
+closed), ô có thêm cờ `inherited` (`true` / `false` / `null`, chỉ là gợi ý hiển thị). Host in `mode="override"` +
+`data-td-ssr="check-matrix@2"` + `data` `"v":2`; form không JS là **một `<select>` mỗi ô áp dụng được**
+(`perms[col][row]`, ba option; ô khoá: select `disabled` + hidden mang trạng thái), marker `perms[col]=''` đầu, `perms[_v]=2`
+cuối → mọi ô đều gửi, kể cả `inherit`. Server kiểm `$_POST['perms']['_v'] === '2'` (thiếu → 422), ép khoá `(string)` (PHP đổi
+`"12"` thành int), từ chối giá trị ngoài ba chuỗi. Component không nhận markup `@2` tại chỗ: khớp → đọc lựa chọn đã đổi
+trước khi JS tải rồi render lại; lệch → render từ `data`. Snippet ở
+[trang component](../components/check-matrix.md#chế-độ-kế-thừa--cấp--từ-chối-modeoverride).
 
 - **Form không JS gửi đúng FormData của component, từng byte** (test PHP parse bằng `parse_str` thật): `perms[col]=''` mỗi
   cột → các ô đang tick (ô khoá-tick qua hidden input ngay sau checkbox `disabled`) → `perms[_v]=1`. `$_POST['perms']` có

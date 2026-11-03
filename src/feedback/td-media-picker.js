@@ -62,6 +62,14 @@
  * preview, td-progress, × / Thử lại / Gỡ) first in the grid, uploaded in place, never selectable until done, then a regular
  * selected card (data-id = asset id) replaced by the page-1 reload. Any `uploadFields` → the upload dialog with the files
  * HELD until its "Tải lên {n} tệp" button. At most 3 `adapter.upload` at once picker-wide (grid + dialog share the slots).
+ * v0.95.0 (plan v0.95.0-media-picker-bulk): grid-dropped files upload in the BACKGROUND (media-picker-uploads.js, one
+ * store per adapter object, at most 3 `adapter.upload` page-wide): closing / removing the picker no longer asks or
+ * aborts; a later open with the same adapter + `context` shows their cards again (a file of an earlier open finishes
+ * quietly: no selection, no asset-change). ≥ 2 failed cards → `div.td-media-picker__upload-failed.td-alert--danger`
+ * ("Thử lại tất cả" / "Gỡ tất cả lỗi"). An `exact-reused` result marks the asset `[data-reused]` +
+ * `span.td-badge.td-media-picker__reused` "Đã có trong thư viện" for this open (pinned at the start of the grid until
+ * a user navigation when it is not on the page). Caps 100 files / 256 MiB per adapter. `TdMediaPicker.uploads` /
+ * `TdMediaPicker.cancelUploads()`.
  *
  * @element td-media-picker
  * @property {object} options - OpenMediaPickerOptions (merged over TdMediaPicker.defaults at open())
@@ -91,8 +99,8 @@ import {
 import { createFacetControl, FieldForm, FIELD_LABELS } from './media-picker-fields.js';
 import { TdMenu } from './td-menu.js';
 import { openUploadDialog, UPLOAD_LABELS } from './media-picker-upload.js';
-import { createUploadSlots } from '../utils/upload-queue.js';
 import { createGridDrop } from './media-picker-drop.js';
+import { pageUploadSlots, uploadStats, cancelAllUploads } from './media-picker-uploads.js';
 import { openFilterSheet, FILTER_LABELS } from './media-picker-filters.js';
 import { openCropDialog } from './crop-dialog.js';
 import { normalizeImageResizePolicy } from '../utils/image-resize.js';
@@ -315,6 +323,15 @@ export class TdMediaPicker extends HTMLElement {
     dropFailed: 'Tải lên {name} thất bại',
     uploadedHidden: 'Đã tải lên {name} — không hiện vì bộ lọc hoặc thứ tự hiện tại',
     uploadProgressLabel: 'Đang tải {name}',
+    /** v0.95.0: background uploads (closing keeps them), failure strip, exact-reused mark */
+    uploadFailedStrip: '{n} tệp tải lên lỗi',
+    retryAll: 'Thử lại tất cả',
+    removeAllFailed: 'Gỡ tất cả lỗi',
+    retryAllStarted: 'Đang thử lại {n} tệp',
+    removedFailed: 'Đã gỡ {n} tệp lỗi',
+    reusedBadge: 'Đã có trong thư viện',
+    uploadsResumed: '{n} tệp đang tải, {k} tệp lỗi',
+    uploadFailedClosed: '{n} tệp tải lên lỗi — mở thư viện để thử lại',
     kind: { image: 'Ảnh', video: 'Video', file: 'File' },
     status: { pending: 'Đang chờ', processing: 'Đang xử lý', failed: 'Lỗi', archived: 'Đã lưu trữ' },
     meta: {
@@ -365,6 +382,22 @@ export class TdMediaPicker extends HTMLElement {
 
   /** @returns {object} a shallow copy of the configured defaults */
   static get defaults() { return registry.get(); }
+
+  /**
+   * v0.95.0: files dropped into a picker's grid upload in the background (closing / removing the picker keeps them).
+   * `running` = optimising or calling `adapter.upload`, `waiting` = queued / waiting for one of the page's 3 slots,
+   * `failed` = failed and kept for "Thử lại" — over every adapter of the page (the upload dialog's files are not counted:
+   * they end with the picker). For a site's own `beforeunload` / badge.
+   * @returns {{ running: number, waiting: number, failed: number }}
+   */
+  static get uploads() { return uploadStats(); }
+
+  /**
+   * v0.95.0: abort every background upload of the page (waiting ones first, then running ones), drop the failed files
+   * and the open batches — no toast, no event. Call it on sign-out (the adapter may hold credentials).
+   * @returns {number} files cancelled
+   */
+  static cancelUploads() { return cancelAllUploads(); }
 
   /**
    * Open a picker built from options (a temporary host on <body>, removed after the close). Resolution order: these
@@ -517,11 +550,16 @@ export class TdMediaPicker extends HTMLElement {
       edit: null,
       blocked: null,
       upload: null,
-      /** v0.93.0: picker-wide upload slots — at most 3 concurrent `adapter.upload` (grid drop + upload dialog share them) */
-      uploadSlots: createUploadSlots(3),
+      /** v0.93.0: upload slots shared by the grid drop + upload dialog; v0.95.0: the PAGE-wide pool (3), never closed */
+      uploadSlots: pageUploadSlots(),
       /** v0.93.0: files dropped into the grid (media-picker-drop.js), created in _build; list request counter */
       drop: null,
       listSeq: 0,
+      /** v0.95.0: assets marked "Đã có trong thư viện" in this open (an exact-reused drop) */
+      reusedIds: new Set(),
+      /** v0.95.0: until the first page renders, list loads are of source 'open' (pinned reused cards stay) */
+      opening: true,
+      openNote: null, // v0.95.0: the reopen note held until the first page announces
       /** v0.36.0 (QĐ 49–50): the open filter sheet, the last descriptor list, a descriptor list that arrived meanwhile */
       filterSheet: null,
       facetList: [],
@@ -602,10 +640,10 @@ export class TdMediaPicker extends HTMLElement {
     const autoFirst = opts.autoSelectFirst === true && !opts.selection.initialIds.length;
     if (s.collection) {
       const c = { ...s.collection };
-      this._loadPage('reload', { autoFirst, announce: (n) => this._t('collectionEntered', { label: c.label, n }) });
+      this._loadPage('reload', { autoFirst, source: 'open', announce: (n) => this._t('collectionEntered', { label: c.label, n }) });
       queueMicrotask(() => { if (this._live(s)) this._emit('collection-change', { collection: c, reason: 'initial' }); });
     } else {
-      this._loadPage('reload', { autoFirst });
+      this._loadPage('reload', { autoFirst, source: 'open' });
       if (s.collEnabled) this._loadCollections();
     }
   }
@@ -703,7 +741,7 @@ export class TdMediaPicker extends HTMLElement {
     }
     if (s.collEnabled) this._buildCollections();
     const retry = makeButton(t('retry'), { size: 'sm', cls: 'td-media-picker__retry' });
-    retry.addEventListener('click', () => { if (usable(retry)) this._loadPage(s.lastHow, { autoFirst: s.autoRetry === true }); });
+    retry.addEventListener('click', () => { if (usable(retry)) this._loadPage(s.lastHow, { autoFirst: s.autoRetry === true, ...(s.opening ? { source: 'open' } : {}) }); });
     e.error.appendChild(retry);
     e.retry = retry;
     // footer (decision 17)
@@ -1300,7 +1338,23 @@ export class TdMediaPicker extends HTMLElement {
     if (view && !this._editBusy()) this._showDetail(asset.id, { gated: false });
     this._emit('asset-change', { operation: operation === 'upload-url' ? 'upload-url' : 'upload', asset, deduplication: dedup });
     this._loadFacets();
-    this._loadPage('reload', { reset: true, keepGrid: true });
+    this._loadPage('reload', { reset: true, keepGrid: true, source: 'upload' });
+  }
+
+  /**
+   * @private v0.95.0 (plan C, owner Q12): a file dropped in an EARLIER open finished while this one shows it — cached,
+   * announced, page 1 reloaded; never selected, no `asset-change`, no detail (the file was not dropped in this open).
+   */
+  _onUploadedQuiet(asset, dedup) {
+    const s = this._s;
+    if (!asset || !dedup) return;
+    s.cache.putAsset(asset);
+    s.cache.invalidateLists();
+    if (!s.upload) this._announce(this._t(dedup.outcome === 'exact-reused' ? 'reused' : 'uploaded', { name: asset.name || asset.id }));
+    const existing = s.items.get(asset.id);
+    if (existing) this._paintItem(existing, asset);
+    this._loadFacets();
+    this._loadPage('reload', { reset: true, keepGrid: true, source: 'upload' });
   }
 
   // --- list / facets / pages (decisions 9, 13) ---
@@ -1388,11 +1442,14 @@ export class TdMediaPicker extends HTMLElement {
       if (o.stepBack && !page.items.length) {
         const back = s.pages.stepBackIfEmpty();
         if (back) {
-          this._runPage(back, { keepGrid: true });
+          this._runPage(back, { keepGrid: true, source: o.source });
           return;
         }
       }
-      this._renderPage(page, !o.nav && !o.keepGrid, o.announce, o.autoFirst === true, seq);
+      this._renderPage(page, !o.nav && !o.keepGrid, o.announce, o.autoFirst === true, seq, o.source);
+      s.opening = false;
+      if (s.openNote) this._announce(s.openNote); // a first render without its own announcement
+      s.openNote = null;
       this._renderPager();
       if (o.nav) {
         s.els.results.scrollTop = 0;
@@ -1445,7 +1502,7 @@ export class TdMediaPicker extends HTMLElement {
    * @param {(n: number) => string} [announceText] v0.66.0 (K8): the results count merged into one message
    * @param {boolean} [autoFirst] v0.67.0: select the first selectable asset first (`autoSelectFirst`, first load only)
    */
-  _renderPage(page, announce, announceText, autoFirst = false, seq = this._s.listSeq) {
+  _renderPage(page, announce, announceText, autoFirst = false, seq = this._s.listSeq, source = undefined) {
     const s = this._s;
     const grid = s.els.grid;
     if (typeof grid.clear === 'function') grid.clear();
@@ -1457,7 +1514,8 @@ export class TdMediaPicker extends HTMLElement {
       grid.appendChild(el);
     }
     // v0.93.0: dropped-file cards back at the start; done ones leave when replaced (see media-picker-drop.js)
-    if (s.drop) s.drop.afterRender(page.items.map((a) => a.id), seq);
+    // v0.95.0: `source` 'upload' / 'open' keeps a pinned reused card off the page (a user navigation drops it)
+    if (s.drop) s.drop.afterRender(page.items.map((a) => a.id), seq, source);
     if (!page.items.length) {
       this._renderEmpty();
       s.els.skeleton.hidden = true;
@@ -1473,6 +1531,8 @@ export class TdMediaPicker extends HTMLElement {
       const n = page.total ?? page.items.length;
       let text = announceText ? announceText(n) : this._t('resultsCount', { n });
       if (auto) text = `${text}. ${this._t('autoSelected', { name: auto.name || auto.id })}`; // one message: the last wins
+      if (s.openNote) text = `${text}. ${s.openNote}`; // v0.95.0: held reopen note (see the drop announce option)
+      s.openNote = null;
       this._announce(text);
     }
     if (s.els.itemsHead) this._syncSectionHeads();
@@ -1803,7 +1863,13 @@ export class TdMediaPicker extends HTMLElement {
     const statusText = asset.status !== 'ready' ? this._t(`status.${asset.status}`) : '';
     const name = asset.name || asset.id;
     const meta = this._cardMeta(asset);
-    open.setAttribute('aria-label', [name, meta, statusText].filter(Boolean).join(' — '));
+    // v0.95.0: an asset an exact-reused drop of this open resolved to — "Đã có trong thư viện" (label + chip)
+    const reused = !!s.reusedIds && s.reusedIds.has(asset.id);
+    item.toggleAttribute('data-reused', reused);
+    // plan §F: the open button's name gains ", đã có trong thư viện" (the chip text, first letter lower-cased)
+    const badge = reused ? String(this._t('reusedBadge') || '') : '';
+    const suffix = badge ? `, ${badge.charAt(0).toLocaleLowerCase()}${badge.slice(1)}` : '';
+    open.setAttribute('aria-label', [name, meta, statusText].filter(Boolean).join(' — ') + suffix);
     open.replaceChildren();
     const thumb = document.createElement('span');
     thumb.className = 'td-media-picker__thumb';
@@ -1849,6 +1915,12 @@ export class TdMediaPicker extends HTMLElement {
     mt.textContent = meta;
     info.append(nm, mt);
     if (asset.badges && asset.badges.length) info.appendChild(this._badges(asset));
+    if (reused) {
+      const chip = document.createElement('span');
+      chip.className = 'td-badge td-media-picker__reused';
+      chip.textContent = this._t('reusedBadge');
+      info.appendChild(chip);
+    }
     open.append(thumb, info);
   }
 
@@ -1948,25 +2020,44 @@ export class TdMediaPicker extends HTMLElement {
     const s = this._s;
     const e = s.els;
     const t = (k, p) => this._t(k, p);
+    // v0.95.0: the labels of THIS open for the background store (hooks / toasts after the close) — `messages` only,
+    // never the session (a closed picker must not stay reachable from a running upload)
+    const messages = s.messages;
+    const tStatic = (k, p) => formatLabel(TdMediaPicker.labels, messages, k, p || {});
     s.drop = createGridDrop({
       grid: e.grid,
       t,
+      tStatic,
       adapter: s.adapter,
       context: s.context,
       metaKeys: s.metaKeys,
       upload: s.opts.upload,
       // the collection in view when the files are dropped (collection-enabled sessions only), like "Tải lên"
       collection: () => (s.collEnabled ? { id: s.collection ? s.collection.id : null } : undefined),
-      slots: () => s.uploadSlots,
       listSeq: () => s.listSeq,
       hasCard: (id) => s.items.has(id),
       paintCard: (el, asset) => this._paintItem(el, asset),
       onUploaded: (asset, dedup) => { if (this._live(s)) this._onUploaded(asset, dedup, 'upload'); },
+      onUploadedQuiet: (asset, dedup) => { if (this._live(s)) this._onUploadedQuiet(asset, dedup); },
+      markReused: (id) => {
+        if (!this._live(s)) return;
+        s.reusedIds.add(id);
+        const el = s.items.get(id);
+        const a = s.cache.getAsset(id);
+        if (el && a) this._paintItem(el, a);
+      },
+      cacheAsset: (asset) => { if (this._live(s)) s.cache.putAsset(asset); },
       onError: (d) => {
         if (!this._live(s) || !d) return;
         this._emit('operation-error', { operation: d.operation, code: d.code, retryable: d.retryable });
       },
-      announce: (text) => { if (this._live(s)) this._announce(text); },
+      // v0.95.0: the reopen note ("{n} tệp đang tải, {k} tệp lỗi") comes during setup — the first page's "{n} kết quả"
+      // would replace it unheard → held while opening, then one message with the results count (like autoSelected)
+      announce: (text) => {
+        if (!this._live(s)) return;
+        if (s.opening) s.openNote = text;
+        else this._announce(text);
+      },
       toast: (type, text) => {
         if (!this._live(s)) return;
         try { (type === 'warning' ? TdToast.warning : TdToast.success).call(TdToast, text, this._toastOptions()); } catch { /* ignore */ }
@@ -1976,6 +2067,7 @@ export class TdMediaPicker extends HTMLElement {
       focusFallback: () => e.heading,
       isLive: () => this._live(s),
     });
+    s.drop.attach(); // v0.95.0: running / failed files of this adapter + context from an earlier open come back
     const dialog = e.dialog;
     const signal = s.ctrl.signal;
     let depth = 0;
@@ -2073,7 +2165,7 @@ export class TdMediaPicker extends HTMLElement {
     }
     const r = s.drop.accept(files);
     // the upload reloads page 1 when done anyway: go there now, the dropped cards stay shown (keepGrid)
-    if (r.accepted.length && s.pages.page !== 1) this._loadPage('reload', { reset: true, keepGrid: true });
+    if (r.accepted.length && s.pages.page !== 1) this._loadPage('reload', { reset: true, keepGrid: true, source: 'upload' });
   }
 
   /** @private v0.93.0: the dropped-file cards changed — the grid shows while there are some (under an empty state too) */
@@ -2911,7 +3003,7 @@ export class TdMediaPicker extends HTMLElement {
     const s = this._s;
     let uploading = false;
     try { uploading = !!s.upload && s.upload.busy(); } catch { uploading = false; }
-    if (!uploading && s.drop) uploading = s.drop.busy(); // v0.93.0: files dropped into the grid
+    // v0.95.0: files dropped into the grid upload in the background — closing never asks for them (plan B)
     return this._editBusy() || uploading;
   }
 
@@ -3081,9 +3173,10 @@ export class TdMediaPicker extends HTMLElement {
       if (s.initial) s.initial.invalidate();
       s.debounce.cancel();
       s.ctrl.abort();
-      // v0.93.0 (plan r2 #6): close the slot pool BEFORE the uploads are cancelled — a freed slot starts nobody
-      if (s.uploadSlots) s.uploadSlots.close();
+      // v0.95.0: the slot pool is page-wide (never closed). The dialog's queue cancels in two phases (its waiters first,
+      // then its running uploads): a freed slot can only start a background (grid) upload, never a dialog file.
       if (s.upload) { try { s.upload.destroy(); } catch { /* ignore */ } s.upload = null; }
+      // v0.95.0 (plan B): the grid drop only DETACHES — its files go on uploading in the background store
       if (s.drop) { try { s.drop.destroy(); } catch { /* ignore */ } s.drop = null; }
       s.uploadSlots = null;
       if (s.filterSheet) { try { s.filterSheet.destroy(); } catch { /* ignore */ } s.filterSheet = null; }

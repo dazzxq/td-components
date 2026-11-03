@@ -108,6 +108,21 @@ export function renderedPairs() {
   add('matrix changed mark', '--td-accent', ['--td-color-surface'], 3);
   add('matrix changed mark on crosshair', '--td-accent', ['--td-color-hover', '--td-color-surface'], 3);
   add('matrix note dot', '--td-color-text-muted', ['--td-color-surface'], 3);
+  // v0.95.0 td-check-matrix mode=override (check-matrix.css: inherit mark = --td-check-matrix-inherit-mark = text-muted, a
+  // non-text glyph on the grid surface). Grant ✓ / deny ✕ sit on fixed solid fills (checkbox colour / the danger ink --td-action-btn-danger-fg with the page colour --td-color-bg),
+  // not palette tokens — gated by the page probe instead.
+  add('matrix inherit mark', '--td-color-text-muted', ['--td-color-surface'], 3);
+  add('matrix inherit mark on crosshair', '--td-color-text-muted', ['--td-color-hover', '--td-color-surface'], 3);
+  add('matrix inherit edge', '--td-control-border-strong', ['--td-color-surface'], 3);
+  // v0.95.0 td-selection-bar (selection-bar.css: panel --td-selection-bar-bg = --td-glass-solid, text --td-selection-bar-fg =
+  // --td-color-text; ghost actions --td-btn-ghost-hover-fg on the hover / pressed wash; danger action --td-color-error at rest / on --td-action-btn-danger-hover-bg (hover) / on
+  // --td-action-btn-danger-pressed-bg (pressed) over the panel)
+  add('selection bar count', '--td-color-text', ['--td-glass-solid']);
+  add('selection bar action hover', '--td-btn-ghost-hover-fg', ['--td-color-hover', '--td-glass-solid']);
+  add('selection bar action pressed', '--td-btn-ghost-hover-fg', ['--td-color-pressed', '--td-glass-solid']);
+  add('selection bar danger', '--td-color-error', ['--td-glass-solid']);
+  add('selection bar danger hover', '--td-color-error', ['--td-action-btn-danger-hover-bg', '--td-glass-solid']);
+  add('selection bar danger pressed', '--td-color-error', ['--td-action-btn-danger-pressed-bg', '--td-glass-solid']);
   // v0.50.0 td-rating (rating.css: filled star edge = --td-color-warning; count / none = muted) and td-carousel
   // (carousel.css: dots = subtle / text on the page; chevron = text on the secondary fill, its hover / pressed fills)
   for (const s of PAGE) {

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {
   validateMatrix, canonicalMatrix, MatrixState, matrixEntries, decodeMatrixState, normalizeMatrixText, matrixKey,
   isNa, isLocked, MATRIX_CASES, MATRIX_LIMITS, CHECK_MATRIX_KEY, matrixJsonBytes,
+  OverrideState, overrideEntries, OVERRIDE_CASES,
 } from './check-matrix-model.js';
 
 const ok = (data) => {
@@ -328,5 +329,141 @@ describe('check-matrix-model — data attribute size (review r1 #2)', () => {
     assert.equal(matrixJsonBytes('😀'), 4);
     assert.equal(matrixJsonBytes('Quyền'), 7);
     assert.equal(MATRIX_LIMITS.json, 524288);
+  });
+});
+
+// v0.95.0 (plan docs/internal/plans/v0.95.0-check-matrix.md §13.1, ADR 0040) — mode="override": three states per cell
+describe('check-matrix-model — override mode (v0.95.0)', () => {
+  const okO = (data) => {
+    const r = validateMatrix(data, 'override');
+    assert.equal(r.reason, null, JSON.stringify(r.reason));
+    return r.model;
+  };
+  const S = (m, st) => new OverrideState(m, st);
+
+  it('every OVERRIDE_CASES row gives its reason; ok cases give their entries + re-validate from canonical', () => {
+    assert.ok(OVERRIDE_CASES.length >= 25);
+    for (const c of OVERRIDE_CASES) {
+      const r = validateMatrix(c.data, 'override');
+      assert.equal(r.reason, c.reason, c.name);
+      if (!r.ok) continue;
+      if (c.entries) assert.deepEqual(overrideEntries('p', r.model, r.model.value), c.entries, c.name);
+      const canon = canonicalMatrix(r.model);
+      const again = validateMatrix(canon, 'override');
+      assert.equal(again.reason, null, c.name);
+      assert.deepEqual(canonicalMatrix(again.model), canon, c.name);
+    }
+  });
+
+  it('the check mode is untouched: MATRIX_CASES give the same reasons, `inherited` is an ignored field there', () => {
+    for (const c of MATRIX_CASES) assert.equal(validateMatrix(c.data).reason, c.reason, c.name);
+    const m = ok({ columns: COLS, rows: ROWS(), cells: { dash: { owner: { inherited: 'yes' } } } });
+    assert.equal(m.mode, 'check');
+    assert.equal(m.inh, undefined);
+    assert.equal(validateMatrix({ columns: COLS, rows: ROWS(), value: { owner: { dash: 'grant' } } }).reason, 'value-shape');
+  });
+
+  it('canonical override: every column as a map, inherit never printed, `inherited` kept per cell', () => {
+    const m = okO({ columns: COLS, rows: ROWS(), cells: { dash: { owner: { inherited: true }, sales: { inherited: false } } },
+      value: { owner: { dash: 'inherit', 'cat.view': 'grant' }, ship: { report: 'deny' } } });
+    const c = canonicalMatrix(m);
+    assert.deepEqual(JSON.parse(JSON.stringify(c.value)), { owner: { 'cat.view': 'grant' }, sales: {}, ship: { report: 'deny' } });
+    assert.deepEqual(JSON.parse(JSON.stringify(c.cells)), { dash: { owner: { inherited: true }, sales: { inherited: false } } });
+  });
+
+  it('overrideEntries: markers first, every applicable cell row-major (locked once, n/a never), _v=2 last; bad name → null', () => {
+    const m = okO({ columns: [{ key: 'a' }, { key: 'b', locked: true }], rows: [{ key: 'x' }, { key: 'y' }],
+      cells: { y: { a: { na: true } } }, value: { b: { x: 'deny' } } });
+    assert.deepEqual(overrideEntries('p', m, m.value), [['p[a]', ''], ['p[b]', ''], ['p[a][x]', 'inherit'], ['p[b][x]', 'deny'], ['p[b][y]', 'inherit'], ['p[_v]', '2']]);
+    assert.equal(overrideEntries('role[perms]', m, m.value)[0][0], 'role[perms][a]');
+    assert.equal(overrideEntries('', m, m.value), null);
+    assert.equal(overrideEntries('p[]', m, m.value), null);
+  });
+
+  it('cycle: inherit → grant → deny → inherit; dir -1 backwards; locked / n/a → null', () => {
+    const m = okO({ columns: COLS, rows: ROWS(), cells: { dash: { sales: { locked: true }, ship: { na: true } } } });
+    const s = S(m);
+    const seen = [];
+    for (let k = 0; k < 3; k++) seen.push(s.cycle(0, 0)[0][2]);
+    assert.deepEqual(seen, [1, 2, 0]);
+    assert.deepEqual(s.cycle(0, 0, -1), [[0, 0, 2]]);
+    assert.deepEqual(s.cycle(0, 0, -1), [[0, 2, 1]]);
+    assert.equal(s.cycle(0, 1), null);
+    assert.equal(s.cycle(0, 2), null);
+    assert.deepEqual(s.setCell(0, 0, 1), []);
+    assert.deepEqual(s.setCell(0, 0, 0), [[0, 1, 0]]);
+    assert.equal(s.setCell(0, 1, 2), null);
+  });
+
+  it('bulk: uniform free cells → next state; mixed → inherit; locked cells never change; shown state counts locked ones', () => {
+    const m = okO({ columns: COLS, rows: ROWS(), cells: { dash: { sales: { locked: true } } }, value: { sales: { dash: 'deny' } } });
+    const s = S(m);
+    assert.deepEqual(s.bulkState('row', 0), { state: 'mixed', disabled: false });
+    s.cycleSet('row', 0, 0); // free cells all inherit → grant
+    assert.deepEqual([...s.st.slice(0, 3)], [1, 2, 1]);
+    s.cycleSet('row', 0, 0); // grant → deny: the whole row deny
+    assert.deepEqual(s.bulkState('row', 0), { state: 'deny', disabled: false });
+    s.cycle(0, 0); // owner → inherit: mixed
+    s.cycleSet('row', 0, 0); // mixed → inherit
+    assert.deepEqual([...s.st.slice(0, 3)], [0, 2, 0]);
+    s.cycleSet('row', 0, 0, -1); // uniform inherit, backwards → deny
+    assert.deepEqual([...s.st.slice(0, 3)], [2, 2, 2]);
+    const all = okO({ columns: [{ key: 'a', locked: true }], rows: [{ key: 'x' }] });
+    assert.deepEqual(S(all).bulkState('all'), { state: 'inherit', disabled: true });
+    assert.deepEqual(S(all).cycleSet('all'), []);
+  });
+
+  it('resetSet / resettable: free cells back to inherit, locked overrides stay', () => {
+    const m = okO({ columns: COLS, rows: ROWS(), cells: { dash: { sales: { locked: true } } },
+      value: { owner: { dash: 'grant', report: 'deny' }, sales: { dash: 'deny' } } });
+    const s = S(m);
+    assert.equal(s.resettable('all'), 2);
+    assert.equal(s.resettable('column', 1), 0);
+    const diff = s.resetSet('all');
+    assert.equal(diff.length, 2);
+    assert.equal(s.resettable('all'), 0);
+    assert.equal(s.st[1], 2); // locked deny kept
+    assert.equal(s.changedCount, 2);
+  });
+
+  it('fuzz: 1,000 random operations — incremental counters equal a full recount', () => {
+    const m = okO({ columns: COLS, rows: ROWS(), cells: { dash: { sales: { locked: true } }, 'cat.edit': { ship: { na: true } } } });
+    const s = S(m);
+    let seed = 7;
+    const rnd = (n) => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed % n;
+    };
+    const kinds = [['all', 0, 0], ['row', 2, 0], ['column', 1, 0], ['group', 0, 0], ['group-column', 0, 2]];
+    for (let k = 0; k < 1000; k++) {
+      const op = rnd(5);
+      if (op === 0) s.cycle(rnd(m.rows.length), rnd(3), rnd(2) ? 1 : -1);
+      else if (op === 1) s.setCell(rnd(m.rows.length), rnd(3), rnd(3));
+      else if (op === 2) s.cycleSet(...kinds[rnd(5)], rnd(2) ? 1 : -1);
+      else if (op === 3) s.setSet(...kinds[rnd(5)], rnd(3));
+      else s.resetSet(...kinds[rnd(5)]);
+    }
+    const fresh = new OverrideState(m, s.st, m.value);
+    for (const [kind, a, b] of kinds) assert.deepEqual(s.stats(kind, a, b), fresh.stats(kind, a, b), kind);
+    assert.equal(s.changedCount, fresh.changedCount);
+  });
+
+  it('valueObject: every column, own properties, original keys; encodeState round-trips; v:1 ↔ v:2 never cross', () => {
+    const data = { columns: [{ key: 3 }, { key: 'b' }], rows: [{ key: 12 }, { key: 'constructor' }], value: { 3: { 12: 'grant' }, b: { constructor: 'deny' } } };
+    const m = okO(data);
+    const s = S(m);
+    const v = s.valueObject();
+    assert.deepEqual(Object.keys(v), ['3', 'b']);
+    assert.equal(v[3][12], 'grant');
+    assert.equal(Object.hasOwn(v.b, 'constructor'), true);
+    assert.equal(v.b.constructor, 'deny');
+    const enc = s.encodeState();
+    assert.deepEqual(JSON.parse(enc), { v: 2, value: { 3: { 12: 'grant' }, b: { constructor: 'deny' } } });
+    assert.deepEqual([...decodeMatrixState(enc, data, 'override')], [...s.st]);
+    assert.equal(decodeMatrixState(enc, data), null);
+    assert.equal(decodeMatrixState('{"v":1,"value":{"b":["constructor"]}}', data, 'override'), null);
+    assert.equal(decodeMatrixState('{"v":2,"value":{"b":{"constructor":"Deny"}}}', data, 'override'), null);
+    assert.equal(({}).constructor, Object);
+    assert.equal(Object.prototype.grant, undefined);
   });
 });

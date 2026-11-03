@@ -28,8 +28,9 @@
  *     onError,      // ({ operation: 'upload' | 'upload-url', code, retryable }) => void — picker emits operation-error
  *     announce,     // (text: string) => void — picker live region
  *     onClosed,     // () => void — after the dialog fully closed (picker returns focus to its "Tải lên" button)
- *     uploadSlots,  // v0.93.0 (internal), optional: the picker-wide createUploadSlots(3) pool → the dropzone's
- *                   //   `_uploadSlots` (grid + dialog share 3 concurrent adapter.upload calls); absent → unlimited
+ *     uploadSlots,  // v0.93.0 (internal), optional: the page-wide createUploadSlots(3) pool (v0.95.0 pageUploadSlots) →
+ *                   //   the dropzone's `_uploadSlots` (every picker's grid + dialog share 3 concurrent adapter.upload
+ *                   //   calls); absent → unlimited
  *     files,        // v0.93.0 (internal), optional File[]: dropped on the picker (a site with uploadFields) → HELD in a
  *                   //   block above the dropzone, uploaded only by its "Tải lên {n} tệp" button (field values captured
  *                   //   then, per File); never uploaded on their own; closing with held files asks nothing
@@ -507,7 +508,7 @@ export function openUploadDialog(o) {
     panel.setAttribute('data-source', 'file');
     panel.id = `${id}-file`;
     dz = document.createElement('td-dropzone');
-    dz._uploadSlots = o.uploadSlots || null; // v0.93.0 (internal): the picker-wide pool, before any file
+    dz._uploadSlots = o.uploadSlots || null; // v0.93.0 (internal): the page-wide pool (v0.95.0), before any file
     dz._onBatchEnd = (r) => finishBatch(r); // v0.93.0 (internal): the dropzone's queue counts the batch
     dz.className = 'td-media-picker-upload__dropzone';
     if (up.multiple !== false) dz.setAttribute('multiple', '');

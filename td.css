@@ -6564,6 +6564,9 @@
 		--td-dropdown-option-h: 40px; /* JS mirrors it: max-height = visible options × 40 px */
 		--td-dropdown-swatch-size: 0.75rem; /* v0.82.0: option colour dot (trigger + rows) */
 		--td-dropdown-icon-size: 1.75rem; /* v0.84.0: the toned icon tile of a rich row (the glyph is 60 % of it) */
+		--td-dropdown-image-size: 2rem; /* v0.95.0: option `image` in a menu row (matches width/height="32") */
+		--td-dropdown-image-trigger-size: 1.25rem; /* v0.95.0: the selected option's image on the trigger */
+		--td-dropdown-image-radius: var(--td-radius-sm); /* v0.95.0: a cover thumbnail, square with a light rounding */
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
@@ -7153,6 +7156,40 @@
 		height: var(--td-icon-s);
 	}
 
+	/* v0.95.0: option `image` (a site thumbnail, alt="": the label names the option) — wins over the icon / dot. A fixed
+	   box: a host reset (Tailwind preflight img { max-width: 100%; height: auto }) must not change it; the fill shows
+	   while it loads and when it fails (no broken-image frame). */
+	.td-dropdown__image,
+	.td-dropdown__value-image {
+		max-width: none;
+		max-height: none;
+		/* the preflight's height: auto is unlayered → it beats the fixed height below; a square ratio keeps the box
+		   (else the picture's own ratio, e.g. 32×21) — the reset never sets aspect-ratio */
+		aspect-ratio: 1;
+		object-fit: cover;
+		forced-color-adjust: none; /* the picture is content */
+		background-color: var(--td-color-fill);
+		border-radius: var(--td-dropdown-image-radius);
+	}
+
+	/* in a menu row: a direct child of the flex row */
+	.td-dropdown__image {
+		display: block;
+		flex: none;
+		width: var(--td-dropdown-image-size);
+		height: var(--td-dropdown-image-size);
+	}
+
+	/* on the trigger: inside the clipping, nowrap value span (not a flex container) → inline-level like the dot / icon,
+	   so the label stays on the same line and its ellipsis still works; 1px in from the start edge (v0.84.0 icon) */
+	.td-dropdown__value-image {
+		display: inline-block;
+		width: var(--td-dropdown-image-trigger-size);
+		height: var(--td-dropdown-image-trigger-size);
+		margin-inline: 1px var(--td-space-xs);
+		vertical-align: middle;
+	}
+
 	.td-dropdown__empty {
 		padding: 8px var(--td-option-pad-x);
 		margin: 0;
@@ -7257,6 +7294,11 @@
 
 		.td-dropdown__swatch {
 			box-shadow: 0 0 0 1px CanvasText;
+		}
+
+		.td-dropdown__image,
+		.td-dropdown__value-image {
+			background-color: Canvas;
 		}
 
 		/* the system arrow (in system colours) instead of the gradient chevron */
@@ -12178,6 +12220,305 @@
 	}
 }
 
+/* ---- src/styles/components/card.css ---- */
+/*
+ * .td-card — CSS-only card with a cover image; the whole card is ONE link (plan v0.95.0-card; PHP td_card()).
+ * No JS, no custom element, no upgrade: HTML by hand, PHP and the site's JS print the same tree.
+ *   <a class="td-card" href="/album/tet-2026">
+ *     <span class="td-card__media"><img src="…" alt="" loading="lazy" decoding="async" width="640" height="480"></span>
+ *     <span class="td-card__body">
+ *       <span class="td-card__title">Tết 2026</span>
+ *       <span class="td-card__badges"><span class="td-badge td-badge--danger">Live</span></span>
+ *       <span class="td-card__meta"><span>42 ảnh</span><span class="td-card__sep" aria-hidden="true">·</span><time datetime="2026-02-12">12/02/2026</time></span>
+ *     </span>
+ *   </a>
+ * No image: `.td-card__media > .td-card__placeholder[aria-hidden] > svg.td-icon` (a placeholder tile). `<picture>`
+ * goes inside `.td-card__media`. A card without a link is the same class on a `<div>` / `<article>` (static: no pointer
+ * cursor, no hover, no press shape) — every interaction rule below matches `a.td-card` only.
+ * Default is BARE (rounded image + text below, no box); `.td-card--surface` is the framed variant (fill + edge + shadow).
+ * Ratio: `.td-card--ratio-{1x1,4x3,3x2,16x9,3x4}` set --td-card-ratio from an allowlist (never a `style` attribute).
+ * `.td-card-grid` is an optional auto-fill grid (no container query); a site with its own `@container` grid ignores it.
+ * Size follows the CONTAINER (no viewport query); the card sets no container-type itself. No scale / lift on hover or
+ * press (minimal surfaces rule 4): hover = darker image edge (bare) or a solid fill (--surface); press = a
+ * --td-color-pressed layer over the image. `prefers-contrast: more` → currentColor edges, no shadow; forced colours →
+ * CanvasText edges, Highlight outline for focus and press.
+ */
+@layer td.tokens {
+	:root {
+		--td-card-ratio: 4 / 3;
+		--td-card-fit: cover;
+		--td-card-radius: var(--td-radius-md);
+		--td-card-body-pad: 0.375rem 0.25rem;
+		--td-card-title-size: var(--td-text-sm);
+		--td-card-title-weight: 500;
+		--td-card-title-lines: 2;
+		--td-card-meta-size: var(--td-text-xs);
+		--td-card-badge-inset: var(--td-space-xs);
+		--td-card-placeholder-icon: 2rem;
+		--td-card-grid-min: 200px;
+		--td-card-grid-gap: var(--td-space-md);
+	}
+
+	/* colour / shadow tokens re-resolve in every theme scope (ADR 0020). One shadow for both themes: a dark-only rule
+	   would make --td-card-shadow a dark-only token that src/theme (THEME_TOKENS / presets) must know; on a dark page the
+	   border carries the edge. */
+	:root, [data-td-theme] {
+		--td-card-title-fg: var(--td-color-text);
+		--td-card-meta-fg: var(--td-color-text-muted);
+		--td-card-media-bg: var(--td-color-surface-muted);
+		--td-card-media-border: var(--td-color-border);
+		--td-card-placeholder-fg: var(--td-color-text-muted);
+		--td-card-hover-border: var(--td-color-border-strong);
+		--td-card-bg: var(--td-color-surface);
+		--td-card-border: var(--td-color-border);
+		--td-card-shadow: 0 1px 2px rgb(0 0 0 / 10%), 0 2px 8px -2px rgb(0 0 0 / 12%);
+		--td-card-hover-bg: var(--td-color-surface-muted);
+	}
+
+}
+
+@layer td.component {
+	.td-card {
+		position: relative;
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		min-inline-size: 0;
+		color: inherit;
+		line-height: var(--td-leading-normal); /* the host page line-height never reaches the card text */
+		text-decoration: none;
+		-webkit-tap-highlight-color: transparent;
+		border-radius: var(--td-card-radius);
+	}
+
+	a.td-card {
+		cursor: pointer;
+	}
+
+	.td-card__media {
+		position: relative;
+		box-sizing: border-box;
+		display: block;
+		flex: none;
+		overflow: hidden;
+		aspect-ratio: var(--td-card-ratio);
+		background-color: var(--td-card-media-bg);
+		border: 1px solid var(--td-card-media-border);
+		border-radius: var(--td-card-radius);
+		transition: border-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	/* the host's img reset (`max-width: 100%; height: auto`) cannot shrink the cover: absolute + explicit size */
+	.td-card__media img {
+		position: absolute;
+		inset: 0;
+		display: block;
+		inline-size: 100%;
+		block-size: 100%;
+		max-inline-size: none;
+		object-fit: var(--td-card-fit);
+	}
+
+	.td-card__placeholder {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		color: var(--td-card-placeholder-fg);
+	}
+
+	.td-card__placeholder .td-icon {
+		inline-size: var(--td-card-placeholder-icon);
+		block-size: var(--td-card-placeholder-icon);
+	}
+
+	.td-card__body {
+		display: flex;
+		flex-direction: column;
+		gap: 0.125rem;
+		min-inline-size: 0;
+		padding: var(--td-card-body-pad);
+	}
+
+	.td-card__title {
+		display: -webkit-box;
+		margin: 0;
+		overflow: hidden;
+		font-family: inherit;
+		font-size: var(--td-card-title-size);
+		font-weight: var(--td-card-title-weight);
+		line-height: 1.35;
+		color: var(--td-card-title-fg);
+		overflow-wrap: anywhere;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: var(--td-card-title-lines);
+		line-clamp: var(--td-card-title-lines);
+	}
+
+	.td-card__meta {
+		display: block;
+		/* one ellipsised line: its text width must not size the card (an unbroken string would push the card out of
+		   any 1fr / auto grid cell — plan §11.4); the block still stretches to the card */
+		contain: inline-size;
+		overflow: hidden;
+		font-size: var(--td-card-meta-size);
+		line-height: 1.4;
+		color: var(--td-card-meta-fg);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-card__sep {
+		margin-inline: 0.125em;
+	}
+
+	/* over the top-start corner of the image (the image is the card's first box); after the title in the DOM */
+	.td-card__badges {
+		position: absolute;
+		inset-block-start: var(--td-card-badge-inset);
+		inset-inline-start: var(--td-card-badge-inset);
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+		max-inline-size: calc(100% - 2 * var(--td-card-badge-inset));
+		pointer-events: none;
+	}
+
+	/* framed variant */
+	.td-card--surface {
+		background-color: var(--td-card-bg);
+		border: 1px solid var(--td-card-border);
+		box-shadow: var(--td-card-shadow);
+		transition: background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-card--surface .td-card__media {
+		border-width: 0;
+		border-end-start-radius: 0;
+		border-end-end-radius: 0;
+	}
+
+	.td-card--surface .td-card__body {
+		padding: var(--td-space-sm);
+	}
+
+	.td-card--ratio-1x1 { --td-card-ratio: 1 / 1; }
+	.td-card--ratio-4x3 { --td-card-ratio: 4 / 3; }
+	.td-card--ratio-3x2 { --td-card-ratio: 3 / 2; }
+	.td-card--ratio-16x9 { --td-card-ratio: 16 / 9; }
+	.td-card--ratio-3x4 { --td-card-ratio: 3 / 4; }
+
+	.td-card-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(var(--td-card-grid-min), 100%), 1fr));
+		gap: var(--td-card-grid-gap);
+	}
+
+	/* hover only on a fine pointer; bare = the image edge (no fill to change), surface = a solid fill */
+	@media (hover: hover) and (pointer: fine) {
+		a.td-card:hover .td-card__media {
+			border-color: var(--td-card-hover-border);
+		}
+
+		a.td-card.td-card--surface:hover {
+			background-color: var(--td-card-hover-bg);
+		}
+
+		a.td-card.td-card--surface:hover .td-card__media {
+			border-color: transparent;
+		}
+	}
+
+	a.td-card:focus-visible {
+		outline: 2px solid transparent;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	a.td-card:is(:active, [data-td-pressed]) {
+		transition-duration: 0s;
+	}
+
+	a.td-card:is(:active, [data-td-pressed]) .td-card__media {
+		border-color: var(--td-card-hover-border);
+		transition-duration: 0s;
+	}
+
+	/* the press layer exists ONLY while pressed, over the image */
+	a.td-card:is(:active, [data-td-pressed]) .td-card__media::after {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		content: "";
+		background-color: var(--td-color-pressed);
+		border-radius: inherit;
+	}
+
+	a.td-card.td-card--surface:is(:active, [data-td-pressed]) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	a.td-card.td-card--surface:is(:active, [data-td-pressed]) .td-card__media {
+		border-color: transparent;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-card__media,
+		.td-card--surface {
+			transition: none;
+		}
+	}
+
+	@media (prefers-contrast: more) {
+		.td-card__media {
+			border-color: currentColor;
+		}
+
+		.td-card--surface {
+			border-color: currentColor;
+			box-shadow: none;
+		}
+
+		.td-card--surface .td-card__media {
+			border-color: transparent;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-card__media,
+		.td-card--surface {
+			border-color: CanvasText;
+		}
+
+		.td-card--surface .td-card__media {
+			border-color: transparent;
+		}
+
+		.td-card__media,
+		.td-card__placeholder {
+			background-color: Canvas;
+		}
+
+		.td-card__placeholder {
+			color: GrayText;
+		}
+
+		a.td-card:focus-visible {
+			outline: 2px solid Highlight;
+		}
+
+		a.td-card:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+
+		@media (hover: hover) and (pointer: fine) {
+			a.td-card:hover .td-card__media {
+				border-color: Highlight;
+			}
+		}
+	}
+}
+
 /* ---- src/styles/components/alert.css ---- */
 /*
  * td-alert (src/feedback/td-alert.js) + the CSS-only `.td-alert` block (v0.18.0 F5; PHP td_alert()). Static notice in
@@ -12883,6 +13224,208 @@
 		.td-media-grid__open:is(:active, [data-td-pressed]),
 		.td-media-grid__tick:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
+		}
+	}
+}
+
+/* ---- src/styles/components/selection-bar.css ---- */
+/*
+ * td-selection-bar (src/display/td-selection-bar.js) — v0.95.0, plan docs/internal/plans/v0.95.0-selection-bar.md §5 / §8.
+ * A full-width strip stuck to the bottom of its containing block while something is selected in its group of
+ * td-media-grid. Minimal surfaces: SOLID surface (--td-glass-solid), one border + one shadow, no blur. Buttons are the
+ * kit's ghost buttons (hover / pressed / focus / disabled from button.css); the danger variant has its own colour rules.
+ * State on the host: [data-empty] (nothing selected → panel hidden, height 0) · [data-disabled] · [data-compact] (bar
+ * narrower than 36rem, set by JS: icon-only buttons) · [data-td-measuring] (one measuring pass inside a rAF, never
+ * painted). An overflowed action carries [data-td-overflow] (it is in the "…" menu).
+ * --td-selection-bar-offset (runtime, on <html>, written by JS through CSSOM) = height of the tallest visible bar.
+ */
+@layer td.tokens {
+	:root {
+		--td-selection-bar-radius: 0;                      /* a strip across its containing block */
+		--td-selection-bar-pad-block: var(--td-space-xs);
+		--td-selection-bar-pad-inline: var(--td-space-sm);
+		--td-selection-bar-gap: var(--td-space-xs);
+		--td-selection-bar-position: sticky;               /* sticky | fixed */
+		--td-selection-bar-z: var(--td-z-sticky);           /* below menu / modal / toast */
+		--td-selection-bar-enter: 150ms;                    /* fade in */
+	}
+
+	:root, [data-td-theme] {
+		--td-selection-bar-bg: var(--td-glass-solid);
+		--td-selection-bar-fg: var(--td-color-text);
+		--td-selection-bar-border: var(--td-glass-border);
+		--td-selection-bar-shadow: var(--td-glass-shadow);
+		--td-selection-bar-danger-fg: var(--td-color-error);
+		/* v0.95.0 integration: the action-button danger hover fill (a generated palette tints it from the error colour so
+		   the label keeps 4.7:1 — the deprecated --td-pastel-danger-bg gave 4.07:1 in some generated dark palettes,
+		   src/theme/palette.test.js "selection bar danger hover") */
+		--td-selection-bar-danger-hover-bg: var(--td-action-btn-danger-hover-bg);
+		/* = the td-action-button danger pressed fill (#fdd5d5 / dark rgb(220 38 38 / 30%)) by alias, not a dark block of
+		   its own: a generated palette (src/theme/palette.js) already writes that token, so this one follows it too
+		   (src/theme/tokens.test.js ISSUE-1: a dark-only component colour would be missed by a generated palette) */
+		--td-selection-bar-danger-pressed-bg: var(--td-action-btn-danger-pressed-bg);
+	}
+}
+
+@layer td.component {
+	td-selection-bar:not(:defined) {
+		display: none; /* nothing can be selected before the module runs */
+	}
+
+	.td-selection-bar {
+		position: var(--td-selection-bar-position, sticky);
+		inset-block-end: 0;
+		z-index: var(--td-selection-bar-z);
+		display: block;
+		box-sizing: border-box;
+		min-inline-size: 0; /* a grid / flex item too: the actions overflow into "…", their labels never widen the strip */
+		line-height: var(--td-leading-normal); /* own typography: the host page line-height never reaches the bar */
+	}
+
+	.td-selection-bar[data-empty] .td-selection-bar__panel {
+		display: none;
+	}
+
+	.td-selection-bar__panel {
+		box-sizing: border-box;
+		display: flex;
+		gap: var(--td-selection-bar-gap);
+		align-items: center;
+		min-inline-size: 0;
+		padding-block: var(--td-selection-bar-pad-block) max(var(--td-selection-bar-pad-block), env(safe-area-inset-bottom, 0px));
+		padding-inline: var(--td-selection-bar-pad-inline);
+		color: var(--td-selection-bar-fg);
+		background-color: var(--td-selection-bar-bg);
+		border: 1px solid var(--td-selection-bar-border);
+		border-radius: var(--td-selection-bar-radius);
+		box-shadow: var(--td-selection-bar-shadow);
+		opacity: 1;
+		transition: opacity var(--td-selection-bar-enter) var(--td-ease);
+	}
+
+	@starting-style {
+		.td-selection-bar__panel {
+			opacity: 0;
+		}
+	}
+
+	.td-selection-bar__count {
+		flex: none;
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-semibold);
+		white-space: nowrap;
+	}
+
+	.td-selection-bar__actions {
+		display: flex;
+		flex: 1 1 0%;
+		gap: var(--td-selection-bar-gap);
+		align-items: center;
+		justify-content: flex-end;
+		min-inline-size: 0;
+	}
+
+	.td-selection-bar__clear,
+	.td-selection-bar__more,
+	.td-selection-bar__action {
+		flex: none;
+		white-space: nowrap;
+	}
+
+	.td-btn.td-selection-bar__clear,
+	.td-btn.td-selection-bar__more {
+		padding-inline: 0;
+		min-inline-size: 2.5rem;
+	}
+
+	.td-selection-bar__icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	.td-selection-bar__action[data-td-overflow] {
+		display: none;
+	}
+
+	/* compact: icon-only buttons (the label stays in the a11y tree, like .td-sr-only); a button without icon keeps text */
+	.td-selection-bar[data-compact] .td-selection-bar__action--icon {
+		padding-inline: 0;
+		min-inline-size: 2.5rem;
+	}
+
+	.td-selection-bar[data-compact] .td-selection-bar__action--icon .td-selection-bar__label {
+		position: absolute;
+		inline-size: 1px;
+		block-size: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		white-space: nowrap;
+		clip-path: inset(50%);
+		border: 0;
+	}
+
+	/* one measuring pass (JS, inside a rAF, removed before paint): every action + "…" laid out at its natural width */
+	.td-selection-bar[data-td-measuring] .td-selection-bar__actions {
+		overflow: hidden;
+	}
+
+	.td-selection-bar[data-td-measuring] .td-selection-bar__action[data-td-overflow]:not([hidden]) {
+		display: inline-flex;
+	}
+
+	.td-selection-bar[data-td-measuring] .td-selection-bar__more[hidden] {
+		display: inline-flex;
+		visibility: hidden;
+	}
+
+	/* danger: red label, no fill at rest (Q9); its own hover / pressed fills — ghost changes `color` on both. The two
+	   :not() lift these rules one class above the matching .td-btn--ghost rule (0,5,0 > 0,4,0) and keep the press base
+	   `.td-selection-bar__action--danger` (src/utils/press.js PRESS_TARGETS). */
+	.td-selection-bar__action--danger:not(.td-btn--custom):not(.td-btn--plain) {
+		--td-btn-fg-v: var(--td-selection-bar-danger-fg);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-selection-bar__action--danger:not(.td-btn--custom):not(.td-btn--plain):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+			color: var(--td-selection-bar-danger-fg);
+			background-color: var(--td-selection-bar-danger-hover-bg);
+		}
+	}
+
+	.td-selection-bar__action--danger:not(.td-btn--custom):not(.td-btn--plain):is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+		color: var(--td-selection-bar-danger-fg);
+		background-color: var(--td-selection-bar-danger-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (pointer: coarse) {
+		.td-btn.td-selection-bar__clear,
+		.td-btn.td-selection-bar__more,
+		.td-selection-bar[data-compact] .td-selection-bar__action--icon {
+			min-inline-size: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-selection-bar__panel {
+			transition: none;
+		}
+	}
+
+	@media (prefers-contrast: more) {
+		.td-selection-bar__panel {
+			border-color: currentcolor;
+			box-shadow: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-selection-bar__panel {
+			color: CanvasText;
+			background-color: Canvas;
+			border-color: CanvasText;
+			box-shadow: none;
 		}
 	}
 }
@@ -15853,6 +16396,37 @@
 		padding-inline: 0.5rem;
 	}
 
+	/* v0.95.0 (plan E): ≥ 2 failed dropped files → one strip right before the grid (td-alert--danger look) */
+	.td-media-picker__upload-failed {
+		flex: none;
+		flex-wrap: wrap;
+		align-items: center;
+	}
+
+	.td-media-picker__upload-failed[hidden] {
+		display: none;
+	}
+
+	.td-media-picker__upload-failed-text {
+		flex: 1 1 12rem;
+		min-width: 0;
+	}
+
+	.td-media-picker__upload-failed-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+	}
+
+	.td-media-picker__upload-failed-actions .td-btn[hidden] {
+		display: none;
+	}
+
+	/* v0.95.0 (plan F): "Đã có trong thư viện" — an exact-reused drop resolved to this asset */
+	.td-media-picker__reused {
+		align-self: flex-start;
+	}
+
 	/* skeleton (decision 14): 30 cards — thumb 3:2 + 2 lines */
 	.td-media-picker__skeleton {
 		display: grid;
@@ -16300,7 +16874,8 @@
 		}
 
 		/* v0.93.0 (ADR 0019): 44px touch targets on the dropped-file cards */
-		.td-media-picker__upload-actions .td-btn {
+		.td-media-picker__upload-actions .td-btn,
+		.td-media-picker__upload-failed-actions .td-btn {
 			min-width: 44px;
 			min-height: 44px;
 		}
@@ -21383,6 +21958,11 @@
  * Narrow mode "one column at a time" (QĐ 26): `.td-check-matrix[data-layout-js][data-layout="column"]` and, under a
  * 720px container, `[data-layout="auto"]` (generated by build-css from the @td-variants block below). Without JS there
  * is no data-layout-js: the full grid scrolls sideways.
+ * v0.95.0 (ADR 0040) `mode="override"` → `.td-check-matrix[data-mode="override"]`: each cell is a button
+ * `.td-check-matrix__tri` (covers the cell like the checkbox) holding the drawn mark `.td-check-matrix__glyph`; the
+ * state lives on the cell / bulk as `data-state="inherit|grant|deny|mixed"` (+ `data-inherited="on|off"`): grant =
+ * solid + ✓, deny = solid danger + ✕, inherit (on) = outline + muted ✓, inherit (off / unknown) = empty outline,
+ * mixed = the bar. The bar (reset button) shows in every layout; without JS one native <select> per cell.
  */
 @layer td.tokens {
 	:root {
@@ -21405,6 +21985,16 @@
 		--td-check-matrix-row-active: var(--td-color-hover);
 		--td-check-matrix-changed: var(--td-accent);
 		--td-check-matrix-note-mark: var(--td-color-text-muted);
+		/* v0.95.0 mode="override" (ADR 0040): grant / deny solids + the muted ✓ of "inherited: has the right" */
+		--td-check-matrix-grant-bg: var(--td-checkbox-color);
+		/* deny: the danger ink the palette keeps readable on the page as the fill, the page colour as the ✕ (a site
+		   surface such as navy leaves the raw solid red under 3:1, WCAG 1.4.11) */
+		--td-check-matrix-deny-bg: var(--td-action-btn-danger-fg);
+		--td-check-matrix-deny-fg: var(--td-color-bg);
+		--td-check-matrix-inherit-mark: var(--td-color-text-muted);
+		/* the outline of an inherit square: the strong control border, ≥ 3:1 vs the cell (WCAG 1.4.11; the soft
+		   --td-checkbox-border is 1.5:1 — fine beside a label, not as the only edge of a state) */
+		--td-check-matrix-inherit-edge: var(--td-control-border-strong);
 	}
 }
 
@@ -21755,14 +22345,14 @@
 	 * the upgrade does not push the grid down. No JS: the full grid, no empty strip.
 	 */
 	@media (scripting: enabled) {
-		td-check-matrix:not(:defined) > .td-check-matrix[data-state="ready"][data-layout="column"] {
+		td-check-matrix:not(:defined) > .td-check-matrix[data-state="ready"][data-layout="column"]:not([data-mode="override"]) {
 			padding-block-start: calc(var(--td-check-matrix-cell-size) + var(--td-space-xs));
 		}
 	}
 
 	@container td-check-matrix (width < 720px) {
 		@media (scripting: enabled) {
-			td-check-matrix:not(:defined) > .td-check-matrix[data-state="ready"][data-layout="auto"] {
+			td-check-matrix:not(:defined) > .td-check-matrix[data-state="ready"][data-layout="auto"]:not([data-mode="override"]) {
 				padding-block-start: calc(var(--td-check-matrix-cell-size) + var(--td-space-xs));
 			}
 		}
@@ -21770,7 +22360,47 @@
 
 	/* td: generated container fallback (ADR 0014) */
 	@supports not (container-type: inline-size) {
-		@media (max-width: 719.98px) {@media (scripting:enabled){td-check-matrix:not(:defined)>.td-check-matrix[data-state="ready"][data-layout="auto"]{padding-block-start:calc(var(--td-check-matrix-cell-size) + var(--td-space-xs))}}}
+		@media (max-width: 719.98px) {@media (scripting:enabled){td-check-matrix:not(:defined)>.td-check-matrix[data-state="ready"][data-layout="auto"]:not([data-mode="override"]){padding-block-start:calc(var(--td-check-matrix-cell-size) + var(--td-space-xs))}}}
+	}
+
+	/*
+	 * v0.95.0 override pre-upgrade parity: the server prints the whole bar (column picker + its bulk, disabled) → JS
+	 * expected + narrow mode → show them now as the upgraded narrow bar does (its label may wrap: same height before and
+	 * after). No JS: the full grid, the bar keeps the reset button only.
+	 */
+	@media (scripting: enabled) {
+		td-check-matrix:not(:defined) > .td-check-matrix[data-mode="override"][data-layout="column"] > .td-check-matrix__bar > .td-check-matrix__colpick-label {
+			display: inline;
+		}
+
+		td-check-matrix:not(:defined) > .td-check-matrix[data-mode="override"][data-layout="column"] > .td-check-matrix__bar > .td-check-matrix__colpick {
+			display: inline-block;
+		}
+
+		td-check-matrix:not(:defined) > .td-check-matrix[data-mode="override"][data-layout="column"] > .td-check-matrix__bar > .td-check-matrix__bulk {
+			display: inline-flex;
+		}
+	}
+
+	@container td-check-matrix (width < 720px) {
+		@media (scripting: enabled) {
+			td-check-matrix:not(:defined) > .td-check-matrix[data-mode="override"][data-layout="auto"] > .td-check-matrix__bar > .td-check-matrix__colpick-label {
+				display: inline;
+			}
+
+			td-check-matrix:not(:defined) > .td-check-matrix[data-mode="override"][data-layout="auto"] > .td-check-matrix__bar > .td-check-matrix__colpick {
+				display: inline-block;
+			}
+
+			td-check-matrix:not(:defined) > .td-check-matrix[data-mode="override"][data-layout="auto"] > .td-check-matrix__bar > .td-check-matrix__bulk {
+				display: inline-flex;
+			}
+		}
+	}
+
+	/* td: generated container fallback (ADR 0014) */
+	@supports not (container-type: inline-size) {
+		@media (max-width: 719.98px) {@media (scripting:enabled){td-check-matrix:not(:defined)>.td-check-matrix[data-mode="override"][data-layout="auto"]>.td-check-matrix__bar>.td-check-matrix__colpick-label{display:inline}td-check-matrix:not(:defined)>.td-check-matrix[data-mode="override"][data-layout="auto"]>.td-check-matrix__bar>.td-check-matrix__colpick{display:inline-block}td-check-matrix:not(:defined)>.td-check-matrix[data-mode="override"][data-layout="auto"]>.td-check-matrix__bar>.td-check-matrix__bulk{display:inline-flex}}}
 	}
 
 	/* ---- narrow mode bar (hidden in the full grid) ---- */
@@ -21803,6 +22433,165 @@
 		outline-offset: 1px;
 	}
 
+	/* ---- v0.95.0 mode="override" (ADR 0040) ---- */
+	/* the bar is always there (it holds the reset button; the server prints it too → no shift on upgrade); the column
+	   picker + its bulk only in the narrow mode (the variants block below) */
+	.td-check-matrix[data-mode="override"] > .td-check-matrix__bar {
+		display: flex;
+		flex-wrap: wrap; /* narrow: picker + bulk + "Đặt lại cột {col}" do not fit one line → the reset button wraps */
+		min-height: var(--td-check-matrix-cell-size);
+	}
+
+	.td-check-matrix[data-mode="override"] > .td-check-matrix__bar > :is(.td-check-matrix__colpick-label, .td-check-matrix__colpick, .td-check-matrix__bulk) {
+		display: none;
+	}
+
+	.td-check-matrix__reset {
+		flex: none;
+		margin-inline-start: auto;
+	}
+
+	/* the cell button covers its cell like the checkbox (QĐ 23): the whole cell is the hit area */
+	.td-check-matrix__tri {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		height: 100%;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		color: inherit;
+		cursor: inherit;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		appearance: none;
+		touch-action: manipulation; /* two quick taps = two steps (inherit → grant → deny), never a double-tap zoom */
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-check-matrix__tri:disabled {
+		cursor: default;
+		pointer-events: none; /* a tap on a locked cell reaches the cell (focus + note line) */
+	}
+
+	.td-check-matrix__tri:focus-visible {
+		outline: none; /* the ring sits on the mark, like the checkbox cells */
+	}
+
+	.td-check-matrix__tri:focus-visible > .td-check {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	/* a data cell never shows the bar of mixed */
+	.td-check-matrix__cell .td-check-matrix__glyph::after {
+		content: none;
+	}
+
+	/* locked: the state stays readable (≥ 2.2:1 like a locked checkbox cell) */
+	.td-check-matrix__tri:disabled > .td-check {
+		opacity: 0.6;
+	}
+
+	/* inherit (on / off / unknown): an outline square, edge ≥ 3:1 vs the cell */
+	:is(.td-check-matrix__cell, .td-check-matrix__bulk)[data-state="inherit"] .td-check-matrix__glyph {
+		border-color: var(--td-check-matrix-inherit-edge);
+	}
+
+	/* inherit, has the right: outline + a muted ✓ */
+	.td-check-matrix__cell[data-state="inherit"][data-inherited="on"] .td-check-matrix__glyph {
+		color: var(--td-check-matrix-inherit-mark);
+	}
+
+	.td-check-matrix__cell[data-state="inherit"][data-inherited="on"] .td-check-matrix__glyph::before {
+		visibility: visible;
+	}
+
+	/* grant: solid + ✓ */
+	:is(.td-check-matrix__cell, .td-check-matrix__bulk)[data-state="grant"] .td-check-matrix__glyph {
+		color: var(--td-accent-contrast);
+		background: var(--td-check-matrix-grant-bg);
+		border-color: var(--td-check-matrix-grant-bg);
+	}
+
+	:is(.td-check-matrix__cell, .td-check-matrix__bulk)[data-state="grant"] .td-check-matrix__glyph::before {
+		visibility: visible;
+	}
+
+	/* deny: solid danger + ✕ (a different shape from ✓, not only a colour) */
+	:is(.td-check-matrix__cell, .td-check-matrix__bulk)[data-state="deny"] .td-check-matrix__glyph {
+		color: var(--td-check-matrix-deny-fg);
+		background: var(--td-check-matrix-deny-bg);
+		border-color: var(--td-check-matrix-deny-bg);
+	}
+
+	:is(.td-check-matrix__cell, .td-check-matrix__bulk)[data-state="deny"] .td-check-matrix__glyph::before,
+	:is(.td-check-matrix__cell, .td-check-matrix__bulk)[data-state="deny"] .td-check-matrix__glyph::after {
+		content: "";
+		visibility: visible;
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 60%;
+		height: calc(var(--_td-check-size) * 0.1);
+		background: currentcolor;
+		border: 0;
+		border-radius: 1px;
+		opacity: 1;
+		transform: translate(-50%, -50%) rotate(45deg);
+	}
+
+	:is(.td-check-matrix__cell, .td-check-matrix__bulk)[data-state="deny"] .td-check-matrix__glyph::after {
+		transform: translate(-50%, -50%) rotate(-45deg);
+	}
+
+	/* mixed (bulk only): the bar of the shared mark */
+	.td-check-matrix__bulk[data-state="mixed"] .td-check-matrix__glyph {
+		background: var(--td-checkbox-color);
+		border-color: var(--td-checkbox-color);
+	}
+
+	.td-check-matrix__bulk[data-state="mixed"] .td-check-matrix__glyph::after {
+		opacity: 1;
+	}
+
+	td-check-matrix:not(:defined) .td-check-matrix__bulk > .td-check-matrix__tri > .td-check {
+		visibility: hidden; /* no JS: the bulk cells are present, inert, out of sight (QĐ 28) */
+	}
+
+	/* no JS: one native <select> per cell (the server form); JS renders the buttons instead */
+	.td-check-matrix__select {
+		width: 100%; /* a percentage width: the column keeps its own width, the select shrinks */
+		min-width: 0;
+		height: calc(var(--td-check-matrix-cell-size) - 1px); /* the cell's content box (its height includes the 1px rule) */
+		padding: 0 var(--td-space-2xs);
+		margin: 0;
+		font: inherit;
+		font-size: var(--td-text-xs);
+		color: var(--td-field-fg);
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-control-border);
+		border-radius: 0;
+		appearance: auto;
+	}
+
+	.td-check-matrix__select:focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: -2px;
+	}
+
+	@media (pointer: coarse) {
+		.td-check-matrix__select {
+			font-size: max(1rem, 1em); /* iOS zooms on focus under 16px (same rule as the kit's fields) */
+		}
+	}
+
 	
 	.td-check-matrix[data-layout-js][data-layout="column"] > .td-check-matrix__bar {
 		display: flex;
@@ -21827,12 +22616,25 @@
 		width: 100%;
 	}
 
+	/* v0.95.0 override: the narrow bar shows the column picker + its bulk again (next to the reset button) */
+	.td-check-matrix[data-layout-js][data-layout="column"] > .td-check-matrix__bar > .td-check-matrix__colpick-label {
+		display: inline;
+	}
+
+	.td-check-matrix[data-layout-js][data-layout="column"] > .td-check-matrix__bar > .td-check-matrix__colpick {
+		display: inline-block;
+	}
+
+	.td-check-matrix[data-layout-js][data-layout="column"] > .td-check-matrix__bar > .td-check-matrix__bulk {
+		display: inline-flex;
+	}
+
 	/* td: generated variant (ADR 0014) */
-	@container td-check-matrix (width < 720px) {.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__bar{display:flex}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>:first-child,.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>[data-c]:not([data-col-active]){display:none}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>:nth-child(2){inset-inline-start:0;width:auto;max-width:none}.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__scroll{width:auto}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid{width:100%}}
+	@container td-check-matrix (width < 720px) {.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__bar{display:flex}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>:first-child,.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>[data-c]:not([data-col-active]){display:none}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>:nth-child(2){inset-inline-start:0;width:auto;max-width:none}.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__scroll{width:auto}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid{width:100%}.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__bar>.td-check-matrix__colpick-label{display:inline}.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__bar>.td-check-matrix__colpick{display:inline-block}.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__bar>.td-check-matrix__bulk{display:inline-flex}}
 
 	/* td: generated container fallback (ADR 0014) */
 	@supports not (container-type: inline-size) {
-		@media (max-width: 719.98px) {.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__bar{display:flex}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>:first-child,.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>[data-c]:not([data-col-active]){display:none}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>:nth-child(2){inset-inline-start:0;width:auto;max-width:none}.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__scroll{width:auto}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid{width:100%}}
+		@media (max-width: 719.98px) {.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__bar{display:flex}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>:first-child,.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>[data-c]:not([data-col-active]){display:none}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>:nth-child(2){inset-inline-start:0;width:auto;max-width:none}.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__scroll{width:auto}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid{width:100%}.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__bar>.td-check-matrix__colpick-label{display:inline}.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__bar>.td-check-matrix__colpick{display:inline-block}.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__bar>.td-check-matrix__bulk{display:inline-flex}}
 	}
 
 	/* ---- pointer feedback (ADR 0019) ---- */
@@ -21842,13 +22644,22 @@
 			border-color: var(--td-control-border-hover);
 		}
 
+		/* v0.95.0 override: the outline of an inherit cell steps up to the muted ink (stronger than the rest edge; the
+		   solids keep their colour) */
+		.td-check-matrix__cell[data-state="inherit"]:hover .td-check-matrix__tri:not(:disabled) > .td-check,
+		.td-check-matrix__bulk[data-state="inherit"]:hover .td-check-matrix__tri:not(:disabled) > .td-check {
+			border-color: var(--td-check-matrix-inherit-mark);
+		}
+
 		.td-check-matrix__group-toggle:hover:not(:disabled) {
 			background: var(--td-color-hover);
 		}
 	}
 
 	.td-check-matrix__cell:is(:active, [data-td-pressed]) .td-check-matrix__input:not(:disabled) ~ .td-check,
-	.td-check-matrix__bulk:is(:active, [data-td-pressed]) .td-check-matrix__input:not(:disabled) ~ .td-check {
+	.td-check-matrix__bulk:is(:active, [data-td-pressed]) .td-check-matrix__input:not(:disabled) ~ .td-check,
+	.td-check-matrix__cell:is(:active, [data-td-pressed]) .td-check-matrix__tri:not(:disabled) > .td-check,
+	.td-check-matrix__bulk:is(:active, [data-td-pressed]) .td-check-matrix__tri:not(:disabled) > .td-check {
 		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
 		transition-duration: 0s;
 	}
@@ -21888,6 +22699,49 @@
 		.td-check-matrix__bulk:is(:active, [data-td-pressed]) .td-check,
 		.td-check-matrix__group-toggle:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
+		}
+
+		/* v0.95.0 override: inherit = a DASHED outline (on: ✓ GrayText); grant = Highlight + ✓; deny = Canvas, 2px
+		   CanvasText border + ✕; mixed = Highlight + bar; locked = GrayText */
+		:is(.td-check-matrix__cell, .td-check-matrix__bulk)[data-state="inherit"] .td-check-matrix__glyph {
+			border-style: dashed;
+			border-color: CanvasText;
+		}
+
+		.td-check-matrix__cell[data-state="inherit"][data-inherited="on"] .td-check-matrix__glyph {
+			color: GrayText;
+		}
+
+		:is(.td-check-matrix__cell, .td-check-matrix__bulk)[data-state="grant"] .td-check-matrix__glyph,
+		.td-check-matrix__bulk[data-state="mixed"] .td-check-matrix__glyph {
+			color: HighlightText;
+			background: Highlight;
+			border-color: Highlight;
+		}
+
+		:is(.td-check-matrix__cell, .td-check-matrix__bulk)[data-state="deny"] .td-check-matrix__glyph {
+			color: CanvasText;
+			background: Canvas;
+			border: 2px solid CanvasText;
+		}
+
+		.td-check-matrix__tri:disabled > .td-check-matrix__glyph {
+			color: GrayText;
+			border-color: GrayText;
+		}
+
+		.td-check-matrix__tri:focus-visible > .td-check {
+			outline-color: Highlight;
+		}
+
+		.td-check-matrix__select {
+			border-color: CanvasText;
+		}
+	}
+
+	@media (prefers-contrast: more) {
+		:is(.td-check-matrix__cell, .td-check-matrix__bulk)[data-state="inherit"] .td-check-matrix__glyph {
+			border-color: var(--td-color-text); /* the strongest text colour (the mark's own colour is white when empty) */
 		}
 	}
 }

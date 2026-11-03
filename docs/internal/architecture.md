@@ -209,6 +209,8 @@ Xem [ADR 0008](decisions/0008-drop-tailwind-token-css.md) (CSSOM per-instance t�
 | SVG | presentation attribute (`fill`, `opacity`…) |
 
 Giá trị động bên trong selector rule đi qua CSS custom property set bằng CSSOM.
+Biến runtime toàn trang (0.95.0: `--td-selection-bar-offset` trên `<html>`) theo luật **một writer**: chỉ một module ghi
+(selection-bar giữ bộ đếm thanh đang hiện, thanh cuối cùng ẩn thì gỡ biến), component khác chỉ đọc qua `var()`.
 Không có `style="…"` và không chèn `<style>` trong output của lib.
 
 ## Render & cleanup
@@ -275,8 +277,15 @@ td-table ──► td-pagination, td-empty-state
 modal, lightbox, loading, dropdown, tooltip, toast ──► utils/layers ──► utils/inert-lock
 dropdown, chip-input, menu, hovercard, tooltip ──► utils/floating
 td-datetime-picker ──► utils/datetime
+td-media-grid ──► utils/media-selection-group (0.95.0)
+td-selection-bar ──► td-media-grid (import) ; nhóm lấy qua customElements.get('td-media-grid')._selectionGroup (+ whenDefined)
+card: thuần CSS, không module
 dom-utils: độc lập, không component nào bắt buộc dùng
 ```
+
+Nhóm chọn (0.95.0): bộ điều phối nhóm nằm trong `utils/media-selection-group.js` và **chỉ** được với tới qua class đã đăng ký
+(`customElements.get('td-media-grid')._selectionGroup`, @internal) — không import trực tiếp từ selection-bar — để một thanh
+của bundle thứ hai nói chuyện với đúng store của lưới đã đăng ký (store là Map theo module).
 
 ## Kiến trúc style (ADR 0008 — nền tảng từ v0.5.0, mọi component từ v0.10.0)
 

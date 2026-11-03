@@ -1,0 +1,297 @@
+/*
+ * .td-card — CSS-only card with a cover image; the whole card is ONE link (plan v0.95.0-card; PHP td_card()).
+ * No JS, no custom element, no upgrade: HTML by hand, PHP and the site's JS print the same tree.
+ *   <a class="td-card" href="/album/tet-2026">
+ *     <span class="td-card__media"><img src="…" alt="" loading="lazy" decoding="async" width="640" height="480"></span>
+ *     <span class="td-card__body">
+ *       <span class="td-card__title">Tết 2026</span>
+ *       <span class="td-card__badges"><span class="td-badge td-badge--danger">Live</span></span>
+ *       <span class="td-card__meta"><span>42 ảnh</span><span class="td-card__sep" aria-hidden="true">·</span><time datetime="2026-02-12">12/02/2026</time></span>
+ *     </span>
+ *   </a>
+ * No image: `.td-card__media > .td-card__placeholder[aria-hidden] > svg.td-icon` (a placeholder tile). `<picture>`
+ * goes inside `.td-card__media`. A card without a link is the same class on a `<div>` / `<article>` (static: no pointer
+ * cursor, no hover, no press shape) — every interaction rule below matches `a.td-card` only.
+ * Default is BARE (rounded image + text below, no box); `.td-card--surface` is the framed variant (fill + edge + shadow).
+ * Ratio: `.td-card--ratio-{1x1,4x3,3x2,16x9,3x4}` set --td-card-ratio from an allowlist (never a `style` attribute).
+ * `.td-card-grid` is an optional auto-fill grid (no container query); a site with its own `@container` grid ignores it.
+ * Size follows the CONTAINER (no viewport query); the card sets no container-type itself. No scale / lift on hover or
+ * press (minimal surfaces rule 4): hover = darker image edge (bare) or a solid fill (--surface); press = a
+ * --td-color-pressed layer over the image. `prefers-contrast: more` → currentColor edges, no shadow; forced colours →
+ * CanvasText edges, Highlight outline for focus and press.
+ */
+@layer td.tokens {
+	:root {
+		--td-card-ratio: 4 / 3;
+		--td-card-fit: cover;
+		--td-card-radius: var(--td-radius-md);
+		--td-card-body-pad: 0.375rem 0.25rem;
+		--td-card-title-size: var(--td-text-sm);
+		--td-card-title-weight: 500;
+		--td-card-title-lines: 2;
+		--td-card-meta-size: var(--td-text-xs);
+		--td-card-badge-inset: var(--td-space-xs);
+		--td-card-placeholder-icon: 2rem;
+		--td-card-grid-min: 200px;
+		--td-card-grid-gap: var(--td-space-md);
+	}
+
+	/* colour / shadow tokens re-resolve in every theme scope (ADR 0020). One shadow for both themes: a dark-only rule
+	   would make --td-card-shadow a dark-only token that src/theme (THEME_TOKENS / presets) must know; on a dark page the
+	   border carries the edge. */
+	:root, [data-td-theme] {
+		--td-card-title-fg: var(--td-color-text);
+		--td-card-meta-fg: var(--td-color-text-muted);
+		--td-card-media-bg: var(--td-color-surface-muted);
+		--td-card-media-border: var(--td-color-border);
+		--td-card-placeholder-fg: var(--td-color-text-muted);
+		--td-card-hover-border: var(--td-color-border-strong);
+		--td-card-bg: var(--td-color-surface);
+		--td-card-border: var(--td-color-border);
+		--td-card-shadow: 0 1px 2px rgb(0 0 0 / 10%), 0 2px 8px -2px rgb(0 0 0 / 12%);
+		--td-card-hover-bg: var(--td-color-surface-muted);
+	}
+
+}
+
+@layer td.component {
+	.td-card {
+		position: relative;
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		min-inline-size: 0;
+		color: inherit;
+		line-height: var(--td-leading-normal); /* the host page line-height never reaches the card text */
+		text-decoration: none;
+		-webkit-tap-highlight-color: transparent;
+		border-radius: var(--td-card-radius);
+	}
+
+	a.td-card {
+		cursor: pointer;
+	}
+
+	.td-card__media {
+		position: relative;
+		box-sizing: border-box;
+		display: block;
+		flex: none;
+		overflow: hidden;
+		aspect-ratio: var(--td-card-ratio);
+		background-color: var(--td-card-media-bg);
+		border: 1px solid var(--td-card-media-border);
+		border-radius: var(--td-card-radius);
+		transition: border-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	/* the host's img reset (`max-width: 100%; height: auto`) cannot shrink the cover: absolute + explicit size */
+	.td-card__media img {
+		position: absolute;
+		inset: 0;
+		display: block;
+		inline-size: 100%;
+		block-size: 100%;
+		max-inline-size: none;
+		object-fit: var(--td-card-fit);
+	}
+
+	.td-card__placeholder {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		color: var(--td-card-placeholder-fg);
+	}
+
+	.td-card__placeholder .td-icon {
+		inline-size: var(--td-card-placeholder-icon);
+		block-size: var(--td-card-placeholder-icon);
+	}
+
+	.td-card__body {
+		display: flex;
+		flex-direction: column;
+		gap: 0.125rem;
+		min-inline-size: 0;
+		padding: var(--td-card-body-pad);
+	}
+
+	.td-card__title {
+		display: -webkit-box;
+		margin: 0;
+		overflow: hidden;
+		font-family: inherit;
+		font-size: var(--td-card-title-size);
+		font-weight: var(--td-card-title-weight);
+		line-height: 1.35;
+		color: var(--td-card-title-fg);
+		overflow-wrap: anywhere;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: var(--td-card-title-lines);
+		line-clamp: var(--td-card-title-lines);
+	}
+
+	.td-card__meta {
+		display: block;
+		/* one ellipsised line: its text width must not size the card (an unbroken string would push the card out of
+		   any 1fr / auto grid cell — plan §11.4); the block still stretches to the card */
+		contain: inline-size;
+		overflow: hidden;
+		font-size: var(--td-card-meta-size);
+		line-height: 1.4;
+		color: var(--td-card-meta-fg);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-card__sep {
+		margin-inline: 0.125em;
+	}
+
+	/* over the top-start corner of the image (the image is the card's first box); after the title in the DOM */
+	.td-card__badges {
+		position: absolute;
+		inset-block-start: var(--td-card-badge-inset);
+		inset-inline-start: var(--td-card-badge-inset);
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+		max-inline-size: calc(100% - 2 * var(--td-card-badge-inset));
+		pointer-events: none;
+	}
+
+	/* framed variant */
+	.td-card--surface {
+		background-color: var(--td-card-bg);
+		border: 1px solid var(--td-card-border);
+		box-shadow: var(--td-card-shadow);
+		transition: background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-card--surface .td-card__media {
+		border-width: 0;
+		border-end-start-radius: 0;
+		border-end-end-radius: 0;
+	}
+
+	.td-card--surface .td-card__body {
+		padding: var(--td-space-sm);
+	}
+
+	.td-card--ratio-1x1 { --td-card-ratio: 1 / 1; }
+	.td-card--ratio-4x3 { --td-card-ratio: 4 / 3; }
+	.td-card--ratio-3x2 { --td-card-ratio: 3 / 2; }
+	.td-card--ratio-16x9 { --td-card-ratio: 16 / 9; }
+	.td-card--ratio-3x4 { --td-card-ratio: 3 / 4; }
+
+	.td-card-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(var(--td-card-grid-min), 100%), 1fr));
+		gap: var(--td-card-grid-gap);
+	}
+
+	/* hover only on a fine pointer; bare = the image edge (no fill to change), surface = a solid fill */
+	@media (hover: hover) and (pointer: fine) {
+		a.td-card:hover .td-card__media {
+			border-color: var(--td-card-hover-border);
+		}
+
+		a.td-card.td-card--surface:hover {
+			background-color: var(--td-card-hover-bg);
+		}
+
+		a.td-card.td-card--surface:hover .td-card__media {
+			border-color: transparent;
+		}
+	}
+
+	a.td-card:focus-visible {
+		outline: 2px solid transparent;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	a.td-card:is(:active, [data-td-pressed]) {
+		transition-duration: 0s;
+	}
+
+	a.td-card:is(:active, [data-td-pressed]) .td-card__media {
+		border-color: var(--td-card-hover-border);
+		transition-duration: 0s;
+	}
+
+	/* the press layer exists ONLY while pressed, over the image */
+	a.td-card:is(:active, [data-td-pressed]) .td-card__media::after {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		content: "";
+		background-color: var(--td-color-pressed);
+		border-radius: inherit;
+	}
+
+	a.td-card.td-card--surface:is(:active, [data-td-pressed]) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	a.td-card.td-card--surface:is(:active, [data-td-pressed]) .td-card__media {
+		border-color: transparent;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-card__media,
+		.td-card--surface {
+			transition: none;
+		}
+	}
+
+	@media (prefers-contrast: more) {
+		.td-card__media {
+			border-color: currentColor;
+		}
+
+		.td-card--surface {
+			border-color: currentColor;
+			box-shadow: none;
+		}
+
+		.td-card--surface .td-card__media {
+			border-color: transparent;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-card__media,
+		.td-card--surface {
+			border-color: CanvasText;
+		}
+
+		.td-card--surface .td-card__media {
+			border-color: transparent;
+		}
+
+		.td-card__media,
+		.td-card__placeholder {
+			background-color: Canvas;
+		}
+
+		.td-card__placeholder {
+			color: GrayText;
+		}
+
+		a.td-card:focus-visible {
+			outline: 2px solid Highlight;
+		}
+
+		a.td-card:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+
+		@media (hover: hover) and (pointer: fine) {
+			a.td-card:hover .td-card__media {
+				border-color: Highlight;
+			}
+		}
+	}
+}

@@ -6,7 +6,7 @@ One plain PHP file (PHP ≥ 8.0 — CI job `php80` runs the suite on PHP 8.0; no
 
 ```php
 require_once $kitDir . '/php/td.php';
-TdComponents\Td::configure('/assets/vendor/td-components/0.94.0', $kitDir); // versioned URL + filesystem path
+TdComponents\Td::configure('/assets/vendor/td-components/0.95.0', $kitDir); // versioned URL + filesystem path
 
 echo td_stylesheet_tag($nonce);
 echo td_import_map_tag(['dompurify' => '/assets/vendor/dompurify/purify.es.js'], $nonce); // ONE import map per page
@@ -30,6 +30,14 @@ echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
   call it. `Td::iconName()`, `Td::iconSearchData()` (kit + site search metadata, read lazily, only when you call it) and
   `Td::registerIconSearchData()` are the explicit server API. Site icon names: prefix `site-` (the kit now has 188
   core names).
+- v0.95.0 `td_check_matrix(…, ['mode' => 'override'])` prints `<td-check-matrix mode="override"
+  data-td-ssr="check-matrix@2">` (constant `Td::SSR_CHECK_MATRIX_OVERRIDE`): value `['col' => ['row' => 'grant' | 'deny' |
+  'inherit']]`, one native `<select name="name[col][row]">` per applicable cell (locked: disabled select + hidden input),
+  marker `name[col]=''` first, `name[_v]=2` last. Not adopted in place: the module reads the selects changed before it
+  loaded, then renders once. Server: require `_v === '2'` (422 otherwise), cast row keys `(string)`. Default mode
+  (`check`, `check-matrix@1`) is byte-identical; an unknown mode → `check` + one `E_USER_WARNING`.
+- v0.95.0 `td_card` prints a CSS-only `a.td-card` (the whole card is one link) or, without a safe href, a static
+  `div.td-card` (cover image fail-closed through `td__media_url`, placeholder icon, badges, meta). See docs/components/card.md.
 - `td_badge` prints a CSS-only `span.td-badge`; `td_alert` prints a `<td-alert>` host already containing the full
   styled `div.td-alert` (no JS needed; the alert module upgrades it in place and adds the close button).
 - `td_link(…, ['bare' => true])` prints a plain `<a>` (site class only, no button look).

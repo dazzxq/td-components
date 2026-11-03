@@ -304,6 +304,41 @@ describe('trackFormDirty contract — every form-associated td element (v0.44.0 
     });
   }
 
+  // v0.95.0 (ADR 0040): mode="override" — a tri-state click is a user change (dirty, changedCount 1); a locked cell never
+  // counts and never changes; setValue() from code is not a user change.
+  it('td-check-matrix mode=override: tri click → dirty + changedCount 1; locked never counts; setValue() → NOT dirty', async () => {
+    const form = document.createElement('form');
+    form.className = 'v044-contract';
+    form.innerHTML = '<td-check-matrix name="x" label="X" mode="override" layout="grid"></td-check-matrix>';
+    document.body.appendChild(form);
+    const el = /** @type {any} */ (form.firstElementChild);
+    el.setData({ columns: [{ key: 'a', label: 'A' }, { key: 'b', label: 'B', locked: true }],
+      rows: [{ key: 'r1', label: 'R1' }], value: { a: {}, b: { r1: 'grant' } } });
+    await frames(3);
+    const tracker = trackFormDirty(form);
+    try {
+      expect(el.changedCount).to.equal(0);
+      // changedCount = cells off the FIRST valid data (plan §5, as before): a code setValue() moves it, never dirty
+      el.setValue({ a: { r1: 'grant' }, b: { r1: 'grant' } });
+      await frames(3);
+      expect(tracker.isDirty(), 'setValue() from code').to.equal(false);
+      expect(el.changedCount, 'a.r1 grant ≠ the first data (inherit)').to.equal(1);
+      const row = () => el.querySelector('tr[data-r="0"]');
+      const locked = row().cells[3].querySelector('.td-check-matrix__tri');
+      expect(locked.disabled).to.equal(true);
+      locked.click();
+      await frames(2);
+      expect(el.changedCount, 'a locked cell never counts').to.equal(1);
+      expect(row().cells[3].getAttribute('data-state'), 'a locked cell never changes').to.equal('grant');
+      expect(tracker.isDirty(), 'a locked click is no user change').to.equal(false);
+      row().cells[2].querySelector('.td-check-matrix__tri').click(); // grant → deny (Q2 cycle), still off the first data
+      await frames(3);
+      expect(row().cells[2].getAttribute('data-state')).to.equal('deny');
+      expect(el.changedCount).to.equal(1);
+      expect(tracker.isDirty()).to.equal(true);
+    } finally { tracker.destroy(); form.remove(); }
+  });
+
   it('td-check-matrix: value= / setValue() from code is NOT a user change → isDirty() === false', async () => {
     const form = document.createElement('form');
     form.className = 'v044-contract';

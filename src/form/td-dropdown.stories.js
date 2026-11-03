@@ -136,6 +136,26 @@ export const DongGiauThongTin = {
   },
 };
 
+/** v0.95.0: `image` — a thumbnail leads the row (wins over the dot and the icon) and the trigger when selected. */
+const ALBUMS = [
+  { value: 'a1', label: 'Lễ hội mùa xuân 2026', image: '/test/fixtures/1.svg', description: '48 ảnh', meta: '03/2026' },
+  { value: 'a2', label: 'Khai trương cửa hàng Láng', image: '/test/fixtures/2.svg', description: '120 ảnh' },
+  { value: 'a3', label: 'Sản phẩm mới', image: '/test/fixtures/3.svg' },
+  { value: 'a4', label: 'Hậu trường', image: '/test/fixtures/4.svg', description: '9 ảnh' },
+  { value: 'none', label: 'Chưa có ảnh bìa', icon: 'image' },
+];
+
+export const Images = {
+  name: 'Ảnh đại diện (image)',
+  render: () => {
+    withOptions('dd-images', ALBUMS);
+    return '<div class="sb-stack"><td-dropdown id="dd-images" label="Album" value="a1" max-height="5"></td-dropdown>'
+      + '<p class="sb-note">Option có <code>image</code> (URL ảnh nhỏ, qua cổng <code>safeMediaUrl</code>) hiện ảnh vuông '
+      + 'trước nhãn, cả trên trigger khi đang chọn (<code>trigger-icon="none"</code> để tắt). Dùng ảnh thu nhỏ, không '
+      + 'dùng ảnh gốc; nhãn chữ vẫn là tên của option.</p></div>';
+  },
+};
+
 export const ChonDeThem = {
   name: 'Action mode (chọn để thêm)',
   render: () => {

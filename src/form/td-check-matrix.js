@@ -2,9 +2,11 @@ import { TdFormElement, ssrClassKey } from '../base/td-form-element.js';
 import { ssrMarker } from '../base/td-base-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import {
-  validateMatrix, MatrixState, decodeMatrixState, isLocked, isNa, MATRIX_LIMITS, matrixJsonBytes,
+  validateMatrix, MatrixState, OverrideState, OVERRIDE_STATES, decodeMatrixState, isLocked, isNa, MATRIX_LIMITS, matrixJsonBytes,
 } from '../utils/check-matrix-model.js';
-import { renderMatrix, renderMatrixState, fillMatrixLabel, MATRIX_LABELS, MATRIX_LAYOUTS } from '../utils/check-matrix-render.js';
+import {
+  renderMatrix, renderMatrixState, fillMatrixLabel, overrideStateText, overrideBulkText, MATRIX_LABELS, MATRIX_LAYOUTS,
+} from '../utils/check-matrix-render.js';
 
 /** max-height attribute (plan QĐ 20): stricter than the table's — no calc() / var() / url() / `;`. */
 const MAX_HEIGHT = /^(none|\d{1,4}(\.\d{1,2})?(px|rem|em|vh|svh|dvh|lvh|%))$/;
@@ -19,6 +21,9 @@ const SVG_ATTRS = new Set(['class', 'data-icon', 'viewBox', 'xmlns', 'fill', 'st
 
 let labelIds = 0;
 const visible = (el) => !!el && el.getClientRects().length > 0;
+/** v0.95.0: the mode an attribute value means (`null` / `check` / anything unknown → check). */
+const modeOf = (v) => (v === 'override' ? 'override' : 'check');
+const isSpace = (k) => k === ' ' || k === 'Spacebar';
 
 /**
  * Checkbox grid rows × columns (v0.47.0, plan docs/internal/plans/v0.47.0-check-matrix.md; ADR 0022) — e.g. permissions ×
@@ -44,7 +49,11 @@ const visible = (el) => !!el && el.getClientRects().length > 0;
  * @attr {string} max-height - scroll box height (default token 70vh; `none` = no inner vertical scroll)
  * @attr {string} data - JSON input (SSR)
  * @attr {boolean} disabled
- * @fires change - user only: `{ added: [[row, col]…], removed: [[row, col]…], trigger }` (app keys)
+ * @attr {'check'|'override'} mode - v0.95.0 (ADR 0040): `override` = three states per cell (inherit / grant / deny),
+ *   value `{ col: { row: 'grant'|'deny' } }`, FormData `name[col][row]=state` for every applicable cell + `name[_v]=2`,
+ *   SSR contract `check-matrix@2`. Unknown value → check + one warning. Changing it after data drops the data.
+ * @fires change - user only: `{ added: [[row, col]…], removed: [[row, col]…], trigger }` (app keys); override mode:
+ *   `{ changes: [[row, col, from, to]…], trigger }` (trigger `inherit` = the reset button)
  * @fires expanded-change - user only: `{ group, expanded }`
  */
 export class TdCheckMatrix extends TdFormElement {
@@ -53,8 +62,11 @@ export class TdCheckMatrix extends TdFormElement {
   /** Markup contract version of `data-td-ssr="check-matrix@N"`. */
   static SSR_SCHEMA = 1;
 
+  /** v0.95.0: contract version of the override mode (`check-matrix@2`, never adopted in place — ADR 0040). */
+  static SSR_SCHEMA_OVERRIDE = 2;
+
   static get observedAttributes() {
-    return [...super.observedAttributes, 'label', 'layout', 'max-height', 'data', 'aria-label'];
+    return [...super.observedAttributes, 'label', 'layout', 'max-height', 'data', 'aria-label', 'mode'];
   }
 
   /** Default texts (Vietnamese); override per site: `TdCheckMatrix.labels.rows = 'Quyền'` (PHP: option `labels`). */
@@ -69,8 +81,12 @@ export class TdCheckMatrix extends TdFormElement {
     this._raw = null;
     /** @type {import('../utils/check-matrix-model.js').MatrixModel|null} */
     this._model = null;
-    /** @type {MatrixState|null} */
+    /** @type {MatrixState|OverrideState|null} */
     this._state = null;
+    /** @private v0.95.0: the mode the current data was validated in */
+    this._dataMode = null;
+    /** @private v0.95.0: the override button whose Space keydown already acted (its synthetic click is consumed) */
+    this._spaceKey = null;
     /** @private 'empty' | 'ready' | 'broken' */
     this._status = 'empty';
     /** @private live collapse state per group */
@@ -93,6 +109,12 @@ export class TdCheckMatrix extends TdFormElement {
 
   /** @private */
   _replayUpgradeProps() {
+    // v0.95.0: a `mode` property set before upgrade goes first (the data that follows is validated in that mode)
+    if (Object.prototype.hasOwnProperty.call(this, 'mode')) {
+      const v = this.mode;
+      delete this.mode;
+      this.mode = v;
+    }
     for (const p of UPGRADE_PROPS) {
       if (Object.prototype.hasOwnProperty.call(this, p)) {
         const v = this[p];
@@ -130,7 +152,28 @@ export class TdCheckMatrix extends TdFormElement {
   get value() { return this.getValue(); }
   set value(v) { this._queue('value', v); }
 
-  /** @returns {Record<string, Array<string|number>>} */
+  /** v0.95.0: `check` (default) | `override` — reflects the `mode` attribute. */
+  get mode() { return this._mode(); }
+  set mode(v) {
+    if (v === null || v === undefined) this.removeAttribute('mode');
+    else this.setAttribute('mode', String(v));
+  }
+
+  /** @private the effective mode (an unknown attribute value → check + one warning per instance) */
+  _mode() {
+    const v = this.getAttribute('mode');
+    if (v !== null && v !== 'check' && v !== 'override') {
+      this._warn('mode', `unknown mode (${v.length} chars) — treated as "check"`);
+    }
+    return modeOf(v);
+  }
+
+  /** @private */
+  _override() {
+    return this._mode() === 'override';
+  }
+
+  /** @returns {Record<string, Array<string|number>> | Record<string, Record<string, string>>} */
   getValue() {
     this._flush();
     return this._state ? this._state.valueObject() : {};
@@ -194,7 +237,7 @@ export class TdCheckMatrix extends TdFormElement {
     }
     if (!dataChanged && this._model) {
       // value = / setValue() with data in place: refuse an invalid value, keep the state
-      const res = validateMatrix({ ...this._raw, value: p.value });
+      const res = validateMatrix({ ...this._raw, value: p.value }, this._dataMode);
       if (!res.ok) {
         console.warn(`td-check-matrix: value refused (${res.reason}) — state unchanged`);
         return;
@@ -224,47 +267,54 @@ export class TdCheckMatrix extends TdFormElement {
    * @param {{ value: any }|null} withValue
    */
   _applyData(raw, withValue) {
-    const res = validateMatrix({ ...raw, value: withValue ? withValue.value : null });
+    const mode = this._mode();
+    if (this._dataMode !== mode) {
+      // v0.95.0 (D3): nothing is carried across modes (the two value shapes differ) — the defaults are captured again
+      this._state = null;
+      this._defKeys = null;
+    }
+    const res = validateMatrix({ ...raw, value: withValue ? withValue.value : null }, mode);
     if (!res.ok) {
       this._fail(res.reason);
       return;
     }
     const model = res.model;
     let on = model.value;
-    if (!withValue && this._state) on = this._carry(model, this._state.valueObject());
+    if (!withValue && this._state) on = this._carry(model, this._keysOf(this._model, this._state.on ?? this._state.st));
     if (!this._defKeys) this._defKeys = this._keysOf(model, on);
     const def = this._carry(model, this._defKeys);
     const prevCollapsed = new Map((this._model?.groups || []).map((g, i) => [g.key, this._collapsed[i]]));
     this._raw = raw;
     this._model = model;
-    this._state = new MatrixState(model, on, def);
+    this._dataMode = mode;
+    this._state = mode === 'override' ? new OverrideState(model, on, def) : new MatrixState(model, on, def);
     this._collapsed = model.groups.map((g) => (prevCollapsed.has(g.key) ? prevCollapsed.get(g.key) : g.collapsed));
     if (this._activeCol >= model.columns.length) this._activeCol = 0;
     this._status = 'ready';
     this._rerender();
   }
 
-  /** @private keys { col: [row] } of ticks */
+  /**
+   * @private keys of the set cells `[[col, row, code]…]` (string keys; code 1 = ticked in the check mode, 1 / 2 = grant /
+   * deny in the override mode) — survives a data change (cells that still exist keep their state)
+   */
   _keysOf(model, on) {
     const C = model.columns.length;
-    const out = Object.create(null); // keyed by app data (review r1 #1)
-    model.columns.forEach((c, j) => {
-      out[c.key] = model.rows.filter((_, r) => on[r * C + j]).map((r) => r.key);
-    });
+    const out = [];
+    for (let r = 0; r < model.rows.length; r++) {
+      for (let c = 0; c < C; c++) if (on[r * C + c]) out.push([model.columns[c].key, model.rows[r].key, on[r * C + c]]);
+    }
     return out;
   }
 
-  /** @private keys (string or app form) → ticks of `model`; unknown / n/a cells dropped */
+  /** @private keys → states of `model`; unknown / n/a cells dropped */
   _carry(model, keys) {
     const C = model.columns.length;
     const on = new Uint8Array(model.rows.length * C);
-    for (const [ck, list] of Object.entries(keys || {})) {
-      const c = model.colIndex.get(String(ck));
-      if (c === undefined || !Array.isArray(list)) continue;
-      for (const rk of list) {
-        const r = model.rowIndex.get(String(rk));
-        if (r !== undefined && !isNa(model, r * C + c)) on[r * C + c] = 1;
-      }
+    for (const [ck, rk, v] of keys || []) {
+      const c = model.colIndex.get(ck);
+      const r = model.rowIndex.get(rk);
+      if (c !== undefined && r !== undefined && !isNa(model, r * C + c)) on[r * C + c] = v;
     }
     return on;
   }
@@ -292,7 +342,8 @@ export class TdCheckMatrix extends TdFormElement {
       this._fail('data-json');
       return;
     }
-    if (!o || typeof o !== 'object' || o.v !== 1) {
+    // v0.95.0 (D7): `v` must match the mode (1 = check, 2 = override) — a mismatch fails closed
+    if (!o || typeof o !== 'object' || o.v !== (this._override() ? 2 : 1)) {
       this._fail('data-version');
       return;
     }
@@ -300,7 +351,7 @@ export class TdCheckMatrix extends TdFormElement {
     // an early `value` property wins over the attribute's (ADR 0012 §3); the defaults stay the attribute's
     const held = this._takeHeld();
     if (held && this._state) {
-      const res = validateMatrix({ ...this._raw, value: held.value });
+      const res = validateMatrix({ ...this._raw, value: held.value }, this._dataMode);
       if (res.ok) this._state.setAll(res.model.value);
       else console.warn(`td-check-matrix: value refused (${res.reason}) — state unchanged`);
     }
@@ -358,6 +409,10 @@ export class TdCheckMatrix extends TdFormElement {
     if (this._helperAttr(name, oldVal, newVal)) return; // v0.54.0: helper-text in place (TdFormElement)
     if (oldVal === newVal) return;
     if (name === 'disabled') this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
+    if (name === 'mode') {
+      this._modeChanged(oldVal, newVal);
+      return;
+    }
     if (!this._initialized) return;
     switch (name) {
       case 'data':
@@ -376,12 +431,33 @@ export class TdCheckMatrix extends TdFormElement {
       case 'layout':
         this._root?.setAttribute('data-layout', this._layout());
         this._ensureActiveVisible();
+        this._syncReset();
         return;
       case 'max-height':
         this._applyStyles();
         return;
       default:
     }
+  }
+
+  /**
+   * @private v0.95.0 (D3): the mode changed — data already given (valid or not) is DROPPED (empty state, no FormData,
+   * one warning): the two value shapes differ and guessing a conversion could send wrong permissions. The app calls
+   * setData() again; the defaults are captured again at the next valid data.
+   */
+  _modeChanged(oldVal, newVal) {
+    if (newVal !== null && newVal !== 'check' && newVal !== 'override') this._mode(); // the unknown-value warning
+    if (modeOf(oldVal) === modeOf(newVal)) return;
+    if (!this._raw && !this._model && this._status !== 'broken') return;
+    this._warn('mode-change', 'mode changed after data — the data is dropped; call setData() again');
+    this._raw = null;
+    this._model = null;
+    this._state = null;
+    this._dataMode = null;
+    this._defKeys = null;
+    this._heldValue = null;
+    this._status = 'empty';
+    if (this._initialized) this._rerender();
   }
 
   /** @protected <fieldset disabled> toggles in place (no re-render → focus kept). */
@@ -413,11 +489,18 @@ export class TdCheckMatrix extends TdFormElement {
   /** @private render options (shared by render() and the SSR gate) */
   _renderOpts(model, def, collapsed, ssr) {
     const state = this._state;
-    return {
+    const o = {
       model, def, collapsed, id: this.id, label: this.getAttribute('label') || '', ariaLabel: this.getAttribute('aria-label') || '',
       labels: this._labels(), layout: this._layout(), disabled: this._effectiveDisabled, ssr,
       bulkDisabled: ssr || !state ? null : (kind, a, b) => state.stats(kind, a, b).free === 0,
     };
+    if (model.mode === 'override') {
+      // v0.95.0: the bulk states of the printed states (the server prints those of the defaults)
+      const st = ssr || !state ? new OverrideState(model, def, def) : state;
+      o.bulkState = (kind, a, b) => st.bulkState(kind, a, b);
+      o.resettable = !ssr && !!state && state.resettable('all') > 0;
+    }
+    return o;
   }
 
   render() {
@@ -427,7 +510,9 @@ export class TdCheckMatrix extends TdFormElement {
       return renderMatrixState(base, 'broken');
     }
     if (this._status !== 'ready') return renderMatrixState(base, this._status);
-    return renderMatrix(this._renderOpts(this._model, this._state.def, this._collapsed, null));
+    // v0.95.0: the override mode prints the LIVE states (data-state / state text are attributes and text, not a property)
+    const st = this._state instanceof OverrideState ? this._state.st : this._state.def;
+    return renderMatrix(this._renderOpts(this._model, st, this._collapsed, null));
   }
 
   /** @private full re-render keeping the active cell (by key) and the focus */
@@ -460,6 +545,7 @@ export class TdCheckMatrix extends TdFormElement {
     }
     root.setAttribute('data-layout-js', '');
     fillIconSlots(root, '.td-check-matrix__chevron');
+    this._lbl = this._labels();
     this._buildCache();
     this._bind();
     this._syncAll();
@@ -497,6 +583,7 @@ export class TdCheckMatrix extends TdFormElement {
       rows, cells, bulk, groupBodies,
       colHeads: rows[0] ? [...rows[0].cells].slice(2) : [],
       bar, colpick: bar.querySelector('select'), barBulk: bar.querySelector('.td-check-matrix__bulk'),
+      reset: bar.querySelector('.td-check-matrix__reset'), // v0.95.0 (override only)
       note: this._root.querySelector('.td-check-matrix__note'),
       status: this._root.querySelector('[role="status"]'),
       scroll: this._root.querySelector('.td-check-matrix__scroll'),
@@ -515,6 +602,11 @@ export class TdCheckMatrix extends TdFormElement {
       this._onChange(e);
     });
     this.listen(root, 'click', (e) => this._onClick(e));
+    if (this._model.mode === 'override') {
+      // v0.95.0: the override buttons' keys (grid cells + the bar's column button) — Space never goes native (plan §8.2)
+      this.listen(root, 'keydown', (e) => this._onTriKey(e));
+      this.listen(root, 'keyup', (e) => this._onTriKeyUp(e));
+    }
     this.listen(this._grid, 'keydown', (e) => this._onKey(e));
     this.listen(this._grid, 'focusin', (e) => this._onFocus(e));
     this.listen(this._grid, 'pointerdown', (e) => this._onPointer(e), { passive: true });
@@ -533,6 +625,7 @@ export class TdCheckMatrix extends TdFormElement {
       if (w === last) return;
       last = w;
       this._ensureActiveVisible();
+      this._syncReset();
     });
     this._resizeObs.observe(this);
   }
@@ -548,10 +641,21 @@ export class TdCheckMatrix extends TdFormElement {
     this._applyDisabled(); // + roving + FormData
   }
 
-  /** @private one data cell: checked + changed mark */
+  /** @private one data cell: checked + changed mark (override: data-state + the state text) */
   _paintCell(i) {
     const td = this._cache.cells[i];
     if (!td || isNa(this._model, i)) return;
+    if (this._state instanceof OverrideState) {
+      const s = this._state.st[i];
+      const name = OVERRIDE_STATES[s];
+      if (td.getAttribute('data-state') !== name) td.setAttribute('data-state', name);
+      const sr = td.firstElementChild.lastElementChild;
+      const text = overrideStateText(this._lbl || this._labels(), s, this._model.inh[i]);
+      if (sr.textContent !== text) sr.textContent = text;
+      const diff = s !== this._state.def[i];
+      if (diff !== td.hasAttribute('data-changed')) td.toggleAttribute('data-changed', diff);
+      return;
+    }
     const input = td.firstElementChild;
     const on = this._state.on[i] === 1;
     if (input.checked !== on) input.checked = on;
@@ -566,6 +670,15 @@ export class TdCheckMatrix extends TdFormElement {
     const [kind, a, b] = key === 'bar' ? ['column', this._activeCol] : key.split(':');
     const s = this._state.bulkState(kind, Number(a || 0), Number(b || 0));
     const input = el.firstElementChild;
+    if (this._state instanceof OverrideState) {
+      if (el.getAttribute('data-state') !== s.state) el.setAttribute('data-state', s.state);
+      const sr = input.lastElementChild;
+      const text = overrideBulkText(this._lbl || this._labels(), s.state);
+      if (sr.textContent !== text) sr.textContent = text;
+      const dis = s.disabled || this._effectiveDisabled;
+      if (input.disabled !== dis) input.disabled = dis;
+      return;
+    }
     input.checked = s.state === 'checked';
     input.indeterminate = s.state === 'mixed';
     const off = s.disabled || this._effectiveDisabled;
@@ -601,6 +714,7 @@ export class TdCheckMatrix extends TdFormElement {
     for (const [k] of this._cache.bulk) this._paintBulk(k);
     this._paintBulk('bar');
     this._cache.colpick.disabled = dis;
+    this._syncReset();
     this._initRoving();
     this._syncForm();
   }
@@ -638,8 +752,28 @@ export class TdCheckMatrix extends TdFormElement {
     const sel = this._cache.colpick;
     if (sel.value !== String(j)) sel.value = String(j);
     const input = this._cache.barBulk.firstElementChild;
-    input.setAttribute('aria-label', fillMatrixLabel(this._labels().column, { col: this._model.columns[j].label }));
+    if (this._state instanceof OverrideState) {
+      // v0.95.0: the bar button is named by its first span (label) + its second (state)
+      input.firstElementChild.nextElementSibling.textContent = fillMatrixLabel(this._labels().cycleColumn, { col: this._model.columns[j].label });
+      this._syncReset();
+    } else input.setAttribute('aria-label', fillMatrixLabel(this._labels().column, { col: this._model.columns[j].label }));
     this._paintBulk('bar');
+  }
+
+  /**
+   * @private v0.95.0: the reset button (override) — grid: every cell, narrow mode: the picked column only (never a cell
+   * the user cannot see); disabled while no free cell of that set is overridden.
+   */
+  _syncReset() {
+    const btn = this._cache?.reset;
+    if (!btn || !this._live() || !(this._state instanceof OverrideState)) return;
+    const narrow = visible(this._cache.colpick);
+    const labels = this._lbl || this._labels();
+    const text = narrow ? fillMatrixLabel(labels.resetColumn, { col: this._model.columns[this._activeCol].label }) : labels.resetAll;
+    if (btn.textContent !== text) btn.textContent = text;
+    const n = narrow ? this._state.resettable('column', this._activeCol) : this._state.resettable('all');
+    const off = this._effectiveDisabled || n === 0;
+    if (btn.disabled !== off) btn.disabled = off;
   }
 
   /** @private QĐ 16: the grid name always exists */
@@ -693,6 +827,7 @@ export class TdCheckMatrix extends TdFormElement {
       for (let i = 0; i < this._cache.cells.length; i++) this._paintCell(i);
       for (const [k] of this._cache.bulk) this._paintBulk(k);
       this._paintBulk('bar');
+      this._syncReset();
     }
     this._syncForm();
     return diff;
@@ -743,13 +878,7 @@ export class TdCheckMatrix extends TdFormElement {
     }
     // a bulk cell: never one the user cannot see (narrow mode hides the row / group / all ones — QĐ 7, acceptance 4)
     const kind = holder.getAttribute('data-kind');
-    let args;
-    if (kind === 'column-active') args = ['column', this._activeCol];
-    else if (kind === 'column') args = ['column', Number(holder.getAttribute('data-c'))];
-    else if (kind === 'row') args = ['row', Number(holder.parentElement.getAttribute('data-r'))];
-    else if (kind === 'group') args = ['group', Number(holder.parentElement.parentElement.getAttribute('data-g'))];
-    else if (kind === 'group-column') args = ['group-column', Number(holder.parentElement.parentElement.getAttribute('data-g')), Number(holder.getAttribute('data-c'))];
-    else if (kind === 'all') args = ['all'];
+    const args = this._bulkArgs(holder);
     if (!args || !visible(holder)) {
       this._paintBulk(kind === 'column-active' ? 'bar' : this._bulkKey(holder));
       return;
@@ -764,6 +893,66 @@ export class TdCheckMatrix extends TdFormElement {
     this._emitChange(diff, args[0]);
   }
 
+  /** @private `[kind, a?, b?]` of a bulk holder (td or the bar's span), or null */
+  _bulkArgs(holder) {
+    const kind = holder.getAttribute('data-kind');
+    if (kind === 'column-active') return ['column', this._activeCol];
+    if (kind === 'column') return ['column', Number(holder.getAttribute('data-c'))];
+    if (kind === 'row') return ['row', Number(holder.parentElement.getAttribute('data-r'))];
+    if (kind === 'group') return ['group', Number(holder.parentElement.parentElement.getAttribute('data-g'))];
+    if (kind === 'group-column') return ['group-column', Number(holder.parentElement.parentElement.getAttribute('data-g')), Number(holder.getAttribute('data-c'))];
+    if (kind === 'all') return ['all'];
+    return null;
+  }
+
+  /**
+   * @private v0.95.0 one user action on an override button: `op` 'cycle' (dir ±1) or 'set' (state code). A data cell →
+   * one cell; a bulk button → its set (never a hidden one); one `change` per action, nothing when nothing changed.
+   */
+  _overrideAct(btn, op, arg) {
+    if (!this._live() || this._effectiveDisabled || btn.disabled) return;
+    const holder = btn.parentElement;
+    const st = this._state;
+    const C = this._model.columns.length;
+    if (holder.classList.contains('td-check-matrix__cell')) {
+      const r = Number(holder.parentElement.getAttribute('data-r'));
+      const c = Number(holder.getAttribute('data-c'));
+      const diff = op === 'cycle' ? st.cycle(r, c, arg) : st.setCell(r, c, arg);
+      if (!diff || !diff.length) return;
+      this._paintCell(r * C + c);
+      this._paintBulksFor([r * C + c]);
+      this._syncReset();
+      this._syncForm();
+      this._announce(overrideStateText(this._lbl || this._labels(), st.st[r * C + c], this._model.inh[r * C + c]));
+      this._emitChange(diff, 'cell');
+      return;
+    }
+    const args = this._bulkArgs(holder);
+    if (!args || !visible(holder)) return;
+    const [kind, a = 0, b = 0] = args;
+    const diff = op === 'cycle' ? st.cycleSet(kind, a, b, arg) : st.setSet(kind, a, b, arg);
+    this._afterBulk(diff, kind);
+  }
+
+  /** @private v0.95.0 the reset button: every free cell (grid) / of the picked column (narrow mode) → inherit */
+  _overrideReset(btn) {
+    if (!this._live() || this._effectiveDisabled || btn.disabled) return;
+    const diff = visible(this._cache.colpick) ? this._state.resetSet('column', this._activeCol) : this._state.resetSet('all');
+    this._afterBulk(diff, 'inherit');
+  }
+
+  /** @private v0.95.0 repaint + FormData + live region + one event after a set changed */
+  _afterBulk(diff, trigger) {
+    for (const [i] of diff) this._paintCell(i);
+    for (const [k] of this._cache.bulk) this._paintBulk(k);
+    this._paintBulk('bar');
+    this._syncReset();
+    this._syncForm();
+    if (!diff.length) return;
+    this._announce(fillMatrixLabel(this._labels().changed, { n: diff.length }));
+    this._emitChange(diff, trigger);
+  }
+
   /** @private cache key of a bulk element */
   _bulkKey(holder) {
     for (const [k, el] of this._cache.bulk) if (el === holder) return k;
@@ -772,6 +961,14 @@ export class TdCheckMatrix extends TdFormElement {
 
   /** @private */
   _emitChange(diff, trigger) {
+    if (Array.isArray(diff)) {
+      // v0.95.0 override: [[row, col, from, to]…] (app keys, state names)
+      const m = this._model;
+      const C = m.columns.length;
+      const changes = diff.map(([i, from, to]) => [m.rows[Math.floor(i / C)].raw, m.columns[i % C].raw, OVERRIDE_STATES[from], OVERRIDE_STATES[to]]);
+      this.emit('change', { changes, trigger });
+      return;
+    }
     this.emit('change', { added: this._pairs(diff.added), removed: this._pairs(diff.removed), trigger });
   }
 
@@ -781,9 +978,21 @@ export class TdCheckMatrix extends TdFormElement {
     if (s) s.textContent = text;
   }
 
-  /** @private group toggles + the column picker */
+  /** @private group toggles + the column picker; v0.95.0 the override buttons + the reset button */
   _onClick(e) {
     if (!this._live()) return;
+    if (this._state instanceof OverrideState) {
+      const tri = e.target.closest?.('.td-check-matrix__tri, .td-check-matrix__reset');
+      if (tri && this._root.contains(tri)) {
+        if (this._spaceKey === tri) {
+          this._spaceKey = null; // the click a Space keyup still synthesised: the keydown already acted (plan §8.2)
+          return;
+        }
+        if (tri.classList.contains('td-check-matrix__reset')) this._overrideReset(tri);
+        else this._overrideAct(tri, 'cycle', 1);
+        return;
+      }
+    }
     const btn = e.target.closest?.('.td-check-matrix__group-toggle');
     if (btn && this._grid.contains(btn)) {
       const g = Number(btn.closest('tbody').getAttribute('data-g'));
@@ -796,6 +1005,7 @@ export class TdCheckMatrix extends TdFormElement {
 
   /** @private */
   _onPointer(e) {
+    this._spaceKey = null;
     const cell = this._cellOf(e.target);
     if (!cell) return;
     this._showNote(cell);
@@ -828,11 +1038,11 @@ export class TdCheckMatrix extends TdFormElement {
 
   // --- roving tabindex + keys (QĐ 18) -----------------------------------------------------------------------------
 
-  /** @private the focus point of a cell: an enabled input / the group button / the cell itself */
+  /** @private the focus point of a cell: an enabled input (override: button) / the group button / the cell itself */
   _targetOf(cell) {
     const btn = cell.querySelector(':scope > .td-check-matrix__group-toggle');
     if (btn) return btn;
-    const input = cell.querySelector(':scope > .td-check-matrix__input');
+    const input = cell.querySelector(':scope > :is(.td-check-matrix__input, .td-check-matrix__tri)');
     return input && !input.disabled ? input : cell;
   }
 
@@ -1008,6 +1218,40 @@ export class TdCheckMatrix extends TdFormElement {
     if (next) this._setActive(next, true);
   }
 
+  /**
+   * @private v0.95.0 keys of an override button (plan §8.2): Space = next state, Shift+Space = previous — handled HERE,
+   * never natively (a button fires its Space click at keyup even with Shift: a step back at keydown + the native click
+   * would undo it and fire two `change`s); `+` / `=` grant, `-` deny, Delete / Backspace / `0` inherit (a bulk button:
+   * every free cell of its set). Nothing with Alt / Meta; Ctrl+key is left alone.
+   */
+  _onTriKey(e) {
+    const btn = e.target;
+    if (!this._live() || e.altKey || e.metaKey || !btn?.classList?.contains('td-check-matrix__tri') || !this._root.contains(btn)) return;
+    const k = e.key;
+    if (isSpace(k)) {
+      e.preventDefault();
+      if (e.ctrlKey || e.repeat) return;
+      this._spaceKey = btn;
+      this._overrideAct(btn, 'cycle', e.shiftKey ? -1 : 1);
+      return;
+    }
+    if (e.ctrlKey) return;
+    const s = k === '+' || k === '=' ? 1 : k === '-' ? 2 : k === 'Delete' || k === 'Backspace' || k === '0' ? 0 : -1;
+    if (s < 0) return;
+    e.preventDefault();
+    this._overrideAct(btn, 'set', s);
+  }
+
+  /** @private Space keyup: no native activation; the flag lives until the next tick (a synthetic click comes after keyup) */
+  _onTriKeyUp(e) {
+    if (!isSpace(e.key) || !this._spaceKey || e.target !== this._spaceKey) return;
+    e.preventDefault();
+    const btn = this._spaceKey;
+    setTimeout(() => {
+      if (this._spaceKey === btn) this._spaceKey = null;
+    }, 0);
+  }
+
   // --- form lifecycle (QĐ 14) -------------------------------------------------------------------------------------
 
   formResetCallback() {
@@ -1025,7 +1269,7 @@ export class TdCheckMatrix extends TdFormElement {
   _restoreState(state) {
     this._flush();
     if (!this._state || !this._raw) return;
-    const on = decodeMatrixState(state, this._raw);
+    const on = decodeMatrixState(state, this._raw, this._dataMode);
     if (!on) {
       this._warn('restore', 'restored form state does not match the data — ignored');
       return;
@@ -1051,10 +1295,16 @@ export class TdCheckMatrix extends TdFormElement {
     const m = ssrMarker(this);
     if (!m || m.name !== 'check-matrix') return false;
     const early = this._earlyData && ['columns', 'rows', 'cells'].some((k) => this._earlyData.has(k));
-    const ok = m.schema === this.constructor.SSR_SCHEMA && !early && this._status === 'ready' && !this._nameBroken()
-      && this.hasAttribute('name') && this._ssrGate();
-    if (ok) return true;
-    if (this._status === 'ready') console.warn('td-check-matrix: server markup does not match its data — rendered again');
+    // v0.95.0 (D7): the marker version must match the mode (`@1` check, `@2` override)
+    const override = this._override();
+    const schema = override ? this.constructor.SSR_SCHEMA_OVERRIDE : this.constructor.SSR_SCHEMA;
+    const ok = m.schema === schema && !early && this._status === 'ready' && this._dataMode === this._mode()
+      && !this._nameBroken() && this.hasAttribute('name') && this._ssrGate();
+    if (ok && !override) return true;
+    // v0.95.0 (D6): `@2` is never adopted in place — the gate passed: the choices made before the JS loaded (the
+    // <select> of every free cell, strict enum) are kept, then the JS markup is rendered fresh with the focus back
+    if (ok) this._readSsrSelects();
+    else if (this._status === 'ready') console.warn('td-check-matrix: server markup does not match its data — rendered again');
     const active = this.ownerDocument.activeElement;
     if (active && active !== this && this.contains(active)) {
       const cell = active.closest('td, th');
@@ -1063,6 +1313,25 @@ export class TdCheckMatrix extends TdFormElement {
     }
     this._ssrFreshRender = true;
     return false;
+  }
+
+  /** @private v0.95.0: the live values of the no-JS selects (free cells only; an early app `value` wins — ADR 0012 §3) */
+  _readSsrSelects() {
+    if (this._earlyData?.has('value') || this._valueBeforeData) return;
+    const m = this._model;
+    const C = m.columns.length;
+    const st = Uint8Array.from(this._state.st);
+    for (const tr of this.querySelectorAll('tr.td-check-matrix__row')) {
+      const r = Number(tr.getAttribute('data-r'));
+      for (let c = 0; c < C; c++) {
+        const i = r * C + c;
+        if (isNa(m, i) || isLocked(m, i)) continue;
+        const sel = tr.cells[2 + c].firstElementChild;
+        const code = OVERRIDE_STATES.indexOf(sel.value);
+        if (code >= 0) st[i] = code;
+      }
+    }
+    this._state.setAll(st);
   }
 
   /** @private compare every node with the expected server markup */
@@ -1164,12 +1433,14 @@ export class TdCheckMatrix extends TdFormElement {
     if (live.nodeType !== 1 || live.localName !== want.localName || live.namespaceURI !== want.namespaceURI) return false;
     const cls = live.classList;
     const inBar = !!live.closest?.('.td-check-matrix__bar') && live.localName === 'input';
+    // v0.95.0 override: the bar follows the picked column / the layout (button label + state text, data-state, disabled)
+    const barO = this._model?.mode === 'override' && !!live.closest?.('.td-check-matrix__bar');
     const extra = (name, v) => (v === '' && ((name === 'data-changed' && cls.contains('td-check-matrix__cell'))
       || (name === 'data-col-active' && live.hasAttribute('data-c'))
       || (name === 'data-active' && cls.contains('td-check-matrix__colhead'))
       || (name === 'data-layout-js' && cls.contains('td-check-matrix') && live.parentNode === this)
       || name === 'data-td-pressed'))
-      || (inBar && name === 'disabled');
+      || ((inBar || barO) && name === 'disabled') || (barO && name === 'data-state');
     for (const a of live.attributes) {
       if (want.hasAttribute(a.name)) {
         const w = want.getAttribute(a.name);
@@ -1177,17 +1448,18 @@ export class TdCheckMatrix extends TdFormElement {
         if (a.name === 'tabindex' && w === '-1' && a.value === '0') continue;
         if (a.name === 'aria-labelledby' && live.localName === 'table') continue;
         if (a.name === 'aria-label' && inBar) continue;
+        if (barO && a.name === 'data-state') continue;
         return false;
       }
       if (!extra(a.name, a.value)) return false;
     }
-    for (const a of want.attributes) if (!live.hasAttribute(a.name) && !(inBar && a.name === 'disabled')) return false;
+    for (const a of want.attributes) if (!live.hasAttribute(a.name) && !((inBar || barO) && a.name === 'disabled')) return false;
     if (want.hasAttribute('data-td-icon')) return this._ssrIcon(live);
     const text = cls.contains('td-check-matrix__note') || live.getAttribute('role') === 'status';
     const a = [...live.childNodes].filter((n) => n.nodeType !== 3 || n.data !== '');
     if (text) return a.every((n) => n.nodeType === 3);
     const b = [...want.childNodes];
-    return a.length === b.length && a.every((n, k) => this._ownedSame(n, b[k], false));
+    return a.length === b.length && a.every((n, k) => this._ownedSame(n, b[k], barO));
   }
 
   /** @protected refused server markup was replaced: focus back on the matching cell */

@@ -29,6 +29,8 @@ const TABLE = {
   '.td-dtp-wheel__list': 'pan-y',
   // v0.86.0 dropdown retry button ("Thử lại"): a tap target — no double-tap zoom on iOS
   '.td-dropdown__retry': 'manipulation',
+  // v0.95.0 check-matrix mode=override: the 3-state cell button — fast taps cycle it, no double-tap zoom
+  '.td-check-matrix__tri': 'manipulation',
 };
 
 test('touch-action declarations = the reviewed table (no new none, nothing on html / body)', async () => {

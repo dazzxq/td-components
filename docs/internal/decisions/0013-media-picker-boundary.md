@@ -286,3 +286,9 @@ về `multiple` (plan 0.68 đã ghi đó là một rủi ro). Mục này **đổ
 Phương án bác: (1) giữ bật cho cả hai chế độ (0.68): trái ý owner; (2) "`multiple` không bao giờ chọn sẵn, kể cả khi `true`": âm thầm vô hiệu hoá `true` mà site đã viết
 từ 0.67 là thay đổi phá vỡ thứ hai không ai yêu cầu, trong khi ý owner là về **mặc định**. Hệ quả chấp nhận và nói thẳng: site còn `configureDefaults({ autoSelectFirst: true })`
 từ 0.67 vẫn có picker `multiple` chọn sẵn tới khi bỏ dòng đó (CHANGELOG và breaking-changes ghi rõ). QĐ 69 (v0.36) giờ đúng trở lại với chế độ nhiều ảnh.
+
+## Bổ sung v0.95
+
+Ngày 2026-11-03. **Kết thúc picker không huỷ upload thả vào lưới** ([ADR 0041](0041-media-picker-background-uploads.md)): store theo
+object adapter giữ upload chạy tiếp sau khi đóng; pool 3 upload là của cả trang; `TdMediaPicker.uploads` / `cancelUploads()`. Hợp đồng
+adapter (`upload`, `context`, `collectionId`) không đổi.

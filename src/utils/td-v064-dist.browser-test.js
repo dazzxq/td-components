@@ -7,7 +7,7 @@ import '../form/td-scan-input.js';
 // dist/ bytes (npm run test:browser:dist, TD_DIST=1): the barrel's export table (keepNames: every class / function keeps
 // its export name), the two lazy import() of td-modal.js still load and open a dialog, each element defined once.
 /** The barrel exports, captured from the source at 0.64.0 (Codex impl r1 #2) — dist must export exactly these.
- * v0.94.0: + TdIconPicker, registerIconSearchData (td-icon-picker). */
+ * v0.94.0: + TdIconPicker, registerIconSearchData (td-icon-picker). v0.95.0: + TdSelectionBar. */
 const EXPORTS = [
   'BREAKPOINTS', 'SHORT_MAX', 'TdActionButton', 'TdAlert', 'TdBaseElement', 'TdButton', 'TdCarousel', 'TdCheckMatrix',
   'TdCheckbox', 'TdChipInput', 'TdChoiceGroup', 'TdColorPicker', 'TdCopy', 'TdCropper', 'TdDateTime',
@@ -16,7 +16,7 @@ const EXPORTS = [
   'TdInputField',
   'TdLightbox', 'TdLoading', 'TdLoadingSpinner', 'TdMaskedValue', 'TdMediaField', 'TdMediaGallery', 'TdMediaGrid',
   'TdMediaPicker', 'TdMenu', 'TdModal', 'TdModalStackManager', 'TdNumberInput', 'TdOtpInput', 'TdPagination',
-  'TdPasswordMeter', 'TdProgress', 'TdRating', 'TdRepeater', 'TdScanInput', 'TdScrollTop', 'TdSlider', 'TdSortable',
+  'TdPasswordMeter', 'TdProgress', 'TdRating', 'TdRepeater', 'TdScanInput', 'TdScrollTop', 'TdSelectionBar', 'TdSlider', 'TdSortable',
   'TdSteps', 'TdTable', 'TdTabs', 'TdTimeline', 'TdToast', 'TdToggle', 'TdTooltip', 'TdTree', 'TdTreeSelect',
   'contrastRatio', 'debounce', 'fillIconSlots', 'formatFileSize', 'formatNumber', 'getAccessibleTextColor', 'hasIcon',
   'isCoarsePointer', 'isShort', 'listIcons', 'matchesBelow', 'mqBelow', 'parseColorToRgb', 'registerIconSearchData',
@@ -37,7 +37,7 @@ async function cancelDialog() {
 }
 
 describe('v0.64.0 dist parity — index.js', () => {
-  it('the 82 captured exports; every function export keeps its name (keepNames); the 3 others keep their type', () => {
+  it('the 83 captured exports; every function export keeps its name (keepNames); the 3 others keep their type', () => {
     const keys = Object.keys(kit).sort();
     expect(keys).to.deep.equal(EXPORTS);
     for (const k of keys) {

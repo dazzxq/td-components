@@ -15,9 +15,9 @@ nhiều cấp, ảo hoá DOM, tải hàng lười, sắp xếp, nội dung tự 
 |---|---|
 | Import | `import '@dazzxq/td-components/check-matrix'` (class: `import { TdCheckMatrix } from '@dazzxq/td-components'`) |
 | Loại | Custom element |
-| Form-associated | có — **đủ tập, nhóm theo cột**, xem [FormData](#formdata-hợp-đồng-công-khai) |
+| Form-associated | có — **đủ tập, nhóm theo cột**, xem [FormData](#formdata-hợp-đồng-công-khai) (override `mode`: `name[col][row]=state`, `_v=2`) |
 | PHP | `td_check_matrix()` ([adapter PHP](../guides/php-adapter.md)) |
-| Từ phiên bản | 0.47.0 (token-native: cần `td.css`) |
+| Từ phiên bản | 0.47.0 (token-native: cần `td.css`); `mode="override"` 0.95.0 |
 
 ## Ví dụ nhanh
 
@@ -273,15 +273,112 @@ $pdo->commit();
 **Server tự cưỡng chế khoá.** Ô khoá ở UI chỉ là gợi ý: sửa DOM / tự POST là gửi được mọi cặp. Luật "không gán được quyền
 mình không có", "không tự sửa role của chính mình", CSRF, `lock_version` đều ở server.
 
+## Chế độ kế thừa / cấp / từ chối (`mode="override"`)
+
+**0.95.0** ([ADR 0040](../internal/decisions/0040-check-matrix-override-mode.md)). Cho màn "quyền riêng của người dùng
+chồng lên vai trò": mỗi ô có **ba** trạng thái thay vì tick / không tick.
+
+| Trạng thái | Nghĩa | Hình |
+|---|---|---|
+| `inherit` (mặc định) | Không ghi đè — theo vai trò | ô viền; có `inherited: true` → ✓ mờ (vai trò đang cho quyền); `inherited: false` / không biết → ô viền trống |
+| `grant` | Cấp riêng | ô đặc + ✓ |
+| `deny` | Cấm riêng | ô đặc đỏ + ✕ (hình khác ✓, không chỉ màu) |
+
+Bấm / chạm một ô = trạng thái kế, **vòng `kế thừa → cấp → từ chối → kế thừa`**. Không có `mode` (hoặc `mode="check"`)
+→ lưới tick như cũ, **không đổi một byte** (markup, FormData `_v=1`, event).
+
+```html
+<td-check-matrix id="ov" name="overrides" mode="override" label="Quyền riêng của người dùng"></td-check-matrix>
+<script type="module">
+  document.getElementById('ov').setData({
+    columns: [{ key: 'u7', label: 'Nguyễn An' }],
+    rows: [{ key: 'cat.view', label: 'Xem sản phẩm' }, { key: 'cat.del', label: 'Xoá sản phẩm' }],
+    cells: { 'cat.view': { u7: { inherited: true } }, 'cat.del': { u7: { inherited: false } } }, // gợi ý hiển thị
+    value: { u7: { 'cat.del': 'grant' } },  // { cột: { hàng: 'grant' | 'deny' | 'inherit' } }; thiếu = inherit
+  });
+</script>
+```
+
+**Dữ liệu.** `value` là map `{ cột: { hàng: trạng thái } }` (cùng khoá như `cells`): chỉ đúng ba chuỗi `inherit` /
+`grant` / `deny` (`"Grant"`, `" grant"`, `1`, `null` → fail closed `value-state`); `grant` / `deny` trên ô n/a →
+`value-na`; `inherit` tường minh được nhận rồi bỏ. Dạng mảng của chế độ check (`{ cột: [hàng…] }`) ở override → fail
+closed. Cờ ô `inherited` (`true` / `false` / `null`) chỉ là gợi ý hiển thị, không bao giờ gửi đi. `getValue()` trả
+`{ cột: { hàng: 'grant' | 'deny' } }` **mọi cột** (chỉ ô ghi đè; khoá gốc của app).
+
+**FormData (hợp đồng mới, `_v=2`).** Mọi ô áp dụng được đều gửi, kể cả `inherit` — server không phải đoán "thiếu nghĩa là
+gì":
+
+```text
+overrides[u7]            = ""          ← marker mỗi cột, ở đầu
+overrides[u7][cat.view]  = inherit     ← mỗi ô áp dụng được, theo hàng (ô khoá gửi đúng một lần; n/a không gửi)
+overrides[u7][cat.del]   = grant
+overrides[_v]            = 2           ← sentinel, cuối cùng
+```
+
+PHP đọc thành `['u7' => ['cat.view' => 'inherit', 'cat.del' => 'grant'], '_v' => '2']` (marker `''` đứng trước nên khoá
+con biến nó thành mảng). Số biến POST = **số ô + số cột + 1, luôn luôn** → 500 × 20 cần `max_input_vars` ≥ 10 021. Server
+bắt buộc kiểm:
+
+```php
+$in = $_POST['overrides'] ?? null;
+if (!is_array($in) || ($in['_v'] ?? null) !== '2') {
+    http_response_code(422); exit('Form bị cắt (max_input_vars) hoặc sai phiên bản — không lưu gì.');
+}
+unset($in['_v']);
+foreach ($users as $u) {
+    $col = $in[(string) $u->id] ?? null;
+    if (!is_array($col)) { http_response_code(422); exit; }          // cột thiếu = form hỏng, không phải "xoá hết"
+    foreach ($permissionKeys as $perm) {
+        $s = $col[(string) $perm] ?? null;                              // khoá số: PHP đổi "12" thành int 12 → ép (string)
+        if (!in_array($s, ['inherit', 'grant', 'deny'], true)) { http_response_code(422); exit; }
+        // inherit → xoá dòng override; grant / deny → upsert. Ô khoá: server tự bỏ qua giá trị gửi lên.
+    }
+}
+```
+
+Laravel: `$request->validate(['overrides._v' => 'required|in:2', 'overrides.*.*' => 'in:inherit,grant,deny'])`, gỡ `_v`
+trước khi duyệt cột, rồi kiểm đủ hàng như trên (validate không biết "đủ tập").
+
+**Bàn phím.** Mỗi ô là một `button` (tên = hàng + cột + trạng thái, vd. "Xem tổng quan, Bán hàng, Cấp quyền"; mô tả phím
+chung gắn `aria-describedby`). Điều hướng như lưới tick.
+
+| Phím | Hành vi |
+|---|---|
+| Space / Enter / bấm | Trạng thái kế (`kế thừa → cấp → từ chối → kế thừa`) |
+| Shift+Space | Trạng thái trước |
+| `+` / `=` · `-` · Delete / Backspace / `0` | Cấp · Từ chối · Về kế thừa |
+
+Trên ô hàng loạt (cả hàng / cột / nhóm / tất cả) các phím tác động **mọi ô không khoá** của tập: tập đồng nhất → trạng thái
+kế, lẫn lộn ("Lẫn lộn", gạch ngang) → kế thừa. Ô khoá không bao giờ đổi (vẫn gửi trạng thái của nó); ô hàng loạt hết ô
+không khoá → `disabled`.
+
+**Nút "Đặt lại về kế thừa"** (trong thanh trên lưới, luôn hiện ở override): lưới → mọi ô không khoá về `inherit`; chế độ
+hẹp → chỉ cột đang hiện ("Đặt lại cột {col}"). `disabled` khi không còn gì để đặt lại. Không hỏi xác nhận: thay đổi chưa
+lưu, dấu "đã đổi" hiện, `form.reset()` đưa về mặc định.
+
+**Event.** `change` ở override: `{ changes: [[hàng, cột, từ, thành]…], trigger }` (khoá gốc, trạng thái là chuỗi) — một
+lần mỗi thao tác; `trigger`: `cell` / `row` / `column` / `group` / `group-column` / `all` / `reset` (form) / `inherit`
+(nút đặt lại).
+
+**PHP / không JS.** `td_check_matrix(..., ['mode' => 'override'])` in `mode="override"` + `data-td-ssr="check-matrix@2"`
++ `data` `"v":2`, form không JS là **một `<select>` mỗi ô** (ô khoá: select `disabled` + hidden mang trạng thái), marker đầu,
+`_v=2` cuối — FormData giống bản JS từng byte. Khác `@1`, markup `@2` **không nhận tại chỗ**: component kiểm từng node,
+khớp → đọc lựa chọn người dùng đã đổi trước khi JS tải (chỉ ô không khoá, đúng ba giá trị) rồi render lại một lần với
+button; lệch → render từ `data`, không lấy giá trị nào từ markup. `mode` lạ → chế độ check + một `E_USER_WARNING`.
+
+**Đổi `mode` sau khi đã có dữ liệu** → lưới về rỗng (không gửi gì) + một cảnh báo; gọi `setData()` lại với dữ liệu đúng
+dạng của chế độ mới.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Ý nghĩa |
 |---|---|---|---|
 | `name` | string | — | Tên FormData (rỗng / kết thúc `[]` → fail closed). Không có → không gửi |
+| `mode` | `check` \| `override` | `check` | **0.95.0** `override` = ba trạng thái kế thừa / cấp / từ chối ([xem trên](#chế-độ-kế-thừa--cấp--từ-chối-modeoverride)). Giá trị lạ → `check` + một cảnh báo. Đổi sau khi có dữ liệu → rỗng |
 | `label` | string | — | Nhãn hiển thị, đặt tên cho lưới |
 | `layout` | `auto` \| `grid` \| `column` | `auto` | Chế độ hẹp "một cột một lúc": `auto` khi host < 720px, `grid` luôn lưới đầy đủ, `column` luôn một cột |
 | `max-height` | `none` \| số + `px`/`rem`/`em`/`vh`/`svh`/`dvh`/`lvh`/`%` | token `70vh` | Chiều cao khung cuộn. Sai (vd. `calc()`, `var()`) → bỏ qua + một cảnh báo |
-| `data` | JSON | — | `{"v":1,"columns":[…],"rows":[…],"cells":{…},"value":{…}}` (≤ 512 KiB) — cùng đường validate |
+| `data` | JSON | — | `{"v":1,"columns":[…],"rows":[…],"cells":{…},"value":{…}}` (≤ 512 KiB) — cùng đường validate; override: `"v":2` |
 | `disabled` | boolean | — | Khoá mọi ô, không gửi gì. `<fieldset disabled>` cũng vậy |
 | `aria-label` | string | — | Tên lưới khi không có `label` |
 | `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. Không có lỗi riêng: gợi ý luôn hiện, id đi theo ô đang active. |
@@ -295,7 +392,8 @@ mình không có", "không tự sửa role của chính mình", CSRF, `lock_vers
 | | Ý nghĩa |
 |---|---|
 | `columns`, `rows`, `cells` | Dữ liệu (gán gộp theo microtask) |
-| `value` / `getValue()` | `{ [cột]: [hàng…] }` với **khoá gốc** của app (số vẫn là số), mọi cột |
+| `value` / `getValue()` | `{ [cột]: [hàng…] }` với **khoá gốc** của app (số vẫn là số), mọi cột. Override: `{ [cột]: { [hàng]: 'grant' \| 'deny' } }` |
+| `mode` | **0.95.0** phản chiếu attribute `mode` (`check` / `override`) |
 | `setValue(v)` | Gán giá trị (im lặng; sai → từ chối) |
 | `setData({ columns, rows, cells?, value? })` | Gán nguyên tử |
 | `changedCount` | Số ô khác mặc định |
@@ -310,6 +408,7 @@ một lần như mọi control; gán dữ liệu mới về sau giữ mặc đ�
 | Event | `detail` | Khi nào |
 |---|---|---|
 | `change` | `{ added: [[hàng, cột]…], removed: [[hàng, cột]…], trigger }` | Người dùng đổi ô (một lần mỗi thao tác) hoặc `form.reset()`. `trigger`: `cell` / `row` / `column` / `group` / `group-column` / `all` / `reset`. Khoá gốc của app |
+| `change` (override, 0.95.0) | `{ changes: [[hàng, cột, từ, thành]…], trigger }` | Như trên; thêm `trigger` `inherit` (nút đặt lại) |
 | `expanded-change` | `{ group, expanded }` | Người dùng mở / thu gọn nhóm |
 
 Gán bằng code không phát event. `change` native của checkbox bên trong **không** lọt ra host.
@@ -325,6 +424,11 @@ Gán bằng code không phát event. `change` native của checkbox bên trong *
 | `na` | `Không áp dụng` |
 | `broken` | `Không đọc được dữ liệu ma trận` |
 | `changed` | `Đã đổi {n} ô` |
+| `inherit` / `inheritOn` / `inheritOff` | **0.95.0** `Kế thừa` / `Kế thừa (có quyền)` / `Kế thừa (không có quyền)` |
+| `grant` / `deny` / `mixed` | `Cấp quyền` / `Từ chối` / `Lẫn lộn` |
+| `cycleAll` / `cycleRow` / `cycleColumn` / `cycleGroup` / `cycleGroupColumn` | `Đổi tất cả` / `Đổi cả hàng {row}` / `Đổi cả cột {col}` / `Đổi cả nhóm {group}` / `Đổi cả nhóm {group}, cột {col}` |
+| `resetAll` / `resetColumn` | `Đặt lại về kế thừa` / `Đặt lại cột {col}` |
+| `keys` | `Space: đổi trạng thái. +: cấp, −: từ chối, Delete: về kế thừa` |
 
 PHP dùng cùng bộ chữ (`Td::CHECK_MATRIX_LABELS`, option `labels`). Đổi chữ ở JS mà không đổi ở PHP → hydrate thấy lệch và
 render lại (an toàn, chỉ mất "nhận tại chỗ").
@@ -342,6 +446,11 @@ render lại (an toàn, chỉ mất "nhận tại chỗ").
 | `--td-check-matrix-row-active` | `var(--td-color-hover)` | Hàng đang focus + header cột đang focus |
 | `--td-check-matrix-changed` | `var(--td-accent)` | Tam giác "đã đổi" ở góc ô |
 | `--td-check-matrix-note-mark` | `var(--td-color-text-muted)` | Chấm "có ghi chú" ở góc ô |
+| `--td-check-matrix-grant-bg` | `var(--td-checkbox-color)` | **0.95.0** override: nền ô "cấp quyền" |
+| `--td-check-matrix-deny-bg` | `var(--td-action-btn-danger-fg)` | override: nền ô "từ chối" (màu đỏ chữ mà bảng màu giữ đủ tương phản trên nền site) |
+| `--td-check-matrix-deny-fg` | `var(--td-color-bg)` | override: dấu ✕ (màu nền trang) |
+| `--td-check-matrix-inherit-mark` | `var(--td-color-text-muted)` | override: ✓ mờ "kế thừa — có quyền" (cũng là viền ô kế thừa khi hover) |
+| `--td-check-matrix-inherit-edge` | `var(--td-control-border-strong)` | override: viền ô "kế thừa", ≥ 3:1 với nền ô |
 
 Mark ✓ theo `--td-checkbox-color` / `--td-checkbox-border` (mark dùng chung, [ADR 0017](../internal/decisions/0017-shared-check-mark.md)).
 Màu đều suy ra từ token theme → theo dark / theme có tên tự động. Xem [Theming](../customization/theming.md).
@@ -370,7 +479,11 @@ Màu đều suy ra từ token theme → theo dark / theme có tên tự động.
 ```
 
 Ô dữ liệu: `<input type="checkbox" class="td-check-matrix__input" aria-labelledby="{h}-r{i} {h}-c{j}">` phủ cả ô (vùng chạm
-= ô) + `span.td-check.td-check--drawn` (✓ vẽ bằng CSS). Id luôn từ id của host + chỉ số, **không bao giờ từ dữ liệu**.
+= ô) + `span.td-check.td-check--drawn` (✓ vẽ bằng CSS). **Override (0.95.0):** `.td-check-matrix[data-mode="override"]`;
+ô = `td.__cell[data-state="inherit|grant|deny"][data-inherited="on|off"]` chứa `button.td-check-matrix__tri`
+(`aria-labelledby="{h}-r{i} {h}-c{j} {h}-s{n}"`, `aria-describedby="{h}-keys …"`) > `span.td-check.td-check--drawn.td-check-matrix__glyph`
++ `span.td-sr-only#{h}-s{n}` (chữ trạng thái); ô hàng loạt `td.__bulk[data-state="…|mixed"]`; thanh có thêm
+`button.td-btn.td-btn--ghost.td-btn--sm.td-check-matrix__reset`; cuối có `span.td-sr-only#{h}-keys` (mô tả phím). Id luôn từ id của host + chỉ số, **không bao giờ từ dữ liệu**.
 Host là **container** `inline-size`: nó phải lấy bề rộng từ cột chứa nó (trong flex / grid co theo nội dung → đặt
 `width` / `align-self: stretch`).
 

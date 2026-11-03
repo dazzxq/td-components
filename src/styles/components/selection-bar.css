@@ -1,0 +1,200 @@
+/*
+ * td-selection-bar (src/display/td-selection-bar.js) — v0.95.0, plan docs/internal/plans/v0.95.0-selection-bar.md §5 / §8.
+ * A full-width strip stuck to the bottom of its containing block while something is selected in its group of
+ * td-media-grid. Minimal surfaces: SOLID surface (--td-glass-solid), one border + one shadow, no blur. Buttons are the
+ * kit's ghost buttons (hover / pressed / focus / disabled from button.css); the danger variant has its own colour rules.
+ * State on the host: [data-empty] (nothing selected → panel hidden, height 0) · [data-disabled] · [data-compact] (bar
+ * narrower than 36rem, set by JS: icon-only buttons) · [data-td-measuring] (one measuring pass inside a rAF, never
+ * painted). An overflowed action carries [data-td-overflow] (it is in the "…" menu).
+ * --td-selection-bar-offset (runtime, on <html>, written by JS through CSSOM) = height of the tallest visible bar.
+ */
+@layer td.tokens {
+	:root {
+		--td-selection-bar-radius: 0;                      /* a strip across its containing block */
+		--td-selection-bar-pad-block: var(--td-space-xs);
+		--td-selection-bar-pad-inline: var(--td-space-sm);
+		--td-selection-bar-gap: var(--td-space-xs);
+		--td-selection-bar-position: sticky;               /* sticky | fixed */
+		--td-selection-bar-z: var(--td-z-sticky);           /* below menu / modal / toast */
+		--td-selection-bar-enter: 150ms;                    /* fade in */
+	}
+
+	:root, [data-td-theme] {
+		--td-selection-bar-bg: var(--td-glass-solid);
+		--td-selection-bar-fg: var(--td-color-text);
+		--td-selection-bar-border: var(--td-glass-border);
+		--td-selection-bar-shadow: var(--td-glass-shadow);
+		--td-selection-bar-danger-fg: var(--td-color-error);
+		/* v0.95.0 integration: the action-button danger hover fill (a generated palette tints it from the error colour so
+		   the label keeps 4.7:1 — the deprecated --td-pastel-danger-bg gave 4.07:1 in some generated dark palettes,
+		   src/theme/palette.test.js "selection bar danger hover") */
+		--td-selection-bar-danger-hover-bg: var(--td-action-btn-danger-hover-bg);
+		/* = the td-action-button danger pressed fill (#fdd5d5 / dark rgb(220 38 38 / 30%)) by alias, not a dark block of
+		   its own: a generated palette (src/theme/palette.js) already writes that token, so this one follows it too
+		   (src/theme/tokens.test.js ISSUE-1: a dark-only component colour would be missed by a generated palette) */
+		--td-selection-bar-danger-pressed-bg: var(--td-action-btn-danger-pressed-bg);
+	}
+}
+
+@layer td.component {
+	td-selection-bar:not(:defined) {
+		display: none; /* nothing can be selected before the module runs */
+	}
+
+	.td-selection-bar {
+		position: var(--td-selection-bar-position, sticky);
+		inset-block-end: 0;
+		z-index: var(--td-selection-bar-z);
+		display: block;
+		box-sizing: border-box;
+		min-inline-size: 0; /* a grid / flex item too: the actions overflow into "…", their labels never widen the strip */
+		line-height: var(--td-leading-normal); /* own typography: the host page line-height never reaches the bar */
+	}
+
+	.td-selection-bar[data-empty] .td-selection-bar__panel {
+		display: none;
+	}
+
+	.td-selection-bar__panel {
+		box-sizing: border-box;
+		display: flex;
+		gap: var(--td-selection-bar-gap);
+		align-items: center;
+		min-inline-size: 0;
+		padding-block: var(--td-selection-bar-pad-block) max(var(--td-selection-bar-pad-block), env(safe-area-inset-bottom, 0px));
+		padding-inline: var(--td-selection-bar-pad-inline);
+		color: var(--td-selection-bar-fg);
+		background-color: var(--td-selection-bar-bg);
+		border: 1px solid var(--td-selection-bar-border);
+		border-radius: var(--td-selection-bar-radius);
+		box-shadow: var(--td-selection-bar-shadow);
+		opacity: 1;
+		transition: opacity var(--td-selection-bar-enter) var(--td-ease);
+	}
+
+	@starting-style {
+		.td-selection-bar__panel {
+			opacity: 0;
+		}
+	}
+
+	.td-selection-bar__count {
+		flex: none;
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-semibold);
+		white-space: nowrap;
+	}
+
+	.td-selection-bar__actions {
+		display: flex;
+		flex: 1 1 0%;
+		gap: var(--td-selection-bar-gap);
+		align-items: center;
+		justify-content: flex-end;
+		min-inline-size: 0;
+	}
+
+	.td-selection-bar__clear,
+	.td-selection-bar__more,
+	.td-selection-bar__action {
+		flex: none;
+		white-space: nowrap;
+	}
+
+	.td-btn.td-selection-bar__clear,
+	.td-btn.td-selection-bar__more {
+		padding-inline: 0;
+		min-inline-size: 2.5rem;
+	}
+
+	.td-selection-bar__icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	.td-selection-bar__action[data-td-overflow] {
+		display: none;
+	}
+
+	/* compact: icon-only buttons (the label stays in the a11y tree, like .td-sr-only); a button without icon keeps text */
+	.td-selection-bar[data-compact] .td-selection-bar__action--icon {
+		padding-inline: 0;
+		min-inline-size: 2.5rem;
+	}
+
+	.td-selection-bar[data-compact] .td-selection-bar__action--icon .td-selection-bar__label {
+		position: absolute;
+		inline-size: 1px;
+		block-size: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		white-space: nowrap;
+		clip-path: inset(50%);
+		border: 0;
+	}
+
+	/* one measuring pass (JS, inside a rAF, removed before paint): every action + "…" laid out at its natural width */
+	.td-selection-bar[data-td-measuring] .td-selection-bar__actions {
+		overflow: hidden;
+	}
+
+	.td-selection-bar[data-td-measuring] .td-selection-bar__action[data-td-overflow]:not([hidden]) {
+		display: inline-flex;
+	}
+
+	.td-selection-bar[data-td-measuring] .td-selection-bar__more[hidden] {
+		display: inline-flex;
+		visibility: hidden;
+	}
+
+	/* danger: red label, no fill at rest (Q9); its own hover / pressed fills — ghost changes `color` on both. The two
+	   :not() lift these rules one class above the matching .td-btn--ghost rule (0,5,0 > 0,4,0) and keep the press base
+	   `.td-selection-bar__action--danger` (src/utils/press.js PRESS_TARGETS). */
+	.td-selection-bar__action--danger:not(.td-btn--custom):not(.td-btn--plain) {
+		--td-btn-fg-v: var(--td-selection-bar-danger-fg);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-selection-bar__action--danger:not(.td-btn--custom):not(.td-btn--plain):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+			color: var(--td-selection-bar-danger-fg);
+			background-color: var(--td-selection-bar-danger-hover-bg);
+		}
+	}
+
+	.td-selection-bar__action--danger:not(.td-btn--custom):not(.td-btn--plain):is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+		color: var(--td-selection-bar-danger-fg);
+		background-color: var(--td-selection-bar-danger-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (pointer: coarse) {
+		.td-btn.td-selection-bar__clear,
+		.td-btn.td-selection-bar__more,
+		.td-selection-bar[data-compact] .td-selection-bar__action--icon {
+			min-inline-size: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-selection-bar__panel {
+			transition: none;
+		}
+	}
+
+	@media (prefers-contrast: more) {
+		.td-selection-bar__panel {
+			border-color: currentcolor;
+			box-shadow: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-selection-bar__panel {
+			color: CanvasText;
+			background-color: Canvas;
+			border-color: CanvasText;
+			box-shadow: none;
+		}
+	}
+}

@@ -117,3 +117,54 @@ export const Broken = {
   },
   args: { label: 'Dữ liệu hỏng' },
 };
+
+// v0.95.0 (ADR 0040) — mode="override": per-user overrides on top of the role (inherit → grant → deny on each tap).
+const overrideData = () => ({
+  columns: [{ key: 'u1', label: 'Nguyễn An' }, { key: 'u2', label: 'Trần Bình', description: 'Quản lý' }, { key: 'u3', label: 'Lê Chi' }],
+  rows: MODULES.slice(0, 2).map(([key, label, perms], g) => ({ key, label, collapsed: g === 1,
+    rows: perms.slice(0, 5).map((p, k) => ({ key: `${key}.p${k}`, label: p })) })),
+  cells: {
+    'catalog.p0': { u1: { inherited: true }, u2: { inherited: true }, u3: { inherited: false } },
+    'catalog.p1': { u1: { inherited: true }, u2: { inherited: false } },
+    'catalog.p3': { u3: { locked: true, inherited: true, note: 'Chỉ chủ cửa hàng đổi được quyền xoá' } },
+    'orders.p4': { u1: { na: true, note: 'Tài khoản thử việc không hoàn tiền' } },
+  },
+  value: { u1: { 'catalog.p2': 'grant' }, u2: { 'catalog.p0': 'deny', 'orders.p1': 'grant' }, u3: { 'catalog.p3': 'deny' } },
+});
+/** Show the latest override change under the grid. */
+function logOverride(el, out) {
+  el.addEventListener('change', (e) => {
+    if (!(e instanceof CustomEvent)) return;
+    out.textContent = `change (${e.detail.trigger}): ${e.detail.changes.length} ô · ${JSON.stringify(e.detail.changes.slice(0, 3))}`
+      + ` · đã đổi ${el.changedCount} ô`;
+  });
+}
+
+/** Override mode: inherited hints (muted ✓ = has the right through the role), grant / deny, a locked and an n/a cell,
+ *  the reset button ("Đặt lại về kế thừa"), bulk cells cycling a whole set. Keys: Space, Shift+Space, + − Delete. */
+export const Override = {
+  render: (args) => {
+    const id = `cm-${++seq}`;
+    withProps(id, (el) => {
+      el.setData(overrideData());
+      logOverride(el, document.getElementById(`${id}-out`));
+    });
+    return `<form class="sb-stack"><td-check-matrix id="${id}" name="overrides" mode="override" label="${esc(args.label)}" layout="${esc(args.layout)}"`
+      + `${args.disabled ? ' disabled' : ''}></td-check-matrix><p class="sb-note" id="${id}-out">Sự kiện: —</p></form>`;
+  },
+  args: { label: 'Quyền riêng của người dùng', layout: 'grid', disabled: false },
+};
+
+/** Override on a phone: one column at a time; the bulk and the reset button act on the visible column only. */
+export const OverrideNarrow = {
+  render: (args) => {
+    const id = `cm-${++seq}`;
+    withProps(id, (el) => {
+      el.setData(overrideData());
+      logOverride(el, document.getElementById(`${id}-out`));
+    });
+    return `<form class="sb-stack sb-narrow"><td-check-matrix id="${id}" name="overrides" mode="override" label="${esc(args.label)}" layout="column"`
+      + `${args.disabled ? ' disabled' : ''}></td-check-matrix><p class="sb-note" id="${id}-out">Sự kiện: —</p></form>`;
+  },
+  args: { label: 'Quyền riêng (điện thoại)', layout: 'column', disabled: false },
+};

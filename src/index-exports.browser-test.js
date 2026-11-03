@@ -108,6 +108,10 @@ describe('index.js exports', () => {
     expect(customElements.get('td-icon-picker')).to.equal(kit.TdIconPicker);
     expect(typeof kit.registerIconSearchData).to.equal('function');
   });
+  it('registers <td-selection-bar> from the root entry (v0.95.0)', () => {
+    expect(typeof kit.TdSelectionBar).to.equal('function');
+    expect(customElements.get('td-selection-bar')).to.equal(kit.TdSelectionBar);
+  });
   it('registers <td-rating> from the root entry (v0.50.0)', () => {
     expect(typeof kit.TdRating).to.equal('function');
     expect(customElements.get('td-rating')).to.equal(kit.TdRating);

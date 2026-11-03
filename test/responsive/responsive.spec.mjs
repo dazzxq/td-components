@@ -53,6 +53,11 @@
  *   layout-shift entries), narrow (< 480) row 1 = [‹ k / P ›] with ≥ 44 coarse buttons, dot rows 1 / 2 / 2 / 0, every dot a
  *   ≥ 44 × 44 coarse hit area that never overlaps another dot / a button and selects its page; wide: ≤ 8 pages inline
  *   (no counter), 12 → 2 rows (8 + 4); a predicted ≠ measured case (per-view-md token) is recorded as a note.
+ * v0.95.0: `#rsp-matrix-ov` (td-check-matrix mode="override"): the bar + reset button inside the host, no sideways overflow.
+ * v0.95.0: the `card` section (.td-card in a site @container grid + .td-card-grid, full width + 280 px column: ratio, badges
+ *   in the image box, title above the meta, link name) and the `selection` section (2 grouped td-media-grid + a
+ *   td-selection-bar: sticky bottom, no sideways overflow, safe-area padding, offset variable, compact + "…" ≤ 430,
+ *   every label ≥ 1280, buttons ≥ 44 coarse).
  *
  * Run: npm run test:responsive   (RSP_ENGINES=chromium,webkit RSP_ONLY=<config tag substring> for a subset)
  */
@@ -581,6 +586,174 @@ async function runConfig(browser, c) {
       return errs;
     });
     check(tag, 'td-carousel section (v0.50.0)', carErr);
+    // v0.95.0 (plan v0.95.0-card §11.4): .td-card in the site's own @container grid and in .td-card-grid, full width and in
+    // the 280 px column — every card inside its column, the image box at its ratio, the badges inside the image box, the
+    // title (≤ --td-card-title-lines lines) above the meta, the meta one line inside the card; the link name (aria snapshot)
+    // = title, badge, meta (separator hidden). Targets / overflow: the generic checks above.
+    const cardErr = await page.evaluate(() => {
+      const errs = [];
+      const ids = ['rsp-card', 'rsp-card-grid', 'rsp-card-narrow', 'rsp-card-grid-narrow'];
+      for (const id of ids) {
+        const box = document.getElementById(id);
+        const br = box.getBoundingClientRect();
+        const cards = [...box.querySelectorAll('.td-card')];
+        if (cards.length !== 4) errs.push(`#${id}: ${cards.length} cards (want 4)`);
+        cards.forEach((card, i) => {
+          const tag = `#${id} card ${i + 1}`;
+          const r = card.getBoundingClientRect();
+          const cell = card.parentElement.getBoundingClientRect();
+          if (r.left < br.left - 0.5 || r.right > br.right + 0.5) errs.push(`${tag} outside its grid (${r.left.toFixed(0)}..${r.right.toFixed(0)} vs ${br.left.toFixed(0)}..${br.right.toFixed(0)})`);
+          if (r.width > cell.width + 0.5) errs.push(`${tag} wider than its grid cell (${r.width.toFixed(1)} > ${cell.width.toFixed(1)})`);
+          if (card.scrollWidth > card.clientWidth + 1) errs.push(`${tag} overflows sideways (${card.scrollWidth} > ${card.clientWidth})`);
+          const media = card.querySelector('.td-card__media').getBoundingClientRect();
+          const want = card.classList.contains('td-card--ratio-1x1') ? 1 : 4 / 3;
+          if (Math.abs(media.width / want - media.height) > 1.01) errs.push(`${tag} image box ${media.width.toFixed(1)}×${media.height.toFixed(1)} not ${want === 1 ? '1:1' : '4:3'}`);
+          const badges = card.querySelector('.td-card__badges');
+          if (badges) {
+            const b = badges.getBoundingClientRect();
+            if (b.left < media.left - 0.5 || b.right > media.right + 0.5 || b.top < media.top - 0.5 || b.bottom > media.bottom + 0.5) errs.push(`${tag} badges outside the image box`);
+          }
+          const title = card.querySelector('.td-card__title');
+          const meta = card.querySelector('.td-card__meta');
+          const t = title.getBoundingClientRect();
+          const m = meta.getBoundingClientRect();
+          const lines = parseFloat(getComputedStyle(card).getPropertyValue('--td-card-title-lines')) || 2;
+          const lh = parseFloat(getComputedStyle(title).lineHeight);
+          if (t.height > lines * lh + 1) errs.push(`${tag} title ${t.height.toFixed(1)}px > ${lines} lines (${lh}px)`);
+          if (t.bottom > m.top + 0.5) errs.push(`${tag} title overlaps the meta`);
+          if (t.top < media.bottom - 0.5) errs.push(`${tag} title over the image`);
+          const mlh = parseFloat(getComputedStyle(meta).lineHeight);
+          if (m.height > mlh * 1.5) errs.push(`${tag} meta wraps (${m.height.toFixed(1)}px, line ${mlh}px)`);
+          if (m.right > r.right + 0.5 || t.right > r.right + 0.5) errs.push(`${tag} text wider than the card`);
+        });
+      }
+      return errs;
+    });
+    for (const id of ['rsp-card-link', 'rsp-card-grid-narrow-link']) {
+      const snap = (await page.locator(`#${id}`).ariaSnapshot()).replace(/\s+/g, ' ');
+      if (!snap.includes('link "Tết 2026 Live 42 ảnh 12/02/2026"')) cardErr.push(`#${id}: aria snapshot ${snap.slice(0, 120)}`);
+    }
+    check(tag, 'td-card section (v0.95.0)', cardErr);
+    // v0.95.0 (plan v0.95.0-selection-bar §11.3): two grids of one selection-group + td-selection-bar (the section's last
+    // child). Empty at load → hidden; 3 selected across both grids → the bar shows "Đã chọn 3", sticks to the viewport bottom
+    // while its section runs below it, never overflows sideways, its padding keeps max(pad, safe-area) at the bottom and
+    // --td-selection-bar-offset = its height; under 36rem it is compact (icon-only, label kept as the button name) and the
+    // 6 actions overflow into "…"; ≥ 1280 every label shows, nothing overflows. Buttons ≥ 44 (coarse) / ≥ 24 (mouse).
+    const selErr = await page.evaluate(async (coarse) => {
+      const errs = [];
+      const raf = () => new Promise((r) => requestAnimationFrame(() => r()));
+      const bar = document.getElementById('rsp-selbar');
+      const ga = document.getElementById('rsp-sel-a');
+      const gb = document.getElementById('rsp-sel-b');
+      const panel = bar.querySelector('.td-selection-bar__panel');
+      if (!panel) return ['#rsp-selbar: not upgraded (no panel)'];
+      if (!bar.hasAttribute('data-empty') || panel.getBoundingClientRect().height !== 0) errs.push('#rsp-selbar: shown with nothing selected');
+      ga.select(['a1', 'a2'], { emit: true });
+      gb.select(['b1'], { emit: true });
+      for (let i = 0; i < 60 && (bar.hasAttribute('data-empty') || bar.count !== 3); i++) await raf();
+      for (let i = 0; i < 4; i++) await raf(); // compact + fit pass
+      if (bar.count !== 3 || bar.hasAttribute('data-empty')) errs.push(`#rsp-selbar: count ${bar.count}, empty ${bar.hasAttribute('data-empty')} after 3 selected`);
+      if (!gb.hasAttribute('data-selecting') || !ga.hasAttribute('data-selecting')) errs.push('grouped grids not [data-selecting]');
+      const count = bar.querySelector('.td-selection-bar__count').textContent.trim();
+      if (count !== 'Đã chọn 3') errs.push(`count text "${count}"`);
+      // sticky: put the section's top 200 px above the viewport bottom → the bar (end of the section) must sit on the bottom
+      const sec = bar.closest('.rsp-section');
+      const vh = window.innerHeight;
+      const vw = document.documentElement.clientWidth;
+      window.scrollTo({ top: window.scrollY + sec.getBoundingClientRect().top - vh + 200, behavior: 'instant' });
+      await raf(); await raf();
+      const br = bar.getBoundingClientRect();
+      const sr = sec.getBoundingClientRect();
+      if (getComputedStyle(bar).position !== 'sticky') errs.push(`bar position ${getComputedStyle(bar).position}`);
+      if (sr.bottom > vh + 1 && Math.abs(br.bottom - vh) > 1) errs.push(`bar not stuck to the bottom: bottom ${br.bottom.toFixed(1)} vs viewport ${vh}`);
+      if (br.top < sr.top - 0.5) errs.push('bar above its section');
+      // no sideways overflow
+      if (document.documentElement.scrollWidth > vw + 1) errs.push(`page scrolls sideways with the bar shown (${document.documentElement.scrollWidth} > ${vw})`);
+      if (br.left < sr.left - 0.5 || br.right > sr.right + 0.5) errs.push('bar outside its section');
+      if (panel.scrollWidth > panel.clientWidth + 1) errs.push(`panel overflows (${panel.scrollWidth} > ${panel.clientWidth})`);
+      const pr = panel.getBoundingClientRect();
+      const shown = [...panel.querySelectorAll('button')].filter((b) => b.getClientRects().length && !b.hidden && getComputedStyle(b).display !== 'none');
+      shown.forEach((b, i) => {
+        const r = b.getBoundingClientRect();
+        const name = b.getAttribute('aria-label') || b.textContent.trim();
+        if (r.left < pr.left - 0.5 || r.right > pr.right + 0.5) errs.push(`button "${name}" outside the panel`);
+        const min = coarse ? 44 : 24;
+        if (r.width < min - 0.5 || r.height < min - 0.5) errs.push(`button "${name}" ${r.width.toFixed(1)}×${r.height.toFixed(1)} < ${min}`);
+        for (const o of shown.slice(i + 1)) {
+          const q = o.getBoundingClientRect();
+          if (Math.min(r.right, q.right) - Math.max(r.left, q.left) > 0.5 && Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top) > 0.5) errs.push(`buttons "${name}" and "${o.getAttribute('aria-label')}" overlap`);
+        }
+      });
+      // safe area: the bottom padding is max(--td-selection-bar-pad-block, env(safe-area-inset-bottom)) — never below the top
+      const pcs = getComputedStyle(panel);
+      if (parseFloat(pcs.paddingBottom) < parseFloat(pcs.paddingTop) - 0.01 || !(parseFloat(pcs.paddingBottom) > 0)) errs.push(`panel padding ${pcs.paddingTop} / ${pcs.paddingBottom}`);
+      const off = parseFloat(document.documentElement.style.getPropertyValue('--td-selection-bar-offset'));
+      if (!(Math.abs(off - br.height) <= 1)) errs.push(`--td-selection-bar-offset ${off} vs bar height ${br.height.toFixed(1)}`);
+      // compact + overflow
+      const compact = bar.hasAttribute('data-compact');
+      const wantCompact = br.width < 36 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+      if (compact !== wantCompact) errs.push(`[data-compact] ${compact} at bar width ${br.width.toFixed(0)}`);
+      const actions = [...bar.querySelectorAll('.td-selection-bar__action')];
+      const over = actions.filter((a) => a.hasAttribute('data-td-overflow'));
+      const more = bar.querySelector('.td-selection-bar__more');
+      if (more.hidden !== (over.length === 0)) errs.push(`"…" hidden=${more.hidden} with ${over.length} overflowed`);
+      if (over.length && actions.indexOf(over[0]) + over.length !== actions.length) errs.push('overflow does not start from the end');
+      for (const a of actions.filter((x) => !x.hasAttribute('data-td-overflow'))) {
+        const lab = a.querySelector('.td-selection-bar__label').getBoundingClientRect();
+        if (compact && lab.width > 1) errs.push(`compact: label of "${a.getAttribute('aria-label')}" visible`);
+        if (!compact && lab.width < 1) errs.push(`label of "${a.getAttribute('aria-label')}" hidden at full width`);
+        if (!a.getAttribute('aria-label')) errs.push('action without a name');
+      }
+      if (vw <= 430 && (!compact || !over.length)) errs.push(`at ${vw}px: compact ${compact}, ${over.length} overflowed (want icon-only + "…")`);
+      if (vw >= 1280 && (compact || over.length)) errs.push(`at ${vw}px: compact ${compact}, ${over.length} overflowed (want every label)`);
+      bar.clear();
+      for (let i = 0; i < 30 && !bar.hasAttribute('data-empty'); i++) await raf();
+      await raf();
+      if (!bar.hasAttribute('data-empty')) errs.push('bar still shown after clear()');
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      return errs;
+    }, !!c.touch && c.engine !== 'firefox');
+    check(tag, 'td-selection-bar section (v0.95.0)', selErr);
+    // v0.95.0 (plan v0.95.0-check-matrix §13.3): td-check-matrix mode="override" — the bar (column picker + its bulk in the
+    // one-column mode < 720, the "Đặt lại về kế thừa" reset button) never overflows sideways: bar inside the host, its
+    // scroll width = its box, every visible bar control inside the bar and the viewport, no two of them overlap; < 720 the
+    // grid is in its one-column mode with the picker + bulk shown. Targets ≥ 44 coarse are the generic probe's job.
+    const ovErr = await page.evaluate(() => {
+      const errs = [];
+      const host = document.getElementById('rsp-matrix-ov');
+      const root = host.querySelector('.td-check-matrix[data-mode="override"]');
+      if (!root) return ['#rsp-matrix-ov: not upgraded in override mode'];
+      const bar = root.querySelector('.td-check-matrix__bar');
+      const reset = bar?.querySelector('.td-check-matrix__reset');
+      if (!bar || !reset) return [`#rsp-matrix-ov: bar ${!!bar}, reset ${!!reset}`];
+      const vw = document.documentElement.clientWidth;
+      const hr = host.getBoundingClientRect();
+      const br = bar.getBoundingClientRect();
+      if (br.left < hr.left - 1 || br.right > hr.right + 1) errs.push(`bar ${br.left.toFixed(1)}–${br.right.toFixed(1)} outside the host ${hr.left.toFixed(1)}–${hr.right.toFixed(1)}`);
+      if (bar.scrollWidth > bar.clientWidth + 1) errs.push(`bar scrollWidth ${bar.scrollWidth} > ${bar.clientWidth}`);
+      const shown = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
+      const ctrls = [...bar.querySelectorAll('.td-check-matrix__colpick, .td-check-matrix__bulk, .td-check-matrix__reset')].filter(shown);
+      if (!ctrls.includes(reset)) errs.push('reset button not shown');
+      for (const el of ctrls) {
+        const r = el.getBoundingClientRect();
+        const name = el.className.split(' ').find((k) => k.startsWith('td-check-matrix__'));
+        if (r.left < br.left - 1 || r.right > br.right + 1) errs.push(`${name} ${r.left.toFixed(1)}–${r.right.toFixed(1)} outside the bar`);
+        if (r.left < -1 || r.right > vw + 1) errs.push(`${name} outside the viewport (${r.left.toFixed(1)}–${r.right.toFixed(1)}, vw ${vw})`);
+      }
+      for (let i = 0; i < ctrls.length; i++) {
+        for (let j = i + 1; j < ctrls.length; j++) {
+          const a = ctrls[i].getBoundingClientRect();
+          const b = ctrls[j].getBoundingClientRect();
+          if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) errs.push(`${ctrls[i].className} overlaps ${ctrls[j].className}`);
+        }
+      }
+      if (hr.width < 720 && vw < 720) { // the fallback config (no container queries) switches on the viewport
+        if (!ctrls.some((el) => el.classList.contains('td-check-matrix__colpick'))) errs.push(`host ${hr.width.toFixed(0)}px: no column picker`);
+        if (!ctrls.some((el) => el.classList.contains('td-check-matrix__bulk'))) errs.push(`host ${hr.width.toFixed(0)}px: no column bulk`);
+      }
+      return errs;
+    });
+    check(tag, 'td-check-matrix override bar (v0.95.0)', ovErr);
     // v0.36.0 (plan QĐ 41): td-otp-input cells keep their shape — in columns of 320 / 360 / 390 / 240 px (and the page
     // width when narrower), 6 / 8 / 10 digits and 5 alphanumerics: each cell width / height = 44 / 52 ± 4 % (except a
     // touch cell narrower than 37 px, which grows to the 44 px touch minimum), nothing wider than its column.
