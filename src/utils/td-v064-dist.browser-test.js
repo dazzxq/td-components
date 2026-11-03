@@ -6,18 +6,21 @@ import '../form/td-scan-input.js';
 // v0.64.0 (ADR 0034, plan v0.64.0-dist M3) — runs on the source (npm run test:browser) AND on the committed minified
 // dist/ bytes (npm run test:browser:dist, TD_DIST=1): the barrel's export table (keepNames: every class / function keeps
 // its export name), the two lazy import() of td-modal.js still load and open a dialog, each element defined once.
-/** The barrel exports, captured from the source at 0.64.0 (Codex impl r1 #2) — dist must export exactly these. */
+/** The barrel exports, captured from the source at 0.64.0 (Codex impl r1 #2) — dist must export exactly these.
+ * v0.94.0: + TdIconPicker, registerIconSearchData (td-icon-picker). */
 const EXPORTS = [
   'BREAKPOINTS', 'SHORT_MAX', 'TdActionButton', 'TdAlert', 'TdBaseElement', 'TdButton', 'TdCarousel', 'TdCheckMatrix',
   'TdCheckbox', 'TdChipInput', 'TdChoiceGroup', 'TdColorPicker', 'TdCopy', 'TdCropper', 'TdDateTime',
   'TdDatetimePicker', 'TdDatetimeRange', 'TdDiff', 'TdDrawer', 'TdDropdown', 'TdDropzone', 'TdEmptyState',
-  'TdFilterChips', 'TdFormElement', 'TdFormValidation', 'TdHint', 'TdHovercard', 'TdIconElement', 'TdInputField',
+  'TdFilterChips', 'TdFormElement', 'TdFormValidation', 'TdHint', 'TdHovercard', 'TdIconElement', 'TdIconPicker',
+  'TdInputField',
   'TdLightbox', 'TdLoading', 'TdLoadingSpinner', 'TdMaskedValue', 'TdMediaField', 'TdMediaGallery', 'TdMediaGrid',
   'TdMediaPicker', 'TdMenu', 'TdModal', 'TdModalStackManager', 'TdNumberInput', 'TdOtpInput', 'TdPagination',
   'TdPasswordMeter', 'TdProgress', 'TdRating', 'TdRepeater', 'TdScanInput', 'TdScrollTop', 'TdSlider', 'TdSortable',
   'TdSteps', 'TdTable', 'TdTabs', 'TdTimeline', 'TdToast', 'TdToggle', 'TdTooltip', 'TdTree', 'TdTreeSelect',
   'contrastRatio', 'debounce', 'fillIconSlots', 'formatFileSize', 'formatNumber', 'getAccessibleTextColor', 'hasIcon',
-  'isCoarsePointer', 'isShort', 'listIcons', 'matchesBelow', 'mqBelow', 'parseColorToRgb', 'registerIcons',
+  'isCoarsePointer', 'isShort', 'listIcons', 'matchesBelow', 'mqBelow', 'parseColorToRgb', 'registerIconSearchData',
+  'registerIcons',
   'relativeLuminance', 'slugify', 'tdIcon', 'tdTooltip', 'throttle', 'trackFormDirty',
 ];
 const NOT_FUNCTIONS = { BREAKPOINTS: 'object', SHORT_MAX: 'number', tdTooltip: 'object' };
@@ -34,7 +37,7 @@ async function cancelDialog() {
 }
 
 describe('v0.64.0 dist parity — index.js', () => {
-  it('the 80 captured exports; every function export keeps its name (keepNames); the 3 others keep their type', () => {
+  it('the 82 captured exports; every function export keeps its name (keepNames); the 3 others keep their type', () => {
     const keys = Object.keys(kit).sort();
     expect(keys).to.deep.equal(EXPORTS);
     for (const k of keys) {

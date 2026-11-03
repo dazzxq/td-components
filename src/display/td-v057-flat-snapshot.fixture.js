@@ -21,7 +21,9 @@ export async function SNAP_SETUP() {
     { key: 'name', label: 'Tên', sortable: true, card: 'primary', ellipsis: true, maxWidth: '12rem' },
     { key: 'price', label: 'Giá', align: 'right', render: (row) => `<b>${row.price}</b>` },
     { key: 'tools', label: 'Thao tác', actions: [
-      { id: 'edit', label: 'Sửa', icon: 'edit' },
+      // v0.94.0: `edit` became a real icon; this action keeps an unregistered name so it still takes the label fallback
+      // (the path `edit` took when FLAT_SNAPSHOT was captured) and the v0.54 string stays the golden, byte for byte.
+      { id: 'edit', label: 'Sửa', icon: 'td-unregistered-icon' },
       { id: 'copy', label: 'Nhân bản' },
       { id: 'del', label: 'Xoá', variant: 'danger', icon: 'trash', hidden: (r) => r.id === 2 },
     ] },

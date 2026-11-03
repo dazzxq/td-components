@@ -180,6 +180,16 @@ const CASES = [
     tag: 'td-color-picker', attrs: { label: 'Màu' },
     props: () => ({ value: '#112233', custom: false, eyedropper: false, presets: [{ value: '#ffffff', label: 'Trắng' }] }),
   },
+  // v0.94.0: td-icon-picker — value, allowClear and the two name lists, assigned before the upgrade
+  {
+    tag: 'td-icon-picker', attrs: { label: 'Icon' },
+    props: () => ({ value: 'settings', allowClear: false, suggestions: ['home', 'user'], icons: ['home', 'user', 'settings'] }),
+    check(el) {
+      expect(el.getAttribute('allow-clear')).to.equal('false');
+      expect(el.getValue()).to.equal('settings');
+      expect(el.querySelector('[data-icon="settings"], [data-td-icon="settings"]') !== null, 'trigger shows the icon').to.equal(true);
+    },
+  },
   {
     tag: 'td-dropdown', attrs: { label: 'Chọn' },
     props: () => ({ options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }], value: 'b', searchable: false,

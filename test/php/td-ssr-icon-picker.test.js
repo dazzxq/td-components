@@ -216,8 +216,11 @@ describe('php/td.php — td_icon_value / td_icon_picker / icon search data (v0.9
     assert.match(again.error, /already has search metadata/);
     assert.match(batch.error, /is a core icon/);
     assert.ok(!('site-b' in data.out), 'nothing of a refused batch is kept');
-    const many = Object.fromEntries(Array.from({ length: 2001 }, (_, i) => [`site-${i}`, ENTRY]));
-    assert.match(one('Td::registerIconSearchData', many).error, /at most 2000 entries/);
+    // built in PHP: 2001 entries as one -r argument exceed Linux's 128 KiB per-argument limit (spawn E2BIG on CI)
+    const [manyErr] = php(" $e = ['label' => 'A', 'keywords' => ['en' => ['a'], 'vi' => ['b']]]; $m = [];"
+      + " for ($i = 0; $i < 2001; $i++) { $m['site-' . $i] = $e; }"
+      + " try { TdComponents\\Td::registerIconSearchData($m); $r = null; } catch (\\InvalidArgumentException $x) { $r = $x->getMessage(); } echo json_encode([$r]);");
+    assert.match(manyErr, /at most 2000 entries/);
   });
 
   test('Td::icon() and td_icon_picker() never read icons-search.json (kit copy without it: no warning; iconSearchData warns)', () => {

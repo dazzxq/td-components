@@ -42,6 +42,9 @@ All notable changes to **td-components** are documented here.
   Dữ liệu tìm kiếm (`icons-search.js` ~26 KB raw, ~8 KB gzip) chỉ tải khi mở picker.
 - `box` trước đây cố ý **không** có (v0.56.0 không alias sang `product`); nay `box` là icon thật (khối lập phương), nên
   `hasIcon('box')` là `true`.
+- Mọi chỗ trước đây gọi một tên icon **chưa có** rồi rơi về chữ (vd. hành động `td-table` với `icon: 'edit'` hiện nút chữ
+  "Sửa") nay thấy icon thật: tên đó nằm trong 113 icon mới → nút đổi sang kiểu có icon (nhãn vẫn nằm trong nút). Site
+  muốn giữ nút chữ thì bỏ `icon` của hành động đó.
 - `press.js` `PRESS_TARGETS` thêm ô, nút xoá, ô lưới và nút "Thử lại" của icon picker (hình nhấn kit-wide).
 
 ### Internal

@@ -124,6 +124,17 @@ const FIXTURES = {
       await sendKeys({ type: '#ff0000' });
     },
   },
+  // v0.94.0: td-icon-picker — a cell clicked in the popup (appended to <body>) commits it: host `input` + `change` { value }
+  // (the popup's own search box events stop at the panel); value= / setValue() fire nothing (test below).
+  'td-icon-picker': {
+    html: '<td-icon-picker name="x" label="X" value="home" icons="home user settings"></td-icon-picker>',
+    act: async (el) => {
+      el.querySelector('.td-icon-picker__trigger').click();
+      const sel = '.td-icon-picker-panel__cell[data-icon="user"]';
+      await until(() => document.querySelector(sel));
+      document.querySelector(sel).click();
+    },
+  },
   'td-table': {
     html: '<td-table name="x" selectable row-key="id"></td-table>',
     setup: (el) => { el.columns = [{ key: 'n', label: 'N' }]; el.data = [{ id: 1, n: 'A' }, { id: 2, n: 'B' }]; },
@@ -220,6 +231,41 @@ describe('trackFormDirty contract — every form-associated td element (v0.44.0 
       const before = JSON.stringify([...new FormData(b.form)]);
       b.el.value = '#00ff00';
       b.el.setValue('#123456');
+      await frames(3);
+      expect(JSON.stringify([...new FormData(b.form)])).to.not.equal(before, 'the code did change FormData');
+      expect(tracker.isDirty()).to.equal(false);
+    } finally { tracker.destroy(); }
+  });
+
+  it('td-icon-picker: a cell picked → dirty, form reset → clean; value= / setValue() from code → NOT dirty', async () => {
+    const mount = () => {
+      const form = document.createElement('form');
+      form.className = 'v044-contract';
+      form.innerHTML = FIXTURES['td-icon-picker'].html;
+      document.body.appendChild(form);
+      return { form, el: /** @type {any} */ (form.firstElementChild) };
+    };
+    const a = mount();
+    await frames(3);
+    let tracker = trackFormDirty(a.form);
+    try {
+      await FIXTURES['td-icon-picker'].act(a.el);
+      expect(a.el.value).to.equal('user');
+      await until(() => tracker.isDirty(), 4000).catch(() => {});
+      expect(tracker.isDirty()).to.equal(true);
+      a.form.reset();
+      await until(() => !tracker.isDirty(), 4000).catch(() => {});
+      expect(a.el.value).to.equal('home', 'reset restores the value attribute');
+      expect(tracker.isDirty()).to.equal(false, 'reset → clean');
+    } finally { tracker.destroy(); }
+    // a fresh form: no user interaction yet, so a change from code must not count
+    const b = mount();
+    await frames(3);
+    tracker = trackFormDirty(b.form);
+    try {
+      const before = JSON.stringify([...new FormData(b.form)]);
+      b.el.value = 'settings';
+      b.el.setValue('user');
       await frames(3);
       expect(JSON.stringify([...new FormData(b.form)])).to.not.equal(before, 'the code did change FormData');
       expect(tracker.isDirty()).to.equal(false);
