@@ -216,15 +216,47 @@ TdLightbox.open(items, {
       id: 'cover',
       label: 'Đặt làm ảnh bìa',
       icon: 'star',                                 // tên trong registry icon
-      onClick: (ctx, button) => {
-        setCover(ctx.item.data.id);
-        button.toggleAttribute('data-on');          // tô vàng trạng thái bật
+      pressed: (ctx) => ctx.item.data.id === album.coverId, // 0.96.0: kit đặt aria-pressed theo từng ảnh
+      onClick: async (ctx) => {                     // trả promise → nút bận tới khi xong, rồi đọc lại `pressed`
+        await api.setCover(ctx.item.data.id);
+        album.coverId = ctx.item.data.id;
       },
       visible: (ctx) => ctx.item.type === 'image',  // false → ẩn ở slide này
     },
   ],
 });
 ```
+
+#### Nút bật/tắt (0.96.0)
+
+Có `pressed(ctx)` thì nút là **toggle do kit quản**: `aria-pressed="true"` (tô màu `--td-lb-pressed`) khi hàm trả **đúng**
+`true`, `"false"` trong mọi trường hợp khác (kể cả throw — một `console.warn` mỗi id mỗi phiên). `pressed` được đọc lại khi
+mở, mỗi lần đổi slide, khi `addToolbarButton`, khi gọi `lb.refreshToolbar()`, và sau khi `onClick` xong. `ctx` giống hệt
+`ctx` của `onClick` / `visible`; nút đang ẩn (`visible` → `false`) thì `pressed` không được gọi.
+
+- **Bận:** `onClick` trả promise (thenable) → nút bận (`aria-busy="true"` + `aria-disabled="true"`, mờ 0.5, con trỏ
+  `progress`, click bị nuốt) tới khi promise xong (thành công hay lỗi), rồi đọc lại `pressed` cho **slide hiện tại**.
+  Chuyển sang ảnh khác khi đang bận: `aria-pressed` cập nhật theo ảnh mới nhưng nút vẫn mờ tới khi lần lưu trước xong
+  (không tự mở khoá). Promise reject → `console.warn` (không unhandled rejection). Hợp đồng bận giống
+  [nút `.td-btn` bận](button.md#nút-td-btn-thường-setbuttonbusy--runwithbutton-0960), khác ở chỗ không có spinner.
+- `busy: false` → không bao giờ vào bận (promise vẫn được theo dõi để đọc lại `pressed`). `busy: true` trên nút không có
+  `pressed` → bận như trên.
+- `pressedIcon` → đổi icon khi đang bật. Kit **không** có sẵn icon "sao đặc": đăng ký icon của bạn bằng `registerIcons()`:
+
+```js
+import { registerIcons } from '@dazzxq/td-components/icons';
+
+registerIcons({
+  'star-filled': { paint: 'fill', nodes: [['path', { d: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z' }]] },
+});
+// spec: { id: 'star', label: 'Đánh dấu sao', icon: 'star', pressedIcon: 'star-filled', pressed: …, onClick: … }
+```
+
+- Trạng thái đổi từ ngoài (panel, nút khác): gọi `lb.refreshToolbar()`.
+- Khai báo `pressed` thì **bỏ** phần tự đặt `aria-pressed` / `data-on` trong `onClick` (kit ghi đè ở mỗi lần đọc lại).
+  Spec cũ không có `pressed` / `busy` / `pressedIcon` chạy y như trước (promise trả về bị bỏ qua).
+- Dưới 480px nút toggle trong menu "Thêm" là mục thường kèm gợi ý "Đang bật" / "Đang xử lý…" (nhãn `pressedOn` / `busy`);
+  mục bận bị vô hiệu.
 
 Thêm / bỏ nút khi đang mở:
 
@@ -413,6 +445,7 @@ Named export phụ: `defaultIsAllowedUrl(url)` — chính sách URL mặc địn
 | `close()` | Đóng |
 | `setPanel(panel)` | Đổi panel lúc đang mở: `false` \| `true` \| `(ctx) => Element \| null`. Bật lại → sheet bắt đầu đóng |
 | `refreshPanel()` | Chạy lại renderer panel hiện tại |
+| `refreshToolbar()` | Tính lại `visible` + `pressed` của nút toolbar riêng cho slide hiện tại (0.96.0). Không phát sự kiện |
 | `addToolbarButton(spec)` | Thêm nút (cùng `id` → **thay** nút cũ). Trả `remove()`; `remove` cũ không gỡ được nút thay thế |
 | `removeToolbarButton(id)` | Gỡ nút theo id |
 
@@ -482,6 +515,8 @@ ctx = { index, count, item, token, handle, itemEl, groupEl }
 | `loadError` | `Không tải được ảnh` | Chữ trong khối lỗi ảnh (0.24.0) |
 | `retry` | `Thử lại` | Nút thử lại trong khối lỗi (0.24.0); nút "Ảnh sau" của khối lỗi dùng `next` |
 | `thumb` | ``(n) => `Ảnh ${n}` `` | `aria-label` của thumbnail filmstrip (hàm; `n` bắt đầu từ 1; 0.24.0) |
+| `pressedOn` | `Đang bật` | Gợi ý của nút bật/tắt đang bật trong menu "Thêm" (0.96.0) |
+| `busy` | `Đang xử lý…` | Gợi ý của nút đang bận trong menu "Thêm" (0.96.0) |
 
 Chỉ khoá có trong bảng được nhận; giá trị sai kiểu bị bỏ qua (giữ mặc định; `counter` / `thumb` phải là hàm). Nhãn
 gán vào `aria-label` và `title` (nhãn của khối lỗi là chữ hiện trên nút), luôn bằng `textContent`.
@@ -666,11 +701,16 @@ TdLightbox.bind(document, { history: navHistory });
 | `iconNode` | `SVGElement` | SVG tin cậy do bạn dựng (được clone), dùng khi `icon` không có / không tồn tại |
 | `visible` | `(ctx) => boolean` | `false` hoặc throw → ẩn nút ở slide đó |
 | `pinned` | `boolean` | 0.36.0: `true` → vẫn ở toolbar khi < 480px (nút `pinned` **đầu tiên đang hiện**; còn lại vào menu "Thêm"). Dành cho nút bật/tắt panel |
+| `pressed` | `(ctx) => boolean` | 0.96.0: có hàm → nút toggle; kit đặt `aria-pressed="true"` khi trả **đúng** `true`, `"false"` ngược lại (kể cả throw). Đọc lại khi mở, đổi slide, `addToolbarButton`, `refreshToolbar()`, sau `onClick` |
+| `pressedIcon` | `string` | 0.96.0: tên icon registry thay `icon` khi đang bật; tên không tồn tại → giữ `icon` |
+| `busy` | `boolean` | 0.96.0: mặc định `true` nếu có `pressed`, ngược lại `false`. `onClick` trả thenable → nút bận (`aria-busy` + `aria-disabled`) tới khi settle |
 
 Spec thiếu `id`/`onClick` bị bỏ qua. Không có icon → nút hiện chữ `label` (`[data-text]`). Không nhận chuỗi SVG/HTML.
 Nút được chèn **trước** nút "Thêm" + nút đóng (nút đóng luôn cuối), mang `data-extra="{id}"` (và `data-overflow` khi
 dưới 480px nó vào menu "Thêm"), và bị gỡ khi đóng lightbox hoặc khi
-`open()` mới. Nút có `[data-on]` hoặc `[aria-pressed="true"]` được tô vàng — dùng cho nút bật/tắt.
+`open()` mới. Nút có `[data-on]` hoặc `[aria-pressed="true"]` được tô màu `--td-lb-pressed` (vàng). Nút có `pressed`
+thì `aria-pressed` là trạng thái **kit quản** (đừng tự đặt); nút không có `pressed` vẫn tự đặt `data-on` / `aria-pressed`
+được như trước. Xem [Nút bật/tắt](#nút-bậttắt-0960).
 
 ### Hook isForeignLayerOpen (nhường bàn phím)
 
@@ -713,6 +753,7 @@ Lightbox **luôn tối** (nền là ảnh, không theo theme sáng/tối của s
 | `--td-lb-backdrop` | `rgb(8 8 9 / 94%)` | Nền |
 | `--td-lb-panel-bg` | `var(--td-glass-clear-solid)` (`#141416`) | Nền panel / sheet (đặc) |
 | `--td-lb-fg` | `#fff` | Màu chữ/icon |
+| `--td-lb-pressed` | `#ffd60a` | Màu icon nút toolbar đang bật (`[aria-pressed="true"]` / `[data-on]`; 0.96.0) |
 | `--td-lb-drag` | (JS ghi qua CSSOM) | Khoảng vuốt xuống hiện tại — không tự đặt |
 | `--td-lb-nav-w` | `clamp(64px, 15%, 240px)` | Độ rộng dải bấm hai bên (% của cột ảnh; 0.24.0) |
 | `--td-lb-nav-bottom` | `56px` | Khoảng chừa dưới dải bấm (chú thích); có filmstrip: `8px` |
@@ -836,6 +877,9 @@ tử, được JS **di chuyển** giữa `.td-lightbox__nav`, toolbar và (0.36.
 - `prefers-reduced-motion`: tắt mọi transition (kể cả trượt khi chuyển ảnh); vuốt xuống vẫn đóng, chỉ không trượt.
   `prefers-contrast: more`: dải caption gần đặc. `forced-colors`: panel dùng `Canvas`, viền `CanvasText`; đĩa mũi tên
   `ButtonFace` / viền `ButtonText`; thumbnail đang xem viền `Highlight`.
+- Nút bật/tắt (0.96.0): `aria-pressed` đọc trạng thái; khi bận `aria-busy="true"` + `aria-disabled="true"` (vẫn focus được,
+  Enter / Space bị nuốt). Không live region riêng — thông báo kết quả (toast) là việc của site. `forced-colors`: nút đang bật
+  có viền `Highlight` (màu bị hệ thống thay).
 
 ### Cử chỉ (Pointer Events)
 
@@ -916,6 +960,9 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - **Nút trước / sau "biến mất" khỏi toolbar (0.24.0):** đúng thiết kế — chuột: hai bên ảnh; cảm ứng ≥ 480px / màn thấp:
   đĩa 48px hai bên; điện thoại < 480px: thanh đáy (0.36.0). Chỉ chuột + video cột quá hẹp mới đưa chúng về toolbar. Code
   cần biết vị trí hiện tại đọc `data-nav` trên overlay.
+- **Nút bật/tắt mờ mãi (0.96.0):** promise `onClick` không bao giờ xong → nút bận tới khi đóng lightbox. Luôn
+  resolve / reject (đặt timeout cho request).
+- **`aria-pressed` tự đặt bị ghi đè (0.96.0):** nút có `pressed` thì kit quản `aria-pressed`; bỏ phần tự đặt trong `onClick`.
 - **Thumbnail filmstrip là ảnh gốc to:** truyền `thumb` (bản nhỏ) cho mỗi item; nó qua cùng `isAllowedUrl` như `src`.
 
 ## Chuyển từ dwp lightbox

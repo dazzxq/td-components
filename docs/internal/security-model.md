@@ -634,12 +634,54 @@ bản sao item) **chỉ cho ảnh khác origin**, bọc `try/catch`, ném lỗi 
 `referrerPolicy = 'no-referrer'`. URL vẫn qua cổng SEC-01/02 trước mọi request. `Save-Data` tắt preload. Request cũ đang bay bị
 huỷ (gỡ handler, `src = ''`).
 
+Nút toolbar bật/tắt (v0.96.0): `pressed(ctx)` chỉ tính là bật khi trả đúng `=== true` (throw / giá trị khác → tắt, fail closed);
+`pressedIcon` chỉ là tên qua `icon()` (registry, `NAME_RE`), không HTML. Thenable nhận bằng `typeof r.then === 'function'` trong
+`try` (getter `then` ném lỗi không làm vỡ), chốt settle một lần (resolve + reject / gọi hai lần → chỉ lần đầu), callback trễ của
+nút đã thay / phiên đã đóng bị bỏ (so danh tính entry + `session.token`). `console.warn` chỉ thông điệp tĩnh + đối tượng lỗi, một
+lần mỗi id + loại mỗi phiên.
+
 ## 6s. `.td-card` / `td_card()` (v0.95.0)
 
 CSS-only, không JS. `href` qua `Td::safeUrl`, **`mailto:` / `tel:` bị từ chối** (thẻ tĩnh `div.td-card`, không link chết);
 `target` trong `Td::TARGETS`, `_blank` → `rel="noopener noreferrer"`. Ảnh **fail closed**: `src` và **từng** URL trong `srcset` qua
 `td__media_url`, một ứng viên hỏng → bỏ cả `srcset`; không `src` dùng được → ô placeholder (icon registry). Tiêu đề / meta / badge là
 chữ (`Td::e`). `attrs` qua allowlist; `role`, `tabindex`, `aria-label`, `aria-labelledby`, `data-td-*` là của kit và bị bỏ.
+
+## 6t. `td-page-actions` mirror + `td_page_actions()` (v0.96.0)
+
+- **Bản sao uỷ quyền, không `cloneNode`**: `safeClone` dựng lại nút mới — gốc chỉ `a` / `button` (`type="button"`);
+  attribute theo allowlist (`class`, `aria-label`, `aria-disabled`, `aria-hidden`, `title`; link thêm `target` / `rel` /
+  `download`, `_blank` luôn có `noopener`); `href` qua `safeButtonHref` (gốc khoá → không `href`). Bỏ `id`, `data-*`, ARIA
+  idref, `style`, `on*`; bỏ hẳn `script` / `style` / `template` / `iframe` / `object` / `embed` / `img` / form control /
+  media / `canvas`; SVG dựng lại theo allowlist của bộ icon (`SVG_TAGS` / `SVG_ATTRS`); HTML khác thành chữ; sâu ≤ 8.
+  → không trùng id, hook `data-*` của site không bắn hai lần, không `javascript:` qua bản sao.
+- Bấm bản sao = `click()` nút gốc (cùng đường người dùng bấm → không vượt kiểm quyền / confirm của site); gốc khoá kiểm
+  lúc click. `mousedown` trên bản sao bị chặn (không cướp focus).
+- Container mirror `aria-hidden="true"` + bản sao `tabindex="-1"`; menu mở từ bản sao trả focus về nút gốc khi đóng.
+  `mirror` chỉ nhận id (trong cùng root) hoặc `Element`; host / con / tổ tiên của host bị từ chối.
+- CSP: không attribute `style`; chỉ CSSOM `setProperty` cho khoá `--td-*` chép từ host / nút gốc.
+- Menu `data-td-menu`: `ctx` từ `data-td-menu-*` của nút gốc (khoá dành riêng của TdMenu bị loại); nhãn là chữ.
+- PHP `td_page_actions()`: nhãn `Td::e`; `href` qua `Td::safeUrl` (hỏng → `<button>` + warning); `target` trong
+  `Td::TARGETS`, `_blank` → `rel="noopener noreferrer"`; `attrs` qua allowlist, `data-td-*` của site bị bỏ; marker của kit
+  (`data-td-tone` ∈ {primary, danger}, `data-td-in-menu`, `data-td-menu`, `hidden`) do kit đặt qua tham số nội bộ của
+  `td__button`.
+## 6u. Busy helper `setButtonBusy` / `runWithButton` (v0.96.0, ADR 0043)
+
+Một listener `click` capture trên `document` (cài lần đầu có nút bận, không bao giờ gỡ, `WeakSet` theo document) chỉ **chặn**
+(`preventDefault` + `stopImmediatePropagation`) click có `.td-btn[aria-busy="true"]` trên `composedPath()`; không phát sinh
+hành động. Spinner / nhãn cho markup viết tay dựng bằng `createElement` / `createElementNS` (không `innerHTML`, không `style`).
+Snapshot link (`href`, `tabindex`, `role`, `aria-disabled`) trong `WeakMap`, trả lại **nguyên văn** chuỗi site đã đặt (không phải
+đầu vào mới, không nới whitelist; `<td-button>` vẫn qua `_linkHref()`). Không `instanceof` / `Function.name`. Bận không thay cho
+idempotency phía server (docs button).
+## 6v. UI ngoài mở chồng lớp chặn (v0.96.0, ADR 0042)
+
+`registerExternalOverlay(matcher)` (selector | Element | hàm) + attribute `data-td-external-overlay`, chỉ xét **con trực
+tiếp của `<body>`**. Matcher là input của developer (cùng mức tin như callback). Selector được kiểm trên một
+`DocumentFragment` trước khi lưu; sai / kiểu khác → `console.error` **cố định**, trả hàm no-op, không throw. Hàm ném lỗi →
+coi như không khớp, `console.error` cố định (không in `err` / chuỗi của site). Kit chỉ **bỏ** `inert` / bẫy Tab / bắt Escape /
+đóng-bằng-nền cho phần tử khớp đang hiện và nằm trên lớp chặn trên cùng; không ghi attribute / class / style lên nó, không
+`aria-hidden`, không `inert` ngược. Rủi ro còn lại: selector rộng làm nội dung phía sau modal thao tác được → đây là UX, server
+vẫn kiểm quyền (xem §7). Không đăng ký gì → đường cũ (fast path, observer không notify).
 
 ## 7. Trách nhiệm của site
 

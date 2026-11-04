@@ -4,6 +4,8 @@ import { TdToast } from '/src/feedback/td-toast.js';
 import '/src/feedback/td-alert.js';
 import '/src/feedback/td-scroll-top.js';
 import '/src/display/td-media-grid.js';
+import '/src/display/td-selection-bar.js'; // v0.96.0
+import { TdDrawer } from '/src/feedback/td-drawer.js'; // v0.96.0
 import { TdLightbox } from '/src/feedback/td-lightbox.js';
 import { fillIconSlots, tdIcon } from '/src/icons/td-icon.js';
 import '/src/form/td-otp-input.js';
@@ -223,6 +225,10 @@ CASES.push({ kind: 'matrix', v: 'check-matrix', state: 'override', pageOnly: tru
 // fill (--td-card-bg) and on its hover fill (--td-card-hover-bg); the placeholder icon ≥ 3.2 on the image tile
 // (--td-card-media-bg). The badge over the image keeps its own fill (badge gate).
 CASES.push({ kind: 'card', v: 'card', state: 'rest', pageOnly: true });
+// v0.96.0 opt-in glass surfaces (modal / drawer `surface: 'glass'`, selection-bar `surface="glass"`), computed colours: the 94 %
+// translucent fill is composited over BOTH the page colour and the opposite (worst-case) backdrop, light + dark; the title /
+// body text, the drawer close icon and the bar's action label ≥ 4.7 (icon ≥ 3.2) on the page colour, ≥ 4.5 (icon ≥ 3) on the worst backdrop.
+for (const v of ['modal', 'drawer', 'selection-bar']) CASES.push({ kind: 'glass', v, state: 'rest', pageOnly: true });
 // v0.49.0 td-choice-group + number stepper (content layer → page only), computed colours, light + dark: option text / hint /
 // unavailable text + note ≥ 4.7 on the button fill, also on the pressed fill; the selected ink ring ≥ 3 vs the page and vs
 // the button fill; a disabled option ≥ 2.2; the swatch selected ring ≥ 3 vs the page; the unavailable slash (two-tone: the
@@ -2344,6 +2350,57 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       el = face({ 'seg-idle': 'light', 'seg-selected': 'auto', 'seg-disabled': 'dark' }[c.v]);
       parts = { label: el.querySelector('.td-choice__text'), icon: el.querySelector('.td-choice__icon') };
     }
+  } else if (c.kind === 'glass') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const worst = theme === 'dark' ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)';
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    let surfaceEl;
+    let texts;
+    let cleanup = () => {};
+    if (c.v === 'modal') {
+      TdModal.closeAll();
+      TdModal.show({ title: 'Kính', body: '<p class="td-contrast-glass-body">Nội dung hộp thoại kính.</p>', surface: 'glass' });
+      await wait(450);
+      surfaceEl = document.querySelector('.td-modal[data-state="open"] .td-modal__dialog');
+      if (!surfaceEl.closest('.td-modal--glass')) throw new Error('glass: modal has no .td-modal--glass');
+      texts = [['title', surfaceEl.querySelector('.td-modal__title'), 4.7], ['body', surfaceEl.querySelector('.td-contrast-glass-body'), 4.7]];
+      cleanup = () => TdModal.closeAll();
+    } else if (c.v === 'drawer') {
+      const dh = TdDrawer.open({ title: 'Kính', surface: 'glass', bodyHtml: '<p class="td-contrast-glass-body">Nội dung ngăn kéo kính.</p>' });
+      await wait(450);
+      surfaceEl = document.querySelector('.td-drawer__panel');
+      if (!surfaceEl.closest('.td-drawer-root--glass')) throw new Error('glass: drawer has no .td-drawer-root--glass');
+      texts = [['title', surfaceEl.querySelector('.td-drawer__title'), 4.7], ['body', surfaceEl.querySelector('.td-contrast-glass-body'), 4.7],
+        ['close icon', surfaceEl.querySelector('.td-drawer__close-icon'), 3.2]];
+      cleanup = () => { dh.close('test'); };
+    } else {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = '<td-media-grid id="cg" label="Lưới" selection-group="cg"><div data-td-media-item data-id="a1"><button type="button" data-td-media-open aria-label="a 1"></button></div></td-media-grid>'
+        + '<td-selection-bar id="cb" group="cg" surface="glass" fold="count"><button type="button" data-td-action="tag" data-td-action-icon="tag">Gắn thẻ</button>'
+        + '<button type="button" data-td-action="delete" data-td-action-icon="trash" data-td-tone="danger">Xoá</button></td-selection-bar>';
+      stage.appendChild(wrap);
+      const bar = wrap.querySelector('#cb');
+      wrap.querySelector('#cg').select(['a1'], { emit: true });
+      for (let i = 0; i < 60 && (bar.hasAttribute('data-empty') || bar.count !== 1); i++) await wait(16);
+      await wait(250);
+      surfaceEl = bar.querySelector('.td-selection-bar__panel');
+      if (!bar.classList.contains('td-selection-bar--glass')) throw new Error('glass: bar has no .td-selection-bar--glass');
+      texts = [['count', bar.querySelector('.td-selection-bar__count'), 4.7], ['action label', bar.querySelector('.td-selection-bar__action:not(.td-selection-bar__action--danger) .td-selection-bar__label'), 4.7],
+        ['danger label', bar.querySelector('.td-selection-bar__action--danger .td-selection-bar__label'), 4.7]];
+      cleanup = () => wrap.remove();
+    }
+    for (const [n, el] of texts) if (!el) throw new Error(`glass ${c.v}: ${n} element missing`);
+    const fill = getComputedStyle(surfaceEl).backgroundColor;
+    const pairs = [];
+    for (const [bn, backdrop] of [['page', page], ['worst backdrop', worst]]) {
+      const bg = overRgb(fill, backdrop);
+      // worst backdrop = a black / white photo behind the 94 % fill: WCAG AA floor (4.5 text, 3 icon); on the page colour the kit's 4.7
+      for (const [n, el, min] of texts) pairs.push({ what: `${c.v} glass ${n} on ${bn}`, fg: getComputedStyle(el).color, bg, min: bn === 'page' ? min : (min === 4.7 ? 4.5 : 3) });
+    }
+    const b = surfaceEl.getBoundingClientRect();
+    const out = { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `glass:${c.v}:${c.state}`, pairs };
+    cleanup();
+    return out;
   } else if (c.kind === 'type-confirm') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     TdModal.closeAll();

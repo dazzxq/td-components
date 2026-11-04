@@ -1,0 +1,72 @@
+/*
+ * td-page-actions (src/display/td-page-actions.js) — v0.96.0, plan docs/internal/plans/v0.96.0-action-fold.md §6.
+ * The page's action buttons next to its title (h1), folded by the shared policy (src/utils/action-fold.js): the first 2
+ * secondaries + the primary last; the rest in a "…" menu; a narrow title row (< 480px) → primary + "…".
+ * No JS (`:not(:defined)`): every button shows and the row wraps — nothing is lost. With JS: one line, the host takes the
+ * room left in its parent row (its width never depends on its buttons — no fold / unfold oscillation).
+ * State: [data-td-overflow] on a folded button (in "…"); [data-td-measuring] = one measuring pass, never painted.
+ * No surface of its own (minimal surfaces): the buttons are the kit's solid buttons.
+ */
+@layer td.tokens {
+	:root {
+		--td-page-actions-gap: var(--td-space-xs);
+		--td-page-actions-justify: flex-end;
+	}
+}
+
+@layer td.component {
+	td-page-actions {
+		display: flex;
+		flex-wrap: wrap; /* no JS: every action visible, wrapped */
+		gap: var(--td-page-actions-gap);
+		align-items: center;
+		justify-content: var(--td-page-actions-justify);
+		box-sizing: border-box;
+	}
+
+	/* JS: one line, the rest of the title row (basis 0 → the width is the row's room, never the buttons' sum) */
+	.td-page-actions {
+		flex: 1 1 0%;
+		flex-wrap: nowrap;
+		min-inline-size: 0;
+	}
+
+	.td-page-actions > :is(button, a, td-button, td-action-button) {
+		flex: none;
+		white-space: nowrap;
+	}
+
+	.td-page-actions:not([data-td-measuring]) > [data-td-overflow] {
+		display: none;
+	}
+
+	.td-page-actions[data-td-measuring] > .td-page-actions__more[hidden] {
+		display: inline-flex;
+		visibility: hidden;
+	}
+
+	.td-btn.td-page-actions__more {
+		flex: none;
+		padding-inline: 0;
+		min-inline-size: 2.5rem;
+	}
+
+	/* the site's sticky-header container (mirror="id") gets proxies of the shown actions: same buttons, one line */
+	.td-page-actions__clone {
+		flex: none;
+		white-space: nowrap;
+	}
+
+	@media (pointer: coarse) {
+		.td-btn.td-page-actions__more,
+		.td-page-actions > .td-btn,
+		.td-page-actions > :is(td-button, td-action-button) > .td-btn,
+		.td-btn.td-page-actions__clone {
+			min-block-size: var(--td-touch-min);
+		}
+
+		.td-btn.td-page-actions__more {
+			min-inline-size: var(--td-touch-min);
+		}
+	}
+}

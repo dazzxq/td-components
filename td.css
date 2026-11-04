@@ -2139,14 +2139,15 @@
 		line-height: 0;
 	}
 
-	/* Loading: keep the size, hide the content, show the shared spinner. */
+	/* Loading: keep the size, fade the content out, show the shared spinner. v0.96.0 (ADR 0043): opacity, not
+	   visibility: hidden — the label stays in the accessibility tree (a busy button keeps its name); every child but
+	   the spinner (hand-written markup: <svg> / <i> / a bare-text label wrapped by button-busy.js). */
 	.td-btn[aria-busy="true"] {
 		cursor: progress;
 	}
 
-	.td-btn[aria-busy="true"] > .td-btn__label,
-	.td-btn[aria-busy="true"] > .td-btn__icon {
-		visibility: hidden;
+	.td-btn[aria-busy="true"] > :not(.td-btn__spinner) {
+		opacity: 0;
 	}
 
 	.td-btn__spinner {
@@ -4302,6 +4303,7 @@
 		--td-lb-backdrop: rgb(8 8 9 / 94%);
 		--td-lb-panel-bg: var(--td-glass-clear-solid); /* opaque (v0.20.0) */
 		--td-lb-fg: #fff;
+		--td-lb-pressed: #ffd60a; /* v0.96.0: a toggle toolbar button that is on (lightbox is always dark: one value) */
 		/* v0.24.0 side navigation: strip width (of the image column), disc, room kept free above the bottom (caption) */
 		--td-lb-nav-w: clamp(64px, 15%, 240px);
 		--td-lb-nav-bottom: 56px;
@@ -4832,7 +4834,24 @@
 
 	.td-lightbox__btn[aria-pressed="true"],
 	.td-lightbox__btn[data-on] {
-		color: #ffd60a;
+		color: var(--td-lb-pressed);
+	}
+
+	/* v0.96.0 busy toolbar button (aria-busy + aria-disabled, the button-busy contract; no spinner — the icon keeps showing
+	   on / off): dimmed, also while focused (focus stays on it); hover / press do not light it up */
+	.td-lightbox__btn[aria-disabled="true"] {
+		opacity: 0.5;
+	}
+
+	.td-lightbox__btn[aria-busy="true"] {
+		cursor: progress;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__btn[aria-disabled="true"]:hover {
+			background: transparent;
+			opacity: 0.5;
+		}
 	}
 
 	.td-lightbox__icon {
@@ -5395,7 +5414,7 @@
 		-webkit-tap-highlight-color: transparent;
 	}
 
-	.td-lightbox__btn:is(:active, [data-td-pressed]):not(:disabled) {
+	.td-lightbox__btn:is(:active, [data-td-pressed]):not(:disabled, [aria-disabled="true"]) {
 		background-color: var(--td-lb-btn-pressed);
 		opacity: 1;
 		transition-duration: 0s;
@@ -5431,6 +5450,11 @@
 		.td-lightbox__btn:is(:active, [data-td-pressed]),
 		.td-lightbox__error-btn:is(:active, [data-td-pressed]),
 		.td-lightbox__thumb:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+
+		/* v0.96.0: "on" must not rely on the (overridden) colour */
+		.td-lightbox__btn[aria-pressed="true"] {
 			outline: 2px solid Highlight;
 		}
 	}
@@ -6070,7 +6094,8 @@
 /*
  * td-modal + td-modal-stack (src/feedback/td-modal.js). Adapted from the 135 kit (td-ui.css .td-modal).
  * v0.20.0 minimal surfaces: OPAQUE dialog (--td-glass-solid, glass.css opaque group) + thin border + --td-glass-shadow-lg,
- * no blur, over a plain scrim (never blurred).
+ * no blur, over a plain scrim (never blurred). v0.96.0: `.td-modal--glass` (opt-in) = frosted dialog, --td-modal-glass-bg +
+ * --td-modal-glass-blur.
  * Layer: var(--td-z-modal) for every dialog; later dialogs stack by DOM order.
  * State (set by JS, never visual classes):
  *   root [hidden] · [data-state="opening|open|closing"] · [data-covered] (a dialog is stacked above)
@@ -6117,6 +6142,13 @@
 		--td-modal-scrim-ease: ease-out;
 		--td-modal-sheet-ease: cubic-bezier(0.32, 0.72, 0, 1);    /* phone sheet slide-up (no overshoot: no gap) */
 		--td-modal-enter-from: scale(0.95);                       /* `none` → fade-only */
+		--td-modal-glass-blur: var(--td-glass-blur);             /* v0.96.0 glass opt-in (blur) */
+	}
+
+	/* v0.96.0 opt-in frosted surface (show({ surface: 'glass' }) → .td-modal--glass); solid stays the default.
+	   Theme scopes re-resolve the fill (ADR 0020). */
+	:root, [data-td-theme] {
+		--td-modal-glass-bg: var(--td-glass-bg-strong);
 	}
 }
 
@@ -6185,6 +6217,15 @@
 
 	.td-modal[data-state="closing"] .td-modal__backdrop {
 		transition: opacity var(--td-modal-exit-fade-dur) var(--td-modal-exit-ease);
+	}
+
+	/* v0.96.0 opt-in frosted surface: 0,3,0 beats glass.css's opaque group (0,2,0) and --strong (0,1,0). The fallbacks
+	   (no backdrop-filter, reduced transparency, data-td-glass="off", more contrast, forced colours) still win through
+	   --_td-glass-fill / --_td-glass-filter (glass.css, !important on the private tokens). */
+	.td-modal--glass .td-modal__dialog.td-glass-surface {
+		background-color: var(--_td-glass-fill, var(--td-modal-glass-bg));
+		-webkit-backdrop-filter: var(--_td-glass-filter, var(--td-modal-glass-blur));
+		backdrop-filter: var(--_td-glass-filter, var(--td-modal-glass-blur));
 	}
 
 	/* Dialog: the surface recipe (glass.css) gives fill/border/shadow; this block owns geometry + motion (fade + a
@@ -13248,6 +13289,15 @@
 		--td-selection-bar-position: sticky;               /* sticky | fixed */
 		--td-selection-bar-z: var(--td-z-sticky);           /* below menu / modal / toast */
 		--td-selection-bar-enter: 150ms;                    /* fade in */
+		/* v0.96.0 surface="glass" (ADR 0044): radius + transparent gap under the panel (12px, 16px from 720px) */
+		--td-selection-bar-glass-radius: var(--td-glass-radius);
+		--td-selection-bar-glass-gap: 12px;
+	}
+
+	@media (min-width: 720px) {
+		:root {
+			--td-selection-bar-glass-gap: 16px;
+		}
 	}
 
 	:root, [data-td-theme] {
@@ -13264,6 +13314,12 @@
 		   its own: a generated palette (src/theme/palette.js) already writes that token, so this one follows it too
 		   (src/theme/tokens.test.js ISSUE-1: a dark-only component colour would be missed by a generated palette) */
 		--td-selection-bar-danger-pressed-bg: var(--td-action-btn-danger-pressed-bg);
+		/* v0.96.0 surface="glass": the denser 94 % glass of the small popups under the bar's text */
+		--td-selection-bar-glass-bg: var(--td-glass-bg-strong);
+		/* v0.96.0 surface="glass": ghost action label on the translucent panel = the stronger ghost step (darker in
+		   light, lighter in dark) so it keeps AA over the worst backdrop (accent gave 4.41:1 in dark,
+		   test/tokens/contrast-page.js glass:selection-bar) */
+		--td-selection-bar-glass-action-fg: var(--td-btn-ghost-hover-fg);
 	}
 }
 
@@ -13347,13 +13403,14 @@
 		display: none;
 	}
 
-	/* compact: icon-only buttons (the label stays in the a11y tree, like .td-sr-only); a button without icon keeps text */
-	.td-selection-bar[data-compact] .td-selection-bar__action--icon {
+	/* compact: icon-only buttons (the label stays in the a11y tree, like .td-sr-only); a button without icon keeps text.
+	   v0.96.0 (owner Q2): the primary keeps its label — :where() adds no specificity (v0.95.0 rules unchanged). */
+	.td-selection-bar[data-compact] .td-selection-bar__action--icon:where(:not(.td-selection-bar__action--primary)) {
 		padding-inline: 0;
 		min-inline-size: 2.5rem;
 	}
 
-	.td-selection-bar[data-compact] .td-selection-bar__action--icon .td-selection-bar__label {
+	.td-selection-bar[data-compact] .td-selection-bar__action--icon:where(:not(.td-selection-bar__action--primary)) .td-selection-bar__label {
 		position: absolute;
 		inline-size: 1px;
 		block-size: 1px;
@@ -13402,9 +13459,42 @@
 	@media (pointer: coarse) {
 		.td-btn.td-selection-bar__clear,
 		.td-btn.td-selection-bar__more,
-		.td-selection-bar[data-compact] .td-selection-bar__action--icon {
+		.td-selection-bar[data-compact] .td-selection-bar__action--icon:where(:not(.td-selection-bar__action--primary)) {
 			min-inline-size: var(--td-touch-min);
 		}
+	}
+
+	/* v0.96.0 primary tone: the solid accent button of button.css (.td-btn--primary); never folded, never shrinks */
+	.td-selection-bar__action--primary {
+		flex: none;
+	}
+
+	/* v0.96.0 surface="glass" (ADR 0044, opt-in exception to ADR 0011 rule 2). The panel carries .td-glass-surface
+	   (+ --strong / --lg) so every glass.css fallback (no backdrop-filter, reduced transparency, data-td-glass="off",
+	   increased contrast, forced colours) applies through the private --_td-glass-* values; this rule (0,3,0) only
+	   swaps the public defaults for the bar's own tokens. The host keeps the full width of its containing block (no
+	   inset, no max-width); a TRANSPARENT bottom padding on the host makes the gap (measured into
+	   --td-selection-bar-offset) and lets clicks through to the content under it. */
+	.td-selection-bar--glass {
+		pointer-events: none;
+	}
+
+	.td-selection-bar--glass:not([data-empty]) {
+		padding-block-end: max(var(--td-selection-bar-glass-gap), env(safe-area-inset-bottom, 0px));
+	}
+
+	.td-selection-bar--glass .td-btn--ghost:not(.td-btn--custom):not(.td-selection-bar__action--danger) {
+		--td-btn-fg-v: var(--td-selection-bar-glass-action-fg);
+	}
+
+	.td-selection-bar--glass .td-selection-bar__panel.td-glass-surface {
+		padding-block-end: var(--td-selection-bar-pad-block);
+		color: var(--_td-glass-fg, var(--td-selection-bar-fg));
+		background-color: var(--_td-glass-fill, var(--td-selection-bar-glass-bg));
+		border-color: var(--_td-glass-line, var(--td-selection-bar-border));
+		border-radius: var(--td-selection-bar-glass-radius);
+		box-shadow: var(--_td-glass-lift, var(--td-glass-shadow-lg));
+		pointer-events: auto;
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -13668,7 +13758,8 @@
 /* ---- src/styles/components/drawer.css ---- */
 /*
  * td-drawer (src/feedback/td-drawer.js, v0.27.0). Minimal surfaces: an OPAQUE panel (--td-glass-solid, glass.css opaque
- * group) + thin border + --td-glass-shadow-lg, no blur, over the plain modal scrim (never blurred).
+ * group) + thin border + --td-glass-shadow-lg, no blur, over the plain modal scrim (never blurred). v0.96.0:
+ * `.td-drawer-root--glass` (opt-in, surface="glass") = frosted panel, --td-drawer-glass-bg + --td-drawer-glass-blur.
  * Layer: var(--td-z-modal) like a modal (one band: later layers stack by DOM order; v0.21.1 promotion over a lightbox).
  * State (set by JS, never visual classes): root [data-state="opening|open|closing"] · footer [hidden].
  * The root is a <body> child: a site sizes it with `--td-drawer-w` (on :root, on the host — copied to the root on open —
@@ -13690,6 +13781,13 @@
 		--td-drawer-exit-dur: 200ms;
 		--td-drawer-ease: cubic-bezier(0.32, 0.72, 0, 1);
 		--td-drawer-exit-ease: cubic-bezier(0.4, 0, 0.2, 1);
+		--td-drawer-glass-blur: var(--td-glass-blur);             /* v0.96.0 glass opt-in (blur) */
+	}
+
+	/* v0.96.0 opt-in frosted panel (<td-drawer surface="glass"> → .td-drawer-root--glass); solid stays the default.
+	   Theme scopes re-resolve the fill (ADR 0020). */
+	:root, [data-td-theme] {
+		--td-drawer-glass-bg: var(--td-glass-bg-strong);
 	}
 }
 
@@ -13755,6 +13853,14 @@
 
 	.td-drawer-root[data-state="closing"] .td-drawer__backdrop {
 		transition: opacity var(--td-drawer-exit-dur) var(--td-drawer-exit-ease);
+	}
+
+	/* v0.96.0 opt-in frosted panel: 0,3,0 beats glass.css's opaque group (0,2,0); the glass.css fallbacks still win
+	   through --_td-glass-fill / --_td-glass-filter. */
+	.td-drawer-root--glass .td-drawer__panel.td-glass-surface {
+		background-color: var(--_td-glass-fill, var(--td-drawer-glass-bg));
+		-webkit-backdrop-filter: var(--_td-glass-filter, var(--td-drawer-glass-blur));
+		backdrop-filter: var(--_td-glass-filter, var(--td-drawer-glass-blur));
 	}
 
 	.td-drawer__panel {
@@ -25349,6 +25455,80 @@
 
 		.td-rich-text__editor a {
 			color: LinkText;
+		}
+	}
+}
+
+/* ---- src/styles/components/page-actions.css ---- */
+/*
+ * td-page-actions (src/display/td-page-actions.js) — v0.96.0, plan docs/internal/plans/v0.96.0-action-fold.md §6.
+ * The page's action buttons next to its title (h1), folded by the shared policy (src/utils/action-fold.js): the first 2
+ * secondaries + the primary last; the rest in a "…" menu; a narrow title row (< 480px) → primary + "…".
+ * No JS (`:not(:defined)`): every button shows and the row wraps — nothing is lost. With JS: one line, the host takes the
+ * room left in its parent row (its width never depends on its buttons — no fold / unfold oscillation).
+ * State: [data-td-overflow] on a folded button (in "…"); [data-td-measuring] = one measuring pass, never painted.
+ * No surface of its own (minimal surfaces): the buttons are the kit's solid buttons.
+ */
+@layer td.tokens {
+	:root {
+		--td-page-actions-gap: var(--td-space-xs);
+		--td-page-actions-justify: flex-end;
+	}
+}
+
+@layer td.component {
+	td-page-actions {
+		display: flex;
+		flex-wrap: wrap; /* no JS: every action visible, wrapped */
+		gap: var(--td-page-actions-gap);
+		align-items: center;
+		justify-content: var(--td-page-actions-justify);
+		box-sizing: border-box;
+	}
+
+	/* JS: one line, the rest of the title row (basis 0 → the width is the row's room, never the buttons' sum) */
+	.td-page-actions {
+		flex: 1 1 0%;
+		flex-wrap: nowrap;
+		min-inline-size: 0;
+	}
+
+	.td-page-actions > :is(button, a, td-button, td-action-button) {
+		flex: none;
+		white-space: nowrap;
+	}
+
+	.td-page-actions:not([data-td-measuring]) > [data-td-overflow] {
+		display: none;
+	}
+
+	.td-page-actions[data-td-measuring] > .td-page-actions__more[hidden] {
+		display: inline-flex;
+		visibility: hidden;
+	}
+
+	.td-btn.td-page-actions__more {
+		flex: none;
+		padding-inline: 0;
+		min-inline-size: 2.5rem;
+	}
+
+	/* the site's sticky-header container (mirror="id") gets proxies of the shown actions: same buttons, one line */
+	.td-page-actions__clone {
+		flex: none;
+		white-space: nowrap;
+	}
+
+	@media (pointer: coarse) {
+		.td-btn.td-page-actions__more,
+		.td-page-actions > .td-btn,
+		.td-page-actions > :is(td-button, td-action-button) > .td-btn,
+		.td-btn.td-page-actions__clone {
+			min-block-size: var(--td-touch-min);
+		}
+
+		.td-btn.td-page-actions__more {
+			min-inline-size: var(--td-touch-min);
 		}
 	}
 }

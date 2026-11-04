@@ -46,6 +46,17 @@ const MAX_ATTR_LENGTH = 8000;
 const MAX_SVG_STRING = 32000;
 const VIEWBOX = /^-?\d+(\.\d+)?( -?\d+(\.\d+)?){3}$/;
 
+/**
+ * v0.96.0: the same SVG allowlist, read-only, for td-page-actions' mirror clones (src/display/td-page-actions.js).
+ * A frozen copy: code outside the kit cannot widen the allowlist through it.
+ * @internal not part of the public API
+ */
+export const SVG_TAGS = Object.freeze({ has: (t) => TAGS.has(t) });
+/** @internal */
+export const SVG_ATTRS = Object.freeze({ ...ATTRS });
+/** @internal */
+export const SVG_VIEWBOX = VIEWBOX;
+
 /** @type {Map<string, {viewBox: string, paint: 'stroke'|'fill', nodes: Array<[string, Record<string,string>]>}>} */
 const registry = new Map();
 

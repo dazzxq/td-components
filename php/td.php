@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.95.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.95.0', __DIR__ . '/public/assets/vendor/td-components/0.95.0');
+ *   require_once '/path/to/vendor/td-components/0.96.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.96.0', __DIR__ . '/public/assets/vendor/td-components/0.96.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -486,6 +486,8 @@ namespace TdComponents {
 
         /** v0.49.0: td_choice_group (always the element <td-choice-group> + native radios — works without JS). */
         public const SSR_CHOICE = 'choice-group@1';
+        /** v0.96.0: td_page_actions (the <td-page-actions> host; the JS reads it only to know the order is already right). */
+        public const SSR_PAGE_ACTIONS = 'page-actions@1';
         /** v0.49.0: default texts of td_choice_group = TdChoiceGroup.messages (state: the component re-applies its own). */
         public const CHOICE_LABELS = ['unavailable' => 'Hết hàng'];
         /**
@@ -505,7 +507,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.95.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.96.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool, assets?: string} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -1443,9 +1445,14 @@ namespace {
      * @internal td_button / td_link. $bare (td_link `bare => true` only, v0.18.0 F7): a plain `<a>` — no `td-btn…`
      * classes and no button children (icon / label span / spinner), only the site's `class`; same URL allowlist,
      * target, rel, download, disabled (→ no href) as the button link. variant/size/full_width/icon/loading are ignored.
+     * v0.96.0 $kitMarkers (internal, td_page_actions only — never from a site): `data-td-tone` (primary|danger),
+     * `data-td-in-menu` (bool), `data-td-menu` (string), `hidden` (bool) on the DIRECT child of <td-page-actions>: the
+     * <td-button> host in element mode (the control keeps the exact button@1 structure, so hydrate still adopts it),
+     * the <button> / <a> itself otherwise. They win over any `attrs` key of the same name.
      */
-    function td__button(string $label, array $o, bool $bare): string
+    function td__button(string $label, array $o, bool $bare, array $kitMarkers = []): string
     {
+        $markers = td__kit_markers($kitMarkers);
         $variant = in_array($o['variant'] ?? null, Td::VARIANTS, true) ? $o['variant'] : 'secondary';
         $size = ($o['size'] ?? 'md') === 'xs' ? 'sm' : (in_array($o['size'] ?? null, Td::SIZES, true) ? $o['size'] : 'md');
         $isLink = array_key_exists('href', $o) && $o['href'] !== null;
@@ -1554,6 +1561,9 @@ namespace {
                 $taken[$l] = true;
             }
         }
+        if (!$element) {
+            $html .= Td::ownAttrs($markers, $taken);
+        }
         $html .= Td::attrs($extra, $taken) . '>';
         if ($bare) {
             return $html . Td::e($label) . '</a>';
@@ -1610,7 +1620,31 @@ namespace {
             'aria-controls' => $lift['aria-controls'] ?? null,
         ];
         $hostTaken = [];
-        return '<td-button' . Td::ownAttrs($hostAttrs, $hostTaken) . '>' . $html . '</td-button>';
+        return '<td-button' . Td::ownAttrs($markers + $hostAttrs, $hostTaken) . '>' . $html . '</td-button>';
+    }
+
+    /**
+     * @internal v0.96.0: the kit markers td__button accepts (fixed keys, fixed values; anything else dropped).
+     * @return array<string,string|bool>
+     */
+    function td__kit_markers(array $m): array
+    {
+        $out = [];
+        $tone = $m['data-td-tone'] ?? null;
+        if ($tone === 'primary' || $tone === 'danger') {
+            $out['data-td-tone'] = $tone;
+        }
+        if (($m['data-td-in-menu'] ?? false) === true) {
+            $out['data-td-in-menu'] = true;
+        }
+        $menu = $m['data-td-menu'] ?? null;
+        if (is_string($menu) && trim($menu) !== '') {
+            $out['data-td-menu'] = trim($menu);
+        }
+        if (($m['hidden'] ?? false) === true) {
+            $out['hidden'] = true;
+        }
+        return $out;
     }
 
     /**
@@ -1654,6 +1688,106 @@ namespace {
         $o['href'] = $href;
         $o['variant'] = in_array($o['variant'] ?? null, Td::VARIANTS, true) ? $o['variant'] : 'ghost';
         return td__button($label, $o, !empty($o['bare']));
+    }
+
+    /**
+     * v0.96.0 — the page's action buttons next to its title: `<td-page-actions data-td-ssr="page-actions@1">` + one
+     * td_button() / td_link() per action (plan v0.96.0-action-fold §6.7). Works without JS (every button shown, the row
+     * wraps); `@dazzxq/td-components/page-actions` folds them (2 secondaries + the primary last; the rest in "…").
+     * $actions: list of arrays (a `null` entry is skipped — handy for permission checks) with `label` (required; empty →
+     * action dropped + E_USER_WARNING), `href` (through Td::safeUrl; rejected → printed as a button + E_USER_WARNING),
+     * `target` (`_blank` adds rel="noopener noreferrer"), `primary` (bool; more than one → E_USER_WARNING, only the
+     * first stays primary), `tone` (danger|primary), `icon`, `aria_label`, `in_menu`, `disabled`, `hidden` (bool),
+     * `menu` (TdMenu name → data-td-menu), `type` (button|submit), `attrs` (Td::attrs allowlist; `data-td-*` dropped —
+     * the kit namespace). $o: `label` (group name), `mirror` (id of the sticky-header container), `attrs` (host;
+     * `data-td-*` dropped). The primary is printed last. Element mode follows td_button (`element` / ssr_elements).
+     */
+    function td_page_actions(array $actions, array $o = []): string
+    {
+        $noKit = static function ($attrs): array {
+            $out = [];
+            foreach (is_array($attrs) ? $attrs : [] as $k => $v) {
+                if (strncmp(strtolower((string) $k), 'data-td-', 8) !== 0) {
+                    $out[$k] = $v;
+                }
+            }
+            return $out;
+        };
+        $rows = [];
+        $primary = null;
+        $warnedPrimary = false;
+        foreach (array_values($actions) as $i => $a) {
+            if ($a === null) {
+                continue;
+            }
+            if (!is_array($a)) {
+                trigger_error('td_page_actions: action #' . $i . ' is not an array — skipped', E_USER_WARNING);
+                continue;
+            }
+            $label = isset($a['label']) && is_scalar($a['label']) ? trim((string) $a['label']) : '';
+            if ($label === '') {
+                trigger_error('td_page_actions: action #' . $i . ' has no label — skipped', E_USER_WARNING);
+                continue;
+            }
+            $tone = in_array($a['tone'] ?? null, ['primary', 'danger'], true) ? $a['tone'] : null;
+            $isPrimary = !empty($a['primary']) || $tone === 'primary';
+            if ($isPrimary && $primary !== null) {
+                if (!$warnedPrimary) {
+                    $warnedPrimary = true;
+                    trigger_error('td_page_actions: more than one primary action — only the first is kept as primary', E_USER_WARNING);
+                }
+                $isPrimary = false;
+                $tone = null;
+            }
+            $b = [
+                'variant' => $isPrimary ? 'primary' : ($tone === 'danger' ? 'danger' : 'secondary'),
+                'disabled' => !empty($a['disabled']),
+                'type' => ($a['type'] ?? null) === 'submit' ? 'submit' : 'button',
+                'attrs' => $noKit($a['attrs'] ?? null),
+            ];
+            foreach (['icon', 'aria_label', 'element'] as $k) {
+                if (array_key_exists($k, $a)) {
+                    $b[$k] = $a[$k];
+                }
+            }
+            if (!array_key_exists('element', $b) && array_key_exists('element', $o)) {
+                $b['element'] = $o['element'];
+            }
+            if (isset($a['href']) && is_scalar($a['href'])) {
+                if (Td::safeUrl((string) $a['href']) === '') {
+                    trigger_error('td_page_actions: action #' . $i . ' has an unsafe or invalid href — printed as a button', E_USER_WARNING);
+                } else {
+                    $b['href'] = (string) $a['href'];
+                    if (in_array($a['target'] ?? null, Td::TARGETS, true)) {
+                        $b['target'] = $a['target'];
+                    }
+                }
+            }
+            $markers = [
+                'data-td-tone' => $isPrimary ? 'primary' : $tone,
+                'data-td-in-menu' => !empty($a['in_menu']),
+                'data-td-menu' => isset($a['menu']) && is_string($a['menu']) ? $a['menu'] : null,
+                'hidden' => !empty($a['hidden']),
+            ];
+            $html = td__button($label, $b, false, $markers);
+            if ($isPrimary) {
+                $primary = $html;
+            } else {
+                $rows[] = $html;
+            }
+        }
+        if ($primary !== null) {
+            $rows[] = $primary; // last: no reorder (no jump) when the component upgrades
+        }
+        $mirror = isset($o['mirror']) && is_scalar($o['mirror']) && trim((string) $o['mirror']) !== '' ? trim((string) $o['mirror']) : null;
+        $groupLabel = isset($o['label']) && is_scalar($o['label']) && trim((string) $o['label']) !== '' ? trim((string) $o['label']) : null;
+        $taken = [];
+        $host = Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_PAGE_ACTIONS, 'label' => $groupLabel, 'mirror' => $mirror,
+            'role' => 'group', 'aria-label' => $groupLabel, // = what the component sets (named without JS too)
+        ], $taken)
+            . Td::attrs($noKit($o['attrs'] ?? null), $taken);
+        return '<td-page-actions' . $host . '>' . implode('', $rows) . '</td-page-actions>';
     }
 
     /**

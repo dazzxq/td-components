@@ -480,3 +480,11 @@ test('v0.88.0: npm pack ships the rich-text engine, policy JSON + PHP helper (no
     'src/form/rich-text/rich-text-policy.json', 'php/td-rich-text-policy.php', 'src/styles/components/rich-text.css']) assert.ok(paths.includes(f), f);
   assert.ok(!paths.some((p) => /^test\/|td-rich-text\.(stories|browser-test)\.js$|rich-text-policy\.test\.js$/.test(p)), 'tests / fixtures not shipped');
 });
+
+test('v0.96.0: ./button-busy export (pure module: NOT in sideEffects), setButtonBusy / runWithButton in the root barrel', async () => {
+  assert.equal(pkg.exports['./button-busy'], './src/form/button-busy.js');
+  assert.ok(!pkg.sideEffects.includes('./src/form/button-busy.js'), 'no customElements.define → no side effect');
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ setButtonBusy, runWithButton \} from '\.\/src\/form\/button-busy\.js';/);
+  assert.doesNotMatch(src, /syncButtonState/, 'the internal writer is not exported');
+});

@@ -388,6 +388,7 @@
     "--td-lb-nav-w": "clamp(64px, 15%, 240px)",
     "--td-lb-panel-bg": "rgb(20, 20, 22)",
     "--td-lb-panel-w": "22rem",
+    "--td-lb-pressed": "rgb(255, 214, 10)",
     "--td-lb-rail-btn": "",
     "--td-lb-rail-h": "",
     "--td-lb-rail-reserve": "",
@@ -1142,6 +1143,7 @@
     "--td-lb-nav-w": "clamp(64px, 15%, 240px)",
     "--td-lb-panel-bg": "rgb(20, 20, 22)",
     "--td-lb-panel-w": "22rem",
+    "--td-lb-pressed": "rgb(255, 214, 10)",
     "--td-lb-rail-btn": "",
     "--td-lb-rail-h": "",
     "--td-lb-rail-reserve": "",
@@ -1551,6 +1553,12 @@
     "--td-selection-bar-pad-block": { "light": "0.5rem", "dark": "0.5rem", "why": "v0.95.0 td-selection-bar: block padding (= --td-space-xs)" },
     "--td-selection-bar-pad-inline": { "light": "0.75rem", "dark": "0.75rem", "why": "v0.95.0 td-selection-bar: inline padding (= --td-space-sm)" },
     "--td-selection-bar-position": { "light": "sticky", "dark": "sticky", "why": "v0.95.0 td-selection-bar: sticky | fixed" },
+    "--td-selection-bar-glass-bg": { "light": "rgba(255, 255, 255, 0.94)", "dark": "rgba(28, 28, 30, 0.94)", "why": "v0.96.0 td-selection-bar surface=glass: panel fill (= --td-glass-bg-strong; ADR 0044)" },
+    "--td-selection-bar-glass-action-fg": { "light": "rgb(30, 81, 193)", "dark": "rgb(129, 175, 250)", "why": "v0.96.0 td-selection-bar surface=glass: ghost action label (= --td-btn-ghost-hover-fg, keeps AA on the worst backdrop)" },
+    "--td-selection-bar-glass-gap": { "light": "16px", "dark": "16px", "why": "v0.96.0 td-selection-bar surface=glass: transparent gap under the panel (12px, 16px from 720px — golden runs wide)" },
+    "--td-selection-bar-glass-radius": { "light": "20px", "dark": "20px", "why": "v0.96.0 td-selection-bar surface=glass: panel radius (= --td-glass-radius)" },
+    "--td-page-actions-gap": { "light": "0.5rem", "dark": "0.5rem", "why": "v0.96.0 td-page-actions: gap between actions (= --td-space-xs)" },
+    "--td-page-actions-justify": { "light": "flex-end", "dark": "flex-end", "why": "v0.96.0 td-page-actions: inline alignment of the actions" },
     "--td-selection-bar-radius": { "light": "0", "dark": "0", "why": "v0.95.0 td-selection-bar: corner radius (0: a strip across its containing block)" },
     "--td-selection-bar-shadow": { "light": "rgba(0, 0, 0, 0.06) 0px 2px 6px 0px, rgba(0, 0, 0, 0.12) 0px 8px 24px 0px", "dark": "rgba(0, 0, 0, 0.24) 0px 2px 6px 0px, rgba(0, 0, 0, 0.4) 0px 8px 24px 0px", "why": "v0.95.0 td-selection-bar: bar shadow (= --td-glass-shadow)" },
     "--td-selection-bar-z": { "light": "200", "dark": "200", "why": "v0.95.0 td-selection-bar: stacking (= --td-z-sticky, below menu / modal / toast)" },
@@ -2234,7 +2242,11 @@
     "--td-badge-warning-glass-fg": {"light": "rgb(124, 45, 18)", "dark": "rgb(255, 237, 213)", "why": "v0.76.0 td-badge --glass (opt-in): --td-badge-warning-glass-fg"},
     "--td-choice-tile-icon": {"light": "1.75rem", "dark": "1.75rem", "why": "v0.87.0 td-choice-group variant=tiles: icon size"},
     "--td-choice-tile-min": {"light": "5.5rem", "dark": "5.5rem", "why": "v0.87.0 td-choice-group variant=tiles: minimum tile edge"},
-    "--td-tabs-tab-px": {"light": "12px", "dark": "12px", "why": "v0.92.0 td-tabs: inline padding of a tab (both sizes, both layouts; = the previous fixed 12px)"}
+    "--td-tabs-tab-px": {"light": "12px", "dark": "12px", "why": "v0.92.0 td-tabs: inline padding of a tab (both sizes, both layouts; = the previous fixed 12px)"},
+    "--td-modal-glass-bg": {"light": "rgba(255, 255, 255, 0.94)", "dark": "rgba(28, 28, 30, 0.94)", "why": "v0.96.0 td-modal surface=\"glass\" (opt-in): frosted dialog fill; = --td-glass-bg-strong"},
+    "--td-modal-glass-blur": {"light": "blur(12px)", "dark": "blur(12px)", "why": "v0.96.0 td-modal surface=\"glass\" (opt-in): dialog backdrop blur; = --td-glass-blur"},
+    "--td-drawer-glass-bg": {"light": "rgba(255, 255, 255, 0.94)", "dark": "rgba(28, 28, 30, 0.94)", "why": "v0.96.0 td-drawer surface=\"glass\" (opt-in): frosted panel fill; = --td-glass-bg-strong"},
+    "--td-drawer-glass-blur": {"light": "blur(12px)", "dark": "blur(12px)", "why": "v0.96.0 td-drawer surface=\"glass\" (opt-in): panel backdrop blur; = --td-glass-blur"}
   },
   "lightDeltas": {
     "--td-table-check-border": {

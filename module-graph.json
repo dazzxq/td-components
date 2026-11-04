@@ -11,6 +11,7 @@
       "src/display/td-filter-chips.js",
       "src/display/td-masked-value.js",
       "src/display/td-media-grid.js",
+      "src/display/td-page-actions.js",
       "src/display/td-pagination.js",
       "src/display/td-rating.js",
       "src/display/td-selection-bar.js",
@@ -32,6 +33,7 @@
       "src/feedback/td-scroll-top.js",
       "src/feedback/td-toast.js",
       "src/feedback/td-tooltip.js",
+      "src/form/button-busy.js",
       "src/form/td-action-button.js",
       "src/form/td-button.js",
       "src/form/td-check-matrix.js",
@@ -63,6 +65,7 @@
       "src/utils/breakpoints.js",
       "src/utils/datetime.js",
       "src/utils/dom-utils.js",
+      "src/utils/external-overlay.js",
       "src/utils/form-validation.js"
     ],
     "src/base/sample/td-sample.js": [
@@ -133,6 +136,14 @@
       "src/utils/layers.js",
       "src/utils/media-selection-group.js"
     ],
+    "src/display/td-page-actions.js": [
+      "src/base/td-base-element.js",
+      "src/feedback/td-menu.js",
+      "src/form/td-button.js",
+      "src/icons/td-icon.js",
+      "src/utils/action-fold.js",
+      "src/utils/media-selection-group.js"
+    ],
     "src/display/td-pagination.js": [
       "src/base/td-base-element.js",
       "src/form/td-button.js",
@@ -150,6 +161,7 @@
       "src/display/td-media-grid.js",
       "src/feedback/td-menu.js",
       "src/icons/td-icon.js",
+      "src/utils/action-fold.js",
       "src/utils/media-selection-group.js"
     ],
     "src/display/td-sortable.js": [
@@ -261,6 +273,7 @@
     "src/feedback/td-drawer.js": [
       "src/feedback/dialog-layer.js",
       "src/icons/td-icon.js",
+      "src/utils/external-overlay.js",
       "src/utils/layers.js",
       "src/utils/transition.js",
       "src/utils/upgrade-props.js"
@@ -328,6 +341,7 @@
       "src/feedback/td-modal-stack.js",
       "src/icons/td-icon.js",
       "src/utils/confirm-phrase.js",
+      "src/utils/external-overlay.js",
       "src/utils/layers.js",
       "src/utils/transition.js"
     ],
@@ -353,6 +367,7 @@
       "src/utils/layers.js"
     ],
     "src/feedback/toast-placement.js": [],
+    "src/form/button-busy.js": [],
     "src/form/button-structure.js": [],
     "src/form/calendar-grid.js": [
       "src/icons/td-icon.js",
@@ -376,6 +391,7 @@
     ],
     "src/form/td-button.js": [
       "src/base/td-base-element.js",
+      "src/form/button-busy.js",
       "src/form/button-structure.js",
       "src/icons/td-icon.js",
       "src/theme/color.js"
@@ -627,6 +643,7 @@
       "src/theme/tokens.js"
     ],
     "src/theme/tokens.js": [],
+    "src/utils/action-fold.js": [],
     "src/utils/beep.js": [],
     "src/utils/breakpoints-internal.js": [],
     "src/utils/breakpoints.js": [
@@ -664,6 +681,7 @@
       "src/theme/color.js"
     ],
     "src/utils/escape.js": [],
+    "src/utils/external-overlay.js": [],
     "src/utils/filter-chips-model.js": [],
     "src/utils/floating.js": [],
     "src/utils/form-dirty.js": [],
@@ -684,7 +702,9 @@
       "src/utils/image-metadata.js"
     ],
     "src/utils/image-size.js": [],
-    "src/utils/inert-lock.js": [],
+    "src/utils/inert-lock.js": [
+      "src/utils/external-overlay.js"
+    ],
     "src/utils/justified.js": [],
     "src/utils/key-selection.js": [],
     "src/utils/keyboard-viewport.js": [
@@ -692,6 +712,7 @@
     ],
     "src/utils/layers.js": [
       "src/theme/tokens.js",
+      "src/utils/external-overlay.js",
       "src/utils/inert-lock.js"
     ],
     "src/utils/log-safe.js": [],

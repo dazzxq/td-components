@@ -49,7 +49,9 @@ const POINTER_FILES = ['src/display/td-v031-sortable.engines.browser-test.js', '
   // v0.79.0: td-media-field placeholder — real :hover reveal of the corner X, real hit testing over the image
   'src/form/td-v079-media-field-placeholder.engines.browser-test.js',
   // v0.95.0: td-card — real mouse :hover on the whole-card link (image edge / --surface fill)
-  'src/display/td-v095-card.engines.browser-test.js'];
+  'src/display/td-v095-card.engines.browser-test.js',
+  // v0.96.0: external overlay (wp.media-like) — real mouse presses on the fake panel / scrim
+  'src/feedback/td-v096-modal-external.engines.browser-test.js'];
 
 /** All src stories (for src/stories-dom.browser-test.js). */
 function storyFiles(dir = 'src', out = []) {

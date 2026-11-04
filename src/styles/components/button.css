@@ -305,14 +305,15 @@
 		line-height: 0;
 	}
 
-	/* Loading: keep the size, hide the content, show the shared spinner. */
+	/* Loading: keep the size, fade the content out, show the shared spinner. v0.96.0 (ADR 0043): opacity, not
+	   visibility: hidden — the label stays in the accessibility tree (a busy button keeps its name); every child but
+	   the spinner (hand-written markup: <svg> / <i> / a bare-text label wrapped by button-busy.js). */
 	.td-btn[aria-busy="true"] {
 		cursor: progress;
 	}
 
-	.td-btn[aria-busy="true"] > .td-btn__label,
-	.td-btn[aria-busy="true"] > .td-btn__icon {
-		visibility: hidden;
+	.td-btn[aria-busy="true"] > :not(.td-btn__spinner) {
+		opacity: 0;
 	}
 
 	.td-btn__spinner {

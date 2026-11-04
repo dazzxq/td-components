@@ -300,6 +300,9 @@ component legacy; peer Tailwind bỏ ở 0.11.0).
 - **Một file `td.css` duy nhất**, build bằng script node concat tất định từ `src/styles/*.css` theo manifest:
   prelude layer → tokens → foundations → components → utilities. File build được commit; CI build lại và diff.
   - Vite: `import '@dazzxq/td-components/td.css'`. PHP: `<link rel="stylesheet" nonce>`.
+  - v0.96.0 ([ADR 0042](decisions/0042-modal-external-overlays-wp.md)): `compat/td-<hệ>.css` ở gốc package (không build,
+    không `dist/`, không trong `td.css`) — rule **không layer**, chỉ `revert-layer`, để gỡ CSS không layer của môi trường
+    chủ (đầu tiên: `td-wp-admin.css`). Lint: `src/styles/td-v096-wp-admin-compat-css.test.js`.
   - **Không** fallback `adoptedStyleSheets`, không CSS-in-JS từng component, không dò sentinel
     (race: component connect trước khi `<link>` tải xong → rule trùng lặp xếp sau đè lên).
 - **Class**: BEM của kit 135 (`.td-x__el--mod`). State qua `aria-*` / `:checked` / `data-state`; JS không

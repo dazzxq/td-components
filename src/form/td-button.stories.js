@@ -1,6 +1,7 @@
 import { escapeHtml } from '../utils/escape.js';
 import '../styles/story-layout.css';
 import './td-button.js';
+import { runWithButton } from './button-busy.js';
 
 export default {
   title: 'Form/Button',
@@ -121,6 +122,34 @@ export const RunAsync = {
       });
     });
     wrap.append(btn, out);
+    return wrap;
+  },
+};
+
+/**
+ * v0.96.0 `runWithButton(btn, fn)` on a plain server-printed `button.td-btn` (no `<td-button>`): label dims, spinner
+ * shows, a second click while saving returns the same promise. Focus stays on the button (busy = aria-busy +
+ * aria-disabled, never `disabled`).
+ */
+export const BusyHelper = {
+  render: () => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sb-stack';
+    wrap.innerHTML = `
+      <button type="button" class="td-btn td-btn--primary td-btn--md">
+        <span class="td-btn__label">Lưu (1,5 giây)</span>
+      </button>
+      <p class="sb-note">Chưa lưu</p>`;
+    const btn = wrap.querySelector('button');
+    const out = wrap.querySelector('p');
+    let n = 0;
+    btn.addEventListener('click', () => {
+      runWithButton(btn, async () => {
+        await new Promise((r) => setTimeout(r, 1500));
+        n += 1;
+        out.textContent = `Đã lưu ${n} lần`;
+      });
+    });
     return wrap;
   },
 };

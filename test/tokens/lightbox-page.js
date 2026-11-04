@@ -6,7 +6,7 @@ window.__lightboxRun = (async () => {
   const lb = TdLightbox.open([
     { src: '/test/fixtures/1.svg', caption: 'Một' },
     { src: '/test/fixtures/2.svg', caption: 'Hai' },
-  ], { panel: true, toolbar: [{ id: 'star', label: 'Sao', icon: 'star', onClick() {} }] });
+  ], { panel: true, toolbar: [{ id: 'star', label: 'Sao', icon: 'star', pressed: (ctx) => ctx.index === 1, onClick() {} }] });
   await wait(300);
   lb.next();
   await wait(200);

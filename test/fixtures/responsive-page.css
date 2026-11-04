@@ -142,3 +142,10 @@
 	margin: 0;
 	font-size: 1rem;
 }
+
+/* v0.96.0: a page title row holding a td-page-actions (the kit sets no row itself) */
+.rsp-pa-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}

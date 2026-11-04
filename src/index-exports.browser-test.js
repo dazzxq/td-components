@@ -112,6 +112,10 @@ describe('index.js exports', () => {
     expect(typeof kit.TdSelectionBar).to.equal('function');
     expect(customElements.get('td-selection-bar')).to.equal(kit.TdSelectionBar);
   });
+  it('registers <td-page-actions> from the root entry (v0.96.0)', () => {
+    expect(typeof kit.TdPageActions).to.equal('function');
+    expect(customElements.get('td-page-actions')).to.equal(kit.TdPageActions);
+  });
   it('registers <td-rating> from the root entry (v0.50.0)', () => {
     expect(typeof kit.TdRating).to.equal('function');
     expect(customElements.get('td-rating')).to.equal(kit.TdRating);

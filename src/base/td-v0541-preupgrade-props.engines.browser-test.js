@@ -102,6 +102,18 @@ const CASES = [
     },
   },
   { tag: 'td-selection-bar', props: () => ({ for: 'pp-a pp-b' }), check(el) { expect(el.getAttribute('for')).to.equal('pp-a pp-b'); } },
+  // v0.96.0: count fold + glass surface reflect; td-page-actions' mirror is an Element property
+  {
+    tag: 'td-selection-bar', props: () => ({ fold: 'count', surface: 'glass' }),
+    check(el) {
+      expect(el.getAttribute('fold')).to.equal('count');
+      expect(el.getAttribute('surface')).to.equal('glass');
+    },
+  },
+  {
+    tag: 'td-page-actions', props: () => ({ mirror: document.createElement('div') }),
+    check(el) { expect(el.mirror).to.be.instanceOf(Element); },
+  },
   {
     tag: 'td-hint', attrs: { id: 'pp-hint-$' }, before: '<input id="pp-ctl-$">',
     props: (n) => ({ htmlFor: `pp-ctl-${n}` }),

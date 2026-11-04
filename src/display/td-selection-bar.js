@@ -2,7 +2,9 @@ import { TdBaseElement } from '../base/td-base-element.js';
 import { tdIcon } from '../icons/td-icon.js';
 import { TdMenu } from '../feedback/td-menu.js';
 // pure helper only — the group STORE is never reached from here (§4.1: always through the defined grid class)
-import { fitActions } from '../utils/media-selection-group.js';
+import { fitActions, fitSecondaries } from '../utils/media-selection-group.js';
+// v0.96.0 (plan v0.96.0-action-fold §4 / §5): the shared page-action fold policy (fold="count")
+import { planActions, narrowState } from '../utils/action-fold.js';
 // side effect on purpose (plan v0.95.0-selection-bar §4.1): with plain ESM the grid is defined before / with the bar
 import './td-media-grid.js';
 
@@ -34,6 +36,17 @@ import './td-media-grid.js';
  * @attr {string} for - Space-separated ids of grids (an anonymous group owned by this bar).
  * @attr {string} label - Name of the panel (`role="group"`); default `TdSelectionBar.labels.region`.
  * @attr {boolean} disabled - Lock the bar.
+ * @attr {string} fold - `width` (default; v0.95.0 behaviour: actions that do not fit go, from the end, into "…") |
+ *   `count` (v0.96.0 shared policy, plan v0.96.0-action-fold §4 / §5.1: the first 2 secondaries + the primary last,
+ *   after "…"; the rest and every `data-td-in-menu` action in "…"; bar < 480px → primary + "…" only; then step 2 folds
+ *   the shown secondaries that do not fit — never the primary). Unknown → `width`.
+ * @attr {string} surface - `solid` (default) | `glass` (v0.96.0, opt-in exception to ADR 0011 rule 2 — ADR 0044:
+ *   `.td-glass-surface` panel, radius `--td-selection-bar-glass-radius`, transparent bottom gap
+ *   `--td-selection-bar-glass-gap`; guaranteed with the default `--td-selection-bar-position: sticky` only).
+ *   Unknown → `solid`.
+ *
+ * Site buttons (v0.96.0): `data-td-tone="primary"` → solid accent button (`td-btn--primary`; never folded; keeps its
+ * label when compact); `data-td-in-menu` → always in "…" (both fold modes).
  *
  * @fires selection-change - The group total changed by the user / `{ emit: true }` / selected items or grids removed.
  *   detail: { count, ids } (one per action, microtask batched)
@@ -49,6 +62,9 @@ const OFFSET_PROP = '--td-selection-bar-offset';
 const COMPACT_REM = 36;
 const ACTION = 'data-td-action';
 const ACTION_ICON = 'data-td-action-icon';
+const IN_MENU = 'data-td-in-menu';
+const TONE = 'data-td-tone';
+const GLASS_CLASSES = ['td-glass-surface', 'td-glass-surface--strong', 'td-glass-surface--lg'];
 
 // --- --td-selection-bar-offset: ONE writer per page (the module of the defined class, plan §5.3) ---
 
@@ -117,7 +133,7 @@ export class TdSelectionBar extends TdBaseElement {
   };
 
   static get observedAttributes() {
-    return ['group', 'for', 'label', 'disabled'];
+    return ['group', 'for', 'label', 'disabled', 'fold', 'surface'];
   }
 
   static get booleanAttributes() {
@@ -163,6 +179,37 @@ export class TdSelectionBar extends TdBaseElement {
     this._warnedGroupFor = false;
     this._announceQueued = false;
     this._pendingAnnounce = '';
+    // v0.96.0 fold="count" (plan v0.96.0-action-fold §5.1)
+    /** @type {HTMLButtonElement|null} the primary that won the last count layout (kept across rebuilds, §4.2 rule 2) */
+    this._winner = null;
+    this._narrow = false;
+    /** @type {HTMLButtonElement[]} shown secondaries the last step 2 ran on (its hysteresis is only valid for them) */
+    this._fitSet = [];
+    /** @type {HTMLButtonElement[]|null} "…" order in count mode (step-2 folds, then step-1 folds); null = DOM order */
+    this._menuOrder = null;
+    /** @type {WeakSet<HTMLButtonElement>} buttons the bar switched from ghost to primary */
+    this._primaryOwned = new WeakSet();
+    this._warnedPrimary = false;
+  }
+
+  /** v0.96.0: `width` (default) | `count`; unknown → `width` */
+  get fold() {
+    return (this.getAttribute('fold') || '').trim().toLowerCase() === 'count' ? 'count' : 'width';
+  }
+
+  set fold(v) {
+    if (v == null) this.removeAttribute('fold');
+    else this.setAttribute('fold', String(v));
+  }
+
+  /** v0.96.0: `solid` (default) | `glass`; unknown → `solid` */
+  get surface() {
+    return (this.getAttribute('surface') || '').trim().toLowerCase() === 'glass' ? 'glass' : 'solid';
+  }
+
+  set surface(v) {
+    if (v == null) this.removeAttribute('surface');
+    else this.setAttribute('surface', String(v));
   }
 
   // --- public API ---
@@ -190,6 +237,8 @@ export class TdSelectionBar extends TdBaseElement {
     if (oldVal === newVal || !this._initialized || !this._panel) return;
     if (name === 'label') this._syncLabel();
     else if (name === 'disabled') this._syncLock();
+    else if (name === 'surface') this._syncSurface();
+    else if (name === 'fold') this._refold();
     else if (this.isConnected) this._connectGroup(); // group / for
   }
 
@@ -200,6 +249,7 @@ export class TdSelectionBar extends TdBaseElement {
     this._build();
     this._adopt();
     this._syncLabel();
+    this._syncSurface();
     this._renderCount();
     this.toggleAttribute('data-empty', this._count === 0);
 
@@ -209,7 +259,7 @@ export class TdSelectionBar extends TdBaseElement {
       this._mo = new MutationObserver((records) => this._onMutations(records));
       this._mo.observe(this, {
         childList: true, subtree: true, characterData: true,
-        attributes: true, attributeFilter: ['hidden', 'disabled', ACTION_ICON, ACTION, 'aria-label', 'data-td-tone'],
+        attributes: true, attributeFilter: ['hidden', 'disabled', ACTION_ICON, ACTION, 'aria-label', TONE, IN_MENU],
       });
       this._cleanups.push(() => { this._mo?.disconnect(); this._mo = null; });
     }
@@ -310,20 +360,42 @@ export class TdSelectionBar extends TdBaseElement {
         changed = true;
       }
     }
-    // keep the order: actions, other site children, "…"
-    const firstOther = [...this._tray.children].find((el) => el !== this._more && !this._isAction(el));
+    // keep the order: actions, other site children, "…" (v0.96.0 fold="count": then the winning primary, §5.1)
+    const tail = this._tail();
+    // an action left after "…" (a former count-mode primary) goes back to the end of the actions
+    for (let n = this._more.nextElementSibling; n; n = n.nextElementSibling) {
+      if (n === tail || !this._isAction(n)) continue;
+      const before = [...this._tray.children].find((el) => el !== this._more && el !== tail && el !== n && !this._isAction(el));
+      this._tray.insertBefore(n, before || this._more);
+      changed = true;
+      n = this._more;
+    }
+    const firstOther = [...this._tray.children].find((el) => el !== this._more && el !== tail && !this._isAction(el));
     for (const b of this._actions(true)) {
+      if (b === tail) continue;
       if (firstOther && (b.compareDocumentPosition(firstOther) & Node.DOCUMENT_POSITION_PRECEDING)) {
         this._tray.insertBefore(b, firstOther);
         changed = true;
       }
     }
-    if (this._tray.lastElementChild !== this._more) {
+    if (tail) {
+      if (this._tray.lastElementChild !== tail || tail.previousElementSibling !== this._more) {
+        this._tray.append(this._more, tail);
+        changed = true;
+      }
+    } else if (this._tray.lastElementChild !== this._more) {
       this._tray.appendChild(this._more);
       changed = true;
     }
     if (changed && this._locked) this._applyLock(true);
     return changed;
+  }
+
+  /** @private fold="count": the winning primary, placed after "…" — null in width mode / when it is no longer valid */
+  _tail() {
+    const w = this._winner;
+    if (this.fold !== 'count' || !w || w.parentElement !== this._tray || w.hidden || !this._isAction(w)) return null;
+    return w;
   }
 
   /** @private */
@@ -369,9 +441,48 @@ export class TdSelectionBar extends TdBaseElement {
     this._syncAriaLabel(b);
   }
 
-  /** @private `data-td-tone="danger"` → modifier (whitelist) */
+  /**
+   * @private `data-td-tone` whitelist: `danger` → modifier; v0.96.0 `primary` → solid `td-btn--primary` + modifier
+   * (ghost given back when the tone goes — only on buttons the bar switched)
+   */
   _syncTone(b) {
-    b.classList.toggle('td-selection-bar__action--danger', b.getAttribute('data-td-tone') === 'danger');
+    const tone = b.getAttribute(TONE);
+    b.classList.toggle('td-selection-bar__action--danger', tone === 'danger');
+    if (tone === 'primary') {
+      if (!this._primaryOwned.has(b)) {
+        this._primaryOwned.add(b);
+        b.classList.remove('td-btn--ghost');
+        b.classList.add('td-btn--primary', 'td-selection-bar__action--primary');
+      }
+    } else if (this._primaryOwned.has(b)) {
+      this._primaryOwned.delete(b);
+      b.classList.remove('td-btn--primary', 'td-selection-bar__action--primary');
+      b.classList.add('td-btn--ghost');
+    }
+  }
+
+  /** @private v0.96.0 surface="glass": the panel takes the shared glass recipe (+ its fallbacks), the host its gap */
+  _syncSurface() {
+    if (!this._panel) return;
+    const glass = this.surface === 'glass';
+    if (this.classList.contains('td-selection-bar--glass') !== glass) this.classList.toggle('td-selection-bar--glass', glass);
+    for (const c of GLASS_CLASSES) {
+      if (this._panel.classList.contains(c) !== glass) this._panel.classList.toggle(c, glass);
+    }
+  }
+
+  /** @private v0.96.0: the fold mode changed at run time — forget the previous plan, lay out once */
+  _refold() {
+    if (!this._tray) return;
+    for (const b of this._actions(true)) b.removeAttribute('data-td-overflow');
+    this._fit = null;
+    this._fitSet = [];
+    this._menuOrder = null;
+    if (this.fold !== 'count') this._winner = null;
+    this._adopt();
+    this._mo?.takeRecords();
+    this._dirty = true;
+    this._schedule();
   }
 
   /** @private icon from `data-td-action-icon` (registry name; unknown = no icon) */
@@ -657,7 +768,10 @@ export class TdSelectionBar extends TdBaseElement {
 
   /** @private "…" → TdMenu with the overflowed actions (built at open) */
   _openMore() {
-    const items = this._actions().filter((b) => b.hasAttribute('data-td-overflow')).map((b) => ({
+    const order = this._menuOrder && this.fold === 'count'
+      ? this._menuOrder.filter((b) => b.parentElement === this._tray && this._isAction(b) && !b.hidden)
+      : this._actions();
+    const items = order.filter((b) => b.hasAttribute('data-td-overflow')).map((b) => ({
       label: this._labelText(b) || b.getAttribute('aria-label') || '',
       icon: (b.getAttribute(ACTION_ICON) || '').trim() || undefined,
       danger: b.classList.contains('td-selection-bar__action--danger'),
@@ -700,6 +814,10 @@ export class TdSelectionBar extends TdBaseElement {
       this._dirty = true;
     }
     const actions = this._actions();
+    if (this.fold === 'count') {
+      this._layoutCount(actions);
+      return;
+    }
     let avail;
     if (this._dirty) {
       this._dirty = false;
@@ -716,12 +834,77 @@ export class TdSelectionBar extends TdBaseElement {
     } else {
       avail = this._tray.getBoundingClientRect().width;
     }
-    const widths = actions.map((b) => this._widths.get(b) ?? 0);
-    const k = fitActions(widths, avail - this._extraWidth, this._moreWidth, this._fit, this._gap);
+    // v0.96.0: a `primary` (the first one not in the menu) is never folded — its width is reserved; `data-td-in-menu`
+    // actions always fold ("…" always shown). v0.95.0 markup has neither → exactly the computation it had.
+    const inMenu = actions.filter((b) => b.hasAttribute(IN_MENU));
+    const primary = actions.find((b) => b.getAttribute(TONE) === 'primary' && !b.hasAttribute(IN_MENU)) || null;
+    const list = inMenu.length || primary ? actions.filter((b) => b !== primary && !inMenu.includes(b)) : actions;
+    const widths = list.map((b) => this._widths.get(b) ?? 0);
+    let room = avail - this._extraWidth;
+    if (primary) room -= (this._widths.get(primary) ?? 0) + this._gap;
+    // forced menu: "…" is always shown, so each kept action carries its own following gap (row [a1 g … ak g "…"])
+    const k = inMenu.length
+      ? fitActions(widths.map((w) => w + this._gap), room - this._moreWidth, 0, this._fit, 0)
+      : fitActions(widths, room, this._moreWidth, this._fit, this._gap);
     this._fit = k;
-    actions.forEach((b, i) => b.toggleAttribute('data-td-overflow', i >= k));
+    list.forEach((b, i) => b.toggleAttribute('data-td-overflow', i >= k));
+    for (const b of inMenu) b.setAttribute('data-td-overflow', '');
+    if (primary) primary.removeAttribute('data-td-overflow');
     for (const b of this._actions(true)) if (b.hidden) b.removeAttribute('data-td-overflow');
-    this._more.hidden = k >= actions.length;
+    this._more.hidden = k >= list.length && !inMenu.length;
+    this._mo?.takeRecords();
+  }
+
+  /**
+   * @private v0.96.0 fold="count" (plan v0.96.0-action-fold §5.1 + §4.5). Step 1 = planActions (narrow = the bar itself
+   * < 480px, with hysteresis); the winning primary is moved after "…" and kept across rebuilds (`keep`). Step 2 =
+   * fitSecondaries over the shown secondaries (frame = the tray, which flex-grows into the room left by × + count;
+   * fixed = the other site children with their gaps + the primary). Widths are measured in one pass (cache) when dirty.
+   * @param {HTMLButtonElement[]} actions visible actions, tray order
+   */
+  _layoutCount(actions) {
+    this._narrow = narrowState(this.getBoundingClientRect().width, this._narrow);
+    const flags = actions.map((b) => ({ primary: b.getAttribute(TONE) === 'primary', inMenu: b.hasAttribute(IN_MENU) }));
+    const keep = this._winner ? actions.indexOf(this._winner) : -1;
+    const plan = planActions(flags, { narrow: this._narrow, keep });
+    if (plan.demoted.length && !this._warnedPrimary) {
+      this._warnedPrimary = true;
+      console.warn('td-selection-bar: more than one data-td-tone="primary" action — only the first is kept as primary.');
+    }
+    const winner = plan.primary >= 0 ? actions[plan.primary] : null;
+    if (winner !== this._winner) {
+      this._winner = winner;
+      this._adopt(); // the primary after "…", a former primary back among the actions
+    }
+    const shown = plan.shown.filter((i) => i !== plan.primary).map((i) => actions[i]);
+    const folded = plan.folded.map((i) => actions[i]);
+    if (this._dirty || shown.some((b) => !this._widths.get(b)) || (winner && !this._widths.get(winner))) {
+      this._dirty = false;
+      this.setAttribute('data-td-measuring', '');
+      this._widths = new Map();
+      for (const b of actions) this._widths.set(b, b.getBoundingClientRect().width);
+      this._moreWidth = this._more.getBoundingClientRect().width;
+      const gap = parseFloat(getComputedStyle(this._tray).columnGap) || 0;
+      this._gap = gap;
+      const others = [...this._tray.children].filter((el) => el !== this._more && !this._isAction(el));
+      this._extraWidth = others.reduce((s, el) => s + el.getBoundingClientRect().width + gap, 0);
+      this.removeAttribute('data-td-measuring');
+    }
+    let k = shown.length;
+    if (!this._narrow && shown.length) {
+      const same = shown.length === this._fitSet.length && shown.every((b, i) => b === this._fitSet[i]);
+      const fixed = this._extraWidth + (winner ? this._widths.get(winner) ?? 0 : 0);
+      k = fitSecondaries(shown.map((b) => this._widths.get(b) ?? 0), this._tray.getBoundingClientRect().width, fixed,
+        this._moreWidth, this._gap, same ? this._fit : null, folded.length > 0, !!winner);
+    }
+    this._fit = k;
+    this._fitSet = shown;
+    const over = [...shown.slice(k), ...folded];
+    const set = new Set(over);
+    for (const b of actions) b.toggleAttribute('data-td-overflow', set.has(b));
+    for (const b of this._actions(true)) if (b.hidden) b.removeAttribute('data-td-overflow');
+    this._menuOrder = over;
+    this._more.hidden = !over.length;
     this._mo?.takeRecords();
   }
 }

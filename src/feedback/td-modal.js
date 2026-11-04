@@ -3,7 +3,7 @@
  * (src/styles/components/modal.css + button.css); no Tailwind, no adopted/inline <style>, CSP-strict.
  *
  * DOM contract (one root per open dialog, portaled to <body>):
- *   <div id="{id}" class="td-modal td-modal--{xs|sm|md|lg|xl|2xl|3xl|4xl|5xl|full}[ td-modal--viewport]"
+ *   <div id="{id}" class="td-modal td-modal--{xs|sm|md|lg|xl|2xl|3xl|4xl|5xl|full}[ td-modal--viewport][ td-modal--glass]"
  *        data-state="opening|open|closing" [data-covered]>
  *     <div class="td-modal__backdrop" aria-hidden="true"></div>             ← scrim, closes only with show({ backdropCloses }) (ADR 0006)
  *     <div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg"
@@ -53,6 +53,7 @@ import {
 import { fillIconSlots } from '../icons/td-icon.js';
 import { transitionEndMs } from '../utils/transition.js';
 import { openDialogLayer } from './dialog-layer.js';
+import { externalOverlayAbove } from '../utils/external-overlay.js';
 import { preparePhrase, phraseMatches } from '../utils/confirm-phrase.js';
 
 const MODAL_LAYER = LAYERS.modal; // --td-z-modal
@@ -206,6 +207,9 @@ export class TdModal {
    * @param {boolean} [options.backdropCloses=false] - v0.78.0: a click that starts AND ends on the scrim closes the
    *   dialog (top dialog only; not while busy; through `beforeClose` with `reason: 'backdrop'`). Same rule as
    *   `escapeCloses`: only for dialogs whose close loses no user data.
+   * @param {'solid'|'glass'} [options.surface='solid'] - v0.96.0: `'glass'` = frosted dialog surface (class
+   *   `td-modal--glass`, tokens `--td-modal-glass-bg` / `--td-modal-glass-blur`); falls back to solid under reduced
+   *   transparency, `data-td-glass="off"`, more contrast and forced colours. Any other value = solid.
    * @param {boolean} [options.showHeader=true] - Without a header the title becomes the dialog's `aria-label`.
    * @param {boolean} [options.showFooter=true]
    * @param {Function|null} [options.onClose=null] - Called once on every close path, after focus is restored.
@@ -262,6 +266,8 @@ export class TdModal {
     };
 
     TdModal._configureModal(root, opts, instance);
+    // v0.96.0: opt-in frosted surface, show() only (the Promise dialogs stay solid); any other value = solid
+    if (!internal && opts.surface === 'glass') root.classList.add('td-modal--glass');
     // v0.78.0 (ADR 0006 addendum): opt-in backdrop close, show() only (the Promise dialogs never take it)
     if (!internal && opts.backdropCloses === true) TdModal._bindBackdropClose(instance);
     if (internal && internal.role) dialog.setAttribute('role', internal.role);
@@ -438,12 +444,13 @@ export class TdModal {
     const backdrop = inst.element.querySelector('.td-modal__backdrop');
     let downOnBackdrop = false;
     inst.element.addEventListener('pointerdown', (e) => {
-      downOnBackdrop = e.target === backdrop && e.isPrimary !== false && e.button === 0;
+      downOnBackdrop = e.target === backdrop && e.isPrimary !== false && e.button === 0
+        && !externalOverlayAbove(inst.element); // ADR 0042: external UI above owns the press
     });
     backdrop.addEventListener('click', (e) => {
       const armed = downOnBackdrop;
       downOnBackdrop = false;
-      if (!armed || e.target !== backdrop || inst.closed) return;
+      if (!armed || e.target !== backdrop || inst.closed || externalOverlayAbove(inst.element)) return;
       if (TdModalStackManager.getTop() !== inst || (inst.handle && !inst.handle.layer.isTop())) return;
       TdModal._requestClose(inst, 'backdrop');
     });

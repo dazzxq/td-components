@@ -80,6 +80,12 @@ nhận. Ví dụ dropdown mở trong modal: Escape đóng dropdown, modal vẫn 
 Lớp chặn (modal, lightbox, loading) làm mọi thứ bên dưới `inert`; lớp trôi (dropdown, menu, tooltip, hovercard, toast)
 không bao giờ làm gì `inert`.
 
+UI **không phải của kit** mở chồng lên lớp chặn (wp.media, dialog thư viện khác) phải được site khai báo
+(`registerExternalOverlay` / `data-td-external-overlay`, 0.96.0). Khi nó đang hiện phía trên: không bị `inert`, kit nhường
+Tab và Escape cho nó; khi nó đóng mà focus bị mất (rơi về `<body>`), focus quay về phần tử cuối cùng có focus trong
+dialog. Việc UI ngoài tự bẫy focus, tự có `aria-modal` là trách nhiệm của thư viện đó — kit không gắn `aria-hidden` lên
+nó. Xem [Modal › Mở UI ngoài chồng lên modal](../components/modal.md#11-mở-ui-ngoài-chồng-lên-modal-registerexternaloverlay-0960).
+
 ### Tên truy cập của control
 
 Control form: `label` (hiển thị) → `aria-label` trên host → `<label for="id-host">` bên ngoài. Chi tiết:

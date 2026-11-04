@@ -111,6 +111,34 @@ export function fitActions(widths, avail, moreWidth, prevCount, gap = 0) {
   return k;
 }
 
+/**
+ * Step 2 of the shared fold policy (plan v0.96.0-action-fold §4.5, owner Q1 = auto-hide): how many of the secondaries
+ * that `planActions()` SHOWS still fit in the measured frame. Row model `[s1 g s2 g … g "…" g primary]`: each shown
+ * secondary carries one gap (folded into its width, so `fitActions` runs with gap 0), `fixed` = primary + the other
+ * fixed parts WITH their gaps (not the gap before the primary). The primary is never folded here.
+ *   case A — step 1 already folded something ("…" always shown): fitActions(w', F − fixed − moreW − g, 0, prevK, 0)
+ *   case B — step 1 folded nothing:                                  fitActions(w', F − fixed, moreW + g, prevK, 0)
+ * @param {number[]} widths natural widths of the shown secondaries, DOM order
+ * @param {number} frame frame width F (px)
+ * @param {number} fixed px taken by the primary + the other fixed parts, with their gaps
+ * @param {number} moreWidth width of the "…" button
+ * @param {number} gap flex gap g (px)
+ * @param {number|null|undefined} prevCount the previous result (hysteresis), null = first decision
+ * @param {boolean} folded case A (step 1 folded at least one item)
+ * @param {boolean} [hasPrimary=true] a primary follows the secondaries / "…"; without one the row has no trailing gap
+ *   (the model above reserves exactly one gap too many), so that gap is given back to the frame
+ * @returns {number} count of leading shown secondaries kept (the rest go to "…")
+ */
+export function fitSecondaries(widths, frame, fixed, moreWidth, gap, prevCount, folded, hasPrimary = true) {
+  const g = Number.isFinite(gap) && gap > 0 ? gap : 0;
+  const fx = (Number.isFinite(fixed) ? fixed : 0) - (hasPrimary === false ? g : 0);
+  const mw = Number.isFinite(moreWidth) ? moreWidth : 0;
+  const w = (Array.isArray(widths) ? widths : []).map((x) => (Number.isFinite(x) ? x : 0) + g);
+  return folded
+    ? fitActions(w, frame - fx - mw - g, 0, prevCount, 0)
+    : fitActions(w, frame - fx, mw + g, prevCount, 0);
+}
+
 // --- store ---
 
 function storeOf(root, create) {

@@ -9,6 +9,12 @@ import { safeMediaUrl } from '../utils/media-url.js';
 
 const CLEAR = '__CLEAR__';
 const OPTION_PX = 40; // --td-dropdown-option-h: `max-height` = visible options × 40 px
+
+/** height of the first rendered option row of `list` (touch rows are taller), else `fallback` */
+function rowPx(list, fallback) {
+  const h = list?.querySelector(".td-dropdown__option")?.getBoundingClientRect().height;
+  return h > 0 ? h : fallback;
+}
 /** v0.86.0: more option rows than this in the scroller → `data-many` (CSS `content-visibility: auto` per row) */
 const MANY_ROWS = 200;
 const TYPEAHEAD_MS = 500;
@@ -2078,7 +2084,8 @@ export class TdDropdown extends TdFormElement {
     const menu = this._menuElement;
     if (!menu) return;
     const scroller = this._scroller();
-    let listMax = this._getMaxHeight() * OPTION_PX;
+    // a flat list: one rendered row is the unit (44 px under a coarse pointer, 40 px otherwise); 40 before the first paint
+    let listMax = this._getMaxHeight() * rowPx(scroller, OPTION_PX);
     let scrollTop = null;
     if (this._measured && scroller) {
       // v0.84.0 measured layout (rich rows / group headers: mixed heights): the scroller shows exactly N option rows

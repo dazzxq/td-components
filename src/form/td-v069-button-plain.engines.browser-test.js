@@ -409,8 +409,10 @@ describe('v0.69.0 plain — disabled and busy, like every button', () => {
     expect(getComputedStyle(spinner).visibility).to.equal('visible');
     const sr = spinner.getBoundingClientRect(); const br = b.getBoundingClientRect();
     expect(sr.width > 0 && sr.left >= br.left - 0.5 && sr.right <= br.right + 0.5, 'spinner is inside the button').to.equal(true);
-    expect(getComputedStyle(b.querySelector('.td-btn__label')).visibility, 'label hidden').to.equal('hidden');
-    expect(getComputedStyle(b.querySelector('.td-btn__icon')).visibility, 'icon hidden').to.equal('hidden');
+    // v0.96.0 (ADR 0043): faded (opacity 0), not visibility: hidden — the label stays the button's accessible name
+    expect(getComputedStyle(b.querySelector('.td-btn__label')).opacity, 'label faded').to.equal('0');
+    expect(getComputedStyle(b.querySelector('.td-btn__label')).visibility, 'label still in the a11y tree').to.equal('visible');
+    expect(getComputedStyle(b.querySelector('.td-btn__icon')).opacity, 'icon faded').to.equal('0');
     expect(cs.cursor).to.equal('progress');
     expect(near(cs.color, t.rest), 'busy is not the disabled look').to.equal(true);
     expect(box(b), 'busy keeps the size').to.deep.equal(idle);
@@ -420,17 +422,17 @@ describe('v0.69.0 plain — disabled and busy, like every button', () => {
     expect(near(getComputedStyle(b).color, t.rest), 'hover must not recolour a busy button').to.equal(true);
     host.removeAttribute('loading');
     await until(() => !b.hasAttribute('aria-busy'), 'idle again');
-    expect(getComputedStyle(b.querySelector('.td-btn__label')).visibility).to.equal('visible');
+    expect(getComputedStyle(b.querySelector('.td-btn__label')).opacity).to.equal('1');
   });
 
-  it('busy (native, the JS contract aria-busy + aria-disabled): spinner shown, label hidden, accent colour', async () => {
+  it('busy (native, the JS contract aria-busy + aria-disabled): spinner shown, label faded, accent colour', async () => {
     const t = tokens();
     const b = mount(`<button type="button" class="td-btn td-btn--plain td-btn--sm" aria-busy="true" aria-disabled="true">${ICON}${LABEL}`
       + `${SPINNER.replace(' hidden', '')}</button>`);
     await raf();
     const cs = getComputedStyle(b);
     expect(getComputedStyle(b.querySelector('.td-btn__spinner')).display).to.not.equal('none');
-    expect(getComputedStyle(b.querySelector('.td-btn__label')).visibility).to.equal('hidden');
+    expect(getComputedStyle(b.querySelector('.td-btn__label')).opacity).to.equal('0');
     expect(cs.cursor).to.equal('progress');
     expect(near(cs.color, t.rest)).to.equal(true);
     expectBare(b, 'native busy');

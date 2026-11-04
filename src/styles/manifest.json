@@ -69,6 +69,7 @@
     "components/rating.css",
     "components/carousel.css",
     "components/rich-text.css",
+    "components/page-actions.css",
     "utilities.css"
   ]
 }

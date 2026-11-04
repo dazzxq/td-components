@@ -11,7 +11,11 @@
  * - `inert` is removed only when no lease requires it any more; elements that were inert before (set by the
  *   site) are never touched.
  * - Body children appended while a lease is active are handled (MutationObserver on `<body>` childList).
+ * - v0.96.0 (ADR 0042): a declared external overlay (external-overlay.js) that is visible and ABOVE a blocking lease's
+ *   own elements is never made inert by that lease; the leases resync whenever such an overlay appears, shows, hides,
+ *   is registered or gets the attribute. Hidden ones, or ones below the lease, stay inert as before.
  */
+import { externalAbove, onExternalOverlayChange } from './external-overlay.js';
 
 /** @type {Array<{ keep: Set<Element>, layer: number, seq: number, blocking: boolean }>} */
 const leases = [];
@@ -19,6 +23,7 @@ const leases = [];
 const managed = new Set();
 let seq = 0;
 let observer = null;
+let offExternal = null;
 
 function isKeptByHigher(el, index) {
   for (let j = index + 1; j < leases.length; j++) if (leases[j].keep.has(el)) return true;
@@ -28,6 +33,7 @@ function isKeptByHigher(el, index) {
 function shouldBeInert(el) {
   for (let i = 0; i < leases.length; i++) {
     if (!leases[i].blocking || leases[i].keep.has(el)) continue;
+    if (externalAbove(el, [...leases[i].keep])) continue; // ADR 0042: visible external UI above this lease
     if (!isKeptByHigher(el, i)) return true;
   }
   return false;
@@ -63,6 +69,7 @@ function addLease(keep, layer, blocking) {
     observer = new MutationObserver(sync);
     observer.observe(document.body, { childList: true });
   }
+  if (!offExternal) offExternal = onExternalOverlayChange(sync);
   sync();
   let released = false;
   return () => {
@@ -74,6 +81,10 @@ function addLease(keep, layer, blocking) {
     if (!leases.length && observer) {
       observer.disconnect();
       observer = null;
+    }
+    if (!leases.length && offExternal) {
+      offExternal();
+      offExternal = null;
     }
   };
 }

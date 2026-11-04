@@ -17,6 +17,15 @@
 		--td-selection-bar-position: sticky;               /* sticky | fixed */
 		--td-selection-bar-z: var(--td-z-sticky);           /* below menu / modal / toast */
 		--td-selection-bar-enter: 150ms;                    /* fade in */
+		/* v0.96.0 surface="glass" (ADR 0044): radius + transparent gap under the panel (12px, 16px from 720px) */
+		--td-selection-bar-glass-radius: var(--td-glass-radius);
+		--td-selection-bar-glass-gap: 12px;
+	}
+
+	@media (min-width: 720px) {
+		:root {
+			--td-selection-bar-glass-gap: 16px;
+		}
 	}
 
 	:root, [data-td-theme] {
@@ -33,6 +42,12 @@
 		   its own: a generated palette (src/theme/palette.js) already writes that token, so this one follows it too
 		   (src/theme/tokens.test.js ISSUE-1: a dark-only component colour would be missed by a generated palette) */
 		--td-selection-bar-danger-pressed-bg: var(--td-action-btn-danger-pressed-bg);
+		/* v0.96.0 surface="glass": the denser 94 % glass of the small popups under the bar's text */
+		--td-selection-bar-glass-bg: var(--td-glass-bg-strong);
+		/* v0.96.0 surface="glass": ghost action label on the translucent panel = the stronger ghost step (darker in
+		   light, lighter in dark) so it keeps AA over the worst backdrop (accent gave 4.41:1 in dark,
+		   test/tokens/contrast-page.js glass:selection-bar) */
+		--td-selection-bar-glass-action-fg: var(--td-btn-ghost-hover-fg);
 	}
 }
 
@@ -116,13 +131,14 @@
 		display: none;
 	}
 
-	/* compact: icon-only buttons (the label stays in the a11y tree, like .td-sr-only); a button without icon keeps text */
-	.td-selection-bar[data-compact] .td-selection-bar__action--icon {
+	/* compact: icon-only buttons (the label stays in the a11y tree, like .td-sr-only); a button without icon keeps text.
+	   v0.96.0 (owner Q2): the primary keeps its label — :where() adds no specificity (v0.95.0 rules unchanged). */
+	.td-selection-bar[data-compact] .td-selection-bar__action--icon:where(:not(.td-selection-bar__action--primary)) {
 		padding-inline: 0;
 		min-inline-size: 2.5rem;
 	}
 
-	.td-selection-bar[data-compact] .td-selection-bar__action--icon .td-selection-bar__label {
+	.td-selection-bar[data-compact] .td-selection-bar__action--icon:where(:not(.td-selection-bar__action--primary)) .td-selection-bar__label {
 		position: absolute;
 		inline-size: 1px;
 		block-size: 1px;
@@ -171,9 +187,42 @@
 	@media (pointer: coarse) {
 		.td-btn.td-selection-bar__clear,
 		.td-btn.td-selection-bar__more,
-		.td-selection-bar[data-compact] .td-selection-bar__action--icon {
+		.td-selection-bar[data-compact] .td-selection-bar__action--icon:where(:not(.td-selection-bar__action--primary)) {
 			min-inline-size: var(--td-touch-min);
 		}
+	}
+
+	/* v0.96.0 primary tone: the solid accent button of button.css (.td-btn--primary); never folded, never shrinks */
+	.td-selection-bar__action--primary {
+		flex: none;
+	}
+
+	/* v0.96.0 surface="glass" (ADR 0044, opt-in exception to ADR 0011 rule 2). The panel carries .td-glass-surface
+	   (+ --strong / --lg) so every glass.css fallback (no backdrop-filter, reduced transparency, data-td-glass="off",
+	   increased contrast, forced colours) applies through the private --_td-glass-* values; this rule (0,3,0) only
+	   swaps the public defaults for the bar's own tokens. The host keeps the full width of its containing block (no
+	   inset, no max-width); a TRANSPARENT bottom padding on the host makes the gap (measured into
+	   --td-selection-bar-offset) and lets clicks through to the content under it. */
+	.td-selection-bar--glass {
+		pointer-events: none;
+	}
+
+	.td-selection-bar--glass:not([data-empty]) {
+		padding-block-end: max(var(--td-selection-bar-glass-gap), env(safe-area-inset-bottom, 0px));
+	}
+
+	.td-selection-bar--glass .td-btn--ghost:not(.td-btn--custom):not(.td-selection-bar__action--danger) {
+		--td-btn-fg-v: var(--td-selection-bar-glass-action-fg);
+	}
+
+	.td-selection-bar--glass .td-selection-bar__panel.td-glass-surface {
+		padding-block-end: var(--td-selection-bar-pad-block);
+		color: var(--_td-glass-fg, var(--td-selection-bar-fg));
+		background-color: var(--_td-glass-fill, var(--td-selection-bar-glass-bg));
+		border-color: var(--_td-glass-line, var(--td-selection-bar-border));
+		border-radius: var(--td-selection-bar-glass-radius);
+		box-shadow: var(--_td-glass-lift, var(--td-glass-shadow-lg));
+		pointer-events: auto;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

@@ -3,7 +3,7 @@
 // hysteresis). The DOM halves are browser-tested (td-v095-*.engines.browser-test.js).
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { rangeAcross, fitActions } from './media-selection-group.js';
+import { rangeAcross, fitActions, fitSecondaries } from './media-selection-group.js';
 
 const mem = (ids, opts = {}) => ({
   ids,
@@ -178,5 +178,71 @@ describe('fitActions', () => {
 
   it('no actions → 0', () => {
     assert.equal(fitActions([], 300, 44, null), 0);
+  });
+});
+
+// v0.96.0 (plan v0.96.0-action-fold §4.5): step 2 — fold the SHOWN secondaries by measured width, explicit row model
+describe('fitSecondaries — no primary (no trailing gap)', () => {
+  const S = [120, 90];
+  const g = 8;
+  const moreW = 40;
+  const fix = 0; // nothing else in the row
+  it('case B: all shown needs Σw + (n−1)·g exactly; one px less folds', () => {
+    const need = 120 + 90 + g; // 218, row [s1 g s2]
+    assert.equal(fitSecondaries(S, need, fix, moreW, g, null, false, false), 2);
+    assert.equal(fitSecondaries(S, need - 2, fix, moreW, g, null, false, false), 1);
+  });
+  it('case A: k kept needs Σw(k) + k·g + moreW (row [s1 g … sk g "…"])', () => {
+    const need2 = 120 + 90 + 2 * g + moreW; // 266
+    assert.equal(fitSecondaries(S, need2, fix, moreW, g, null, true, false), 2);
+    assert.equal(fitSecondaries(S, need2 - 2, fix, moreW, g, null, true, false), 1);
+  });
+});
+
+describe('fitSecondaries', () => {
+  const S = [120, 90]; // two shown secondaries
+  const g = 8;
+  const moreW = 40;
+  const fix = 150; // primary (+ other fixed parts with their gaps), no gap before the primary
+
+  // case A: "…" always shown → need(n) = Σw + n·g + moreW + g + fix
+  const needA = 120 + 90 + 2 * g + moreW + g + fix; // 424
+  it('case A boundaries: need − 2 folds, need − 1 / need / need + 1 keep both (fitActions +1px tolerance)', () => {
+    assert.equal(fitSecondaries(S, needA - 2, fix, moreW, g, null, true), 1);
+    assert.equal(fitSecondaries(S, needA - 1, fix, moreW, g, null, true), 2);
+    assert.equal(fitSecondaries(S, needA, fix, moreW, g, null, true), 2);
+    assert.equal(fitSecondaries(S, needA + 1, fix, moreW, g, null, true), 2);
+  });
+
+  it('case A: k secondaries need Σw(k) + k·g + moreW + g + fix (each gap counted once)', () => {
+    const need1 = 120 + g + moreW + g + fix; // 326
+    assert.equal(fitSecondaries(S, need1, fix, moreW, g, null, true), 1);
+    assert.equal(fitSecondaries(S, need1 - 2, fix, moreW, g, null, true), 0);
+  });
+
+  // case B: nothing folded by step 1 → k = n needs Σw + n·g + fix (no "…")
+  const needB = 120 + 90 + 2 * g + fix; // 376
+  it('case B boundaries: need − 2 folds (then "…" + its gap count), need − 1 / need / need + 1 keep both', () => {
+    assert.equal(fitSecondaries(S, needB - 2, fix, moreW, g, null, false), 1, 'k=1 needs 120+8+40+8+150 = 326');
+    assert.equal(fitSecondaries(S, needB - 1, fix, moreW, g, null, false), 2);
+    assert.equal(fitSecondaries(S, needB, fix, moreW, g, null, false), 2);
+    assert.equal(fitSecondaries(S, needB + 1, fix, moreW, g, null, false), 2);
+  });
+
+  it('case B: k < n needs Σw(k) + k·g + moreW + g + fix', () => {
+    const need1 = 120 + g + moreW + g + fix; // 326
+    assert.equal(fitSecondaries(S, need1, fix, moreW, g, null, false), 1);
+    assert.equal(fitSecondaries(S, need1 - 2, fix, moreW, g, null, false), 0);
+  });
+
+  it('hysteresis: once folded, shows again only with 4px to spare', () => {
+    assert.equal(fitSecondaries(S, needB, fix, moreW, g, 1, false), 1);
+    assert.equal(fitSecondaries(S, needB + 3, fix, moreW, g, 1, false), 1);
+    assert.equal(fitSecondaries(S, needB + 4, fix, moreW, g, 1, false), 2);
+  });
+
+  it('no shown secondaries → 0; odd inputs are coerced', () => {
+    assert.equal(fitSecondaries([], 500, fix, moreW, g, null, true), 0);
+    assert.equal(fitSecondaries(S, 1000, NaN, NaN, -1, null, false), 2);
   });
 });

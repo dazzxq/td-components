@@ -10,7 +10,7 @@
  * (appended to <body>, removed after the close) and opens it.
  *
  * DOM contract (root, while open):
- *   <div class="td-drawer-root td-drawer-root--{start|end} td-drawer-root--{sm|md|lg|xl}" dir="{ltr|rtl}"
+ *   <div class="td-drawer-root td-drawer-root--{start|end} td-drawer-root--{sm|md|lg|xl}[ td-drawer-root--glass]" dir="{ltr|rtl}"
  *        data-state="opening|open|closing">
  *     <div class="td-drawer__backdrop" aria-hidden="true"></div>
  *     <div class="td-drawer__panel td-glass-surface td-glass-surface--lg" role="dialog" aria-modal="true" tabindex="-1"
@@ -49,6 +49,8 @@
  * @attr {string} side - start | end (default end; logical, flips in RTL)
  * @attr {string} size - sm | md | lg | xl (default md); `--td-drawer-w` overrides the width
  * @attr {string} dismissible - "false" → Escape / backdrop do not close
+ * @attr {string} surface - v0.96.0: solid | glass (default solid; read on open) — frosted panel, root class
+ *   `td-drawer-root--glass`
  * @fires open
  * @prop {Function|null} beforeClose - v0.44.0 `({ reason }) => boolean | void | PromiseLike<boolean | void>`
  * @fires before-close - cancelable, detail: { reason }
@@ -58,6 +60,7 @@ import { openDialogLayer } from './dialog-layer.js';
 import { LAYERS, focusablesIn } from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { transitionEndMs } from '../utils/transition.js';
+import { externalOverlayAbove } from '../utils/external-overlay.js';
 import { replayPreUpgradeProps } from '../utils/upgrade-props.js';
 
 const SIDES = ['start', 'end'];
@@ -89,6 +92,7 @@ export class TdDrawer extends HTMLElement {
    * @param {'start'|'end'} [options.side='end']
    * @param {'sm'|'md'|'lg'|'xl'} [options.size='md']
    * @param {boolean} [options.dismissible=true]
+   * @param {'solid'|'glass'} [options.surface='solid'] - v0.96.0: `'glass'` = frosted panel (attribute `surface`)
    * @param {(reason: string) => void} [options.onClose] - after the close (same moment as the `close` event)
    * @param {Element|null} [options.themeRoot] - v0.42.0 (ADR 0020): follow this element's theme scope (`[data-td-theme]`)
    * @param {Function} [options.beforeClose] - v0.44.0 async close guard (see the `beforeClose` property)
@@ -103,6 +107,7 @@ export class TdDrawer extends HTMLElement {
     if (SIDES.includes(o.side)) host.setAttribute('side', o.side);
     if (SIZES.includes(o.size)) host.setAttribute('size', o.size);
     if (o.dismissible === false) host.setAttribute('dismissible', 'false');
+    if (o.surface === 'glass') host.setAttribute('surface', 'glass');
     // Review round 1 SEC-1 (CWE-79): a string is TEXT; HTML only through the explicitly named trusted hatches.
     const trusted = (html) => {
       const tpl = document.createElement('template');
@@ -376,7 +381,8 @@ export class TdDrawer extends HTMLElement {
     const side = SIDES.includes(this.getAttribute('side')) ? this.getAttribute('side') : 'end';
     const size = SIZES.includes(this.getAttribute('size')) ? this.getAttribute('size') : 'md';
     const root = document.createElement('div');
-    root.className = `td-drawer-root td-drawer-root--${side} td-drawer-root--${size}`;
+    const glass = this.getAttribute('surface') === 'glass' ? ' td-drawer-root--glass' : '';
+    root.className = `td-drawer-root td-drawer-root--${side} td-drawer-root--${size}${glass}`;
     root.setAttribute('data-state', 'opening');
     let dir = 'ltr';
     try { dir = getComputedStyle(this).direction === 'rtl' ? 'rtl' : 'ltr'; } catch { /* ltr */ }
@@ -436,7 +442,10 @@ export class TdDrawer extends HTMLElement {
     closeBtn.addEventListener('click', () => this.requestClose('button'));
     const scrim = root.querySelector('.td-drawer__backdrop');
     scrim.addEventListener('mousedown', (e) => e.preventDefault()); // keep focus in the panel
-    scrim.addEventListener('click', () => { if (this._dismissible()) this.requestClose('backdrop'); });
+    scrim.addEventListener('click', () => {
+      // ADR 0042: never close under a visible external overlay (wp.media) opened above the drawer
+      if (this._dismissible() && !externalOverlayAbove(root)) this.requestClose('backdrop');
+    });
     return root;
   }
 

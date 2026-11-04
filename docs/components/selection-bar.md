@@ -72,7 +72,9 @@ nút ghost, bọc chữ trong `.td-selection-bar__label` và (nếu site chưa �
 |---|---|
 | `data-td-action="tag"` | Bắt buộc. Tên thao tác, nhận lại ở `e.detail.action`. |
 | `data-td-action-icon="tag"` | Icon trong [bộ icon](icons.md) (tên lạ → không icon). Khi thanh hẹp chỉ còn icon. |
-| `data-td-tone="danger"` | Nút ghost đỏ (Xoá). Kit **không** tự hỏi xác nhận — xem §4. |
+| `data-td-tone="danger"` | Nút ghost đỏ (Xoá). Kit **không** tự hỏi xác nhận — xem §3. |
+| `data-td-tone="primary"` | (0.96.0) Nút chính: nền accent đặc (`.td-btn--primary`), không bao giờ vào "…", giữ chữ khi thanh hẹp; `fold="count"` dời nó ra **cuối** (sau "…"). Dùng một nút; có nhiều thì chỉ nút đầu được giữ, các nút sau gấp như nút thường (`fold="count"` cảnh báo một lần). |
+| `data-td-in-menu` | (0.96.0) Luôn nằm trong "…" (cả `fold="width"`). |
 | `hidden` | Không hiện, không vào menu "…". |
 | `disabled` / `aria-disabled="true"` | Nút không chạy: không `selection-action`, không bỏ chọn; mục trong "…" cũng bị khoá. |
 
@@ -114,6 +116,27 @@ ngay) rồi `grid.selectAll({ emit: true })` cho từng lưới (`bar.grids`).
 Khi **thanh** rộng dưới 36rem, nút có icon chỉ còn icon (chữ vẫn là tên đọc được). Nút không vừa khay chuyển vào menu
 "…" (từ cuối DOM); nới rộng lại thì trở về khay. Không nhấp nháy khi kéo cửa sổ qua lại quanh ngưỡng.
 
+**Gấp theo số nút — `fold="count"` (0.96.0, opt-in).** Mặc định `fold="width"` giữ y hệt 0.95.0. Với `count`, thanh
+theo chính sách gấp dùng chung với [`<td-page-actions>`](page-actions.md):
+
+- hiện **2** nút thường đầu tiên (thứ tự DOM, bỏ `hidden` / `data-td-in-menu`), rồi "…", rồi nút `primary` ở cuối;
+- phần còn lại + mọi `data-td-in-menu` vào "…" (kể cả khi chỉ còn 1 mục);
+- thanh hẹp dưới **480px** → chỉ còn primary + "…" (ngưỡng cố định, có độ trễ chống nhấp nháy);
+- 2 nút đã hiện mà vẫn không vừa → gấp tiếp từ cuối vào "…"; **primary không bao giờ gấp**;
+- không có primary → chỉ 2 nút + "…".
+
+```html
+<td-selection-bar group="lib" fold="count">
+  <button type="button" data-td-action="download" data-td-action-icon="download">Tải về</button>
+  <button type="button" data-td-action="tag" data-td-action-icon="tag">Gắn thẻ</button>
+  <button type="button" data-td-action="link" data-td-action-icon="link" data-td-in-menu>Sao chép liên kết</button>
+  <button type="button" data-td-action="delete" data-td-action-icon="trash" data-td-tone="danger">Xoá</button>
+  <button type="button" data-td-action="share" data-td-action-icon="upload" data-td-tone="primary">Chia sẻ</button>
+</td-selection-bar>
+```
+
+Đổi `fold` tại chỗ được (thanh xếp lại ngay).
+
 ### 5. Dính đáy + `--td-selection-bar-offset`
 
 Thanh là `position: sticky; bottom: 0` trong **khối chứa** của nó: đặt thanh **sau** các lưới, trong cùng khối cuộn.
@@ -126,6 +149,20 @@ an toàn; gỡ khi thanh cuối cùng rời trang). Kit **không** tự nâng `t
 ```css
 td-scroll-top { --td-scroll-top-bottom: calc(1rem + var(--td-selection-bar-offset, 0px)); }
 ```
+
+### 5b. Nền kính — `surface="glass"` (0.96.0, opt-in)
+
+Mặc định thanh là bề mặt **đặc** ([minimal surfaces](../internal/design/liquid-glass.md)). `surface="glass"` là ngoại
+lệ opt-in ([ADR 0044](../internal/decisions/0044-glass-selection-bar.md)): panel nổi nền kính (94 %, blur), bo
+`--td-selection-bar-glass-radius` (20px), cách đáy một khoảng **trong suốt** `--td-selection-bar-glass-gap` (12px; từ
+720px: 16px; tối thiểu bằng safe area). Khoảng hở là đệm của host với `pointer-events: none` → nội dung bên dưới vẫn
+bấm được; `--td-selection-bar-offset` đã gồm khoảng hở. Panel rộng đúng khối chứa (không inset ngang).
+
+- Thiết bị không hỗ trợ `backdrop-filter`, giảm trong suốt, `data-td-glass="off"`, tương phản cao, forced colours →
+  tự về nền đặc.
+- Chỉ đảm bảo với `--td-selection-bar-position: sticky` (mặc định). Dùng `fixed` thì site tự đặt `inset-inline` /
+  `inline-size` cho host.
+- Đổi `surface` tại chỗ được; giá trị lạ → `solid`.
 
 ### 6. Khoá
 
@@ -153,10 +190,13 @@ Không có helper riêng: in markup (escape chữ và `data-td-action` như mọ
 <td-selection-bar group="lib">
   <button type="button" data-td-action="download" data-td-action-icon="download">Tải về</button>
   <button type="button" data-td-action="delete" data-td-action-icon="trash" data-td-tone="danger">Xoá</button>
+  <?php if ($canShare): ?>
+    <button type="button" data-td-action="share" data-td-action-icon="upload" data-td-tone="primary">Chia sẻ</button>
+  <?php endif; ?>
 </td-selection-bar>
 ```
 
-Markup lưới theo [hợp đồng](media-grid.md#1-hợp-đồng-markup). Server nhận `ids` (POST) phải kiểm quyền từng id.
+Với `fold="count"`, in nút `data-td-tone="primary"` **cuối cùng** (đúng vị trí cả khi chưa có JS). Markup lưới theo [hợp đồng](media-grid.md#1-hợp-đồng-markup). Server nhận `ids` (POST) phải kiểm quyền từng id.
 
 ## Attribute
 
@@ -166,6 +206,8 @@ Markup lưới theo [hợp đồng](media-grid.md#1-hợp-đồng-markup). Serve
 | `for` | id cách nhau bằng khoảng trắng | — | Lưới theo id (nhóm ẩn danh). Đổi tại chỗ. |
 | `label` | string | `TdSelectionBar.labels.region` | Tên của vùng thanh (`role="group"`). |
 | `disabled` | boolean | — | Khoá thanh (§6). |
+| `fold` | `width` \| `count` | `width` | (0.96.0) Cách gấp nút (§4). Giá trị lạ → `width`. Đổi tại chỗ. |
+| `surface` | `solid` \| `glass` | `solid` | (0.96.0) Nền thanh (§5b). Giá trị lạ → `solid`. Đổi tại chỗ. |
 
 ## Property & method
 
@@ -176,7 +218,7 @@ Markup lưới theo [hợp đồng](media-grid.md#1-hợp-đồng-markup). Serve
 | `getSelected()` | `() => string[]` | = `selectedIds`. |
 | `grids` | `HTMLElement[]` (chỉ đọc) | Các lưới của nhóm, thứ tự DOM. |
 | `clear({ emit }?)` | `({ emit?: boolean }) => void` | Bỏ chọn mọi lưới không `disabled`. `{ emit: true }` → `select-change` từng lưới + `selection-change`. |
-| `group` / `for` / `label` / `disabled` | property phản chiếu attribute | |
+| `group` / `for` / `label` / `disabled` / `fold` / `surface` | property phản chiếu attribute | `fold` / `surface` 0.96.0 |
 | `TdSelectionBar.labels` | `{ count, clear, more, region, cleared }` | `'Đã chọn {n}'`, `'Bỏ chọn tất cả'`, `'Thao tác khác'`, `'Thao tác với mục đã chọn'`, `'Đã bỏ chọn tất cả'`. Dịch trước khi thanh nâng cấp. |
 
 ## Event
@@ -199,13 +241,19 @@ Lưới vẫn phát `select-change` của riêng nó.
 | `--td-selection-bar-z` | `--td-z-sticky` | Dưới menu / modal / toast |
 | `--td-selection-bar-enter` | `150ms` | Thời gian fade khi hiện (reduced motion: không) |
 | `--td-selection-bar-danger-fg` / `-danger-hover-bg` / `-danger-pressed-bg` | `--td-color-error` / `--td-action-btn-danger-hover-bg` / `--td-action-btn-danger-pressed-bg` | Nút `data-td-tone="danger"` |
-| `--td-selection-bar-offset` | (runtime, trên `<html>`) | Chiều cao thanh đang hiện — chỉ đọc, kit ghi |
+| `--td-selection-bar-glass-bg` | `--td-glass-bg-strong` | (0.96.0) Nền panel khi `surface="glass"` |
+| `--td-selection-bar-glass-action-fg` | `--td-btn-ghost-hover-fg` | (0.96.0) Chữ nút thao tác thường khi `surface="glass"` (đậm hơn accent một bậc để giữ tương phản AA trên kính) |
+| `--td-selection-bar-glass-radius` | `--td-glass-radius` (20px) | (0.96.0) Bo panel kính |
+| `--td-selection-bar-glass-gap` | `12px` (≥ 720px: `16px`) | (0.96.0) Khoảng hở trong suốt dưới panel kính |
+| `--td-selection-bar-offset` | (runtime, trên `<html>`) | Chiều cao thanh đang hiện (gồm khoảng hở kính) — chỉ đọc, kit ghi |
+
+Nút `primary` dùng token của [nút primary](button.md) (`--td-btn-primary-*`).
 
 ## Cấu trúc DOM & class
 
 ```html
-<td-selection-bar class="td-selection-bar" group="lib" [data-empty] [data-disabled] [data-compact]>
-  <div class="td-selection-bar__panel" role="group" aria-label="Thao tác với mục đã chọn">
+<td-selection-bar class="td-selection-bar [td-selection-bar--glass]" group="lib" [data-empty] [data-disabled] [data-compact]>
+  <div class="td-selection-bar__panel [td-glass-surface td-glass-surface--strong td-glass-surface--lg]" role="group" aria-label="Thao tác với mục đã chọn">
     <button class="td-btn td-btn--ghost td-selection-bar__clear" aria-label="Bỏ chọn tất cả">×</button>
     <span class="td-selection-bar__count">Đã chọn 3</span>
     <div class="td-selection-bar__actions">
@@ -213,7 +261,7 @@ Lưới vẫn phát `select-change` của riêng nó.
         <span class="td-selection-bar__icon" aria-hidden="true"><svg…></span>
         <span class="td-selection-bar__label">Gắn thẻ</span>
       </button>
-      … (nút danger thêm .td-selection-bar__action--danger)
+      … (nút danger thêm .td-selection-bar__action--danger; nút primary: .td-btn--primary .td-selection-bar__action--primary)
       <button class="td-btn td-btn--ghost td-selection-bar__more" aria-haspopup="menu" aria-label="Thao tác khác" [hidden]>…</button>
     </div>
   </div>
@@ -250,4 +298,5 @@ chạm tick ở lưới khác mở rộng lựa chọn nhóm. Đệm dưới tí
 ## Xem thêm
 
 - [Media grid](media-grid.md) — lưới, `selection-group`, `item-remove`
+- [Page actions](page-actions.md) — cùng chính sách gấp cho nút cạnh tiêu đề trang
 - [Menu](menu.md) · [Modal](modal.md) (`TdModal.confirm`) · [Icons](icons.md)

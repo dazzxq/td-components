@@ -60,7 +60,8 @@
       "td-rich-text": "/src/form/td-rich-text.js",
       "td-icon-picker": "/src/form/td-icon-picker.js",
       "td-selection-bar": "/src/display/td-selection-bar.js",
-      "td-card": "/src/icons/td-icon.js"
+      "td-card": "/src/icons/td-icon.js",
+      "td-page-actions": "/src/display/td-page-actions.js"
     },
     "tokenNative": [
       "td-button",
@@ -121,7 +122,8 @@
       "td-rich-text",
       "td-icon-picker",
       "td-selection-bar",
-      "td-card"
+      "td-card",
+      "td-page-actions"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -1755,6 +1757,21 @@
         ".td-btn__icon svg"
       ],
       "selectorNote": "PHP td_button() element-mode markup (button@1) hydrated in place (v0.25.0)"
+    },
+    {
+      "state": "busy-plain",
+      "markup": "<button type=\"button\" class=\"td-btn td-btn--primary\" aria-busy=\"true\" aria-disabled=\"true\"><span class=\"td-btn__label\">Lưu</span><span class=\"td-btn__spinner td-spinner td-spinner--sm\" aria-hidden=\"true\"><svg class=\"td-spinner__svg\" viewBox=\"0 0 50 50\" aria-hidden=\"true\" focusable=\"false\"><circle class=\"td-spinner__track\" cx=\"25\" cy=\"25\" r=\"20\"></circle><circle class=\"td-spinner__arc\" cx=\"25\" cy=\"25\" r=\"20\"></circle></svg></span></button>",
+      "selectors": [
+        "button",
+        ".td-btn__label",
+        ".td-btn__spinner"
+      ],
+      "excludeProps": [
+        "transform",
+        "stroke-dashoffset",
+        "stroke-dasharray"
+      ],
+      "selectorNote": "setButtonBusy() contract on plain PHP / hand-written markup: aria-busy + aria-disabled (never disabled), label faded by > :not(.td-btn__spinner) opacity 0"
     }
   ],
   "td-tabs": [
@@ -2389,6 +2406,20 @@
         ".td-modal__backdrop"
       ],
       "settle": 400
+    },
+    {
+      "state": "glass",
+      "setup": "TdModal.show({ title:'Kính', body:'<div>Body</div>', surface:'glass' });",
+      "selectors": [
+        ".td-modal__dialog",
+        ".td-modal__backdrop"
+      ],
+      "portal": [
+        ".td-modal__dialog",
+        ".td-modal__backdrop"
+      ],
+      "settle": 400,
+      "selectorNote": "v0.96.0 surface=\"glass\" (opt-in): frosted dialog via .td-modal--glass (CSS only, no style attribute)."
     },
     {
       "state": "viewport",
@@ -4191,6 +4222,22 @@
       ],
       "settle": 700,
       "selectorNote": "v0.24.0 N4: filmstrip: true -> second row of the column; current thumb ringed, the others dimmed"
+    },
+    {
+      "state": "toggle",
+      "setup": "TdLightbox.open(['/test/fixtures/1.svg','/test/fixtures/2.svg','/test/fixtures/3.svg'], { index: 1, toolbar: [{ id: 'off', label: 'Tắt', icon: 'star', pressed: () => false, onClick() {} }, { id: 'star', label: 'Sao', icon: 'star', pressed: (ctx) => ctx.index === 1, onClick() {} }, { id: 'save', label: 'Lưu', icon: 'star', pressed: () => false, onClick: () => new Promise(() => {}) }] }); await new Promise((r) => setTimeout(r, 300)); document.querySelector('.td-lightbox__btn[data-extra=\"save\"]').click();",
+      "selectors": [
+        ".td-lightbox__btn[data-extra=\"off\"]",
+        ".td-lightbox__btn[data-extra=\"star\"][aria-pressed=\"true\"]",
+        ".td-lightbox__btn[data-extra=\"save\"][aria-busy=\"true\"]"
+      ],
+      "portal": [
+        ".td-lightbox__btn[data-extra=\"off\"]",
+        ".td-lightbox__btn[data-extra=\"star\"][aria-pressed=\"true\"]",
+        ".td-lightbox__btn[data-extra=\"save\"][aria-busy=\"true\"]"
+      ],
+      "settle": 700,
+      "selectorNote": "toolbar toggles: pressed(ctx) -> aria-pressed (on colour --td-lb-pressed); a pending onClick promise -> aria-busy + aria-disabled (dimmed 0.5)"
     }
   ],
   "td-otp-input": [
@@ -4330,6 +4377,20 @@
         ".td-drawer__body"
       ],
       "settle": 500
+    },
+    {
+      "state": "glass",
+      "setup": "TdDrawer.open({ label:'Panel', surface:'glass', bodyHtml:'<p>Kính</p>' });",
+      "selectors": [
+        ".td-drawer__panel",
+        ".td-drawer__backdrop"
+      ],
+      "portal": [
+        ".td-drawer__panel",
+        ".td-drawer__backdrop"
+      ],
+      "settle": 500,
+      "selectorNote": "v0.96.0 surface=\"glass\" (opt-in): frosted panel via .td-drawer-root--glass (CSS only, no style attribute)."
     },
     {
       "state": "reduced-motion",
@@ -8289,6 +8350,51 @@
         "inset-block-start"
       ],
       "excludeNote": "font-metric dependent (label / button text widths, wrap) — excluded up front"
+    },
+    {
+      "state": "count-primary",
+      "setup": "await import('/src/display/td-media-grid.js'); const w=document.createElement('div'); w.style.setProperty('width',\"720px\"); window.__mount.appendChild(w); w.innerHTML=\"<td-media-grid id=\\\"a\\\" label=\\\"L\\u01b0\\u1edbi a\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"a1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-media-grid id=\\\"b\\\" label=\\\"L\\u01b0\\u1edbi b\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"b1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-selection-bar group=\\\"lib\\\" fold=\\\"count\\\"><button type=\\\"button\\\" data-td-action=\\\"download\\\" data-td-action-icon=\\\"download\\\">T\\u1ea3i v\\u1ec1</button><button type=\\\"button\\\" data-td-action=\\\"tag\\\" data-td-action-icon=\\\"tag\\\">G\\u1eafn th\\u1ebb</button><button type=\\\"button\\\" data-td-action=\\\"album\\\" data-td-action-icon=\\\"folder-plus\\\" data-td-in-menu>Th\\u00eam v\\u00e0o album</button><button type=\\\"button\\\" data-td-action=\\\"delete\\\" data-td-action-icon=\\\"trash\\\" data-td-tone=\\\"danger\\\">Xo\\u00e1</button><button type=\\\"button\\\" data-td-action=\\\"share\\\" data-td-action-icon=\\\"upload\\\" data-td-tone=\\\"primary\\\">Chia s\\u1ebb</button></td-selection-bar>\"; await customElements.whenDefined('td-selection-bar'); const bar=w.querySelector('td-selection-bar'); for (let i=0;i<60 && bar.grids.length<2;i++) await new Promise((r)=>requestAnimationFrame(r)); w.querySelector('#a').select([\"a1\", \"a2\", \"a3\"]);",
+      "selectors": [
+        ".td-selection-bar__action--primary",
+        ".td-selection-bar__action--primary .td-selection-bar__label",
+        ".td-selection-bar__more"
+      ],
+      "settle": 450,
+      "selectorNote": "v0.96.0: fold=count, 720px: 2 secondaries + \"…\" + the primary (data-td-tone=primary → --primary modifier, solid accent, flex none); data-td-in-menu always in \"…\"",
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left",
+        "inset-block-end",
+        "inset-block-start"
+      ],
+      "excludeNote": "font-metric dependent (label / button text widths, wrap) — excluded up front"
+    },
+    {
+      "state": "glass",
+      "setup": "await import('/src/display/td-media-grid.js'); const w=document.createElement('div'); w.style.setProperty('width',\"720px\"); window.__mount.appendChild(w); w.innerHTML=\"<td-media-grid id=\\\"a\\\" label=\\\"L\\u01b0\\u1edbi a\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"a1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"a3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"a 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-media-grid id=\\\"b\\\" label=\\\"L\\u01b0\\u1edbi b\\\" selection-group=\\\"lib\\\"><div data-td-media-item data-id=\\\"b1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 1\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 2\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"b3\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"b 3\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid><td-selection-bar group=\\\"lib\\\" fold=\\\"count\\\" surface=\\\"glass\\\"><button type=\\\"button\\\" data-td-action=\\\"download\\\" data-td-action-icon=\\\"download\\\">T\\u1ea3i v\\u1ec1</button><button type=\\\"button\\\" data-td-action=\\\"tag\\\" data-td-action-icon=\\\"tag\\\">G\\u1eafn th\\u1ebb</button><button type=\\\"button\\\" data-td-action=\\\"album\\\" data-td-action-icon=\\\"folder-plus\\\" data-td-in-menu>Th\\u00eam v\\u00e0o album</button><button type=\\\"button\\\" data-td-action=\\\"delete\\\" data-td-action-icon=\\\"trash\\\" data-td-tone=\\\"danger\\\">Xo\\u00e1</button><button type=\\\"button\\\" data-td-action=\\\"share\\\" data-td-action-icon=\\\"upload\\\" data-td-tone=\\\"primary\\\">Chia s\\u1ebb</button></td-selection-bar>\"; await customElements.whenDefined('td-selection-bar'); const bar=w.querySelector('td-selection-bar'); for (let i=0;i<60 && bar.grids.length<2;i++) await new Promise((r)=>requestAnimationFrame(r)); w.querySelector('#a').select([\"a1\", \"a2\", \"a3\"]);",
+      "selectors": [
+        "td-selection-bar.td-selection-bar--glass",
+        ".td-selection-bar--glass .td-selection-bar__panel"
+      ],
+      "settle": 450,
+      "selectorNote": "v0.96.0 ADR 0044: surface=glass — floating glass panel (radius 20px, transparent gap below, host pointer-events none)",
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left",
+        "inset-block-end",
+        "inset-block-start"
+      ],
+      "excludeNote": "font-metric dependent (label / button text widths, wrap) — excluded up front"
     }
   ],
   "td-card": [
@@ -8396,6 +8502,77 @@
         "width",
         "margin-left"
       ]
+    }
+  ],
+  "td-page-actions": [
+    {
+      "state": "default",
+      "setup": "await import('/src/form/td-button.js'); const w=document.createElement('div'); w.style.setProperty('display','flex'); w.style.setProperty('width',\"720px\"); window.__mount.appendChild(w); w.innerHTML=\"<td-page-actions label=\\\"Thao t\\u00e1c trang\\\"><a class=\\\"td-btn td-btn--secondary\\\" href=\\\"#import\\\">Nh\\u1eadp</a><button class=\\\"td-btn td-btn--secondary\\\" type=\\\"button\\\">S\\u1eafp x\\u1ebfp</button><button class=\\\"td-btn td-btn--secondary\\\" type=\\\"button\\\" data-td-in-menu>Xu\\u1ea5t CSV</button><button class=\\\"td-btn td-btn--primary\\\" type=\\\"button\\\" data-td-tone=\\\"primary\\\">T\\u1ea3i \\u1ea3nh l\\u00ean</button></td-page-actions>\"; await customElements.whenDefined('td-page-actions'); for (let i=0;i<4;i++) await new Promise((r)=>requestAnimationFrame(r));",
+      "selectors": [
+        "td-page-actions.td-page-actions",
+        ".td-page-actions > .td-page-actions__more",
+        ".td-page-actions > [data-td-tone=\"primary\"]"
+      ],
+      "settle": 300,
+      "selectorNote": "v0.96.0: 720px row: 2 secondaries, \"…\" (Xuất CSV via data-td-in-menu), the primary last",
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left",
+        "inset-block-end",
+        "inset-block-start",
+        "line-height"
+      ],
+      "excludeNote": "font-metric dependent (label / button text widths, wrap) — excluded up front; the host `td-page-actions` has no font of its own, so its inherited `line-height` is the page body's (legacy fixture `normal`, td profile 24px) — invisible either way (same reason as the dropdown live region)"
+    },
+    {
+      "state": "narrow",
+      "setup": "await import('/src/form/td-button.js'); const w=document.createElement('div'); w.style.setProperty('display','flex'); w.style.setProperty('width',\"390px\"); window.__mount.appendChild(w); w.innerHTML=\"<td-page-actions label=\\\"Thao t\\u00e1c trang\\\"><a class=\\\"td-btn td-btn--secondary\\\" href=\\\"#import\\\">Nh\\u1eadp</a><button class=\\\"td-btn td-btn--secondary\\\" type=\\\"button\\\">S\\u1eafp x\\u1ebfp</button><button class=\\\"td-btn td-btn--secondary\\\" type=\\\"button\\\" data-td-in-menu>Xu\\u1ea5t CSV</button><button class=\\\"td-btn td-btn--primary\\\" type=\\\"button\\\" data-td-tone=\\\"primary\\\">T\\u1ea3i \\u1ea3nh l\\u00ean</button></td-page-actions>\"; await customElements.whenDefined('td-page-actions'); for (let i=0;i<4;i++) await new Promise((r)=>requestAnimationFrame(r));",
+      "selectors": [
+        "td-page-actions.td-page-actions",
+        ".td-page-actions > [data-td-overflow]",
+        ".td-page-actions > .td-page-actions__more"
+      ],
+      "settle": 300,
+      "selectorNote": "v0.96.0: parent < 480px: only the primary + \"…\"; secondaries carry data-td-overflow (display none)",
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left",
+        "inset-block-end",
+        "inset-block-start",
+        "line-height"
+      ],
+      "excludeNote": "font-metric dependent (label / button text widths, wrap) — excluded up front; the host `td-page-actions` has no font of its own, so its inherited `line-height` is the page body's (legacy fixture `normal`, td profile 24px) — invisible either way (same reason as the dropdown live region)"
+    },
+    {
+      "state": "mirror",
+      "setup": "await import('/src/form/td-button.js'); const w=document.createElement('div'); w.style.setProperty('display','flex'); w.style.setProperty('width',\"720px\"); window.__mount.appendChild(w); w.innerHTML=\"<div id=\\\"pa-mirror\\\"></div><td-page-actions label=\\\"Thao t\\u00e1c trang\\\" mirror=\\\"pa-mirror\\\"><a class=\\\"td-btn td-btn--secondary\\\" href=\\\"#import\\\">Nh\\u1eadp</a><button class=\\\"td-btn td-btn--secondary\\\" type=\\\"button\\\">S\\u1eafp x\\u1ebfp</button><button class=\\\"td-btn td-btn--secondary\\\" type=\\\"button\\\" data-td-in-menu>Xu\\u1ea5t CSV</button><button class=\\\"td-btn td-btn--primary\\\" type=\\\"button\\\" data-td-tone=\\\"primary\\\">T\\u1ea3i \\u1ea3nh l\\u00ean</button></td-page-actions>\"; await customElements.whenDefined('td-page-actions'); for (let i=0;i<4;i++) await new Promise((r)=>requestAnimationFrame(r));",
+      "selectors": [
+        "#pa-mirror > .td-page-actions__clone"
+      ],
+      "settle": 300,
+      "selectorNote": "v0.96.0: mirror target filled with safe proxies (aria-hidden, tabindex -1) of the shown actions",
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left",
+        "inset-block-end",
+        "inset-block-start"
+      ],
+      "excludeNote": "font-metric dependent (label / button text widths, wrap) — excluded up front"
     }
   ]
 }

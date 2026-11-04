@@ -357,6 +357,9 @@ Option chung cho các control:
 | `download` | `true` → `download`; chuỗi → tên file (bỏ `/ \ : * ? " < > \|` và ký tự điều khiển, tối đa 200 ký tự) | — |
 | `bare` | **chỉ `td_link`** (0.18.0): `true` → `<a>` thường, không class `td-btn…`, không span con của nút | — |
 
+Bật bận lúc chạy (AJAX, submit) cho nút `td_button()` / `td_link()` in sẵn: dùng thẳng `setButtonBusy` / `runWithButton`
+(0.96.0) trên nút đó, không cần option PHP nào — xem [Button: nút `.td-btn` thường](../components/button.md#nút-td-btn-thường-setbuttonbusy--runwithbutton-0960).
+
 Markup (cấu trúc con giống `<td-button>`):
 
 ```html
@@ -2176,6 +2179,40 @@ echo td_hint('slug', Td::html('Xem <a href="/huong-dan/slug">hướng dẫn</a>'
 `data-td-*` giữ). PHP không sửa được markup của control: **tự in** `aria-describedby="{for}-hint"` trên control (không JS);
 khi module `hint` chạy, id đã có không bị thêm trùng. `$for` rỗng / có khoảng trắng → `''` + một cảnh báo. Chuỗi luôn là
 chữ; markup chỉ qua `Td::html()` — không bao giờ bọc nội dung người dùng nhập. Xem [Hint](../components/hint.md).
+
+## td_page_actions (0.96.0)
+
+```php
+echo td_page_actions([
+  ['label' => 'Nhập', 'href' => '/photos/import'],
+  ['label' => 'Sắp xếp', 'menu' => 'photos-sort'],
+  ['label' => 'Xuất CSV', 'in_menu' => true, 'attrs' => ['data-export' => 'csv']],
+  ['label' => 'Xoá album', 'tone' => 'danger'],
+  $canUpload ? ['label' => 'Tải ảnh lên', 'primary' => true, 'icon' => 'upload'] : null,
+], ['label' => 'Thao tác trang', 'mirror' => 'sticky-actions']);
+```
+
+`<td-page-actions data-td-ssr="page-actions@1" label mirror role="group" aria-label>` (hằng `Td::SSR_PAGE_ACTIONS`);
+nút chính in **cuối** (đúng thứ tự cả khi không JS). Mỗi nút in bằng `td_button()` / `td_link()`.
+
+| Khoá action | Kiểu | Ghi chú |
+|---|---|---|
+| `label` | string (bắt buộc) | escape; rỗng → bỏ action + warning |
+| `href` | string | qua `Td::safeUrl`; hỏng → in `<button>` + warning |
+| `target` | `_blank` \| … | trong `Td::TARGETS`; `_blank` thêm `rel="noopener noreferrer"` |
+| `primary` | bool | > 1 → một warning, chỉ giữ cái đầu (các cái sau thành nút phụ) |
+| `tone` | `danger` \| `primary` | khác → bỏ qua |
+| `icon`, `aria_label` | string | như `td_button` |
+| `in_menu`, `disabled`, `hidden` | bool | `in_menu` → `data-td-in-menu` |
+| `menu` | string | `data-td-menu` (TdMenu đã `define`) |
+| `type` | `button` \| `submit` | mặc định `button` |
+| `element` | bool | in `<td-button>` (mặc định theo `$o['element']`, rồi `ssr_elements`) |
+| `attrs` | array | allowlist như mọi helper; `data-td-*` bị bỏ (namespace kit) |
+| `null` | — | bỏ qua (tiện cho điều kiện quyền) |
+
+`$o`: `label`, `mirror` (id), `element`, `attrs` (host). Marker của kit (`data-td-tone`, `data-td-in-menu`,
+`data-td-menu`, `hidden`) nằm trên con trực tiếp: `<button>` / `<a>` ở chế độ thường, host `<td-button>` ở chế độ
+element (control giữ nguyên `button@1`, hydrate không render lại). Xem [Page actions](../components/page-actions.md).
 
 ## An toàn: escape và whitelist
 

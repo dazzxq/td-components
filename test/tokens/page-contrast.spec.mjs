@@ -141,7 +141,7 @@ async function open(browser, palette, width) {
     return route.fulfill({ status: 404, body: '' });
   });
   const page = await context.newPage();
-  page.setDefaultTimeout(10000);
+  page.setDefaultTimeout(Number(process.env.PC_TIMEOUT) || 10000); // PC_TIMEOUT: only for a heavily loaded machine
   await page.mouse.move(0, 0);
   await page.goto(`${ORIGIN}/`);
   await page.waitForFunction(() => [...document.querySelectorAll('*')].filter((e) => e.localName.startsWith('td-')).every((e) => customElements.get(e.localName)));

@@ -96,6 +96,36 @@ export const NarrowOverflow = {
   },
 };
 
+/**
+ * Nút bật/tắt — toggle toolbar button: `pressed(ctx)` decides `aria-pressed` per slide (kit-owned), `onClick` returning a
+ * promise keeps the button busy (dimmed, clicks swallowed) until it settles, then the state is re-read. Here a fake
+ * 800 ms "save" toggles a star per photo.
+ */
+export const ToggleButton = {
+  name: 'Nút bật/tắt',
+  render: () => {
+    const btn = document.createElement('button');
+    btn.textContent = 'Mở (bấm ngôi sao, đổi ảnh rồi quay lại)';
+    btn.addEventListener('click', () => {
+      const starred = new Set(['photo-2']);
+      TdLightbox.open(IMGS.map((it, i) => ({ ...it, data: { id: `photo-${i + 1}` } })), {
+        toolbar: [{
+          id: 'star', label: 'Đánh dấu sao', icon: 'star',
+          pressed: (ctx) => starred.has(ctx.item.data.id),
+          onClick: (ctx) => new Promise((resolve) => {
+            setTimeout(() => {
+              const id = ctx.item.data.id;
+              if (starred.has(id)) starred.delete(id); else starred.add(id);
+              resolve();
+            }, 800);
+          }),
+        }],
+      });
+    });
+    return btn;
+  },
+};
+
 /** Video: default native <video>; a site passes `video` to plug Plyr etc. */
 export const Video = {
   render: () => {

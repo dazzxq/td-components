@@ -410,6 +410,10 @@ TdFormValidation.attach(form, {
 Vì sao an toàn khi bấm liên tục hoặc nhấn Enter nhiều lần: khi `loading`, click vào nút bị nuốt; nếu `submit` vẫn tới
 (ví dụ gọi `form.requestSubmit()`), `run()` trả lại promise đang chạy thay vì chạy lần hai.
 
+Nút gửi là `.td-btn` thường (PHP `td_button()`, markup viết tay) chứ không phải `<td-button>`: dùng `runWithButton` /
+`setButtonBusy` (0.96.0) với cùng mẫu — xem [Button: nút `.td-btn` thường](../components/button.md#nút-td-btn-thường-setbuttonbusy--runwithbutton-0960)
+(kèm công thức submit thường + bfcache).
+
 Trong modal: đặt `<form>` làm `body` (Node) của `TdModal.show()`, rồi dùng đúng mẫu trên; hoặc dùng `actions` với
 `onClick` trả về promise để modal tự giữ nút ở trạng thái bận. Xem [Modal](../components/modal.md).
 
@@ -504,6 +508,7 @@ Ba cách đặt tên cho control, theo thứ tự ưu tiên:
 | `el.value` của input-field trả giá trị cũ | site còn chạy bản trước 0.16.0 | nâng cấp, hoặc dùng `getValue()` |
 | `el.value` của dropdown trả attribute cũ | site còn chạy bản trước 0.17.0 | nâng cấp, hoặc dùng `getValue()` |
 | Lỗi server không hiện ở ô nào | key server khác `name` | `fieldMap`, hoặc `data-field="key"` trên wrapper; xem `r.unmapped` |
+| Nút gửi bận nhưng server không nhận `name=value` của nút | dùng `disabled` gốc làm trạng thái bận (nút disabled không phải submitter, mất focus) | đừng dùng `disabled` cho bận: `<td-button loading>` / `run()`, hoặc `setButtonBusy` / `runWithButton` cho `.td-btn` thường |
 | Reset xong vẫn còn summary lỗi | form không dùng `attach()` (hoặc bản trước 0.16.0) | `form.addEventListener('reset', () => TdFormValidation.clear(form))` |
 
 ## Xem thêm

@@ -1,6 +1,7 @@
 /*
  * td-drawer (src/feedback/td-drawer.js, v0.27.0). Minimal surfaces: an OPAQUE panel (--td-glass-solid, glass.css opaque
- * group) + thin border + --td-glass-shadow-lg, no blur, over the plain modal scrim (never blurred).
+ * group) + thin border + --td-glass-shadow-lg, no blur, over the plain modal scrim (never blurred). v0.96.0:
+ * `.td-drawer-root--glass` (opt-in, surface="glass") = frosted panel, --td-drawer-glass-bg + --td-drawer-glass-blur.
  * Layer: var(--td-z-modal) like a modal (one band: later layers stack by DOM order; v0.21.1 promotion over a lightbox).
  * State (set by JS, never visual classes): root [data-state="opening|open|closing"] · footer [hidden].
  * The root is a <body> child: a site sizes it with `--td-drawer-w` (on :root, on the host — copied to the root on open —
@@ -22,6 +23,13 @@
 		--td-drawer-exit-dur: 200ms;
 		--td-drawer-ease: cubic-bezier(0.32, 0.72, 0, 1);
 		--td-drawer-exit-ease: cubic-bezier(0.4, 0, 0.2, 1);
+		--td-drawer-glass-blur: var(--td-glass-blur);             /* v0.96.0 glass opt-in (blur) */
+	}
+
+	/* v0.96.0 opt-in frosted panel (<td-drawer surface="glass"> → .td-drawer-root--glass); solid stays the default.
+	   Theme scopes re-resolve the fill (ADR 0020). */
+	:root, [data-td-theme] {
+		--td-drawer-glass-bg: var(--td-glass-bg-strong);
 	}
 }
 
@@ -87,6 +95,14 @@
 
 	.td-drawer-root[data-state="closing"] .td-drawer__backdrop {
 		transition: opacity var(--td-drawer-exit-dur) var(--td-drawer-exit-ease);
+	}
+
+	/* v0.96.0 opt-in frosted panel: 0,3,0 beats glass.css's opaque group (0,2,0); the glass.css fallbacks still win
+	   through --_td-glass-fill / --_td-glass-filter. */
+	.td-drawer-root--glass .td-drawer__panel.td-glass-surface {
+		background-color: var(--_td-glass-fill, var(--td-drawer-glass-bg));
+		-webkit-backdrop-filter: var(--_td-glass-filter, var(--td-drawer-glass-blur));
+		backdrop-filter: var(--_td-glass-filter, var(--td-drawer-glass-blur));
 	}
 
 	.td-drawer__panel {

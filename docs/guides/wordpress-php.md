@@ -232,6 +232,36 @@ add_action('wp_enqueue_scripts', function (): void {
 nên ở đây chỉ dùng mảng, không dùng `td_import_map_tag()`. Chỉ đăng ký thì chưa nạp gì — WordPress chỉ in những
 module nằm trong đồ thị phụ thuộc của module **được enqueue**.
 
+### wp-admin: nạp `compat/td-wp-admin.css` (0.96)
+
+CSS của wp-admin (`forms.css`, `common.css`, bảng màu admin) **không có layer**, còn mọi rule của `td.css` nằm trong
+`@layer td.*` → wp-admin luôn thắng và vẽ lại control của kit: viền `#949494` bo 2px, `min-height: 40px`, vòng focus xanh
+của WP, checkbox / radio ẩn của kit hiện thành ô 16px (ô check-matrix chỉ bấm được 16×16), nút `td-btn` chữ 13px, `a.td-btn`
+chữ xanh. Trên màn hình admin có control td, nạp thêm file compat **sau `td.css`, trước skin**:
+
+```php
+add_action('admin_init', function (): void {
+    // Luôn từ Td::baseUrl() (gốc package) — file không có trong dist/
+    wp_register_style('td-wp-admin', rtrim(TdComponents\Td::baseUrl(), '/') . '/compat/td-wp-admin.css', ['td'], TD_VERSION);
+});
+add_action('admin_enqueue_scripts', function (): void {
+    wp_enqueue_style('td');
+    wp_enqueue_style('td-wp-admin');
+    // skin admin (nếu có) phụ thuộc 'td-wp-admin' để nạp sau
+});
+```
+
+- File là rule **không layer**, chỉ selector `.td-*` / `td-dropdown`, mọi giá trị là `revert-layer` (trả về giá trị của
+  `td.css`, không chép giá trị) — không `!important`, không `url()`, hợp CSP. Không cần ở front-end.
+- **Ngoại lệ đã biết, vô hại:** `padding: 0 !important` của wp-admin trên checkbox / radio vẫn áp (không gỡ được nếu không
+  dùng `!important`); input của kit đều ẩn và vốn có padding 0.
+- **Cảnh báo ghi đè:** rule compat có specificity 0,3,0 nên thắng cả rule **không layer** của site có specificity thấp hơn
+  trên cùng thuộc tính của các control đó (vd. `.td-field__control { border-radius: 4px }` trong skin không còn tác dụng).
+  Đổi giao diện control bằng **token** `--td-*` (hợp đồng của kit), hoặc dùng selector ≥ 0,3,0.
+- Đo trên WordPress 7.1 (`forms.css`, `common.css`, `buttons.css`, bảng màu Modern / Classic). CSS riêng của từng màn hình
+  admin (`.form-table`, `.wp-list-table`, plugin) chưa được đo — dwp báo lại nếu thấy control td còn lệch.
+- **Bản vendor của dwp phải chép cả thư mục `compat/`** (cạnh `td.css`, `dist/`, `php/`).
+
 ### Dùng trong module của site
 
 Module của site khai báo kit là **dependency**, WordPress sẽ in import map và `modulepreload` tương ứng:
@@ -323,6 +353,26 @@ Lưu ý khi chuyển:
 - `filter()` chỉ là UX, không phải phân quyền (xem [Bảo mật](security.md#những-thứ-kit-tin-tưởng-trust-assumptions)).
 
 Tooltip cũng nhận markup dwp nguyên trạng: `data-dwp-tooltip`, `data-tooltip-pos`, `data-dwp-tooltip-pos`.
+
+### wp.media mở từ trong modal / drawer (0.96)
+
+Mở trình chọn ảnh `wp.media` từ một nút trong `TdModal` / `td-drawer`: wp.media gắn khung của nó thẳng vào `<body>`, nên
+trước 0.96.0 nó bị modal làm `inert` (hiện ra nhưng không bấm được). Khai báo nó là UI ngoài **một lần** khi khởi động
+trang admin ([hợp đồng đầy đủ](../components/modal.md#11-mở-ui-ngoài-chồng-lên-modal-registerexternaloverlay-0960)):
+
+```js
+import { registerExternalOverlay } from '@dazzxq/td-components/external-overlay';
+
+// wp.media gắn một <div> bọc (z-index: auto) ngay dưới <body>, bên trong có .media-modal + .media-modal-backdrop.
+registerExternalOverlay((el) => el.querySelector(':scope > .media-modal') !== null);
+```
+
+- Khung bọc `z-index: auto` được xếp theo `z-index` cao nhất của con trực tiếp (`.media-modal` 160000) → nằm trên modal
+  td (`--td-z-modal` 400) → không `inert`, Tab / Escape thuộc về wp.media, bấm nền không đóng modal td.
+- Đóng wp.media (nó chỉ ẩn khung, giữ DOM) → modal td lấy lại bàn phím; focus về dialog nếu wp.media không tự trả.
+- Hai lớp nền tối chồng nhau (scrim td + nền wp.media) là cố ý.
+- Cấu trúc DOM trên đo ở WordPress 7.1; dwp xác nhận lại trên bản WP đang chạy. Nếu khác, đăng ký đúng khung ngoài cùng
+  nằm thẳng dưới `<body>` (không đăng ký selector rộng như `'div'`).
 
 ### Menu registry cho plugin
 

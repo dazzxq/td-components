@@ -22,8 +22,12 @@
  *   everything outside the band never move.
  * - v0.42.0 theme bridge (ADR 0020): bridgeTheme(portalRoot, anchor, { themeRoot }) carries a theme SCOPE
  *   (`[data-td-theme]` below <html>) onto a popup portaled to <body>; see its JSDoc.
+ * - v0.96.0 external overlays (ADR 0042): while a declared external overlay (external-overlay.js) is visible and above
+ *   the top keyboard boundary, Escape and Tab are left alone (no onEscape / onTab, no preventDefault); when it goes
+ *   away and focus was left outside every open layer, focus returns to where it last was inside the top layer.
  */
 import { acquireInert, registerFloating } from './inert-lock.js';
+import { externalOverlayAbove, onExternalOverlayChange } from './external-overlay.js';
 import { THEME_TOKENS, THEME_TOKENS_VERSION } from '../theme/tokens.js';
 
 export const LAYERS = Object.freeze({
@@ -55,6 +59,8 @@ function onKeydown(e) {
   if (e.key !== 'Escape' && e.key !== 'Tab') return;
   if (e.key === 'Escape' && (e.isComposing || e.keyCode === 229)) return; // IME: Escape cancels the composition
   const boundaries = active.filter((r) => r.keyboard === 'boundary');
+  // ADR 0042: a visible external overlay above the top boundary owns the keyboard (its own Escape / Tab handling)
+  if (boundaries.length && externalOverlayAbove(boundaries[boundaries.length - 1].element)) return;
   if (e.key === 'Escape') {
     // the highest boundary that wants it (a hover tooltip hands Escape to the popup below it — v0.21.1)
     let top = null;
@@ -79,13 +85,54 @@ function onKeydown(e) {
   }
 }
 
+/* ---- ADR 0042: focus return after an external overlay goes away ---- */
+let offExternal = null;
+let externalWasAbove = false;
+/** @type {Element|null} the last focused element inside the top boundary while no external overlay was above it */
+let lastInside = null;
+
+function topBoundaryElement() {
+  for (let i = active.length - 1; i >= 0; i--) {
+    if (active[i].keyboard === 'boundary' && active[i].element) return active[i].element;
+  }
+  return null;
+}
+
+function onFocusIn(e) {
+  const top = topBoundaryElement();
+  const t = e.target;
+  if (!top || !(t instanceof Element) || !composedContains(top, t)) return;
+  if (!externalOverlayAbove(top)) lastInside = t;
+}
+
+function onExternalChange() {
+  const top = topBoundaryElement();
+  const now = !!(top && externalOverlayAbove(top));
+  const wasAbove = externalWasAbove;
+  externalWasAbove = now;
+  if (!wasAbove || now || !top || !active.some((r) => r.blocking)) return;
+  // the external UI went away: if it took focus with it (body / null / outside every open layer), bring focus back
+  const a = document.activeElement;
+  const lost = !a || a === document.body || !active.some((r) => r.element && composedContains(r.element, a));
+  if (!lost) return; // the external library already returned focus (wp.media does)
+  const saved = lastInside instanceof HTMLElement && composedContains(top, lastInside) ? lastInside : null;
+  restoreFocus(saved);
+}
+
 function ensureListener() {
   if (typeof document === 'undefined') return;
   if (active.length && !listening) {
     document.addEventListener('keydown', onKeydown, true);
+    document.addEventListener('focusin', onFocusIn, true);
+    offExternal = onExternalOverlayChange(onExternalChange);
     listening = true;
   } else if (!active.length && listening) {
     document.removeEventListener('keydown', onKeydown, true);
+    document.removeEventListener('focusin', onFocusIn, true);
+    if (offExternal) offExternal();
+    offExternal = null;
+    externalWasAbove = false;
+    lastInside = null;
     listening = false;
   }
 }

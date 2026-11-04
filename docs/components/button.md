@@ -258,9 +258,88 @@ btn.setLoading(false);  // = btn.removeAttribute('loading')
 <td-button loading>Đang gửi</td-button>
 ```
 
-Khi loading: nút bên trong có `aria-busy="true"` và `aria-disabled="true"`, chữ và icon bị ẩn (giữ nguyên kích thước
-nút), spinner hiện ở giữa, con trỏ là `progress`, và **mọi click bị chặn** (không tới listener của bạn). Khác với
-`disabled`, nút loading **vẫn giữ focus** và vẫn nằm trong thứ tự Tab, nên người dùng bàn phím không bị mất vị trí.
+Khi loading: nút bên trong có `aria-busy="true"` và `aria-disabled="true"`, chữ và icon mờ hẳn (`opacity: 0`, giữ
+nguyên kích thước nút, tên nút vẫn đọc được cho trình đọc màn hình — 0.96.0, trước đó là `visibility: hidden`), spinner
+hiện ở giữa, con trỏ là `progress`, và **mọi click bị chặn** (không tới listener của bạn). Khác với `disabled`, nút
+loading **vẫn giữ focus** và vẫn nằm trong thứ tự Tab, nên người dùng bàn phím không bị mất vị trí.
+
+### Nút `.td-btn` thường: `setButtonBusy` / `runWithButton` (0.96.0)
+
+Nút in bằng PHP `td_button()` / `td_link()` hoặc viết tay (`<button class="td-btn …">`, `<a class="td-btn …">`) không có
+`run()` / `setLoading()`. Hai hàm tự do cho chúng **cùng một trạng thái bận** như `<td-button loading>` (td-button cũng
+dùng chung code này):
+
+```js
+import { setButtonBusy, runWithButton } from '@dazzxq/td-components/button-busy'; // hoặc từ barrel '@dazzxq/td-components'
+
+setButtonBusy(btn, true);   // bật bận
+setButtonBusy(btn, false);  // trả lại nguyên trạng
+await runWithButton(btn, () => fetch('/api/save', { method: 'POST' })); // bận trong lúc chạy, luôn gỡ trong finally
+```
+
+| Hàm | `target` | Hành vi |
+|---|---|---|
+| `setButtonBusy(target, busy)` | `button.td-btn`, `a.td-btn`, hoặc `<td-button>` / `<td-action-button>` (host, hay nút bên trong host — quy về host) | Host: gọi `setLoading()`. Nút thường: bật / gỡ trạng thái bận bên dưới. Khác các kiểu trên → ném `TypeError`. |
+| `runWithButton(target, fn)` | như trên | Bận **trước** khi `fn` chạy (`fn` chạy sau một microtask), luôn gỡ trong `finally`, trả kết quả / ném lại lỗi. Gọi lại khi đang chạy (kể cả lồng trong `fn`) → **đúng Promise đang chạy**. Host `<td-button>` → chuyển cho `run()` của nó (chung một Promise). `target` sai → ném `TypeError` đồng bộ; `fn` không phải hàm → reject `TypeError`. |
+
+Hợp đồng bận (giống hệt `loading`):
+
+- `aria-busy="true"` + `aria-disabled="true"`, **không bao giờ** `disabled` gốc: nút giữ focus, và nút submit vẫn có
+  `name=value` trong `new FormData(form, submitter)`.
+- Spinner `.td-btn__spinner` hiện ra; markup viết tay chưa có spinner thì được tạo một lần (bằng DOM, không `innerHTML`).
+  Chữ trần (`<button class="td-btn">Lưu</button>`) được gói một lần vào `<span class="td-btn__label">` để mờ đi dưới
+  spinner — code của bạn đọc `button.firstChild.nodeValue` sẽ thấy khác; muốn nguyên vẹn thì in sẵn `.td-btn__label` như
+  `td_button()`.
+- Link `a.td-btn`: `href` được gỡ tạm (đặt `tabindex` **trước** khi gỡ `href`, thêm `role="link"`), hết bận thì trả lại
+  đúng `href` / `tabindex` / `role` / `aria-disabled` đã có (khôi phục `href` **trước** khi gỡ `tabindex`). Link vốn không
+  dùng được (không `href`, hoặc `aria-disabled="true"` của bạn) giữ `tabindex="-1"` trong lúc bận.
+- Click bị nuốt bởi **một** listener capture trên `document` (cài lần đầu có nút bận, không bao giờ gỡ): chuột, chạm,
+  Enter / Space, click vào icon / SVG bên trong nút, và **implicit submission** (Enter trong ô nhập khi nút gửi mặc định
+  đang bận) đều không tới trang.
+- Bật bận hai lần không chụp lại trạng thái bận (idempotent). Nút `aria-busy` do server in sẵn: `setButtonBusy(b, false)`
+  chỉ gỡ dấu bận.
+
+Giới hạn của guard: chỉ có từ lần bận **đầu tiên** của document đó (nút `aria-busy` server in sẵn mà chưa từng qua helper /
+`td-button` thì chưa được bảo vệ); listener capture trên `window` hoặc đăng ký trên `document` trước đó vẫn chạy trước;
+`form.submit()` / `form.requestSubmit()` gọi bằng code không đi qua nút nên không bị chặn.
+
+#### Mẫu AJAX với nút thường
+
+```js
+form.addEventListener('submit', (e) => {
+  e.preventDefault();                                  // đồng bộ, TRƯỚC runWithButton
+  const submitter = e.submitter;                       // nút được bấm (null khi requestSubmit() không truyền nút)
+  runWithButton(submitter ?? form.querySelector('[type=submit]'), async () => {
+    // FormData(form, submitter) ném TypeError khi submitter là null → chỉ truyền khi có
+    const body = submitter ? new FormData(form, submitter) : new FormData(form);
+    const res = await fetch(form.action, { method: 'POST', body });
+    if (!res.ok) throw new Error(res.status);          // lỗi → bận được gỡ, caller catch
+  }).catch(showError);
+});
+```
+
+`new FormData(form, submitter)` lấy đúng `name=value` của nút được bấm vì nút bận **không** bị `disabled` gốc. Enter
+trong ô nhập cũng có `submitter` (nút gửi mặc định). `submitter` là `null` khi gọi `form.requestSubmit()` không đối số
+(hoặc `dispatchEvent` tay) — khi đó phải dùng `new FormData(form)` một tham số như mẫu trên.
+
+#### Submit thường (không AJAX) + bfcache
+
+```js
+form.addEventListener('submit', (e) => {
+  if (e.submitter) setButtonBusy(e.submitter, true);   // không preventDefault: trang sắp điều hướng
+});
+// Back / Forward trả trang từ bfcache với nút còn bận → gỡ
+addEventListener('pageshow', (e) => {
+  if (e.persisted) for (const b of document.querySelectorAll('.td-btn[aria-busy="true"]')) setButtonBusy(b, false);
+});
+```
+
+Giới hạn: **không** dùng công thức này cho `target="_blank"`, `download`, link mở cửa sổ khác hay form trả file (trang
+không điều hướng nên nút bận mãi — dùng `runWithButton` với thao tác thật). Validate native lỗi thì không có `submit`, nút
+không bận (đúng).
+
+> **Bận không thay cho idempotency phía server.** Chặn bấm hai lần chỉ bớt một nguồn yêu cầu trùng; nhiều tab, retry mạng,
+> bfcache restore vẫn gửi trùng được — server vẫn phải xử lý an toàn khi nhận lại cùng yêu cầu.
 
 ### Disabled
 
@@ -395,6 +474,10 @@ boolean trả về `true/false`; property chuỗi trả về `''` khi không có
 | `setLoading(isLoading: boolean)` | `void` | Bật/tắt attribute `loading`. |
 | `setDisabled(isDisabled: boolean)` | `void` | Bật/tắt attribute `disabled`. |
 
+Nút không phải `<td-button>` (PHP `td_button()`, markup viết tay): dùng hàm tự do `setButtonBusy` / `runWithButton`
+(module `@dazzxq/td-components/button-busy` hoặc barrel), xem
+[Nút `.td-btn` thường](#nút-td-btn-thường-setbuttonbusy--runwithbutton-0960).
+
 Muốn focus nút bằng code, focus phần tử `.td-btn` bên trong: `el.querySelector('.td-btn').focus()` (thẻ
 `td-button` tự nó không focus được; với `href` phần tử đó là `<a>`).
 
@@ -407,9 +490,9 @@ Muốn focus nút bằng code, focus phần tử `.td-btn` bên trong: `el.query
 |---|---|---|---|
 | `click` (native `MouseEvent`) | — | Người dùng bấm nút (chuột, Enter, Space). Không phát khi `disabled`; bị chặn khi `loading`. | có |
 
-Lưu ý: khi `loading`, click bị chặn ở pha capture trên chính `<button>` (bằng `stopImmediatePropagation`), nên listener
-trên host và các phần tử cha ở pha bubble đều không nhận. Listener gắn ở pha capture trên phần tử **cha** thì vẫn chạy
-trước khi bị chặn.
+Lưu ý: khi `loading`, click bị chặn bởi một listener capture trên `document` (bằng `stopImmediatePropagation`, 0.96.0 —
+trước đó trên chính `<button>`), nên listener trên host và các phần tử cha (cả pha capture lẫn bubble) đều không nhận.
+Listener capture trên `window`, hoặc đăng ký capture trên `document` trước lần bận đầu tiên, thì vẫn chạy trước khi bị chặn.
 
 ## Tuỳ biến giao diện
 

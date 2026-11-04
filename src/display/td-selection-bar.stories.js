@@ -95,3 +95,39 @@ export const Disabled = {
     </div>`,
   args: { label: 'Thao tác với ảnh đã chọn' },
 };
+
+const countActions = `
+  <button type="button" data-td-action="download" data-td-action-icon="download">Tải về</button>
+  <button type="button" data-td-action="tag" data-td-action-icon="tag">Gắn thẻ</button>
+  <button type="button" data-td-action="album" data-td-action-icon="folder-plus">Thêm vào album</button>
+  <button type="button" data-td-action="link" data-td-action-icon="link" data-td-in-menu>Sao chép liên kết</button>
+  <button type="button" data-td-action="delete" data-td-action-icon="trash" data-td-tone="danger">Xoá</button>
+  <button type="button" data-td-action="share" data-td-action-icon="upload" data-td-tone="primary">Chia sẻ</button>`;
+
+/**
+ * v0.96.0 `fold="count"` + `data-td-tone="primary"`: the first 2 secondaries, then "…", then the primary (solid
+ * accent, keeps its label when compact). `data-td-in-menu` always goes into "…". A bar narrower than 480px shows only
+ * the primary + "…"; secondaries that do not fit fold from the end — never the primary.
+ */
+export const CountPrimary = {
+  render: (args) => `
+    <div>
+      ${day('c', 'Thứ Hai, 3 tháng 11', 1, 'count')}
+      <td-selection-bar group="count" fold="count" label="${esc(args.label)}">${countActions}</td-selection-bar>
+    </div>`,
+  args: { label: 'Thao tác với ảnh đã chọn' },
+};
+
+/**
+ * v0.96.0 `surface="glass"` (ADR 0044): a floating glass panel with radius 20px and a transparent 12/16px gap under it
+ * (the page shows through; clicks pass). Same fold / tone attributes; solid stays the default.
+ */
+export const Glass = {
+  render: (args) => `
+    <div>
+      ${day('g1', 'Thứ Hai, 3 tháng 11', 1, 'glass')}
+      ${day('g2', 'Chủ Nhật, 2 tháng 11', 5, 'glass')}
+      <td-selection-bar group="glass" fold="count" surface="glass" label="${esc(args.label)}">${countActions}</td-selection-bar>
+    </div>`,
+  args: { label: 'Thao tác với ảnh đã chọn' },
+};

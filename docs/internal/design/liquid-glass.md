@@ -17,7 +17,8 @@ Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm** (+
 
 | Lớp | Selector (class JS phát ra, không đổi) | Công thức |
 |---|---|---|
-| Đặc | `.td-modal__dialog`, `.td-loading__card`, `.td-scroll-top`, `.td-selection-bar__panel` (0.95.0, token `--td-selection-bar-*`) | `--td-glass-solid`, không blur; viền `--td-glass-border` + `--td-glass-shadow` (modal: `--td-glass-shadow-lg`) |
+| Đặc | `.td-modal__dialog`, `.td-loading__card`, `.td-scroll-top`, `.td-selection-bar__panel` (0.95.0, token `--td-selection-bar-*`; 0.96.0 ngoại lệ **opt-in** `surface="glass"` → `.td-glass-surface--strong --lg`, bo 20px, mọi fallback về đặc — [ADR 0044](../decisions/0044-glass-selection-bar.md)) | `--td-glass-solid`, không blur; viền `--td-glass-border` + `--td-glass-shadow` (modal: `--td-glass-shadow-lg`) |
+| Kính opt-in (0.96.0, [ADR 0042](../decisions/0042-modal-external-overlays-wp.md)) | `.td-modal--glass .td-modal__dialog`, `.td-drawer-root--glass .td-drawer__panel` (chỉ khi site truyền `surface: 'glass'`) | `--td-{modal\|drawer}-glass-bg` (mặc định `--td-glass-bg-strong` 94 %) + `--td-{modal\|drawer}-glass-blur` (mặc định 12px); fallback đục qua `--_td-glass-fill` / `--_td-glass-filter` như popup nhỏ. Mặc định vẫn đặc |
 | Tooltip (0.21.0) | `.td-tooltip` | **Đen** `--td-tooltip-bg` `#18181b` + chữ `#fff` (dark 0.41.0: chip xám nổi `#3a3a3e` + viền `rgb(255 255 255 / 16%)`), đặc, không blur, `--td-glass-shadow`; tương phản cao / forced colours vẫn thắng (`--_td-glass-fill-a11y`) |
 | Popup nhỏ | `.td-menu`, `.td-dropdown__menu`, `.td-chip-input__menu`, `.td-hovercard` | `--td-glass-bg-strong` (94 %) + `--td-glass-blur` (12px) + viền + `--td-glass-shadow` |
 | Toast (0.21.0) | `.td-toast--{type}` | Viên kiểu dcms, **đặc** pastel theo loại (`--td-pastel-{type}-*`) + viền cùng tông + `--td-glass-shadow`; không blur, không icon hiển thị (tiền tố loại cho trình đọc màn hình) |

@@ -4,6 +4,48 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.96.0
+
+**Thanh nút đầu trang tự gấp, nút "đang chờ" cho mọi `.td-btn`, nút bật/tắt trong lightbox, modal chạy chung wp.media**
+(yêu cầu dwp K10–K12, dsuite; một lô song song, 2026-11-05). [Plan lô](docs/internal/plans/v0.96.0-batch.md),
+[ADR 0042](docs/internal/decisions/0042-modal-external-overlays-wp.md),
+[ADR 0043](docs/internal/decisions/0043-button-busy-helper.md),
+[ADR 0044](docs/internal/decisions/0044-glass-selection-bar.md).
+
+### Added
+
+- **`<td-page-actions>`** (`@dazzxq/td-components/page-actions`, class `TdPageActions`, PHP `td_page_actions()`): nhóm nút
+  cạnh tiêu đề trang. Chật thì nút phụ tự vào menu "…" từ cuối lên (đo bề rộng thật, tính lại khi khung đổi cỡ), **nút
+  chính không bao giờ bị gấp và giữ chữ**; dưới 480px gom hết nút phụ. Mục trong "…" là bản sao an toàn của nút gốc (danh
+  sách thuộc tính cho phép, không id / data-* / on* / style, href lọc qua `safeButtonHref`, SVG lọc theo allowlist icon),
+  bấm vào chạy đúng nút gốc. Token `--td-page-actions-gap` / `-justify`. [Docs](docs/components/page-actions.md).
+- **`td-selection-bar`**: `fold="count"` (opt-in, gấp theo số nút; mặc định `width` giữ y hệt 0.95.0), nút chính
+  `data-td-tone="primary"` (không vào "…", giữ chữ khi hẹp), `data-td-in-menu`, nền kính `surface="glass"` (token
+  `--td-selection-bar-glass-bg` / `-glass-action-fg` / `-glass-radius` / `-glass-gap`). Gấp chung qua `src/utils/action-fold.js`.
+- **`setButtonBusy(btn, busy)` / `runWithButton(btn, fn)`** (`@dazzxq/td-components/button-busy`, ADR 0043): trạng thái
+  "đang chờ" cho `button.td-btn` / `a.td-btn` server in sẵn, không cần `<td-button>`. Bận = `aria-busy` +
+  `aria-disabled`, **không bao giờ** `disabled` (giữ focus, nút submit vẫn gửi `name=value`), chặn click lặp, một promise
+  cho mỗi nút. `<td-button>` dùng chung một nguồn trạng thái. Nút server in sẵn `aria-busy="true"` rồi được helper nhả:
+  gỡ cả `aria-disabled`.
+- **`td-lightbox` nút bật/tắt** (K10): `pressed(ctx)`, `pressedIcon`, `busy` trên nút `toolbar`; kit đặt `aria-pressed`,
+  nút mờ (bận) tới khi promise `onClick` xong, tính lại khi đổi ảnh; `refreshToolbar()`; nhãn `pressedOn` / `busy`;
+  token `--td-lb-pressed`.
+- **`registerExternalOverlay(matcher)`** + attribute `data-td-external-overlay` (ADR 0042): UI ngoài gắn vào `<body>`
+  (wp.media `.media-modal`…) mở chồng lên `td-modal` / `td-drawer` thì không bị khoá focus / `inert`; Escape đóng UI ngoài
+  trước. Matcher dạng hàm cho wp.media.
+- **Modal / drawer `surface: 'glass'`** (opt-in, mặc định vẫn đục): token `--td-modal-glass-bg` / `-glass-blur`,
+  `--td-drawer-glass-bg` / `-glass-blur`.
+- **`compat/td-wp-admin.css`** (`@dazzxq/td-components/compat/td-wp-admin.css`): nạp sau `td.css` trên trang quản trị
+  WordPress để CSS của wp-admin (không layer) không đè control của kit; chỉ `revert-layer`, chỉ selector `.td-*`.
+
+### Changed
+
+- `td-button` / `.td-btn` đang chờ: nhãn **mờ đi** (giữ kích thước, trình đọc màn hình vẫn đọc tên) thay vì
+  `visibility: hidden`.
+- `td-dropdown` / `td-chip-input`: đo chiều cao dòng thật thay hằng 40px, nên `max-height=5` thấy đủ 5 dòng 44px trên
+  màn cảm ứng.
+- Storybook 8.6.19 + Vite 6.4.5 (dev only).
+
 ## 0.95.0
 
 **Thanh thao tác hàng loạt, ma trận quyền ba trạng thái, upload nền của media picker, `.td-card` và ba nâng cấp nhỏ**

@@ -1,0 +1,163 @@
+/*
+ * td-components — compat/td-wp-admin.css (0.96.0, ADR 0042)
+ *
+ * Load on WordPress admin screens that render td-components controls:
+ *   td.css → compat/td-wp-admin.css → the site skin (token overrides).
+ *
+ * Why: wp-admin CSS (forms.css, common.css, colors/*.css) is UNLAYERED, and every rule of td.css lives in
+ * @layer td.*; an unlayered declaration that matches always beats a layered one, whatever its specificity.
+ * So wp-admin re-skins td controls (2px radius, #949494 border, 40px min-height, blue focus ring, visible
+ * 16px checkboxes, 13px button text…). Measured on WordPress 7.1 / Chromium (plan v0.96.0-modal-wp §6.2).
+ *
+ * How: this file is unlayered ON PURPOSE (no @layer). Each rule sets the leaking properties to
+ * `revert-layer`: once it wins in the unlayered layer, every unlayered declaration of that property
+ * (wp-admin's included) is dropped and the value falls back to td's own layer — td values are never
+ * copied here, so token changes keep working. Selectors repeat `:is(.td-…)` three times (specificity
+ * 0,3,0) to out-rank the wp-admin rules (at most 0,2,2: `.wp-admin p input[type=checkbox]`, `:checked::before`).
+ *
+ * Rules: only `.td-*` / `td-*` selectors, only `revert-layer` values, no !important, no @import, no url(), no @layer.
+ *
+ * Known, accepted leak: wp-admin's `padding: 0 !important` on checkbox / radio inputs cannot be reverted
+ * without !important. It is harmless: every td checkbox / switch / check-matrix / choice input is a hidden
+ * input whose padding is 0 anyway.
+ *
+ * Sharp edge (documented in docs/guides/wordpress-php.md): at 0,3,0 these rules also beat a SITE's own
+ * unlayered rules of lower specificity on the same properties of the same controls. Restyle controls
+ * through the --td-* tokens (the kit contract), or with a selector of specificity ≥ 0,3,0.
+ */
+
+/* Text-like inputs, textareas and selects (visible, and the kit's hidden native mirrors).
+   wp-admin: forms.css `input[type=text|search|…], select, textarea` (0,1,1) + `:focus` (0,2,1),
+   `.wp-core-ui select` (0,1,1: arrow background, padding, line-height, max-width 25rem),
+   `input, select { margin: 0 1px }`, `button, input, select, textarea { font-*: inherit; box-sizing }`,
+   common.css `body, td, textarea, input, select { font-family; font-size: 13px }`, `input:disabled` (0,1,1). */
+:is(.td-field__control, .td-otp__input, .td-chip-input__input, .td-number__control, .td-dtp__input, .td-dtr__input,
+	.td-color__input, .td-scan__input, .td-tree-select__input, .td-tree-select__search, .td-dropdown__search,
+	.td-tree__search, .td-icon-picker-panel__input, .td-dropdown__native, .td-dtp__native, .td-dtr__native,
+	.td-chip-input__native, .td-multiselect__native, .td-tree-select__native):is(.td-field__control, .td-otp__input,
+	.td-chip-input__input, .td-number__control, .td-dtp__input, .td-dtr__input, .td-color__input, .td-scan__input,
+	.td-tree-select__input, .td-tree-select__search, .td-dropdown__search, .td-tree__search, .td-icon-picker-panel__input,
+	.td-dropdown__native, .td-dtp__native, .td-dtr__native, .td-chip-input__native, .td-multiselect__native,
+	.td-tree-select__native):is(.td-field__control, .td-otp__input, .td-chip-input__input, .td-number__control,
+	.td-dtp__input, .td-dtr__input, .td-color__input, .td-scan__input, .td-tree-select__input, .td-tree-select__search,
+	.td-dropdown__search, .td-tree__search, .td-icon-picker-panel__input, .td-dropdown__native, .td-dtp__native,
+	.td-dtr__native, .td-chip-input__native, .td-multiselect__native, .td-tree-select__native) {
+	appearance: revert-layer;
+	background: revert-layer;
+	border: revert-layer;
+	border-radius: revert-layer;
+	box-shadow: revert-layer;
+	box-sizing: revert-layer;
+	color: revert-layer;
+	cursor: revert-layer;
+	font-family: revert-layer;
+	font-size: revert-layer;
+	font-weight: revert-layer;
+	line-height: revert-layer;
+	margin: revert-layer;
+	max-width: revert-layer;
+	min-height: revert-layer;
+	outline: revert-layer;
+	overflow: revert-layer;
+	padding: revert-layer;
+	resize: revert-layer;
+	vertical-align: revert-layer;
+}
+
+/* The server-rendered <select> of td_dropdown() before the module upgrades it (no class yet; td.css styles it as
+   `td-dropdown:not(:defined) > select`). Same wp-admin rules as above; `:not(:defined)` ×3 → 0,3,2. */
+td-dropdown:not(:defined):not(:defined):not(:defined) > select {
+	appearance: revert-layer;
+	background: revert-layer;
+	border: revert-layer;
+	border-radius: revert-layer;
+	box-shadow: revert-layer;
+	box-sizing: revert-layer;
+	color: revert-layer;
+	cursor: revert-layer;
+	font-family: revert-layer;
+	font-size: revert-layer;
+	font-weight: revert-layer;
+	line-height: revert-layer;
+	margin: revert-layer;
+	max-width: revert-layer;
+	min-height: revert-layer;
+	outline: revert-layer;
+	padding: revert-layer;
+	vertical-align: revert-layer;
+}
+
+/* Hidden native checkbox / radio inputs (the kit draws its own mark next to them).
+   wp-admin: forms.css `input[type=checkbox], input[type=radio]` (0,1,1: appearance none, 16px box, border,
+   background, margin, cursor, transition…), `:checked` / `:focus` (0,2,1), `.wp-admin p input[type=checkbox]` (0,2,2),
+   `:disabled` (opacity .7). `padding: 0 !important` is the accepted leak (see header). */
+:is(.td-checkbox__input, .td-switch__input, .td-check-matrix__input, .td-choice__input):is(.td-checkbox__input,
+	.td-switch__input, .td-check-matrix__input, .td-choice__input):is(.td-checkbox__input, .td-switch__input,
+	.td-check-matrix__input, .td-choice__input) {
+	appearance: revert-layer;
+	background: revert-layer;
+	border: revert-layer;
+	border-radius: revert-layer;
+	box-shadow: revert-layer;
+	box-sizing: revert-layer;
+	clear: revert-layer;
+	color: revert-layer;
+	cursor: revert-layer;
+	display: revert-layer;
+	font-family: revert-layer;
+	font-size: revert-layer;
+	font-weight: revert-layer;
+	height: revert-layer;
+	line-height: revert-layer;
+	margin: revert-layer;
+	min-width: revert-layer;
+	opacity: revert-layer;
+	outline: revert-layer;
+	text-align: revert-layer;
+	transition: revert-layer;
+	vertical-align: revert-layer;
+	width: revert-layer;
+}
+
+/* wp-admin draws a tick / dot with `input[type=checkbox|radio]:checked::before` (0,2,2). */
+:is(.td-checkbox__input, .td-switch__input, .td-check-matrix__input, .td-choice__input):is(.td-checkbox__input,
+	.td-switch__input, .td-check-matrix__input, .td-choice__input):is(.td-checkbox__input, .td-switch__input,
+	.td-check-matrix__input, .td-choice__input)::before {
+	content: revert-layer;
+	display: revert-layer;
+	float: revert-layer;
+	height: revert-layer;
+	margin: revert-layer;
+	width: revert-layer;
+}
+
+/* Range slider and file input: forms.css `input:disabled` / `input[type=range]:disabled` (background, border-color,
+   box-shadow, color, cursor), `.wp-admin input[type=file]` (0,2,1: padding, cursor), the input font / margin rules. */
+:is(.td-slider__input, .td-dropzone__input):is(.td-slider__input, .td-dropzone__input):is(.td-slider__input,
+	.td-dropzone__input) {
+	background: revert-layer;
+	border-color: revert-layer;
+	box-shadow: revert-layer;
+	box-sizing: revert-layer;
+	color: revert-layer;
+	cursor: revert-layer;
+	font-family: revert-layer;
+	font-size: revert-layer;
+	font-weight: revert-layer;
+	margin: revert-layer;
+	padding: revert-layer;
+}
+
+/* Buttons. wp-admin: forms.css `button { font-family / font-size / font-weight: inherit; box-sizing }` (0,0,1 — admin
+   body text is 13px, td buttons are 14px); for `a.td-btn` common.css / colors `a { color; transition }`,
+   `a:hover, a:active { color }`, `a:focus { box-shadow; outline: 0 }` (0,1,1). */
+:is(.td-btn):is(.td-btn):is(.td-btn) {
+	box-shadow: revert-layer;
+	box-sizing: revert-layer;
+	color: revert-layer;
+	font-family: revert-layer;
+	font-size: revert-layer;
+	font-weight: revert-layer;
+	outline: revert-layer;
+	transition: revert-layer;
+}

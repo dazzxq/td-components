@@ -16,7 +16,7 @@ trên điện thoại. Dùng được theo hai cách: thẻ khai báo `<td-drawe
 | Import | `import '@dazzxq/td-components/drawer'` (class: `import { TdDrawer } from '@dazzxq/td-components'`) |
 | Loại | Custom element + API JS tĩnh (`TdDrawer.open()`) |
 | Form-associated | không |
-| Từ phiên bản | 0.27.0 (cần `td.css`) |
+| Từ phiên bản | 0.27.0 (cần `td.css`; `surface` + UI ngoài mở chồng từ 0.96.0) |
 
 ## Ví dụ nhanh
 
@@ -129,6 +129,24 @@ trang tự gỡ host khi drawer còn mở, `closed` vẫn resolve. Xem bảng tu
 `dismissible="false"` (đúng chuỗi `false`): Escape và bấm nền không đóng; chỉ nút × và `close()` đóng được. Escape vẫn
 bị drawer "nuốt", không lọt xuống trang hay lớp bên dưới. `TdDrawer.open({ dismissible: false })` tương đương.
 
+### 5a. Panel kính mờ (`surface="glass"`, 0.96.0)
+
+```html
+<td-drawer title="Bộ lọc" surface="glass">…</td-drawer>
+```
+
+Mặc định panel **đục**. `surface="glass"` (hoặc `TdDrawer.open({ surface: 'glass' })`) cho panel kính mờ: nền
+`--td-drawer-glass-bg` (mặc định 94 %) + `--td-drawer-glass-blur` (mặc định `blur(12px)`). Giá trị khác = đục. Đọc lúc mở
+(như `side`). Tự về đục khi trình duyệt không có `backdrop-filter`, giảm trong suốt, `<html data-td-glass="off">`, tăng
+tương phản, forced colors — cùng luật với [modal](modal.md#10-nền-kính-mờ-surface-glass-0960).
+
+### 5b. UI ngoài mở chồng lên drawer (0.96.0)
+
+UI không phải của kit (wp.media, dialog thư viện khác) mở từ trong drawer: khai báo bằng `registerExternalOverlay(…)` hoặc
+attribute `data-td-external-overlay` — khi nó đang hiện trên drawer, drawer không `inert` nó, không giữ Tab / Escape, bấm
+nền không đóng drawer. Hợp đồng đầy đủ (một chỗ):
+[Modal › Mở UI ngoài chồng lên modal](modal.md#11-mở-ui-ngoài-chồng-lên-modal-registerexternaloverlay-0960).
+
 ### 6. Chặn đóng khi form chưa lưu (`beforeClose`, 0.44.0)
 
 Gán property `beforeClose` — một hàm **bất đồng bộ được** — rồi nối với
@@ -239,8 +257,9 @@ người dùng chủ động mở.
 | `side` | `'start'` \| `'end'` | `end` | Cạnh trượt vào (logic, tự lật khi RTL). Giá trị khác → `end`. Đọc lúc mở. |
 | `size` | `'sm'` \| `'md'` \| `'lg'` \| `'xl'` | `md` | Độ rộng panel. Giá trị khác → `md`. Đọc lúc mở. |
 | `dismissible` | `'false'` | (bật) | Đúng chuỗi `false` → Escape và bấm nền không đóng. Đọc tại thời điểm nhấn phím / bấm. |
+| `surface` | `'solid'` \| `'glass'` | `solid` | 0.96.0: `glass` = panel kính mờ (root có class `td-drawer-root--glass`). Giá trị khác → đục. Đọc lúc mở. |
 
-`title`, `label`, `side`, `size` chỉ có tác dụng ở lần mở **tiếp theo**; đổi khi drawer đang mở không cập nhật panel.
+`title`, `label`, `side`, `size`, `surface` chỉ có tác dụng ở lần mở **tiếp theo**; đổi khi drawer đang mở không cập nhật panel.
 
 ## Property & method
 
@@ -267,6 +286,7 @@ Tuỳ chọn của `TdDrawer.open()`:
 | `side` | `'start' \| 'end'` | `'end'` | Như attribute. |
 | `size` | `'sm' \| 'md' \| 'lg' \| 'xl'` | `'md'` | Như attribute. |
 | `dismissible` | `boolean` | `true` | `false` → chỉ nút × / `close()` đóng được. |
+| `surface` | `'solid' \| 'glass'` | `'solid'` | 0.96.0: như attribute. |
 | `onClose` | `(reason) => void` | — | Gọi sau khi đóng (cùng lúc event `close`). Lỗi ném ra được ghi `console.error`. |
 | `themeRoot` | `Element` | — | 0.42.0: hiển thị theo theme của vùng `[data-td-theme]` chứa phần tử này ([theming › Theme theo vùng](../customization/theming.md#popup-mở-từ-trong-vùng), ADR 0020). Không truyền → theme của trang. |
 | `beforeClose` | `({ reason }) => …` | — | 0.44.0: như property `beforeClose`. |
@@ -300,6 +320,8 @@ một `await`, như mẫu "cách cũ" ở [mục 6](#6-chặn-đóng-khi-form-ch
 | `--td-drawer-exit-dur` | `200ms` | Thời gian trượt ra |
 | `--td-drawer-ease` | `cubic-bezier(0.32, 0.72, 0, 1)` | Đường cong trượt vào |
 | `--td-drawer-exit-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | Đường cong trượt ra |
+| `--td-drawer-glass-bg` | `var(--td-glass-bg-strong)` (94 %) | 0.96.0: nền panel khi `surface="glass"` (theo theme sáng / tối). Đừng hạ dưới khoảng 85 %. |
+| `--td-drawer-glass-blur` | `var(--td-glass-blur)` (`blur(12px)`) | 0.96.0: độ mờ phía sau panel khi `surface="glass"`. |
 
 Token dùng chung có ảnh hưởng: `--td-z-modal` (`400`, cùng tầng với modal), `--td-glass-scrim` (màu nền phủ, không làm
 mờ), `--td-glass-solid` / `--td-glass-border` / `--td-glass-shadow-lg` (bề mặt panel), `--td-hairline` (đường kẻ dưới
@@ -368,7 +390,7 @@ trực tiếp của `<body>` (giống TdModal / TdLightbox — để inert, bẫ
 | Phím | Tác dụng |
 |---|---|
 | Tab / Shift+Tab | Đi vòng trong panel (bẫy focus); không ra được trang bên dưới. |
-| Escape | Đóng (`reason: 'escape'`) nếu `dismissible`; nếu đang có popup con mở (menu dropdown, gợi ý chip-input…) thì **chỉ** đóng popup đó. |
+| Escape | Đóng (`reason: 'escape'`) nếu `dismissible`; nếu đang có popup con mở (menu dropdown, gợi ý chip-input…) thì **chỉ** đóng popup đó. Khi một UI ngoài đã khai báo đang hiện trên drawer (0.96.0), Escape và Tab thuộc về nó. |
 | Enter / Space trên × | Đóng (`reason: 'button'`). |
 
 - Lúc mở: phần còn lại của trang bị `inert`, cuộn trang bị khoá (khoá chia sẻ với modal / lightbox).
@@ -416,6 +438,8 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
   duyệt. Không muốn vậy thì dùng `label` + một heading trong nội dung (`aria-labelledby`).
 - `dismissible="false"` không chặn `close()` từ code và nút ×; muốn chặn mọi đường thì dùng `before-close`.
 - Đừng dùng drawer cho xác nhận ngắn — dùng [TdModal.confirm](modal.md).
+- **wp.media / dialog thư viện khác mở từ trong drawer không bấm được** → khai báo nó là UI ngoài
+  ([mục 5b](#5b-ui-ngoài-mở-chồng-lên-drawer-0960)).
 
 ## Xem thêm
 

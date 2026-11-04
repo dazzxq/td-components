@@ -123,7 +123,7 @@ async function newPage(browser, contextOptions) {
     return route.fulfill({ status: 404, body: '' });
   });
   const page = await context.newPage();
-  page.setDefaultTimeout(8000);
+  page.setDefaultTimeout(Number(process.env.TOUCH_TIMEOUT) || 8000); // TOUCH_TIMEOUT: only for a heavily loaded machine
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e.message).slice(0, 200)));
   return { context, page, errors };
@@ -1388,6 +1388,57 @@ async function chromiumSemantics(browser) {
       await quiet(page, act);
       const again = await bgOf(page, act);
       expect(again === rest, `action fill after the tap ${again} ≠ rest ${rest} (hover stuck)`);
+    });
+
+    // v0.96.0 td-page-actions (plan v0.96.0-action-fold §6) on a real coarse pointer at 390: the page row is < 480 → primary + "…"
+    // only, both ≥ 44 × 44 (--td-touch-min); a tap on the primary acts ONCE; a tap on "…" opens the menu whose items hold the
+    // folded actions (data-td-in-menu + the two secondaries).
+    await it(tag, 'page-actions: primary + "…" ≥ 44 × 44; a tap on the primary acts once; "…" opens a menu with the folded actions', async () => {
+      await load(page);
+      await page.evaluate(() => {
+        window.__pa = { primary: 0 };
+        document.querySelector('#rsp-pa [data-td-tone="primary"]').addEventListener('click', () => { window.__pa.primary += 1; });
+      });
+      await page.waitForFunction(() => document.querySelector('#rsp-pa')?.classList.contains('td-page-actions'), null, { polling: 'raf', timeout: 4000 });
+      await settle(page, '#rsp-pa');
+      const m = await page.evaluate(() => {
+        const host = document.getElementById('rsp-pa');
+        const vis = [...host.children].filter((b) => b.matches('button, a') && b.getClientRects().length && getComputedStyle(b).display !== 'none');
+        return { rowW: host.parentElement.getBoundingClientRect().width, sizes: vis.map((b) => [b.textContent.trim() || b.getAttribute('aria-label') || b.className, b.getBoundingClientRect().width, b.getBoundingClientRect().height]) };
+      });
+      expect(m.rowW < 480 && m.sizes.length === 2, `390px row: ${JSON.stringify(m)} (want primary + "…")`);
+      expect(m.sizes.every(([, w, h]) => w >= 44 - 0.5 && h >= 44 - 0.5), `targets < 44: ${JSON.stringify(m.sizes)}`);
+      const prim = await centre(page, '#rsp-pa [data-td-tone="primary"]');
+      await page.touchscreen.tap(prim.x, prim.y);
+      expect(await page.evaluate(() => window.__pa.primary) === 1, 'a tap on the primary did not act exactly once');
+      const more = await centre(page, '#rsp-pa .td-page-actions__more');
+      await page.touchscreen.tap(more.x, more.y);
+      await page.waitForFunction(() => !!document.querySelector('[role="menu"] [role="menuitem"]'), null, { polling: 'raf', timeout: 4000 });
+      const items = await page.evaluate(() => [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].map((i) => i.textContent.trim()));
+      expect(['Nhập', 'Sắp xếp', 'Xuất CSV'].every((l) => items.some((t) => t.includes(l))), `menu items ${JSON.stringify(items)}`);
+      await page.keyboard.press('Escape');
+    });
+
+    // v0.96.0 td-selection-bar surface="glass" + a primary action: the primary ≥ 44 px tall, one tap on it fires ONE
+    // selection-action "share" (the bar clears itself); the glass panel's hit areas are not covered by its transparent gap.
+    await it(tag, 'selection-bar glass: the primary action ≥ 44 px, a tap acts once and the bar clears', async () => {
+      await load(page);
+      await page.evaluate(() => {
+        window.__sg = [];
+        document.getElementById('rsp-selbar-glass').addEventListener('selection-action', (e) => window.__sg.push(e.detail.action));
+        document.getElementById('rsp-sel-c').select(['c1'], { emit: true });
+      });
+      await page.waitForFunction(() => document.getElementById('rsp-selbar-glass').count === 1, null, { polling: 'raf', timeout: 4000 });
+      await settle(page, '#rsp-selbar-glass');
+      const sel = '#rsp-selbar-glass .td-selection-bar__action--primary';
+      await page.locator(sel).scrollIntoViewIfNeeded();
+      const r = await page.evaluate((q) => { const b = document.querySelector(q).getBoundingClientRect(); return { w: b.width, h: b.height }; }, sel);
+      expect(r.h >= 44 - 0.5 && r.w >= 44 - 0.5, `primary ${r.w.toFixed(1)}×${r.h.toFixed(1)} < 44`);
+      const pt = await centre(page, sel);
+      await page.touchscreen.tap(pt.x, pt.y);
+      await page.waitForFunction(() => document.getElementById('rsp-selbar-glass').hasAttribute('data-empty'), null, { polling: 'raf', timeout: 4000 }).catch(() => {});
+      const after = await page.evaluate(() => ({ act: window.__sg.join(','), empty: document.getElementById('rsp-selbar-glass').hasAttribute('data-empty') }));
+      expect(after.act === 'share' && after.empty, `after the primary tap: ${JSON.stringify(after)}`);
     });
 
     // v0.95.0 .td-card (plan v0.95.0-card §11.5): a finger down holds data-td-pressed + the pressed layer over the image; a

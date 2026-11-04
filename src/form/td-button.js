@@ -4,6 +4,8 @@ import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 // v0.36.0: the SSR structure check (allowlists + sameControlStructure) lives in a shared internal module so
 // td-action-button can reuse it with its own allowlists.
 import { sameControlStructure, contentNodes, safeDownloadName } from './button-structure.js';
+// v0.96.0 (ADR 0043): the busy state is written by the ONE shared function (also behind setButtonBusy / runWithButton).
+import { syncButtonState } from './button-busy.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning', 'ghost', 'plain'];
 const SIZES = ['sm', 'md', 'lg'];
@@ -62,7 +64,8 @@ export function safeButtonHref(href) {
  *     [<span class="td-btn__icon" data-td-icon="name">svg</span>]<span class="td-btn__label">…</span>
  *     <span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden>…</span>
  *   </button>
- * Loading = `aria-busy="true"` + `aria-disabled="true"` on the button (focus kept, clicks swallowed);
+ * Loading = `aria-busy="true"` + `aria-disabled="true"` on the button (focus kept, clicks swallowed) — written by
+ * syncButtonState() of button-busy.js, shared with the setButtonBusy / runWithButton helpers (v0.96.0, ADR 0043);
  * `disabled` = native disabled. Both update in place (no re-render → focus is not lost).
  *
  * Link button (v0.17.0, `href` present): the same structure in an `<a class="td-btn …" href [target] [rel]
@@ -411,10 +414,10 @@ export class TdButton extends TdBaseElement {
     fillIconSlots(this, '.td-btn__icon[data-td-icon]'); // only the button's own icon slot (never the control itself)
     const btn = this._control();
     if (!btn) return;
-    // Busy (and a disabled / href-less link): swallow activation (a busy element stays focusable; aria-disabled
-    // announces it).
+    // A disabled / href-less link: swallow activation. Busy clicks are swallowed by the document guard of
+    // button-busy.js (installed by syncButtonState on the first busy state of the document).
     this.listen(btn, 'click', (e) => {
-      if (this.hasAttribute('loading') || (btn.localName === 'a' && !btn.hasAttribute('href'))) {
+      if (btn.localName === 'a' && !btn.hasAttribute('href')) {
         e.preventDefault();
         e.stopImmediatePropagation();
       }
@@ -433,26 +436,14 @@ export class TdButton extends TdBaseElement {
     const disabled = this.hasAttribute('disabled');
     if (btn.localName === 'a') {
       const href = this._linkHref();
-      const inert = disabled || !href; // disabled, or nothing safe to navigate to
-      // Order matters: a focused link must never be unfocusable for an instant (the browser would blur it) —
-      // tabindex is set BEFORE href is removed, and href is restored BEFORE tabindex is removed.
-      if (inert || loading) {
-        btn.setAttribute('tabindex', inert ? '-1' : '0');
-        btn.removeAttribute('href'); // the attribute stays on the host -> restored when the state clears
-        btn.setAttribute('role', 'link'); // an <a> without href is no longer a link for AT
-        btn.setAttribute('aria-disabled', 'true');
-      } else {
-        btn.setAttribute('href', href);
-        // a pass-through tabindex / role of an adopted SSR link (td_link `attrs`) is restored, else removed
-        const pass = this._linkPass?.el === btn ? this._linkPass : null;
-        for (const attr of ['tabindex', 'role']) {
-          if (pass?.[attr] != null) btn.setAttribute(attr, pass[attr]);
-          else btn.removeAttribute(attr);
-        }
-        btn.removeAttribute('aria-disabled');
-      }
-      if (loading) btn.setAttribute('aria-busy', 'true');
-      else btn.removeAttribute('aria-busy');
+      // a pass-through tabindex / role of an adopted SSR link (td_link `attrs`) is restored, else removed
+      const pass = this._linkPass?.el === btn ? this._linkPass : null;
+      // disabled, or nothing safe to navigate to → inert (href stays on the host, restored when the state clears)
+      syncButtonState(btn, {
+        busy: loading,
+        inert: disabled || !href,
+        restore: { href, tabindex: pass?.tabindex ?? null, role: pass?.role ?? null, ariaDisabled: null },
+      });
     } else {
       btn.disabled = disabled;
       // Submitter data (v0.18.0): the light-DOM <button> is the real submitter → name/value mirror the host.
@@ -461,16 +452,8 @@ export class TdButton extends TdBaseElement {
         if (v !== null) btn.setAttribute(attr, v);
         else btn.removeAttribute(attr);
       }
-      if (loading) {
-        btn.setAttribute('aria-busy', 'true');
-        btn.setAttribute('aria-disabled', 'true');
-      } else {
-        btn.removeAttribute('aria-busy');
-        btn.removeAttribute('aria-disabled');
-      }
+      syncButtonState(btn, { busy: loading });
     }
-    const spinner = this.querySelector('.td-btn__spinner');
-    if (spinner) spinner.hidden = !loading;
     const aria = this.getAttribute('aria-label');
     if (aria) btn.setAttribute('aria-label', aria);
     else btn.removeAttribute('aria-label');

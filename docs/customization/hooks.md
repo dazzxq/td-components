@@ -18,6 +18,7 @@ Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đối
   - [TdHovercard](#tdhovercard)
   - [TdMenu](#tdmenu)
   - [TdModal và TdModalStackManager](#tdmodal-và-tdmodalstackmanager)
+  - [registerExternalOverlay (UI ngoài mở chồng lớp chặn)](#registerexternaloverlay-ui-ngoài-mở-chồng-lớp-chặn)
   - [TdToast](#tdtoast)
   - [TdLoading và TdLoadingSpinner](#tdloading-và-tdloadingspinner)
   - [Tooltip](#tooltip)
@@ -276,6 +277,7 @@ Hàm tiện ích export kèm: `safeMenuHref(href) → string | null` (bộ lọc
 | `focusTarget` | `HTMLElement` | `null` | Chỉ dùng nếu nằm trong dialog |
 | `bodyPadding` | `string \| number` | — | CSS padding hợp lệ |
 | `bodyOverflow` | `visible hidden auto scroll clip` | — | |
+| `surface` | `'solid' \| 'glass'` | `'solid'` | 0.96.0: `'glass'` = dialog kính mờ; giá trị khác = đục; dialog Promise bỏ qua |
 
 **Action**: `{ label, variant?, value?, close?, disabled?, onClick? }`.
 `onClick({ id, value, button })`:
@@ -306,6 +308,18 @@ resolve `false` hoặc reject → giữ mở (reject có `console.warn`). `onCan
 | `TdModal.labels` | `{ close: 'Đóng', confirm: 'Xác nhận', cancel: 'Hủy', ok: 'OK', confirmTitle: 'Xác nhận', confirmMessage: 'Bạn có chắc chắn?', successTitle: 'Thành công', errorTitle: 'Lỗi', infoTitle: 'Thông tin' }` | `close` = `aria-label` nút X (đọc khi tạo dialog); `confirm` / `cancel` / `ok` = chữ nút mặc định; `*Title` / `confirmMessage` (0.16.0) = tiêu đề / nội dung mặc định của các hộp thoại Promise. `message` mặc định của `success` / `error` không lấy từ đây |
 | `TdModalStackManager.BASE_Z_INDEX` | `null` | **Deprecated**. Gán số → mỗi modal nhận z-index inline `BASE + i × Z_INDEX_INCREMENT` (+ một cảnh báo). Nên dịch bộ `--td-z-*` thay vì dùng |
 | `TdModalStackManager.Z_INDEX_INCREMENT` | `100` | Chỉ dùng khi có `BASE_Z_INDEX` |
+
+## registerExternalOverlay (UI ngoài mở chồng lớp chặn)
+
+`import { registerExternalOverlay } from '@dazzxq/td-components/external-overlay';` (0.96.0, ADR 0042) · Hợp đồng
+đầy đủ: [modal.md › Mở UI ngoài chồng lên modal](../components/modal.md#11-mở-ui-ngoài-chồng-lên-modal-registerexternaloverlay-0960)
+
+| Gọi | Ghi chú / Lỗi thì sao |
+|---|---|
+| `registerExternalOverlay(matcher) → off` | `matcher` = selector \| `Element` \| `(el) => boolean`, chỉ thử trên **con trực tiếp của `<body>`**. Khi phần tử khớp đang hiện và nằm trên lớp chặn trên cùng (modal, drawer, lightbox, loading): không `inert`, không bẫy Tab, không bắt Escape, bấm nền không đóng. `off()` gỡ (gọi nhiều lần không sao; cùng một matcher đăng ký hai lần thì cần hai `off()`). Selector sai / kiểu khác → `console.error` cố định, trả hàm rỗng, không throw. Hàm ném lỗi → coi như không khớp, `console.error` cố định (không in lỗi của site) |
+| Attribute `data-td-external-overlay` | Trên con trực tiếp của `<body>`: luôn được tính, không cần JS |
+
+Hook áp cho **mọi** lớp chặn, không có option riêng trên từng component. Không đăng ký gì → hành vi như 0.95.0.
 
 ---
 

@@ -278,6 +278,11 @@ Và những thứ **không phải cơ chế phân quyền**:
   `data-td-menu-post-id="7"` → `ctx.postId === '7'`; server phải xác minh người dùng được thao tác trên bài 7.
 - Validation phía client (`required`, `rules` của TdFormValidation) là UX. **Server luôn validate lại.**
 - `disabled` / `aria-disabled` / mục menu disabled chỉ là giao diện.
+- **`registerExternalOverlay(matcher)` / `data-td-external-overlay`** (0.96.0): selector / hàm là input của **developer**,
+  không bao giờ lấy từ dữ liệu người dùng. Phần tử khớp (con trực tiếp của `<body>`, đang hiện, nằm trên modal) thoát
+  `inert` và nhận bàn phím trong khi modal mở — selector quá rộng (`'div'`) mở lại cả trang phía sau modal. Đây là UX,
+  không phải ranh giới quyền: thao tác "bị khoá" sau modal vẫn phải được server kiểm tra. Kit không đổi giao diện / không
+  `inert` ngược UI ngoài; lỗi selector / hàm ném lỗi chỉ in một thông báo cố định (không in nội dung của site).
 
 ## CSS injection
 

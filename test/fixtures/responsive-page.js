@@ -88,6 +88,7 @@ import '../../src/form/td-choice-group.js'; // v0.49.0
 import '../../src/display/td-carousel.js'; // v0.50.0
 import '../../src/display/td-rating.js'; // v0.50.0
 import '../../src/display/td-selection-bar.js'; // v0.95.0
+import '../../src/display/td-page-actions.js'; // v0.96.0
 import { createMockAdapter } from './media-adapter.js';
 
 const LONG = 'Lưu và xuất bản bài viết lên trang chủ ngay bây giờ';
@@ -99,6 +100,12 @@ const selItems = (p, n) => Array.from({ length: n }, (_, i) => `<div data-td-med
 const SEL_ACTIONS = [['download', 'download', 'Tải về'], ['tag', 'tag', 'Gắn thẻ'], ['album', 'folder-plus', 'Thêm vào album'],
   ['share', 'link', 'Chia sẻ'], ['move', 'folder', 'Chuyển thư mục'], ['delete', 'trash', 'Xoá']]
   .map(([a, icon, label]) => `<button type="button" data-td-action="${a}" data-td-action-icon="${icon}"${a === 'delete' ? ' data-td-tone="danger"' : ''}>${label}</button>`).join('');
+/** v0.96.0: page-actions section — a title row with a td-page-actions (2 secondaries + 1 in-menu + the primary) and the glass bar's grid. */
+const PA_BUTTONS = '<a class="td-btn td-btn--secondary" href="#import">Nhập</a><button class="td-btn td-btn--secondary" type="button">Sắp xếp</button>'
+  + '<button class="td-btn td-btn--secondary" type="button" data-td-in-menu>Xuất CSV</button>'
+  + '<button class="td-btn td-btn--primary" type="button" data-td-tone="primary">Tải ảnh lên</button>';
+const SEL_ACTIONS_V096 = [['download', 'download', 'Tải về'], ['tag', 'tag', 'Gắn thẻ'], ['album', 'folder-plus', 'Thêm vào album'], ['delete', 'trash', 'Xoá'], ['share', 'link', 'Chia sẻ']]
+  .map(([a, icon, label]) => `<button type="button" data-td-action="${a}" data-td-action-icon="${icon}"${a === 'delete' ? ' data-td-tone="danger"' : a === 'share' ? ' data-td-tone="primary"' : ''}>${label}</button>`).join('');
 /** v0.95.0: .td-card markup (same tree as td_card() of php/td.php). */
 const CARD_ICON = '<svg class="td-icon td-icon--l" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h16v14H4z" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
 const rspCardsV095 = (p) => `
@@ -430,6 +437,14 @@ export function mountResponsiveFixture(root) {
     <h3 class="rsp-sel-day">13/02/2026</h3>
     <td-media-grid id="rsp-sel-b" label="Ảnh ngày 13/02" selection-group="rsp-lib">${selItems('b', 6)}</td-media-grid>
     <td-selection-bar id="rsp-selbar" group="rsp-lib" label="Thao tác với ảnh đã chọn">${SEL_ACTIONS}</td-selection-bar>
+  </section>
+  <section class="rsp-section" data-section="page-actions"><h2>Thao tác trang (v0.96)</h2>
+    <div class="rsp-pa-row" id="rsp-pa-row"><h3 class="rsp-sel-day">Ảnh</h3><td-page-actions id="rsp-pa" label="Thao tác trang">${PA_BUTTONS}</td-page-actions></div>
+    <div class="rsp-narrow"><div class="rsp-pa-row" id="rsp-pa-row-narrow"><h3 class="rsp-sel-day">Ảnh</h3><td-page-actions id="rsp-pa-narrow" label="Thao tác trang">${PA_BUTTONS}</td-page-actions></div></div>
+  </section>
+  <section class="rsp-section" data-section="selection-glass"><h2>Thanh chọn kính (v0.96)</h2>
+    <td-media-grid id="rsp-sel-c" label="Ảnh kính" selection-group="rsp-glass">${selItems('c', 4)}</td-media-grid>
+    <td-selection-bar id="rsp-selbar-glass" group="rsp-glass" fold="count" surface="glass" label="Thao tác với ảnh đã chọn">${SEL_ACTIONS_V096}</td-selection-bar>
   </section>`;
 
   const options = [

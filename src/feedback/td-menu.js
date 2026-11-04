@@ -1202,6 +1202,9 @@ export class TdMenu {
     const triggerOf = (t) => {
       const n = t instanceof Element ? t.closest('[data-td-menu]') : null;
       if (!(n instanceof HTMLElement) || !root.contains(n) || bound.has(n)) return null;
+      // v0.96.0: a bound trigger INSIDE the [data-td-menu] host (td-page-actions binds the inner .td-btn of a
+      // <td-button data-td-menu>) owns the event — never open the menu twice
+      for (let e = t; e && e !== n; e = e.parentElement) if (bound.has(e)) return null;
       return validName(n.getAttribute('data-td-menu')) ? n : null;
     };
     const prime = (n) => {

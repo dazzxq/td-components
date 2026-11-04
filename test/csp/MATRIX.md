@@ -180,6 +180,17 @@ Also v0.95.0: `td-media-grid.group-selecting` (grid b selects nothing but carrie
 card), `td-check-matrix.override` / `override-column` / `override-ssr` (mode=override grid, narrow bar with reset, the
 check-matrix@2 `<select>` tree before define).
 
+### td-page-actions (v0.96.0, new component — module `/src/display/td-page-actions.js`)
+States: `default` (720px row: 2 secondaries, one `data-td-in-menu` action that lives only in "…", the primary last),
+`narrow` (parent < 480px: only the primary + "…", the secondaries carry `data-td-overflow`), `mirror` (the "…" menu open:
+the mirror target filled with aria-hidden proxies of the shown actions). (3)
+
+### v0.96.0 states on existing components
+`td-selection-bar.count-primary` (`fold="count"` + a `data-td-tone="primary"` action) / `glass` (`surface="glass"`, ADR 0044);
+`td-button.busy-plain` (`setButtonBusy()` on a server-printed `button.td-btn`: aria-busy + aria-disabled, label faded);
+`td-button.loading` re-captured (label opacity change in button.css); `td-lightbox.toggle` (pressed toolbar toggle + a busy
+one); `td-modal.glass` / `td-drawer.glass` (`surface="glass"` opt-in). (+6 states; 494 total, with the 3 page-actions states.)
+
 ### td-modal (1 declarative; portaled to body)
 Styled el: `.td-modal-content` (box-shadow + backdrop-filter), `.td-modal-backdrop`.
 States: `default` (`TdModal.show({title, body})`). (1)

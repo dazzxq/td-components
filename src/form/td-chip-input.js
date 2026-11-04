@@ -854,6 +854,12 @@ export class TdChipInput extends TdFormElement {
   _chipsEl() { return this.querySelector('.td-chip-input__chips'); }
   /** @private */
   _list() { return this._menuElement ? this._menuElement.querySelector('.td-chip-input__options') : null; }
+
+  /** @private height of one rendered option row (44 px under a coarse pointer), else OPTION_PX */
+  _optionPx() {
+    const h = this._list()?.querySelector('.td-chip-input__option')?.getBoundingClientRect().height;
+    return h > 0 ? h : OPTION_PX;
+  }
   /** @private */
   _emptyEl() { return this._menuElement ? this._menuElement.querySelector('.td-chip-input__empty') : null; }
   /** @private */
@@ -1988,7 +1994,7 @@ export class TdChipInput extends TdFormElement {
     const menu = this._menuElement;
     const box = this.querySelector('.td-chip-input__box');
     if (!menu || !box) return;
-    const { side } = placeFloating(box, menu, { width: 'match', list: this._list(), listMax: MAX_VISIBLE * OPTION_PX });
+    const { side } = placeFloating(box, menu, { width: 'match', list: this._list(), listMax: MAX_VISIBLE * this._optionPx() });
     menu.setAttribute('data-placement', side);
   }
 

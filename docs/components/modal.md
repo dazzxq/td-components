@@ -15,7 +15,7 @@ cho thông báo thoáng qua (dùng [toast](toast.md)), cho trạng thái "đang 
 | Import | `import { TdModal } from '@dazzxq/td-components/modal'` · `import { TdModalStackManager } from '@dazzxq/td-components/modal-stack'` |
 | Loại | API JS tĩnh (không phải custom element, không đặt thẻ vào HTML) |
 | Form-associated | không |
-| Từ phiên bản | 0.1.0 (token-native từ 0.9.0, `escapeCloses` từ 0.10.0, `backdropCloses` từ 0.78.0) |
+| Từ phiên bản | 0.1.0 (token-native từ 0.9.0, `escapeCloses` từ 0.10.0, `backdropCloses` từ 0.78.0, `surface` + UI ngoài mở chồng từ 0.96.0) |
 
 Cần `td.css` đã được nạp (modal dùng style của `modal.css`, `button.css` và `spinner.css`, tất cả đã gộp trong
 `td.css`). Không cần gọi hàm khởi tạo nào: phần tử modal được tạo khi mở và gỡ khỏi DOM khi đóng.
@@ -342,6 +342,57 @@ TdModal.show({
 
 Chỉ modal trên cùng phản ứng; khi action đang bận thì không đóng. Hộp thoại Promise (`confirm` / `alert` / `prompt`) bỏ qua option này.
 
+### 10. Nền kính mờ (`surface: 'glass'`, 0.96.0)
+
+Mặc định dialog **đục** (luật [minimal surfaces](../customization/theming.md)). Trang nào muốn dialog kính mờ thì bật
+từng modal:
+
+```js
+TdModal.show({ title: 'Xem nhanh', body: previewNode, surface: 'glass' }); // nền 94 % + blur 12px
+```
+
+- Chỉ `'glass'` bật; bỏ trống / giá trị khác = đục. Hộp thoại Promise (`confirm` / `alert` / `prompt`) luôn đục.
+- Chỉnh độ trong / độ mờ cho riêng modal bằng token `--td-modal-glass-bg` / `--td-modal-glass-blur` (mặc định = `--td-glass-bg-strong`
+  / `--td-glass-blur`, cùng popup nhỏ). Đừng hạ nền dưới khoảng 85 % — chữ trên ảnh nền động sẽ khó đọc (trách nhiệm site).
+- Tự về **đục, không blur** khi: trình duyệt không có `backdrop-filter`, người dùng bật giảm trong suốt
+  (`prefers-reduced-transparency`), `<html data-td-glass="off">`, tăng tương phản, forced colors.
+- Với `fullViewport` thì dialog phủ kín màn hình, không còn gì phía sau để mờ — không thấy khác biệt.
+
+### 11. Mở UI ngoài chồng lên modal (`registerExternalOverlay`, 0.96.0)
+
+Khi modal mở, mọi thứ khác trên trang bị `inert`, Tab bị giữ trong dialog và Escape bị modal "nuốt". UI **không phải của
+kit** mở chồng lên modal (ví dụ trình chọn ảnh `wp.media` của WordPress, dialog của thư viện khác) gắn thẳng vào
+`<body>` nên trước 0.96.0 bị khoá theo: hiện ra nhưng không bấm, không gõ được. Khai báo nó là **UI ngoài**:
+
+```js
+import { registerExternalOverlay } from '@dazzxq/td-components/external-overlay';
+
+const off = registerExternalOverlay('.my-lib-dialog, .my-lib-backdrop'); // selector | Element | (el) => boolean
+// off(); // gỡ đăng ký (gọi nhiều lần không sao)
+```
+
+Hoặc không cần JS: gắn `data-td-external-overlay` lên phần tử con trực tiếp của `<body>` khi mở nó. Công thức cho
+`wp.media`: [WordPress & PHP › wp.media trong modal](../guides/wordpress-php.md#wpmedia-mở-từ-trong-modal--drawer-096).
+
+Khi một UI ngoài **đang hiện** và **nằm trên** lớp chặn trên cùng (so `z-index` tính toán của con trực tiếp của `<body>`;
+bằng nhau thì phần tử đứng sau trong DOM thắng; con `z-index: auto` lấy `z-index` cao nhất trong các con trực tiếp của nó):
+
+| | Hành vi |
+|---|---|
+| `inert` | UI ngoài không bị gắn `inert` (kể cả khi chèn vào sau, hiện lại sau khi ẩn, đăng ký sau, gắn attribute sau). Phần còn lại của trang vẫn `inert`. |
+| Tab / Shift+Tab | Kit không can thiệp. |
+| Escape | Kit bỏ qua hoàn toàn (không đóng modal, không gọi `beforeClose`, không chặn sự kiện) — handler của UI ngoài nhận phím. |
+| Bấm nền | Không đóng modal / drawer (kể cả `backdropCloses: true`). |
+| UI ngoài đóng / ẩn | Nếu nó mang focus đi theo (focus rơi về `<body>` hoặc ra ngoài mọi lớp đang mở), focus quay về phần tử cuối cùng đã có focus trong dialog (không có thì chính dialog). Thư viện tự trả focus vào dialog (wp.media làm thế) thì kit không làm gì. |
+
+UI ngoài **ẩn** (`display: none`, `[hidden]`, `visibility: hidden` — wp.media giữ DOM khi đóng) hoặc **nằm dưới** modal thì
+coi như không có: vẫn `inert`, modal giữ bàn phím như cũ. Không đăng ký gì → hành vi y như 0.95.0. Áp cho mọi lớp chặn
+của kit (modal, [drawer](drawer.md), lightbox, loading), không cần option riêng.
+
+Giới hạn (cố ý): chỉ xét **con trực tiếp của `<body>`**. UI lồng sâu (ô chọn Select2, lịch Flatpickr bọc trong một khung)
+thì đăng ký **khung ngoài cùng** nằm thẳng dưới `<body>`. Đừng đăng ký selector rộng (`'div'`): mọi khối con của body khớp
+sẽ thoát `inert` khi modal mở.
+
 ## Property & method
 
 ### `TdModal`
@@ -416,6 +467,7 @@ window.addEventListener('beforeunload', (e) => {
 | `bodyPadding` | `string` | — | Padding của body (giá trị CSS `padding` hợp lệ, ví dụ `'0'`, `'2rem 1rem'`). Dùng chuỗi có đơn vị: số trần như `16` bị từ chối (chỉ `0` hợp lệ). |
 | `bodyOverflow` | `string` | — | `visible` \| `hidden` \| `auto` \| `scroll` \| `clip`. Giá trị khác → bỏ qua + `console.warn`. |
 | `themeRoot` | `Element` | — | 0.42.0: hiển thị theo theme của vùng `[data-td-theme]` chứa phần tử này ([theming › Theme theo vùng](../customization/theming.md#popup-mở-từ-trong-vùng), ADR 0020). Không truyền → theme của trang. |
+| `surface` | `'solid' \| 'glass'` | `'solid'` | 0.96.0: `'glass'` = dialog kính mờ (class `td-modal--glass`, token `--td-modal-glass-bg` / `--td-modal-glass-blur`). Giá trị khác = đục. Hộp thoại Promise bỏ qua. Xem [Nền kính mờ](#10-nền-kính-mờ-surface-glass-0960). |
 | `beforeClose` | `({ reason, value }) => boolean \| void \| PromiseLike<boolean \| void>` | — | 0.44.0: guard của các đường đóng do người dùng (X, Escape khi `escapeCloses`, bấm nền khi `backdropCloses`, action có đóng, `requestClose`). `false` / throw / reject → ở lại. Xem [Chặn đóng khi có thay đổi chưa lưu](#8-chặn-đóng-khi-có-thay-đổi-chưa-lưu-beforeclose-0440). |
 
 ### Action (nút footer)
@@ -520,6 +572,8 @@ Token riêng của modal (đặt trong `:root` hoặc một selector hẹp hơn,
 | `--td-modal-exit-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | (0.22.1, trước là ease-in) Đường cong khi ẩn (transform, opacity, scrim). |
 | `--td-modal-scrim-dur` / `--td-modal-scrim-ease` | `120ms` / `ease-out` | (0.22.1, trước là `240ms` / `ease-in-out`) Scrim mờ dần khi hiện. |
 | `--td-modal-sheet-ease` | `cubic-bezier(0.32, 0.72, 0, 1)` | (0.22.1) Đường cong sheet trượt lên trên điện thoại — không vượt (vượt sẽ hở khe dưới đáy). |
+| `--td-modal-glass-bg` | `var(--td-glass-bg-strong)` (94 %) | (0.96.0) Nền dialog khi `surface: 'glass'`. Theo theme (sáng / tối). |
+| `--td-modal-glass-blur` | `var(--td-glass-blur)` (`blur(12px)`) | (0.96.0) Độ mờ phía sau dialog khi `surface: 'glass'`. |
 | `--td-modal-enter-from` | `scale(0.95)` | (0.22.1, trước là `translateY(12px) scale(0.98)`) Tư thế bắt đầu của dialog (desktop). `none` = chỉ mờ dần. Modal toàn màn hình luôn là `none`. |
 
 Token dùng chung có ảnh hưởng: `--td-z-modal` (`400`), `--td-glass-scrim` (màu lớp phủ nền, không làm mờ),
@@ -585,7 +639,7 @@ Tương phản cao → nền `--td-color-surface`, viền rõ, không bóng.
 Mỗi modal đang mở là một phần tử gắn thẳng vào `<body>`:
 
 ```html
-<div id="td-modal-…" class="td-modal td-modal--md" data-state="open">
+<div id="td-modal-…" class="td-modal td-modal--md" data-state="open">   <!-- + td-modal--glass khi surface: 'glass' -->
   <div class="td-modal__backdrop" aria-hidden="true"></div>
   <div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg"
        role="dialog" aria-modal="true" aria-labelledby="td-modal-…-title" tabindex="-1">
@@ -648,6 +702,10 @@ trong `<template>` rồi truyền `template.content.cloneNode(true)` làm `body`
   tooltip) thì Escape đóng lớp đó trước.
 - **Bấm nền:** mặc định không đóng (focus vẫn ở trong dialog). Với `backdropCloses: true`, cú bấm (chuột hoặc chạm)
   bắt đầu và kết thúc trên nền đóng modal trên cùng.
+- **UI ngoài mở chồng (0.96.0):** khi một UI ngoài đã khai báo (`registerExternalOverlay` / `data-td-external-overlay`)
+  đang hiện trên modal, Tab và Escape thuộc về nó, nó không bị `inert`, bấm nền không đóng modal; nó đóng mà mang focus
+  đi thì focus quay về dialog. Hai `aria-modal` cùng lúc là chuyện của thư viện ngoài — kit không gắn `aria-hidden` lên
+  UI ngoài hay lên dialog. Xem [Mở UI ngoài chồng lên modal](#11-mở-ui-ngoài-chồng-lên-modal-registerexternaloverlay-0960).
 - **Nền:** mọi thứ bên dưới (trang, modal thấp hơn, lightbox) bị `inert` — không click, không focus, trình đọc màn hình
   bỏ qua. Dropdown, menu, tooltip, toast mở ra từ bên trong modal vẫn dùng được.
 - **Đóng:** focus trả về phần tử đã mở modal (nếu modal này đang ở trên cùng), **trước** khi `onClose` chạy. Nếu phần tử
@@ -728,6 +786,11 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
   lớn hơn 400, hãy nâng **cả bộ** token `--td-z-*` thay vì dùng `TdModalStackManager.BASE_Z_INDEX`.
 - [Loading](loading.md) (`--td-z-loading` 480) phủ lên trên modal; [toast](toast.md) (500) và [tooltip](tooltip.md)
   (510) hiện trên cả hai.
+- **UI ngoài (wp.media, dialog thư viện khác) mở từ trong modal không bấm được** → chưa khai báo nó là UI ngoài
+  ([mục 11](#11-mở-ui-ngoài-chồng-lên-modal-registerexternaloverlay-0960)), hoặc nó nằm lồng sâu (đăng ký khung ngoài cùng
+  dưới `<body>`), hoặc `z-index` của nó thấp hơn modal (nâng `z-index` của nó).
+- **Khi wp.media mở trên modal, nền tối chồng hai lớp** (scrim của td + nền của wp.media) — cố ý, kit không đụng giao
+  diện UI ngoài.
 
 ## Xem thêm
 

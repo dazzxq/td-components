@@ -19,6 +19,10 @@
  * v0.95.0 (docs/internal/plans/v0.95.0-small-kit.md §6): `preload` also takes `{ ahead, behind, allowCrossOrigin }`
  * (0..5 positions each side, default ±1; a cross-origin gate hook run after `isAllowedUrl`); in-flight requests that
  * leave the window are cancelled on every slide change; a preload in flight is taken over by the main load.
+ *
+ * v0.96.0 (docs/internal/plans/v0.96.0-lightbox-toggle.md, K10): toolbar spec `pressed(ctx) => boolean` (the kit owns
+ * `aria-pressed`, per slide), `pressedIcon` (registry name while on), `busy` (default: has `pressed`; an onClick thenable →
+ * aria-busy + aria-disabled until it settles), handle.refreshToolbar(); labels `pressedOn` / `busy` ("Thêm" menu hints).
  */
 
 import { lockScroll, holdGutterColor } from '../utils/scroll-lock.js';
@@ -29,7 +33,7 @@ import {
 import { TdMenu, sanitizeDownloadName } from './td-menu.js';
 
 const LIGHTBOX_LAYER = LAYERS.lightbox; // --td-z-lightbox
-import { tdIcon } from '../icons/td-icon.js';
+import { tdIcon, hasIcon } from '../icons/td-icon.js';
 import { matchesBelow, isCoarsePointer, isShort } from '../utils/breakpoints.js';
 import { ensurePressStates } from '../utils/press.js';
 import { axisLock, dragSlop, releaseVelocity, rubberBand, swipeOutcome } from '../utils/gesture.js';
@@ -49,6 +53,8 @@ const DEFAULT_LABELS = {
   loadError: 'Không tải được ảnh',
   retry: 'Thử lại',
   thumb: (n) => `Ảnh ${n}`,
+  pressedOn: 'Đang bật', // v0.96.0: "Thêm" menu hint of a toggle toolbar button that is on
+  busy: 'Đang xử lý…',   // v0.96.0: "Thêm" menu hint of a toolbar button whose action is in flight
 };
 /** Labels that are functions (the rest are strings). */
 const FN_LABELS = new Set(['counter', 'thumb']);
@@ -351,6 +357,8 @@ let swipeSettle = null;
 let resetPanelSwipe = () => {};
 /** Toolbar buttons added by the current open (removed on the next open and on close). */
 let extras = new Map();
+/** v0.96.0: busy tokens of toolbar buttons (one per onClick thenable that made its button busy). */
+let busySeq = 0;
 let renderToken = 0;
 let zoom = { scale: 1, x: 0, y: 0 };
 
@@ -510,7 +518,16 @@ function mountToolbar(specs) {
   }
 }
 
-/** Build one extra toolbar button (spec validated); returns its button or null. Replaces nothing. */
+/**
+ * Build one extra toolbar button (spec validated); returns its button or null. Replaces nothing.
+ *
+ * v0.96.0 (plan docs/internal/plans/v0.96.0-lightbox-toggle.md, K10): a spec with `pressed(ctx)` is a TOGGLE — the kit owns
+ * its `aria-pressed` (re-read on open, every slide change, addToolbarButton, refreshToolbar() and after onClick); `pressedIcon`
+ * swaps the registry icon while on. `busy` (default: a toggle) → an onClick thenable makes the button busy until it settles:
+ * `aria-busy` + `aria-disabled`, focus kept, activation swallowed — the busy contract of setButtonBusy (src/form/button-busy.js,
+ * ADR 0043) on `.td-lightbox__btn`, without a spinner (the icon keeps showing the on / off state). Busy belongs to the button,
+ * not the slide; closing / a new open / replacing the id drops it (no timeout).
+ */
 function addExtra(spec) {
   if (!spec || typeof spec.id !== 'string' || !spec.id || typeof spec.onClick !== 'function') return null;
   const label = typeof spec.label === 'string' && spec.label ? spec.label : spec.id;
@@ -530,15 +547,101 @@ function addExtra(spec) {
     b.textContent = label;
     b.setAttribute('data-text', '');
   }
+  const pressed = typeof spec.pressed === 'function' ? spec.pressed : null;
+  const entry = {
+    spec,
+    button: b,
+    pressed,
+    // only with a named icon (the swap is registry → registry); an unknown name keeps `icon` (checked at swap time)
+    pressedIcon: pressed && named && typeof spec.pressedIcon === 'string' && spec.pressedIcon ? spec.pressedIcon : null,
+    shownIcon: named ? spec.icon : null,
+    busyOn: typeof spec.busy === 'boolean' ? spec.busy : !!pressed,
+    busy: null, // { token } while an onClick thenable of THIS entry is in flight
+  };
   const token = session.token;
+  // First listener of the button (the site only gets it after this): a busy button swallows activation entirely.
   b.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (entry.busy) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
+    }
     if (!session || session.token !== token) return;
-    try { spec.onClick(ctxOf(), b); } catch (err) { console.error('td-lightbox toolbar onClick', err); }
+    let r;
+    try { r = spec.onClick(ctxOf(), b); } catch (err) { console.error('td-lightbox toolbar onClick', err); r = undefined; }
+    if (!entry.pressed && !entry.busyOn) return; // a 0.95.0 spec: the result is ignored as before
+    const live = () => extras.get(spec.id) === entry && !!session && session.token === token;
+    let then;
+    try {
+      then = r && (typeof r === 'object' || typeof r === 'function') ? r.then : undefined;
+    } catch (err) {
+      then = undefined;
+      warnOnce(spec.id, 'onClick', err);
+    }
+    if (typeof then !== 'function') {
+      if (live() && entry.pressed) applyPressed(entry, ctxOf());
+      return;
+    }
+    const myBusy = entry.busyOn ? { token: ++busySeq } : null;
+    if (myBusy) {
+      entry.busy = myBusy;
+      setExtraBusy(b, true);
+    }
+    let settled = false;
+    const settle = (ok, err) => {
+      if (settled) return; // one settle: resolve-then-reject / a callback called twice → the first only
+      settled = true;
+      if (!live()) return; // removed / replaced / closed / another open meanwhile
+      if (myBusy && entry.busy === myBusy) {
+        entry.busy = null;
+        setExtraBusy(b, false);
+      }
+      if (!ok) warnOnce(spec.id, 'onClick', err);
+      syncExtra(entry, ctxOf()); // the CURRENT slide, through the `visible` gate
+      syncOverflow();
+    };
+    try { then.call(r, () => settle(true), (err) => settle(false, err)); } catch (err) { settle(false, err); }
   });
   ui.toolbar.insertBefore(b, ui.moreBtn); // "Thêm" + close stay last
-  extras.set(spec.id, { spec, button: b });
+  extras.set(spec.id, entry);
   return b;
+}
+
+/** Busy marks of a toolbar button (the setButtonBusy contract: never native disabled → focus stays). */
+function setExtraBusy(button, on) {
+  if (on) {
+    button.setAttribute('aria-busy', 'true');
+    button.setAttribute('aria-disabled', 'true');
+  } else {
+    button.removeAttribute('aria-busy');
+    button.removeAttribute('aria-disabled');
+  }
+}
+
+/** One console.warn per toolbar id and failure kind per open (a static message + the error; nothing interpolated). */
+function warnOnce(id, kind, err) {
+  if (!session) return;
+  const key = `${id}\u0000${kind}`;
+  if (session.warned.has(key)) return;
+  session.warned.add(key);
+  console.warn(kind === 'pressed' ? 'td-lightbox toolbar: pressed() failed — the button shows "off"'
+    : 'td-lightbox toolbar: onClick failed', err);
+}
+
+/** Toggle state of a visible toolbar button: `pressed(ctx) === true` → on; anything else / a throw → off (fail closed). */
+function applyPressed(entry, ctx) {
+  let on = false;
+  try { on = entry.pressed(ctx) === true; } catch (err) { warnOnce(entry.spec.id, 'pressed', err); }
+  entry.button.setAttribute('aria-pressed', on ? 'true' : 'false');
+  if (!entry.pressedIcon) return;
+  const want = on && hasIcon(entry.pressedIcon) ? entry.pressedIcon : entry.spec.icon;
+  if (want === entry.shownIcon) return;
+  const old = entry.button.querySelector(':scope > svg');
+  const svg = icon(want);
+  if (!old || !svg) return;
+  old.replaceWith(svg);
+  entry.shownIcon = want;
 }
 
 /** Remove one extra button by id (only `button` when given — a stale remover never drops a replacement). */
@@ -550,14 +653,19 @@ function removeExtra(id, button) {
   syncOverflow();
 }
 
-function syncExtras(ctx) {
-  for (const { spec, button } of extras.values()) {
-    let visible = true;
-    if (typeof spec.visible === 'function') {
-      try { visible = spec.visible(ctx) !== false; } catch { visible = false; }
-    }
-    button.hidden = !visible;
+/** `visible` decides hidden (a throw hides: fail closed); a shown toggle re-reads `pressed`. Busy marks are kept. */
+function syncExtra(entry, ctx) {
+  const { spec, button } = entry;
+  let visible = true;
+  if (typeof spec.visible === 'function') {
+    try { visible = spec.visible(ctx) !== false; } catch { visible = false; }
   }
+  button.hidden = !visible;
+  if (visible && entry.pressed) applyPressed(entry, ctx);
+}
+
+function syncExtras(ctx) {
+  for (const entry of extras.values()) syncExtra(entry, ctx);
   syncOverflow();
 }
 
@@ -591,6 +699,14 @@ function overflowMenuItems() {
     if (b.hidden) continue;
     const ex = b.hasAttribute('data-extra') ? extras.get(b.getAttribute('data-extra')) : null;
     const label = b.getAttribute('aria-label') || '';
+    if (ex && (ex.pressed || ex.busy)) {
+      // v0.96.0 (plan D11): a PLAIN item (not a checkbox — that one flips at once and stays open): the icon on show, the
+      // state as a hint, disabled while busy; selecting it closes the menu and clicks the button (its busy guard holds)
+      const on = !!ex.pressed && b.getAttribute('aria-pressed') === 'true';
+      const hint = ex.busy ? session.labels.busy : on ? session.labels.pressedOn : undefined;
+      items.push({ label, icon: ex.shownIcon || undefined, hint, disabled: !!ex.busy, onSelect: () => b.click() });
+      continue;
+    }
     const iconName = b === ui.fsBtn ? 'fullscreen' : ex && typeof ex.spec.icon === 'string' ? ex.spec.icon : '';
     items.push({ label, icon: iconName || undefined, onSelect: () => b.click() });
   }
@@ -1675,6 +1791,8 @@ function makeHandle(token) {
     },
     /** Re-run the current panel renderer (its data changed). */
     refreshPanel() { if (alive()) syncPanel(ctxOf()); },
+    /** v0.96.0: re-run `visible` + `pressed` of the toolbar buttons now (their state changed outside onClick). */
+    refreshToolbar() { if (alive()) syncExtras(ctxOf()); },
     /** Add a toolbar button while open (same id → replaces it). Returns remove(). */
     addToolbarButton(spec) {
       if (!alive() || !spec || typeof spec.id !== 'string' || !spec.id) return () => {};
@@ -1729,6 +1847,7 @@ function openViewer(items, options = {}) {
     preloads: new Map(),
     filmstrip: wantsFilmstrip(opts.filmstrip, list.length),
     handle: null,
+    warned: new Set(), // v0.96.0: toolbar warnOnce keys (`id\0kind`) — per open, survives replacing a button
     groupEl: typeof Element !== 'undefined' && opts.groupEl instanceof Element ? opts.groupEl : null,
   };
   session.handle = makeHandle(token);

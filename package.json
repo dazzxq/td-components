@@ -1,6 +1,6 @@
 {
   "name": "@dazzxq/td-components",
-  "version": "0.95.0",
+  "version": "0.96.0",
   "description": "Shared UI Web Components library — single source of truth UI kit (token CSS + minimal surfaces)",
   "type": "module",
   "main": "index.js",
@@ -52,6 +52,7 @@
   "exports": {
     ".": "./index.js",
     "./td.css": "./td.css",
+    "./compat/td-wp-admin.css": "./compat/td-wp-admin.css",
     "./icons": "./src/icons/td-icon.js",
     "./icon-element": "./src/icons/td-icon-element.js",
     "./icons.json": "./src/icons/icons.json",
@@ -62,6 +63,7 @@
     "./checkbox": "./src/form/td-checkbox.js",
     "./button": "./src/form/td-button.js",
     "./action-button": "./src/form/td-action-button.js",
+    "./button-busy": "./src/form/button-busy.js",
     "./input-field": "./src/form/td-input-field.js",
     "./slider": "./src/form/td-slider.js",
     "./dropdown": "./src/form/td-dropdown.js",
@@ -101,6 +103,7 @@
     "./empty-state": "./src/display/td-empty-state.js",
     "./media-grid": "./src/display/td-media-grid.js",
     "./selection-bar": "./src/display/td-selection-bar.js",
+    "./page-actions": "./src/display/td-page-actions.js",
     "./copy": "./src/display/td-copy.js",
     "./sortable": "./src/display/td-sortable.js",
     "./masked-value": "./src/display/td-masked-value.js",
@@ -113,6 +116,7 @@
     "./dom-utils": "./src/utils/dom-utils.js",
     "./form-validation": "./src/utils/form-validation.js",
     "./breakpoints": "./src/utils/breakpoints.js",
+    "./external-overlay": "./src/utils/external-overlay.js",
     "./theme": "./src/theme/index.js",
     "./check-matrix": "./src/form/td-check-matrix.js",
     "./choice-group": "./src/form/td-choice-group.js",
@@ -133,6 +137,7 @@
     "!bin/*.test.mjs",
     "php",
     "td.css",
+    "compat",
     "dist",
     "module-graph.json",
     "THIRD_PARTY_NOTICES.md"
@@ -174,6 +179,7 @@
     "./src/display/td-empty-state.js",
     "./src/display/td-media-grid.js",
     "./src/display/td-selection-bar.js",
+    "./src/display/td-page-actions.js",
     "./src/display/td-sortable.js",
     "./src/display/td-masked-value.js",
     "./src/display/td-filter-chips.js",
@@ -204,9 +210,9 @@
   "license": "MIT",
   "devDependencies": {
     "@esm-bundle/chai": "^4.3.4",
-    "@storybook/addon-a11y": "^8.6.18",
-    "@storybook/addon-essentials": "^8.6.18",
-    "@storybook/web-components-vite": "^8.6.18",
+    "@storybook/addon-a11y": "^8.6.19",
+    "@storybook/addon-essentials": "^8.6.19",
+    "@storybook/web-components-vite": "^8.6.19",
     "@tailwindcss/cli": "4.2.2",
     "@web/test-runner": "^0.20.2",
     "@web/test-runner-playwright": "^0.11.1",
@@ -219,7 +225,7 @@
     "prosemirror-state": "1.4.4",
     "prosemirror-transform": "1.12.4",
     "prosemirror-view": "1.42.8",
-    "storybook": "^8.6.18",
-    "vite": "^6.4.3"
+    "storybook": "^8.6.19",
+    "vite": "^6.4.5"
   }
 }

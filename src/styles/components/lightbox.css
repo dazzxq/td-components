@@ -28,6 +28,7 @@
 		--td-lb-backdrop: rgb(8 8 9 / 94%);
 		--td-lb-panel-bg: var(--td-glass-clear-solid); /* opaque (v0.20.0) */
 		--td-lb-fg: #fff;
+		--td-lb-pressed: #ffd60a; /* v0.96.0: a toggle toolbar button that is on (lightbox is always dark: one value) */
 		/* v0.24.0 side navigation: strip width (of the image column), disc, room kept free above the bottom (caption) */
 		--td-lb-nav-w: clamp(64px, 15%, 240px);
 		--td-lb-nav-bottom: 56px;
@@ -558,7 +559,24 @@
 
 	.td-lightbox__btn[aria-pressed="true"],
 	.td-lightbox__btn[data-on] {
-		color: #ffd60a;
+		color: var(--td-lb-pressed);
+	}
+
+	/* v0.96.0 busy toolbar button (aria-busy + aria-disabled, the button-busy contract; no spinner — the icon keeps showing
+	   on / off): dimmed, also while focused (focus stays on it); hover / press do not light it up */
+	.td-lightbox__btn[aria-disabled="true"] {
+		opacity: 0.5;
+	}
+
+	.td-lightbox__btn[aria-busy="true"] {
+		cursor: progress;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__btn[aria-disabled="true"]:hover {
+			background: transparent;
+			opacity: 0.5;
+		}
 	}
 
 	.td-lightbox__icon {
@@ -1121,7 +1139,7 @@
 		-webkit-tap-highlight-color: transparent;
 	}
 
-	.td-lightbox__btn:is(:active, [data-td-pressed]):not(:disabled) {
+	.td-lightbox__btn:is(:active, [data-td-pressed]):not(:disabled, [aria-disabled="true"]) {
 		background-color: var(--td-lb-btn-pressed);
 		opacity: 1;
 		transition-duration: 0s;
@@ -1157,6 +1175,11 @@
 		.td-lightbox__btn:is(:active, [data-td-pressed]),
 		.td-lightbox__error-btn:is(:active, [data-td-pressed]),
 		.td-lightbox__thumb:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+
+		/* v0.96.0: "on" must not rely on the (overridden) colour */
+		.td-lightbox__btn[aria-pressed="true"] {
 			outline: 2px solid Highlight;
 		}
 	}
