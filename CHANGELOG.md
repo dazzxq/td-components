@@ -4,6 +4,21 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.96.1
+
+**`<td-icon-picker>`: nhãn tiếng Việt trên ô, nhóm + hàng lọc, ô "Không icon", nạp lười icon của site** (yêu cầu dsuite 04/11;
+[plan](docs/internal/plans/v0.96.0-icon-picker.md)). Mọi thứ đều **opt-in**: không bật thì popup và markup SSR giống 0.94.0.
+
+- `trigger-text="label"` + `value-label`: ô hiện nhãn VI (`value-label` → nhãn trong dữ liệu tìm kiếm → tên). PHP
+  `td_icon_picker()` nhận `trigger_text`, `value_label` và in sẵn nhãn nên JS nhận tại chỗ.
+- `groups` (property; static `TdIconPicker.groups`, instance thắng) + hàng nút lọc nhóm (từ 2 nhóm; toolbar, ←/→/Home/End).
+  Validator mới `validateIconGroups()`: ≤ 50 nhóm, ≤ 2000 tên, `key` / `label` kiểm chặt, sai thì bỏ cả danh sách + một cảnh báo.
+- `none-option` (ô "Không icon" đầu popup) + `none-value` (giá trị riêng thay cho `''`); PHP `none_option`, `none_value`,
+  `td_icon_value($v, ['none_value' => …])`, trạng thái SSR `none`.
+- Nạp lười qua hook `loadSearchData` có sẵn: kit tính lại danh sách / nhóm / chữ trên ô sau khi hook xong, hoãn cảnh báo
+  "chưa đăng ký" trong lúc tải.
+- CSS: hàng lọc (chạm ≥ 44, forced-colors, hover chỉ khi có chuột); không token mới. Docs: Icon picker, Icons, PHP adapter, security-model.
+
 ## 0.96.0
 
 **Thanh nút đầu trang tự gấp, nút "đang chờ" cho mọi `.td-btn`, nút bật/tắt trong lightbox, modal chạy chung wp.media**

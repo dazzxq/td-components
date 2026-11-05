@@ -110,6 +110,15 @@ const SCENARIOS = [
   { name: 'datetime-range', act: (p) => p.click('#g-dtr .td-dtr__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer [data-action="clear"]'] }, // v0.40.0 (v0.61.0: the footer actions carry data-action; R-actions = whatever "Chọn" state, every shown action is in view)
   { name: 'color-picker', act: (p) => p.click('#g-color .td-color__trigger'), panel: '.td-color-panel' }, // v0.48.0
   { name: 'icon-picker', act: (p) => p.click('#g-icon .td-icon-picker__trigger'), panel: '.td-icon-picker-panel[data-state="open"]', ready: '.td-icon-picker-panel__cell', see: ['.td-icon-picker-panel__input'] }, // v0.94.0
+  // v0.96.1 (plan v0.96.0-icon-picker §10): 13 groups at 360 — the filter row stays ONE row and scrolls inside the popup, the page never scrolls sideways
+  { name: 'icon-picker-groups', when: (c) => c.w === 360, iconFilters: true, act: async (p) => {
+    await p.evaluate(() => {
+      const n = ['close', 'check', 'prev', 'next', 'up', 'down', 'back', 'plus', 'minus', 'more', 'search', 'calendar', 'fullscreen', 'download',
+        'external', 'info', 'success', 'error', 'warning', 'eye', 'eye-off', 'zoom-in', 'inbox', 'star', 'upload', 'link'];
+      document.querySelector('#g-icon').groups = Array.from({ length: 13 }, (_, i) => ({ key: `g${i + 1}`, label: `Nhóm số ${i + 1}`, icons: n.slice(i * 2, i * 2 + 2) }));
+    });
+    await p.click('#g-icon .td-icon-picker__trigger');
+  }, panel: '.td-icon-picker-panel[data-state="open"]', ready: '.td-icon-picker-panel__filter', see: ['.td-icon-picker-panel__input'] },
   { name: 'tree-select', act: (p) => p.click('#g-ts .td-tree-select__trigger'), panel: '.td-tree-select__menu[data-state="open"]' },
   { name: 'multiselect', act: async (p) => { await p.click('#g-chips .td-chip-input__input'); await p.keyboard.press('ArrowDown'); }, panel: '.td-chip-input__menu[data-state="open"]' },
   { name: 'menu', act: (p) => p.click('#rsp-menu-btn button'), panel: '.td-menu' },
@@ -1318,6 +1327,30 @@ async function runOverlays(page, c, tag, shot) {
         // v0.74.0: with the album strip up in a short band (≤ 500 tall) the grid sits below the strip inside the scroller — reached by scrolling
         if (gridH < 112 && !(s.collections && vp.h <= 500)) err.push(`visible grid height ${Math.round(gridH)}px < 112 (one row of cards)`);
         check(tag, `${s.name}: viewport dialog + inner layout`, err);
+      }
+      if (s.iconFilters) {
+        const f = await page.evaluate(() => {
+          const bar = document.querySelector('.td-icon-picker-panel__filters');
+          const pnl = document.querySelector('.td-icon-picker-panel[data-state="open"]');
+          if (!bar || !pnl) return null;
+          const btns = [...bar.querySelectorAll('.td-icon-picker-panel__filter')];
+          const r = bar.getBoundingClientRect();
+          const pr = pnl.getBoundingClientRect();
+          return { n: btns.length, wrap: getComputedStyle(bar).flexWrap, ox: getComputedStyle(bar).overflowX, scrolls: bar.scrollWidth > bar.clientWidth + 1,
+            oneRow: new Set(btns.map((b) => Math.round(b.getBoundingClientRect().top))).size === 1,
+            inside: r.left >= pr.left - 1 && r.right <= pr.right + 1,
+            docOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+        });
+        const err = [];
+        if (!f) err.push('no filter row');
+        else {
+          if (f.n !== 15) err.push(`${f.n} filter buttons (want "Tất cả" + 13 + "Khác")`);
+          if (f.wrap === 'wrap' || !f.oneRow) err.push('filter row wraps');
+          if (f.ox !== 'auto' || !f.scrolls) err.push(`filter row does not scroll sideways (overflow-x ${f.ox}, scrolls ${f.scrolls})`);
+          if (!f.inside) err.push('filter row sticks out of the popup');
+          if (f.docOverflow > 1) err.push(`page scrolls sideways (+${f.docOverflow}px)`);
+        }
+        check(tag, `${s.name}: one scrolling filter row`, err);
       }
       if (s.collections) {
         // v0.74.0: cards are 120px < 720 (160 from 720), the strip scrolls inline inside the results, both headings fit their line,

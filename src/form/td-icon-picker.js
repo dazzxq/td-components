@@ -21,13 +21,18 @@ import {
 import { ssrMarker } from '../base/td-base-element.js';
 import { tdIcon, listIcons, resolveIconName } from '../icons/td-icon.js';
 import CORE_ICONS, { aliases as CORE_ALIASES } from '../icons/registry.js';
-import { validateSearchEntry, ICON_SEARCH_LIMITS } from '../icons/icon-search-schema.js';
+import { validateSearchEntry, validateIconGroups, isSearchText, ICON_SEARCH_LIMITS } from '../icons/icon-search-schema.js';
 import { buildIconIndex, isIconIndexCurrent, searchIcons, normalizeIconQuery } from '../utils/icon-search-model.js';
 import { placeFloating, isReferenceHidden, watchReference, viewportBox } from '../utils/floating.js';
 import { LAYERS, register as registerLayer, bridgeTheme, focusablesIn } from '../utils/layers.js';
 import { isCoarsePointer } from '../utils/breakpoints.js';
 
 const NAME_RE = /^[a-z][a-z0-9-]{0,63}$/;
+/** v0.96.1: `none-value` (= php td_icon_picker none_value) */
+const NONE_RE = /^[a-z][a-z0-9-]{0,47}$/;
+/** v0.96.1: the caption key of the "Không icon" cell (never a valid icon name) */
+const NONE_KEY = '\u0000none';
+const NONE_CELL = 'td-icon-picker-panel__cell--none';
 const FALSY = new Set(['false', '0', 'off']);
 /** suggestions kept (= php Td::ICON_PICKER_SUGGESTIONS) */
 const MAX_SUGGESTIONS = 24;
@@ -176,6 +181,12 @@ const el = (tag, cls) => {
  * @attr {string} allow-clear — on by default; "false" / "0" / "off" turns it off
  * @attr {string} suggestions — icon names (space / comma), the "Gợi ý" row (max 24)
  * @attr {string} icons — icon names (space / comma): the set of the grid (empty = every registered icon)
+ * @attr {string} trigger-text — v0.96.1: "name" (default) | "label": the trigger shows the VI label of the icon
+ * @attr {string} value-label — v0.96.1: the label of the server-printed value (php prints it in label mode)
+ * @attr {boolean} none-option — v0.96.1: a "Không icon" cell on top of the popup
+ * @attr {string} none-value — v0.96.1: the value of that cell (default '' = no icon)
+ * @prop {Array<{key: string, label: string, icons: string[]}>|null} groups — v0.96.1: themed groups + a filter row
+ *   (wins over `TdIconPicker.groups`)
  * @fires input — `{ value }` on every user change
  * @fires change — `{ value }` on every user change
  */
@@ -199,7 +210,19 @@ export class TdIconPicker extends TdFormElement {
     loadError: 'Không tải được từ khoá — đang tìm theo tên',
     retry: 'Thử lại',
     caption: '{label} · {name}',
+    none: 'Không icon',
+    noneGroup: 'Bỏ chọn icon',
+    filter: 'Lọc theo nhóm',
+    filterAll: 'Tất cả',
+    ungrouped: 'Khác',
   };
+
+  /**
+   * v0.96.1: groups of the whole site — `[{ key, label, icons }]` (see the `groups` property, which wins). Read at every
+   * open and after the load of the search data, so it may be assigned inside `loadSearchData`.
+   * @type {Array<{key: string, label: string, icons: string[]}>|null}
+   */
+  static groups = null;
 
   /** Validation texts (Vietnamese); override per site. */
   static messages = {
@@ -215,7 +238,7 @@ export class TdIconPicker extends TdFormElement {
 
   static get observedAttributes() {
     return [...super.observedAttributes, 'value', 'label', 'placeholder', 'readonly', 'allow-clear', 'suggestions', 'icons',
-      'error-text', 'aria-label'];
+      'error-text', 'aria-label', 'trigger-text', 'value-label', 'none-option', 'none-value'];
   }
 
   static get booleanAttributes() { return [...super.booleanAttributes, 'readonly']; }
@@ -230,6 +253,10 @@ export class TdIconPicker extends TdFormElement {
     /** @private property lists (win over the attributes); null = the attribute */
     this._suggestionsProp = null;
     this._iconsProp = null;
+    /** @private v0.96.1: the `groups` property (wins over the static); null = the static */
+    this._groupsProp = null;
+    /** @private v0.96.1: the filter row's choice ('' = all) */
+    this._filterKey = '';
     this._warned = new Set();
     this._panel = null;
     this._layer = null;
@@ -303,6 +330,43 @@ export class TdIconPicker extends TdFormElement {
   /** An array of names (wins over the attribute); a string sets the attribute; null → the attribute. */
   set icons(v) { this._setList('icons', v); }
 
+  /** @returns {boolean} v0.96.1: the "Không icon" cell is on (attribute `none-option`) */
+  get noneOption() { return this.hasAttribute('none-option'); }
+
+  set noneOption(v) { this.toggleAttribute('none-option', !!v); }
+
+  /** @returns {string} v0.96.1: the value of the "Không icon" cell ('' = no icon; a bad / registered name → '') */
+  get noneValue() { return this._noneValue(); }
+
+  set noneValue(v) {
+    if (v == null || v === '') this.removeAttribute('none-value');
+    else this.setAttribute('none-value', String(v));
+  }
+
+  /** @returns {Array<{key: string, label: string, icons: string[]}>|null} v0.96.1: the property (null = `TdIconPicker.groups`) */
+  get groups() { return this._groupsProp; }
+
+  /** An array of `{ key, label, icons }` (wins over the static); null → the static. A wrong structure is ignored (+ one warning). */
+  set groups(v) {
+    this._groupsProp = v == null ? null : v;
+    if (this._panel) this._fill();
+  }
+
+  /** @private the effective "Không icon" value: `none-value` when well-formed and not a registered icon name, else '' */
+  _noneValue() {
+    const raw = this.getAttribute('none-value') || '';
+    if (!raw) return '';
+    if (!NONE_RE.test(raw)) {
+      this._warn(`none:${raw.slice(0, 80)}`, `<td-icon-picker>: none-value "${raw.slice(0, 80)}" is not a valid name; ignored`);
+      return '';
+    }
+    if (resolveIconName(raw)) {
+      this._warn(`none:${raw}`, `<td-icon-picker>: none-value "${raw}" is a registered icon name; ignored`);
+      return '';
+    }
+    return raw;
+  }
+
   /** Open the popup (no-op when disabled / read-only / already open). */
   open() {
     if (this._panel || !this._initialized || !this.isConnected || this._locked()) return;
@@ -359,6 +423,8 @@ export class TdIconPicker extends TdFormElement {
     const hadFocus = panel.contains(document.activeElement);
     this._panel = null;
     this._cells = null;
+    this._secs = null;
+    this._noneCell = null;
     if (this._layer) { this._layer.release(); this._layer = null; }
     if (this._unbridge) { this._unbridge(); this._unbridge = null; }
     if (this._unwatchRef) { this._unwatchRef(); this._unwatchRef = null; }
@@ -466,7 +532,7 @@ export class TdIconPicker extends TdFormElement {
    * @private canonical registered names of a list (property > attribute), deduped, ≤ `max`; unknown / bad names dropped
    * with one warning per name.
    */
-  _names(kind, max) {
+  _names(kind, max, quiet = false) {
     const prop = kind === 'icons' ? this._iconsProp : this._suggestionsProp;
     let list = prop;
     if (list == null) {
@@ -477,11 +543,19 @@ export class TdIconPicker extends TdFormElement {
       }
       list = attr.split(/[\s,]+/).filter(Boolean).slice(0, MAX_CANDIDATES);
     }
+    return this._canon(list, kind, max, quiet);
+  }
+
+  /**
+   * @private canonical registered names of `list` (deduped, ≤ `max`); the others are dropped, with one warning per name
+   * unless `quiet` (v0.96.1: while the search data loads — the loader may still register the site icons of the list).
+   */
+  _canon(list, kind, max, quiet) {
     const out = [];
     for (const n of list) {
       const canon = typeof n === 'string' && NAME_RE.test(n) ? resolveIconName(n) : null;
       if (!canon) {
-        this._warn(`${kind}:${String(n).slice(0, 80)}`, `<td-icon-picker>: ${kind} entry "${String(n).slice(0, 80)}" is not a registered icon; dropped`);
+        if (!quiet) this._warn(`${kind}:${String(n).slice(0, 80)}`, `<td-icon-picker>: ${kind} entry "${String(n).slice(0, 80)}" is not a registered icon; dropped`);
       } else if (!out.includes(canon) && out.length < max) {
         out.push(canon);
       }
@@ -503,10 +577,24 @@ export class TdIconPicker extends TdFormElement {
 
   _root() { return this.querySelector(':scope > .td-icon-picker'); }
 
-  /** @private the state of the trigger text: value (registered) | unknown | empty */
+  /** @private the state of the trigger text: value (registered) | unknown | empty | none (= the none-value) */
   _state() {
     if (!this._value) return 'empty';
+    if (this._value === this._noneValue()) return 'none';
     return resolveIconName(this._value) === this._value ? 'value' : 'unknown';
+  }
+
+  /**
+   * @private v0.96.1: the text of the trigger for `state` (D1). Label mode (`trigger-text="label"`, state `value` only):
+   * the server's `value-label` while the value is still the one the server printed, else the metadata label, else the name.
+   */
+  _triggerText(state) {
+    if (state === 'empty') return this.getAttribute('placeholder') || TdIconPicker.labels.placeholder;
+    if (state === 'none') return TdIconPicker.labels.none;
+    if (state !== 'value' || this.getAttribute('trigger-text') !== 'label') return this._value;
+    const printed = this.getAttribute('value-label');
+    if (printed && isSearchText(printed) && this._value === this._parse(this.getAttribute('value'), false)) return printed;
+    return labelOf(this._value);
   }
 
   /** @private clear button hidden: no value, required, locked or allow-clear off */
@@ -564,14 +652,14 @@ export class TdIconPicker extends TdFormElement {
   /** @private glyph + text + data-state of the trigger for the current value */
   _paintTrigger(glyph, text) {
     const state = this._state();
-    const want = state === 'value' ? this._value : '';
+    const want = state === 'value' ? this._value : state === 'none' ? 'ban' : '';
     const svg = glyph.firstElementChild;
     if ((svg ? svg.getAttribute('data-icon') : '') !== want || glyph.childNodes.length > (svg ? 1 : 0)) {
       glyph.replaceChildren();
       const icon = want ? tdIcon(want, { size: 'm' }) : null;
       if (icon) glyph.appendChild(icon);
     }
-    const t = state === 'empty' ? (this.getAttribute('placeholder') || TdIconPicker.labels.placeholder) : this._value;
+    const t = this._triggerText(state);
     if (text.textContent !== t) text.textContent = t;
     if (text.getAttribute('data-state') !== state) text.setAttribute('data-state', state);
   }
@@ -633,9 +721,19 @@ export class TdIconPicker extends TdFormElement {
     }
     switch (name) {
       case 'value': this.value = newVal ?? ''; return;
-      case 'placeholder': this._paint(); return;
+      case 'placeholder': case 'trigger-text': case 'value-label': this._paint(); return;
       case 'readonly': case 'allow-clear': this._paint(); return;
-      case 'required': this._paint(); this._syncForm(); return;
+      case 'required':
+        this._paint();
+        this._syncForm();
+        if (this._panel) this._fill(); // the "Không icon" cell hides on a required picker
+        return;
+      case 'none-option': if (this._panel) this._fill(); return;
+      case 'none-value':
+        this._paint();
+        this._syncForm();
+        if (this._panel) this._fill();
+        return;
       case 'suggestions': case 'icons':
         if (name === 'suggestions') this._suggestionsProp = null; else this._iconsProp = null;
         if (this._panel) this._fill();
@@ -666,6 +764,10 @@ export class TdIconPicker extends TdFormElement {
     for (const [k, v] of [['autocomplete', 'off'], ['autocapitalize', 'none'], ['spellcheck', 'false'], ['enterkeyhint', 'search']]) input.setAttribute(k, v);
     search.appendChild(input);
     const body = el('div', 'td-icon-picker-panel__body');
+    this._filterKey = '';
+    this._filterSig = '';
+    this._secs = new Map();
+    this._gseq = 0;
     for (const group of ['suggested', 'all']) {
       const section = el('section', 'td-icon-picker-panel__group');
       section.setAttribute('data-group', group);
@@ -679,6 +781,7 @@ export class TdIconPicker extends TdFormElement {
       grid.setAttribute('aria-labelledby', heading.id);
       section.append(heading, grid);
       body.appendChild(section);
+      this._secs.set(group, { el: section, grid, heading });
     }
     const empty = el('p', 'td-icon-picker-panel__empty');
     empty.hidden = true;
@@ -719,21 +822,21 @@ export class TdIconPicker extends TdFormElement {
     });
     body.addEventListener('click', (e) => {
       const cell = /** @type {Element} */ (e.target).closest?.('.td-icon-picker-panel__cell');
-      if (cell && body.contains(cell)) this._pick(cell.getAttribute('data-icon'));
+      if (cell && body.contains(cell)) this._pick(cell.classList.contains(NONE_CELL) ? this._noneValue() : cell.getAttribute('data-icon'));
     });
     body.addEventListener('keydown', (e) => this._onGridKey(/** @type {KeyboardEvent} */ (e)));
     body.addEventListener('focusin', (e) => {
       const cell = /** @type {Element} */ (e.target).closest?.('.td-icon-picker-panel__cell');
       if (!cell) return;
       this._setRoving(cell);
-      this._caption(cell.getAttribute('data-icon'));
+      this._caption(this._key(cell));
     });
     body.addEventListener('focusout', () => this._caption(null));
     body.addEventListener('pointerover', (e) => {
       const pe = /** @type {PointerEvent} */ (e);
       if (pe.pointerType !== 'mouse' && pe.pointerType !== 'pen') return;
       const cell = /** @type {Element} */ (e.target).closest?.('.td-icon-picker-panel__cell');
-      if (cell) this._caption(cell.getAttribute('data-icon'));
+      if (cell) this._caption(this._key(cell));
     });
     body.addEventListener('pointerleave', () => this._caption(null));
     // pointer leaves a cell for a non-cell (gap, heading, empty row space) → caption back to the focused / selected icon
@@ -754,19 +857,241 @@ export class TdIconPicker extends TdFormElement {
     panel.addEventListener('change', (e) => e.stopPropagation());
   }
 
-  /** @private (re)build the cells of both grids for the current lists, then filter + lay out */
+  /** @private (re)build the cells of every grid for the current lists, then filter + lay out */
   _fill() {
     if (!this._panel) return;
-    this._cells = { suggested: new Map(), all: new Map() };
-    this._suggested = this.suggestions;
-    const set = this.icons;
-    this._set = set.length ? new Set(set) : null;
-    this._filter({ layout: true });
+    this._cells = new Map();
+    this._noneCell = null;
+    this._reflow();
   }
 
-  /** @private the cell of `name` in `group` (created once per open, then only moved) */
-  _cell(group, name) {
-    const map = this._cells[group];
+  /** @private the lists, sections and filter row for the current data (cells that exist are kept), then filter + lay out */
+  _reflow() {
+    // a focused cell may leave the DOM here (e.g. groups arrive with the lazy load and the flat "all" section empties):
+    // keep its icon and focus the same icon in the first shown section that has it
+    const active = document.activeElement;
+    const key = active && this._panel && this._panel.contains(active) && active.classList.contains('td-icon-picker-panel__cell')
+      ? this._key(active) : null;
+    this._lists();
+    this._syncSections();
+    this._syncFilters();
+    this._filter({ layout: true });
+    if (key !== null && !(active.isConnected && this._panel && this._panel.contains(active))) this._refocus(key);
+  }
+
+  /** @private focus the cell of `key` (icon name / NONE_KEY) in the first shown section that has it */
+  _refocus(key) {
+    if (!this._panel || !this._secs) return;
+    for (const [sid, rec] of this._secs) {
+      if (rec.el.hidden || !this._shown.get(sid)?.includes(key)) continue;
+      const cell = key === NONE_KEY ? this._noneCell : this._cells.get(sid)?.get(key);
+      if (cell && cell.isConnected) {
+        this._setRoving(cell);
+        cell.focus({ preventScroll: true });
+        return;
+      }
+    }
+  }
+
+  /**
+   * @private (v0.96.1, D9) the lists of the current attributes / properties / registry: suggestions, the icons set and the
+   * groups. While the search data loads the "not registered" warnings wait (the loader may register the site icons); they
+   * come once it is done or failed.
+   */
+  _lists() {
+    const quiet = this._loadState === 'loading';
+    this._suggested = this._names('suggestions', MAX_SUGGESTIONS, quiet);
+    const set = this._names('icons', MAX_CANDIDATES, quiet);
+    this._set = set.length ? new Set(set) : null;
+    this._groupList = this._resolveGroups(quiet);
+  }
+
+  /**
+   * @private v0.96.1 (D5 / D6): the groups to show — `[{ key, label, names }]` (key null = the "Khác" group) — or null
+   * (flat grid). Structure refused by validateIconGroups → one warning + null. Names: canonical, registered, inside the
+   * `icons` set; an empty group is dropped; every registered icon in no group goes to the group `other` (when the site
+   * has one) else a final "Khác".
+   */
+  _resolveGroups(quiet) {
+    const src = this._groupsProp ?? TdIconPicker.groups;
+    if (src == null) return null;
+    let valid;
+    try {
+      valid = validateIconGroups(src);
+    } catch (err) {
+      this._warn(`groups:${String(err.message).slice(0, 80)}`, `<td-icon-picker>: groups ignored (${err.message})`);
+      return null;
+    }
+    const used = new Set();
+    const out = [];
+    for (const g of valid) {
+      let names = this._canon(g.icons, 'groups', MAX_CANDIDATES, quiet);
+      if (this._set) names = names.filter((n) => this._set.has(n));
+      for (const n of names) used.add(n);
+      out.push({ key: g.key, label: g.label, names });
+    }
+    const rest = this._index.names.filter((n) => !used.has(n) && (!this._set || this._set.has(n)));
+    if (rest.length) {
+      const other = out.find((g) => g.key === 'other');
+      if (other) other.names = [...other.names, ...rest];
+      else out.push({ key: null, label: TdIconPicker.labels.ungrouped, names: rest });
+    }
+    const shown = out.filter((g) => g.names.length);
+    return shown.length ? shown : null;
+  }
+
+  /** @private the id of the section of a group (`g:key`, the "Khác" group `g~`) and the value of its filter button */
+  _gid(g) { return g.key ? `g:${g.key}` : 'g~'; }
+
+  _fkey(g) { return g.key || '~'; }
+
+  /** @private (v0.96.1) make the body hold exactly: [none] suggested [one section per group] all (existing nodes stay put) */
+  _syncSections() {
+    const body = this._p('body');
+    if (!body) return;
+    const old = this._secs;
+    const secs = new Map();
+    const order = [];
+    if (this.noneOption) {
+      const rec = old.get('none') || this._noneSection();
+      secs.set('none', rec);
+      order.push(rec.el);
+    }
+    secs.set('suggested', old.get('suggested'));
+    order.push(old.get('suggested').el);
+    for (const g of this._groupList || []) {
+      const sid = this._gid(g);
+      const rec = old.get(sid) || this._groupSection(g);
+      rec.heading.textContent = g.label;
+      secs.set(sid, rec);
+      order.push(rec.el);
+    }
+    secs.set('all', old.get('all'));
+    order.push(old.get('all').el);
+    for (const [sid, rec] of old) {
+      if (!secs.has(sid)) {
+        rec.el.remove();
+        if (this._cells) this._cells.delete(sid);
+      }
+    }
+    this._secs = secs;
+    let ref = body.firstChild;
+    for (const node of order) {
+      if (ref === node) ref = ref.nextSibling;
+      else body.insertBefore(node, ref);
+    }
+    if (!this.noneOption) this._noneCell = null;
+  }
+
+  /** @private the section of the "Không icon" cell: a grid of one cell, named by labels.noneGroup */
+  _noneSection() {
+    const section = el('section', 'td-icon-picker-panel__group');
+    section.setAttribute('data-group', 'none');
+    const grid = el('div', 'td-icon-picker-panel__grid');
+    grid.setAttribute('role', 'grid');
+    grid.setAttribute('aria-label', TdIconPicker.labels.noneGroup);
+    section.appendChild(grid);
+    return { el: section, grid, heading: null };
+  }
+
+  /** @private the section of a group: heading + grid (the id comes from a counter, never from the key) */
+  _groupSection(g) {
+    const section = el('section', 'td-icon-picker-panel__group');
+    section.setAttribute('data-group', 'group');
+    if (g.key) section.setAttribute('data-key', g.key);
+    else section.setAttribute('data-ungrouped', '');
+    const heading = el('div', 'td-icon-picker-panel__heading');
+    heading.setAttribute('role', 'heading');
+    heading.setAttribute('aria-level', '3');
+    heading.id = `${this.id}-g${this._gseq++}`;
+    const grid = el('div', 'td-icon-picker-panel__grid');
+    grid.setAttribute('role', 'grid');
+    grid.setAttribute('aria-labelledby', heading.id);
+    section.append(heading, grid);
+    return { el: section, grid, heading };
+  }
+
+  /** @private (v0.96.1, D8) the filter row: "Tất cả" + a button per group, only with 2+ groups */
+  _syncFilters() {
+    const panel = this._panel;
+    if (!panel) return;
+    let bar = panel.querySelector('.td-icon-picker-panel__filters');
+    const groups = this._groupList;
+    if (!groups || groups.length < 2) {
+      if (bar) bar.remove();
+      this._filterKey = '';
+      this._filterSig = '';
+      return;
+    }
+    if (this._filterKey && !groups.some((g) => this._fkey(g) === this._filterKey)) this._filterKey = '';
+    const sig = JSON.stringify([TdIconPicker.labels.filterAll, TdIconPicker.labels.filter, groups.map((g) => [this._fkey(g), g.label])]);
+    if (bar && sig === this._filterSig) {
+      this._pressFilter();
+      return;
+    }
+    if (bar) bar.remove();
+    const L = TdIconPicker.labels;
+    bar = el('div', 'td-icon-picker-panel__filters');
+    bar.setAttribute('role', 'toolbar');
+    bar.setAttribute('aria-label', L.filter);
+    for (const [key, text] of [['', L.filterAll], ...groups.map((g) => [this._fkey(g), g.label])]) {
+      const b = el('button', 'td-icon-picker-panel__filter');
+      b.type = 'button';
+      b.tabIndex = -1;
+      b.setAttribute('data-filter', key);
+      b.setAttribute('aria-pressed', 'false');
+      b.textContent = text;
+      bar.appendChild(b);
+    }
+    bar.addEventListener('click', (e) => {
+      const b = /** @type {Element} */ (e.target).closest?.('.td-icon-picker-panel__filter');
+      if (!b || !bar.contains(b)) return;
+      this._filterKey = b.getAttribute('data-filter');
+      this._pressFilter();
+      this._filter({ layout: true });
+    });
+    bar.addEventListener('keydown', (e) => {
+      const buttons = [...bar.children];
+      const i = buttons.indexOf(/** @type {Element} */ (e.target).closest?.('.td-icon-picker-panel__filter'));
+      if (i < 0) return;
+      let to = -1;
+      if (e.key === 'ArrowRight') to = Math.min(buttons.length - 1, i + 1);
+      else if (e.key === 'ArrowLeft') to = Math.max(0, i - 1);
+      else if (e.key === 'Home') to = 0;
+      else if (e.key === 'End') to = buttons.length - 1;
+      if (to < 0) return;
+      e.preventDefault();
+      for (const b of buttons) b.tabIndex = -1;
+      buttons[to].tabIndex = 0;
+      buttons[to].focus({ preventScroll: true });
+      // the row scrolls sideways when it overflows: bring the focused button into the row's view (the row only, never
+      // the page — preventScroll above keeps the popup still)
+      const r = buttons[to].getBoundingClientRect();
+      const box = bar.getBoundingClientRect();
+      if (r.left < box.left) bar.scrollLeft -= box.left - r.left;
+      else if (r.right > box.right) bar.scrollLeft += r.right - box.right;
+    });
+    panel.insertBefore(bar, this._p('body'));
+    this._filterSig = sig;
+    this._pressFilter();
+  }
+
+  /** @private aria-pressed (+ the one tab stop) of the filter buttons for the current choice */
+  _pressFilter() {
+    const bar = this._panel && this._panel.querySelector('.td-icon-picker-panel__filters');
+    if (!bar) return;
+    for (const b of bar.children) {
+      const on = b.getAttribute('data-filter') === this._filterKey;
+      b.setAttribute('aria-pressed', String(on));
+      b.tabIndex = on ? 0 : -1;
+    }
+  }
+
+  /** @private the cell of `name` in section `sid` (created once per open, then only moved); NONE_KEY = the "Không icon" cell */
+  _cell(sid, name) {
+    if (name === NONE_KEY) return this._noneCellEl();
+    let map = this._cells.get(sid);
+    if (!map) this._cells.set(sid, map = new Map());
     let cell = map.get(name);
     if (!cell) {
       cell = el('button', 'td-icon-picker-panel__cell');
@@ -792,19 +1117,64 @@ export class TdIconPicker extends TdFormElement {
     return this._set ? names.filter((n) => this._set.has(n)) : [...names];
   }
 
+  /** @private (v0.96.1, D4) the "Không icon" cell shows: on, no query, no group filter, and not a required picker whose none value is '' */
+  _noneVisible(query, chosen) {
+    return this.noneOption && !query && !chosen && !(this.hasAttribute('required') && this._noneValue() === '');
+  }
+
+  /** @private the "Không icon" cell (one per open): a wide button with the `ban` icon and the text */
+  _noneCellEl() {
+    if (!this._noneCell) {
+      const L = TdIconPicker.labels;
+      const cell = el('button', `td-icon-picker-panel__cell ${NONE_CELL}`);
+      cell.type = 'button';
+      cell.setAttribute('role', 'gridcell');
+      cell.tabIndex = -1;
+      cell.setAttribute('aria-label', L.none);
+      cell.setAttribute('aria-selected', String(this._value === this._noneValue()));
+      const svg = tdIcon('ban', { size: 'm' });
+      if (svg) cell.appendChild(svg);
+      const text = el('span', 'td-icon-picker-panel__cell-text');
+      text.textContent = L.none;
+      cell.appendChild(text);
+      this._noneCell = cell;
+    }
+    return this._noneCell;
+  }
+
+  /** @private the caption key of a cell: its icon name, or NONE_KEY for the "Không icon" cell */
+  _key(cell) {
+    return cell.classList.contains(NONE_CELL) ? NONE_KEY : cell.getAttribute('data-icon');
+  }
+
   /** @private the query changed (or the lists / data): rows, headings, empty note, status */
   _filter({ layout = false } = {}) {
     const panel = this._panel;
     if (!panel) return;
     const input = this._p('input');
     const query = !!normalizeIconQuery(input.value);
-    this._shown = { suggested: this._visibleNames('suggested'), all: this._visibleNames('all') };
-    const sg = panel.querySelector('[data-group="suggested"]');
-    sg.hidden = !this._shown.suggested.length;
-    const allHeading = panel.querySelector('[data-group="all"] > .td-icon-picker-panel__heading');
-    allHeading.textContent = query ? TdIconPicker.labels.results : TdIconPicker.labels.all;
-    panel.querySelector('[data-group="all"]').hidden = !this._shown.all.length;
-    this._p('empty').hidden = this._shown.all.length > 0;
+    if (query && this._filterKey) {
+      this._filterKey = ''; // a query searches every group (D7)
+      this._pressFilter();
+    }
+    const groups = this._groupList;
+    const chosen = this._filterKey;
+    const flat = !groups || query; // the one flat "all" / "Kết quả" section
+    const shown = new Map();
+    shown.set('none', this._noneVisible(query, chosen) ? [NONE_KEY] : []);
+    shown.set('suggested', query || chosen ? [] : this._suggested);
+    shown.set('all', flat ? this._visibleNames('all') : []);
+    let count = flat ? shown.get('all').length : 0;
+    for (const g of groups || []) {
+      const names = !query && (!chosen || chosen === this._fkey(g)) ? g.names : [];
+      shown.set(this._gid(g), names);
+      if (!flat) count += names.length;
+    }
+    this._shown = shown;
+    this._count = count;
+    for (const [sid, rec] of this._secs) rec.el.hidden = !shown.get(sid).length;
+    this._secs.get('all').heading.textContent = query ? TdIconPicker.labels.results : TdIconPicker.labels.all;
+    this._p('empty').hidden = count > 0;
     if (layout || !this._cols) this._layout();
     else this._rows();
     clearTimeout(this._statusTimer);
@@ -819,7 +1189,7 @@ export class TdIconPicker extends TdFormElement {
     const max = Math.max(1, parseInt(getComputedStyle(panel).getPropertyValue('--td-icon-picker-columns'), 10) || 8);
     this._cols = max;
     this._rows();
-    const any = panel.querySelector('.td-icon-picker-panel__cell');
+    const any = panel.querySelector(`.td-icon-picker-panel__cell:not(.${NONE_CELL})`); // the wide "Không icon" cell is no measure
     const row = panel.querySelector('.td-icon-picker-panel__row');
     if (any && row) {
       const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
@@ -847,14 +1217,13 @@ export class TdIconPicker extends TdFormElement {
     const panel = this._panel;
     if (!panel) return;
     const active = document.activeElement;
-    for (const group of ['suggested', 'all']) {
-      const grid = panel.querySelector(`[data-group="${group}"] > .td-icon-picker-panel__grid`);
-      const names = this._shown[group];
+    for (const [sid, { grid }] of this._secs) {
+      const names = this._shown.get(sid);
       const rows = [];
       for (let i = 0; i < names.length; i += this._cols) {
         const row = el('div', 'td-icon-picker-panel__row');
         row.setAttribute('role', 'row');
-        for (const n of names.slice(i, i + this._cols)) row.appendChild(this._cell(group, n));
+        for (const n of names.slice(i, i + this._cols)) row.appendChild(this._cell(sid, n));
         rows.push(row);
       }
       grid.replaceChildren(...rows);
@@ -887,9 +1256,10 @@ export class TdIconPicker extends TdFormElement {
   /** @private aria-selected of every cell (value changed while open) */
   _markSelected() {
     if (!this._cells) return;
-    for (const map of Object.values(this._cells)) {
+    for (const map of this._cells.values()) {
       for (const [name, cell] of map) cell.setAttribute('aria-selected', String(name === this._value));
     }
+    if (this._noneCell) this._noneCell.setAttribute('aria-selected', String(this._value === this._noneValue()));
   }
 
   /** @private caption: the hovered / focused icon, else the selected one */
@@ -899,7 +1269,11 @@ export class TdIconPicker extends TdFormElement {
     let n = name;
     if (!n) {
       const focused = document.activeElement?.closest?.('.td-icon-picker-panel__cell');
-      n = focused && this._panel.contains(focused) ? focused.getAttribute('data-icon') : (this._state() === 'value' ? this._value : '');
+      n = focused && this._panel.contains(focused) ? this._key(focused) : (this._state() === 'value' ? this._value : '');
+    }
+    if (n === NONE_KEY) {
+      caption.textContent = TdIconPicker.labels.none;
+      return;
     }
     const label = n ? labelOf(n) : '';
     caption.textContent = !n ? '' : label === n ? n : TdIconPicker.labels.caption.replace('{label}', label).replace('{name}', n);
@@ -914,7 +1288,7 @@ export class TdIconPicker extends TdFormElement {
     let text = '';
     if (this._loadState === 'error') text = L.loadError;
     else if (this._loadState === 'loading') text = L.loading;
-    else if (normalizeIconQuery(input.value)) text = L.count.replace('{n}', String(this._shown?.all.length ?? 0));
+    else if (normalizeIconQuery(input.value) || this._filterKey) text = L.count.replace('{n}', String(this._count ?? 0));
     if (status.textContent !== text) status.textContent = text;
     this._p('retry').hidden = this._loadState !== 'error';
   }
@@ -939,17 +1313,26 @@ export class TdIconPicker extends TdFormElement {
       this._loadState = 'error';
       this._warn('load', `td-icon-picker: search metadata could not be loaded (${err && err.message ? err.message : err}); searching by name`);
       this._warned.delete('load');
+      // the loader may have registered icons before it failed; the warnings held back while it ran come now
+      this._index = currentIndex();
+      this._paint(); // a value the loader registered before it failed gets its icon (as on success, D9)
+      this._reflow();
       this._status();
     });
   }
 
-  /** @private metadata arrived: new index, labels of the cells, same query again (focus kept) */
+  /**
+   * @private metadata arrived (the loader may also have registered site icons / set TdIconPicker.groups): new index,
+   * labels of the cells, lists + groups again WITHOUT rebuilding the cells that exist (focus kept), the trigger
+   * (icon / label of a value the loader made known), same query again
+   */
   _onData() {
     this._index = currentIndex();
-    for (const map of Object.values(this._cells || {})) {
+    for (const map of this._cells ? this._cells.values() : []) {
       for (const [name, cell] of map) cell.setAttribute('aria-label', labelOf(name));
     }
-    this._filter();
+    this._paint();
+    this._reflow();
     this._caption(null);
   }
 

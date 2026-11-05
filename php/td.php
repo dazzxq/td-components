@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.96.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.96.0', __DIR__ . '/public/assets/vendor/td-components/0.96.0');
+ *   require_once '/path/to/vendor/td-components/0.96.1/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.96.1', __DIR__ . '/public/assets/vendor/td-components/0.96.1');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -316,8 +316,8 @@ namespace TdComponents {
         public const COLOR_PRESET_STRING = 192 * 64;
         /** v0.94.0: td_icon_picker (always the element <td-icon-picker data-td-ssr="icon-picker@1">). */
         public const SSR_ICON_PICKER = 'icon-picker@1';
-        /** v0.94.0: texts of td_icon_picker = TdIconPicker.labels (placeholder / clear — the server-rendered part). */
-        public const ICON_PICKER_LABELS = ['placeholder' => 'Chọn icon', 'clear' => 'Xoá icon'];
+        /** v0.94.0: texts of td_icon_picker = TdIconPicker.labels (placeholder / clear / none — the server-rendered part). */
+        public const ICON_PICKER_LABELS = ['placeholder' => 'Chọn icon', 'clear' => 'Xoá icon', 'none' => 'Không icon'];
         /** v0.94.0 (= src/form/td-icon-picker.js): suggestions kept, bytes of a name-list string looked at, list entries inspected. */
         public const ICON_PICKER_SUGGESTIONS = 24;
         public const ICON_PICKER_LIST_STRING = 2048;
@@ -1121,6 +1121,53 @@ namespace TdComponents {
             return true;
         }
 
+        /**
+         * @internal The ONE string rule of the icon search data (label / keyword / group label / value label): a UTF-8 string
+         * of 1–48 code points, trimmed (ECMAScript trim), no control character, NFC. Anything else throws.
+         */
+        private static function searchText(mixed $v, string $at): string
+        {
+            if (!is_string($v)) {
+                throw new InvalidArgumentException("$at must be a UTF-8 string");
+            }
+            // cheap byte guard before any regex work: 48 code points are at most 4 × 48 bytes
+            if (strlen($v) > self::ICON_SEARCH_TEXT_MAX * 4) {
+                throw new InvalidArgumentException("$at must be 1–" . self::ICON_SEARCH_TEXT_MAX . ' characters');
+            }
+            if (!preg_match('//u', $v)) {
+                throw new InvalidArgumentException("$at must be a UTF-8 string");
+            }
+            $n = (int) preg_match_all('/./us', $v);
+            if ($n < 1 || $n > self::ICON_SEARCH_TEXT_MAX) {
+                throw new InvalidArgumentException("$at must be 1–" . self::ICON_SEARCH_TEXT_MAX . ' characters');
+            }
+            if ((string) preg_replace('/^[' . self::JS_WS . ']+|[' . self::JS_WS . ']+$/u', '', $v) !== $v) {
+                throw new InvalidArgumentException("$at must be trimmed");
+            }
+            if (preg_match('/\p{Cc}/u', $v)) {
+                throw new InvalidArgumentException("$at contains a control character");
+            }
+            // without intl: any combining mark is refused (stricter than NFC, safe: every Vietnamese letter exists
+            // precomposed; a text of another script that needs a mark in NFC is refused there)
+            if (self::hasIntl() ? !\Normalizer::isNormalized($v, \Normalizer::FORM_C) : preg_match('/\p{M}/u', $v)) {
+                throw new InvalidArgumentException("$at must be NFC");
+            }
+            return $v;
+        }
+
+        /**
+         * @internal v0.96.1: `$v` when it is a valid text of the search data (see searchText), else null — for the
+         * `value_label` option of td_icon_picker().
+         */
+        public static function iconText(mixed $v): ?string
+        {
+            try {
+                return self::searchText($v, 'text');
+            } catch (InvalidArgumentException) {
+                return null;
+            }
+        }
+
         /** @return array{label:string,keywords:array{en:array<int,string>,vi:array<int,string>}} */
         private static function validateSearchEntry(string $name, mixed $entry): array
         {
@@ -1144,34 +1191,7 @@ namespace TdComponents {
                     }
                 }
             };
-            $text = static function (mixed $v, string $at): string {
-                if (!is_string($v)) {
-                    throw new InvalidArgumentException("$at must be a UTF-8 string");
-                }
-                // cheap byte guard before any regex work: 48 code points are at most 4 × 48 bytes
-                if (strlen($v) > self::ICON_SEARCH_TEXT_MAX * 4) {
-                    throw new InvalidArgumentException("$at must be 1–" . self::ICON_SEARCH_TEXT_MAX . ' characters');
-                }
-                if (!preg_match('//u', $v)) {
-                    throw new InvalidArgumentException("$at must be a UTF-8 string");
-                }
-                $n = (int) preg_match_all('/./us', $v);
-                if ($n < 1 || $n > self::ICON_SEARCH_TEXT_MAX) {
-                    throw new InvalidArgumentException("$at must be 1–" . self::ICON_SEARCH_TEXT_MAX . ' characters');
-                }
-                if ((string) preg_replace('/^[' . self::JS_WS . ']+|[' . self::JS_WS . ']+$/u', '', $v) !== $v) {
-                    throw new InvalidArgumentException("$at must be trimmed");
-                }
-                if (preg_match('/\p{Cc}/u', $v)) {
-                    throw new InvalidArgumentException("$at contains a control character");
-                }
-                // without intl: any combining mark is refused (stricter than NFC, safe: every Vietnamese letter exists
-                // precomposed; a text of another script that needs a mark in NFC is refused there)
-                if (self::hasIntl() ? !\Normalizer::isNormalized($v, \Normalizer::FORM_C) : preg_match('/\p{M}/u', $v)) {
-                    throw new InvalidArgumentException("$at must be NFC");
-                }
-                return $v;
-            };
+            $text = static fn (mixed $v, string $at): string => self::searchText($v, $at);
             $keys($entry, ['label', 'keywords'], $where);
             $label = $text($entry['label'], "$where: label");
             $keys($entry['keywords'], ['en', 'vi'], "$where: keywords");
@@ -8942,16 +8962,46 @@ namespace {
      *
      *   $v = td_icon_value($request->input('menu_icon'));
      *   if ($v === null) abort(422);
+     *
+     * v0.96.1: `$o['none_value']` (= the `none_value` of td_icon_picker, a name matching `^[a-z][a-z0-9-]{0,47}$` that is NOT
+     * a registered icon) makes that one word valid too: `td_icon_value('none', ['none_value' => 'none'])` → `'none'`.
+     * Without the option it is an unknown name → null, as before.
      */
-    function td_icon_value(mixed $v): ?string
+    function td_icon_value(mixed $v, array $o = []): ?string
     {
         if ($v === null || $v === '') {
             return '';
+        }
+        if (is_string($v) && array_key_exists('none_value', $o)) {
+            $none = td__icon_none_value($o['none_value'], 'td_icon_value');
+            if ($none !== '' && $v === $none) {
+                return $none;
+            }
         }
         if (!is_string($v) || strlen($v) > 64 || !preg_match('/^[a-z][a-z0-9-]{0,63}$/D', $v)) {
             return null;
         }
         return Td::iconName($v);
+    }
+
+    /**
+     * @internal v0.96.1: the `none_value` option of td_icon_picker / td_icon_value → '' (none) or a valid word: matching
+     * `^[a-z][a-z0-9-]{0,47}$` and not a registered icon name (nor an alias); anything else → '' + one E_USER_WARNING.
+     */
+    function td__icon_none_value(mixed $nv, string $fn): string
+    {
+        if ($nv === null || $nv === '') {
+            return '';
+        }
+        if (!is_string($nv) || !preg_match('/^[a-z][a-z0-9-]{0,47}$/D', $nv)) {
+            trigger_error("$fn: none_value is not a valid name; ignored", E_USER_WARNING);
+            return '';
+        }
+        if (Td::iconName($nv) !== null) {
+            trigger_error("$fn: none_value is a registered icon name; ignored", E_USER_WARNING);
+            return '';
+        }
+        return $nv;
     }
 
     /**
@@ -8994,12 +9044,17 @@ namespace {
      * v0.94.0 (plan v0.94.0-icons-picker §7, contract icon-picker@1): an icon field — ALWAYS the element
      * `<td-icon-picker data-td-ssr="icon-picker@1">` + the tree <td-icon-picker> builds (adopted IN PLACE by
      * `@dazzxq/td-components/icon-picker`), plus a hidden input carrying name / value for the form until the upgrade (then
-     * removed: ElementInternals submits). The trigger shows the icon + its CANONICAL name (never the search metadata;
-     * Td::iconSearchData() is not read). Options: label, aria_label, value, placeholder, suggestions (list or string, max 24),
+     * removed: ElementInternals submits). The trigger shows the icon + its CANONICAL name (never the search metadata, except
+     * with `trigger_text => 'label'`; otherwise Td::iconSearchData() is not read). Options: label, aria_label, value, placeholder, suggestions (list or string, max 24),
      * icons (list or string: the grid's set; empty = every icon), required, disabled, readonly, allow_clear (false = no clear
      * button), helper_text (or hint), error, class (host), id (host id). `value`: alias → canonical; a well-formed name PHP
      * does not know (a JS-only site icon) is kept + one E_USER_WARNING; a bad name → empty + one warning. ALWAYS normalise
      * the POSTed value with td_icon_value().
+     * v0.96.1 (all opt-in): `trigger_text` => 'label' (the trigger shows the VI label: `value_label` when given and valid, else
+     * the label of Td::iconSearchData() — kit + site metadata — else the name; printed as the host's `value-label` too, so
+     * the JS adopts the text in place), `none_option` (the "Không icon" cell on top of the popup), `none_value` (the value of
+     * that cell, see td__icon_none_value(); when `value` equals it the trigger is printed in state `none`: icon `ban` +
+     * "Không icon"). Without them the markup is the one of 0.94.0 (the metadata is read only in label mode).
      */
     function td_icon_picker(string $name, array $o = []): string
     {
@@ -9014,11 +9069,18 @@ namespace {
         $allowClear = !(array_key_exists('allow_clear', $o) && $o['allow_clear'] !== null && !$o['allow_clear']);
         $nameAttr = $name !== '' ? $name : null;
         $help = array_key_exists('helper_text', $o) ? td__helper_opt($o) : td__str($o['hint'] ?? $o['helper'] ?? null);
+        $labelMode = ($o['trigger_text'] ?? null) === 'label';
+        $noneOption = !empty($o['none_option']);
+        $none = array_key_exists('none_value', $o) ? td__icon_none_value($o['none_value'], 'td_icon_picker') : '';
         $value = '';
         $known = false;
+        $isNone = false;
         if (array_key_exists('value', $o) && $o['value'] !== null && $o['value'] !== '') {
             $raw = $o['value'];
-            if (is_string($raw) && preg_match('/^[a-z][a-z0-9-]{0,63}$/D', $raw)) {
+            if ($none !== '' && $raw === $none) {
+                $value = $none;
+                $isNone = true;
+            } elseif (is_string($raw) && preg_match('/^[a-z][a-z0-9-]{0,63}$/D', $raw)) {
                 $canon = Td::iconName($raw);
                 $known = $canon !== null;
                 $value = $canon ?? $raw;
@@ -9038,7 +9100,22 @@ namespace {
         $errId = $h . '-error';
         $ownDesc = trim(($help !== null && $error === null ? $h . '-note ' : '') . ($error !== null ? $errId : ''));
         $by = trim(($label !== null ? $h . '-label' : ($aria !== null ? $h . '-name' : '')) . ' ' . $h . '-text');
-        $state = $value === '' ? 'empty' : ($known ? 'value' : 'unknown');
+        $state = $value === '' ? 'empty' : ($isNone ? 'none' : ($known ? 'value' : 'unknown'));
+        $valueLabel = null;
+        if ($labelMode && $known) {
+            if (array_key_exists('value_label', $o) && $o['value_label'] !== null) {
+                $valueLabel = Td::iconText($o['value_label']);
+                if ($valueLabel === null) {
+                    trigger_error('td_icon_picker: value_label is not a valid text (1–48 characters, trimmed, NFC, no control character); ignored', E_USER_WARNING);
+                }
+            }
+            if ($valueLabel === null) {
+                $meta = Td::iconSearchData()[$value]['label'] ?? null;
+                $valueLabel = is_string($meta) && $meta !== '' ? $meta : null;
+            }
+        }
+        $text = $state === 'empty' ? ($placeholder ?? Td::ICON_PICKER_LABELS['placeholder'])
+            : ($isNone ? Td::ICON_PICKER_LABELS['none'] : ($valueLabel ?? $value));
         $t = [];
         $trigger = '<button' . Td::ownAttrs([
             'type' => 'button',
@@ -9051,9 +9128,9 @@ namespace {
             'aria-errormessage' => $error !== null ? $errId : null,
             'aria-describedby' => $ownDesc !== '' ? $ownDesc : null,
             'disabled' => $locked,
-        ], $t) . '><span class="td-icon-picker__glyph" aria-hidden="true">' . ($known ? Td::icon($value, 'm') : '') . '</span>'
+        ], $t) . '><span class="td-icon-picker__glyph" aria-hidden="true">' . ($isNone ? Td::icon('ban', 'm') : ($known ? Td::icon($value, 'm') : '')) . '</span>'
             . '<span class="td-icon-picker__text" id="' . Td::e($h . '-text') . '" data-state="' . $state . '">'
-            . Td::e($value !== '' ? $value : ($placeholder ?? Td::ICON_PICKER_LABELS['placeholder'])) . '</span>'
+            . Td::e($text) . '</span>'
             . Td::icon('down', 's', '', 'td-icon-picker__chevron') . '</button>';
         $clearHidden = $value === '' || $required || $locked || !$allowClear;
         $clear = '<button type="button" class="td-icon-picker__clear" aria-label="' . Td::e(Td::ICON_PICKER_LABELS['clear']) . '"'
@@ -9079,6 +9156,10 @@ namespace {
             'placeholder' => $placeholder,
             'suggestions' => $suggestions ? implode(' ', $suggestions) : null,
             'icons' => $icons ? implode(' ', $icons) : null,
+            'trigger-text' => $labelMode ? 'label' : null,
+            'value-label' => $valueLabel,
+            'none-option' => $noneOption,
+            'none-value' => $none !== '' ? $none : null,
             'allow-clear' => $allowClear ? null : 'false',
             'required' => $required,
             'disabled' => $disabled,

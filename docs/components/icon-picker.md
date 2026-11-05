@@ -18,7 +18,7 @@ khi JS tải xong) và **`td_icon_value()` để chuẩn hoá phía server — b
 | Form-associated | có (một mục: tên icon canonical hoặc `''`) |
 | Từ phiên bản | 0.94.0 (token-native: cần `td.css`) |
 
-**Ngoài phạm vi (0.94.0):** nhóm theo chủ đề trong lưới (xếp A–Z theo tên), chọn nhiều icon, tải icon từ URL hoặc chuỗi
+**Ngoài phạm vi:** chọn nhiều icon, tải icon từ URL hoặc chuỗi
 SVG, bản không-JS (không có JS thì ô chỉ là nút + input ẩn mang giá trị, không mở được lưới), nhãn tiếng Anh cho giao
 diện của picker (đổi chữ qua `TdIconPicker.labels`, đổi dữ liệu tìm kiếm qua hook `loadSearchData`).
 
@@ -59,8 +59,102 @@ registerIconSearchData({
   trang này chưa nạp): **giữ nguyên** làm giá trị form (không mất dữ liệu), ô hiện tên đó không kèm hình
   (`data-state="unknown"`); đăng ký xong thì hình hiện ở lần vẽ lại / mở sau.
 - Sai định dạng hoặc dài hơn 64 ký tự → coi như rỗng + một `console.warn`.
-- Chữ trên ô luôn là **tên canonical** (JS và PHP giống nhau, không chờ dữ liệu tìm kiếm, không nháy chữ). Nhãn tiếng
-  Việt chỉ hiện trong popup (dòng chú thích dưới lưới và tên đọc của từng ô).
+- Mặc định chữ trên ô là **tên canonical** (JS và PHP giống nhau, không chờ dữ liệu tìm kiếm, không nháy chữ); nhãn tiếng
+  Việt chỉ hiện trong popup (dòng chú thích dưới lưới và tên đọc của từng ô). Ngoại lệ opt-in: `trigger-text="label"`
+  (0.96.1, xem [dưới](#chữ-trên-ô-là-nhãn-trigger-textlabel)) cho ô hiện nhãn.
+
+## Tuỳ chọn thêm (0.96.1)
+
+Mọi thứ dưới đây là **opt-in**: không bật thì popup, ô và markup SSR giống hệt 0.94.0.
+
+### Chữ trên ô là nhãn (`trigger-text="label"`)
+
+Mặc định ô hiện **tên canonical** (`trash`). `trigger-text="label"` đổi thành **nhãn tiếng Việt** (`Thùng rác`). Thứ tự chọn
+chữ: `value-label` (chỉ khi giá trị vẫn là giá trị server đã in) → nhãn trong dữ liệu tìm kiếm (kit + site) → tên canonical.
+
+- Từ PHP: `td_icon_picker()` in nhãn + `value-label` nên JS nhận **tại chỗ**, không nháy chữ.
+- Chỉ có JS: lúc đầu ô hiện tên; kit **không** tải dữ liệu tìm kiếm chỉ để vẽ ô, nên nhãn xuất hiện sau lần mở popup đầu
+  (hoặc khi site đã nạp dữ liệu). Đổi `value` bằng code thì `value-label` hết tác dụng, nhãn lấy từ dữ liệu tìm kiếm.
+- `value-label` / nhãn luôn vào DOM bằng `textContent`.
+
+### Ô "Không icon" (`none-option`, `none-value`)
+
+`none-option` thêm một ô rộng "Không icon" (biểu tượng `ban`) **trên cùng** popup. Chọn nó thì giá trị là `''`, phát `input` +
+`change` một lần; chọn khi đang rỗng chỉ đóng popup. Ô này **ẩn** khi đang gõ tìm, khi đang lọc một nhóm, và khi `required`
+(mà không có `none-value`).
+
+`none-value="none"` cho ô này một **giá trị riêng** thay cho `''` (hợp với cột DB cần phân biệt "chưa chọn" và "cố ý không
+icon"): chọn ô thì `value === 'none'`, FormData gửi `none`, ô hiện `ban` + "Không icon" (`data-state="none"`), nút xoá đưa về
+`''`. `none-value` phải khớp `^[a-z][a-z0-9-]{0,47}$` và **không** được là tên icon đã đăng ký (hoặc alias); sai thì bỏ như
+`''` + một `console.warn`. Có `none-value` thì `required` vẫn cho ô hiện (vì nó là một giá trị hợp lệ). Phía server dùng
+`td_icon_value($v, ['none_value' => 'none'])`.
+
+### Nhóm và hàng lọc (`groups`)
+
+Property `groups` (hoặc `TdIconPicker.groups` cho cả site; **instance thắng**, `null` thì dùng static):
+
+```js
+picker.groups = [
+  { key: 'actions', label: 'Thao tác', icons: ['trash', 'search', 'check'] },
+  { key: 'places', label: 'Điều hướng', icons: ['home', 'settings'] },
+];
+```
+
+- Thứ tự popup: Không icon (nếu có), Gợi ý, **các nhóm theo thứ tự đưa vào**, "Tất cả". Icon nằm ở nhiều nhóm thì hiện ở mỗi nhóm.
+  Icon không thuộc nhóm nào vào nhóm **Khác** (hoặc gộp vào nhóm có `key: 'other'` nếu site khai); nhóm rỗng bị ẩn.
+  `icons` của host vẫn giới hạn tập hiện ra.
+- `key`: `^[a-z][a-z0-9-]{0,31}$`, không trùng; `label`: 1–48 ký tự (NFC, không ký tự điều khiển); tối đa 50 nhóm, tổng 2000 tên.
+  Danh sách sai thì **bỏ cả danh sách** + một cảnh báo, popup quay về lưới phẳng.
+- Có từ 2 nhóm trở lên (tính cả "Khác") thì có **hàng lọc**: "Tất cả" + một nút mỗi nhóm đang hiện, kể cả "Khác" (`role="toolbar"`,
+  `aria-pressed`, một điểm Tab, ←/→/Home/End đổi nút). Hàng lọc luôn **một hàng**, nhiều nhóm thì cuộn ngang bên trong popup. Bấm nhóm thì chỉ còn nhóm đó. Gõ tìm thì về "Tất cả" và kết quả là **một danh sách phẳng** trên mọi nhóm.
+- Tên nhóm chưa đăng ký lúc đặt vẫn được giữ (xem nạp lười).
+
+### Nạp lười icon của site
+
+Hook `TdIconPicker.loadSearchData` (xem [trên](#tìm-kiếm-và-dữ-liệu-tìm-kiếm)) vốn chỉ trả metadata, nay cũng là chỗ **nạp thêm bộ icon**:
+trong hook, site có thể `registerIcons(...)` và/hoặc gán `TdIconPicker.groups` rồi trả metadata. Kit chỉ tính lại danh sách,
+nhóm và chữ trên ô **sau khi** hook xong; trong lúc đang tải, cảnh báo "chưa đăng ký" của `icons` / `suggestions` / `groups`
+được hoãn (tên site đặt trước vẫn được giữ). Mục metadata sai bị bỏ riêng từng mục + một cảnh báo; hook lỗi thì có "Thử lại"
+(dùng `hasIcon()` để không đăng ký trùng).
+
+**Công thức: bộ icon lớn của site, nạp khi mở.** Bọc hook gốc, chỉ đăng ký tên chưa có, trả metadata site **cùng** metadata
+kit (đi đường kiểm từng mục: mục sai chỉ bị bỏ, không hỏng cả lô như `registerIconSearchData`), và gán nhóm ngay trong hook:
+
+```js
+import { TdIconPicker } from '@dazzxq/td-components/icon-picker';
+import { registerIcons, hasIcon } from '@dazzxq/td-components/icons';
+
+const kitLoader = TdIconPicker.loadSearchData; // giữ hook gốc (metadata của 188 icon core)
+TdIconPicker.loadSearchData = async () => {
+  const [kit, site] = await Promise.all([kitLoader(), import('/assets/site-icons.js')]); // site: { icons, search, groups }
+  const missing = Object.fromEntries(Object.entries(site.icons).filter(([name]) => !hasIcon(name)));
+  if (Object.keys(missing).length) registerIcons(missing); // "Thử lại" gọi lại hook: không đăng ký trùng
+  TdIconPicker.groups = site.groups; // [{ key, label, icons }]
+  return { ...kit, ...site.search }; // metadata kit + site, kiểm từng mục
+};
+```
+
+- Kit tự nhớ kết quả hook (một lần cho mọi picker); hook lỗi thì lần mở sau / "Thử lại" gọi lại.
+- Icon của **giá trị đang lưu** nên được đăng ký sớm (trước lần mở đầu, ví dụ một module nhỏ chỉ chứa các icon đang dùng
+  trên trang) để ô có hình ngay; không thì ô hiện tên (`data-state="unknown"`) cho tới khi hook xong.
+
+**Công thức: icon site trùng nghĩa với icon kit.** Kit không biết hai icon nào "cùng nghĩa". Muốn ẩn bản thừa: loại nó khỏi
+danh sách `icons` (allowlist) **và** không để nó trong `suggestions`. Chỉ bỏ nó khỏi `groups` thì **không** ẩn được: mọi icon
+đã đăng ký mà không thuộc nhóm nào sẽ vào "Khác".
+
+### Thuộc tính và property mới
+
+| Thuộc tính | Property | Ý nghĩa |
+|---|---|---|
+| `trigger-text="label"` | — | Ô hiện nhãn thay cho tên |
+| `value-label` | — | Nhãn server in cho giá trị hiện tại (PHP tự in) |
+| `none-option` | `noneOption` | Có ô "Không icon" |
+| `none-value` | `noneValue` | Giá trị của ô đó (mặc định `''`) |
+| — | `groups` | Mảng nhóm; static: `TdIconPicker.groups` |
+
+Chữ mới trong `TdIconPicker.labels`: `none` ("Không icon"), `noneGroup` ("Bỏ chọn icon", tên đọc của lưới một ô), `filter`
+("Lọc theo nhóm"), `filterAll` ("Tất cả"), `ungrouped` ("Khác"). Class mới: `td-icon-picker-panel__filters`, `td-icon-picker-panel__filter`,
+`td-icon-picker-panel__cell--none`.
 
 ## Phía server (bắt buộc)
 
@@ -235,10 +329,10 @@ render lại an toàn. `name` cũng in trên host (form tách / clone tìm `td-i
 
 Option: `label`, `aria_label`, `value`, `placeholder`, `suggestions` (mảng hoặc chuỗi tên; tối đa 24), `icons` (mảng hoặc
 chuỗi tên), `required`, `disabled`, `readonly`, `allow_clear` (`false` = không nút xoá), `helper_text` (hoặc `hint`),
-`error`, `class` (trên host), `id` (id của host; ô = `{id}-trigger`). Tên lạ trong `suggestions` / `icons` bị bỏ + một
+`error`, `class` (trên host), `id` (id của host; ô = `{id}-trigger`), và từ 0.96.1 (opt-in, xem [Tuỳ chọn thêm](#tuỳ-chọn-thêm-0961)) `trigger_text` (`'label'`), `value_label`, `none_option`, `none_value`. Tên lạ trong `suggestions` / `icons` bị bỏ + một
 `E_USER_WARNING`; `value` là alias → in tên canonical; tên đúng định dạng nhưng PHP chưa đăng ký → giữ nguyên + một
 warning; sai định dạng → in rỗng + warning. Cần `label` hoặc `aria_label`, không có → warning. Chữ trên ô là **tên
-canonical** — `td_icon_picker()` và `Td::icon()` **không** đọc dữ liệu tìm kiếm. Chi tiết:
+canonical** — `td_icon_picker()` và `Td::icon()` **không** đọc dữ liệu tìm kiếm, trừ khi bật `trigger_text => 'label'` (khi đó chữ là `value_label`, hoặc nhãn trong `Td::iconSearchData()`, hoặc tên). Chi tiết:
 [PHP adapter](../guides/php-adapter.md#td_icon_picker-và-td_icon_value-0940).
 
 ## Tuỳ biến

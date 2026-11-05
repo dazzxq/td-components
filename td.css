@@ -23851,6 +23851,69 @@
 		outline-color: var(--td-focus);
 	}
 
+	/* v0.96.1 (D4): the "Không icon" cell — one full-width row, start-aligned, icon + text (a plain ban is easy to misread on touch) */
+	.td-icon-picker-panel__cell--none {
+		flex: 1 1 auto;
+		inline-size: 100%;
+		gap: var(--td-space-xs);
+		justify-content: flex-start;
+		padding-inline: var(--td-space-sm);
+	}
+
+	/* v0.96.1 (D8 / §9): group filter row (only with 2+ groups) — ONE row, scrolls sideways when it overflows (no touch-action) */
+	.td-icon-picker-panel__filters {
+		display: flex;
+		flex: 0 0 auto;
+		flex-wrap: nowrap;
+		gap: var(--td-space-2xs);
+		overflow-x: auto;
+		scrollbar-width: thin;
+	}
+
+	.td-icon-picker-panel__filter {
+		display: inline-flex;
+		align-items: center;
+		flex: 0 0 auto;
+		min-height: 1.75rem;
+		max-width: 100%;
+		padding: 0 var(--td-space-sm);
+		margin: 0;
+		overflow: hidden;
+		font: inherit;
+		font-size: var(--td-text-xs);
+		color: var(--td-glass-fg);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		cursor: pointer;
+		background: transparent;
+		border: 1px solid var(--td-control-border-strong);
+		border-radius: var(--td-radius-md);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	/* chosen filter: state that carries information (outside the hover gate) */
+	.td-icon-picker-panel__filter[aria-pressed="true"] {
+		background: var(--td-option-selected-bg);
+		border-color: var(--td-accent);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-icon-picker-panel__filter[aria-pressed="false"]:hover {
+			background: var(--td-color-hover);
+		}
+	}
+
+	.td-icon-picker-panel__filter:is(:active, [data-td-pressed]) {
+		background: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-icon-picker-panel__filter:focus-visible {
+		outline-color: var(--td-focus);
+	}
+
 	.td-icon-picker-panel__empty {
 		padding: var(--td-space-md) var(--td-space-sm);
 		margin: 0;
@@ -23938,8 +24001,14 @@
 			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
 		}
 
-		.td-icon-picker-panel__retry {
+		.td-icon-picker-panel__retry,
+		.td-icon-picker-panel__filter {
 			min-height: var(--td-touch-min);
+		}
+
+		.td-icon-picker-panel__filter {
+			justify-content: center;
+			min-width: var(--td-touch-min); /* a one-letter group label still gets a 44 × 44 target */
 		}
 	}
 
@@ -23985,6 +24054,22 @@
 
 		/* selected + focused: the selection colour wins (later, same-or-higher specificity) */
 		.td-icon-picker-panel__cell[aria-selected="true"]:focus-visible {
+			outline-color: Highlight;
+		}
+
+		.td-icon-picker-panel__filter {
+			border-color: CanvasText;
+		}
+
+		.td-icon-picker-panel__filter[aria-pressed="true"] {
+			outline: 2px solid Highlight;
+		}
+
+		.td-icon-picker-panel__filter:focus-visible {
+			outline-color: CanvasText;
+		}
+
+		.td-icon-picker-panel__filter[aria-pressed="true"]:focus-visible {
 			outline-color: Highlight;
 		}
 	}

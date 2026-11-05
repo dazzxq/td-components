@@ -56,6 +56,7 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-filter-chips__remove',
   '.td-form-summary__link',
   '.td-icon-picker-panel__cell',
+  '.td-icon-picker-panel__filter',
   '.td-icon-picker-panel__retry',
   '.td-icon-picker__clear',
   '.td-icon-picker__trigger',

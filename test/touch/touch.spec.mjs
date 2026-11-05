@@ -180,6 +180,19 @@ const tokenColour = (page, token) => page.evaluate((t) => {
 
 /* ------------------------------------------------------------------ the 8 control types (A3 / A4) */
 
+/** v0.96.1: #g-icon with two groups (the first one a one-letter label: the narrowest filter button), popup open */
+async function iconFilterOpen(page) {
+  await page.evaluate(() => {
+    document.querySelector('#g-icon').groups = [
+      { key: 'a', label: 'A', icons: ['trash', 'home'] },
+      { key: 'b', label: 'Điều hướng', icons: ['search', 'settings'] },
+    ];
+  });
+  await page.tap('#g-icon .td-icon-picker__trigger');
+  await page.locator('.td-icon-picker-panel[data-state="open"] .td-icon-picker-panel__filter').first().waitFor();
+  await settle(page, '.td-icon-picker-panel');
+}
+
 const PRESS_TYPES = [
   { name: 'button', sel: '#t-primary', token: '--td-btn-primary-pressed' },
   { name: 'ghost', sel: '#t-ghost', token: '--td-btn-ghost-pressed' },
@@ -230,6 +243,10 @@ const PRESS_TYPES = [
   { name: 'icon-picker cell', sel: '.td-icon-picker-panel[data-state="open"] [data-group="all"] .td-icon-picker-panel__cell:not([aria-selected="true"])',
     token: '--td-option-pressed-bg', noTap: true,
     open: async (page) => { await page.tap('#g-icon .td-icon-picker__trigger'); await page.locator('.td-icon-picker-panel[data-state="open"] .td-icon-picker-panel__cell').first().waitFor(); await settle(page, '.td-icon-picker-panel'); } },
+  // v0.96.1: a group filter button of the popup (groups set on the picker; a tap filters — pressed only here, the tap is a
+  // case of its own in chromiumSemantics)
+  { name: 'icon-picker filter', sel: '.td-icon-picker-panel[data-state="open"] .td-icon-picker-panel__filter[aria-pressed="false"]',
+    token: '--td-color-pressed', noTap: true, open: (page) => iconFilterOpen(page) },
   // v0.95.0 td-selection-bar (plan v0.95.0-selection-bar §11.3): 3 selected across the two grouped grids → the bar shows; ×,
   // an action and "…" (6 actions overflow at 390) take the ghost pressed fill, the danger action its own pressed fill (the
   // site hides 3 actions by permission so it stays in the tray). Pressed only: a tap clears / acts (auto-clear) / opens the menu.
@@ -985,6 +1002,29 @@ async function chromiumSemantics(browser) {
         focus: document.activeElement === document.querySelector('#rsp-dtp-clear .td-dtp__trigger'),
         dialog: !!document.querySelector('body > .td-modal:not([data-state="closing"])') }));
       expect(st.changes === 1 && st.value === '' && st.focus && !st.dialog, `clear tap: ${JSON.stringify(st)}`);
+    });
+    // v0.96.1 td-icon-picker group filter: every button ≥ 44 × 44 on a coarse pointer, one tap filters to that group
+    await it(tag, 'icon-picker filter: buttons ≥ 44 × 44, a tap shows only that group (aria-pressed)', async () => {
+      await load(page);
+      await iconFilterOpen(page);
+      const sizes = await page.evaluate(() => [...document.querySelectorAll('.td-icon-picker-panel__filter')]
+        .map((b) => { const r = b.getBoundingClientRect(); return [Math.round(r.width * 10) / 10, Math.round(r.height * 10) / 10]; }));
+      expect(sizes.length >= 3 && sizes.every(([w, h]) => w >= 43.5 && h >= 43.5), `filter buttons ${JSON.stringify(sizes)}`);
+      const sel = '.td-icon-picker-panel__filter[data-filter="a"]';
+      const pt = await centre(page, sel);
+      await touchDown(cdp, pt);
+      await frames(page, 2);
+      const pressed = await has(sel);
+      await touchUp(cdp);
+      expect(pressed, 'no pressed state while the finger is down');
+      await page.waitForFunction((s) => document.querySelector(s)?.getAttribute('aria-pressed') === 'true', sel, { timeout: 3000 }).catch(() => {});
+      const st = await page.evaluate((s) => ({
+        pressed: document.querySelector(s)?.getAttribute('aria-pressed'),
+        shown: [...document.querySelectorAll('.td-icon-picker-panel__group:not([hidden])')].map((g) => g.getAttribute('data-key') || g.getAttribute('data-group')),
+        open: !!document.querySelector('.td-icon-picker-panel[data-state="open"]'),
+        scale: window.visualViewport ? window.visualViewport.scale : 1,
+      }), sel);
+      expect(st.pressed === 'true' && st.shown.join(',') === 'a' && st.open && Math.abs(st.scale - 1) < 0.01, `filter tap: ${JSON.stringify(st)}`);
     });
     // v0.59.1 label-position="start": one hit box (label + control), a tap on the label changes it once
     await it(tag, 'label-position start: hit box ≥ 44 px, pressed while down on the label, a tap on the label = one change', async () => {

@@ -163,12 +163,143 @@ describe('php/td.php — td_icon_value / td_icon_picker / icon search data (v0.9
     assert.ok(nc.out.includes(' allow-clear="false"'));
   });
 
-  test('ICON_PICKER_LABELS == the JS static labels (placeholder / clear)', () => {
+  test('ICON_PICKER_LABELS == the JS static labels (placeholder / clear / none)', () => {
     const php = run([['constant', ['TdComponents\\Td::ICON_PICKER_LABELS']]])[0].out;
     const src = readFileSync(join(ROOT, 'src/form/td-icon-picker.js'), 'utf8');
     const block = src.match(/static labels = \{([\s\S]*?)\n {2}\};/)[1];
     const js = Object.fromEntries([...block.matchAll(/^\s*(\w+): '([^']*)',$/gm)].map((m) => [m[1], m[2]]));
-    assert.deepEqual(php, { placeholder: js.placeholder, clear: js.clear });
+    assert.deepEqual(php, { placeholder: js.placeholder, clear: js.clear, none: js.none });
+  });
+
+  // --- v0.96.1: trigger_text / value_label / none_option / none_value (plan v0.96.0-icon-picker §5, §10) ---
+
+  test('v0.96.1 defaults: no new option → no new attribute (markup of 0.94.0)', () => {
+    const { out, warns } = one('td_icon_picker', 'i', { label: 'Icon', value: 'trash' });
+    for (const a of ['trigger-text', 'value-label', 'none-option', 'none-value']) assert.ok(!out.includes(` ${a}`), a);
+    assert.ok(out.includes('data-state="value">trash</span>'));
+    assert.deepEqual(warns, []);
+    // an unknown trigger_text is the name mode
+    const odd = one('td_icon_picker', 'i', { label: 'Icon', value: 'trash', trigger_text: 'Label' });
+    assert.ok(!odd.out.includes('trigger-text') && odd.out.includes('data-state="value">trash</span>'));
+  });
+
+  test('trigger_text=label: the kit label in the trigger AND as value-label; an alias prints the label of the canonical icon', () => {
+    const r = one('td_icon_picker', 'i', { label: 'Icon', value: 'trash', trigger_text: 'label' });
+    assert.ok(r.out.includes(' trigger-text="label"') && r.out.includes(' value-label="Thùng rác"'), r.out);
+    assert.ok(r.out.includes('data-state="value">Thùng rác</span>'));
+    assert.deepEqual(r.warns, []);
+    const alias = one('td_icon_picker', 'i', { label: 'Icon', value: 'x', trigger_text: 'label' });
+    assert.ok(alias.out.includes(' value="close"') && alias.out.includes('data-state="value">Đóng</span>'), alias.out);
+    // empty / unknown states are not touched
+    const empty = one('td_icon_picker', 'i', { label: 'Icon', trigger_text: 'label' });
+    assert.ok(empty.out.includes('data-state="empty">Chọn icon</span>') && !empty.out.includes('value-label'));
+    const unk = one('td_icon_picker', 'i', { label: 'Icon', value: 'site-later', trigger_text: 'label' });
+    assert.ok(unk.out.includes('data-state="unknown">site-later</span>') && !unk.out.includes('value-label'));
+  });
+
+  test('trigger_text=label: value_label wins; an invalid one is dropped with a warning; the site metadata is used; no label → the name', () => {
+    const win = one('td_icon_picker', 'i', { label: 'Icon', value: 'trash', trigger_text: 'label', value_label: 'Xoá hẳn' });
+    assert.ok(win.out.includes(' value-label="Xoá hẳn"') && win.out.includes('data-state="value">Xoá hẳn</span>'));
+    for (const bad of ['', ' x', 'x ', 'a'.repeat(49), "a\nb", 7, ['x']]) {
+      const r = one('td_icon_picker', 'i', { label: 'Icon', value: 'trash', trigger_text: 'label', value_label: bad });
+      assert.ok(r.out.includes('data-state="value">Thùng rác</span>'), JSON.stringify(bad));
+      assert.equal(r.warns.length, 1, JSON.stringify(bad));
+      assert.match(r.warns[0], /^td_icon_picker: value_label is not a valid text/);
+    }
+    const [reg, site, noLabel] = run([
+      ['Td::registerIcons', [{ 'site-lbl': { nodes: [['path', { d: 'M1 1h2' }]] }, 'site-nolbl': { nodes: [['path', { d: 'M1 1h2' }]] } }]],
+      ['Td::registerIconSearchData', [{ 'site-lbl': ENTRY }]],
+      ['td_icon_picker', ['i', { label: 'Icon', value: 'site-nolbl', trigger_text: 'label' }]],
+    ]);
+    assert.equal(reg.error, null, reg.error);
+    assert.equal(site.error, null, site.error);
+    assert.ok(noLabel.out.includes('data-state="value">site-nolbl</span>') && !noLabel.out.includes('value-label'));
+    const [r1, r2, r3] = run([
+      ['Td::registerIcons', [{ 'site-lbl': { nodes: [['path', { d: 'M1 1h2' }]] } }]],
+      ['Td::registerIconSearchData', [{ 'site-lbl': ENTRY }]],
+      ['td_icon_picker', ['i', { label: 'Icon', value: 'site-lbl', trigger_text: 'label' }]],
+    ]);
+    assert.equal(r1.error, null);
+    assert.equal(r2.error, null);
+    assert.ok(r3.out.includes(' value-label="Biểu tượng riêng"') && r3.out.includes('data-state="value">Biểu tượng riêng</span>'), r3.out);
+  });
+
+  test('trigger_text=label: the label is text, never markup', () => {
+    const r = one('td_icon_picker', 'i', { label: 'Icon', value: 'trash', trigger_text: 'label', value_label: '<img src=x onerror=alert(1)>' });
+    assert.ok(!r.out.includes('<img'), r.out);
+    assert.ok(r.out.includes(' value-label="&lt;img src=x onerror=alert(1)&gt;"'));
+    assert.ok(r.out.includes('data-state="value">&lt;img src=x onerror=alert(1)&gt;</span>'));
+  });
+
+  test('none_option prints the attribute only; the kit metadata is not read without trigger_text=label', () => {
+    const r = one('td_icon_picker', 'i', { label: 'Icon', none_option: true });
+    assert.ok(r.out.includes(' none-option>'), r.out);
+    assert.ok(!r.out.includes('none-value'));
+    const off = one('td_icon_picker', 'i', { label: 'Icon', none_option: false });
+    assert.ok(!off.out.includes('none-option'));
+    const dir = mkdtempSync(join(tmpdir(), 'td-nometa-'));
+    try {
+      // a kit dir WITHOUT icons-search.json: label mode warns about it, name mode never touches it
+      mkdirSync(join(dir, 'src/icons'), { recursive: true });
+      copyFileSync(join(ROOT, 'src/icons/icons.json'), join(dir, 'src/icons/icons.json'));
+      const plain = run([['td_icon_picker', ['i', { label: 'Icon', value: 'trash' }]]], dir)[0];
+      assert.deepEqual(plain.warns, []);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('none_value: a valid word → attribute + state none (icon ban + "Không icon"); value ≠ it → normal state', () => {
+    const r = one('td_icon_picker', 'i', { label: 'Icon', value: 'none', none_option: true, none_value: 'none' });
+    assert.deepEqual(r.warns, []);
+    assert.ok(r.out.includes(' none-option none-value="none"'), r.out);
+    assert.ok(r.out.includes(' value="none"'));
+    assert.ok(r.out.includes('<span class="td-icon-picker__glyph" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="ban"'));
+    assert.ok(r.out.includes('data-state="none">Không icon</span>'));
+    assert.ok(r.out.includes('name="i" value="none">'));
+    assert.ok(!/class="td-icon-picker__clear"[^>]* hidden>/.test(r.out), 'the clear button shows on a none value');
+    const other = one('td_icon_picker', 'i', { label: 'Icon', value: 'trash', none_value: 'none' });
+    assert.ok(other.out.includes('data-state="value">trash</span>') && other.out.includes(' none-value="none"'));
+    const empty = one('td_icon_picker', 'i', { label: 'Icon', none_value: 'none' });
+    assert.ok(empty.out.includes('data-state="empty">Chọn icon</span>'));
+    // required: the clear button stays hidden
+    const req = one('td_icon_picker', 'i', { label: 'Icon', value: 'none', none_value: 'none', required: true });
+    assert.ok(/class="td-icon-picker__clear"[^>]* hidden>/.test(req.out));
+  });
+
+  test('none_value: a bad / registered name is dropped with one warning (behaves as the empty none value)', () => {
+    for (const nv of ['Bad!', 'trash', 'x', '1abc', 'a'.repeat(49), 5, ['none']]) {
+      const r = one('td_icon_picker', 'i', { label: 'Icon', value: 'none', none_value: nv });
+      assert.ok(!r.out.includes('none-value'), JSON.stringify(nv));
+      assert.equal(r.warns.length, 2, `${JSON.stringify(nv)}: ${r.warns.join(' | ')}`); // none_value, then value "none" unknown
+      assert.match(r.warns[0], /^td_icon_picker: none_value is /);
+      assert.ok(r.out.includes('data-state="unknown">none</span>'));
+    }
+    assert.ok(one('td_icon_picker', 'i', { label: 'Icon', none_value: 'a'.repeat(48) }).out.includes(` none-value="${'a'.repeat(48)}"`));
+    assert.deepEqual(one('td_icon_picker', 'i', { label: 'Icon', none_value: '' }).warns, []);
+    assert.deepEqual(one('td_icon_picker', 'i', { label: 'Icon', none_value: null }).warns, []);
+  });
+
+  test('td_icon_value with none_value: the word is valid only with the option; the rest is as before', () => {
+    const calls = [
+      ['td_icon_value', ['none', { none_value: 'none' }]],
+      ['td_icon_value', ['none']],
+      ['td_icon_value', ['none', { none_value: 'other' }]],
+      ['td_icon_value', ['trash', { none_value: 'none' }]],
+      ['td_icon_value', ['x', { none_value: 'none' }]],
+      ['td_icon_value', ['', { none_value: 'none' }]],
+      ['td_icon_value', [null, { none_value: 'none' }]],
+      ['td_icon_value', ['none', { none_value: 'trash' }]], // a registered name is no none value
+      ['td_icon_value', ['none', { none_value: 'Bad!' }]],
+      ['td_icon_value', [['none'], { none_value: 'none' }]],
+      ['td_icon_value', ['None', { none_value: 'none' }]],
+    ];
+    const out = run(calls);
+    assert.deepEqual(out.map((r) => r.out), ['none', null, null, 'trash', 'close', '', '', null, null, null, null]);
+    assert.deepEqual(out[0].warns, []);
+    assert.equal(out[7].warns.length, 1);
+    assert.match(out[7].warns[0], /^td_icon_value: none_value is a registered icon name/);
+    assert.equal(out[8].warns.length, 1);
   });
 
   test('Td::iconSearchData(): 188 kit keys = icons.json; site entries merged after registerIconSearchData()', () => {

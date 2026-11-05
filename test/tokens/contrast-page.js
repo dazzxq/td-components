@@ -5,6 +5,7 @@ import '/src/feedback/td-alert.js';
 import '/src/feedback/td-scroll-top.js';
 import '/src/display/td-media-grid.js';
 import '/src/display/td-selection-bar.js'; // v0.96.0
+import '/src/form/td-icon-picker.js'; // v0.96.1 group filter row
 import { TdDrawer } from '/src/feedback/td-drawer.js'; // v0.96.0
 import { TdLightbox } from '/src/feedback/td-lightbox.js';
 import { fillIconSlots, tdIcon } from '/src/icons/td-icon.js';
@@ -229,6 +230,10 @@ CASES.push({ kind: 'card', v: 'card', state: 'rest', pageOnly: true });
 // translucent fill is composited over BOTH the page colour and the opposite (worst-case) backdrop, light + dark; the title /
 // body text, the drawer close icon and the bar's action label ≥ 4.7 (icon ≥ 3.2) on the page colour, ≥ 4.5 (icon ≥ 3) on the worst backdrop.
 for (const v of ['modal', 'drawer', 'selection-bar']) CASES.push({ kind: 'glass', v, state: 'rest', pageOnly: true });
+// v0.96.1 td-icon-picker group filter row (plan v0.96.0-icon-picker §10), computed colours, light + dark: the button text
+// ≥ 4.7 at rest (on the popup fill) and pressed (aria-pressed="true": --td-option-selected-bg over the popup fill), the popup
+// fill composited over the page colour; the pressed edge (--td-accent) ≥ 3 vs the popup fill (non-text).
+CASES.push({ kind: 'icon-filter', v: 'icon-picker', state: 'rest', pageOnly: true });
 // v0.49.0 td-choice-group + number stepper (content layer → page only), computed colours, light + dark: option text / hint /
 // unavailable text + note ≥ 4.7 on the button fill, also on the pressed fill; the selected ink ring ≥ 3 vs the page and vs
 // the button fill; a disabled option ≥ 2.2; the swatch selected ring ≥ 3 vs the page; the unavailable slash (two-tone: the
@@ -2400,6 +2405,34 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     const b = surfaceEl.getBoundingClientRect();
     const out = { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `glass:${c.v}:${c.state}`, pairs };
     cleanup();
+    return out;
+  } else if (c.kind === 'icon-filter') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const t = document.createElement('td-icon-picker');
+    t.setAttribute('label', 'Icon');
+    t.setAttribute('icons', 'trash search home settings');
+    t.groups = [{ key: 'actions', label: 'Thao tác', icons: ['trash', 'search'] }, { key: 'places', label: 'Điều hướng', icons: ['home', 'settings'] }];
+    stage.appendChild(t);
+    await wait(16);
+    t.open();
+    await wait(450);
+    const panel = document.querySelector('body > .td-icon-picker-panel');
+    const on = panel && panel.querySelector('.td-icon-picker-panel__filter[aria-pressed="true"]');
+    const off = panel && panel.querySelector('.td-icon-picker-panel__filter[aria-pressed="false"]');
+    if (!on || !off) { t.remove(); throw new Error('icon-filter: filter row missing'); }
+    const fill = overRgb(getComputedStyle(panel).backgroundColor, page);
+    const pressedBg = overRgb(getComputedStyle(on).backgroundColor, fill);
+    const restBg = overRgb(getComputedStyle(off).backgroundColor, fill);
+    const pairs = [
+      { what: 'filter text at rest on the popup fill', fg: getComputedStyle(off).color, bg: restBg, min: 4.7 },
+      { what: 'filter text pressed on --td-option-selected-bg', fg: getComputedStyle(on).color, bg: pressedBg, min: 4.7 },
+      { what: 'pressed filter edge (--td-accent) vs the popup fill', fg: getComputedStyle(on).borderTopColor, bg: fill, min: 3 },
+    ];
+    const b = panel.getBoundingClientRect();
+    const out = { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `icon-filter:${c.v}:${c.state}`, pairs };
+    t.close({ focus: false });
+    t.remove();
     return out;
   } else if (c.kind === 'type-confirm') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';

@@ -8204,6 +8204,64 @@
         "margin-left"
       ],
       "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front"
+    },
+    {
+      "state": "groups-open",
+      "setup": "const t=document.createElement('td-icon-picker'); t.setAttribute('name','icon'); t.setAttribute('label','Biểu tượng'); t.setAttribute('none-option',''); t.setAttribute('icons','trash search check home settings'); t.groups=[{key:'actions',label:'Thao tác',icons:['trash','search','check']},{key:'places',label:'Điều hướng',icons:['home','settings']}]; window.__mount.appendChild(t); t.open();",
+      "selectors": [
+        ".td-icon-picker-panel__filters",
+        ".td-icon-picker-panel__filter[aria-pressed=\"true\"]",
+        ".td-icon-picker-panel__filter[aria-pressed=\"false\"]",
+        ".td-icon-picker-panel__group[data-group=\"none\"]",
+        ".td-icon-picker-panel__cell--none",
+        ".td-icon-picker-panel__cell--none > svg",
+        ".td-icon-picker-panel__cell-text",
+        ".td-icon-picker-panel__group[data-group=\"group\"]",
+        ".td-icon-picker-panel__group[data-group=\"group\"] > .td-icon-picker-panel__heading",
+        ".td-icon-picker-panel__group[data-group=\"group\"] .td-icon-picker-panel__cell"
+      ],
+      "portal": [
+        ".td-icon-picker-panel__filters",
+        ".td-icon-picker-panel__filter[aria-pressed=\"true\"]",
+        ".td-icon-picker-panel__filter[aria-pressed=\"false\"]",
+        ".td-icon-picker-panel__group[data-group=\"none\"]",
+        ".td-icon-picker-panel__cell--none",
+        ".td-icon-picker-panel__cell--none > svg",
+        ".td-icon-picker-panel__cell-text",
+        ".td-icon-picker-panel__group[data-group=\"group\"]",
+        ".td-icon-picker-panel__group[data-group=\"group\"] > .td-icon-picker-panel__heading",
+        ".td-icon-picker-panel__group[data-group=\"group\"] .td-icon-picker-panel__cell"
+      ],
+      "settle": 450,
+      "selectorNote": "v0.96.1: groups + none-option, popup open — the filter row (one row, \"Tất cả\" pressed), the full-width \"Không icon\" cell (selected: value ''), a group section with its heading",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "top",
+        "left",
+        "max-height",
+        "transform"
+      ],
+      "excludeNote": "same as `open`: font-metric box sizes, the popup position and its CSSOM width / max-height"
+    },
+    {
+      "state": "label",
+      "markup": "<td-icon-picker name=\"icon\" label=\"Biểu tượng\" value=\"trash\" trigger-text=\"label\" value-label=\"Thùng rác\"></td-icon-picker>",
+      "selectors": [
+        ".td-icon-picker__trigger",
+        ".td-icon-picker__glyph > svg",
+        ".td-icon-picker__text[data-state=\"value\"]",
+        ".td-icon-picker__clear"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.96.1: trigger-text=\"label\" — the trigger shows the VI label (value-label, no metadata load)",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front"
     }
   ],
   "td-selection-bar": [

@@ -191,6 +191,10 @@ the mirror target filled with aria-hidden proxies of the shown actions). (3)
 `td-button.loading` re-captured (label opacity change in button.css); `td-lightbox.toggle` (pressed toolbar toggle + a busy
 one); `td-modal.glass` / `td-drawer.glass` (`surface="glass"` opt-in). (+6 states; 494 total, with the 3 page-actions states.)
 
+### v0.96.1 states on existing components
+`td-icon-picker.groups-open` (`groups` + `none-option`, popup open: filter row, "Không icon" cell, group heading) / `label`
+(`trigger-text="label"` + `value-label`). The 7 older `td-icon-picker.*` baselines are unchanged. (+2 states; 496 total.)
+
 ### td-modal (1 declarative; portaled to body)
 Styled el: `.td-modal-content` (box-shadow + backdrop-filter), `.td-modal-backdrop`.
 States: `default` (`TdModal.show({title, body})`). (1)

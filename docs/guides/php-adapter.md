@@ -92,7 +92,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_check_matrix` (0.47.0) | **luôn** host `<td-check-matrix data-td-ssr="check-matrix@1" data="{JSON}">` + **form không JS đầy đủ**: một hidden `name[col]=""` mỗi cột (đầu), một checkbox `name[col][]=row` mỗi ô áp dụng được (ô khoá-tick: checkbox `disabled` + hidden ngay sau), `name[_v]=1` (cuối); ô hàng loạt / nút nhóm / chọn cột `disabled`. **0.95.0** `'mode' => 'override'`: `check-matrix@2`, một `<select>` `name[col][row]` mỗi ô, `name[_v]=2` — component đọc lựa chọn trước JS rồi render lại (không nhận tại chỗ) | Không (form gửi đúng FormData của component, từng byte) | **Có** — nạp module `check-matrix`: so **từng node** với `data`, nhận **tại chỗ** (giữ ô đã tick trước khi JS tải), gỡ marker / hidden / sentinel |
 | `td_color_picker` (0.48.0) | `div.td-color` + ô màu xám + `input.td-color__input` **chữ** (`pattern="#[0-9a-fA-F]{6}"` — **không** `type=color`) | Không (chỉ nhận `#RRGGBB`) | Không |
 | `td_color_picker` — **chế độ element** (0.48.0, tự bật) | host `<td-color-picker data-td-ssr="color-picker@1">` + cùng ô | Không (ô chữ native chạy ngay) | **Có** — nạp module `color-picker`: nhận **tại chỗ**, bọc ô màu vào nút mở popup |
-| `td_icon_picker` (0.94.0) | **luôn** host `<td-icon-picker data-td-ssr="icon-picker@1">` + nút ô (icon + tên canonical) + nút xoá + `input type=hidden` mang `name` / `value` | Không (form vẫn gửi giá trị qua input ẩn; không mở được lưới) | **Có** — nạp module `icon-picker`: nhận **tại chỗ**, gỡ input ẩn |
+| `td_icon_picker` (0.94.0) | **luôn** host `<td-icon-picker data-td-ssr="icon-picker@1">` + nút ô (icon + tên canonical; nhãn VI khi `trigger_text => 'label'`, 0.96.1) + nút xoá + `input type=hidden` mang `name` / `value` | Không (form vẫn gửi giá trị qua input ẩn; không mở được lưới) | **Có** — nạp module `icon-picker`: nhận **tại chỗ**, gỡ input ẩn |
 | `td_choice_group` (0.49.0) | **luôn** host `<td-choice-group data-td-ssr="choice-group@1">` + radio **native** mang `name` thật (`required` trên mọi radio, `checked` trên lựa chọn đang chọn), ô màu = `fill` của SVG, ảnh = `<img>` | Không (radio native: form gửi `name=value`, mũi tên chạy) | **Có** — nạp module `choice-group`: nhận **tại chỗ** (cùng radio, giữ lựa chọn + focus), radio sang nhóm riêng không form owner |
 | `td_number_input` — **`stepper`** (0.49.0, chỉ element) | như element + hai nút − / + trong hộp (ẩn, giữ chỗ tới khi module tải) | Không (ô native chạy) | **Có** — nhận tại chỗ cả hai nút |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** (0.51.1: host đã cao bằng nút khi JS bật — bề rộng đổi theo thiết kế) |
@@ -1978,7 +1978,7 @@ if ($v === null) { http_response_code(422); exit; }   // lưu $v: khớp ^#[0-9a
 
 `td_icon_picker($name, $opts)` in ô của [Icon picker](../components/icon-picker.md) (hợp đồng `icon-picker@1`). **Luôn**
 chế độ element (không có bản native): host `<td-icon-picker data-td-ssr="icon-picker@1" name value label …>` chứa sẵn cây
-mà component dựng (nhãn, nút ô với icon + **tên canonical**, nút xoá, chevron) và một `input type="hidden"` mang `name` /
+mà component dựng (nhãn, nút ô với icon + **tên canonical** — hoặc nhãn VI ở chế độ `trigger_text => 'label'` (0.96.1), nút xoá, chevron) và một `input type="hidden"` mang `name` /
 `value` để form gửi được trước khi JS tải. Có JS: nhận **tại chỗ**, gỡ input ẩn (không trùng FormData). `name` in cả trên
 host.
 
@@ -2001,7 +2001,8 @@ host.
   2000 mục đầu được xem; tên không đăng ký / sai định dạng bị bỏ + một warning; khử trùng; `suggestions` tối đa 24.
   Danh sách chuẩn hoá được in thành attribute `suggestions` / `icons` trên host.
 - Cần `label` hoặc `aria_label` (không có → warning); chỉ `aria_label` thì in span ẩn `{host}-name` làm tên truy cập.
-- Chữ trên ô là tên canonical: `td_icon_picker()` (và `Td::icon()`) **không bao giờ** đọc dữ liệu tìm kiếm.
+- Mặc định chữ trên ô là tên canonical: `td_icon_picker()` (và `Td::icon()`) không đọc dữ liệu tìm kiếm. Ngoại lệ duy nhất:
+  `trigger_text => 'label'` (0.96.1) đọc `Td::iconSearchData()` để in nhãn (khi không truyền `value_label`), xem dưới.
 - Hằng: `Td::SSR_ICON_PICKER` (`icon-picker@1`), `Td::ICON_PICKER_LABELS` (`placeholder` / `clear`, = `TdIconPicker.labels`).
 
 **`td_icon_value(mixed $v): ?string` — gọi khi nhận POST, trước khi kiểm / lưu** (client bất kỳ POST được chuỗi tuỳ ý;
@@ -2019,6 +2020,8 @@ if ($v === null) { http_response_code(422); exit; }   // lưu $v: tên icon đã
 | tên lạ, `'Trash'`, `'../x'`, chuỗi > 64 ký tự, mảng, số | `null` |
 
 Chỉ nhận tên mà `Td::hasIcon()` biết (core hoặc `Td::registerIcons()`); tên chỉ đăng ký bên JS → `null`.
+
+**0.96.1 (opt-in).** `td_icon_picker()` nhận thêm `trigger_text` (`'label'`: ô hiện nhãn VI; in cả `value-label`), `value_label` (nhãn tường minh, 1–48 ký tự NFC; sai thì bỏ + warning), `none_option` (ô "Không icon") và `none_value` (giá trị của ô đó: khớp `^[a-z][a-z0-9-]{0,47}$`, không phải icon đã đăng ký, sai thì `''` + warning; khi `value` bằng nó, ô in sẵn trạng thái `none`). `td_icon_value($v, ['none_value' => 'none'])` coi đúng từ đó là hợp lệ và trả lại nguyên văn; không truyền option thì hành vi cũ. Không bật gì thì markup giống 0.94.0; chỉ chế độ nhãn mới đọc dữ liệu tìm kiếm.
 `Td::iconName($name): ?string` là phần lõi: tên đã đăng ký → chính nó, alias → tên đích, khác → `null`.
 
 **Dữ liệu tìm kiếm phía PHP.** `Td::iconSearchData()` trả `[tên => ['label' => …, 'keywords' => ['en' => […], 'vi' => […]]]` của

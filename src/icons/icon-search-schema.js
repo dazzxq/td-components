@@ -103,3 +103,65 @@ export function validateSearchEntry(name, entry) {
   }
   return Object.freeze({ label, keywords: Object.freeze(keywords) });
 }
+
+/** v0.96.1: limits of the `groups` of <td-icon-picker> (the string rules are the ones of the search data). */
+export const ICON_GROUP_LIMITS = Object.freeze({
+  /** groups per list */
+  groupsMax: 50,
+  /** icon names read in all the groups together (= MAX_CANDIDATES of the picker) */
+  namesMax: 2000,
+});
+
+const GROUP_KEY_RE = /^[a-z][a-z0-9-]{0,31}$/;
+
+/**
+ * v0.96.1: is `v` a text of the search-data kind (string, 1–48 characters, trimmed, no control character, NFC)? Used for
+ * the `value-label` of <td-icon-picker>.
+ * @param {unknown} v
+ * @returns {boolean}
+ */
+export function isSearchText(v) {
+  try {
+    checkText('text', v);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * v0.96.1: validate the `groups` of <td-icon-picker>: `Array<{ key, label, icons: string[] }>` — at most 50 groups,
+ * `key` = `^[a-z][a-z0-9-]{0,31}$` and unique, `label` = a search-data string, `icons` = an array of strings (names are
+ * checked against the registry by the picker, not here), at most 2000 names in all. Bounded: a longer array is refused
+ * by its `length`, never walked. Returns a deep-frozen copy or throws a TypeError.
+ * @param {unknown} groups
+ * @returns {ReadonlyArray<Readonly<{key: string, label: string, icons: ReadonlyArray<string>}>>}
+ */
+export function validateIconGroups(groups) {
+  if (!Array.isArray(groups)) throw new TypeError('icon groups: expected an array');
+  if (groups.length > ICON_GROUP_LIMITS.groupsMax) throw new TypeError(`icon groups: at most ${ICON_GROUP_LIMITS.groupsMax} groups`);
+  const keys = new Set();
+  let names = 0;
+  const out = [];
+  for (let i = 0; i < groups.length; i++) {
+    const g = groups[i];
+    const where = `icon groups[${i}]`;
+    if (!isPlainObject(g)) throw new TypeError(`${where}: expected an object`);
+    const key = g.key;
+    if (typeof key !== 'string' || !GROUP_KEY_RE.test(key)) throw new TypeError(`${where}: key must match ${GROUP_KEY_RE}`);
+    if (keys.has(key)) throw new TypeError(`${where}: duplicate key "${key}"`);
+    keys.add(key);
+    const label = checkText(`${where}: label`, g.label);
+    const icons = g.icons;
+    if (!Array.isArray(icons)) throw new TypeError(`${where}: icons must be an array`);
+    names += icons.length;
+    if (names > ICON_GROUP_LIMITS.namesMax) throw new TypeError(`icon groups: at most ${ICON_GROUP_LIMITS.namesMax} icon names in all`);
+    const list = [];
+    for (let j = 0; j < icons.length; j++) {
+      if (typeof icons[j] !== 'string') throw new TypeError(`${where}: icons[${j}] must be a string`);
+      list.push(icons[j]);
+    }
+    out.push(Object.freeze({ key, label, icons: Object.freeze(list) }));
+  }
+  return Object.freeze(out);
+}

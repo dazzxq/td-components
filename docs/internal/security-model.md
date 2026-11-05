@@ -802,3 +802,10 @@ trang người dùng [icon-picker.md](../components/icon-picker.md#bảo-mật-v
 - **CSP:** không `style=""`, không `<style>`, không `blob:` / `data:`; dynamic import cùng origin (`script-src 'self'`).
   Bề rộng popup + `max-height` ghi qua CSSOM.
 - **Registry:** icon `source: "td"` (ADR 0039) vẫn qua allowlist tag / thuộc tính, khung 24, ≤ 64 node như mọi icon.
+
+**Ghi chú v0.96.1 — `td-icon-picker` nhóm / nhãn / none / nạp lười** (plan [v0.96.0-icon-picker](plans/v0.96.0-icon-picker.md)):
+
+- `groups` là dữ liệu site → `validateIconGroups()` (`src/icons/icon-search-schema.js`, PHP không nhận groups): ≤ 50 nhóm, `key` `^[a-z][a-z0-9-]{0,31}$` không trùng, `label` theo luật chuỗi tìm kiếm, tổng ≤ 2000 tên; kiểm `length` trước khi duyệt (mảng thưa / khổng lồ không bị duyệt); sai → bỏ cả danh sách + một cảnh báo.
+- Nhãn nhóm, `value-label`, "Không icon" vào DOM bằng `textContent`; id heading lấy từ bộ đếm, không từ `key`. PHP: `value_label` và nhãn tìm kiếm qua `Td::e()`; `value_label` sai bị bỏ.
+- `none_value` / `none-value` giá trị là **từ cho phép thêm**, không phải icon: khớp regex `/D`, không trùng icon đã đăng ký; phía server vẫn BẮT BUỘC `td_icon_value($v, ['none_value' => …])` (không option → từ đó là tên lạ → `null`).
+- Nạp lười chạy qua hook `loadSearchData` do site sở hữu (cùng origin, `script-src 'self'`); kit không thêm đường nạp mới, không `blob:` / `data:`, không `style=""`.

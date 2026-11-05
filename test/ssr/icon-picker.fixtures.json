@@ -16,6 +16,11 @@
     { "id": "no-clear", "args": ["icon", { "label": "Icon", "value": "home", "allow_clear": false }], "expect": { "value": "home", "state": "value", "clear": false } },
     { "id": "id", "args": ["icon", { "label": "Icon", "id": "my-icon", "value": "search" }], "expect": { "value": "search", "state": "value", "clear": true } },
     { "id": "escape", "args": ["icon", { "label": "<b>Icon</b> & \"x\"", "placeholder": "<img src=x onerror=alert(1)>" }], "expect": { "value": "", "state": "empty", "text": "<img src=x onerror=alert(1)>", "label": "<b>Icon</b> & \"x\"" } },
-    { "id": "no-name", "args": ["", { "label": "Icon", "value": "home" }], "expect": { "value": "home", "state": "value", "clear": true } }
+    { "id": "no-name", "args": ["", { "label": "Icon", "value": "home" }], "expect": { "value": "home", "state": "value", "clear": true } },
+    { "id": "label-mode", "args": ["icon", { "label": "Icon mục", "value": "trash", "trigger_text": "label" }], "expect": { "value": "trash", "state": "value", "text": "Thùng rác", "clear": true } },
+    { "id": "label-explicit", "args": ["icon", { "label": "Icon mục", "value": "trash", "trigger_text": "label", "value_label": "Bỏ vào thùng" }], "expect": { "value": "trash", "state": "value", "text": "Bỏ vào thùng", "clear": true } },
+    { "id": "label-empty", "args": ["icon", { "label": "Icon mục", "trigger_text": "label", "none_option": true }], "expect": { "value": "", "state": "empty", "text": "Chọn icon", "clear": false } },
+    { "id": "none-value", "args": ["icon", { "label": "Icon mục", "value": "none", "none_option": true, "none_value": "none" }], "expect": { "value": "none", "state": "none", "text": "Không icon", "clear": true } },
+    { "id": "none-value-label", "args": ["icon", { "label": "Icon mục", "value": "none", "trigger_text": "label", "none_option": true, "none_value": "none" }], "expect": { "value": "none", "state": "none", "text": "Không icon", "clear": true } }
   ]
 }

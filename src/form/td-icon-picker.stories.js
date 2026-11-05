@@ -107,3 +107,19 @@ export const LoadError = {
     C.loadSearchData = () => Promise.reject(new Error('story: offline'));
   },
 };
+
+/** v0.96.1 (opt-in): the trigger shows the VI label, a "Không icon" cell on top, groups + a filter row (property `groups`). */
+export const LabelNoneGroups = {
+  render: () => `<form class="sb-stack" novalidate>
+    <td-icon-picker name="menu_icon" label="Icon mục" value="trash" trigger-text="label" none-option none-value="none" data-story="groups"></td-icon-picker>
+    <p class="sb-note" data-out>Sự kiện: —</p></form>`,
+  play: ({ canvasElement }) => {
+    kitLoader();
+    const host = canvasElement.querySelector('[data-story="groups"]');
+    host.groups = [
+      { key: 'actions', label: 'Thao tác', icons: ['trash', 'search', 'check', 'close'] },
+      { key: 'places', label: 'Điều hướng', icons: ['home', 'settings', 'user'] },
+    ];
+    showEvents(canvasElement);
+  },
+};

@@ -215,6 +215,17 @@ const CASES = [
       expect(el.querySelector('[data-icon="settings"], [data-td-icon="settings"]') !== null, 'trigger shows the icon').to.equal(true);
     },
   },
+  // v0.96.1: td-icon-picker — the "Không icon" option and the groups, assigned before the upgrade
+  {
+    tag: 'td-icon-picker', attrs: { label: 'Icon' },
+    props: () => ({ noneOption: true, noneValue: 'none', groups: [{ key: 'g', label: 'Nhóm', icons: ['home', 'user'] }] }),
+    check(el) {
+      expect(el.hasAttribute('none-option')).to.equal(true);
+      expect(el.getAttribute('none-value')).to.equal('none');
+      expect(el.noneValue).to.equal('none');
+      expect(el.groups).to.deep.equal([{ key: 'g', label: 'Nhóm', icons: ['home', 'user'] }]);
+    },
+  },
   {
     tag: 'td-dropdown', attrs: { label: 'Chọn' },
     props: () => ({ options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }], value: 'b', searchable: false,

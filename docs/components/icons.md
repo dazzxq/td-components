@@ -137,6 +137,8 @@ có đúng một trong `lucide` hoặc `source: "td"`; `npm run build:icons` ki�
 
 ### Dữ liệu tìm kiếm (0.94.0)
 
+> 0.96.1: hook `loadSearchData` của picker còn dùng để **nạp lười bộ icon của site** (`registerIcons` + `groups` bên trong hook); xem [Icon picker](icon-picker.md#nạp-lười-icon-của-site).
+
 Cho mỗi icon core có **nhãn tiếng Việt + từ khoá tiếng Anh + tiếng Việt** (ví dụ `trash` → "Thùng rác", `delete` /
 `bin` / `xoá`), để [`<td-icon-picker>`](icon-picker.md) tìm có hoặc không dấu. Dữ liệu **tách khỏi registry** (không tăng
 dung lượng của `tdIcon()`), nguồn soạn `src/icons/icons-search.json` (có trong gói), sinh `src/icons/icons-search.js`; chỉ
