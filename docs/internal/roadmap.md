@@ -277,7 +277,7 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 ## Later — backlog
 
 - `done` (bỏ, owner 05/11: trái minimal surfaces ADR 0011) Khúc xạ SVG (Chromium-only, opt-in thử nghiệm)
-- `doing` (owner 05/11: debate Codex chọn cái nào mang sang) Component còn lại từ dwp/135: password meter / scroll-top / skeleton ĐÃ có trong kit; còn select-enhance, style `<select>` gốc, cup-loader, avatar
+- `done` (Codex think-about 05/11, đồng thuận) Component còn lại từ dwp/135: select-enhance, style `<select>` gốc, reading-progress scroll-top, share → **giữ ở site**; cup-loader → **bỏ** (nhận diện AETV); skeleton / password meter / scroll-top → **kit đã có** (dwp tự chuyển khi sửa template). Duy nhất đáng mang: **avatar CSS-only** (`.td-avatar`, `--empty`, token `--td-avatar-size/-bg/-ring`), `todo` chờ owner: chỉ làm khi 135 + dwp chuyển cùng bản (135 đang tự định nghĩa `.td-avatar` trong base.css → trùng tên)
 
 - `done` textarea `autoresize` bằng CSS `field-sizing` (v0.13.0)
 - `todo` (owner 05/11: chưa làm, chờ site xin) input-field: floating label (additive) — cần user duyệt giao diện
