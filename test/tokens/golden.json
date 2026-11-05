@@ -2246,7 +2246,12 @@
     "--td-modal-glass-bg": {"light": "rgba(255, 255, 255, 0.94)", "dark": "rgba(28, 28, 30, 0.94)", "why": "v0.96.0 td-modal surface=\"glass\" (opt-in): frosted dialog fill; = --td-glass-bg-strong"},
     "--td-modal-glass-blur": {"light": "blur(12px)", "dark": "blur(12px)", "why": "v0.96.0 td-modal surface=\"glass\" (opt-in): dialog backdrop blur; = --td-glass-blur"},
     "--td-drawer-glass-bg": {"light": "rgba(255, 255, 255, 0.94)", "dark": "rgba(28, 28, 30, 0.94)", "why": "v0.96.0 td-drawer surface=\"glass\" (opt-in): frosted panel fill; = --td-glass-bg-strong"},
-    "--td-drawer-glass-blur": {"light": "blur(12px)", "dark": "blur(12px)", "why": "v0.96.0 td-drawer surface=\"glass\" (opt-in): panel backdrop blur; = --td-glass-blur"}
+    "--td-drawer-glass-blur": {"light": "blur(12px)", "dark": "blur(12px)", "why": "v0.96.0 td-drawer surface=\"glass\" (opt-in): panel backdrop blur; = --td-glass-blur"},
+    "--td-scroll-top-progress-width": {
+      "light": "3px",
+      "dark": "3px",
+      "why": "v0.97.0 td-scroll-top reading-progress ring stroke width (progress-target)"
+    }
   },
   "lightDeltas": {
     "--td-table-check-border": {

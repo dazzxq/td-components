@@ -330,6 +330,12 @@ const CASES = [
     tag: 'td-repeater', inner: '<template><div data-td-row><input data-td-field="a" aria-label="A"></div></template>',
     props: () => ({ readRow: fn(), writeRow: fn(), value: [{ a: 'x' }] }), skip: ['value'],
   },
+  // v0.97.0: td-scroll-top `progressTarget` (an Element; the ring turns on for a visible one)
+  {
+    tag: 'td-scroll-top',
+    props: () => ({ progressTarget: document.body }),
+    check(el) { expect(el.querySelector('button.td-scroll-top').getAttribute('data-progress')).to.equal('true'); },
+  },
 ];
 
 /** Does `got` carry `want`? Functions / nodes by identity, dates by time, arrays element-wise, objects key subset. */

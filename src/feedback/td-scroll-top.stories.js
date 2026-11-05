@@ -41,3 +41,21 @@ export const CustomColour = {
     <td-scroll-top threshold="${escapeHtml(String(args.threshold ?? ''))}" color="${escapeHtml(String(args.color ?? ''))}"
       ${args.textColor ? `text-color="${escapeHtml(String(args.textColor))}"` : ''}></td-scroll-top>`,
 };
+
+/**
+ * v0.97.0 reading progress: `progress-target` (a CSS selector, first visible match) draws a ring that fills while the
+ * article is read; at the end the arrow becomes a check for 3 s and `reading-progress-complete` fires once. The ring
+ * follows the icon colour (also with `color`). After swapping content without a scroll, call `el.update()`.
+ */
+export const ReadingProgress = {
+  name: 'Tiến độ đọc (progress-target)',
+  args: { threshold: 200, label: '' },
+  render: (args) => `
+    <main id="main" class="sb-stack">
+      <p class="sb-note">Vòng quanh nút đầy dần theo phần bài viết đã đọc (chỉ tính <code>article</code>, không tính phần dưới).</p>
+      <article id="sb-article" class="sb-stack">${paragraphs(60)}</article>
+      <p class="sb-note">Hết bài: vòng đầy, mũi tên thành dấu tích 3 giây.</p>
+      ${paragraphs(20)}
+    </main>
+    <td-scroll-top threshold="${escapeHtml(String(args.threshold ?? ''))}" progress-target="#sb-article" color="#1e40af"></td-scroll-top>`,
+};

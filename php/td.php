@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.96.3/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.96.3', __DIR__ . '/public/assets/vendor/td-components/0.96.3');
+ *   require_once '/path/to/vendor/td-components/0.97.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.97.0', __DIR__ . '/public/assets/vendor/td-components/0.97.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -2164,7 +2164,7 @@ namespace {
      */
     function td__dd_leaf(int|string $k, mixed $v): ?array
     {
-        $blank = ['image' => '', 'description' => '', 'icon' => '', 'icon_tone' => '', 'status' => '', 'status_tone' => '', 'meta' => '', 'keywords' => ''];
+        $blank = ['image' => '', 'font' => '', 'description' => '', 'icon' => '', 'icon_tone' => '', 'status' => '', 'status_tone' => '', 'meta' => '', 'keywords' => ''];
         if (is_array($v)) {
             if (!isset($v['value']) || !is_scalar($v['value'])) {
                 return null;
@@ -2187,6 +2187,7 @@ namespace {
             return ['value' => (string) $v['value'], 'label' => (string) ($v['label'] ?? $v['value']), 'disabled' => !empty($v['disabled']),
                 'swatch' => Td::safeColor($v['swatch'] ?? null), // v0.82.0: colour dot (same gate as td_choice_group)
                 'image' => td__media_url($v['image'] ?? null) ?? '', // v0.95.0: same gate as td_choice_group
+                'font' => td__dd_font($v['font'] ?? null), // v0.97.0: a CSS font-family list → data-font
                 'description' => $text($v['description'] ?? null),
                 'icon' => $icon,
                 'icon_tone' => $icon !== '' ? $tone($v['icon_tone'] ?? $v['iconTone'] ?? null) : '',
@@ -2202,8 +2203,27 @@ namespace {
     }
 
     /**
+     * @internal v0.97.0 td_dropdown option `font` (a CSS font-family list, e.g. '"Roboto", sans-serif') → the value for
+     * `data-font`, or '' (dropped): string, trimmed, 1–200 chars, no control characters, none of ; { } < > (a
+     * backslash is kept: CSS escapes are valid in a family name), not a CSS-wide keyword. The component re-checks it
+     * with the browser's own parser and only ever writes it through CSSOM.
+     */
+    function td__dd_font(mixed $v): string
+    {
+        if (!is_string($v)) {
+            return '';
+        }
+        $f = trim($v);
+        if ($f === '' || strlen($f) > 200 || preg_match('/[\x00-\x1f\x7f;{}<>]/', $f) === 1
+            || in_array(strtolower($f), ['inherit', 'initial', 'unset', 'revert', 'revert-layer'], true)) {
+            return '';
+        }
+        return $f;
+    }
+
+    /**
      * @internal v0.84.0 one td_dropdown `<option>` (attribute order: value, selected, disabled, data-swatch, data-image
-     * (v0.95.0), then the rich data-*: data-icon, data-icon-tone, data-description, data-status, data-status-tone,
+     * (v0.95.0), data-font (v0.97.0), then the rich data-*: data-icon, data-icon-tone, data-description, data-status, data-status-tone,
      * data-meta, data-keywords).
      */
     function td__dd_option(array $opt, string $current): string
@@ -2213,6 +2233,7 @@ namespace {
             . ($opt['disabled'] ? ' disabled' : '')
             . ($opt['swatch'] !== '' ? ' data-swatch="' . Td::e($opt['swatch']) . '"' : '')
             . ($opt['image'] !== '' ? ' data-image="' . Td::e($opt['image']) . '"' : '')
+            . ($opt['font'] !== '' ? ' data-font="' . Td::e($opt['font']) . '"' : '')
             . ($opt['icon'] !== '' ? ' data-icon="' . Td::e($opt['icon']) . '"' : '')
             . ($opt['icon_tone'] !== '' ? ' data-icon-tone="' . Td::e($opt['icon_tone']) . '"' : '')
             . ($opt['description'] !== '' ? ' data-description="' . Td::e($opt['description']) . '"' : '')

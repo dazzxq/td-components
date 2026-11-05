@@ -154,3 +154,28 @@ describe('td_dropdown option image (v0.95.0, PHP)', opts, () => {
     assert.ok(!html.includes('data-image'));
   });
 });
+
+describe('td_dropdown option font (v0.97.0, PHP)', opts, () => {
+  test('a font-family list → data-font after data-image, before data-icon (escaped)', () => {
+    const html = one(['f', [{
+      value: 'r', label: 'Roboto', image: 'https://x.example/r.png', font: ' "Roboto", sans-serif ', icon: 'check',
+    }], 'r']);
+    assert.match(html, /<option value="r" selected data-image="https:\/\/x\.example\/r\.png" data-font="&quot;Roboto&quot;, sans-serif" data-icon="check">Roboto<\/option>/);
+  });
+
+  test('unusable fonts are not printed: non-strings, empty, too long, ; { } < >, control chars, CSS-wide keywords', () => {
+    const bad = [12, null, true, '', '   ', 'a'.repeat(201), 'Roboto; color: red', 'x}', 'a<b', 'A\nB',
+      'inherit', 'INITIAL', 'unset', 'revert', 'revert-layer'];
+    const html = one(['f', bad.map((font, k) => ({ value: `v${k}`, label: `L${k}`, font })), '']);
+    assert.ok(!html.includes('data-font'), html);
+  });
+
+  test('a CSS escape (backslash) is kept: the browser parser decides', () => {
+    assert.match(one(['f', [{ value: 'a', label: 'A', font: '\\52 oboto, serif' }], '']), /data-font="\\52 oboto, serif"/);
+  });
+
+  test('no font → byte-identical option (no data-font)', () => {
+    const html = one(['f', [{ value: 'a', label: 'A' }], '']);
+    assert.match(html, /<option value="a">A<\/option>/);
+  });
+});

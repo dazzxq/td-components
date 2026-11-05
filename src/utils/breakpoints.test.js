@@ -41,6 +41,7 @@ const MEASURE_OK = {
   'src/feedback/td-hovercard.js': 'max list height = viewport height − margin',
   'src/feedback/td-menu.js': 'max list height = viewport height − margin',
   'src/utils/keyboard-viewport.js': 'on-screen keyboard inset = innerHeight − visual viewport bottom (v0.36.2)',
+  'src/feedback/td-scroll-top.js': 'reading progress = target rect against the viewport height (v0.97.0)',
 };
 
 const VENDOR_DIR = fileURLToPath(new URL('../vendor', import.meta.url));

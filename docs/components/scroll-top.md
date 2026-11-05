@@ -53,7 +53,35 @@ Phần tử không tự nhận focus được thì được gắn tạm `tabinde
 <td-scroll-top target="#article-title"></td-scroll-top>
 ```
 
-### 3. Vị trí, kích thước, lớp chồng
+### 3. Vòng tiến độ đọc (`progress-target`, 0.97.0)
+
+Vòng quanh nút đầy dần theo phần **bài viết** đã đọc. Hết bài thì mũi tên đổi thành dấu tích trong 3 giây (một lần cho
+mỗi bài). Chỉ bật khi có `progress-target`; không có thì nút giữ nguyên như cũ.
+
+```html
+<article id="post">…nội dung bài…</article>
+<td-scroll-top progress-target="#post"></td-scroll-top>
+```
+
+- **Chọn phần tử để đếm:** `progress-target` là một CSS selector bất kỳ, kit không ép tên class. Mỗi lần tính, kit lấy
+  phần tử **đầu tiên đang hiển thị** khớp selector (bỏ qua phần tử `hidden` / `display: none`). Gắn vào phần thân bài
+  (không gồm bình luận, tin liên quan) để "đọc hết" đúng nghĩa. Muốn đếm cả trang: `progress-target="main"`.
+- **Truyền thẳng phần tử bằng JS:** `el.progressTarget = articleEl` (thắng attribute; gán `null` để quay về attribute).
+- **Cách tính:** 0 khi đầu bài còn ở dưới mép trên màn hình, 1 khi cuối bài đã lên tới mép dưới màn hình (bài ngắn hơn
+  màn hình và nằm trọn trong đó tính là đã đọc; phần tử cao 0, ví dụ nội dung chưa nạp, tính là 0).
+- **Nội dung đổi mà không cuộn** (SPA, nạp bài mới bằng JS): gọi `el.update()`. Kit tự tính lại khi cuộn, đổi cỡ cửa sổ,
+  và khi chính phần tử đó đổi chiều cao (ảnh tải muộn). Kit không nghe sự kiện riêng của site.
+- **Hết bài:** phát `reading-progress-complete` (`detail.target`), mỗi phần tử một lần duy nhất (quay lại bài cũ không
+  phát lại).
+- Vòng chỉ để nhìn (`aria-hidden`), tên nút không đổi. Chỉ tính cuộn của cửa sổ.
+
+```js
+// site nạp bài mới không cuộn trang (ví dụ dwp)
+document.addEventListener('dwp:article:mounted', () => scrollTop.update());
+scrollTop.addEventListener('reading-progress-complete', (e) => track('read', e.detail.target.id));
+```
+
+### 4. Vị trí, kích thước, lớp chồng
 
 ```css
 :root {
@@ -74,6 +102,7 @@ home.
 | `target` | string (CSS selector) | — | Phần tử nhận focus sau khi lên đầu (mặc định `#main` → `main` → `body`). |
 | `label` | string | `TdScrollTop.labels.button` | Tên trợ năng (`aria-label`) của nút. |
 | `color` | màu CSS | — | 0.62.0: màu nền nút của **riêng** thẻ này (hex, 16 tên cơ bản, `rgb()`; phải đục — alpha < 1, `hsl()`, tên khác → bỏ qua + 1 `console.warn`). Ghi qua CSSOM vào host (`--td-scroll-top-bg/-fg/-bg-hover/-pressed`), không `style="…"`. |
+| `progress-target` | string (CSS selector) | — | 0.97.0: phần tử dùng để tính tiến độ đọc (phần tử đầu tiên đang hiển thị). Không có / không khớp → không có vòng. Selector sai → không vòng + 1 `console.warn`. |
 | `text-color` | màu CSS | tự chọn | 0.62.0: màu icon, chỉ khi có `color`. Không đặt → kit chọn đen / trắng theo tương phản (≥ 4.58:1 trên mọi nền). Đặt mà < 3:1 với `color` (hoặc không dùng được) → bỏ qua + warn, dùng màu tự chọn. |
 
 Đổi `threshold` / `label` / `color` / `text-color` → cập nhật tại chỗ (không dựng lại nút).
@@ -83,7 +112,8 @@ home.
 | Property / method | Kiểu | Mô tả |
 |---|---|---|
 | `scrollToTop()` | method | Làm đúng việc của nút (cuộn + focus + event). |
-| `update()` | method | Tính lại trạng thái hiện/ẩn theo vị trí cuộn hiện tại (tự chạy khi cuộn). |
+| `update()` | method | Tính lại trạng thái hiện/ẩn và (0.97.0) tiến độ đọc theo vị trí cuộn hiện tại (tự chạy khi cuộn). Gọi sau khi đổi nội dung mà không cuộn. |
+| `progressTarget` | `Element \| null` | 0.97.0: phần tử tính tiến độ đọc, thắng `progress-target`. Không phải Element → `null`. Gán trước khi define vẫn nhận. |
 | `TdScrollTop.labels` | static object | `{ button: 'Lên đầu trang' }` — `TdScrollTop.labels.button = 'Back to top'` (áp cho nút render sau đó). |
 
 ## Event
@@ -91,6 +121,7 @@ home.
 | Event | `detail` | Khi nào |
 |---|---|---|
 | `scroll-top` | `{ target }` (phần tử được focus) | Sau khi bấm nút / gọi `scrollToTop()`. |
+| `reading-progress-complete` | `{ target }` (phần tử đã đọc hết) | 0.97.0: lần đầu một phần tử được đọc tới cuối (mỗi phần tử một lần). Nổi bọt. |
 
 ## Tuỳ biến giao diện
 
@@ -107,13 +138,16 @@ home.
 | `--td-scroll-top-border` | `var(--td-glass-border)` | 0.62.0: viền 1px |
 | `--td-scroll-top-shadow` | `var(--td-glass-shadow)` | 0.62.0: một bóng |
 | `--td-scroll-top-pressed` | `var(--td-color-pressed)` | 0.62.0: lớp phủ khi nhấn (chạm / giữ chuột) |
+| `--td-scroll-top-progress-arc` | *(không khai báo)* | 0.97.0: màu cung tiến độ. Không đặt → màu icon của nút (`currentColor`, nên `color` / `text-color` tự áp, luôn ≥ 3:1). Tự đặt thì giữ ≥ 3:1 với nền nút. |
+| `--td-scroll-top-progress-track` | *(không khai báo)* | 0.97.0: màu vòng nền. Không đặt → 18 % màu icon (chỉ trang trí). |
+| `--td-scroll-top-progress-width` | `3px` | 0.97.0: độ dày vòng |
 
 Nút là bề mặt **đặc** (0.20.0 — [minimal surfaces](../internal/design/liquid-glass.md)): `--td-glass-solid` + viền
 mảnh `--td-glass-border` + một bóng mềm `--td-glass-shadow`, không blur, không thu nhỏ khi bấm. Vẫn mang class
 `.td-glass-surface--strong` nên fallback tương phản cao / forced colors tự áp dụng; token bề mặt chung (`--td-glass-*`)
 đổi được như mọi bề mặt khác.
 
-### 4. Màu riêng (0.62.0)
+### 5. Màu riêng (0.62.0)
 
 ```html
 <!-- một thẻ: nền xanh đậm, icon tự chọn (trắng) -->
@@ -146,10 +180,18 @@ Màu lấy từ dữ liệu người dùng vẫn an toàn: giá trị đi qua `s
 <td-scroll-top>
   <button type="button" class="td-scroll-top td-glass-surface td-glass-surface--strong"
           aria-label="Lên đầu trang" data-visible="false|true">
+    <!-- 0.97.0: vòng (chỉ hiện khi data-progress="true") -->
+    <svg class="td-scroll-top__ring" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+      <circle class="td-scroll-top__track" …/><circle class="td-scroll-top__arc" pathLength="100" …/>
+    </svg>
     <span class="td-scroll-top__icon" data-td-icon="up" aria-hidden="true"><!-- tdIcon('up') --></span>
+    <span class="td-scroll-top__icon td-scroll-top__icon--check" data-td-icon="check" aria-hidden="true"></span>
   </button>
 </td-scroll-top>
 ```
+
+0.97.0: `data-progress="true"` khi có phần tử để đếm; `data-complete="true"` trong 3 giây hiện dấu tích. Độ dài cung
+ghi bằng CSSOM (`stroke-dashoffset` = 100 × (1 − tiến độ)), không `style="…"`.
 
 `data-visible="false"` → `opacity: 0` + `visibility: hidden` (ra khỏi thứ tự Tab và cây trợ năng).
 
@@ -172,6 +214,8 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 
 ## Lưu ý & lỗi thường gặp
 
+- **Vòng không hiện (0.97.0)**: selector không khớp phần tử nào đang hiển thị, hoặc nội dung được chèn sau mà site
+  chưa gọi `update()` (lần cuộn kế tiếp cũng tự nhận).
 - **Nút không hiện**: trang cuộn trong một khung riêng (`overflow: auto` trên `div`) thay vì cửa sổ — component chỉ
   theo dõi cuộn của `window`.
 - **Nút bị che / che thanh dưới của site**: chỉnh `--td-scroll-top-bottom`; muốn nổi trên lớp khác thì đổi

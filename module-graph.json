@@ -351,6 +351,7 @@
     "src/feedback/td-scroll-top.js": [
       "src/base/td-base-element.js",
       "src/icons/td-icon.js",
+      "src/utils/reading-progress.js",
       "src/utils/scroll-top-colors.js"
     ],
     "src/feedback/td-toast.js": [
@@ -479,6 +480,7 @@
       "src/icons/td-icon.js",
       "src/utils/breakpoints.js",
       "src/utils/floating.js",
+      "src/utils/font-family.js",
       "src/utils/layers.js",
       "src/utils/media-url.js",
       "src/utils/typeahead.js",
@@ -684,6 +686,7 @@
     "src/utils/external-overlay.js": [],
     "src/utils/filter-chips-model.js": [],
     "src/utils/floating.js": [],
+    "src/utils/font-family.js": [],
     "src/utils/form-dirty.js": [],
     "src/utils/form-validation.js": [
       "src/base/td-form-element.js",
@@ -739,6 +742,7 @@
       "src/utils/calendar-model.js"
     ],
     "src/utils/rating-model.js": [],
+    "src/utils/reading-progress.js": [],
     "src/utils/scan-burst.js": [],
     "src/utils/scroll-lock.js": [],
     "src/utils/scroll-top-colors.js": [

@@ -76,6 +76,7 @@ dd.options = [
 - Từ 0.84.0: icon, dòng mô tả, trạng thái, chữ phụ, từ khoá tìm kiếm và nhóm có tiêu đề, xem
   [mục 1b](#1b-dòng-giàu-thông-tin-và-nhóm-084-0).
 - Từ 0.95.0: ảnh nhỏ đầu dòng (`image`), xem [mục 1c](#1c-ảnh-đầu-dòng-image-0950).
+- Từ 0.97.0: mỗi option hiện bằng phông riêng (`font`), xem [mục 1d](#1d-xem-trước-phông-chữ-font-0970).
 - Không hỗ trợ: HTML trong label, chọn nhiều.
 
 ```js
@@ -187,6 +188,34 @@ dd.options = [
 
 PHP: `'image' => '…'` trong mỗi option của `td_dropdown` → `data-image` (cùng cổng `td__media_url` như
 `td_choice_group`: `https:` / scheme-less; `http:` chỉ khi `Td::allowHttpLinks(true)`; sai → không in).
+
+### 1d. Xem trước phông chữ (`font`, 0.97.0)
+
+`font` (string, tuỳ chọn) là một giá trị CSS `font-family`. Nhãn của dòng đó hiện bằng chính phông này, cả trên trigger
+khi option đang được chọn. Dùng cho ô chọn phông chữ:
+
+```js
+dd.options = [
+  { value: 'system', label: 'Mặc định hệ thống' },
+  { value: 'roboto', label: 'Roboto', font: '"Roboto", sans-serif' },
+  { value: 'georgia', label: 'Georgia', font: 'Georgia, serif' },
+  { value: 'mono', label: 'Courier New', font: '"Courier New", monospace' },
+];
+```
+
+- **Kit không tải phông.** Site tự khai báo `@font-face` (hoặc `<link>` tới nhà cung cấp phông) và cho phép nguồn đó
+  trong `font-src` của CSP. Phông chưa tải xong thì trình duyệt dùng phông kế tiếp trong danh sách, nên luôn kết thúc bằng
+  một phông chung (`serif`, `sans-serif`, `monospace`). Menu đang mở tự đo lại chiều cao khi phông tải xong.
+- Chỉ đổi phông của **nhãn** (dòng menu, trigger). Mô tả, chữ phụ, trạng thái giữ phông của kit. Một `renderOption`
+  trả Node thì Node đó thừa hưởng phông.
+- Ghi bằng CSSOM (`style.fontFamily`), không `style="…"`, hợp CSP chặt. Giá trị trình duyệt không hiểu, rỗng, dài quá 200
+  ký tự, hoặc là từ khoá chung (`inherit`, `initial`, `unset`, `revert`, `revert-layer`) → bỏ qua, nhãn dùng phông thường.
+- Tìm kiếm và gõ chữ để nhảy vẫn theo `label` / `keywords`, không theo tên phông.
+- Dùng chung được với `image`, `icon`, `description`.
+
+SSR: `<option data-font="Georgia, serif">`. PHP: `'font' => 'Georgia, serif'` trong mỗi option của `td_dropdown` →
+`data-font` (bỏ giá trị không phải chuỗi, rỗng, dài quá 200 ký tự, có ký tự điều khiển hoặc `; { } < >`, hoặc là từ khoá
+chung). Không JS: `<select>` gốc vẫn chọn và gửi form bình thường, chỉ không có phần xem trước phông.
 
 ### 2. Dữ liệu từ API có key khác (`value-key` / `label-key`)
 
@@ -314,7 +343,7 @@ Khi gắn vào trang **lần đầu**, nếu host có con trực tiếp `<select
   nếu có), theo đúng thứ tự. `data-swatch` của `<option>` → `swatch` (0.82.0; qua cùng cổng màu, sai → bỏ). Từ 0.84.0 `<optgroup label>` thành **nhóm** (`groups` tự sinh khoá `g0`, `g1`…; option nằm ngoài mọi optgroup xếp cuối,
   không tiêu đề), và `<option>` đọc thêm `data-icon`, `data-icon-tone`, `data-description`, `data-status` +
   `data-status-tone`, `data-meta`, `data-keywords` (trước 0.84.0 optgroup bị làm phẳng). Từ 0.95.0 `data-image` →
-  `image` (giữ nguyên chuỗi; cổng URL chạy lúc vẽ, sai → không ảnh). Option `disabled` hoặc nằm trong
+  `image` (giữ nguyên chuỗi; cổng URL chạy lúc vẽ, sai → không ảnh). Từ 0.97.0 `data-font` → `font` (kiểm lúc vẽ). Option `disabled` hoặc nằm trong
   `<optgroup disabled>` → `disabled: true`. Key theo `value-key` / `label-key` nếu host có đặt.
 - **lựa chọn**: (1) attribute `value` của host nếu có; (2) nếu không, giá trị **đang chọn** của select — gồm cả lựa chọn
   người dùng đã đổi trước khi JS chạy, và option đầu tiên (không bị vô hiệu) khi không option nào `selected`, như native.

@@ -4,6 +4,24 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.97.0
+
+**`<td-scroll-top>` vòng tiến độ đọc + `<td-dropdown>` xem trước phông chữ** (yêu cầu owner 05/11, mang từ dwp;
+[plan](docs/internal/plans/v0.97.0-scroll-progress-dropdown-font.md)). Thêm mới, không đổi hành vi cũ.
+
+- `<td-scroll-top progress-target="…">` (CSS selector, phần tử đầu tiên đang hiển thị) hoặc `el.progressTarget = el`:
+  vòng quanh nút đầy dần theo phần bài đã đọc (công thức của dwp). Hết bài: mũi tên thành dấu tích 3 giây và phát
+  `reading-progress-complete` `{ target }`, mỗi phần tử một lần. Tự tính lại khi cuộn, đổi cỡ cửa sổ và khi phần tử đổi
+  chiều cao; nội dung đổi mà không cuộn thì gọi `update()`. Phần tử cao 0 (nội dung chưa nạp) tính là 0, không bị coi là
+  đã đọc. Selector lỗi: cảnh báo một lần, không vẽ vòng. Không có `progress-target` → nút như cũ.
+- Token `--td-scroll-top-progress-arc` / `-track` (không khai báo: theo màu icon, nên `color` / `text-color` tự áp),
+  `--td-scroll-top-progress-width` (`3px`). Vòng chỉ để nhìn (`aria-hidden`).
+- `<td-dropdown>` option `font` (giá trị `font-family`): nhãn dòng và trigger hiện bằng phông đó, ghi qua CSSOM. SSR
+  `data-font`, PHP `'font' => …`. Kit không tải phông (site tự `@font-face`). Giá trị không hợp lệ bị bỏ qua.
+- Ảnh trong option (kể cả ảnh + chữ cùng dòng) đã có từ 0.95.0 (`image`), không đổi.
+- dwp chuyển sang: `<td-scroll-top threshold="200" progress-target="[data-dwp-reading-progress]">` và gọi `update()` trong
+  `dwp:article:mounted` / `dwp:view:changed`.
+
 ## 0.96.3
 
 **`<td-datetime-range>`: dải khoảng trên lịch gọn và liền** (yêu cầu dsuite 05/11;

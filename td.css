@@ -11268,6 +11268,8 @@
  * v0.62.0: --td-scroll-top-bg / -fg / -border / -shadow / -pressed (+ optional -bg-hover) and the `color` / `text-color`
  * attributes (src/utils/scroll-top-colors.js).
  * State: data-visible="true|false" (hidden = visibility: hidden → out of the Tab order and the a11y tree).
+ * v0.97.0 reading progress (dwp parity): `data-progress="true"` shows the ring overlay (track + arc, pathLength 100,
+ * dashoffset written through CSSOM); `data-complete="true"` swaps the up icon for the check for 3 s.
  */
 @layer td.tokens {
 	:root {
@@ -11276,6 +11278,7 @@
 		--td-scroll-top-end: 1.5rem;           /* distance from the inline-end edge (plus the safe area) */
 		--td-scroll-top-z: var(--td-z-sticky); /* below lightbox (350) / modal / popover / toast */
 		--td-scroll-top-offset: 10px;          /* slide distance of the enter/leave transition */
+		--td-scroll-top-progress-width: 3px;   /* v0.97.0 ring stroke */
 	}
 
 	/* v0.62.0 colours (plan E). Defaults = the surface recipe, so the resting look is unchanged. A site sets them on :root /
@@ -11289,6 +11292,9 @@
 		--td-scroll-top-border: var(--td-glass-border);
 		--td-scroll-top-shadow: var(--td-glass-shadow);
 		--td-scroll-top-pressed: var(--td-color-pressed);
+		/* v0.97.0 ring colours --td-scroll-top-progress-arc / -track are deliberately NOT declared (like -bg-hover):
+		   unset, the arc is the button's own icon colour (currentColor, so `color` / `text-color` on one element and the
+		   contrast / forced-colour surfaces keep it at the icon contrast) and the track is 18 % of it. */
 	}
 }
 
@@ -11367,11 +11373,90 @@
 		pointer-events: none;
 	}
 
+	/* v0.97.0 reading progress: a non-interactive overlay inside the button (the fixed button is its containing block),
+	   so nothing paints outside the button box. Both icons sit centred on top of each other; the check is hidden until
+	   [data-complete]. */
+	.td-scroll-top__ring {
+		position: absolute;
+		inset: 0;
+		display: none;
+		inline-size: 100%;
+		block-size: 100%;
+		overflow: visible;
+		pointer-events: none;
+	}
+
+	.td-scroll-top[data-progress="true"] .td-scroll-top__ring {
+		display: block;
+	}
+
+	.td-scroll-top__track,
+	.td-scroll-top__arc {
+		fill: none;
+		stroke-width: var(--td-scroll-top-progress-width);
+	}
+
+	.td-scroll-top__track {
+		stroke: var(--td-scroll-top-progress-track, transparent);
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, blue)) {
+		.td-scroll-top__track {
+			stroke: var(--td-scroll-top-progress-track, color-mix(in srgb, currentColor 18%, transparent));
+		}
+	}
+
+	.td-scroll-top__arc {
+		stroke: var(--td-scroll-top-progress-arc, currentColor);
+		stroke-dasharray: 100;
+		stroke-dashoffset: 100;
+		stroke-linecap: round;
+		transition: stroke-dashoffset 0.15s ease;
+	}
+
+	.td-scroll-top__icon {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		transition: opacity 0.25s ease, transform 0.25s ease;
+	}
+
+	.td-scroll-top__icon--check {
+		opacity: 0;
+		transform: scale(0.6);
+	}
+
+	.td-scroll-top[data-complete="true"] .td-scroll-top__icon:not(.td-scroll-top__icon--check) {
+		opacity: 0;
+		transform: scale(0.6);
+	}
+
+	.td-scroll-top[data-complete="true"] .td-scroll-top__icon--check {
+		opacity: 1;
+		transform: none;
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.td-scroll-top,
 		.td-scroll-top[data-visible="true"] {
 			transform: none;
 			transition: none;
+		}
+
+		.td-scroll-top__arc,
+		.td-scroll-top__icon {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-scroll-top__arc {
+			stroke: CanvasText;
+		}
+
+		.td-scroll-top__track {
+			stroke: transparent;
 		}
 	}
 

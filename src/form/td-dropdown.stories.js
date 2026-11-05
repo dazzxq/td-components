@@ -156,6 +156,24 @@ export const Images = {
   },
 };
 
+/** v0.97.0 option `font`: each row (and the trigger) shows its own font-family. The site loads the fonts itself. */
+export const Fonts = {
+  name: 'Xem trước phông chữ (font)',
+  render: () => {
+    withOptions('dd-fonts', [
+      { value: 'system', label: 'Mặc định hệ thống' },
+      { value: 'georgia', label: 'Georgia', font: 'Georgia, serif' },
+      { value: 'times', label: 'Times New Roman', font: '"Times New Roman", Times, serif' },
+      { value: 'courier', label: 'Courier New', font: '"Courier New", monospace' },
+      { value: 'trebuchet', label: 'Trebuchet MS', font: '"Trebuchet MS", sans-serif' },
+    ]);
+    return '<div class="sb-stack"><td-dropdown id="dd-fonts" label="Phông chữ" value="georgia"></td-dropdown>'
+      + '<p class="sb-note">Option có <code>font</code> (một giá trị <code>font-family</code>) hiện nhãn bằng chính phông đó, cả '
+      + 'trên trigger khi đang chọn. Kit không tải phông: site tự khai báo <code>@font-face</code>; phông chưa tải thì trình '
+      + 'duyệt dùng phông kế tiếp trong danh sách.</p></div>';
+  },
+};
+
 export const ChonDeThem = {
   name: 'Action mode (chọn để thêm)',
   render: () => {

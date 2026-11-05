@@ -6,6 +6,7 @@ import { LAYERS, register as registerLayer, bridgeTheme } from '../utils/layers.
 import { TdFormElement } from '../base/td-form-element.js';
 import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 import { safeMediaUrl } from '../utils/media-url.js';
+import { fontFamilyOf } from '../utils/font-family.js';
 
 const CLEAR = '__CLEAR__';
 const OPTION_PX = 40; // --td-dropdown-option-h: `max-height` = visible options × 40 px
@@ -438,6 +439,7 @@ export class TdDropdown extends TdFormElement {
       // v0.84.0 data-* → the rich fields (gated at render); an absent / empty attribute adds no key
       const d = opt.dataset;
       if (d.image) item.image = d.image; // v0.95.0 (raw string, gated at render)
+      if (d.font) item.font = d.font; // v0.97.0 (raw string, gated at render)
       if (d.icon) item.icon = d.icon;
       if (d.iconTone) item.iconTone = d.iconTone;
       if (d.description) item.description = d.description;
@@ -848,6 +850,14 @@ export class TdDropdown extends TdFormElement {
   }
 
   afterRender() {
+    // v0.97.0: a web font finishing its load changes the height of `font` rows → re-measure an open menu (once per
+    // connection; the flag is reset by the cleanup that removes the listener)
+    if (!this._fontsBound && typeof document !== 'undefined' && document.fonts?.addEventListener) {
+      this._fontsBound = true;
+      this.listen(document.fonts, 'loadingdone', () => { if (this._isOpen && this._measured) this._updatePosition(); });
+      this._cleanups.push(() => { this._fontsBound = false; });
+    }
+    this._applyValueFont(); // v0.97.0: the first render / hydrate prints the value span without the font
     // Persistent body portal (fixed positioning escapes overflow/transform clipping).
     if (!this._menuElement) {
       const menu = document.createElement('div');
@@ -1021,6 +1031,7 @@ export class TdDropdown extends TdFormElement {
       span.textContent = this._getPlaceholder();
       span.setAttribute('data-placeholder', '');
     }
+    this._applyValueFont(span);
     this._applySwatchFills();
     this._scheduleValueTitle();
   }
@@ -1291,6 +1302,7 @@ export class TdDropdown extends TdFormElement {
       }
       const selected = this._isSelected(item);
       nav.push({ item });
+      if (this._fontOf(item)) measured = true; // v0.97.0: another font may change the row height
       const rich = this._richOf(item);
       if (!rich) {
         // the plain row: exactly the 0.83.0 string (hard compatibility rule)
@@ -1312,6 +1324,7 @@ export class TdDropdown extends TdFormElement {
     this._measured = measured || !!this._renderOption;
     scroller.innerHTML = html;
     if (this._renderOption) this._applyRenderOption(scroller);
+    this._applyOptionFonts(scroller);
     const many = this._cvFrom !== Infinity;
     if (many !== scroller.hasAttribute('data-many')) scroller.toggleAttribute('data-many', many);
     this._applySwatchFills();
@@ -1386,6 +1399,42 @@ export class TdDropdown extends TdFormElement {
     if (retry) {
       const text = String(TdDropdown.labels.retry ?? '');
       if (retry.textContent !== text) retry.textContent = text;
+    }
+  }
+
+  /**
+   * @private v0.97.0: the selected option's `font` on the trigger text (CSSOM); anything else (placeholder, action mode,
+   * no / invalid font) clears it. Runs from _updateValueText and after every render / hydrate (afterRender).
+   */
+  _applyValueFont(span = this.querySelector('.td-dropdown__value')) {
+    if (!span) return;
+    const font = !this._isAction() && this._selectedItem ? this._fontOf(this._selectedItem) : '';
+    if (span.style.fontFamily !== font) span.style.fontFamily = font;
+  }
+
+  /**
+   * @private v0.97.0: the option's validated `font` ('' = none). A supplied but unusable value → one fixed-text warning
+   * per element (never the value itself).
+   */
+  _fontOf(item) {
+    const raw = item?.font;
+    if (raw == null || raw === '') return '';
+    const font = fontFamilyOf(raw);
+    if (!font && !this._warnedFont) {
+      this._warnedFont = true;
+      console.warn('td-dropdown: unusable option font (use a CSS font-family list) — the label keeps the default font');
+    }
+    return font;
+  }
+
+  /** @private v0.97.0: option `font` (gated by fontFamilyOf) → each row label's font-family through CSSOM. */
+  _applyOptionFonts(scroller) {
+    // CSP safe (CSSOM, never a style attribute string); a renderOption Node inherits it
+    for (const row of scroller.querySelectorAll('.td-dropdown__option[data-index]')) {
+      const font = this._fontOf(this._filteredData[Number(row.getAttribute('data-index'))]);
+      if (!font) continue;
+      const label = row.querySelector('.td-dropdown__option-label');
+      if (label) label.style.fontFamily = font;
     }
   }
 

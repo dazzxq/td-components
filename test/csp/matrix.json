@@ -1635,6 +1635,32 @@
         "bottom",
         "margin-left"
       ]
+    },
+    {
+      "state": "font",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Font'); d.setAttribute('searchable','false'); d.setAttribute('value','g'); window.__mount.appendChild(d); d.options=[{value:'g',label:'Georgia',font:'Georgia, serif'},{value:'m',label:'Mono',font:'\"Courier New\", monospace'}]; d.open();",
+      "selectors": [
+        ".td-dropdown__value",
+        ".td-dropdown__menu",
+        ".td-dropdown__option",
+        ".td-dropdown__option-label"
+      ],
+      "portal": [
+        ".td-dropdown__menu",
+        ".td-dropdown__option",
+        ".td-dropdown__option-label"
+      ],
+      "settle": 350,
+      "selectorNote": "v0.97.0: option `font` on the row labels and the trigger value (CSSOM font-family)",
+      "excludeProps": [
+        "height",
+        "width",
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "margin-left"
+      ]
     }
   ],
   "td-button": [
@@ -3827,6 +3853,20 @@
         ".td-scroll-top__icon svg"
       ],
       "settle": 500
+    },
+    {
+      "state": "progress",
+      "setup": "const a=document.createElement('article'); a.id='art'; a.style.setProperty('height','3000px'); window.__mount.appendChild(a); const t=document.createElement('td-scroll-top'); t.setAttribute('progress-target','#art'); window.__mount.appendChild(t); window.scrollTo(0, 1000);",
+      "selectors": [
+        ".td-scroll-top",
+        ".td-scroll-top__ring",
+        ".td-scroll-top__track",
+        ".td-scroll-top__arc",
+        ".td-scroll-top__icon",
+        ".td-scroll-top__icon--check"
+      ],
+      "settle": 500,
+      "selectorNote": "v0.97.0: reading-progress ring (progress-target) part-way through the article"
     }
   ],
   "td-progress": [
