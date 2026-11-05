@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.96.1/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.96.1', __DIR__ . '/public/assets/vendor/td-components/0.96.1');
+ *   require_once '/path/to/vendor/td-components/0.96.2/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.96.2', __DIR__ . '/public/assets/vendor/td-components/0.96.2');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);

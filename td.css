@@ -13276,8 +13276,8 @@
  * td-media-grid. Minimal surfaces: SOLID surface (--td-glass-solid), one border + one shadow, no blur. Buttons are the
  * kit's ghost buttons (hover / pressed / focus / disabled from button.css); the danger variant has its own colour rules.
  * State on the host: [data-empty] (nothing selected → panel hidden, height 0) · [data-disabled] · [data-compact] (bar
- * narrower than 36rem, set by JS: icon-only buttons) · [data-td-measuring] (one measuring pass inside a rAF, never
- * painted). An overflowed action carries [data-td-overflow] (it is in the "…" menu).
+ * narrower than 36rem, set by JS: icon-only buttons) · [data-td-narrow] / [data-td-count-short] (v0.96.2, fold="count", set by JS) ·
+ * [data-td-measuring] (one measuring pass inside a rAF, never painted). An overflowed action carries [data-td-overflow] (it is in the "…" menu).
  * --td-selection-bar-offset (runtime, on <html>, written by JS through CSSOM) = height of the tallest visible bar.
  */
 @layer td.tokens {
@@ -13466,6 +13466,37 @@
 
 	/* v0.96.0 primary tone: the solid accent button of button.css (.td-btn--primary); never folded, never shrinks */
 	.td-selection-bar__action--primary {
+		flex: none;
+	}
+
+	/* v0.96.2 (dwp): a narrow fold="count" bar ([data-td-narrow], JS) never lets the tray run over the count. When the
+	   full count does not fit, JS sets [data-td-count-short]: only the number stays on screen (the words stay for
+	   assistive tech, like .td-sr-only); what is still missing comes off the primary label (ellipsis, down to 2em). */
+	.td-selection-bar[data-td-count-short]:not([data-td-measuring]) .td-selection-bar__count-text {
+		position: absolute;
+		inline-size: 1px;
+		block-size: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		white-space: nowrap;
+		clip-path: inset(50%);
+		border: 0;
+	}
+
+	.td-selection-bar[data-td-narrow] .td-selection-bar__action--primary {
+		flex: 0 1 auto;
+		min-inline-size: 0;
+	}
+
+	.td-selection-bar[data-td-narrow] .td-selection-bar__action--primary .td-selection-bar__label {
+		min-inline-size: 2em;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	/* the measuring pass caches natural widths (used again after leaving narrow): the primary is not shrunk there */
+	.td-selection-bar[data-td-measuring] .td-selection-bar__action--primary {
 		flex: none;
 	}
 

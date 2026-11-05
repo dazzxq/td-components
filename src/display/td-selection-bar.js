@@ -478,7 +478,11 @@ export class TdSelectionBar extends TdBaseElement {
     this._fit = null;
     this._fitSet = [];
     this._menuOrder = null;
-    if (this.fold !== 'count') this._winner = null;
+    if (this.fold !== 'count') {
+      this._winner = null;
+      this.removeAttribute('data-td-narrow');
+      this.removeAttribute('data-td-count-short');
+    }
     this._adopt();
     this._mo?.takeRecords();
     this._dirty = true;
@@ -642,7 +646,20 @@ export class TdSelectionBar extends TdBaseElement {
   _renderCount() {
     if (!this._countEl) return;
     const text = this._countText(this._count);
-    if (this._countEl.textContent !== text) this._countEl.textContent = text;
+    if (this._countEl.textContent === text) return;
+    // v0.96.2 (dwp): the number and the words in their own spans, so a narrow fold="count" bar can drop the words from
+    // the screen and keep the number (`_shortCount`); textContent stays the same string as before
+    const tpl = String(TdSelectionBar.labels.count ?? '');
+    const at = tpl.indexOf('{n}');
+    const parts = at < 0 ? [['text', tpl]]
+      : [['text', tpl.slice(0, at)], ['n', String(this._count)], ['text', tpl.slice(at + 3)]];
+    this._countEl.replaceChildren(...parts.filter(([, s]) => s).map(([k, s]) => {
+      const el = document.createElement('span');
+      el.className = k === 'n' ? 'td-selection-bar__count-n' : 'td-selection-bar__count-text';
+      el.textContent = s;
+      return el;
+    }));
+    if (this._narrow && this.fold === 'count') this._schedule(); // more digits: is there still room for the words?
   }
 
   /** @private one live-region update per batch (the same text again is re-read) */
@@ -864,6 +881,7 @@ export class TdSelectionBar extends TdBaseElement {
    */
   _layoutCount(actions) {
     this._narrow = narrowState(this.getBoundingClientRect().width, this._narrow);
+    this.toggleAttribute('data-td-narrow', this._narrow); // v0.96.2: the primary label may take an ellipsis (CSS)
     const flags = actions.map((b) => ({ primary: b.getAttribute(TONE) === 'primary', inMenu: b.hasAttribute(IN_MENU) }));
     const keep = this._winner ? actions.indexOf(this._winner) : -1;
     const plan = planActions(flags, { narrow: this._narrow, keep });
@@ -905,7 +923,31 @@ export class TdSelectionBar extends TdBaseElement {
     for (const b of this._actions(true)) if (b.hidden) b.removeAttribute('data-td-overflow');
     this._menuOrder = over;
     this._more.hidden = !over.length;
+    this._shortCount(winner, over.length > 0);
     this._mo?.takeRecords();
+  }
+
+  /**
+   * @private v0.96.2 (dwp): a narrow fold="count" bar never lets the tray run over the count. When × + the full count +
+   * the tray (other site children, "…", the primary at natural widths) do not fit the panel, `[data-td-count-short]`
+   * keeps only the number on screen (the words stay for assistive tech); what is still missing comes off the primary
+   * label (ellipsis, CSS). Decided from natural widths (the measuring state shows the full count), so it cannot flip-flop.
+   * @param {HTMLButtonElement|null} winner the primary
+   * @param {boolean} moreShown
+   */
+  _shortCount(winner, moreShown) {
+    if (!this._narrow || !this._panel || !this._countEl) {
+      this.removeAttribute('data-td-count-short');
+      return;
+    }
+    this.setAttribute('data-td-measuring', '');
+    const cs = getComputedStyle(this._panel);
+    const gap = parseFloat(cs.columnGap) || 0;
+    const room = this._panel.clientWidth - (parseFloat(cs.paddingInlineStart) || 0) - (parseFloat(cs.paddingInlineEnd) || 0);
+    const need = this._clearBtn.getBoundingClientRect().width + gap + this._countEl.getBoundingClientRect().width + gap
+      + this._extraWidth + (moreShown ? this._moreWidth + this._gap : 0) + (winner ? this._widths.get(winner) ?? 0 : 0);
+    this.removeAttribute('data-td-measuring');
+    this.toggleAttribute('data-td-count-short', need > room + 0.5);
   }
 }
 

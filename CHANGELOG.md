@@ -4,6 +4,18 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.96.2
+
+**`<td-selection-bar fold="count">`: thanh hẹp không còn để khay nút đè lên số đếm** (báo lỗi dwp 05/11: thanh ~327px, một
+nút primary nhãn dài "Thêm vào album" + "…", nút "…" nằm chồng lên "Đã chọn N").
+
+- Khi thanh hẹp (< 480px) mà × + số đếm đầy đủ + "…" + primary không vừa: chữ của số đếm rời màn hình, giữ **số**
+  ("Đã chọn 12" → "12"; chữ vẫn còn cho trình đọc màn hình). Vẫn thiếu thì nhãn primary bị cắt "…" (giữ tối thiểu 2em).
+  Quyết định từ bề rộng tự nhiên đo được nên không nhấp nháy; thêm chữ số thì tính lại.
+- Số đếm giờ là hai span: `.td-selection-bar__count-text` + `.td-selection-bar__count-n` (`textContent` giữ nguyên).
+  Host có thêm `[data-td-narrow]` và `[data-td-count-short]` (trạng thái do JS đặt, chỉ với `fold="count"`).
+- `fold="width"` (mặc định) và thanh rộng không đổi gì.
+
 ## 0.96.1
 
 **`<td-icon-picker>`: nhãn tiếng Việt trên ô, nhóm + hàng lọc, ô "Không icon", nạp lười icon của site** (yêu cầu dsuite 04/11;

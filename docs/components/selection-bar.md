@@ -124,6 +124,9 @@ theo chính sách gấp dùng chung với [`<td-page-actions>`](page-actions.md)
 - thanh hẹp dưới **480px** → chỉ còn primary + "…" (ngưỡng cố định, có độ trễ chống nhấp nháy);
 - 2 nút đã hiện mà vẫn không vừa → gấp tiếp từ cuối vào "…"; **primary không bao giờ gấp**;
 - không có primary → chỉ 2 nút + "…".
+- (0.96.2) thanh hẹp mà × + số đếm + "…" + primary vẫn không vừa → chữ của số đếm rời màn hình (còn **số**,
+  ví dụ "Đã chọn 12" → "12"; trình đọc màn hình vẫn đọc đủ câu), thiếu nữa thì nhãn primary bị cắt "…". Không bao
+  giờ có nút đè lên số đếm.
 
 ```html
 <td-selection-bar group="lib" fold="count">
@@ -252,10 +255,10 @@ Nút `primary` dùng token của [nút primary](button.md) (`--td-btn-primary-*`
 ## Cấu trúc DOM & class
 
 ```html
-<td-selection-bar class="td-selection-bar [td-selection-bar--glass]" group="lib" [data-empty] [data-disabled] [data-compact]>
+<td-selection-bar class="td-selection-bar [td-selection-bar--glass]" group="lib" [data-empty] [data-disabled] [data-compact] [data-td-narrow] [data-td-count-short]>
   <div class="td-selection-bar__panel [td-glass-surface td-glass-surface--strong td-glass-surface--lg]" role="group" aria-label="Thao tác với mục đã chọn">
     <button class="td-btn td-btn--ghost td-selection-bar__clear" aria-label="Bỏ chọn tất cả">×</button>
-    <span class="td-selection-bar__count">Đã chọn 3</span>
+    <span class="td-selection-bar__count"><span class="td-selection-bar__count-text">Đã chọn </span><span class="td-selection-bar__count-n">3</span></span>
     <div class="td-selection-bar__actions">
       <button class="td-btn td-btn--ghost td-selection-bar__action td-selection-bar__action--icon" data-td-action="tag" aria-label="Gắn thẻ" [data-td-overflow]>
         <span class="td-selection-bar__icon" aria-hidden="true"><svg…></span>
