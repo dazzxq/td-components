@@ -218,7 +218,7 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` ADR 0012; base hydrate; `td-button` / link element mode; lưới CSS `:not(:defined)`; `Td::modulePreloads`; `td_badge`
   icon
 - `done` v0.26.0 input-field / toggle / checkbox (form-associated) + dropdown shell + `td_empty` / empty-state
-- `todo` datetime, dropzone (ADR 0012 bước sau)
+- `done` datetime (`td_datetime_picker` / `td_datetime_range`) · `todo` dropzone SSR (ADR 0012 bước sau)
 
 ## Done — v0.24.0 lightbox điều hướng hai bên
 
@@ -276,11 +276,11 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 
 ## Later — backlog
 
-- `todo` Khúc xạ SVG (Chromium-only, opt-in thử nghiệm) — WebKit bug 245510
-- `todo` Component còn lại từ dwp/135 chưa quyết: password meter, scroll-top, select-enhance, skeleton dùng chung, style `<select>` gốc, cup-loader
+- `done` (bỏ, owner 05/11: trái minimal surfaces ADR 0011) Khúc xạ SVG (Chromium-only, opt-in thử nghiệm)
+- `doing` (owner 05/11: debate Codex chọn cái nào mang sang) Component còn lại từ dwp/135: password meter / scroll-top / skeleton ĐÃ có trong kit; còn select-enhance, style `<select>` gốc, cup-loader, avatar
 
 - `done` textarea `autoresize` bằng CSS `field-sizing` (v0.13.0)
-- `todo` input-field: floating label (additive) — cần user duyệt giao diện
+- `todo` (owner 05/11: chưa làm, chờ site xin) input-field: floating label (additive) — cần user duyệt giao diện
 
 - `done` (huỷ) K4 dwp: subset `td.css`: owner 05/11 không làm; dwp tự build từ `src/styles/` + `manifest.json`, kit giữ hợp đồng nguồn CSS ([conventions](conventions.md#release))
 - `todo` Dev deps: nâng `@web/test-runner` 1.x (bỏ `extract-zip` qua puppeteer) và Storybook 9 (bỏ `uuid` cũ) — breaking, chỉ ảnh hưởng tooling
