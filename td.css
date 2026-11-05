@@ -20954,6 +20954,110 @@
 			outline: 2px solid Highlight;
 		}
 	}
+
+	/* v0.96.3 range calendar (dsuite): ONE continuous band per week row, a state pill inside every cell. Scoped to the range panel;
+	   the single picker (calendar.css) keeps its look. Weeks are separate bars (2px between rows). The td carries only the band
+	   (range-bg committed, preview-bg preview), square inside a row, rounded at the range ends and the row ends; no hairline, no
+	   four-sided box. The state (endpoint fill, hover, pressed, today ring, focus ring) sits on a ::before pill inset 2px, so
+	   nothing paints outside the td (no clip at the grid edge, no ring meeting a neighbour). Forced colours: outlines on the td. */
+	.td-dtr-panel .td-cal__grid {
+		border-spacing: 0 2px;
+	}
+
+	.td-dtr-panel .td-cal .td-cal__day {
+		position: relative;
+		isolation: isolate;
+		background: transparent;
+		border-radius: 0;
+		outline: none;
+		box-shadow: none;
+	}
+
+	.td-dtr-panel .td-cal .td-cal__day::before {
+		position: absolute;
+		inset: 2px;
+		z-index: -1;
+		pointer-events: none;
+		content: "";
+		border-radius: var(--td-radius-md);
+	}
+
+	/* an endpoint carries the band only when the day next to it on the INNER side is in the range (the same row, or across the row
+	   break), so a lone "Đến", a reversed pair or a one-day range keeps a bare pill */
+	.td-dtr-panel .td-cal .td-cal__day[data-preview],
+	.td-dtr-panel .td-cal .td-cal__day[data-range="start"]:has(+ [data-preview]),
+	.td-dtr-panel .td-cal tr:has(> [data-range="start"]:last-child):has(+ tr > :first-child[data-preview]) > [data-range="start"] {
+		background: var(--td-cal-preview-bg);
+	}
+
+	.td-dtr-panel .td-cal .td-cal__day[data-range="in"],
+	.td-dtr-panel .td-cal .td-cal__day[data-range="start"]:has(+ :is([data-range="in"], [data-range="end"])),
+	.td-dtr-panel .td-cal tr:has(> [data-range="start"]:last-child):has(+ tr > :first-child:is([data-range="in"], [data-range="end"])) > [data-range="start"],
+	.td-dtr-panel .td-cal :is([data-range="in"], [data-range="start"]) + .td-cal__day[data-range="end"],
+	.td-dtr-panel .td-cal tr:has(> :last-child:is([data-range="in"], [data-range="start"])) + tr > .td-cal__day[data-range="end"]:first-child {
+		background: var(--td-cal-range-bg);
+	}
+
+	.td-dtr-panel .td-cal .td-cal__day:is(:first-child, [data-range="start"]) {
+		border-start-start-radius: var(--td-radius-md);
+		border-end-start-radius: var(--td-radius-md);
+	}
+
+	.td-dtr-panel .td-cal .td-cal__day:is(:last-child, [data-range="end"], [data-preview="end"]) {
+		border-start-end-radius: var(--td-radius-md);
+		border-end-end-radius: var(--td-radius-md);
+	}
+
+	.td-dtr-panel .td-cal .td-cal__day[aria-selected="true"]::before {
+		background: var(--td-cal-selected-bg);
+	}
+
+	.td-dtr-panel .td-cal .td-cal__day[aria-current="date"]::before {
+		box-shadow: inset 0 0 0 1px var(--td-cal-today-ring);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-dtr-panel .td-cal .td-cal__day:hover:not([aria-selected="true"], [aria-disabled="true"], [aria-hidden="true"])::before {
+			background: var(--td-cal-hover-bg);
+		}
+	}
+
+	.td-dtr-panel .td-cal .td-cal__day:is(:active, [data-td-pressed]):not([aria-selected="true"], [aria-disabled="true"], [aria-hidden="true"])::before {
+		background: var(--td-option-pressed-bg);
+	}
+
+	.td-dtr-panel .td-cal .td-cal__day:focus-visible::before {
+		box-shadow: inset 0 0 0 2px var(--td-cal-focus);
+	}
+
+	@media (forced-colors: active) {
+		.td-dtr-panel .td-cal .td-cal__day::before {
+			content: none;
+		}
+
+		.td-dtr-panel .td-cal .td-cal__day[aria-selected="true"] {
+			background: Highlight;
+		}
+
+		.td-dtr-panel .td-cal .td-cal__day[aria-current="date"] {
+			outline: 1px solid CanvasText;
+			outline-offset: -1px;
+		}
+
+		.td-dtr-panel .td-cal .td-cal__day[data-preview] {
+			outline: 1px dashed CanvasText;
+			outline-offset: -1px;
+		}
+
+		.td-dtr-panel .td-cal .td-cal__day:is(:focus-visible, :active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+			outline-offset: -2px;
+		}
+
+		.td-dtr-panel .td-cal .td-cal__day[aria-selected="true"]:focus-visible {
+			outline-color: CanvasText;
+		}
+	}
 }
 
 /* ---- src/styles/components/steps.css ---- */

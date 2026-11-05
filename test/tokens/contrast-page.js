@@ -1151,7 +1151,10 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       else target = day('[data-range="end"]');
       if (!target) throw new Error(`dtr:${c.state}: no such day cell`);
       const cs = getComputedStyle(target);
-      const fill = over(cs.backgroundColor, surface);
+      // v0.96.3: the range panel paints the cell state (endpoint fill, hover, pressed) on a ::before pill over the band (td)
+      const pill = getComputedStyle(target, '::before').backgroundColor;
+      const band = over(cs.backgroundColor, surface);
+      const fill = pill && pill !== 'rgba(0, 0, 0, 0)' && pill !== 'transparent' ? over(pill, band) : band;
       pairs = [{ what: `${c.state} day ink vs its fill`, fg: cs.color, bg: fill, min: 4.7 }];
     } else {
       target = panel.querySelector('.td-dtr-panel__error');

@@ -4,6 +4,19 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.96.3
+
+**`<td-datetime-range>`: dải khoảng trên lịch gọn và liền** (yêu cầu dsuite 05/11;
+[plan](docs/internal/plans/v0.96.3-range-calendar.md)). Chỉ đổi CSS trong hộp range, picker đơn không đổi.
+
+- Mỗi tuần là một dải liền (nền ô), vuông trong hàng, chỉ bo ở đầu / cuối khoảng và đầu / cuối hàng. Bỏ hai đường kẻ
+  trên / dưới của phần xem trước: xem trước chỉ còn màu nhạt hơn, ô cuối xem trước bo phía cuối, không có khung riêng.
+- Các tuần cách nhau 2px (`border-spacing: 0 2px` trên `.td-dtr-panel .td-cal__grid`), lưới cao thêm 12px.
+- Trạng thái ô (ngày đầu / cuối tô đặc, hover, nhấn, vòng hôm nay, vòng focus) chuyển sang viên `::before` lùi 2px trong ô:
+  ngày đầu / cuối thành "nắp" của dải, vòng focus không chạm ô kế bên, không gì vẽ ra ngoài ô nên không bị cắt ở mép lưới.
+- Ngày ngoài tháng trong khoảng: cùng dải, chữ đậm như ngày trong tháng (giữ quy tắc cũ).
+- Tương phản cao: viền trên ô như trước (đầu / cuối `Highlight`, dải kẻ `Highlight`, xem trước gạch đứt, focus `Highlight`).
+
 ## 0.96.2
 
 **`<td-selection-bar fold="count">`: thanh hẹp không còn để khay nút đè lên số đếm** (báo lỗi dwp 05/11: thanh ~327px, một

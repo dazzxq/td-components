@@ -50,6 +50,7 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-dtp-wheel__option',
   '.td-dtp__clear',
   '.td-dtp__trigger',
+  '.td-dtr-panel .td-cal .td-cal__day', // v0.96.3: the range panel's pressed pill (::before)
   '.td-dtr-panel__preset',
   '.td-dtr-panel__tab',
   '.td-dtr__trigger',

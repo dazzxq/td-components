@@ -69,6 +69,11 @@ Giữ tên field cũ của dcms2 (`date_from` / `date_to`):
   (ô đầu / cuối `aria-selected`, ô giữa "…, trong khoảng"). Bấm ngày thứ hai **sớm hơn** Từ → bắt đầu một khoảng mới (không
   báo lỗi). Di chuột / di focus bàn phím trên ô sau Từ → xem trước khoảng. Bấm tab "Đến" trước → chỉ chọn ngày kết thúc.
   `max-days`: ô vượt giới hạn **mờ nhưng vẫn bấm được** (bấm = bắt đầu khoảng mới), ghi chú "Tối đa N ngày".
+- **Hình dải khoảng** (0.96.3): mỗi tuần là **một dải liền** (màu `--td-cal-range-bg` khi đã chọn, `--td-cal-preview-bg` nhạt hơn
+  khi xem trước), vuông trong hàng, chỉ bo ở đầu / cuối khoảng và đầu / cuối hàng; các tuần cách nhau 2px; không viền, không
+  khung quanh ô. Trạng thái ô (ngày đầu / cuối tô đặc, hover, nhấn, vòng hôm nay, vòng focus) là **viên bên trong ô**
+  (`::before`, lùi 2px) nên không chạm ô kế bên và không bị cắt ở mép lưới. Ngày ngoài tháng nằm trong khoảng: cùng dải, chữ
+  đậm như ngày trong tháng. Picker đơn (`<td-datetime-picker>`) giữ hình cũ.
 - **`mode="datetime"`: hai màn cho mỗi mốc** (0.61.0). Màn 1 = lịch; **bấm một ngày không ghi giá trị** mà chuyển sang màn 2 =
   giờ của mốc đó (tiêu đề "Từ · Thứ Năm, 15/10/2026", nút **"‹"** / phím **Backspace** quay lại, bánh xe giờ / phút theo
   `minute-step`, "Bây giờ" đặt mốc đó = hiện tại và ở lại màn giờ). Luồng chuẩn: Từ (ngày → giờ) → **"Tiếp: Đến"** → Đến (ngày →
@@ -353,7 +358,8 @@ chips.addEventListener('filter-remove', (e) => {
 Token (`:root` hoặc trên từng host): `--td-dtr-preset-h` (chiều cao chip preset, 44px trên cảm ứng),
 `--td-dtr-preset-bg` / `-fg` / `-border` / `-hover-bg`, `--td-dtr-preset-on-bg` / `-on-fg` (preset đang khớp = màu nút
 primary) / `-on-pressed`, `--td-dtr-switch-bg` (nền công tắc "Từ | Đến"), `--td-dtr-tab-on-bg`, `--td-dtr-tab-fg`,
-`--td-dtr-tab-note`. Trigger và ô nhập dùng chung `--td-field-*`; bánh xe dùng `--td-dtp-*` của picker đơn (`.td-dtp-wheel*`, dùng chung). Chữ preset /
+`--td-dtr-tab-note`. Dải khoảng dùng token lịch chung: `--td-cal-range-bg`, `--td-cal-preview-bg`, `--td-cal-selected-bg`,
+`--td-cal-hover-bg`, `--td-cal-today-ring`, `--td-cal-focus`. Trigger và ô nhập dùng chung `--td-field-*`; bánh xe dùng `--td-dtp-*` của picker đơn (`.td-dtp-wheel*`, dùng chung). Chữ preset /
 công tắc / dòng lỗi qua gate `test:contrast` ≥ 4.7. Host co tới 160px: chữ trigger bị cắt `…` có `title` đầy đủ.
 
 ## Cấu trúc DOM
