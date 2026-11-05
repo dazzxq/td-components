@@ -282,6 +282,7 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` textarea `autoresize` bằng CSS `field-sizing` (v0.13.0)
 - `todo` input-field: floating label (additive) — cần user duyệt giao diện
 
+- `done` (huỷ) K4 dwp: subset `td.css`: owner 05/11 không làm; dwp tự build từ `src/styles/` + `manifest.json`, kit giữ hợp đồng nguồn CSS ([conventions](conventions.md#release))
 - `todo` Dev deps: nâng `@web/test-runner` 1.x (bỏ `extract-zip` qua puppeteer) và Storybook 9 (bỏ `uuid` cũ) — breaking, chỉ ảnh hưởng tooling
 
 - dark theme: tinh chỉnh giá trị (hiện chỉ tính toán, chưa render thử)

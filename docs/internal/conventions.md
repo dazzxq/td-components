@@ -81,6 +81,11 @@ Chi tiết và danh sách raw-HTML hatch: [security.md](security-model.md).
 
 Consumer cài bằng `npm install github:dazzxq/td-components#vX.Y.Z`.
 
+**Hợp đồng nguồn CSS (05/11, dwp):** dwp photos tự build một file CSS con từ `src/styles/` của bản kit đã vendor (owner chốt:
+kit không làm subset build, K4 huỷ). Vì vậy package phải tiếp tục ship `src/styles/` + `manifest.json` (đã có qua `files: ["src", …]`),
+và manifest giữ dạng máy đọc được. Đổi cấu trúc `manifest.json`, đổi thứ tự `@layer`, tách / gộp / đổi tên file component CSS
+→ ghi rõ trong `CHANGELOG.md` để tool của dwp báo lỗi thay vì âm thầm thiếu rule.
+
 ## Quyết định bền vững (từ lịch sử phát triển)
 
 - `emit()` luôn `bubbles: true, composed: true`.
