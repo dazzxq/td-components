@@ -681,6 +681,9 @@ export class TdModal {
    *   normalisation, > 100 code points) → FAIL CLOSED: the Promise rejects with a TypeError (fixed message), no dialog
    *   opens, onConfirm never runs (Codex review round 1, SEC-1). The option is read ONCE (review r2 A): a getter / Proxy
    *   cannot pass validation with one value and build the gate with another; one that throws → the same rejection.
+   * @param {'cancel'|'confirm'} [options.initialFocus='cancel'] - v0.98.0: which button gets the first focus. Any other
+   *   value → 'cancel'. `typeToConfirm` set → its field always gets it. With 'confirm', the key that opened the dialog
+   *   cannot activate the button (a held Enter / a Space released after opening is ignored; a fresh press works).
    * @returns {Promise<boolean>}
    */
   static confirm(options = {}) {
@@ -707,6 +710,7 @@ export class TdModal {
         onConfirm = () => {},
         onCancel = () => {},
         themeRoot = null,
+        initialFocus = 'cancel',
       } = options || {};
       let settled = false;
       let confirming = false; // a close during onConfirm() is the confirmation, not a dismissal
@@ -715,6 +719,9 @@ export class TdModal {
       const cancelButton = makeButton(cancelText, 'secondary');
       const confirmButton = makeButton(confirmText, variant);
       const gate = phrase === null ? null : TdModal._typeToConfirm(phrase, confirmButton);
+      // v0.98.0: the field (typeToConfirm) always wins; otherwise 'confirm' moves the first focus to the confirm button
+      const focusConfirm = !gate && initialFocus === 'confirm';
+      const unguard = focusConfirm ? TdModal._guardKeyBleed(confirmButton) : () => {};
 
       const settle = (value) => {
         if (settled) return false;
@@ -785,8 +792,9 @@ export class TdModal {
         size: 'sm',
         themeRoot,
         // v0.44.0 (QĐ 10): with a phrase the field takes the first focus (the confirm button is locked anyway)
-        focusTarget: gate ? gate.input : cancelButton,
+        focusTarget: gate ? gate.input : (focusConfirm ? confirmButton : cancelButton),
         onClose: () => {
+          unguard();
           if (confirming) { settle(true); return; }
           if (!settle(false)) return;
           try { onCancel(); } catch { /* ignore */ }
@@ -794,6 +802,50 @@ export class TdModal {
       }, { role: 'alertdialog', message: text });
       if (gate) gate.describe(text.id);
     });
+  }
+
+  /**
+   * @private v0.98.0 (plan v0.98.0-confirm-initial-focus): with the first focus on the confirm button, the key that opened
+   * the dialog must not activate it. Enter / Space pressed down BEFORE the dialog opened (so its keydown is not seen
+   * here) cannot: its auto-repeat keydown on the button is cancelled, and its keyup on the button is cancelled together
+   * with the click it may produce. Mouse, touch, assistive-tech clicks and fresh key presses pass.
+   * @param {HTMLButtonElement} button
+   * @returns {() => void} removes the listeners (called on close)
+   */
+  static _guardKeyBleed(button) {
+    const fresh = new Set();
+    let swallow = false;
+    let timer = 0;
+    const act = (e) => e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar';
+    const down = (e) => {
+      if (!act(e)) return;
+      if (!e.repeat) { fresh.add(e.key); return; }
+      if (e.target === button && !fresh.has(e.key)) e.preventDefault();
+    };
+    const up = (e) => {
+      if (!act(e)) return;
+      const seen = fresh.delete(e.key);
+      if (e.target !== button || seen) return;
+      e.preventDefault();
+      swallow = true;
+      clearTimeout(timer);
+      timer = setTimeout(() => { swallow = false; }, 0);
+    };
+    const click = (e) => {
+      if (!swallow || e.target !== button) return;
+      swallow = false;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    };
+    document.addEventListener('keydown', down, true);
+    document.addEventListener('keyup', up, true);
+    document.addEventListener('click', click, true);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('keydown', down, true);
+      document.removeEventListener('keyup', up, true);
+      document.removeEventListener('click', click, true);
+    };
   }
 
   /**

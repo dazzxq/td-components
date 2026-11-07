@@ -4,6 +4,17 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.98.0
+
+**`TdModal.confirm({ initialFocus })`** (yêu cầu dsuite 07/11; [plan](docs/internal/plans/v0.98.0-confirm-initial-focus.md)).
+Thêm mới, mặc định giữ nguyên hành vi cũ.
+
+- `initialFocus: 'cancel' | 'confirm'`, mặc định `'cancel'`. `'confirm'`: focus ban đầu ở nút xác nhận (thao tác lặp
+  lại nhiều lần, không nguy hiểm). Giá trị khác → `'cancel'`. Có `typeToConfirm` thì ô gõ luôn nhận focus đầu.
+- Phím mở hộp thoại không "lọt" sang nút xác nhận: Enter giữ từ trước (auto-repeat) và Space nhả ra sau khi mở bị bỏ
+  qua; nhấn phím mới, chuột, cảm ứng vẫn xác nhận bình thường. Enter / Esc, focus trap, trạng thái bận, trả focus về
+  nút mở: không đổi.
+
 ## 0.97.0
 
 **`<td-scroll-top>` vòng tiến độ đọc + `<td-dropdown>` xem trước phông chữ** (yêu cầu owner 05/11, mang từ dwp;

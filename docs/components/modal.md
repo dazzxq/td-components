@@ -512,9 +512,19 @@ vòng bận) — xem [3c](#3c-khoá-nút-cho-tới-khi-dữ-liệu-sẵn-sàng-s
 | `onConfirm` | `() => any` | — | Gọi khi bấm xác nhận. Đồng bộ: trả `false` hoặc ném lỗi (ghi `console.error`) → giữ mở (**đổi hành vi 0.16.0**, trước đó resolve `true` và đóng); giá trị khác → `true` và đóng. Trả Promise → nút bận; resolve `false` hoặc reject → giữ mở; giá trị khác → `true` và đóng. |
 | `onCancel` | `() => void` | — | Gọi đúng một lần khi bị huỷ (nút Hủy, X, `closeAll`). Lỗi bị nuốt. |
 | `typeToConfirm` | `string` | — | 0.44.0: phải gõ đúng chuỗi này (≤ 100 ký tự) thì nút xác nhận mới hoạt động. Có truyền mà sai → Promise reject `TypeError`, không mở hộp thoại. Xem [Xác nhận bằng cách gõ](#3b-xác-nhận-bằng-cách-gõ-typetoconfirm-0440). |
+| `initialFocus` | `'cancel' \| 'confirm'` | `'cancel'` | 0.98.0: nút nhận focus ban đầu. `'confirm'` cho thao tác lặp lại, không nguy hiểm (bấm Enter là xong). Giá trị khác → `'cancel'`. Có `typeToConfirm` thì ô gõ luôn thắng. |
 
 Focus ban đầu của `confirm` nằm ở nút **Hủy** (an toàn cho thao tác nguy hiểm: nhấn Enter nhầm không xoá gì); có
 `typeToConfirm` thì ở ô gõ.
+
+Từ 0.98.0, `initialFocus: 'confirm'` đưa focus đầu sang nút xác nhận, dành cho thao tác lặp lại nhiều lần mà không
+nguy hiểm (ví dụ "Chuyển bước tiếp" trên bàn xử lý đơn). Thao tác xoá / không hoàn tác được thì giữ mặc định. Phím đã
+mở hộp thoại không kích hoạt nút xác nhận: giữ Enter (lặp phím) hoặc nhả Space sau khi hộp mở đều bị bỏ qua, phải nhấn
+phím mới.
+
+```js
+const ok = await TdModal.confirm({ message: 'Chuyển đơn sang "Đang giao"?', initialFocus: 'confirm' });
+```
 
 ### Tuỳ chọn `success()` / `error()` / `info()`
 
