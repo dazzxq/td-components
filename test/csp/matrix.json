@@ -1909,6 +1909,23 @@
       ],
       "settle": 350,
       "selectorNote": "v0.92.0: layout=fit — .td-tabs--fit trough (inline-size fit-content, max-inline-size 100%), tabs flex 0 0 auto"
+    },
+    {
+      "state": "disabled",
+      "setup": "const t=document.createElement('td-tabs'); t.id='probe'; window.__mount.appendChild(t); t.tabs=[{id:'a',label:'One'},{id:'b',label:'Two',count:3,tone:'danger',disabled:true,disabledReason:'Lưu trước'},{id:'c',label:'Three',disabled:true}];",
+      "selectors": [
+        ".td-tabs",
+        ".td-tabs__indicator",
+        ".td-tabs__tab",
+        ".td-tabs__tab[aria-disabled=\"true\"]",
+        ".td-tabs__count"
+      ],
+      "excludeProps": [
+        "transform",
+        "width"
+      ],
+      "settle": 350,
+      "selectorNote": "v0.99.0: locked tabs — aria-disabled (never native disabled), --td-btn-disabled-fg, cursor not-allowed, neutral count pill with the disabled text colour"
     }
   ],
   "td-pagination": [

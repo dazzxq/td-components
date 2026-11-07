@@ -31,6 +31,9 @@
 		--td-tabs-fg: var(--td-color-text-muted);
 		--td-tabs-fg-hover: var(--td-color-text);
 		--td-tabs-fg-active: var(--td-color-text);
+		/* v0.99.0: locked tab label / icon / pill text. The shared --td-btn-disabled-fg is tuned for the page and falls under
+		   the 2.2:1 disabled floor on the darker trough (2.0:1), so it is pulled toward the muted text colour (both themes) */
+		--td-tabs-fg-disabled: color-mix(in srgb, var(--td-btn-disabled-fg) 60%, var(--td-color-text-muted));
 	}
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
@@ -141,9 +144,16 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
-		.td-tabs__tab:hover {
+		.td-tabs__tab:hover:not([aria-disabled="true"]) {
 			color: var(--td-tabs-fg-hover);
 		}
+	}
+
+	/* v0.99.0 (plan v0.99.0-tabs-disabled): a locked tab stays visible and focusable (aria-disabled, never native
+	   [disabled]); muted with --td-tabs-fg-disabled, no hover / pressed look. The icon inherits the colour. */
+	.td-tabs__tab[aria-disabled="true"] {
+		color: var(--td-tabs-fg-disabled);
+		cursor: not-allowed;
 	}
 
 	.td-tabs__tab:is([aria-selected="true"], [aria-current="page"]) {
@@ -224,6 +234,14 @@
 		padding: 0 0.3125rem;
 		font-size: 0.6875rem;
 		line-height: 1rem;
+	}
+
+	/* v0.99.0: the pill of a locked tab is neutral with the disabled text colour, whatever its tone (the private
+	   properties do not inherit, so the tab's colour alone would not reach the pill) */
+	.td-tabs__tab[aria-disabled="true"] .td-tabs__count {
+		--_td-tabs-count-bg: var(--td-badge-neutral-bg);
+		--_td-tabs-count-fg: var(--td-tabs-fg-disabled);
+		--_td-tabs-count-edge: var(--td-badge-neutral-border);
 	}
 
 	.td-tabs__count[data-tone="info"] { --_td-tabs-count-bg: var(--td-badge-info-bg); --_td-tabs-count-fg: var(--td-badge-info-fg); --_td-tabs-count-edge: var(--td-badge-info-border); }
@@ -327,6 +345,15 @@
 		.td-tabs__tab:is([aria-selected="true"], [aria-current="page"]) {
 			border-color: Highlight;
 		}
+
+		.td-tabs__tab[aria-disabled="true"],
+		.td-tabs__tab[aria-disabled="true"] .td-tabs__count {
+			color: GrayText;
+		}
+
+		.td-tabs__tab[aria-disabled="true"] .td-tabs__count {
+			border-color: GrayText;
+		}
 	}
 
 	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
@@ -342,7 +369,7 @@
 	}
 
 	@media (forced-colors: active) {
-		.td-tabs__tab:is(:active, [data-td-pressed]) {
+		.td-tabs__tab:is(:active, [data-td-pressed]):not(:disabled, [aria-disabled="true"]) {
 			outline: 2px solid Highlight;
 		}
 	}

@@ -25,6 +25,8 @@ function edgeOf(cs) {
   return (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)
     + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0);
 }
+/** v0.99.0: longest `disabledReason` kept (the rest is cut) */
+const REASON_MAX = 200;
 const CLASS_TOKEN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 const DEFAULT_NAME = 'Các thẻ';
 /** v0.83.0: default name of the link-mode `<nav>` */
@@ -82,6 +84,15 @@ const FOCUSABLE = [
  *   read as the tabs at the first render when `tabs` was never assigned (`data-tab-id`, `data-icon`, `data-count`,
  *   `data-tone`; `aria-current="page"` → initial `active-tab`).
  *
+ * Disabled tabs (v0.99.0, plan v0.99.0-tabs-disabled): `disabled: true` (strictly `=== true`) locks a tab; `disabledReason` (text,
+ *   trimmed, ≤ 200 chars) becomes its native `title`. Tablist: `aria-disabled="true"` (never native `disabled`: the tab stays focusable
+ *   and arrows / Home / End reach it), not selected. Link mode: `<a role="link" tabindex="0" aria-disabled="true">` with NO href.
+ *   Server markup: `<a href aria-disabled="true">` or `<a href data-disabled>` + `data-disabled-reason`. Click / Enter / Space on a locked
+ *   tab does nothing but fire `tab-blocked` (no `tab-change`, no `tab-click`; the click is prevented); `active-tab` / setActiveTab with a
+ *   locked id is ignored; with `activation="auto"` an arrow onto a locked tab only focuses it. The fallback tab (first render, active tab
+ *   removed or locked at runtime) is the first ENABLED tab, silently; all locked = none selected, no panel shown. Link mode: a URL match on
+ *   a locked tab never becomes current (the previous enabled current stays; on the first resolve there is none).
+ *
  * Responsive (v0.34.0, plan QĐ 9): equal-width segments (`flex: 1 1 0`) while they fit, else `data-overflow` on the
  * trough → natural-width tabs in a horizontally scrolling row (snap, hidden scrollbar, edge fade driven by
  * `data-scroll-start` / `data-scroll-end`). Rule: slot = (content width − gap × (n − 1)) / n; overflow when the widest
@@ -111,14 +122,17 @@ const FOCUSABLE = [
  *   forwarded too
  * @attr {boolean} match-hash - v0.83.0 (link mode): a tab whose href has a `#hash` can be current (exact `location.hash`)
  * @fires tab-change - When the user (or setActiveTab) changes the tab, detail: { tabId }
+ * @fires tab-blocked - v0.99.0, an explicit activation (click, Enter, Space) of a disabled tab; bubbles, NOT cancelable, detail:
+ *   { tabId, reason } (`reason` = '' when none). Not fired by arrow navigation, `active-tab` or setActiveTab.
  * @fires tab-click - v0.83.0 (link mode), on a tab link click, BEFORE the native navigation; cancelable (cancelling it calls
  *   preventDefault() on the click), detail: { tabId, href, event }
  *
- * @property {Array<{id: string, label: string, href?: string, icon?: string, panel?: string, count?: number|string, tone?: string}>} tabs - Tab
+ * @property {Array<{id: string, label: string, href?: string, icon?: string, panel?: string, count?: number|string, tone?: string, disabled?: boolean, disabledReason?: string}>} tabs - Tab
  *   definitions. `icon`: registry name; DEPRECATED: any other value is a class list rendered as `<i class aria-hidden>`.
  *   v0.70.0: `count` (a finite number or a string; null / undefined / blank / NaN = no pill; 0 → "0") and `tone`
  *   (neutral | info | success | warning | danger, default neutral) draw a count pill after the label.
  *   v0.83.0: `href` (kept as written, escaped; refused by safeLinkUrl → no href) switches to link mode.
+ *   v0.99.0: `disabled` (`=== true` only) and `disabledReason` (text, ≤ 200 chars, the tab's `title`) lock a tab.
  * @property {Function} onChange - Callback receiving tabId (runs before `tab-change`; a throw is logged with
  *   `console.error` and the event still fires)
  */
@@ -195,6 +209,7 @@ export class TdTabs extends TdBaseElement {
       .map((t) => {
         const count = countText(t.count); // read ONCE (an accessor-backed tab object may answer differently the second time)
         const tone = t.tone;
+        const disabled = t.disabled === true;
         const href = typeof t.href === 'string' ? t.href.trim() : ''; // v0.83.0: kept as written when the gate accepts it
         return {
           id: String(t.id),
@@ -205,6 +220,9 @@ export class TdTabs extends TdBaseElement {
           // a tone only means something with a pill: without a count it is dropped (a later setTabCount with no tone starts neutral)
           tone: count && TONES.includes(tone) ? tone : 'neutral',
           href: href && safeLinkUrl(href) ? href : '',
+          // v0.99.0: only `=== true` locks a tab; the reason (text only, ≤ 200 chars) is kept only for a locked tab
+          disabled,
+          reason: disabled && typeof t.disabledReason === 'string' ? Array.from(t.disabledReason.trim()).slice(0, REASON_MAX).join('') : '',
         };
       });
     // v0.83.0: one valid href → link mode; a tab without one is dropped there (no "link tab that is not a link")
@@ -321,9 +339,12 @@ export class TdTabs extends TdBaseElement {
     if (this._links) return this._renderLinks(cls);
     const tabs = this._items.map((tab, i) => {
       const selected = tab.id === this._activeTabId;
+      // no tab selected (all locked): the first tab stays the one Tab stop
+      const stop = selected || (this._activeTabId == null && i === 0);
       const controls = tab.panel ? ` aria-controls="${this.escapeHtml(tab.panel)}"` : '';
       return `<button type="button" role="tab" class="td-tabs__tab" id="${this.escapeHtml(this._tabDomId(i))}"`
-        + ` data-tab-id="${this.escapeHtml(tab.id)}" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"${controls}>`
+        + ` data-tab-id="${this.escapeHtml(tab.id)}" aria-selected="${selected}" tabindex="${stop ? 0 : -1}"${controls}`
+        + `${this._disabledMarkup(tab)}>`
         + `${this._iconMarkup(tab.icon)}<span class="td-tabs__label" data-label="${this.escapeHtml(tab.label)}">`
         + `${this.escapeHtml(tab.label)}</span>${this._countMarkup(tab)}</button>`;
     }).join('');
@@ -333,11 +354,19 @@ export class TdTabs extends TdBaseElement {
       + `<span class="td-tabs__indicator" aria-hidden="true"></span>${tabs}</div>`;
   }
 
+  /** v0.99.0: ` aria-disabled="true"` (+ ` title`) of a locked tab, '' otherwise. Never the native `disabled`. */
+  _disabledMarkup(tab) {
+    if (!tab.disabled) return '';
+    return ` aria-disabled="true"${tab.reason ? ` title="${this.escapeHtml(tab.reason)}"` : ''}`;
+  }
+
   /** v0.83.0 link mode: `<nav>` of `<a class="td-tabs__tab">` (href = the gated original string, escaped). */
   _renderLinks(cls) {
     const tabs = this._items.map((tab) => {
       const current = tab.id === this._activeTabId ? ' aria-current="page"' : '';
-      return `<a class="td-tabs__tab" href="${this.escapeHtml(tab.href)}" data-tab-id="${this.escapeHtml(tab.id)}"${current}>`
+      // v0.99.0: a locked link has NO href (not navigable, no "open in new tab"); role + tabindex keep it a link and a Tab stop
+      const nav = tab.disabled ? ' role="link" tabindex="0"' : ` href="${this.escapeHtml(tab.href)}"`;
+      return `<a class="td-tabs__tab"${nav} data-tab-id="${this.escapeHtml(tab.id)}"${current}${this._disabledMarkup(tab)}>`
         + `${this._iconMarkup(tab.icon)}<span class="td-tabs__label" data-label="${this.escapeHtml(tab.label)}">`
         + `${this.escapeHtml(tab.label)}</span>${this._countMarkup(tab)}</a>`;
     }).join('');
@@ -359,6 +388,12 @@ export class TdTabs extends TdBaseElement {
       const id = a.getAttribute('data-tab-id') || String(i);
       if (current == null && a.getAttribute('aria-current') === 'page') current = id;
       const tab = { id, label: a.textContent.trim(), href: a.getAttribute('href') };
+      // v0.99.0: `aria-disabled="true"` or `data-disabled` locks the tab, `data-disabled-reason` is its reason
+      if (a.getAttribute('aria-disabled') === 'true' || a.hasAttribute('data-disabled')) {
+        tab.disabled = true;
+        const reason = a.getAttribute('data-disabled-reason');
+        if (reason != null) tab.disabledReason = reason;
+      }
       for (const [key, attr] of [['icon', 'data-icon'], ['count', 'data-count'], ['tone', 'data-tone']]) {
         const v = a.getAttribute(attr);
         if (v != null) tab[key] = v;
@@ -443,11 +478,16 @@ export class TdTabs extends TdBaseElement {
       this._activeTabId = this._currentId();
       return;
     }
-    if (this._activeTabId != null && this._hasTab(this._activeTabId)) return;
+    if (this._activeTabId != null && this._isEnabled(this._activeTabId)) return;
     const attr = this.getAttribute('active-tab');
-    if (attr != null && this._hasTab(attr)) this._activeTabId = attr;
-    else this._activeTabId = this._items[0]?.id ?? null;
+    if (attr != null && this._isEnabled(attr)) this._activeTabId = attr;
+    else this._activeTabId = this._items.find((t) => !t.disabled)?.id ?? null; // v0.99.0: first ENABLED tab, none when all locked
   }
+
+  /** v0.99.0: the tab exists and is not locked */
+  _isEnabled(id) { return this._items.some((t) => t.id === id && !t.disabled); }
+
+  _isDisabled(id) { return this._items.some((t) => t.id === id && t.disabled); }
 
   /** D19: tablist name = host aria-labelledby → host aria-label → "Các thẻ" (v0.83.0: link-mode nav → "Điều hướng phụ"). */
   _applyName() {
@@ -494,7 +534,7 @@ export class TdTabs extends TdBaseElement {
     if (!list || !list.isConnected || this._items.length === 0) return;
     const btn = this._buttonFor(this._activeTabId);
     if (!btn) {
-      if (this._links) list.removeAttribute('data-state'); // v0.83.0: no current page → no pill
+      list.removeAttribute('data-state'); // v0.83.0: no current page → no pill (v0.99.0: also no enabled tab in tablist mode)
       return;
     }
     const lr = list.getBoundingClientRect();
@@ -759,6 +799,11 @@ export class TdTabs extends TdBaseElement {
   _onClick(e) {
     const btn = this._tabFromEvent(e);
     if (!btn) return;
+    if (this._isDisabled(btn.dataset.tabId)) { // v0.99.0: a locked tab never activates; the host decides what to tell the user
+      e.preventDefault();
+      this._blocked(btn);
+      return;
+    }
     if (this._links) {
       this._onLinkClick(e, btn);
       return;
@@ -780,8 +825,23 @@ export class TdTabs extends TdBaseElement {
     if (!this.dispatchEvent(ev)) e.preventDefault();
   }
 
+  /** v0.99.0: an explicit activation of a locked tab. Not cancelable; `reason` is '' when none is set. */
+  _blocked(btn) {
+    const tabId = btn.dataset.tabId;
+    const item = this._items.find((t) => t.id === tabId);
+    this.emit('tab-blocked', { tabId, reason: item ? item.reason : '' });
+  }
+
   _onKeydown(e) {
-    if (this._links) return; // v0.83.0: links are plain Tab stops — no roving, no arrows
+    if (this._links) {
+      // v0.99.0: a locked link has no href, so Enter would do nothing natively — report it like a click (Space too)
+      const a = this._tabFromEvent(e);
+      if (a && (e.key === 'Enter' || e.key === ' ') && !e.altKey && !e.ctrlKey && !e.metaKey && this._isDisabled(a.dataset.tabId)) {
+        e.preventDefault();
+        this._blocked(a);
+      }
+      return;
+    } // v0.83.0: links are plain Tab stops — no roving, no arrows
     const btn = this._tabFromEvent(e);
     if (!btn || e.altKey || e.ctrlKey || e.metaKey) return;
     const n = this._buttons.length;
@@ -810,11 +870,11 @@ export class TdTabs extends TdBaseElement {
   _select(tabId, fireEvents) {
     const id = tabId == null ? null : String(tabId);
     if (this._links) { // v0.83.0: an explicit current tab, kept until the next explicit choice
-      if (id == null || !this._hasTab(id)) return false;
+      if (id == null || !this._isEnabled(id)) return false; // v0.99.0: a locked id is ignored
       this._explicitId = id;
       if (!this._applyCurrent(id)) return false;
     } else {
-      if (id == null || !this._hasTab(id) || id === this._activeTabId) return false;
+      if (id == null || !this._isEnabled(id) || id === this._activeTabId) return false; // v0.99.0: a locked id is ignored
       this._activeTabId = id;
       for (const b of this._buttons) {
         const selected = b.dataset.tabId === id;
@@ -840,10 +900,17 @@ export class TdTabs extends TdBaseElement {
 
   // --- Link mode: the current tab (v0.83.0) ---
 
-  /** Explicit (still a tab) → URL match → null. */
+  /**
+   * Explicit (still an ENABLED tab) → URL match → null. v0.99.0: a URL match on a locked tab is never current — the previous
+   * current tab stays when it is still enabled, otherwise (the first resolve) there is none.
+   */
   _currentId() {
-    if (this._explicitId != null && this._hasTab(this._explicitId)) return this._explicitId;
-    return this._matchLocation();
+    if (this._explicitId != null && this._isEnabled(this._explicitId)) return this._explicitId;
+    const match = this._matchLocation();
+    if (match != null && this._isDisabled(match)) {
+      return this._activeTabId != null && this._isEnabled(this._activeTabId) ? this._activeTabId : null;
+    }
+    return match;
   }
 
   /**

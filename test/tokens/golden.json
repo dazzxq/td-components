@@ -1512,6 +1512,7 @@
     "@color-scheme": "dark"
   },
   "added": {
+    "--td-tabs-fg-disabled": { "light": "rgb(139, 139, 148)", "dark": "rgb(133, 133, 141)", "why": "v0.99.0 td-tabs: locked tab text (disabled fg pulled toward muted text, 2.2:1 on the trough)" },
     "--td-card-badge-inset": { "light": "0.5rem", "dark": "0.5rem", "why": "v0.95.0 td-card: badges inset from the image corner (= --td-space-xs)" },
     "--td-card-bg": { "light": "rgb(255, 255, 255)", "dark": "rgb(28, 28, 30)", "why": "v0.95.0 td-card: --surface variant fill (= --td-color-surface)" },
     "--td-card-body-pad": { "light": "rgb(1, 2, 3) 6px 4px 0px 0px", "dark": "rgb(1, 2, 3) 6px 4px 0px 0px", "why": "v0.95.0 td-card: padding of the text block under the image" },

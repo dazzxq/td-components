@@ -634,6 +634,10 @@ Tương phản cao → nền `--td-color-surface`, viền rõ, không bóng.
   không có thì `<body>`, không có nữa thì trắng): không cần cấu hình, đổi tức thì (không fade), chỉ khi thực sự có dải
   giữ chỗ (thanh cuộn overlay kiểu macOS mặc định không có dải thì kit không đụng nền). Nền inline cũ (kể cả
   `!important`) được trả lại khi overlay cuối đóng.
+- **Site tự đặt `html { scrollbar-gutter: stable }` (0.99.0):** dải giữ chỗ của site cũng được tô, kể cả khi trang
+  ngắn không cuộn (dải trống, trước đây kit đo ra 0 nên để lại vệt sáng). Trang dài thì kit không cộng thêm padding,
+  nên không còn hai dải chồng nhau. Kit đo dải bằng một phần tử `position: fixed` tạm thời (chỉ ghi qua CSSOM), không
+  cần cấu hình gì.
 
 Đây là ngoại lệ có chủ ý với luật "không scale trang trí" của minimal surfaces — chỉ áp cho modal. Logic trạng thái
 (`data-state="opening|open|closing"`) không đổi; chỉ có CSS. Muốn modal chỉ mờ dần (không phóng):

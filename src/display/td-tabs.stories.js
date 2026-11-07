@@ -179,6 +179,38 @@ export const WithCounts = {
   },
 };
 
+export const Disabled = {
+  name: 'Disabled tabs (0.99.0)',
+  render: (args) => `
+    <div class="sb-stack">
+      <td-tabs size="${escapeHtml(String(args.size || 'md'))}" aria-label="Trang sản phẩm"></td-tabs>
+      <p class="sb-note">Trang tạo mới: mọi thẻ đều hiện, thẻ cần sản phẩm đã lưu bị khoá (<code>disabled: true</code>, lý do trong
+        <code>disabledReason</code> = tooltip <code>title</code>). Thẻ khoá vẫn nhận focus, mũi tên đi tới được; Enter / Space / click chỉ phát
+        <code>tab-blocked</code> (thông báo là việc của trang). <strong data-sb-log>Chưa có sự kiện.</strong></p>
+      <button type="button" class="td-btn td-btn--secondary td-btn--sm" data-sb-save>Lưu sản phẩm (mở khoá)</button>
+    </div>
+  `,
+  args: { size: 'md' },
+  play: async ({ canvasElement }) => {
+    const el = canvasElement.querySelector('td-tabs');
+    const log = canvasElement.querySelector('[data-sb-log]');
+    const build = (saved) => [
+      { id: 'info', label: 'Thông tin' },
+      { id: 'price', label: 'Giá và biến thể', icon: 'lock', count: 3, disabled: !saved, disabledReason: 'Lưu sản phẩm trước' },
+      { id: 'seo', label: 'SEO', icon: 'lock', disabled: !saved, disabledReason: 'Lưu sản phẩm trước' },
+      { id: 'media', label: 'Ảnh' },
+    ];
+    el.tabs = build(false);
+    el.addEventListener('tab-blocked', (e) => {
+      log.textContent = `tab-blocked: ${e.detail.tabId} (${e.detail.reason || 'không có lý do'})`;
+    });
+    canvasElement.querySelector('[data-sb-save]').addEventListener('click', () => {
+      el.tabs = build(true);
+      log.textContent = 'Đã mở khoá.';
+    });
+  },
+};
+
 export const PageNavigation = {
   name: 'Điều hướng trang (0.83.0)',
   render: (args) => `

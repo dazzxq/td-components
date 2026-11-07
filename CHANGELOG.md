@@ -4,6 +4,26 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.99.0
+
+**`<td-tabs>` khoá từng thẻ + sửa dải thanh cuộn khi site tự đặt `scrollbar-gutter: stable`** (yêu cầu + báo lỗi của
+dsuite 07/11; [plan](docs/internal/plans/v0.99.0-tabs-disabled.md)). Thêm mới, thẻ không khoá giữ nguyên hành vi cũ.
+
+- Thẻ `{ disabled: true, disabledReason: '…' }` (chỉ `=== true` mới khoá; lý do là text, cắt gọn, tối đa 200 ký tự,
+  thành `title` native). Thẻ khoá có `aria-disabled="true"` (không dùng `disabled` native), vẫn focus được và phím mũi
+  tên vẫn tới. Click / Enter / Space không chọn thẻ, không hiện panel, mà phát `tab-blocked` `{ tabId, reason }`
+  (bubbles, không cancelable) để site tự báo (toast, gợi ý). `activation="auto"`: mũi tên tới thẻ khoá chỉ focus.
+- `active-tab` / `setActiveTab()` trỏ vào thẻ khoá bị bỏ qua; không có thẻ hợp lệ thì chọn thẻ mở đầu tiên, khoá hết
+  thì không chọn thẻ nào. Thẻ đang mở bị khoá lúc chạy → lặng lẽ chuyển sang thẻ mở đầu tiên (không phát `tab-change`).
+- Chế độ link: thẻ khoá là `<a>` không `href` (`role="link"`, `tabindex="0"`), không phát `tab-click`; markup server
+  `<a href aria-disabled="true">` / `data-disabled` + `data-disabled-reason`. URL khớp thẻ khoá: giữ thẻ hiện tại cũ,
+  lần đầu thì chưa có thẻ hiện tại.
+- Giao diện: token mới `--td-tabs-fg-disabled` (đủ 2.2:1 trên nền máng tab, sáng + tối), `cursor: not-allowed`, không
+  hover / nhấn, số đếm trung tính bỏ qua `tone`, forced colors `GrayText`.
+- Khoá cuộn (modal, drawer, loading, lightbox): site đặt `html { scrollbar-gutter: stable }` thì dải giữ chỗ được tô màu
+  scrim kể cả trên trang ngắn không cuộn (trước đây còn vệt sáng ~15px), và trang dài không bị cộng thêm padding (hết
+  hai dải chồng nhau). Kit đo dải bằng một phần tử `position: fixed` tạm thời, chỉ ghi qua CSSOM.
+
 ## 0.98.0
 
 **`TdModal.confirm({ initialFocus })`** (yêu cầu dsuite 07/11; [plan](docs/internal/plans/v0.98.0-confirm-initial-focus.md)).

@@ -12,6 +12,7 @@ import { fillIconSlots, tdIcon } from '/src/icons/td-icon.js';
 import '/src/form/td-otp-input.js';
 import '/src/display/td-copy.js';
 import '/src/form/td-dropzone.js';
+import '/src/display/td-tabs.js'; // v0.99.0
 import '/src/form/td-tree.js';
 import '/src/form/td-tree-select.js';
 import { createCheckMark } from '/src/utils/check-mark.js';
@@ -114,6 +115,9 @@ CASES.push({ kind: 'chip-multi', v: 'locked', state: 'disabled' });
 // ≥ 3:1 vs the page) and the treeitem focus ring (≥ 3:1 vs the page) — computed colours (`pairs`), light + dark.
 CASES.push({ kind: 'tree', v: 'selected', state: 'rest', pageOnly: true });
 CASES.push({ kind: 'tree', v: 'locked', state: 'disabled', pageOnly: true });
+// v0.99.0 (plan v0.99.0-tabs-disabled): a LOCKED td-tabs tab — its label + icon on the trough, and its count pill (neutral fill,
+// disabled text colour, whatever the tone) on its own fill — measured at the 2.2:1 disabled floor like any disabled control.
+for (const v of ['label', 'pill']) CASES.push({ kind: 'tabs-disabled', v, state: 'disabled', pageOnly: true });
 for (const v of ['active', 'selected']) CASES.push({ kind: 'tree-popup', v, state: 'rest' });
 for (const state of ['mixed', 'checked', 'focus']) CASES.push({ kind: 'tree-pairs', v: 'tree', state, pageOnly: true });
 // v0.30.0: td-repeater action buttons (ghost icons, content layer → page only): an enabled ↑ / ↓ / × icon ≥ 3.2 on the
@@ -449,6 +453,21 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     if (!li) throw new Error(`tree ${c.v}: row not found`);
     el = li.querySelector('.td-tree__row');
     parts = { label: el.querySelector('.td-tree__label') };
+  } else if (c.kind === 'tabs-disabled') {
+    const t = document.createElement('td-tabs');
+    t.setAttribute('aria-label', 'Sản phẩm');
+    stage.appendChild(t);
+    t.tabs = [{ id: 'a', label: 'Thông tin', count: 2 }, { id: 'b', label: 'Giá và biến thể', icon: 'lock', count: 7, tone: 'danger', disabled: true }];
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const locked = t.querySelector('.td-tabs__tab[aria-disabled="true"]');
+    if (!locked) throw new Error('tabs-disabled: locked tab not found');
+    if (c.v === 'label') {
+      el = locked;
+      parts = { label: locked.querySelector('.td-tabs__label'), icon: locked.querySelector('.td-tabs__icon') };
+    } else {
+      el = locked.querySelector('.td-tabs__count');
+      parts = { label: el };
+    }
   } else if (c.kind === 'tree-popup') {
     const s = document.createElement('td-tree-select');
     s.setAttribute('aria-label', 'Danh mục');

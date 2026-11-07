@@ -10,7 +10,8 @@
  *   sideways by its width mid-animation. While locked, `<html>` gets `scrollbar-gutter: stable` (or, where
  *   unsupported or not honoured, the measured scrollbar width added to its `padding-inline-end` plus
  *   `--td-scroll-lock-gap` on `<html>` for fixed overlays, see modal.css). Only when the page had a scrollbar
- *   (`innerWidth - clientWidth > 0`); overlay scrollbars take no space and need nothing.
+ *   (`innerWidth - clientWidth > 0`, v0.99.0: or a host `scrollbar-gutter: stable` strip that fixed overlays do not
+ *   cover, measured with a fixed probe); overlay scrollbars take no space and need nothing.
  * - Remembers the host's previous inline `overflow` / `scrollbar-gutter` / `padding-inline-end` on `<html>`
  *   (value and priority) and restores exactly those when the last lease is released (never blindly writes `''`).
  * - Ref-counted: every overlay takes its own lease; the page unlocks only when all
@@ -33,7 +34,7 @@ let _prevGutter = null;
 const GAP_VAR = '--td-scroll-lock-gap';
 
 /** v0.91.0 — gutter colour state (see the header). */
-let _gap = 0; // innerWidth - clientWidth measured before the first lease locked (0 = never paint)
+let _gap = 0; // stripWidth() measured before the first lease locked (0 = never paint)
 /** @type {{ r: number, g: number, b: number }|null} */
 let _canvas = null; // canvas colour recorded at the first lease
 /** @type {{ value: string, priority: string }|null} */
@@ -143,6 +144,31 @@ export function holdGutterColor(scrimEl) {
   };
 }
 
+/**
+ * v0.99.0: width of the strip a fixed overlay leaves uncovered at the inline end. `innerWidth - clientWidth` alone
+ * misses a host `html { scrollbar-gutter: stable }` on a page that does not overflow: CSSOM `clientWidth` subtracts
+ * only a scrollbar that is drawn, yet layout (and every fixed overlay) is still narrower by the reserved gutter. A
+ * temporary `position: fixed; inset: 0` probe measures what overlays really get. Appended to <html> (not <body>) so a
+ * transformed / contained body cannot become its containing block. CSSOM writes only; any failure → the old formula.
+ * @param {HTMLElement} root
+ */
+function stripWidth(root) {
+  let w = 0;
+  try { w = window.innerWidth - root.clientWidth; } catch { return 0; }
+  try {
+    const probe = document.createElement('div');
+    for (const [k, v] of [['position', 'fixed'], ['top', '0'], ['right', '0'], ['bottom', '0'], ['left', '0'],
+      ['visibility', 'hidden'], ['pointer-events', 'none']]) {
+      probe.style.setProperty(k, v, 'important');
+    }
+    root.appendChild(probe);
+    let pw = 0;
+    try { pw = probe.getBoundingClientRect().width; } finally { probe.remove(); }
+    if (pw > 0) w = Math.max(w, Math.round(window.innerWidth - pw));
+  } catch { /* keep the clientWidth reading */ }
+  return w > 0 ? w : 0;
+}
+
 function gutterSupported() {
   try { return typeof CSS !== 'undefined' && CSS.supports('scrollbar-gutter', 'stable'); } catch { return false; }
 }
@@ -161,12 +187,7 @@ function remember(root, props) {
  * @param {HTMLElement} root
  */
 function hideKeepingGutter(root) {
-  let width = 0;
-  let before = 0;
-  try {
-    before = root.clientWidth;
-    width = window.innerWidth - before;
-  } catch { width = 0; }
+  const width = stripWidth(root); // v0.99.0: includes an empty host-reserved gutter
   if (!(width > 0)) { // no classic scrollbar (overlay / none) → nothing will disappear
     root.style.overflow = 'hidden';
     return;
@@ -175,7 +196,9 @@ function hideKeepingGutter(root) {
   if (gutterSupported()) {
     root.style.setProperty('scrollbar-gutter', 'stable');
     root.style.overflow = 'hidden';
-    if (root.clientWidth <= before) return; // the gutter held
+    // the gutter held = the strip is still there. v0.99.0: measured like `width` (was `clientWidth <= before`, which on a
+    // tall page with a host `scrollbar-gutter: stable` saw the now-empty gutter as gone → needless padding = double gutter)
+    if (stripWidth(root) >= width) return;
     restoreGutter(root, false); // it did not: undo, use padding instead
   } else {
     root.style.overflow = 'hidden';
@@ -208,7 +231,7 @@ export function lockScroll() {
     // value + priority: a site's inline `overflow: … !important` comes back exactly (v0.22.1 review)
     _prevOverflow = { value: root.style.getPropertyValue('overflow'), priority: root.style.getPropertyPriority('overflow') };
     // v0.91.0: everything the gutter colour needs is read BEFORE the lock changes anything
-    try { _gap = window.innerWidth - root.clientWidth; } catch { _gap = 0; }
+    _gap = stripWidth(root); // v0.99.0: also an empty host `scrollbar-gutter: stable` strip on a short page
     _prevBg = null;
     _canvas = null;
     if (_gap > 0) {

@@ -250,6 +250,44 @@ Khoá của một mục `tabs`:
 | `panel` | string | `id` của phần tử panel **nằm ngoài** td-tabs (cùng document / shadow root với td-tabs). Bị bỏ qua ở chế độ link. |
 | `count` | number \| string | **0.70.0**: số đếm vẽ thành viên thuốc sau nhãn. Số hữu hạn → chữ số; chuỗi hiển thị **nguyên văn** (không cắt). `null` / `undefined` / `''` / chuỗi trắng / `NaN` / `±Infinity` / kiểu khác → **không vẽ gì**; `0` → "0". |
 | `tone` | `'neutral'` \| `'info'` \| `'success'` \| `'warning'` \| `'danger'` | **0.70.0**: màu viên số đếm, cùng bộ tone của [badge](badge.md). Thiếu hoặc lạ → `neutral`. Không có `count` thì bị bỏ qua. |
+| `disabled` | boolean | **0.99.0**: `true` (đúng `=== true`) khoá thẻ; mọi giá trị khác (`'true'`, `1`, `'false'`) là thẻ bình thường. Xem [Thẻ bị khoá](#thẻ-bị-khoá-disabled-0990). |
+| `disabledReason` | string | **0.99.0**: lý do khoá, **chữ thuần** (không HTML): cắt khoảng trắng đầu/cuối, tối đa 200 ký tự (phần dư bị cắt), đặt làm `title` (tooltip native) của thẻ. Chỉ dùng khi `disabled` là `true`. |
+
+## Thẻ bị khoá (`disabled`) (0.99.0)
+
+Dùng khi mọi thẻ cần hiện nhưng một số chưa dùng được (ví dụ trang tạo sản phẩm: "Giá và biến thể", SEO cần sản phẩm đã lưu).
+
+```js
+tabs.tabs = [
+  { id: 'info',  label: 'Thông tin' },
+  { id: 'price', label: 'Giá và biến thể', icon: 'lock', disabled: true, disabledReason: 'Lưu sản phẩm trước' },
+];
+```
+
+- **Trợ năng**: thẻ có `aria-disabled="true"`, **không bao giờ** thuộc tính `disabled` native, nên vẫn nhận focus và
+  ← → / Home / End đi tới được (đúng mẫu WAI-ARIA tabs); không bao giờ `aria-selected="true"`. Chế độ link: thẻ khoá là `<a>`
+  **không có `href`** (không điều hướng, không có "mở tab mới"), kèm `role="link"`, `tabindex="0"`, `aria-disabled="true"`.
+- **Click / Enter / Space** trên thẻ khoá không làm gì: không chọn, không hiện panel, không `tab-change`, không `onChange`
+  (link: click bị `preventDefault()`, không `tab-click`). Thay vào đó phát [`tab-blocked`](#event). Mũi tên tới thẻ khoá chỉ di focus;
+  với `activation="auto"` cũng **không** chọn và **không** phát `tab-blocked` (sự kiện này chỉ cho thao tác kích hoạt chủ động).
+- `setActiveTab(id)` / `active-tab` với id đang bị khoá bị **bỏ qua** (thẻ hiện tại giữ nguyên, im lặng).
+- **Thẻ dự phòng** (lần dựng đầu, hoặc thẻ đang chọn bị xoá / bị khoá lúc chạy) là thẻ **đầu tiên chưa khoá**, im lặng (không
+  `tab-change`). Tất cả đều khoá: không thẻ nào được chọn và không panel nào hiện (thẻ đầu vẫn là điểm dừng Tab).
+- **Đổi lúc chạy**: gán lại `tabs` với `disabled` khác thì dựng lại; mở khoá một thẻ không đổi gì khác.
+- **Chế độ link**: URL khớp một thẻ khoá thì thẻ đó **không bao giờ** là thẻ hiện tại. Khớp lại (`popstate`, `hashchange`,
+  `syncFromLocation()`) vào thẻ khoá thì thẻ hiện tại cũ (còn mở) giữ nguyên; lần xác định **đầu tiên** rơi vào thẻ khoá thì chưa có
+  thẻ hiện tại (không đánh `aria-current="page"` cho trang người dùng không ở). Markup server: `<a href="…" aria-disabled="true">` hoặc
+  `<a href="…" data-disabled>`, lý do ở `data-disabled-reason="…"`.
+- **Giao diện**: chữ + icon dùng token `--td-tabs-fg-disabled` (mặc định pha `--td-btn-disabled-fg` với màu chữ phụ để đủ 2.2:1 trên nền máng tab; site đổi được), `cursor: not-allowed`, không có hover / nhấn; viên số đếm của thẻ
+  khoá luôn trung tính với chữ màu khoá (bỏ qua `tone`). Forced colors: `GrayText`. Cổng tương phản đo thẻ khoá ở ngưỡng 2.2:1 của control bị vô hiệu.
+- **Kit chỉ thêm tooltip `title` native, không có toast hay tooltip riêng**. Muốn báo cho người dùng thì tự nghe `tab-blocked`:
+
+```js
+tabs.addEventListener('tab-blocked', (e) => {
+  // e.detail = { tabId, reason } ; reason là '' khi thẻ không có disabledReason
+  TdToast.info(e.detail.reason || 'Thẻ này chưa dùng được.');
+});
+```
 
 ## Số đếm (`count`, `tone`) (0.70.0)
 
@@ -292,6 +330,7 @@ tabs.setTabCount('done', null);            // chưa biết: xoá viên thuốc (
 |---|---|---|---|
 | `tab-change` | `{ tabId }` | Người dùng chọn thẻ **khác** thẻ hiện tại (click, Enter/Space, hoặc mũi tên khi `activation="auto"`), hoặc gọi `setActiveTab()`. Đúng một lần mỗi lần chọn. Click lại thẻ đang chọn và đổi attribute `active-tab` **không** phát. Chế độ link: chỉ `setActiveTab()`. | có (composed) |
 | `tab-click` | `{ tabId, href, event }` | **0.83.0**, chế độ link: click một link thẻ, **trước** điều hướng gốc. **cancelable**: huỷ (`preventDefault()`) → td-tabs gọi `preventDefault()` trên click gốc (`event`); không huỷ → không đụng click. Chuột giữa (`auxclick`) không qua đây. | có (composed) |
+| `tab-blocked` | `{ tabId, reason }` | **0.99.0**: click, Enter hoặc Space trên thẻ **bị khoá** (`reason` là `''` khi không có). **Không cancelable.** Không phát khi chỉ di mũi tên tới thẻ, đổi `active-tab` hay gọi `setActiveTab()`. | có (composed) |
 
 `onChange(tabId)` được gọi **trước** khi event phát. `onChange` ném lỗi → lỗi được ghi `console.error`, thẻ vẫn đổi và
 `tab-change` vẫn phát (từ 0.16.0).
@@ -327,6 +366,7 @@ panel đó. Nên để sẵn `hidden` trên panel không mặc định chọn tr
 | `--td-tabs-pill-shadow` | `var(--td-shadow-1)` (dark: `0 1px 2px rgb(0 0 0 / 40%)`) | Bóng viên thuốc |
 | `--td-tabs-fg` | `var(--td-color-text-muted)` | Chữ thẻ chưa chọn |
 | `--td-tabs-fg-hover` | `var(--td-color-text)` | Chữ khi hover |
+| `--td-tabs-fg-disabled` | `color-mix(in srgb, var(--td-btn-disabled-fg) 60%, var(--td-color-text-muted))` | Chữ, icon, số đếm của thẻ khoá (0.99.0) |
 | `--td-tabs-fg-active` | `var(--td-color-text)` | Chữ thẻ đang chọn |
 | `--td-tabs-radius` | `12px` | Bo góc rãnh (bo góc viên thuốc tự tính đồng tâm) |
 | `--td-tabs-pad` | `4px` | Khoảng đệm rãnh và khoảng cách giữa thẻ |
@@ -424,7 +464,7 @@ cột hẹp của trang desktop cũng đúng như trên điện thoại.
 | Tab | Vào thẻ đang chọn (chỉ một điểm dừng Tab cho cả thanh — roving tabindex), Tab tiếp ra khỏi thanh / vào panel |
 | ← / → | Di focus sang thẻ trước / sau, vòng quanh. Tự đảo chiều khi `direction: rtl`. |
 | Home / End | Focus thẻ đầu / cuối |
-| Enter / Space | Chọn thẻ đang focus (nút native) |
+| Enter / Space | Chọn thẻ đang focus (nút native). Thẻ bị khoá: chỉ phát `tab-blocked` (0.99.0) |
 
 - **Chế độ link (0.83.0)**: mỗi link là một điểm dừng Tab, Enter mở link (gốc); ← → / Home / End **không làm gì**. `<nav>`
   có tên (`aria-label` của host, mặc định "Điều hướng phụ" — nên đặt tên riêng), trang hiện tại là `aria-current="page"`.
