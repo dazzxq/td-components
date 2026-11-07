@@ -505,8 +505,37 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - **`openPicker()` từ `setTimeout` không mở gì**: trình duyệt chỉ mở hộp chọn file trong một thao tác người dùng.
 - **Thumbnail trắng**: CSP thiếu `img-src blob:`.
 - **Reset không phát `files-change`**: đúng thiết kế (như input gốc); nghe `reset` của form nếu cần.
-- Không có helper PHP; markup SSR = thẻ `<td-dropzone …>` (nội dung do JS dựng). Cần chạy không JS thì in thêm
-  `<input type="file" name="…">` gốc bên ngoài (hoặc trong `<noscript>`).
+- Helper PHP: xem mục [PHP](#php-0100) bên dưới.
+
+## PHP (0.100.0)
+
+`td_dropzone($name, $options)` in field chọn file chạy được khi **chưa có JS**; module nâng cấp tại chỗ (ADR 0012, contract
+`dropzone@1`), không dựng lại input.
+
+```php
+<form method="post" enctype="multipart/form-data">
+  <?= td_dropzone('docs[]', [
+    'label' => 'Tệp đính kèm', 'accept' => ['.pdf', 'image/*'], 'multiple' => true,
+    'max_size' => '5MB', 'max_files' => 3, 'required' => true, 'hint' => 'Kéo thả hoặc bấm chọn.',
+    'element' => true,
+  ]) ?>
+</form>
+```
+
+- **Option**: `label`, `hint` (= `helper_text`, map sang attribute `helper-text`), `accept` (chuỗi hoặc mảng), `accept_label`,
+  `multiple`, `max_size`, `max_files`, `prompt_title`, `prompt_text`, `hint_style`, `preview`, `required`, `disabled`,
+  `aria_label`, `id`, `class`, `element`. Dòng gợi ý (định dạng / dung lượng / số file) được PHP tính sẵn, cùng kết quả với JS.
+- **Native (mặc định)**: `div.td-field` + `label` + `input[type=file]` thuần; chỉ giữ `name`, `accept`, `multiple`, `required`,
+  `disabled`. `max_size`, `max_files`, `accept_label`, `prompt_*`, `hint_style`, `preview` bị bỏ (cần JS). **Element**:
+  `['element' => true]` từng lần gọi hoặc `Td::configure(..., ['ssr_elements' => true])`; in `<td-dropzone
+  data-td-ssr="dropzone@1">` chứa đúng cây JS dựng.
+- **Trước khi JS nạp**: input native hiện ra (CSS `td-dropzone:not(:defined)`), nút "Chọn file" ẩn, input có `name`,
+  `required`, nhãn và `aria-describedby`, không `tabindex=-1` / `aria-hidden`; server nhận file như form thường.
+- **Bàn giao khi nâng cấp**: nhận chính input đó, đưa `FileList` đã chọn vào hàng đợi (im lặng, không `input`/`change`/
+  `files-change`), gỡ `name` / `required`, `ElementInternals` giữ giá trị và validity (đúng một mục FormData mỗi file),
+  input thành `tabindex=-1` + `aria-hidden`; focus ở input chuyển sang nút "Chọn file".
+- **Markup lệch** (hoặc site ghi đè `TdDropzone.labels`, hoặc có `error-text`): render an toàn, file đã chọn giữ nguyên.
+- Giới hạn: `max_size` PHP chặn ở dưới 4e16 byte.
 
 ## Xem thêm
 

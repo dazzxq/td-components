@@ -4,6 +4,27 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.100.0
+
+**Bản dọn việc tồn: dropzone SSR, kiểm thử "Bây giờ" ngoài min–max, nâng dev deps** ([plan](docs/internal/plans/v0.100.0-batch.md)).
+Thêm mới, không đổi hành vi cũ.
+
+- **Dropzone SSR (ADR 0012, contract `dropzone@1`):** helper PHP mới `td_dropzone($name, $o)`. Mặc định in
+  `<input type="file">` native có label / hint, chạy được không cần JS. `['element' => true]` hoặc
+  `Td::configure(..., ['ssr_elements' => true])` in `<td-dropzone>` với đúng markup của component. Trước khi JS nạp, ô
+  file native hiện ra, bấm và dùng bàn phím được, gửi form và `required` chạy bình thường. Khi component nâng cấp:
+  giữ nguyên node input, file người dùng đã chọn vào hàng đợi lặng lẽ (không phát `input` / `change` / `files-change`),
+  mỗi file đúng một mục trong FormData, giữ focus. Markup lệch thì render an toàn và vẫn giữ file. Tuỳ chọn: `id`,
+  `label`, `hint`, `accept`, `accept_label`, `multiple`, `max_size`, `max_files`, `prompt_title`, `prompt_text`,
+  `hint_style`, `disabled`, `required`, `aria_label`, `preview`. Kiểm tra file phía trình duyệt chỉ là UX, server vẫn
+  phải kiểm.
+- **"Bây giờ" khi hôm nay nằm ngoài min–max** (`td-datetime-picker`, `td-datetime-range`): đã đúng sẵn (báo lỗi ngay,
+  "Chọn" bị chặn, không phát `change`); thêm test 3 engine, đóng mục theo dõi từ v0.61.
+- **Kiểm thử:** sửa fixture responsive bị tràn ngang ở 393px trên WebKit macOS (lỗi của fixture, không phải component).
+- **Dev deps:** `@web/test-runner` 1.0 (cần Node 22 khi chạy test), `@web/test-runner-playwright` 1.0 (playwright giữ 1.60, bản runner này ghim), `esbuild` 0.28 (engine
+  rich-text build lại), `@tailwindcss/cli` 4.3.5, `prosemirror-transform` 1.12.5 / `prosemirror-view` 1.42.9 (vào
+  engine rich-text), `npm audit fix`. Giữ Storybook 8.x và Vite 6 (Storybook 8.6 chưa hỗ trợ Vite mới hơn).
+
 ## 0.99.0
 
 **`<td-tabs>` khoá từng thẻ + sửa dải thanh cuộn khi site tự đặt `scrollbar-gutter: stable`** (yêu cầu + báo lỗi của

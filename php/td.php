@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.99.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.99.0', __DIR__ . '/public/assets/vendor/td-components/0.99.0');
+ *   require_once '/path/to/vendor/td-components/0.100.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.100.0', __DIR__ . '/public/assets/vendor/td-components/0.100.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -314,6 +314,14 @@ namespace TdComponents {
         public const COLOR_MAX_INPUT = 64;
         public const COLOR_PRESET_CANDIDATES = 192;
         public const COLOR_PRESET_STRING = 192 * 64;
+        /** v0.100.0: td_dropzone (native by default; element mode <td-dropzone data-td-ssr="dropzone@1">). */
+        public const SSR_DROPZONE = 'dropzone@1';
+        /** v0.100.0: texts of td_dropzone = the defaults of TdDropzone.labels the server-rendered part uses. */
+        public const DROPZONE_LABELS = [
+            'prompt' => 'Kéo thả file vào đây hoặc', 'browse' => 'Chọn file', 'list' => 'File đã chọn',
+            'hintAccept' => 'Định dạng: {accept}', 'hintSize' => 'Tối đa {size} mỗi file', 'hintCount' => 'Tối đa {n} file',
+            'badgeAccept' => '{accept}', 'badgeSize' => 'Tối đa {size}', 'badgeCount' => 'Tối đa {n} file',
+        ];
         /** v0.94.0: td_icon_picker (always the element <td-icon-picker data-td-ssr="icon-picker@1">). */
         public const SSR_ICON_PICKER = 'icon-picker@1';
         /** v0.94.0: texts of td_icon_picker = TdIconPicker.labels (placeholder / clear / none — the server-rendered part). */
@@ -8973,6 +8981,218 @@ namespace {
             'error-text' => $error,
             'aria-label' => $aria,
         ], $hostTaken) . '><div class="td-color">' . $labelHtml . $box . '</div>' . $note . '</td-color-picker>';
+    }
+
+    /**
+     * @internal v0.100.0: parseFileSize() of src/utils/upload-queue.js — `5242880` | `500KB` | `5MB` | `1.5 GB` (1 KB = 1024 B,
+     * case-insensitive, b|k|kb|m|mb|g|gb) → bytes, null = no limit / invalid.
+     */
+    function td__file_size(mixed $v): ?int
+    {
+        if (!is_scalar($v) || is_bool($v) || !preg_match('/^\s*(\d+(?:\.\d+)?)\s*(b|kb?|mb?|gb?)?\s*$/i', (string) $v, $m)) {
+            return null;
+        }
+        $units = ['b' => 1, 'k' => 1024, 'kb' => 1024, 'm' => 1048576, 'mb' => 1048576, 'g' => 1073741824, 'gb' => 1073741824];
+        $n = (float) $m[1] * $units[strtolower($m[2] ?? 'b') ?: 'b'];
+        return is_finite($n) && $n > 0 && $n < 4.0e16 ? (int) floor($n) : null; // 0.5 → 0 (falsy, like the JS)
+    }
+
+    /**
+     * @internal v0.100.0: formatFileSize() of src/utils/dom-utils.js for a positive integer (`1.13 KB`, `5 MB`): units of 1024,
+     * two decimals rounded half up on the exact value, trailing zeros dropped (the integer arithmetic is exact).
+     */
+    function td__format_file_size(int $bytes): string
+    {
+        if ($bytes <= 0) {
+            return '0 Bytes';
+        }
+        $units = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        $i = 0;
+        $pow = 1;
+        while ($i < 4 && $bytes >= $pow * 1024) {
+            $pow *= 1024;
+            $i++;
+        }
+        $q = intdiv(200 * $bytes + $pow, 2 * $pow); // round(bytes / pow * 100), ties up
+        $whole = intdiv($q, 100);
+        $frac = $q % 100;
+        $num = (string) $whole . ($frac === 0 ? '' : '.' . rtrim(str_pad((string) $frac, 2, '0', STR_PAD_LEFT), '0'));
+        return $num . ' ' . $units[$i];
+    }
+
+    /**
+     * @internal v0.100.0: the hint parts of <td-dropzone> (`_hintParts()` of src/form/td-dropzone.js): formats · size · count.
+     * @param array{accept: ?string, accept_label: ?string, max_size: ?string, max_files: ?string, multiple: bool} $a the host attributes
+     * @return list<string>
+     */
+    function td__dropzone_hint_parts(array $a, bool $badges): array
+    {
+        $L = Td::DROPZONE_LABELS;
+        $fmt = static fn (string $tpl, array $vars): string => strtr($tpl, array_combine(
+            array_map(static fn (string $k): string => '{' . $k . '}', array_keys($vars)),
+            array_map('strval', array_values($vars)),
+        ));
+        $parts = [];
+        $tokens = array_values(array_filter(array_map('trim', explode(',', (string) $a['accept'])), static fn (string $t): bool => $t !== ''));
+        if ($tokens) {
+            $friendly = $a['accept_label'] !== null ? trim($a['accept_label']) : null;
+            if ($badges) {
+                // extensions / MIME subtypes are ASCII; plain strtoupper (no mbstring, plain PHP >= 8.0): a non-ASCII letter stays as typed
+                $upper = static fn (string $s): string => strtoupper($s);
+                $list = $friendly ?? implode(', ', array_values(array_unique(array_map(static function (string $t) use ($upper): string {
+                    if ($t[0] === '.') {
+                        return $upper(substr($t, 1));
+                    }
+                    $sub = explode('/', $t)[1] ?? '';
+                    return $sub !== '' && $sub !== '*' ? $upper(explode('+', $sub)[0]) : $t;
+                }, $tokens))));
+                if ($list !== '') {
+                    $parts[] = $fmt($L['badgeAccept'], ['accept' => $list]);
+                }
+            } elseif ($friendly === null) {
+                $parts[] = $fmt($L['hintAccept'], ['accept' => implode(', ', $tokens)]);
+            } elseif ($friendly !== '') {
+                $parts[] = $fmt($L['hintAccept'], ['accept' => $friendly]);
+            }
+        }
+        $max = td__file_size($a['max_size']);
+        if ($max) {
+            $parts[] = $fmt($badges ? $L['badgeSize'] : $L['hintSize'], ['size' => td__format_file_size($max)]);
+        }
+        $limit = $a['multiple'] && $a['max_files'] !== null && preg_match('/^\s*([+-]?\d+)/', $a['max_files'], $m) ? (int) $m[1] : 0;
+        if ($limit > 1) {
+            $parts[] = $fmt($badges ? $L['badgeCount'] : $L['hintCount'], ['n' => $limit]);
+        }
+        return $parts;
+    }
+
+    /**
+     * v0.100.0 (ADR 0012, plan v0.100.0-batch C; contract `dropzone@1`): a file field.
+     * NATIVE by default (works without JS): a `div.td-field` > [label] + `input.td-field__control[type=file]` (name, accept,
+     * multiple, required, disabled; the browser validates `required`) + the hint as helper text. `max_size` / `max_files` /
+     * `accept_label` / `prompt_*` / `hint_style` / `preview` need the element and are dropped here. ELEMENT mode
+     * (`element => true` or Td::configure ssr_elements) prints `<td-dropzone data-td-ssr="dropzone@1">` + exactly the markup
+     * <td-dropzone> renders for an empty dropzone (hint filled), with the real `input[type=file]` carrying the no-JS-only
+     * attributes `name` / `required` (+ its accessible name and `aria-describedby`; NOT `tabindex="-1"` / `aria-hidden`, so it
+     * is operable before the module loads, see `td-dropzone:not(:defined)` in td.css). The element adopts that input in place:
+     * files already picked stay (queue), the host takes over the form value and the input loses `name` / `required`.
+     * Options: label, hint (alias `helper_text`; → `helper-text`), accept (string | list), accept_label, multiple, max_size
+     * (bytes | `5MB`), max_files, prompt_title, prompt_text, hint_style (`badges`), preview, required, disabled, aria_label,
+     * id (host; native: wrapper, control = {id}-control), class, element. No upload adapter on the server: the SERVER must
+     * re-validate type, size and content of every POSTed file (`accept` / `max_size` are UX hints). Texts are the defaults of
+     * `TdDropzone.labels`: a site that overrides them in JS gets the safe render instead of the in-place adoption.
+     */
+    function td_dropzone(string $name, array $o = []): string
+    {
+        $element = td__element($o);
+        $nameAttr = $name !== '' ? $name : null;
+        $id = td__str($o['id'] ?? null) ?? td__host_uid($name !== '' ? $name : 'dropzone');
+        $label = trim((string) (td__str($o['label'] ?? null) ?? ''));
+        $label = $label !== '' ? $label : null;
+        $aria = td__str($o['aria_label'] ?? null);
+        $help = td__helper_opt($o, true);
+        $required = !empty($o['required']);
+        $disabled = !empty($o['disabled']);
+        $multiple = !empty($o['multiple']);
+        $accept = $o['accept'] ?? null;
+        if (is_array($accept)) {
+            $accept = implode(',', array_filter(array_map('strval', array_filter($accept, 'is_scalar'))));
+        }
+        $accept = td__str($accept);
+        $star = $required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '';
+        $L = Td::DROPZONE_LABELS;
+        if (!$element) {
+            $desc = $help !== null ? $id . '-note' : null;
+            $input = '<input' . Td::ownAttrs([
+                'type' => 'file',
+                'class' => 'td-field__control',
+                'id' => $id . '-control',
+                'name' => $nameAttr,
+                'accept' => $accept,
+                'multiple' => $multiple,
+                'required' => $required,
+                'disabled' => $disabled,
+                'aria-label' => $label === null ? ($aria ?? $L['browse']) : null,
+                'aria-describedby' => $desc,
+            ]) . '>';
+            $labelHtml = $label !== null
+                ? '<label class="td-field__label" id="' . Td::e($id) . '-label" for="' . Td::e($id) . '-control">' . Td::e($label) . $star . '</label>'
+                : '';
+            return '<div class="td-field td-field--md' . Td::e(Td::classTokens($o['class'] ?? null)) . '" id="' . Td::e($id) . '">' . $labelHtml . $input
+                . ($help !== null ? '<div class="td-field__footer">' . td__helper_note($help, $id, false) . '</div>' : '') . '</div>';
+        }
+        $acceptLabel = array_key_exists('accept_label', $o) && is_scalar($o['accept_label']) && !is_bool($o['accept_label']) ? (string) $o['accept_label'] : null;
+        $maxSize = td__str($o['max_size'] ?? null);
+        $maxFiles = Td::intOpt($o['max_files'] ?? null, 1);
+        $title = td__str($o['prompt_title'] ?? null);
+        $sub = td__str($o['prompt_text'] ?? null);
+        $style = td__str($o['hint_style'] ?? null);
+        $stacked = trim((string) $title) !== '' || trim((string) $sub) !== '';
+        $badges = strtolower(trim((string) $style)) === 'badges';
+        $hintParts = td__dropzone_hint_parts([
+            'accept' => $accept, 'accept_label' => $acceptLabel, 'max_size' => $maxSize, 'max_files' => $maxFiles, 'multiple' => $multiple,
+        ], $badges);
+        $e = static fn (string $s): string => Td::e($s);
+        $hintId = $id . '-hint';
+        if ($badges) {
+            $hint = '<div class="td-dropzone__hint td-dropzone__hint--badges" id="' . $e($hintId) . '"' . ($hintParts ? '' : ' hidden') . '>'
+                . implode(' ', array_map(static fn (string $p): string => '<span class="td-badge td-dropzone__badge">' . Td::e($p) . '</span>', $hintParts))
+                . '</div>';
+        } else {
+            $hint = '<p class="td-dropzone__hint" id="' . $e($hintId) . '"' . ($hintParts ? '' : ' hidden') . '>' . $e(implode(' · ', $hintParts)) . '</p>';
+        }
+        $browse = '<button type="button" class="td-dropzone__browse td-btn td-btn--secondary td-btn--sm"' . ($disabled ? ' disabled' : '') . '>' . $e($L['browse']) . '</button>';
+        $prompt = $stacked
+            ? '<span class="td-dropzone__icon" data-td-icon="upload" data-td-icon-size="64" aria-hidden="true"></span>'
+                . (trim((string) $title) !== '' ? '<p class="td-dropzone__title">' . $e(trim((string) $title)) . '</p>' : '')
+                . (trim((string) $sub) !== '' ? '<p class="td-dropzone__subtext">' . $e(trim((string) $sub)) . '</p>' : '')
+                . '<p class="td-dropzone__prompt">' . $browse . '</p>'
+            : '<span class="td-dropzone__icon" data-td-icon="upload" aria-hidden="true"></span>'
+                . '<p class="td-dropzone__prompt"><span class="td-dropzone__text">' . $e($L['prompt']) . '</span> ' . $browse . '</p>';
+        $describedBy = trim(($hintParts ? $hintId . ' ' : '') . ($help !== null ? $id . '-note' : ''));
+        $input = '<input' . Td::ownAttrs([
+            'type' => 'file',
+            'class' => 'td-dropzone__input',
+            'name' => $nameAttr,
+            'accept' => $accept,
+            'multiple' => $multiple,
+            'required' => $required,
+            'disabled' => $disabled,
+            'aria-labelledby' => $label !== null ? $id . '-label' : null,
+            'aria-label' => $label === null ? ($aria ?? $L['browse']) : null,
+            'aria-describedby' => $describedBy !== '' ? $describedBy : null,
+        ]) . '>';
+        $labelHtml = $label !== null ? '<span class="td-dropzone__label" id="' . $e($id) . '-label">' . $e($label) . $star . '</span>' : '';
+        $root = '<div class="' . ($stacked ? 'td-dropzone td-dropzone--stacked' : 'td-dropzone') . '" role="group"'
+            . ($label !== null ? ' aria-labelledby="' . $e($id) . '-label"' : '') . ' data-state="idle"' . ($disabled ? ' data-disabled=""' : '') . '>'
+            . $labelHtml . $input
+            . '<div class="td-dropzone__zone">' . $prompt . $hint . '</div>'
+            . '<ul class="td-dropzone__rejected" hidden></ul>'
+            . '<ul class="td-dropzone__list" aria-label="' . $e($L['list']) . '" hidden></ul>'
+            . '<span class="td-sr-only td-dropzone__live" aria-live="polite"></span>'
+            . td__helper_note($help, $id, false)
+            . '</div>';
+        $hostTaken = [];
+        return '<td-dropzone' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_DROPZONE,
+            'id' => $id,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'name' => $nameAttr,
+            'label' => $label,
+            'accept' => $accept,
+            'accept-label' => $acceptLabel,
+            'multiple' => $multiple,
+            'max-size' => $maxSize,
+            'max-files' => $maxFiles,
+            'prompt-title' => $title,
+            'prompt-text' => $sub,
+            'hint-style' => $style,
+            'preview' => !empty($o['preview']),
+            'required' => $required,
+            'disabled' => $disabled,
+            'helper-text' => $help,
+            'aria-label' => $aria,
+        ], $hostTaken) . '>' . $root . '</td-dropzone>';
     }
 
     /**

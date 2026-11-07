@@ -37,6 +37,10 @@
 	display: grid;
 	grid-template-columns: 1fr 1fr;
 	gap: 12px;
+	/* .rsp-section is a one-column auto grid: WebKit sizes that track from this grid's intrinsic width (the widest
+	   host min-content, e.g. td-tree-select 370 px) and overflows 393 px even though every host has min-inline-size: 0.
+	   min-width: 0 lets the track shrink to the section (verified: Chromium never needed it). */
+	min-width: 0;
 }
 
 /* A narrow sidebar-like column (container-query components must adapt to it, not to the viewport). */

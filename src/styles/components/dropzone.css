@@ -92,6 +92,28 @@
 		opacity: 0;
 	}
 
+	/*
+	 * v0.100.0 (ADR 0012 point 6, SSR contract dropzone@1): before the element is defined (no JS yet / module not loaded)
+	 * the server-rendered file input IS the field: shown as a native control, the JS-only "choose" button (and the prompt
+	 * sentence that points at it) hidden. Defined elements are untouched (the rules do not match).
+	 */
+	td-dropzone:not(:defined) .td-dropzone__input {
+		position: static;
+		inline-size: auto;
+		max-inline-size: 100%;
+		block-size: auto;
+		margin: 0;
+		overflow: visible;
+		clip: auto;
+		white-space: normal;
+		opacity: 1;
+	}
+
+	td-dropzone:not(:defined) .td-dropzone__browse,
+	td-dropzone:not(:defined) .td-dropzone__text {
+		display: none;
+	}
+
 	.td-dropzone__zone {
 		display: flex;
 		flex-direction: column;

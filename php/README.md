@@ -6,7 +6,7 @@ One plain PHP file (PHP ≥ 8.0 — CI job `php80` runs the suite on PHP 8.0; no
 
 ```php
 require_once $kitDir . '/php/td.php';
-TdComponents\Td::configure('/assets/vendor/td-components/0.99.0', $kitDir); // versioned URL + filesystem path
+TdComponents\Td::configure('/assets/vendor/td-components/0.100.0', $kitDir); // versioned URL + filesystem path
 
 echo td_stylesheet_tag($nonce);
 echo td_import_map_tag(['dompurify' => '/assets/vendor/dompurify/purify.es.js'], $nonce); // ONE import map per page
@@ -46,6 +46,9 @@ echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
 - v0.49.0 `td_choice_group` always prints `<td-choice-group data-td-ssr="choice-group@1">` with NATIVE radios (real name,
   `required` on every radio) — the form works without JS; the module adopts it in place. `Td::safeColor()` gates swatch
   colours (SVG `fill`). `td_number_input(…, ['element' => true, 'stepper' => true])` adds the − / + buttons.
+- v0.100.0 `td_dropzone` native (default) prints `div.td-field` + `input[type=file]`; element mode (`['element' => true]` or
+  `ssr_elements`) prints `<td-dropzone data-td-ssr="dropzone@1">` with the JS tree (hint pre-computed), adopted in place:
+  the picked `FileList` moves silently into the queue. See docs/components/dropzone.md.
 - Everything is escaped; attribute names, URLs and class tokens are allowlisted.
 
 Full reference (Vietnamese): [docs/guides/php-adapter.md](../docs/guides/php-adapter.md).

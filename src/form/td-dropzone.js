@@ -1,4 +1,5 @@
-import { TdFormElement } from '../base/td-form-element.js';
+import { TdFormElement, ssrContentNodes, ssrSamePart, ssrSameAttrs } from '../base/td-form-element.js';
+import { ssrMarker } from '../base/td-base-element.js';
 import { fillIconSlots, tdIcon } from '../icons/td-icon.js';
 import { formatFileSize } from '../utils/dom-utils.js';
 import { normalizeImageResizePolicy } from '../utils/image-resize.js';
@@ -66,6 +67,16 @@ let seq = 0;
  * plus `optimization` and `originalFile` in its options. An upload error row offers "Thử lại" (`.td-dropzone__retry`):
  * the same optimised file goes to the hook again (no new optimisation). Removing a row aborts its optimisation (the
  * upload never starts).
+ *
+ * **SSR (v0.100.0, ADR 0012; contract `dropzone@1`):** php `td_dropzone()` element mode prints the host marked
+ * `data-td-ssr="dropzone@1"` + EXACTLY the markup below for an empty dropzone (hint text filled), with the real input
+ * carrying the no-JS-only attributes `name` / `required` (and `aria-labelledby` | `aria-label` + `aria-describedby`; no
+ * `tabindex="-1"` / `aria-hidden="true"`: the input is the field before the upgrade, see `td-dropzone:not(:defined)` in
+ * dropzone.css). Valid markup is adopted in place: the native input is NEVER rebuilt; the files already picked in it enter
+ * the queue silently (no `input` / `change` / `files-change`), ElementInternals owns the form value + validity, the input
+ * loses `name` / `required` / the labelling and gets the JS render's `tabindex="-1"` + `aria-hidden="true"`. Anything
+ * else (another schema, extra / changed nodes or attributes) → safe render now; the files of its one native file input
+ * still enter the queue and that input node is moved into the new render.
  *
  * Markup:
  *   <div class="td-dropzone" role="group" aria-labelledby="{id}-label" data-state="idle|dragover" [data-disabled]>
@@ -375,7 +386,15 @@ export class TdDropzone extends TdFormElement {
 
   afterRender() {
     fillIconSlots(this);
-    const hint = this.querySelector('.td-dropzone__hint');
+    this._fillHint(this.querySelector('.td-dropzone__hint'));
+    const root = this.querySelector('.td-dropzone');
+    this._applyAccessibleName(root, !!(this.getAttribute('label') || '').trim());
+    this._refresh();
+    this._applyErrorState();
+  }
+
+  /** @private the hint element's content: the joined text, or one badge per part (also used on the SSR template) */
+  _fillHint(hint) {
     if (this._badgeHint()) {
       // One badge per part, text only; a space between them keeps the accessible description readable.
       const nodes = [];
@@ -393,10 +412,6 @@ export class TdDropzone extends TdFormElement {
       hint.textContent = text;
       hint.hidden = !text;
     }
-    const root = this.querySelector('.td-dropzone');
-    this._applyAccessibleName(root, !!(this.getAttribute('label') || '').trim());
-    this._refresh();
-    this._applyErrorState();
   }
 
   _focusTarget() {
@@ -419,6 +434,124 @@ export class TdDropzone extends TdFormElement {
 
   /** Files can't be restored from a saved state (bfcache / autofill): keep the current list. */
   _restoreState() {}
+
+  // --- SSR (contract dropzone@1; v0.100.0, ADR 0012) ---
+
+  /**
+   * Marker `dropzone@1` + EXACTLY the markup php td_dropzone() element mode prints → adopt in place; anything else (another
+   * schema, changed / extra nodes or attributes) → safe render NOW. In both cases the files already picked in the
+   * server-rendered native input are kept: they enter the queue silently (hydrateExisting / _restoreSsrState).
+   * @returns {boolean}
+   */
+  canHydrate() {
+    const m = ssrMarker(this);
+    if (!m || m.name !== 'dropzone') return false;
+    this.removeAttribute('data-td-ssr'); // consumed (not `hydratable`: a re-connect renders again)
+    const gate = m.schema === 1 ? this._ssrGate() : null;
+    if (gate) {
+      this._ssrAdopt = gate;
+      return true;
+    }
+    const inputs = [...this.querySelectorAll('input')].filter((i) => i.type === 'file');
+    const input = inputs.length === 1 ? inputs[0] : null;
+    const active = this.ownerDocument.activeElement;
+    this._ssrRestore = { input, files: input ? [...input.files] : [], refocus: !!active && active !== this && this.contains(active) };
+    this._ssrFreshRender = true;
+    return false;
+  }
+
+  /**
+   * Adopt the markup: the native input stays (same node). Its live FileList is captured, the input gives up the no-JS-only
+   * attributes (`name` / `required` / labelling) FIRST, THEN the files enter the queue (silently: no event; the
+   * ElementInternals form value + validity are set from them; one FormData entry per file even for an early upload hook).
+   * The input gets the JS render's `tabindex="-1"` + `aria-hidden="true"` and is emptied (the queue owns the files).
+   */
+  hydrateExisting() {
+    const input = this._ssrAdopt;
+    this._ssrAdopt = null;
+    if (!input) return;
+    const hadFocus = this.ownerDocument.activeElement === input;
+    const files = [...input.files];
+    // the native input stops owning the field BEFORE the queue does (an early upload hook sees one FormData entry)
+    for (const a of ['name', 'required', 'aria-labelledby', 'aria-label', 'aria-describedby']) input.removeAttribute(a);
+    this._adoptFiles(files);
+    input.setAttribute('tabindex', '-1');
+    input.setAttribute('aria-hidden', 'true');
+    input.value = '';
+    if (hadFocus) this._focusTarget()?.focus({ preventScroll: true }); // the input is hidden from now on
+  }
+
+  /** @protected refused markup was replaced: the old native input node moves into the render, its files enter the queue */
+  _restoreSsrState(s) {
+    const old = s.input;
+    const fresh = this.querySelector('.td-dropzone__input');
+    if (old && fresh && old.type === 'file' && fresh !== old) {
+      // the server's attributes (handlers, name, form overrides…) are not trusted: only the render's own remain
+      for (const a of [...old.attributes]) if (a.name !== 'type') old.removeAttribute(a.name);
+      for (const a of [...fresh.attributes]) if (a.name !== 'type') old.setAttribute(a.name, a.value);
+      old.value = '';
+      fresh.replaceWith(old);
+    }
+    this._adoptFiles(s.files || []);
+    if (s.refocus) this._focusTarget()?.focus({ preventScroll: true });
+  }
+
+  /** @private files already chosen before the upgrade: into the queue, silently (no event, no announcement) */
+  _adoptFiles(files) {
+    const list = files.filter((f) => f instanceof File);
+    if (list.length) this._add(list);
+  }
+
+  /**
+   * @private The strict gate. The host holds ONE `div.td-dropzone` (+ the PHP helper note inside it, last) equal to
+   * render() with the hint filled, whose only difference is the one native input (the no-JS attributes).
+   * @returns {HTMLInputElement|null} the input to adopt
+   */
+  _ssrGate() {
+    if (this.errorMessage) return null; // the contract has no error note
+    const nodes = ssrContentNodes(this);
+    if (nodes.length !== 1 || nodes[0].nodeType !== 1) return null;
+    const root = /** @type {HTMLElement} */ (nodes[0]);
+    const tpl = document.createElement('template');
+    tpl.innerHTML = this.render();
+    const want = tpl.content.firstElementChild;
+    if (!want || root.localName !== 'div' || root.namespaceURI !== want.namespaceURI || !ssrSameAttrs(root, want)) return null;
+    this._fillHint(want.querySelector('.td-dropzone__hint'));
+    const kids = ssrContentNodes(root);
+    const rest = this._ssrWithoutHelperNote(kids);
+    if (!rest) return null;
+    const clone = /** @type {HTMLElement} */ (root.cloneNode(true));
+    if (rest.length !== kids.length) clone.lastElementChild?.remove(); // the helper note (the base keeps it)
+    const inputs = clone.querySelectorAll('input');
+    const live = root.querySelector('input');
+    const wantInput = want.querySelector('input');
+    if (inputs.length !== 1 || !live || !wantInput || !this._ssrInputOk(live, wantInput, want)) return null;
+    inputs[0].replaceWith(wantInput.cloneNode(true));
+    // an icon slot is drawn by fillIconSlots() on bind: anything inside it now is not ours
+    if ([...clone.querySelectorAll('[data-td-icon]')].some((e) => e.childNodes.length && (e.firstElementChild || e.textContent.trim()))) return null;
+    return ssrSamePart(clone, want) ? /** @type {HTMLInputElement} */ (live) : null;
+  }
+
+  /**
+   * @private the server's native input = render()'s input MINUS `tabindex` / `aria-hidden`, PLUS `name` (the host's),
+   * `required`, its accessible name (`aria-labelledby` the label | `aria-label`) and `aria-describedby` (hint, helper note).
+   */
+  _ssrInputOk(live, wantInput, want) {
+    if (!(live instanceof HTMLInputElement) || live.type !== 'file' || live.namespaceURI !== wantInput.namespaceURI
+      || live.childNodes.length) return false;
+    const exp = wantInput.cloneNode(false);
+    exp.removeAttribute('tabindex');
+    exp.removeAttribute('aria-hidden');
+    const name = this.getAttribute('name');
+    if (name) exp.setAttribute('name', name);
+    if (this.hasAttribute('required')) exp.setAttribute('required', '');
+    if ((this.getAttribute('label') || '').trim()) exp.setAttribute('aria-labelledby', `${this.id}-label`);
+    else exp.setAttribute('aria-label', this.getAttribute('aria-label') || String(TdDropzone.labels.browse ?? ''));
+    const hint = want.querySelector('.td-dropzone__hint');
+    const ids = [...(hint && !hint.hidden ? [hint.id] : []), ...(this.helperMessage ? [`${this.id}-note`] : [])];
+    if (ids.length) exp.setAttribute('aria-describedby', ids.join(' '));
+    return ssrSameAttrs(live, exp);
+  }
 
   // --- Private ---
 

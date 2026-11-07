@@ -487,6 +487,7 @@
       "src/utils/value-title.js"
     ],
     "src/form/td-dropzone.js": [
+      "src/base/td-base-element.js",
       "src/base/td-form-element.js",
       "src/feedback/td-progress.js",
       "src/icons/td-icon.js",

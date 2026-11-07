@@ -169,6 +169,15 @@ export function renderColorPickerFixture() {
   return renderPhp('color-picker-fixture.php');
 }
 
+// v0.100.0: td_dropzone (native by default, element mode opt-in — dropzone@1).
+export const DROPZONE_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'dropzone.fixtures.json'), 'utf8'));
+export const DROPZONE_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'dropzone.html');
+
+/** Render test/ssr/dropzone-fixture.php (the HTML loaded by the dropzone SSR browser test). */
+export function renderDropzoneFixture() {
+  return renderPhp('dropzone-fixture.php');
+}
+
 // v0.94.0: td_icon_picker (always element mode, icon-picker@1).
 export const ICON_PICKER_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'icon-picker.fixtures.json'), 'utf8'));
 export const ICON_PICKER_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'icon-picker.html');

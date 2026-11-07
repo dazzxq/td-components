@@ -122,6 +122,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.97.0 (owner 05/11, mang từ dwp): `<td-scroll-top progress-target>` vòng tiến độ đọc (dấu tích 3 giây, `reading-progress-complete`, `update()` cho SPA) + `<td-dropdown>` option `font` (xem trước phông, SSR `data-font`, PHP `font`). Ảnh trong option đã có từ v0.95.0. Thiết kế: Codex think-about đồng thuận; plan [v0.97.0](plans/v0.97.0-scroll-progress-dropdown-font.md)
 - `done` v0.98.0 (dsuite 07/11): `TdModal.confirm({ initialFocus: 'cancel' | 'confirm' })`, mặc định `cancel`, `typeToConfirm` luôn thắng, chặn phím mở lọt sang nút xác nhận. Plan [v0.98.0](plans/v0.98.0-confirm-initial-focus.md)
 - `done` v0.99.0 (dsuite 07/11): `<td-tabs>` khoá từng thẻ (`disabled` / `disabledReason`, `tab-blocked`, token `--td-tabs-fg-disabled`) + khoá cuộn tô dải `scrollbar-gutter: stable` của site (trang ngắn) và hết hai dải chồng nhau (trang dài). Plan [v0.99.0](plans/v0.99.0-tabs-disabled.md)
+- `done` v0.100.0 (08/11, lô dọn việc tồn): dropzone SSR `td_dropzone` (contract `dropzone@1`, nhận file đã chọn trước khi nâng cấp), test "Bây giờ" ngoài min–max (đã đúng sẵn), fixture responsive WebKit macOS 393px, dev deps (wtr 1.0, playwright giữ 1.60 (wtr-playwright 1.0 ghim), esbuild 0.28, tailwind cli 4.3.5, prosemirror patch, audit fix). Plan [v0.100.0](plans/v0.100.0-batch.md)
 - `done` v0.95.0 (04/11, lô song song [v0.95.0-batch.md](plans/v0.95.0-batch.md); yêu cầu dcms2 03/11, ADR 0040): `td-check-matrix` `mode="override"` — ô **3 trạng thái** kế thừa → cấp → từ chối (chạm xoay vòng), cờ `inherited`, ô khoá, ô hàng loạt, nút "Đặt lại về kế thừa"; FormData `_v=2`; PHP `td_check_matrix` `mode` + hợp đồng SSR `check-matrix@2` ([plan](plans/v0.95.0-check-matrix.md))
 - `done` v0.95.0 (04/11; yêu cầu dsuite 03/11, ADR 0041): `td-media-picker` thả hàng loạt — upload nền (đóng / gỡ picker không huỷ, mở lại cùng adapter + `context` thấy thẻ), dải lỗi từ 2 thẻ ("Thử lại tất cả" / "Gỡ tất cả lỗi"), `exact-reused` → chip "Đã có trong thư viện" + thẻ ghim, trần 100 file / 256 MiB mỗi adapter, pool 3 upload toàn trang, `TdMediaPicker.uploads` / `cancelUploads()`, `UploadQueue.release()` ([plan](plans/v0.95.0-media-picker-bulk.md))
 - `done` v0.95.0 (04/11; yêu cầu dwp 03/11, K5 + K8): `<td-selection-bar>` (`group` / `for`, đếm tổng, ×, nút thao tác + danger, "…" khi hẹp, dính đáy + safe-area, `--td-selection-bar-offset`, tự bỏ chọn sau thao tác trừ khi `preventDefault()`) + `td-media-grid` `selection-group` (Shift dải xuyên lưới, Esc) + event `item-remove` ([plan](plans/v0.95.0-selection-bar.md))
@@ -131,7 +132,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.88.1: `td-color-picker` ẩn popup trong lúc hút màu bằng EyeDropper (dsuite báo popup che ảnh)
 - `done` v0.88.0: `td-rich-text` preset comment (ProseMirror vendored, policy JSON + PHP Symfony loader + fixture chung, CI php84-symfony) cho dsuite ([plan](plans/v0.88.0-rich-text.md)). Sau: preset `basic` (list), heading/quote khi có nhu cầu
 - `done` v0.96.0: `td-dropdown` / `td-chip-input` đo chiều cao dòng thật (bỏ `OPTION_PX` = 40), `max-height=5` thấy đủ 5 dòng trên cảm ứng
-- `todo` theo dõi: v0.61 range "Bây giờ" khi hôm nay ngoài min–max — chưa có test, component không báo lỗi ngay
+- `done` v0.100.0: v0.61 "Bây giờ" khi hôm nay ngoài min–max (picker + cả hai đầu range) — thêm test 3 engine (`td-v0100-now-out-of-range.engines.browser-test.js`); hành vi đã đúng sẵn (nháp nhận giờ thật, lỗi hiện ngay, "Chọn" bị từ chối, không `change`), không phải sửa component
 
 ## Chờ nhu cầu (owner 2026-10-08: chỉ làm khi có site cần)
 
@@ -142,7 +143,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - dsuite 2026-10-08 (owner không làm): chuyển `data-*` của toggle xuống input trong (host là control); `td-dropdown` `locked`; component gập / mở (dùng `<details>` gốc); `choice-group` chỉ đọc; thanh hành động nổi kiểu kính (`aehh-mobile-nav`)
 - Toggle có `on-text` + nhãn dài xuống dòng: công tắc không căn giữa khối chữ (có sẵn, phát hiện ở v0.59.1); bố cục "nhãn sát trái — công tắc sát phải cả hàng" là việc của site
 - Đổi theme lúc chạy (`TdTheme.apply`, theming R3) — light / dark / auto + bộ sinh màu + theme theo vùng đã xong ở v0.41 / v0.42
-- HTML server in sẵn cho dropzone; component dwp/135 chưa quyết; Trusted Types; khúc xạ SVG; nâng `@web/test-runner` / Storybook 9 (xem mục Later bên dưới)
+- component dwp/135 chưa quyết; Trusted Types; khúc xạ SVG; Storybook 9+ (wtr 1.0 xong v0.100.0) (xem mục Later bên dưới)
 
 ## Done — v0.4.1 bugfix (2026-09-27, xem CHANGELOG)
 
@@ -221,7 +222,7 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` ADR 0012; base hydrate; `td-button` / link element mode; lưới CSS `:not(:defined)`; `Td::modulePreloads`; `td_badge`
   icon
 - `done` v0.26.0 input-field / toggle / checkbox (form-associated) + dropdown shell + `td_empty` / empty-state
-- `done` datetime (`td_datetime_picker` / `td_datetime_range`) · `todo` dropzone SSR (ADR 0012 bước sau)
+- `done` datetime (`td_datetime_picker` / `td_datetime_range`) · `done` v0.100.0 dropzone SSR (`td_dropzone`, `dropzone@1`)
 
 ## Done — v0.24.0 lightbox điều hướng hai bên
 

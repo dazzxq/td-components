@@ -38,7 +38,7 @@ style và JS nâng cấp tại chỗ.
 9. **ID:** id tự sinh bên trong không phải API; id gốc do người gọi đưa vào và id control suy ra từ nó (dùng cho `<label
    for>`) là contract trợ năng.
 10. **Lộ trình:** v0.25 base + button / link + lưới CSS + modulepreload + badge icon; v0.26 input-field / toggle /
-    checkbox; v0.27 dropdown shell / empty-state; sau đó datetime, dropzone.
+    checkbox; v0.27 dropdown shell / empty-state; sau đó datetime (xong), dropzone (xong v0.100.0, `dropzone@1`).
 
 ## Hệ quả
 
