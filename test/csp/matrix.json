@@ -61,7 +61,8 @@
       "td-icon-picker": "/src/form/td-icon-picker.js",
       "td-selection-bar": "/src/display/td-selection-bar.js",
       "td-card": "/src/icons/td-icon.js",
-      "td-page-actions": "/src/display/td-page-actions.js"
+      "td-page-actions": "/src/display/td-page-actions.js",
+      "td-avatar": "/src/display/avatar.js"
     },
     "tokenNative": [
       "td-button",
@@ -123,7 +124,8 @@
       "td-icon-picker",
       "td-selection-bar",
       "td-card",
-      "td-page-actions"
+      "td-page-actions",
+      "td-avatar"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -8688,6 +8690,39 @@
         "inset-block-start"
       ],
       "excludeNote": "font-metric dependent (label / button text widths, wrap) — excluded up front"
+    }
+  ],
+  "td-avatar": [
+    {
+      "state": "img",
+      "markup": "<img class=\"td-avatar\" src=\"/test/fixtures/photo.svg\" alt=\"\" width=\"40\" height=\"40\"> <img class=\"td-avatar td-avatar--xs\" src=\"/test/fixtures/photo.svg\" alt=\"\" width=\"22\" height=\"22\"> <img class=\"td-avatar td-avatar--sm\" src=\"/test/fixtures/photo.svg\" alt=\"\" width=\"32\" height=\"32\"> <img class=\"td-avatar td-avatar--lg\" src=\"/test/fixtures/photo.svg\" alt=\"\" width=\"96\" height=\"96\">",
+      "selectors": [
+        "img.td-avatar:not([class*='--'])",
+        ".td-avatar--xs",
+        ".td-avatar--sm",
+        ".td-avatar--lg"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.105.0 CSS-only (.td-avatar has no JS element): the four sizes, image; line-height is inherited from the page profile (the img box is fixed by the size token, never affected)",
+      "excludeProps": [
+        "line-height"
+      ]
+    },
+    {
+      "state": "empty",
+      "markup": "<span class=\"td-avatar td-avatar--empty\" aria-hidden=\"true\">A</span> <span class=\"td-avatar td-avatar--xs td-avatar--empty\" aria-hidden=\"true\">B</span> <span class=\"td-avatar td-avatar--sm td-avatar--empty\" aria-hidden=\"true\">C</span> <span class=\"td-avatar td-avatar--lg td-avatar--empty\" aria-hidden=\"true\"><svg class=\"td-icon td-icon--l\" data-icon=\"image\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/></svg></span>",
+      "selectors": [
+        ".td-avatar--empty:not([class*='--xs']):not([class*='--sm']):not([class*='--lg'])",
+        ".td-avatar--xs.td-avatar--empty",
+        ".td-avatar--sm.td-avatar--empty",
+        ".td-avatar--lg.td-avatar--empty",
+        ".td-avatar--empty > .td-icon"
+      ],
+      "selectorNote": "v0.105.0 empty circle: initial per size + an icon (lg); text boxes follow the platform font metrics",
+      "excludeProps": [
+        "width",
+        "height"
+      ]
     }
   ]
 }

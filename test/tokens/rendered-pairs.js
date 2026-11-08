@@ -70,6 +70,7 @@ export function renderedPairs() {
     add(`dropzone edge on ${z}`, '--td-accent', [z], 3);
   }
   add('accent badge', '--td-badge-accent-fg', ['--td-badge-accent-bg']);
+  add('avatar initial', '--td-color-text', ['--td-color-fill']); // v0.105.0 .td-avatar--empty (= --td-avatar-fg / -bg defaults)
   for (const s of PAGE) for (const v of ['success', 'warning', 'danger', 'info']) add(`badge ${v} ink on ${s}`, `--td-badge-${v}-ink`, [s]);
   add('disabled field text', '--td-color-text-muted', ['--td-field-bg-disabled'], 2.2);
   // v0.43.0 td-media-gallery (media-gallery.css): Add prompt muted on the muted fill, hover / pressed = text on the wash,

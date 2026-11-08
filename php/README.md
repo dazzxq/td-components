@@ -6,7 +6,7 @@ One plain PHP file (PHP ≥ 8.0 — CI job `php80` runs the suite on PHP 8.0; no
 
 ```php
 require_once $kitDir . '/php/td.php';
-TdComponents\Td::configure('/assets/vendor/td-components/0.104.0', $kitDir); // versioned URL + filesystem path
+TdComponents\Td::configure('/assets/vendor/td-components/0.105.0', $kitDir); // versioned URL + filesystem path
 
 echo td_stylesheet_tag($nonce);
 echo td_import_map_tag(['dompurify' => '/assets/vendor/dompurify/purify.es.js'], $nonce); // ONE import map per page
@@ -39,6 +39,9 @@ echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
   (`check`, `check-matrix@1`) is byte-identical; an unknown mode → `check` + one `E_USER_WARNING`.
 - v0.95.0 `td_card` prints a CSS-only `a.td-card` (the whole card is one link) or, without a safe href, a static
   `div.td-card` (cover image fail-closed through `td__media_url`, placeholder icon, badges, meta). See docs/components/card.md.
+- `td_avatar($src, $name = '', $size = 'm')` (0.105.0) prints a CSS-only `img.td-avatar` (src filtered like
+  `td_card`) or `span.td-avatar.td-avatar--empty` with the upper-case first letter (`?` when empty); no options array
+  ([docs](../docs/components/avatar.md)).
 - `td_badge` prints a CSS-only `span.td-badge`; `td_alert` prints a `<td-alert>` host already containing the full
   styled `div.td-alert` (no JS needed; the alert module upgrades it in place and adds the close button).
 - `td_link(…, ['bare' => true])` prints a plain `<a>` (site class only, no button look).

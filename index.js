@@ -22,6 +22,7 @@ export { TdCropper } from './src/form/td-cropper.js';
 export { TdScanInput } from './src/form/td-scan-input.js';
 export { TdIconElement } from './src/icons/td-icon-element.js';
 export { tdIcon, registerIcons, hasIcon, listIcons, fillIconSlots } from './src/icons/td-icon.js';
+export { tdAvatar } from './src/display/avatar.js';
 export { TdDateTime } from './src/utils/datetime.js';
 export { TdDatetimePicker } from './src/form/td-datetime-picker.js';
 export { TdDatetimeRange } from './src/form/td-datetime-range.js';

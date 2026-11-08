@@ -21,7 +21,7 @@ const EXPORTS = [
   'contrastRatio', 'debounce', 'fillIconSlots', 'formatFileSize', 'formatNumber', 'getAccessibleTextColor', 'hasIcon',
   'isCoarsePointer', 'isShort', 'listIcons', 'matchesBelow', 'mqBelow', 'parseColorToRgb', 'registerExternalOverlay', 'registerIconSearchData',
   'registerIcons',
-  'relativeLuminance', 'runWithButton', 'setButtonBusy', 'slugify', 'tdIcon', 'tdTooltip', 'throttle', 'trackFormDirty',
+  'relativeLuminance', 'runWithButton', 'setButtonBusy', 'slugify', 'tdAvatar', 'tdIcon', 'tdTooltip', 'throttle', 'trackFormDirty',
 ];
 const NOT_FUNCTIONS = { BREAKPOINTS: 'object', SHORT_MAX: 'number', tdTooltip: 'object' };
 
@@ -37,7 +37,7 @@ async function cancelDialog() {
 }
 
 describe('v0.64.0 dist parity — index.js', () => {
-  it('the 87 captured exports; every function export keeps its name (keepNames); the 3 others keep their type', () => {
+  it('the 88 captured exports (v0.105.0 + tdAvatar); every function export keeps its name (keepNames); the 3 others keep their type', () => {
     const keys = Object.keys(kit).sort();
     expect(keys).to.deep.equal(EXPORTS);
     for (const k of keys) {

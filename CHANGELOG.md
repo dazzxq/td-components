@@ -4,6 +4,21 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.105.0
+
+**Avatar `.td-avatar` thuần CSS + helper** (owner 08/11; plan `docs/internal/plans/v0.105.0-avatar.md`). Thêm mới.
+
+- `.td-avatar` (ảnh tròn 40px, vòng kép), `--xs` 22 / `--sm` 32 / `--lg` 96, `--empty` (chữ cái đầu hoặc `.td-icon`,
+  căn giữa sẵn). Hình mặc định = `.td-avatar` của 135 (135 xoá khối riêng trong `base.css` là xong).
+- Token `--td-avatar-size` (+ `-xs/-sm/-lg`), `--td-avatar-font-size` (+ cỡ), `-font-family`, `-font-weight`, `-bg`,
+  `-fg`, `-ring-width`, `-ring-gap-width`, `-ring-gap`, `-ring-color`; `--td-avatar-ring: none` bỏ vòng (dwp).
+- Cỡ không bị reset `img { max-width: 100%; height: auto }` của site bóp / kéo méo (`!important` trong layer cho
+  `inline-size`, `block-size`, `max-inline-size`).
+- PHP `td_avatar($src, $name, $size)` + JS `tdAvatar(src, name, size)` (`@dazzxq/td-components/avatar`, có trong entry
+  gốc): ảnh qua bộ lọc URL của card, không có ảnh → chữ cái đầu viết hoa (`?` khi rỗng); PHP không cần `mbstring` /
+  `intl` (tiếng Việt vẫn đúng).
+- Docs `docs/components/avatar.md` (công thức chuyển cho 135 + dwp).
+
 ## 0.104.0
 
 **Icon tô đặc (filled) song song icon nét** (yêu cầu owner 08/11). Thêm mới, icon cũ không đổi.

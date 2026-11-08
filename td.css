@@ -12412,6 +12412,92 @@
 	}
 }
 
+/* ---- src/styles/components/avatar.css ---- */
+/*
+ * .td-avatar — CSS-only round avatar (v0.105.0, plan v0.105.0-avatar; PHP td_avatar(), JS tdAvatar()). No JS element.
+ *   <img class="td-avatar td-avatar--sm" src="…" alt="" width="32" height="32">
+ *   <span class="td-avatar td-avatar--empty" aria-hidden="true">A</span>   (initial, or a .td-icon)
+ * Default look = the 135 site's own .td-avatar: 40 px circle, cover-cropped, double box-shadow ring (a gap in the
+ * surrounding surface colour + a 1 px line). Sizes: --xs 22 · --sm 32 · (base) 40 · --lg 96; a custom size sets
+ * --td-avatar-size (and --td-avatar-font-size for the empty initial).
+ * Ring: composed ON THE ELEMENT so the --xs gap (1.5 px) applies; --td-avatar-ring is NOT declared — it is an optional
+ * whole-ring override (`:root { --td-avatar-ring: none }` drops the ring at every size).
+ * inline-size / block-size / max-inline-size are !important: a layered rule loses to any unlayered site reset such as
+ * `img { max-width: 100%; height: auto }` (squashed in a narrow table cell, stretched to the row height in a flex row);
+ * an important layered declaration wins (precedent badge.css). The size changes through --td-avatar-size only.
+ */
+@layer td.tokens {
+	:root {
+		--td-avatar-size: 40px;
+		--td-avatar-size-xs: 22px;
+		--td-avatar-size-sm: 32px;
+		--td-avatar-size-lg: 96px;
+		--td-avatar-ring-width: 1px;
+		--td-avatar-ring-gap-width: 2px;
+		--td-avatar-font-family: var(--td-font-sans);
+		--td-avatar-font-weight: 800;
+		--td-avatar-font-size: 1.375rem;
+		--td-avatar-font-size-xs: 11px;
+		--td-avatar-font-size-sm: 0.875rem;
+		--td-avatar-font-size-lg: clamp(2.25rem, 4.5vw, 3.25rem);
+	}
+	:root, [data-td-theme] {
+		--td-avatar-ring-gap: var(--td-color-surface);
+		--td-avatar-ring-color: var(--td-color-border);
+		--td-avatar-bg: var(--td-color-fill);
+		--td-avatar-fg: var(--td-color-text);
+	}
+}
+
+@layer td.component {
+	.td-avatar {
+		box-sizing: border-box;
+		display: inline-grid;
+		place-items: center;
+		inline-size: var(--td-avatar-size) !important;
+		block-size: var(--td-avatar-size) !important;
+		aspect-ratio: 1;
+		max-inline-size: none !important;
+		flex: none;
+		border-radius: 50%;
+		overflow: hidden;
+		object-fit: cover;
+		vertical-align: middle;
+		box-shadow: var(--td-avatar-ring, 0 0 0 var(--td-avatar-ring-gap-width) var(--td-avatar-ring-gap),
+			0 0 0 calc(var(--td-avatar-ring-gap-width) + var(--td-avatar-ring-width)) var(--td-avatar-ring-color));
+	}
+	.td-avatar--xs {
+		--td-avatar-size: var(--td-avatar-size-xs);
+		--td-avatar-font-size: var(--td-avatar-font-size-xs);
+		--td-avatar-ring-gap-width: 1.5px;
+	}
+	.td-avatar--sm {
+		--td-avatar-size: var(--td-avatar-size-sm);
+		--td-avatar-font-size: var(--td-avatar-font-size-sm);
+	}
+	.td-avatar--lg {
+		--td-avatar-size: var(--td-avatar-size-lg);
+		--td-avatar-font-size: var(--td-avatar-font-size-lg);
+	}
+	.td-avatar--empty {
+		background: var(--td-avatar-bg);
+		color: var(--td-avatar-fg);
+		font: var(--td-avatar-font-weight) var(--td-avatar-font-size)/1 var(--td-avatar-font-family);
+		white-space: nowrap;
+		user-select: none;
+	}
+	.td-avatar--empty > .td-icon {
+		inline-size: 50%;
+		block-size: 50%;
+	}
+	/* forced colours drop box-shadow: keep the empty circle visible */
+	@media (forced-colors: active) {
+		.td-avatar--empty {
+			outline: 1px solid CanvasText;
+		}
+	}
+}
+
 /* ---- src/styles/components/card.css ---- */
 /*
  * .td-card — CSS-only card with a cover image; the whole card is ONE link (plan v0.95.0-card; PHP td_card()).

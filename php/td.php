@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.104.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.104.0', __DIR__ . '/public/assets/vendor/td-components/0.104.0');
+ *   require_once '/path/to/vendor/td-components/0.105.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.105.0', __DIR__ . '/public/assets/vendor/td-components/0.105.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -40,6 +40,7 @@
  *     in place after a node-by-node check against `data`. Invalid data / name → the fail-closed state (no input at all).
  *   - td_icon prints `svg.td-icon` with the full geometry of src/icons/icons.json (+ Td::registerIcons()).
  *   - td_badge prints a CSS-only `span.td-badge…` (no JS, no custom element).
+ *   - td_avatar (v0.105.0) prints a CSS-only `img.td-avatar` or `span.td-avatar--empty` (initial).
  *   - td_card prints a CSS-only `a.td-card` (the whole card is one link) or, without a safe href, a static `div.td-card`.
  *   - td_alert prints a `<td-alert>` host that ALREADY contains the full styled markup `div.td-alert` (icon, heading,
  *     message): td.css styles it without JS; `@dazzxq/td-components/alert` upgrades it IN PLACE (text kept) and adds
@@ -1095,6 +1096,35 @@ namespace TdComponents {
             }
             $s = str_replace(['đ', 'Đ', '-', '_'], ['d', 'd', ' ', ' '], $s);
             return trim((string) preg_replace('/[\s' . self::JS_WS . ']+/u', ' ', $s), ' ');
+        }
+
+        /**
+         * @internal v0.105.0 td_avatar(): the upper-case first grapheme of $name, '?' when empty / not valid UTF-8.
+         * Leading Unicode white space skipped; grapheme = PCRE `\X` (core: NFD "E\u{303}" and joined emoji stay whole).
+         * Upper case WITHOUT any extension requirement (plain PHP ≥ 8, no mbstring call anywhere in this file):
+         * IntlChar::toupper per code point when intl is there → else ASCII a–z + the Vietnamese lower → upper table (by code point, whatever the name's language; other letters
+         * are left as they are).
+         */
+        public static function avatarInitial(mixed $name): string
+        {
+            if (!is_string($name) || preg_match('//u', $name) !== 1) {
+                return '?';
+            }
+            $s = (string) preg_replace('/^[\s' . self::JS_WS . ']+/u', '', $name);
+            if ($s === '' || preg_match('/^\X/u', $s, $m) !== 1 || $m[0] === '') {
+                return '?';
+            }
+            $g = $m[0];
+            if (!self::$noIntl && class_exists('IntlChar')) {
+                return (string) preg_replace_callback('/./su', static fn (array $c): string => (string) \IntlChar::toupper($c[0]), $g);
+            }
+            static $vi = null;
+            if ($vi === null) {
+                $lo = preg_split('//u', 'àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ', -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                $up = preg_split('//u', 'ÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ', -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                $vi = array_combine($lo, $up);
+            }
+            return strtr(strtr($g, 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), $vi);
         }
 
         /** @internal ext-intl usable for the icon search text rules (false when missing or forced off by the tests). */
@@ -2719,6 +2749,26 @@ namespace {
             'class' => $class,
             'id' => isset($o['id']) && is_scalar($o['id']) && (string) $o['id'] !== '' ? (string) $o['id'] : null,
         ], $taken) . Td::attrs(is_array($o['attrs'] ?? null) ? $o['attrs'] : [], $taken) . '>' . $body . '</span>';
+    }
+
+    /**
+     * CSS-only round avatar (v0.105.0, plan v0.105.0-avatar; src/styles/components/avatar.css). $src through
+     * td__media_url (https / http / scheme-less; javascript: / data: / mailto: refused) → `img.td-avatar` (alt="",
+     * width / height = the size in px, lazy, async decode); no usable $src → `span.td-avatar.td-avatar--empty`
+     * (aria-hidden) with Td::avatarInitial($name) ('?' when empty). $size xs | sm | m | lg (unknown → m). No options:
+     * anything else (extra class, an icon in the empty circle) is hand-written markup with the same classes.
+     */
+    function td_avatar(?string $src, string $name = '', string $size = 'm'): string
+    {
+        $px = ['xs' => 22, 'sm' => 32, 'm' => 40, 'lg' => 96];
+        $size = isset($px[$size]) ? $size : 'm';
+        $class = 'td-avatar' . ($size !== 'm' ? ' td-avatar--' . $size : '');
+        $url = td__media_url($src);
+        if ($url !== null) {
+            return '<img class="' . $class . '" src="' . Td::e($url) . '" alt="" width="' . $px[$size] . '" height="'
+                . $px[$size] . '" loading="lazy" decoding="async">';
+        }
+        return '<span class="' . $class . ' td-avatar--empty" aria-hidden="true">' . Td::e(Td::avatarInitial($name)) . '</span>';
     }
 
     /**
