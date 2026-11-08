@@ -313,9 +313,10 @@ describe('v0.21.0 P5 / v0.22.1 — modal motion (like dcms)', () => {
     }
   });
 
-  it('full-viewport modal only fades (no rise / scale)', async () => {
+  it('full-viewport modal scales in like a standard one (v0.102.0; ≤ 0.101.0 it only faded)', async () => {
     const id = TdModal.show({ title: 'Full', body: '<p>x</p>', fullViewport: true });
-    expect(getComputedStyle(document.getElementById(id).querySelector('.td-modal__dialog')).transform).to.equal('none');
+    expect(getComputedStyle(document.getElementById(id).querySelector('.td-modal__dialog')).transform)
+      .to.equal('matrix(0.95, 0, 0, 0.95, 0, 0)');
   });
 
   it('reduced motion: opacity only, 120 ms, no transform (open and close)', async () => {

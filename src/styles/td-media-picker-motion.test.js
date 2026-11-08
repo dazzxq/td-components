@@ -10,8 +10,12 @@ const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '');
 const picker = strip(readFileSync(new URL('./components/media-picker.css', import.meta.url), 'utf8'));
 const modal = strip(readFileSync(new URL('./components/modal.css', import.meta.url), 'utf8'));
 
-test('modal.css: a full-viewport dialog only fades by default (the thing the picker overrides)', () => {
-  assert.match(modal, /\.td-modal--viewport \.td-modal__dialog\s*\{[^}]*--td-modal-enter-from:\s*none/);
+test('modal.css v0.102.0: a full-viewport dialog moves like any modal (no fade-only none); phones slide up; motion fade opts out', () => {
+  assert.doesNotMatch(modal, /\.td-modal--viewport \.td-modal__dialog\s*\{[^}]*--td-modal-enter-from:\s*none/);
+  const phone = modal.match(/@media \(max-width: 719\.98px\)\s*\{[\s\S]*?\n\t\}\n/)[0];
+  assert.match(phone, /\.td-modal--viewport \.td-modal__dialog\s*\{\s*--td-modal-enter-from:\s*translateY\(100%\);\s*--td-modal-enter-ease:\s*var\(--td-modal-sheet-ease\);/);
+  assert.match(modal, /\.td-modal\.td-modal--fade \.td-modal__dialog\s*\{\s*--td-modal-enter-from:\s*none;/);
+  // the picker's own rule (0,3,0) still outranks modal.css's (0,2,0), so its opt-out tokens keep working
 });
 
 test('desktop: the picker dialog enters scale(0.95) -> none through the modal token chain; a site can turn it off', () => {

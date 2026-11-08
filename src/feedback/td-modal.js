@@ -210,6 +210,8 @@ export class TdModal {
    * @param {'solid'|'glass'} [options.surface='solid'] - v0.96.0: `'glass'` = frosted dialog surface (class
    *   `td-modal--glass`, tokens `--td-modal-glass-bg` / `--td-modal-glass-blur`); falls back to solid under reduced
    *   transparency, `data-td-glass="off"`, more contrast and forced colours. Any other value = solid.
+   * @param {'default'|'fade'} [options.motion='default'] - v0.102.0: `'fade'` = this dialog only fades in / out (no
+   *   scale, no sheet slide; class `td-modal--fade`). Any other value = the default motion, `fullViewport` included.
    * @param {boolean} [options.showHeader=true] - Without a header the title becomes the dialog's `aria-label`.
    * @param {boolean} [options.showFooter=true]
    * @param {Function|null} [options.onClose=null] - Called once on every close path, after focus is restored.
@@ -268,6 +270,8 @@ export class TdModal {
     TdModal._configureModal(root, opts, instance);
     // v0.96.0: opt-in frosted surface, show() only (the Promise dialogs stay solid); any other value = solid
     if (!internal && opts.surface === 'glass') root.classList.add('td-modal--glass');
+    // v0.102.0: opt-in fade-only motion (no scale / slide), show() only; any other value = the default motion
+    if (!internal && opts.motion === 'fade') root.classList.add('td-modal--fade');
     // v0.78.0 (ADR 0006 addendum): opt-in backdrop close, show() only (the Promise dialogs never take it)
     if (!internal && opts.backdropCloses === true) TdModal._bindBackdropClose(instance);
     if (internal && internal.role) dialog.setAttribute('role', internal.role);

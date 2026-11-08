@@ -62,8 +62,8 @@
 
 	/*
 	 * v0.62.0 open / close motion (ADR 0033): the picker already shares td-modal's DOM, fade, scrim and reduced-motion block;
-	 * modal.css only withholds the enter transform from a full-viewport dialog (`--td-modal-enter-from: none`). Here the
-	 * picker gives it back — the same scale(0.95) -> none spring as an ordinary modal from 720px, the bottom-sheet slide
+	 * since v0.102.0 modal.css gives every full-viewport dialog this same motion; the picker keeps its own rule for its
+	 * opt-out tokens — the same scale(0.95) -> none spring as an ordinary modal from 720px, the bottom-sheet slide
 	 * (no overshoot) below. Only custom properties are set: every duration, curve and the prefers-reduced-motion reset
 	 * (transform: none, opacity only) stay modal.css's. A site keeps the old fade-only look with
 	 * `:root { --td-media-picker-enter-from: none; --td-media-picker-sheet-from: none; }`.

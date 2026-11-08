@@ -31,7 +31,7 @@ Kit **không** publish lên npm registry. Bạn cài thẳng từ repo GitHub `d
 npm install github:dazzxq/td-components
 
 # Khuyên dùng: ghim theo tag phiên bản
-npm install github:dazzxq/td-components#v0.101.0
+npm install github:dazzxq/td-components#v0.102.0
 ```
 
 Sau lệnh trên, `package.json` của site có dòng dạng:
@@ -39,7 +39,7 @@ Sau lệnh trên, `package.json` của site có dòng dạng:
 ```json
 {
   "dependencies": {
-    "@dazzxq/td-components": "github:dazzxq/td-components#v0.101.0"
+    "@dazzxq/td-components": "github:dazzxq/td-components#v0.102.0"
   }
 }
 ```

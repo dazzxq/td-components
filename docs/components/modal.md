@@ -468,6 +468,7 @@ window.addEventListener('beforeunload', (e) => {
 | `bodyOverflow` | `string` | — | `visible` \| `hidden` \| `auto` \| `scroll` \| `clip`. Giá trị khác → bỏ qua + `console.warn`. |
 | `themeRoot` | `Element` | — | 0.42.0: hiển thị theo theme của vùng `[data-td-theme]` chứa phần tử này ([theming › Theme theo vùng](../customization/theming.md#popup-mở-từ-trong-vùng), ADR 0020). Không truyền → theme của trang. |
 | `surface` | `'solid' \| 'glass'` | `'solid'` | 0.96.0: `'glass'` = dialog kính mờ (class `td-modal--glass`, token `--td-modal-glass-bg` / `--td-modal-glass-blur`). Giá trị khác = đục. Hộp thoại Promise bỏ qua. Xem [Nền kính mờ](#10-nền-kính-mờ-surface-glass-0960). |
+| `motion` | `'default' \| 'fade'` | `'default'` | 0.102.0: `'fade'` = modal này chỉ mờ dần khi mở / đóng (không phóng, không trượt sheet; class `td-modal--fade`), ở mọi bề rộng. Giá trị khác = chuyển động mặc định, kể cả `fullViewport`. Hộp thoại Promise bỏ qua. Xem "Chuyển động" trong [Tuỳ biến giao diện](#tuỳ-biến-giao-diện). |
 | `beforeClose` | `({ reason, value }) => boolean \| void \| PromiseLike<boolean \| void>` | — | 0.44.0: guard của các đường đóng do người dùng (X, Escape khi `escapeCloses`, bấm nền khi `backdropCloses`, action có đóng, `requestClose`). `false` / throw / reject → ở lại. Xem [Chặn đóng khi có thay đổi chưa lưu](#8-chặn-đóng-khi-có-thay-đổi-chưa-lưu-beforeclose-0440). |
 
 ### Action (nút footer)
@@ -584,7 +585,7 @@ Token riêng của modal (đặt trong `:root` hoặc một selector hẹp hơn,
 | `--td-modal-sheet-ease` | `cubic-bezier(0.32, 0.72, 0, 1)` | (0.22.1) Đường cong sheet trượt lên trên điện thoại — không vượt (vượt sẽ hở khe dưới đáy). |
 | `--td-modal-glass-bg` | `var(--td-glass-bg-strong)` (94 %) | (0.96.0) Nền dialog khi `surface: 'glass'`. Theo theme (sáng / tối). |
 | `--td-modal-glass-blur` | `var(--td-glass-blur)` (`blur(12px)`) | (0.96.0) Độ mờ phía sau dialog khi `surface: 'glass'`. |
-| `--td-modal-enter-from` | `scale(0.95)` | (0.22.1, trước là `translateY(12px) scale(0.98)`) Tư thế bắt đầu của dialog (desktop). `none` = chỉ mờ dần. Modal toàn màn hình luôn là `none`. |
+| `--td-modal-enter-from` | `scale(0.95)` | (0.22.1, trước là `translateY(12px) scale(0.98)`) Tư thế bắt đầu của dialog (desktop). `none` = chỉ mờ dần. Từ 0.102.0 modal toàn màn hình cũng dùng token này (trước đó luôn là `none`); một modal riêng: `motion: 'fade'`. |
 
 Token dùng chung có ảnh hưởng: `--td-z-modal` (`400`), `--td-glass-scrim` (màu lớp phủ nền, không làm mờ),
 các token bề mặt (`--td-glass-solid`, `--td-glass-border`, `--td-glass-shadow-lg`, `--td-glass-fg`).
@@ -620,7 +621,11 @@ Tương phản cao → nền `--td-color-surface`, viền rõ, không bóng.
   `cubic-bezier(0.4, 0, 0.2, 1)`. Kit đọc transition dài nhất trong computed style rồi mới gỡ modal khỏi DOM.
 - **Điện thoại (< 720px — 0.34.0, trước đó ≤ 640px):** bottom sheet vẫn trượt từ dưới lên (300ms, `--td-modal-sheet-ease`, không vượt) và mờ dần
   200ms; khi đóng trượt xuống 200ms / mờ 150ms.
-- **Toàn màn hình (`fullViewport`):** chỉ mờ dần.
+- **Toàn màn hình (`fullViewport`, 0.102.0):** chuyển động như modal thường: từ 720px phóng từ `scale(0.95)` + mờ dần,
+  dưới 720px trượt từ dưới lên như sheet (không vượt), giống media picker từ 0.62.0. Trước 0.102.0 chỉ mờ dần; muốn
+  giữ kiểu cũ cho một modal thì `motion: 'fade'`, cho cả site thì `.td-modal--viewport .td-modal__dialog {
+  --td-modal-enter-from: none; }` trong CSS của site (ngoài `@layer`, nên thắng ở mọi bề rộng).
+- **`motion: 'fade'` (0.102.0):** modal đó chỉ mờ dần, ở mọi bề rộng (kể cả sheet trên điện thoại).
 - **`prefers-reduced-motion: reduce`:** chỉ mờ dần 120ms (`linear`), không trượt, không scale; khi đóng kit chờ hết lần mờ dần đó (đọc từ computed style) rồi mới gỡ modal.
 - **Trang không bị giật ngang (0.22.1):** khi modal mở, trang bị khoá cuộn (`overflow: hidden` trên `<html>`). Với
   thanh cuộn kiểu cổ điển (Windows, macOS bật "luôn hiện thanh cuộn") việc này từng làm mất thanh cuộn → cả trang và

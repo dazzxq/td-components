@@ -33,7 +33,7 @@ function tokenPx(name) {
   return px;
 }
 
-/** Open a full-viewport modal with header + footer; resolves once onShow ran and the fade-in has finished. */
+/** Open a full-viewport modal with header + footer; resolves once onShow ran and the fade-in + enter motion finished. */
 async function openViewport(extra = {}) {
   let shown = false;
   const id = TdModal.show({
@@ -48,6 +48,8 @@ async function openViewport(extra = {}) {
   await until(() => shown && root.getAttribute('data-state') === 'open', 3000, 'open state');
   const dialog = root.querySelector('.td-modal__dialog');
   await until(() => Number(getComputedStyle(dialog).opacity) === 1, 3000, 'fade-in end');
+  // v0.102.0: the surface also scales / slides in (like every modal), so geometry is measured once it has settled
+  await until(() => getComputedStyle(dialog).transform === 'none', 3000, 'enter motion end');
   return root;
 }
 

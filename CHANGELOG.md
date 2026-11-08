@@ -4,6 +4,20 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.102.0
+
+**Modal toàn màn hình có chuyển động như modal thường** (yêu cầu dcms2 08/11). Đổi hành vi mặc định + thêm option.
+
+- `TdModal.show({ fullViewport: true })` trước chỉ mờ dần (`--td-modal-enter-from: none` cứng trong modal.css), lệch
+  với mọi modal khác. Giờ từ 720px dialog phóng từ `scale(0.95)` + mờ dần với cùng token thời gian và lò xo
+  (`--td-modal-enter-*`, `--td-modal-fade-*`, `--td-modal-exit-*`); dưới 720px trượt từ dưới lên như sheet (không vượt),
+  đúng kiểu media picker đã có từ 0.62.0. `prefers-reduced-motion: reduce` vẫn chỉ mờ dần. Site đặt
+  `:root { --td-modal-enter-from: none }` thì modal toàn màn hình cũng theo (từ 720px).
+- Option mới `motion: 'fade'` (class `td-modal--fade`): một modal chỉ mờ dần ở mọi bề rộng, kể cả sheet điện thoại.
+  Giá trị khác = chuyển động mặc định; hộp thoại Promise bỏ qua. Giữ kiểu cũ cho cả site:
+  `.td-modal--viewport .td-modal__dialog { --td-modal-enter-from: none; }`.
+- Media picker không đổi (luật riêng `--td-media-picker-enter-from` / `-sheet-from` vẫn thắng); cropper không đổi.
+
 ## 0.101.0
 
 **4 icon phím bổ trợ** (yêu cầu dcms2 08/11, danh sách phím tắt của trình soạn bài). Thêm mới.

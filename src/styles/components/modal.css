@@ -16,7 +16,8 @@
  * fades in (--td-modal-fade-dur 200ms, --td-modal-fade-ease) and scales from --td-modal-enter-from scale(0.95) with a
  * slight spring overshoot (--td-modal-enter-dur 300ms, --td-modal-enter-ease); closing scales back (--td-modal-exit-dur
  * 200ms) and fades with the scrim (--td-modal-exit-fade-dur 150ms), both --td-modal-exit-ease. The phone sheet slides
- * from the bottom (same durations, --td-modal-sheet-ease: no overshoot). Reduced motion → opacity only, --td-dur-fast.
+ * from the bottom (same durations, --td-modal-sheet-ease: no overshoot). v0.102.0: --viewport moves the same way (scale
+ * from 720 px, sheet slide below); show({ motion: 'fade' }) (.td-modal--fade) = fade only. Reduced motion → opacity only, --td-dur-fast.
  * (The scale is a deliberate, modal-only exception to the minimal-surfaces "no decorative scale" rule — owner request.)
  */
 @layer td.tokens {
@@ -327,8 +328,9 @@
 		padding: 0;
 	}
 
+	/* v0.102.0: a full-viewport surface moves like every other modal (scale from --td-modal-enter-from + fade; < 720 px
+	   the sheet slide, below). ≤ 0.101.0 it only faded. Per modal: show({ motion: 'fade' }) → .td-modal--fade. */
 	.td-modal--viewport .td-modal__dialog {
-		--td-modal-enter-from: none; /* a full-viewport surface only fades */
 		width: 100%;
 		height: 100%; /* the root = the (visual) viewport (v0.36.2: was 100dvh) */
 		max-height: none;
@@ -388,6 +390,21 @@
 				opacity var(--td-modal-exit-fade-dur) var(--td-modal-exit-ease),
 				transform var(--td-modal-exit-dur) var(--td-modal-exit-ease);
 		}
+
+		/* v0.102.0: a full-viewport surface slides up like the sheet (no overshoot), as the media picker has since v0.62.0 */
+		.td-modal--viewport .td-modal__dialog {
+			--td-modal-enter-from: translateY(100%);
+			--td-modal-enter-ease: var(--td-modal-sheet-ease);
+		}
+
+		.td-modal.td-modal--fade:not(.td-modal--viewport) .td-modal__dialog {
+			transform: none;
+		}
+	}
+
+	/* v0.102.0 show({ motion: 'fade' }): this modal only fades, at every width (after the < 720 px rules) */
+	.td-modal.td-modal--fade .td-modal__dialog {
+		--td-modal-enter-from: none;
 	}
 
 	/* v0.36.0 (plan QĐ 60, mobile UX audit): < 720 the chrome is compact — header ≤ 56 (no hairline), footer ≤ 64; an
