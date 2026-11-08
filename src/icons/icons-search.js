@@ -190,4 +190,8 @@ export default Object.freeze({
   "float-wide-right": {"label":"Ảnh nổi phải tràn lề","keywords":{"en":["float wide right","outset right","image right"],"vi":["nổi phải tràn lề","ảnh phải tràn ra ngoài"]}},
   "photostory-left": {"label":"Photostory ảnh trái","keywords":{"en":["photostory left","image left caption right"],"vi":["photostory","ảnh trái","chú thích phải"]}},
   "photostory-right": {"label":"Photostory ảnh phải","keywords":{"en":["photostory right","caption left image right"],"vi":["photostory","ảnh phải","chú thích trái"]}},
+  "key-command": {"label":"Phím Command","keywords":{"en":["command","cmd","mac","shortcut","modifier"],"vi":["phím command","phím tắt"]}},
+  "key-control": {"label":"Phím Control","keywords":{"en":["control","ctrl","caret","shortcut","modifier"],"vi":["phím control","phím tắt"]}},
+  "key-shift": {"label":"Phím Shift","keywords":{"en":["shift","uppercase","shortcut","modifier"],"vi":["phím shift","chữ hoa","phím tắt"]}},
+  "key-option": {"label":"Phím Option / Alt","keywords":{"en":["option","alt","mac","shortcut","modifier"],"vi":["phím option","phím alt","phím tắt"]}},
 });

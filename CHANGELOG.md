@@ -4,6 +4,15 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.101.0
+
+**4 icon phím bổ trợ** (yêu cầu dcms2 08/11, danh sách phím tắt của trình soạn bài). Thêm mới.
+
+- `key-command` (⌘), `key-control` (⌃), `key-shift` (⇧), `key-option` (⌥ Option / Alt): hình Lucide
+  (`lucide-static` 1.70.0), cùng lưới 24 và nét như các icon khác; dùng qua `tdIcon()`, `<td-icon>`, slot icon và
+  `td_icon()` PHP; có nhãn + từ khoá tìm kiếm cho `td-icon-picker`. Alias theo tên Lucide: `command`, `option`,
+  `arrow-big-up` (`chevron-up` đã là `up`). Kit giờ có 192 icon.
+
 ## 0.100.0
 
 **Bản dọn việc tồn: dropzone SSR, kiểm thử "Bây giờ" ngoài min–max, nâng dev deps** ([plan](docs/internal/plans/v0.100.0-batch.md)).

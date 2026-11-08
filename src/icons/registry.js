@@ -4759,6 +4759,60 @@ export default {
         }
       ]
     ]
+  },
+  "key-command": {
+    "viewBox": "0 0 24 24",
+    "paint": "stroke",
+    "nodes": [
+      [
+        "path",
+        {
+          "d": "M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"
+        }
+      ]
+    ]
+  },
+  "key-control": {
+    "viewBox": "0 0 24 24",
+    "paint": "stroke",
+    "nodes": [
+      [
+        "path",
+        {
+          "d": "m18 15-6-6-6 6"
+        }
+      ]
+    ]
+  },
+  "key-shift": {
+    "viewBox": "0 0 24 24",
+    "paint": "stroke",
+    "nodes": [
+      [
+        "path",
+        {
+          "d": "M9 19a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-6a1 1 0 0 1 1-1h3.293a.707.707 0 0 0 .5-1.207l-7.086-7.086a1 1 0 0 0-1.414 0l-7.086 7.086a.707.707 0 0 0 .5 1.207H8a1 1 0 0 1 1 1z"
+        }
+      ]
+    ]
+  },
+  "key-option": {
+    "viewBox": "0 0 24 24",
+    "paint": "stroke",
+    "nodes": [
+      [
+        "path",
+        {
+          "d": "M14 3h7"
+        }
+      ],
+      [
+        "path",
+        {
+          "d": "M3 3h5.28a1 1 0 0 1 .948.684l5.544 16.632a1 1 0 0 0 .949.684H21"
+        }
+      ]
+    ]
   }
 };
 
@@ -4778,5 +4832,8 @@ export const aliases = {
   "tag": "brand",
   "trademark": "brand",
   "package": "product",
-  "banknote": "price"
+  "banknote": "price",
+  "command": "key-command",
+  "option": "key-option",
+  "arrow-big-up": "key-shift"
 };

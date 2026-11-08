@@ -2879,6 +2879,71 @@
           "chú thích trái"
         ]
       }
+    },
+    "key-command": {
+      "label": "Phím Command",
+      "keywords": {
+        "en": [
+          "command",
+          "cmd",
+          "mac",
+          "shortcut",
+          "modifier"
+        ],
+        "vi": [
+          "phím command",
+          "phím tắt"
+        ]
+      }
+    },
+    "key-control": {
+      "label": "Phím Control",
+      "keywords": {
+        "en": [
+          "control",
+          "ctrl",
+          "caret",
+          "shortcut",
+          "modifier"
+        ],
+        "vi": [
+          "phím control",
+          "phím tắt"
+        ]
+      }
+    },
+    "key-shift": {
+      "label": "Phím Shift",
+      "keywords": {
+        "en": [
+          "shift",
+          "uppercase",
+          "shortcut",
+          "modifier"
+        ],
+        "vi": [
+          "phím shift",
+          "chữ hoa",
+          "phím tắt"
+        ]
+      }
+    },
+    "key-option": {
+      "label": "Phím Option / Alt",
+      "keywords": {
+        "en": [
+          "option",
+          "alt",
+          "mac",
+          "shortcut",
+          "modifier"
+        ],
+        "vi": [
+          "phím option",
+          "phím alt",
+          "phím tắt"
+        ]
+      }
     }
   }
 }

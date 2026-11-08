@@ -352,6 +352,7 @@ describe('php/td.php', opts, () => {
       // v0.56.0 (plan A1)
       'archive-restore': 'restore', 'folder-tree': 'category', tag: 'brand', trademark: 'brand', package: 'product',
       banknote: 'price', // v0.59.0
+      command: 'key-command', option: 'key-option', 'arrow-big-up': 'key-shift', // v0.101.0 (dcms2)
     });
     const names = Object.keys(json.aliases);
     const res = runPhp([...names.map((n) => ({ fn: 'td_icon', args: [n] })), { fn: 'Td::iconAliases', args: [] }]);
@@ -443,7 +444,7 @@ describe('php/td.php', opts, () => {
   test('icons: full geometry from icons.json, registerIcons validation', () => {
     const icons = JSON.parse(readFileSync(join(ROOT, 'src/icons/icons.json'), 'utf8')).icons;
     const names = Object.keys(icons);
-    assert.equal(names.length, 188); // v0.94.0: 75 + 113
+    assert.equal(names.length, 192); // v0.94.0: 75 + 113; v0.101.0: + 4 key icons
     const res = runPhp(names.map((n) => ({ fn: 'td_icon', args: [n] })));
     names.forEach((n, i) => {
       const svg = res[i].out;

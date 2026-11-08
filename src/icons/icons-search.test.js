@@ -20,7 +20,7 @@ test('icons-search.json: schema tag, keys == icons.json icon names (no alias)', 
 
 test('icons-search.js (generated): same entries, icons.json order, frozen, every entry valid with >= 1 EN + 1 VI', () => {
   assert.deepEqual(Object.keys(SEARCH), Object.keys(icons.icons));
-  assert.equal(Object.keys(SEARCH).length, 188);
+  assert.equal(Object.keys(SEARCH).length, 192);
   assert.ok(Object.isFrozen(SEARCH));
   for (const [name, entry] of Object.entries(SEARCH)) {
     assert.deepEqual(entry, source.icons[name], name);

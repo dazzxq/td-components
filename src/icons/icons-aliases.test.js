@@ -28,6 +28,10 @@ const EXPECTED = {
   package: 'product',
   // v0.59.0 (plan QĐ D3): the Lucide name of the new core icon `price`
   banknote: 'price',
+  // v0.101.0 (dcms2): Lucide names of the modifier-key icons (Lucide `chevron-up` is already `up`)
+  command: 'key-command',
+  option: 'key-option',
+  'arrow-big-up': 'key-shift',
 };
 
 // v0.56.0 (plan A1): core icons for archive / restore / category tree / brand / product / ban (Lucide 1.52.0 geometry)
@@ -47,8 +51,8 @@ test('v0.56.0: the 6 new core icons exist with their Lucide source name', () => 
   assert.equal(resolveIconName('box'), 'box');
   assert.ok(!Object.hasOwn(json.aliases, 'box'));
   // v0.59.0: + price; v0.88.0: + bold, italic, underline, strikethrough (td-rich-text toolbar); v0.94.0: + 113
-  assert.equal(Object.keys(json.icons).length, 188);
-  assert.equal(listIcons().length, 188);
+  assert.equal(Object.keys(json.icons).length, 192);
+  assert.equal(listIcons().length, 192);
 });
 
 test('icons.json aliases: the F6 table, every target a core icon, no alias shadows a core name', () => {

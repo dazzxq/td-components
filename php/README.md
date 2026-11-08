@@ -6,7 +6,7 @@ One plain PHP file (PHP ≥ 8.0 — CI job `php80` runs the suite on PHP 8.0; no
 
 ```php
 require_once $kitDir . '/php/td.php';
-TdComponents\Td::configure('/assets/vendor/td-components/0.100.0', $kitDir); // versioned URL + filesystem path
+TdComponents\Td::configure('/assets/vendor/td-components/0.101.0', $kitDir); // versioned URL + filesystem path
 
 echo td_stylesheet_tag($nonce);
 echo td_import_map_tag(['dompurify' => '/assets/vendor/dompurify/purify.es.js'], $nonce); // ONE import map per page
@@ -28,7 +28,7 @@ echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
   `disabled`, `readonly`, `allow_clear`, `helper_text`, `error`, `class`, `id`. **`td_icon_value($_POST[…])` normalises
   the POSTed value** (registered name or alias → canonical, `''` → `''`, anything else → `null`, answer 422) — always
   call it. `Td::iconName()`, `Td::iconSearchData()` (kit + site search metadata, read lazily, only when you call it) and
-  `Td::registerIconSearchData()` are the explicit server API. Site icon names: prefix `site-` (the kit now has 188
+  `Td::registerIconSearchData()` are the explicit server API. Site icon names: prefix `site-` (the kit now has 192
   core names).
 - v0.95.0 `td_check_matrix(…, ['mode' => 'override'])` prints `<td-check-matrix mode="override"
   data-td-ssr="check-matrix@2">` (constant `Td::SSR_CHECK_MATRIX_OVERRIDE`): value `['col' => ['row' => 'grant' | 'deny' |

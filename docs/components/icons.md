@@ -42,7 +42,7 @@ note.prepend(tdIcon('info', { size: 'l', label: 'Thông tin' })); // icon có ng
 
 ## Danh sách icon core
 
-**188 icon** (0.94.0: +113; trước đó 75, và 71 ở 0.59.0). Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide. Bảng dưới là nhóm nền; các nhóm
+**192 icon** (0.101.0: +4 phím bổ trợ; 0.94.0: +113; trước đó 75, và 71 ở 0.59.0). Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide. Bảng dưới là nhóm nền; các nhóm
 thêm sau (nút thao tác, toggle, theme, kho / danh mục, và 113 icon của 0.94.0) liệt kê ở các đoạn tiếp theo — danh sách đầy đủ: `listIcons()`.
 
 | Tên td | Lucide | | Tên td | Lucide |
@@ -100,6 +100,20 @@ Lucide `lucide-static` 1.52.0):
 | `product` | package | sản phẩm / hộp | `package` |
 | `ban` | ban | ngừng / chặn (nút `discontinue`) | — |
 | `price` (0.59.0) | banknote | giá / tiền (tờ tiền, không ký hiệu `$` — hợp VNĐ) | `banknote` |
+
+### 4 icon phím bổ trợ (0.101.0)
+
+Thêm theo yêu cầu của dcms2 (danh sách phím tắt của trình soạn bài), hình Lucide (`lucide-static` 1.70.0), cùng lưới
+24 và nét như các icon khác:
+
+| Tên td | Phím | Lucide (alias) |
+|---|---|---|
+| `key-command` | ⌘ Command | `command` |
+| `key-control` | ⌃ Control | `chevron-up` (alias này đã trỏ `up`, nên `key-control` không có alias riêng) |
+| `key-shift` | ⇧ Shift | `arrow-big-up` |
+| `key-option` | ⌥ Option / Alt | `option` |
+
+Icon chỉ là hình (`aria-hidden`): nút / ô phím tắt vẫn cần tên đọc được, ví dụ `<kbd aria-label="Command">`.
 
 ### 113 icon mới của 0.94.0
 
