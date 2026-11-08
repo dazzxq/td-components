@@ -444,7 +444,7 @@ describe('php/td.php', opts, () => {
   test('icons: full geometry from icons.json, registerIcons validation', () => {
     const icons = JSON.parse(readFileSync(join(ROOT, 'src/icons/icons.json'), 'utf8')).icons;
     const names = Object.keys(icons);
-    assert.equal(names.length, 192); // v0.94.0: 75 + 113; v0.101.0: + 4 key icons
+    assert.equal(names.length, 222); // v0.94.0: 75 + 113; v0.101.0: + 4 key icons; v0.103.0: + 30 (app icon standardization)
     const res = runPhp(names.map((n) => ({ fn: 'td_icon', args: [n] })));
     names.forEach((n, i) => {
       const svg = res[i].out;

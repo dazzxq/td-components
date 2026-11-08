@@ -4,6 +4,19 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.103.0
+
+**Chuẩn hoá icon giữa các app: +30 icon chung** (yêu cầu dcms2 owner 08/11). Thêm mới, không đổi icon cũ.
+
+- Kit sở hữu mọi icon nét chung mà dsuite / dcms2 từng tự đăng ký (`ds-*`): `battery-full`, `calculator`, `chart-pie`,
+  `circle-small`, `clipboard-list`, `code-xml`, `corner-right-down`, `cpu`, `credit-card`, `gift`, `hard-drive`,
+  `heading-2`, `heading-3`, `layout-grid`, `map-pin`, `move`, `package-check`, `package-x`, `pause`, `percent`, `plug`,
+  `printer`, `redo-2`, `remove-formatting`, `settings-2`, `shield-check`, `shopping-cart`, `ticket-percent`, `truck`,
+  `wallet`. Hình Lucide 1.70.0 (tên kit = tên Lucide), có nhãn + từ khoá cho `td-icon-picker`. Kit giờ có 222 icon.
+- 31 icon `ds-*` khác của dsuite đã trùng icon có sẵn (vd `ds-chart-column` → `chart`, `ds-home` → `home`,
+  `ds-square-pen` → `edit`). Bảng đầy đủ `tên app → id kit`: `docs/internal/plans/v0.103.0-icon-standardization.md`.
+- Glyph tô đặc gốc Font Awesome (`ds-fa-*`, `ds-flame`) giữ ở app: kit chỉ có icon nét.
+
 ## 0.102.0
 
 **Modal toàn màn hình có chuyển động như modal thường** (yêu cầu dcms2 08/11). Đổi hành vi mặc định + thêm option.

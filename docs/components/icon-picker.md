@@ -124,7 +124,7 @@ kit (đi đường kiểm từng mục: mục sai chỉ bị bỏ, không hỏng
 import { TdIconPicker } from '@dazzxq/td-components/icon-picker';
 import { registerIcons, hasIcon } from '@dazzxq/td-components/icons';
 
-const kitLoader = TdIconPicker.loadSearchData; // giữ hook gốc (metadata của 192 icon core)
+const kitLoader = TdIconPicker.loadSearchData; // giữ hook gốc (metadata của 222 icon core)
 TdIconPicker.loadSearchData = async () => {
   const [kit, site] = await Promise.all([kitLoader(), import('/assets/site-icons.js')]); // site: { icons, search, groups }
   const missing = Object.fromEntries(Object.entries(site.icons).filter(([name]) => !hasIcon(name)));
@@ -220,7 +220,7 @@ Mỗi lưới là `role="grid"` với **một** điểm Tab (roving tabindex: ô
 - **Thứ tự khớp** (tốt nhất trước, hoà thì theo tên): (0) đúng tên hoặc alias, (1) đúng nhãn hoặc một từ khoá, (2) tên /
   alias bắt đầu bằng query, (3) nhãn / từ khoá có đầu từ bắt đầu bằng query, (4) mọi từ của query là chuỗi con của
   tên ∪ alias ∪ nhãn ∪ từ khoá (từ query dài ≥ 2 ký tự). Ví dụ `x` ra `close` (alias) đầu tiên.
-- **Dữ liệu** (nhãn tiếng Việt + từ khoá tiếng Anh và tiếng Việt cho **cả 192 icon core**) nằm trong file riêng
+- **Dữ liệu** (nhãn tiếng Việt + từ khoá tiếng Anh và tiếng Việt cho **cả 222 icon core**) nằm trong file riêng
   `src/icons/icons-search.js`, **chỉ tải ở lần mở popup đầu tiên** (một lần cho mọi picker trên trang; trang chỉ dùng
   `tdIcon()` không tải nó). Trong lúc chờ, tìm theo **tên + alias** vẫn chạy và dòng trạng thái báo "Đang tải từ khoá tìm
   kiếm…". Tải lỗi → dòng trạng thái "Không tải được từ khoá — đang tìm theo tên" + nút **Thử lại**; lần mở sau cũng tự

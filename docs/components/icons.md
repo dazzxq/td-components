@@ -42,7 +42,7 @@ note.prepend(tdIcon('info', { size: 'l', label: 'Thông tin' })); // icon có ng
 
 ## Danh sách icon core
 
-**192 icon** (0.101.0: +4 phím bổ trợ; 0.94.0: +113; trước đó 75, và 71 ở 0.59.0). Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide. Bảng dưới là nhóm nền; các nhóm
+**222 icon** (0.103.0: +30 icon chung lấy từ dsuite / dcms2, xem "30 icon chung (0.103.0)"; 0.101.0: +4 phím bổ trợ; 0.94.0: +113; trước đó 75, và 71 ở 0.59.0). Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide. Bảng dưới là nhóm nền; các nhóm
 thêm sau (nút thao tác, toggle, theme, kho / danh mục, và 113 icon của 0.94.0) liệt kê ở các đoạn tiếp theo — danh sách đầy đủ: `listIcons()`.
 
 | Tên td | Lucide | | Tên td | Lucide |
@@ -100,6 +100,45 @@ Lucide `lucide-static` 1.52.0):
 | `product` | package | sản phẩm / hộp | `package` |
 | `ban` | ban | ngừng / chặn (nút `discontinue`) | — |
 | `price` (0.59.0) | banknote | giá / tiền (tờ tiền, không ký hiệu `$` — hợp VNĐ) | `banknote` |
+
+### 30 icon chung (0.103.0)
+
+Chuẩn hoá icon giữa các app (yêu cầu dcms2): mọi icon nét **chung** mà dsuite / dcms2 từng tự đăng ký (`ds-*`) giờ do
+kit sở hữu, hình Lucide 1.70.0 (tên kit = tên Lucide, như `undo-2`). App chỉ giữ icon thật sự riêng: logo thương hiệu,
+icon nghiệp vụ, và các glyph **tô đặc** gốc Font Awesome (kit không có kiểu tô đặc; đổi sang icon nét là lùi giao diện).
+
+| Tên | Lucide | Nhãn |
+|---|---|---|
+| `battery-full` | `battery-full` | Pin đầy |
+| `calculator` | `calculator` | Máy tính bỏ túi |
+| `chart-pie` | `chart-pie` | Biểu đồ tròn |
+| `circle-small` | `circle-small` | Chấm tròn nhỏ |
+| `clipboard-list` | `clipboard-list` | Bảng kẹp danh sách |
+| `code-xml` | `code-xml` | Mã HTML |
+| `corner-right-down` | `corner-right-down` | Mũi tên gập xuống |
+| `cpu` | `cpu` | Chip |
+| `credit-card` | `credit-card` | Thẻ tín dụng |
+| `gift` | `gift` | Quà tặng |
+| `hard-drive` | `hard-drive` | Ổ cứng |
+| `heading-2` | `heading-2` | Tiêu đề 2 |
+| `heading-3` | `heading-3` | Tiêu đề 3 |
+| `layout-grid` | `layout-grid` | Lưới bố cục |
+| `map-pin` | `map-pin` | Ghim bản đồ |
+| `move` | `move` | Di chuyển |
+| `package-check` | `package-check` | Kiện hàng có dấu tích |
+| `package-x` | `package-x` | Kiện hàng có dấu X |
+| `pause` | `pause` | Tạm dừng (hai vạch) |
+| `percent` | `percent` | Phần trăm |
+| `plug` | `plug` | Phích cắm |
+| `printer` | `printer` | Máy in |
+| `redo-2` | `redo-2` | Làm lại |
+| `remove-formatting` | `remove-formatting` | Xóa định dạng |
+| `settings-2` | `settings-2` | Cài đặt (thanh chỉnh) |
+| `shield-check` | `shield-check` | Khiên có dấu tích |
+| `shopping-cart` | `shopping-cart` | Giỏ hàng |
+| `ticket-percent` | `ticket-percent` | Vé giảm giá |
+| `truck` | `truck` | Xe tải |
+| `wallet` | `wallet` | Ví |
 
 ### 4 icon phím bổ trợ (0.101.0)
 
