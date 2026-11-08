@@ -42,7 +42,7 @@ note.prepend(tdIcon('info', { size: 'l', label: 'Thông tin' })); // icon có ng
 
 ## Danh sách icon core
 
-**222 icon** (0.103.0: +30 icon chung lấy từ dsuite / dcms2, xem "30 icon chung (0.103.0)"; 0.101.0: +4 phím bổ trợ; 0.94.0: +113; trước đó 75, và 71 ở 0.59.0). Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide. Bảng dưới là nhóm nền; các nhóm
+**241 icon** (0.104.0: +4 icon nét + 15 bản tô đặc `*-filled`, xem "Icon tô đặc (0.104.0)"; 0.103.0: +30 icon chung lấy từ dsuite / dcms2, xem "30 icon chung (0.103.0)"; 0.101.0: +4 phím bổ trợ; 0.94.0: +113; trước đó 75, và 71 ở 0.59.0). Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide. Bảng dưới là nhóm nền; các nhóm
 thêm sau (nút thao tác, toggle, theme, kho / danh mục, và 113 icon của 0.94.0) liệt kê ở các đoạn tiếp theo — danh sách đầy đủ: `listIcons()`.
 
 | Tên td | Lucide | | Tên td | Lucide |
@@ -100,6 +100,37 @@ Lucide `lucide-static` 1.52.0):
 | `product` | package | sản phẩm / hộp | `package` |
 | `ban` | ban | ngừng / chặn (nút `discontinue`) | — |
 | `price` (0.59.0) | banknote | giá / tiền (tờ tiền, không ký hiệu `$` — hợp VNĐ) | `banknote` |
+
+### Icon tô đặc (0.104.0)
+
+Icon mặc định là **nét** (outline). 15 icon có thêm bản **tô đặc** (filled), tên `<tên>-filled`. Kit tự tô từ hình
+Lucide (cùng ghi công ISC), mỗi bản là một `<path>` tô đặc nên đổi màu bằng `color` như mọi icon:
+
+`chart-no-axes-column`, `eye`, `clock`, `circle-check`, `circle-pause`, `save`, `corner-right-down`, `trash`, `home`,
+`flame`, `calendar-days`, `phone`, `phone-off`, `user-plus`, `user-minus` (mới có cả bản nét ở 0.104.0:
+`chart-no-axes-column`, `circle-check`, `calendar-days`, `phone-off`).
+
+Chọn kiểu bằng `variant` (giữ nguyên tên icon), hoặc gọi thẳng tên `-filled`:
+
+```js
+tdIcon('eye', { variant: 'filled' });          // vẽ eye-filled
+tdIcon('close', { variant: 'filled' });        // close chưa có bản tô đặc → vẽ bản nét, không cảnh báo
+```
+
+```html
+<td-icon name="trash" variant="filled"></td-icon>
+<span data-td-icon="trash" data-td-icon-variant="filled"></span>  <!-- slot, fillIconSlots() -->
+```
+
+```php
+<?= td_icon('eye', 'm', '', 'filled') ?>       // Td::icon($name, $size, $label, $class, 'filled')
+```
+
+- `variant` nhận `'outline'` (mặc định) hoặc `'filled'`; giá trị khác = nét.
+- Icon chưa có bản tô đặc thì **rơi về bản nét**. Icon của site có bản tô đặc khi đăng ký thêm `site-x-filled`.
+- Picker (`td-icon-picker`) hiện bản tô đặc như icon thường, nhãn "… (tô đặc)".
+- Thêm bản tô đặc mới (người bảo trì): sửa `scripts/filled-icons/design.json`, chạy `scripts/filled-icons/flatten.py`
+  (cần `picosvg` trong venv, chỉ lúc phát triển) rồi `npm run build:icons`.
 
 ### 30 icon chung (0.103.0)
 

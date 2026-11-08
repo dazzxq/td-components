@@ -6,7 +6,7 @@ One plain PHP file (PHP ≥ 8.0 — CI job `php80` runs the suite on PHP 8.0; no
 
 ```php
 require_once $kitDir . '/php/td.php';
-TdComponents\Td::configure('/assets/vendor/td-components/0.103.0', $kitDir); // versioned URL + filesystem path
+TdComponents\Td::configure('/assets/vendor/td-components/0.104.0', $kitDir); // versioned URL + filesystem path
 
 echo td_stylesheet_tag($nonce);
 echo td_import_map_tag(['dompurify' => '/assets/vendor/dompurify/purify.es.js'], $nonce); // ONE import map per page
@@ -20,7 +20,8 @@ echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
 - `td_dropdown` prints `<td-dropdown>` wrapping a native `<select>` — upgraded when the dropdown module loads.
   v0.92.0: `td_dropdown`, `td_tree_select` and `td_multiselect` (element mode) print `name` on the `<td-*>` host too, so a
   detached / cloned form finds `td-dropdown[name="x"]` before the upgrade (the JS copies the same value anyway).
-- `td_icon` prints the full `svg.td-icon` geometry; site icons via `Td::registerIcons()`; aliases from the
+- `td_icon` prints the full `svg.td-icon` geometry (v0.104.0: 4th argument `'filled'` → `<name>-filled` when it
+  exists, else the outline; `Td::icon()` takes it as the 5th argument); site icons via `Td::registerIcons()`; aliases from the
   `aliases` object of `src/icons/icons.json`.
 - v0.94.0 `td_icon_picker` always prints `<td-icon-picker data-td-ssr="icon-picker@1">` (the tree the component builds +
   a hidden input carrying name / value until the upgrade; trigger text = the CANONICAL icon name, search metadata is
@@ -28,7 +29,7 @@ echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
   `disabled`, `readonly`, `allow_clear`, `helper_text`, `error`, `class`, `id`. **`td_icon_value($_POST[…])` normalises
   the POSTed value** (registered name or alias → canonical, `''` → `''`, anything else → `null`, answer 422) — always
   call it. `Td::iconName()`, `Td::iconSearchData()` (kit + site search metadata, read lazily, only when you call it) and
-  `Td::registerIconSearchData()` are the explicit server API. Site icon names: prefix `site-` (the kit now has 222
+  `Td::registerIconSearchData()` are the explicit server API. Site icon names: prefix `site-` (the kit now has 241
   core names).
 - v0.95.0 `td_check_matrix(…, ['mode' => 'override'])` prints `<td-check-matrix mode="override"
   data-td-ssr="check-matrix@2">` (constant `Td::SSR_CHECK_MATRIX_OVERRIDE`): value `['col' => ['row' => 'grant' | 'deny' |

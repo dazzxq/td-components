@@ -4,7 +4,7 @@
 //   - td_icon_picker(): ALWAYS the element + the tree <td-icon-picker> builds + a no-JS hidden input; escaping; suggestions
 //     / icons filtered + canonical; the trigger text = the canonical name; aria_label-only → sr-only `{host}-name` span;
 //     warnings in the right cases; it never reads src/icons/icons-search.json;
-//   - Td::iconSearchData() (222 kit keys + site entries) / Td::registerIconSearchData() (refuses like the JS twin).
+//   - Td::iconSearchData() (241 kit keys + site entries) / Td::registerIconSearchData() (refuses like the JS twin).
 // Shared fixtures: test/ssr/icon-picker.fixtures.json (also consumed by the SSR browser test through
 // test/ssr/fixtures/icon-picker.html — this test fails when it is stale: `node test/ssr/build-icon-picker-fixture.mjs`).
 import { test, describe } from 'node:test';
@@ -302,18 +302,18 @@ describe('php/td.php — td_icon_value / td_icon_picker / icon search data (v0.9
     assert.equal(out[8].warns.length, 1);
   });
 
-  test('Td::iconSearchData(): 222 kit keys = icons.json; site entries merged after registerIconSearchData()', () => {
+  test('Td::iconSearchData(): 241 kit keys = icons.json; site entries merged after registerIconSearchData()', () => {
     const icons = Object.keys(JSON.parse(readFileSync(join(ROOT, 'src/icons/icons.json'), 'utf8')).icons);
     const [kit, reg, merged] = run([
       ['Td::iconSearchData', []],
       ['Td::registerIconSearchData', [{ 'site-custom': ENTRY }]],
       ['Td::iconSearchData', []],
     ]);
-    assert.equal(Object.keys(kit.out).length, 222);
+    assert.equal(Object.keys(kit.out).length, 241);
     assert.deepEqual(Object.keys(kit.out).sort(), [...icons].sort());
     assert.equal(reg.error, null);
     assert.deepEqual(merged.out['site-custom'], ENTRY);
-    assert.equal(Object.keys(merged.out).length, 223);
+    assert.equal(Object.keys(merged.out).length, 242);
   });
 
   test('Td::registerIconSearchData() refuses like the JS twin, all or nothing', () => {
@@ -398,8 +398,8 @@ describe('php/td.php — td_icon_value / td_icon_picker / icon search data (v0.9
       ['wrong $schema', { ...good, $schema: 'td-icons-search/2' }, /"\$schema" must be/],
       ['no $schema', { icons: good.icons }, /"\$schema" must be/],
       ['icons a list', { ...good, icons: ['trash'] }, /no "icons" object/],
-      ['one icon missing', { ...good, icons: without(names[0]) }, /exactly the 222 kit icons, got 221/],
-      ['an extra icon', { ...good, icons: { ...good.icons, 'site-extra': good.icons[names[0]] } }, /exactly the 222 kit icons, got 223/],
+      ['one icon missing', { ...good, icons: without(names[0]) }, /exactly the 241 kit icons, got 240/],
+      ['an extra icon', { ...good, icons: { ...good.icons, 'site-extra': good.icons[names[0]] } }, /exactly the 241 kit icons, got 242/],
       ['a non-kit name instead of a kit one', { ...good, icons: { ...without(names[0]), 'site-extra': good.icons[names[0]] } }, /"site-extra" is not a kit icon/],
       ['the LAST entry invalid', { ...good, icons: { ...good.icons, [names.at(-1)]: { label: '', keywords: { en: ['a'], vi: ['b'] } } } }, /1–48 characters/],
       ['an entry with an extra key', { ...good, icons: { ...good.icons, [names[1]]: { ...good.icons[names[1]], extra: 1 } } }, /unknown key "extra"/],
@@ -424,7 +424,7 @@ describe('php/td.php — td_icon_value / td_icon_picker / icon search data (v0.9
     try {
       const [ok] = run([['Td::iconSearchData', []]], dir);
       assert.deepEqual(ok.warns, []);
-      assert.equal(Object.keys(ok.out).length, 222);
+      assert.equal(Object.keys(ok.out).length, 241);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

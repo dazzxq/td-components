@@ -132,3 +132,87 @@ describe('./icons public surface (v0.16.0 D4)', () => {
     expect(typeof iconsModule.registerIcons).to.equal('function');
   });
 });
+
+// v0.104.0: variant 'filled' → `<name>-filled` (one fill path), fallback to the outline; slots + <td-icon variant>.
+describe('v0.104.0 icon variant filled', () => {
+  const FILLED = ['chart-no-axes-column', 'eye', 'clock', 'circle-check', 'circle-pause', 'save', 'corner-right-down',
+    'trash', 'home', 'flame', 'calendar-days', 'phone', 'phone-off', 'user-plus', 'user-minus'];
+
+  it('tdIcon(name, { variant: "filled" }) draws the filled icon for all 15', () => {
+    for (const n of FILLED) {
+      const svg = tdIcon(n, { variant: 'filled' });
+      expect(svg.getAttribute('data-icon'), n).to.equal(`${n}-filled`);
+      expect(svg.getAttribute('fill'), n).to.equal('currentColor');
+      expect(svg.hasAttribute('stroke'), n).to.equal(false);
+      expect(svg.querySelectorAll('path').length, n).to.equal(1);
+    }
+  });
+
+  it('alias + filled resolves through the alias; no filled version → outline without a warning', () => {
+    expect(tdIcon('x', { variant: 'filled' }).getAttribute('data-icon')).to.equal('close'); // alias, no filled twin
+    const warn = console.warn;
+    let warned = 0;
+    console.warn = () => { warned += 1; };
+    try {
+      const svg = tdIcon('close', { variant: 'filled' });
+      expect(svg.getAttribute('data-icon')).to.equal('close');
+      expect(svg.getAttribute('stroke')).to.equal('currentColor');
+    } finally {
+      console.warn = warn;
+    }
+    expect(warned).to.equal(0);
+  });
+
+  it('default / outline / unknown variant → outline; a -filled name renders as is', () => {
+    expect(tdIcon('eye').getAttribute('data-icon')).to.equal('eye');
+    expect(tdIcon('eye', { variant: 'outline' }).getAttribute('data-icon')).to.equal('eye');
+    expect(tdIcon('eye', { variant: 'solid' }).getAttribute('data-icon')).to.equal('eye');
+    expect(tdIcon('eye-filled').getAttribute('data-icon')).to.equal('eye-filled');
+    expect(hasIcon('eye-filled')).to.equal(true);
+  });
+
+  it('a site icon gets a filled variant by registering site-x-filled', () => {
+    registerIcons({
+      'site-v104': { viewBox: '0 0 24 24', paint: 'stroke', nodes: [['circle', { cx: '12', cy: '12', r: '5' }]] },
+      'site-v104-filled': { viewBox: '0 0 24 24', paint: 'fill', nodes: [['circle', { cx: '12', cy: '12', r: '6' }]] },
+    });
+    expect(tdIcon('site-v104', { variant: 'filled' }).getAttribute('data-icon')).to.equal('site-v104-filled');
+  });
+
+  it('fillIconSlots reads data-td-icon-variant', async () => {
+    const { fillIconSlots } = iconsModule;
+    const root = document.createElement('div');
+    root.innerHTML = '<span data-td-icon="trash" data-td-icon-variant="filled"></span><span data-td-icon="trash"></span>';
+    fillIconSlots(root);
+    const [a, b] = root.querySelectorAll('svg');
+    expect(a.getAttribute('data-icon')).to.equal('trash-filled');
+    expect(b.getAttribute('data-icon')).to.equal('trash');
+  });
+
+  it('<td-icon variant="filled"> renders the filled icon and re-renders on change', () => {
+    const el = document.createElement('td-icon');
+    el.setAttribute('name', 'clock');
+    el.setAttribute('variant', 'filled');
+    document.body.appendChild(el);
+    expect(el.querySelector('svg').getAttribute('data-icon')).to.equal('clock-filled');
+    el.setAttribute('variant', 'outline');
+    expect(el.querySelector('svg').getAttribute('data-icon')).to.equal('clock');
+    el.remove();
+  });
+
+  it('<td-icon variant="filled"> keeps an SSR clock-filled child, replaces an SSR outline child', () => {
+    for (const [ssrName, kept] of [['clock-filled', true], ['clock', false]]) {
+      const wrap = document.createElement('div');
+      const el = document.createElement('td-icon');
+      el.setAttribute('name', 'clock');
+      el.setAttribute('variant', 'filled');
+      const ssr = tdIcon(ssrName);
+      el.appendChild(ssr);
+      wrap.appendChild(el);
+      document.body.appendChild(wrap);
+      expect(el.querySelector('svg') === ssr, ssrName).to.equal(kept);
+      expect(el.querySelector('svg').getAttribute('data-icon')).to.equal('clock-filled');
+      wrap.remove();
+    }
+  });
+});

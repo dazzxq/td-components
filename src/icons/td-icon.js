@@ -145,7 +145,8 @@ export function listIcons() {
 /**
  * Render an icon.
  * @param {string} name registered name or alias (rendered with the resolved name in `data-icon`)
- * @param {{ size?: 's'|'m'|'l'|number, label?: string, class?: string }} [opts]
+ * @param {{ size?: 's'|'m'|'l'|number, label?: string, class?: string, variant?: 'outline'|'filled' }} [opts]
+ *   variant (v0.104.0): 'filled' → the `<name>-filled` icon when it exists, else the outline; other values = outline.
  *   size: named token size (default 'm') or an integer 8–128 (px, via width/height attributes).
  *   label: empty = decorative (aria-hidden); non-empty = role="img" + <title>.
  * @returns {SVGSVGElement|null} null for an unknown name
@@ -156,9 +157,10 @@ export function tdIcon(name, opts = {}) {
     if (typeof console !== 'undefined') console.warn(`tdIcon: unknown icon "${name}"`);
     return null;
   }
-  name = resolved;
+  const { size = 'm', label = '', class: extra = '', variant = 'outline' } = opts || {};
+  // v0.104.0: variant 'filled' draws `<name>-filled` when registered, else the outline (no warning).
+  name = variant === 'filled' && registry.has(`${resolved}-filled`) ? `${resolved}-filled` : resolved;
   const def = registry.get(name);
-  const { size = 'm', label = '', class: extra = '' } = opts || {};
   const svg = document.createElementNS(SVG_NS, 'svg');
   const classes = ['td-icon'];
   if (typeof size === 'number' && Number.isInteger(size) && size >= 8 && size <= 128) {
@@ -203,8 +205,8 @@ export function tdIcon(name, opts = {}) {
 
 /**
  * Fill every `[data-td-icon="name"]` slot under `root` with its icon (components that render HTML
- * strings emit empty slots, then call this after render). Optional `data-td-icon-size` (s|m|l|px) and
- * `data-td-icon-class`. Idempotent: the slot's children are replaced.
+ * strings emit empty slots, then call this after render). Optional `data-td-icon-size` (s|m|l|px),
+ * `data-td-icon-class` and `data-td-icon-variant` (v0.104.0: `filled`). Idempotent: the slot's children are replaced.
  * @param {ParentNode} root
  * @param {string} [selector] which descendants are slots (default `[data-td-icon]`; a component scopes it to its own slots)
  */
@@ -213,7 +215,11 @@ export function fillIconSlots(root, selector = '[data-td-icon]') {
   for (const slot of root.querySelectorAll(selector)) {
     const rawSize = slot.getAttribute('data-td-icon-size') || 'm';
     const size = /^\d+$/.test(rawSize) ? Number(rawSize) : rawSize;
-    const svg = tdIcon(slot.getAttribute('data-td-icon'), { size, class: slot.getAttribute('data-td-icon-class') || '' });
+    const svg = tdIcon(slot.getAttribute('data-td-icon'), {
+      size,
+      class: slot.getAttribute('data-td-icon-class') || '',
+      variant: slot.getAttribute('data-td-icon-variant') || 'outline',
+    });
     slot.replaceChildren(...(svg ? [svg] : []));
   }
 }

@@ -3373,6 +3373,388 @@
           "tiền"
         ]
       }
+    },
+    "chart-no-axes-column": {
+      "label": "Biểu đồ cột đơn giản",
+      "keywords": {
+        "en": [
+          "chart",
+          "bar chart",
+          "stats",
+          "statistics",
+          "simple chart"
+        ],
+        "vi": [
+          "biểu đồ",
+          "thống kê",
+          "cột",
+          "số liệu"
+        ]
+      }
+    },
+    "circle-check": {
+      "label": "Dấu tích trong vòng tròn",
+      "keywords": {
+        "en": [
+          "check",
+          "done",
+          "success",
+          "complete",
+          "approved",
+          "ok"
+        ],
+        "vi": [
+          "xong",
+          "thành công",
+          "hoàn tất",
+          "đã duyệt",
+          "đúng"
+        ]
+      }
+    },
+    "calendar-days": {
+      "label": "Lịch (có ngày)",
+      "keywords": {
+        "en": [
+          "calendar",
+          "date",
+          "days",
+          "schedule",
+          "month"
+        ],
+        "vi": [
+          "lịch",
+          "ngày",
+          "tháng",
+          "lịch trình"
+        ]
+      }
+    },
+    "phone-off": {
+      "label": "Tắt điện thoại",
+      "keywords": {
+        "en": [
+          "phone off",
+          "hang up",
+          "end call",
+          "no call",
+          "phone slash"
+        ],
+        "vi": [
+          "cúp máy",
+          "kết thúc cuộc gọi",
+          "tắt điện thoại",
+          "không gọi"
+        ]
+      }
+    },
+    "chart-no-axes-column-filled": {
+      "label": "Biểu đồ cột đơn giản (tô đặc)",
+      "keywords": {
+        "en": [
+          "chart",
+          "bar chart",
+          "stats",
+          "statistics",
+          "simple chart",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "biểu đồ",
+          "thống kê",
+          "cột",
+          "số liệu",
+          "tô đặc",
+          "đặc"
+        ]
+      }
+    },
+    "eye-filled": {
+      "label": "Xem (tô đặc)",
+      "keywords": {
+        "en": [
+          "eye",
+          "view",
+          "show",
+          "visible",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "xem",
+          "hiện",
+          "mắt",
+          "lượt xem",
+          "tô đặc",
+          "đặc"
+        ]
+      }
+    },
+    "clock-filled": {
+      "label": "Đồng hồ (tô đặc)",
+      "keywords": {
+        "en": [
+          "clock",
+          "time",
+          "hour",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "đồng hồ",
+          "giờ",
+          "thời gian",
+          "tô đặc",
+          "đặc"
+        ]
+      }
+    },
+    "circle-check-filled": {
+      "label": "Dấu tích trong vòng tròn (tô đặc)",
+      "keywords": {
+        "en": [
+          "check",
+          "done",
+          "success",
+          "complete",
+          "approved",
+          "ok",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "xong",
+          "thành công",
+          "hoàn tất",
+          "đã duyệt",
+          "đúng",
+          "tô đặc",
+          "đặc"
+        ]
+      }
+    },
+    "circle-pause-filled": {
+      "label": "Tạm dừng (tô đặc)",
+      "keywords": {
+        "en": [
+          "circle pause",
+          "pause",
+          "paused",
+          "hold",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "tạm dừng",
+          "chờ",
+          "đang dừng",
+          "tô đặc",
+          "đặc"
+        ]
+      }
+    },
+    "save-filled": {
+      "label": "Lưu (tô đặc)",
+      "keywords": {
+        "en": [
+          "save",
+          "floppy disk",
+          "store",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "lưu",
+          "đĩa mềm",
+          "bản nháp",
+          "tô đặc",
+          "đặc"
+        ]
+      }
+    },
+    "corner-right-down-filled": {
+      "label": "Mũi tên gập xuống (tô đặc)",
+      "keywords": {
+        "en": [
+          "corner right down",
+          "arrow turn down",
+          "unpublish",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "gỡ",
+          "gỡ bài",
+          "gập xuống",
+          "tô đặc",
+          "đặc"
+        ]
+      }
+    },
+    "trash-filled": {
+      "label": "Thùng rác (tô đặc)",
+      "keywords": {
+        "en": [
+          "trash",
+          "delete",
+          "bin",
+          "remove",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "xoá",
+          "thùng rác",
+          "bỏ",
+          "tô đặc",
+          "đặc"
+        ]
+      }
+    },
+    "home-filled": {
+      "label": "Trang chủ (tô đặc)",
+      "keywords": {
+        "en": [
+          "home",
+          "house",
+          "homepage",
+          "start",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "trang chủ",
+          "nhà",
+          "trang đầu",
+          "tô đặc",
+          "đặc"
+        ]
+      }
+    },
+    "flame-filled": {
+      "label": "Ngọn lửa (tô đặc)",
+      "keywords": {
+        "en": [
+          "flame",
+          "fire",
+          "hot",
+          "trending",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "lửa",
+          "nóng",
+          "nổi bật",
+          "bán chạy",
+          "tô đặc",
+          "đặc"
+        ]
+      }
+    },
+    "calendar-days-filled": {
+      "label": "Lịch (có ngày) (tô đặc)",
+      "keywords": {
+        "en": [
+          "calendar",
+          "date",
+          "days",
+          "schedule",
+          "month",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "lịch",
+          "ngày",
+          "tháng",
+          "lịch trình",
+          "tô đặc",
+          "đặc"
+        ]
+      }
+    },
+    "phone-filled": {
+      "label": "Điện thoại (tô đặc)",
+      "keywords": {
+        "en": [
+          "phone",
+          "call",
+          "telephone",
+          "hotline",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "gọi",
+          "điện thoại",
+          "cuộc gọi",
+          "đường dây nóng",
+          "tô đặc",
+          "đặc"
+        ]
+      }
+    },
+    "phone-off-filled": {
+      "label": "Tắt điện thoại (tô đặc)",
+      "keywords": {
+        "en": [
+          "phone off",
+          "hang up",
+          "end call",
+          "no call",
+          "phone slash",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "cúp máy",
+          "kết thúc cuộc gọi",
+          "tắt điện thoại",
+          "không gọi",
+          "tô đặc",
+          "đặc"
+        ]
+      }
+    },
+    "user-plus-filled": {
+      "label": "Thêm người dùng (tô đặc)",
+      "keywords": {
+        "en": [
+          "user plus",
+          "add user",
+          "invite",
+          "sign up",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "thêm người",
+          "tạo tài khoản",
+          "mời",
+          "tô đặc",
+          "đặc"
+        ]
+      }
+    },
+    "user-minus-filled": {
+      "label": "Bớt người dùng (tô đặc)",
+      "keywords": {
+        "en": [
+          "user minus",
+          "remove user",
+          "filled",
+          "solid"
+        ],
+        "vi": [
+          "bớt người",
+          "gỡ người",
+          "xoá người dùng",
+          "tô đặc",
+          "đặc"
+        ]
+      }
     }
   }
 }

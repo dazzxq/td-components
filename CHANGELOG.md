@@ -4,6 +4,18 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.104.0
+
+**Icon tô đặc (filled) song song icon nét** (yêu cầu owner 08/11). Thêm mới, icon cũ không đổi.
+
+- 15 icon tô đặc `<tên>-filled` do kit tự tô từ hình Lucide (owner duyệt hình): `chart-no-axes-column`, `eye`, `clock`,
+  `circle-check`, `circle-pause`, `save`, `corner-right-down`, `trash`, `home`, `flame`, `calendar-days`, `phone`,
+  `phone-off`, `user-plus`, `user-minus`. Mỗi bản là một `<path>` tô đặc (không mask, không đổi bộ lọc SVG / CSP).
+- 4 icon nét mới: `chart-no-axes-column`, `circle-check`, `calendar-days`, `phone-off`. Kit có **241** icon.
+- `variant: 'filled'`: `tdIcon(name, { variant })`, `<td-icon variant="filled">`, slot `data-td-icon-variant`, PHP
+  `td_icon($name, $size, $label, 'filled')` / `Td::icon(..., $class, 'filled')`. Không có bản tô đặc → bản nét.
+- Công cụ dev `scripts/filled-icons/` (`design.json` + `flatten.py`, cần picosvg, không vào package).
+
 ## 0.103.0
 
 **Chuẩn hoá icon giữa các app: +30 icon chung** (yêu cầu dcms2 owner 08/11). Thêm mới, không đổi icon cũ.

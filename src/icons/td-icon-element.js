@@ -1,12 +1,12 @@
 /**
- * <td-icon name="close" size="m|s|l|24" label=""> — optional light-DOM façade over tdIcon().
+ * <td-icon name="close" size="m|s|l|24" label="" variant="outline|filled"> — optional light-DOM façade over tdIcon().
  * Importing THIS module defines the element (the factory module stays side-effect free).
  * If SSR already rendered the canonical <svg class="td-icon" data-icon="…"> child, it is kept.
  */
-import { tdIcon } from './td-icon.js';
+import { hasIcon, tdIcon } from './td-icon.js';
 
 export class TdIconElement extends HTMLElement {
-  static get observedAttributes() { return ['name', 'size', 'label']; }
+  static get observedAttributes() { return ['name', 'size', 'label', 'variant']; }
 
   connectedCallback() { this._render(); }
 
@@ -16,11 +16,16 @@ export class TdIconElement extends HTMLElement {
 
   _render(force = false) {
     const name = this.getAttribute('name') || '';
-    const existing = this.querySelector(':scope > svg.td-icon');
-    if (!force && existing && existing.getAttribute('data-icon') === name) return; // SSR child kept
+    const variant = this.getAttribute('variant') || 'outline';
     const rawSize = this.getAttribute('size') || 'm';
     const size = /^\d+$/.test(rawSize) ? Number(rawSize) : rawSize;
-    const svg = tdIcon(name, { size, label: this.getAttribute('label') || '' });
+    const existing = this.querySelector(':scope > svg.td-icon');
+    // SSR child kept when it already shows the icon this element resolves to (v0.104.0: after the variant)
+    if (!force && existing) {
+      const want = variant === 'filled' && hasIcon(`${name}-filled`) ? `${name}-filled` : name;
+      if (existing.getAttribute('data-icon') === want) return;
+    }
+    const svg = tdIcon(name, { size, label: this.getAttribute('label') || '', variant });
     this.replaceChildren(...(svg ? [svg] : []));
   }
 }
