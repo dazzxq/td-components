@@ -1303,6 +1303,18 @@ describe('v0.33 resolveOptions: pagination + upload.acceptLabel (decisions 13, 2
     assert.ok(!warns[0].includes('infinite'), 'never echoes the raw value');
   });
 
+  it('v0.106.0 columns: default auto; fixed; defaults < open opts; invalid → warn + auto', () => {
+    assert.equal(resolveOptions({ adapter: adapter() }).columns, 'auto');
+    assert.equal(resolveOptions({ adapter: adapter() }, { columns: 'fixed' }).columns, 'fixed');
+    assert.equal(resolveOptions({ adapter: adapter(), columns: 'fixed' }).columns, 'fixed', 'via configureDefaults');
+    assert.equal(resolveOptions({ adapter: adapter(), columns: 'fixed' }, { columns: 'auto' }).columns, 'auto', 'open opts win');
+    assert.equal(resolveOptions({ adapter: adapter(), columns: 'fixed' }, { columns: undefined }).columns, 'fixed', 'undefined never overrides');
+    const warns = [];
+    assert.equal(resolveOptions({ adapter: adapter() }, { columns: 'grid' }, { warn: (m) => warns.push(m) }).columns, 'auto');
+    assert.equal(warns.length, 1);
+    assert.ok(!warns[0].includes('grid'), 'never echoes the raw value');
+  });
+
   it('upload.acceptLabel: text only, cut', () => {
     assert.equal(resolveOptions({ adapter: adapter() }, { upload: { acceptLabel: ' JPG, PNG ' } }).upload.acceptLabel, 'JPG, PNG');
     assert.equal(resolveOptions({ adapter: adapter() }, { upload: { acceptLabel: 5 } }).upload.acceptLabel, '');

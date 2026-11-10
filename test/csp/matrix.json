@@ -5222,6 +5222,38 @@
       "selectorNote": "v0.33: pagination 'pages' — the real td-pagination in the toolbar (Hiển thị 1-30 / 40 media + numbered pages)"
     },
     {
+      "state": "columns-fixed",
+      "setup": "const { createMockAdapter } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); TdMediaPicker.open({ autoSelectFirst: false, adapter: createMockAdapter({ count: 24 }), columns: 'fixed', pageSize: 24, selection: { mode: 'multiple' } }); await w(400);",
+      "selectors": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker .td-modal__header",
+        ".td-media-picker__body",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__content",
+        ".td-media-picker__results",
+        ".td-media-picker__grid",
+        ".td-media-picker__skeleton"
+      ],
+      "portal": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker .td-modal__header",
+        ".td-media-picker__body",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__content",
+        ".td-media-picker__results",
+        ".td-media-picker__grid",
+        ".td-media-picker__skeleton"
+      ],
+      "settle": 600,
+      "selectorNote": "v0.106.0: columns 'fixed' — data-columns/data-cols on the root, the grid + skeleton read --td-media-picker-cols",
+      "excludeProps": [
+        "height"
+      ],
+      "excludeNote": "the grid height follows the card text (font metrics differ mac vs Linux CI); column count is covered by grid-template-columns"
+    },
+    {
       "state": "upload",
       "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); const ad = createMockAdapter({ count: 12 }); ad.upload = (f, o) => { o.onProgress({ loaded: 40, total: 100 }); return new Promise(() => {}); }; TdMediaPicker.open({ autoSelectFirst: false, adapter: ad, uploadFields: [{ key: 'note', label: 'Ghi chú', control: 'text', helpText: 'Lưu kèm file' }], upload: { accept: 'image/*', maxSize: '5MB' } }); await w(300); R().querySelector('.td-media-picker__upload-btn button').click(); await w(400); U().querySelector('td-dropzone').addFiles([new File(['x'], 'anh-moi.png', { type: 'image/png' })]); await w(200);",
       "selectors": [

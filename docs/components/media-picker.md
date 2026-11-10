@@ -181,6 +181,18 @@ Mỗi mục là một item [`td-media-grid`](media-grid.md) (`select-mode="tick"
 `--td-media-picker-list-bg`, `--td-media-picker-card-radius`, `--td-media-picker-card-shadow` — xem
 [Theming](../customization/theming.md).
 
+### Lưới đủ hàng — `columns: 'fixed'` (0.106.0)
+
+Mặc định (`'auto'`) lưới tự xếp theo `--td-media-picker-col-min` nên số cột đổi theo bề rộng (4, 7, 8…) và hàng cuối
+của mỗi trang thường thiếu. `columns: 'fixed'` chọn số cột trong **8 / 6 / 4 / 3 / 2 / 1** (ước của 24): N lớn nhất mà
+mỗi thẻ vẫn ≥ `--td-media-picker-fixed-card-min` (mặc định `135px`), cột chia đều, thẻ giãn lấp đầy. Đặt
+**`pageSize: 24`** (hoặc bội của 24) thì mọi trang trừ trang cuối đều đủ hàng. Khung chờ (skeleton) = N × 2 thẻ, cùng
+số cột, tự cập nhật khi đổi bề rộng.
+
+- Số cột tính bằng JS (ResizeObserver trên vùng kết quả), ghi lên gốc `.td-media-picker`: `data-cols="N"` +
+  `--td-media-picker-cols` (CSSOM, CSP an toàn). Chỉnh ngưỡng bằng token, không ghi đè class:
+  `:root { --td-media-picker-fixed-card-min: 160px }`.
+
 ### Panel chi tiết (luôn mở)
 
 Từ trên xuống: **xem trước vuông 1:1** (`contain`; video = poster, không nhúng player; file = icon + tên) → "TÊN FILE" →
@@ -452,6 +464,7 @@ const outcome = await TdMediaPicker.open({
 | `title` | `string` | theo `selection.kinds` | "Chọn ảnh" / "Chọn video" / "Chọn tài liệu" / "Chọn media" |
 | `pageSize` | số 1–100 | `30` | → `limit` (0.32: 40) |
 | `pagination` | `'cursor'` \| `'pages'` | `'cursor'` | 0.33 — [Phân trang](#phân-trang--hai-chế-độ) |
+| `columns` | `'auto'` \| `'fixed'` | `'auto'` | 0.106.0 — [Lưới đủ hàng](#lưới-đủ-hàng--columns-fixed-01060). Giá trị lạ → `'auto'` + một cảnh báo |
 | `upload` | `{ accept?, maxSize?, multiple? = true, acceptLabel?, imageResize? }` | — | Chuyển cho `td-dropzone` ([dropzone](dropzone.md)). `acceptLabel` (0.33) chỉ là **chữ** trên badge / mô tả tab URL, không phải bộ lọc; thiếu thì suy từ `accept`. `imageResize` (0.90.0): policy tối ưu ảnh trước khi upload — xem [Tối ưu ảnh trước khi upload](#tối-ưu-ảnh-trước-khi-upload--uploadimageresize-0900). **Object `upload` của `open()` thay nguyên object `upload` của defaults** (không merge từng key) |
 | `initialCollection` | `{ id: string, label: string }` \| `null` | `null` | 0.66.0: mở **thẳng vào** bộ sưu tập này (breadcrumb + `collectionId` ngay từ request đầu). `capabilities: { collections: false }` của site thắng: khi đó `initialCollection` bị bỏ qua và phiên chạy như phiên thường. `id` ≤ 512 ký tự, `label` cắt còn 200 code point; sai hình dạng → `TypeError`; `null` = không có. **Không** lấy từ defaults. Focus vẫn ở ô tìm. Xem [Bộ sưu tập](#bộ-sưu-tập-0660) |
 | `collections` | `{ showWithoutQuery?: boolean }` | `{ showWithoutQuery: false }` | 0.66.0: `true` → dải bộ sưu tập hiện cả khi chưa gõ tìm. Không phải object → `TypeError`; `null` = bỏ qua |
@@ -896,6 +909,13 @@ upload: async (file, { signal, onProgress, context }) => {
 },
 ```
 
+- **Toast cuối lô báo tệp trùng (0.106.0)**: kết quả lô (đối số `onBatch` nội bộ / toast) đếm riêng `created`,
+  `reused` (server trả `exact-reused`), `reusedInBatch` (trùng một tệp **vừa tạo trong cùng lô**; trùng ảnh có từ trước
+  thì không tính vào đây) và `reusedNames` (≤ 5). Không có trùng → câu cũ `uploadDone`; có trùng →
+  `uploadDoneReused` / `uploadAllReused` + `uploadReusedInBatch` + tên tệp. Áp cho cả thả vào lưới (picker mở / đã
+  đóng) và hộp thoại tải lên. Site chỉ có ảnh muốn chữ "ảnh" thay "tệp" → ghi đè 5 chuỗi qua `messages` /
+  `TdMediaPicker.labels` (bảng [Nhãn](#nhãn--tdmediapickerlabels)).
+
 ## Bộ sưu tập (0.66.0)
 
 Site quản lý ảnh theo **album** (bộ sưu tập, thư mục) có thể cho picker một cấp điều hướng thứ hai: gõ "redmi turbo 4" thì
@@ -1315,7 +1335,9 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `uploadTitle` · `uploadClose` · `uploadSources` | "Tải lên media" · "Đóng" · "Nguồn tải lên" |
 | `uploadTabFile` · `uploadTabUrl` | "Tải file" · "Tải từ URL" |
 | `uploadDropTitle` · `uploadDropText` | "Kéo thả file vào đây" · "hoặc bấm để chọn file" |
-| `uploadNeedsFields` · `uploadDone` | "Điền các trường bắt buộc trước khi tải lên." · "Đã tải lên {ok}/{total} tệp" |
+| `uploadNeedsFields` · `uploadDone` | "Điền các trường bắt buộc trước khi tải lên." · "Đã tải lên {ok}/{total} tệp" (lô không có tệp trùng) |
+| `uploadDoneReused` · `uploadAllReused` (0.106.0) | "Đã tải lên {created} tệp mới. {reused} tệp trùng với tệp đã có nên dùng lại." · "{reused} tệp đã có trong thư viện, đã dùng lại." |
+| `uploadReusedInBatch` · `uploadReusedNames` · `uploadReusedMore` (0.106.0) | "({n} tệp trùng nhau trong lần tải này.)" · "Trùng: {names}" (≤ 5 tên) · " và {n} tệp khác" |
 | `uploaded` · `reused` · `uploadError` | "Đã tải lên {name}" · "{name} đã có trong thư viện — dùng lại ảnh cũ" · "Tải lên thất bại" |
 | `dropHint` · `dropStarted` · `dropRejected` · `dropFolder` (0.93.0) | "Thả tệp để tải lên" · "Đang tải lên {n} tệp" · "{n} tệp không được nhận" · "Không tải được thư mục" |
 | `dropCancel` · `dropRemove` · `dropRetry` · `dropRetryLabel` (0.93.0) | "Huỷ tải {name}" · "Gỡ {name}" · "Thử lại" · "Thử lại {name}" |

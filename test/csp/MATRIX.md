@@ -179,6 +179,9 @@ Also v0.95.0: `td-media-grid.group-selecting` (grid b selects nothing but carrie
 `td-media-picker.drop-failed-strip` (3 failed grid uploads → the failure strip) / `drop-reused` (exact-reused chip + pinned
 card), `td-check-matrix.override` / `override-column` / `override-ssr` (mode=override grid, narrow bar with reset, the
 check-matrix@2 `<select>` tree before define).
+Also v0.106.0: `td-media-picker.columns-fixed` (`columns: 'fixed'`, 24 cards: the grid and skeleton read
+`--td-media-picker-cols`); the grid `height` is excluded because it follows the card text (font metrics differ between
+mac and Linux CI).
 
 ### td-page-actions (v0.96.0, new component — module `/src/display/td-page-actions.js`)
 States: `default` (720px row: 2 secondaries, one `data-td-in-menu` action that lives only in "…", the primary last),

@@ -72,6 +72,7 @@ import { readImageSize } from '../utils/image-size.js';
 import { TdDropzone } from '../form/td-dropzone.js';
 import { createAdapterUpload } from './media-picker-upload.js';
 import { getUploadStore } from './media-picker-uploads.js';
+import { batchDoneText } from './media-picker-batch.js';
 import { TdToast } from './td-toast.js';
 import { tdIcon } from '../icons/td-icon.js';
 import './td-progress.js';
@@ -186,7 +187,7 @@ export function createGridDrop(o) {
     onError: (d) => { if (live()) call(o.onError, d); },
     onBatch: (r) => {
       if (!live() || !r) return;
-      if (r.ok) call(o.toast, 'success', t('uploadDone', { ok: r.ok, total: r.total }));
+      if (r.ok) call(o.toast, 'success', batchDoneText(r, t));
       const n = failedCards().length;
       if (n >= 2) call(o.announce, t('uploadFailedStrip', { n }));
     },

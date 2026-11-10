@@ -348,7 +348,8 @@ describe('v0.33.0 media picker upload dialog (engines)', () => {
       expect(row.textContent.includes('Ảnh quá lớn.')).to.equal(true);
       expect(row.textContent.includes('SQLSTATE')).to.equal(false);
       expect(!!o.h.root.querySelector('img[src="x"]')).to.equal(false);
-      await until(() => toasts().includes('Đã tải lên 1/2 tệp'), 2000, 'toast 1/2');
+      // v0.106.0: the one file that went through was an exact-reused one → the batch toast says so (not "1/2")
+      await until(() => toasts().includes('1 tệp đã có trong thư viện, đã dùng lại. Trùng: anh-1.jpg'), 2000, 'toast reused');
       expect(o.isOpen()).to.equal(true);
       expect(o.rec.uploaded.length).to.equal(1);
       expect(o.rec.uploaded[0].dedup).to.deep.equal({ outcome: 'exact-reused', matchedAssetId: 'm1' });

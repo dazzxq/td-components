@@ -4,6 +4,17 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.106.0
+
+**Media picker: lưới đủ hàng + toast báo tệp trùng** (yêu cầu dsuite 10/11; plan `docs/internal/plans/v0.106.0-media-picker-grid-dedupe.md`). Mặc định không đổi.
+
+- Option `columns: 'fixed'` (mặc định `'auto'`): số cột trong 8/6/4/3/2/1 theo bề rộng vùng kết quả, thẻ ≥
+  `--td-media-picker-fixed-card-min` (token mới, `135px`), cột đều; `pageSize: 24` → mọi trang trừ trang cuối đủ hàng.
+  Skeleton = số cột × 2 (cũ: 30). `data-cols` + `--td-media-picker-cols` trên `.td-media-picker`.
+- Toast cuối lô tải lên (thả vào lưới, picker đóng, hộp thoại) đếm riêng tệp mới / tệp trùng (`exact-reused`) / trùng
+  trong cùng lô và kê ≤ 5 tên trùng. Chuỗi mới: `uploadDoneReused`, `uploadAllReused`, `uploadReusedInBatch`,
+  `uploadReusedNames`, `uploadReusedMore`. Không có trùng → `uploadDone` cũ.
+
 ## 0.105.0
 
 **Avatar `.td-avatar` thuần CSS + helper** (owner 08/11; plan `docs/internal/plans/v0.105.0-avatar.md`). Thêm mới.

@@ -30,6 +30,7 @@
  * until optimised, then the optimised Blob's size; a file without policy costs 0 — a reference to the dropped File).
  * Over a cap → rejected at admission, reason `count`.
  */
+import { createBatchTally, batchDoneText } from './media-picker-batch.js';
 import { UploadQueue, createUploadSlots, acceptsFile } from '../utils/upload-queue.js';
 
 export const UPLOAD_LIMIT = 100;
@@ -131,6 +132,8 @@ function createStore(adapter) {
   let reusedDone = [];
   /** item → attempt session, for the items of the open batch (a removed item leaves it; a released one stays) */
   let batchAttempts = new Map();
+  /** v0.106.0: what the open batch's finished files were (created / exact-reused), for the summary toast */
+  const tally = createBatchTally();
   /** the label function of the last attached session (its messages snapshot; never the session itself) */
   let lastT = null;
   /** admission config of the latest drop (labels are read later: optimisation errors) */
@@ -187,6 +190,7 @@ function createStore(adapter) {
     const dedup = res && res.deduplication;
     rec.reused = !!dedup && dedup.outcome === 'exact-reused';
     rec.assetId = asset ? asset.id : null;
+    tally.set(rec.item, rec.name, asset, dedup);
     unlink(rec);
     queue.release(rec.item); // its bytes go now (plan G); the batch still counts it
     if (shows(rec)) call(view.onDone, rec, asset, dedup);
@@ -204,19 +208,24 @@ function createStore(adapter) {
     const rec = byItem.get(item);
     if (!rec) return;
     rec.removed = true;
+    tally.delete(item);
     batchAttempts.delete(item); // it left the batch too: its session no longer decides where the summary goes
     unlink(rec);
     if (shows(rec)) call(view.onRemove, rec);
     prune();
   }
 
-  function onBatchEnd(r) {
+  function onBatchEnd(raw) {
+    const r = raw && typeof raw === 'object' ? tally.extend(raw) : raw;
     const attempts = [...batchAttempts.values()];
     batchAttempts = new Map();
     const local = !!view && attempts.length > 0 && attempts.every((a) => a === view.session);
     if (local) call(view.onBatch, r);
-    else if (r && r.fail > 0) call(env.toast, 'warning', tt('uploadFailedClosed', { n: r.fail }));
-    else if (r && r.ok > 0) call(env.toast, 'success', tt('uploadDone', { ok: r.ok, total: r.total }));
+    else if (r) {
+      if (r.fail > 0) call(env.toast, 'warning', tt('uploadFailedClosed', { n: r.fail }));
+      // v0.106.0 (impl review): a mixed batch still reports its duplicates; without duplicates the old single warning
+      if (r.ok > 0 && (!(r.fail > 0) || r.reused > 0)) call(env.toast, 'success', batchDoneText(r, tt));
+    }
     prune();
   }
 
@@ -232,7 +241,10 @@ function createStore(adapter) {
 
   /** a new batch starts with no attempt recorded (a batch of total 0 never ends with a call) */
   function batchOpen() {
-    if (!queue._batch) batchAttempts = new Map();
+    if (!queue._batch) {
+      batchAttempts = new Map();
+      tally.reset();
+    }
   }
 
   const store = {

@@ -184,6 +184,9 @@
  * @property {Partial<Record<string, string|((params: unknown) => string)>>} [messages]
  * @property {string} [title] v0.32 addition (default: `defaultTitle(selection.kinds, labels)`, v0.33 decision 6)
  * @property {number} [pageSize] v0.32 addition: 1-100 (default 30 since v0.33, was 40) → `limit`
+ * @property {'auto'|'fixed'} [columns] v0.106.0: 'auto' (default) = the auto-fill grid; 'fixed' = 8/6/4/3/2/1 columns (always a
+ *   divisor of 24, so a pageSize of 24 fills every row; card min width = token `--td-media-picker-fixed-card-min`); unknown → 'auto' + a
+ *   warning; also via configureDefaults
  * @property {'cursor'|'pages'} [pagination] v0.33 addition (default 'cursor'; also via configureDefaults, decision 13)
  * @property {{ accept?: string, maxSize?: string, multiple?: boolean, acceptLabel?: string }} [upload] v0.32 addition
  *   (→ td-dropzone); v0.33 `acceptLabel`: badge TEXT only, never a filter (decision 21)
@@ -217,6 +220,8 @@ const TEXT_MAX = 200;
 const ID_MAX = 512;
 export const PAGE_SIZE_DEFAULT = 30; // v0.33 decision 13 (dcms2); was 40
 export const PAGINATION_MODES = Object.freeze(['cursor', 'pages']);
+/** v0.106.0: grid column modes of the picker ('auto' = the old auto-fill grid; 'fixed' = 8/6/4/3/2/1 columns, divisors of 24) */
+export const COLUMN_MODES = Object.freeze(['auto', 'fixed']);
 
 /**
  * Bounds on adapter payloads before anything reaches the DOM (review SEC-3): extras are dropped (one warning per call,
@@ -619,7 +624,7 @@ let warnedCropMultiple = false;
 /**
  * Resolve the options of one open (decision 6): `defaults`, then each layer in INCREASING priority (shallow merge per
  * key; an `undefined` value never overrides). `selection` never comes from `defaults`. Normalises `selection`,
- * `pageSize` (1-100, default 30), `pagination` ('cursor' | 'pages', invalid → warned + 'cursor'), `upload` (+ text
+ * `pageSize` (1-100, default 30), `columns` ('auto' | 'fixed', v0.106.0, invalid → warned + 'auto'), `pagination` ('cursor' | 'pages', invalid → warned + 'cursor'), `upload` (+ text
  * `acceptLabel`), `messages`, `crop` (v0.35 decision 23 → `cropResolved = { aspectRatio, allowFocalPoint, mode, shape } | null` (v0.75.0: `mode` 'box'|'pan', `shape` 'rect'|'circle', unknown → the default): a bad
  * `aspectRatio` warns once ⇒ free; `selection.mode = 'multiple'` warns once ⇒ no crop; unknown keys ignored). No valid adapter → TypeError (a
  * programming error). v0.66.0 (K8): `initialCollection` (never from `defaults`; `{ id, label }` | null, a bad shape →
@@ -701,6 +706,14 @@ export function resolveOptions(defaults, ...layers) {
       try { warn("td-media-picker: options.pagination must be 'cursor' or 'pages' — using 'cursor'."); } catch { /* ignore */ }
     }
   }
+  // v0.106.0: `columns` 'auto' (default, the auto-fill grid) | 'fixed' (a column count that divides 24); unknown → 'auto' + a warning
+  let columns = 'auto';
+  if (merged.columns !== undefined) {
+    if (COLUMN_MODES.includes(merged.columns)) columns = merged.columns;
+    else {
+      try { warn("td-media-picker: options.columns must be 'auto' or 'fixed' — using 'auto'."); } catch { /* ignore */ }
+    }
+  }
   const filters = isObj(merged.initialFilters) ? { ...merged.initialFilters } : {};
   // v0.66.0 (K8): `initialCollection` absent → null; present → exactly `{ id, label }` (a fresh object) or a TypeError
   let initialCollection = null;
@@ -721,6 +734,7 @@ export function resolveOptions(defaults, ...layers) {
     selection: { mode, maxItems, initialIds: maxItems ? ids.slice(0, maxItems) : ids, kinds: kinds.length ? kinds : null },
     pageSize,
     pagination,
+    columns,
     upload: {
       accept: typeof up.accept === 'string' ? up.accept : '',
       maxSize: typeof up.maxSize === 'string' ? up.maxSize : '',

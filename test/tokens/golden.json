@@ -1512,6 +1512,7 @@
     "@color-scheme": "dark"
   },
   "added": {
+    "--td-media-picker-fixed-card-min": { "light": "135px", "dark": "135px", "why": "v0.106.0 media picker columns 'fixed': card-width threshold (plan v0.106.0-media-picker-grid-dedupe QĐ2)" },
     "--td-avatar-fg": { "light": "rgb(28, 28, 30)", "dark": "rgb(245, 245, 247)", "why": "v0.105.0 .td-avatar: fg (plan v0.105.0-avatar QĐ3)" },
     "--td-avatar-bg": { "light": "rgb(240, 240, 242)", "dark": "rgb(44, 44, 48)", "why": "v0.105.0 .td-avatar: bg (plan v0.105.0-avatar QĐ3)" },
     "--td-avatar-font-family": { "light": "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Segoe UI\", Inter, Roboto, \"Helvetica Neue\", Arial, sans-serif", "dark": "-apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Segoe UI\", Inter, Roboto, \"Helvetica Neue\", Arial, sans-serif", "why": "v0.105.0 .td-avatar: font-family (plan v0.105.0-avatar QĐ3)" },

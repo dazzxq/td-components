@@ -93,6 +93,7 @@
  *     </div>
  *   </div>
  */
+import { createBatchTally, batchDoneText } from './media-picker-batch.js';
 import { openDialogLayer } from './dialog-layer.js';
 import { nearestScroller } from '../utils/keyboard-viewport.js';
 import { TdModal } from './td-modal.js';
@@ -121,6 +122,12 @@ export const UPLOAD_LABELS = {
   uploadDropText: 'hoặc bấm để chọn file',
   uploadNeedsFields: 'Điền các trường bắt buộc trước khi tải lên.',
   uploadDone: 'Đã tải lên {ok}/{total} tệp',
+  /** v0.106.0: a batch with exact-reused files (the server deduplicated them) */
+  uploadDoneReused: 'Đã tải lên {created} tệp mới. {reused} tệp trùng với tệp đã có nên dùng lại.',
+  uploadAllReused: '{reused} tệp đã có trong thư viện, đã dùng lại.',
+  uploadReusedInBatch: '({n} tệp trùng nhau trong lần tải này.)',
+  uploadReusedNames: 'Trùng: {names}',
+  uploadReusedMore: ' và {n} tệp khác',
   /** v0.93.0: files dropped on the picker (site with uploadFields), held until the user submits them */
   uploadHeld: 'Tệp đã thả ({n})',
   uploadHeldSubmit: 'Tải lên {n} tệp',
@@ -520,6 +527,7 @@ export function openUploadDialog(o) {
     dz.setAttribute('prompt-text', t('uploadDropText'));
     dz.setAttribute('hint-style', 'badges');
     dz.upload = (file, c) => uploadFile(file, c).then((res) => {
+      batchTally.set(file, file && file.name, res.asset, res.deduplication);
       uploaded(res.asset, res.deduplication, 'upload');
       return res;
     });
@@ -698,13 +706,16 @@ export function openUploadDialog(o) {
     isClosed: () => closing || destroyed,
   });
 
+  const batchTally = createBatchTally();
+
   /** v0.93.0: `{ ok, fail, total }` of one batch (once, from the dropzone's UploadQueue) */
   function finishBatch(r) {
     if (destroyed || !r) return;
     const { ok, fail, total } = r;
+    const sum = batchTally.extend(r);
     if (!total) return;
     if (ok) {
-      try { TdToast.success(t('uploadDone', { ok, total }), { themeRoot: root }); } catch { /* ignore */ }
+      try { TdToast.success(batchDoneText(sum, t), { themeRoot: root }); } catch { /* ignore */ }
     }
     if (!fail && ok && !closing && !urlTask && !hasErrorRow()) finish();
   }

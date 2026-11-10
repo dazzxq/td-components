@@ -141,6 +141,10 @@ export function onDefaultsChange(fn) {
 }
 const SEARCH_DEBOUNCE_MS = 250;
 const SKELETON_CARDS = 30;
+/** v0.106.0 `columns: 'fixed'`: the column counts (divisors of 24), largest first; card min width = a token, this default */
+const FIXED_COLS = [8, 6, 4, 3, 2, 1];
+const FIXED_CARD_MIN = 135;
+const FIXED_COLS_INITIAL = 4; // no measure yet → a skeleton of 2 rows of 4
 const USAGES_SHOWN = 20;
 const TONES = ['info', 'success', 'warning', 'danger'];
 const KIND_ICON = { image: 'image', video: 'video', file: 'file' };
@@ -364,7 +368,7 @@ export class TdMediaPicker extends HTMLElement {
   /**
    * Module-level defaults (decision 6): REPLACES the whole default object on every call (one call in the site
    * bootstrap). Keys: adapter, capabilities, assetFields, uploadFields, messages, context, upload, pageSize,
-   * pagination. An adapter without list() / get() → TypeError (previous defaults kept). v0.90.0: an invalid
+   * pagination, columns (v0.106.0). An adapter without list() / get() → TypeError (previous defaults kept). v0.90.0: an invalid
    * `upload.imageResize` policy → TypeError too (previous defaults kept); a valid one is stored normalised.
    * @param {object} defaults
    */
@@ -535,6 +539,7 @@ export class TdMediaPicker extends HTMLElement {
       pageSize: opts.pageSize,
       pages: new PageState({ mode: opts.pagination, pageSize: opts.pageSize, warn: (m) => warnOnce('pages', m) }),
       lastHow: 'reload',
+      cols: 0, // v0.106.0 `columns: 'fixed'`: the measured column count (0 = not measured yet)
       /** @type {Map<string, HTMLElement>} grid items by id */
       items: new Map(),
       req: { list: new LatestRequest(), facets: new LatestRequest(), detail: new LatestRequest(),
@@ -614,6 +619,13 @@ export class TdMediaPicker extends HTMLElement {
         this._initialFocus();
       },
     });
+    // v0.106.0 `columns: 'fixed'`: observe the results area (the grid and the skeleton are its children, both fill its
+    // content width); the observer ends with the picker (s.ctrl aborts in _teardown)
+    if (opts.columns === 'fixed' && typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => this._measureCols());
+      ro.observe(s.els.results);
+      s.ctrl.signal.addEventListener('abort', () => ro.disconnect(), { once: true });
+    }
     // initialIds transaction (decision 15)
     if (opts.selection.initialIds.length) {
       s.initial = new InitialLoad({
@@ -658,6 +670,7 @@ export class TdMediaPicker extends HTMLElement {
     root.setAttribute('data-view', 'grid');
     root.setAttribute('data-mode', s.mode);
     root.setAttribute('data-detail-empty', ''); // review ISSUE-4: nothing viewed yet
+    if (s.opts.columns === 'fixed') root.setAttribute('data-columns', 'fixed'); // v0.106.0
     // Static markup only (no interpolation); every dynamic value is set through the DOM below.
     root.innerHTML = '<div class="td-modal__backdrop" aria-hidden="true"></div>'
       + '<div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg td-media-picker__dialog"'
@@ -724,21 +737,7 @@ export class TdMediaPicker extends HTMLElement {
     e.results.setAttribute('aria-labelledby', e.heading.id);
     e.detail.setAttribute('aria-label', t('detail'));
     e.grid.setAttribute('label', t('grid'));
-    for (let i = 0; i < SKELETON_CARDS; i++) {
-      const card = document.createElement('div');
-      card.className = 'td-media-picker__skeleton-card';
-      const thumb = document.createElement('div');
-      thumb.className = 'td-skeleton td-skeleton--rect td-media-picker__skeleton-thumb';
-      const info = document.createElement('div');
-      info.className = 'td-media-picker__skeleton-info';
-      const l1 = document.createElement('div');
-      l1.className = 'td-skeleton td-skeleton--text';
-      const l2 = document.createElement('div');
-      l2.className = 'td-skeleton td-skeleton--text td-media-picker__skeleton-short';
-      info.append(l1, l2);
-      card.append(thumb, info);
-      e.skeleton.appendChild(card);
-    }
+    this._syncSkeleton();
     if (s.collEnabled) this._buildCollections();
     const retry = makeButton(t('retry'), { size: 'sm', cls: 'td-media-picker__retry' });
     retry.addEventListener('click', () => { if (usable(retry)) this._loadPage(s.lastHow, { autoFirst: s.autoRetry === true, ...(s.opening ? { source: 'open' } : {}) }); });
@@ -1472,6 +1471,64 @@ export class TdMediaPicker extends HTMLElement {
     s.els.grid.hidden = true;
     s.els.error.hidden = false;
     if (s.els.itemsHead) this._syncSectionHeads();
+  }
+
+  /** @private v0.106.0: the skeleton card count — 30 ('auto', as before) or 2 rows of the current column count ('fixed') */
+  _skeletonCount() {
+    const s = this._s;
+    return s.opts.columns === 'fixed' ? (s.cols || FIXED_COLS_INITIAL) * 2 : SKELETON_CARDS;
+  }
+
+  /** @private add / remove skeleton cards until there are exactly `_skeletonCount()` */
+  _syncSkeleton() {
+    const sk = this._s.els.skeleton;
+    const want = this._skeletonCount();
+    while (sk.childElementCount > want) sk.lastElementChild.remove();
+    while (sk.childElementCount < want) {
+      const card = document.createElement('div');
+      card.className = 'td-media-picker__skeleton-card';
+      const thumb = document.createElement('div');
+      thumb.className = 'td-skeleton td-skeleton--rect td-media-picker__skeleton-thumb';
+      const info = document.createElement('div');
+      info.className = 'td-media-picker__skeleton-info';
+      const l1 = document.createElement('div');
+      l1.className = 'td-skeleton td-skeleton--text';
+      const l2 = document.createElement('div');
+      l2.className = 'td-skeleton td-skeleton--text td-media-picker__skeleton-short';
+      info.append(l1, l2);
+      card.append(thumb, info);
+      sk.appendChild(card);
+    }
+  }
+
+  /**
+   * @private v0.106.0 `columns: 'fixed'`: the largest N in 8/6/4/3/2/1 whose card is still >= `--td-media-picker-fixed-card-min`
+   * (default 135px) in the results area (content width = without padding / scrollbar). Written as `data-cols` +
+   * `--td-media-picker-cols` on the `.td-media-picker` root (CSSOM, CSP-safe). Width 0 (not laid out) → nothing written.
+   */
+  _measureCols() {
+    const s = this._s;
+    const e = s && s.els;
+    if (!e || !s.root || !this._live(s)) return;
+    const cs = getComputedStyle(e.results);
+    const w = e.results.clientWidth - (parseFloat(cs.paddingInlineStart) || 0) - (parseFloat(cs.paddingInlineEnd) || 0);
+    if (!(w > 0)) return;
+    let gap = parseFloat(getComputedStyle(e.grid).columnGap);
+    if (!Number.isFinite(gap)) gap = parseFloat(cs.columnGap);
+    if (!Number.isFinite(gap)) gap = 0;
+    const raw = getComputedStyle(s.root).getPropertyValue('--td-media-picker-fixed-card-min').trim();
+    let min = parseFloat(raw);
+    if (!(min > 0)) min = FIXED_CARD_MIN;
+    else if (/r?em$/.test(raw)) min *= parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    let n = 1;
+    for (const c of FIXED_COLS) {
+      if ((w - (c - 1) * gap) / c >= min) { n = c; break; }
+    }
+    if (n === s.cols) return;
+    s.cols = n;
+    s.root.setAttribute('data-cols', String(n));
+    s.root.style.setProperty('--td-media-picker-cols', String(n));
+    this._syncSkeleton();
   }
 
   /** @private skeleton cards while a page loads */

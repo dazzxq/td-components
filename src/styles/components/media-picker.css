@@ -14,6 +14,8 @@
 		--td-media-picker-detail-w: 25rem;
 		--td-media-picker-col-min: 200px;
 		--td-media-picker-gap: 1rem;
+		/* v0.106.0 columns: 'fixed': the column count (8/6/4/3/2/1) is the largest whose card is at least this wide */
+		--td-media-picker-fixed-card-min: 135px;
 		--td-media-picker-card-radius: var(--td-radius-lg);
 		--td-media-picker-checked-opacity: 0.7;
 	}
@@ -302,6 +304,11 @@
 		align-content: start;
 	}
 
+	/* v0.106.0 columns: 'fixed': N columns (picked by JS, always a divisor of 24) instead of auto-fill */
+	.td-media-picker[data-columns="fixed"] .td-media-picker__grid {
+		--td-media-grid-cols: repeat(var(--td-media-picker-cols, 4), minmax(0, 1fr));
+	}
+
 	/* card (decisions 11-12) */
 	.td-media-picker__card {
 		box-sizing: border-box;
@@ -586,6 +593,10 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(var(--td-media-picker-col-min), 1fr));
 		gap: var(--td-media-picker-gap);
+	}
+
+	.td-media-picker[data-columns="fixed"] .td-media-picker__skeleton {
+		grid-template-columns: repeat(var(--td-media-picker-cols, 4), minmax(0, 1fr));
 	}
 
 	.td-media-picker__skeleton-card {

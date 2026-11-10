@@ -226,7 +226,9 @@
       "src/utils/scroll-lock.js",
       "src/utils/transition.js"
     ],
+    "src/feedback/media-picker-batch.js": [],
     "src/feedback/media-picker-drop.js": [
+      "src/feedback/media-picker-batch.js",
       "src/feedback/media-picker-upload.js",
       "src/feedback/media-picker-uploads.js",
       "src/feedback/td-progress.js",
@@ -254,6 +256,7 @@
     "src/feedback/media-picker-upload.js": [
       "src/display/td-tabs.js",
       "src/feedback/dialog-layer.js",
+      "src/feedback/media-picker-batch.js",
       "src/feedback/media-picker-fields.js",
       "src/feedback/td-modal.js",
       "src/feedback/td-progress.js",
@@ -269,6 +272,7 @@
       "src/utils/media-url.js"
     ],
     "src/feedback/media-picker-uploads.js": [
+      "src/feedback/media-picker-batch.js",
       "src/utils/upload-queue.js"
     ],
     "src/feedback/td-alert.js": [

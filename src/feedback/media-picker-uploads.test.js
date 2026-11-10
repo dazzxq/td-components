@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 const {
   getUploadStore, peekUploadStore, pageUploadSlots, uploadStats, cancelAllUploads, UPLOAD_LIMIT, UPLOAD_BYTES,
 } = await import('./media-picker-uploads.js');
+const { batchDoneText } = await import('./media-picker-batch.js');
 const { UploadQueue } = await import('../utils/upload-queue.js');
 const { normalizeImageResizePolicy } = await import('../utils/image-resize.js');
 
@@ -66,7 +67,10 @@ function drop(store, view, files, { hooks, cfg = {}, context = view.context } = 
   });
 }
 
-const okResult = (id, outcome = 'created') => ({ asset: { id, name: id }, deduplication: { outcome } });
+const okResult = (id, outcome = 'created') => ({
+  asset: { id, name: id },
+  deduplication: outcome === 'created' ? { outcome } : { outcome, matchedAssetId: id },
+});
 
 afterEach(async () => {
   cancelAllUploads();
@@ -109,7 +113,7 @@ describe('background store', () => {
     assert.equal(store.reusedMarks, 1);
     assert.equal(toasts.length, 1);
     assert.equal(toasts[0][0], 'success');
-    assert.match(toasts[0][1], /^uploadDone:/);
+    assert.match(toasts[0][1], /^uploadDoneReused:/, 'B is an existing asset: the batch tells it apart (v0.106.0)');
     const { v: v2 } = makeView('other');
     store.attach(v2);
     assert.deepEqual(store.takeReused('other'), []);
@@ -419,5 +423,128 @@ describe('single (multiple: false)', () => {
     assert.equal(names.filter((n) => n.startsWith('bg')).length, UPLOAD_LIMIT - 1, 'no background file touched');
     assert.ok(hooks2.calls.filter((c) => c.rec.name.startsWith('bg')).every((c) => !c.c.signal.aborted));
     store2.detach(me);
+  });
+});
+
+describe('v0.106.0 batch summary (dedupe)', () => {
+  const MSG = {
+    uploadDone: 'DONE {ok}/{total}',
+    uploadDoneReused: 'NEW {created}; REUSED {reused}.',
+    uploadAllReused: 'ALL {reused}.',
+    uploadReusedInBatch: '(IN {n}.)',
+    uploadReusedNames: 'NAMES {names}',
+    uploadReusedMore: ' +{n}',
+  };
+  const t = (k, p = {}) => String(MSG[k] ?? '').replace(/\{(\w+)\}/g, (_, n) => p[n]);
+
+  /** run one batch of `n` files on a closed or open store; `results[i]` = [assetId, outcome]; `order` = finishing order */
+  async function runBatch(results, order, { open }) {
+    const toasts = [];
+    const store = getUploadStore({}, { toast: (type, text) => toasts.push([type, text]) });
+    const hooks = manualHooks();
+    const { v, log } = makeView('c');
+    let batch = null;
+    v.t = t;
+    v.onBatch = (r) => { batch = r; };
+    store.attach(v);
+    drop(store, v, fakes(results.length, 'n'), { hooks });
+    if (!open) store.detach(v);
+    for (const i of order) {
+      for (let k = 0; k < 20 && !hooks.calls[i]; k++) await tick(); // later files wait for a page slot
+      hooks.calls[i].resolve(okResult(...results[i]));
+    }
+    await tick();
+    await tick();
+    return { toasts, batch, log, text: batch ? batchDoneText(batch, t) : toasts[0] && toasts[0][1] };
+  }
+  const seq = (n) => Array.from({ length: n }, (_, i) => i);
+
+  for (const open of [false, true]) {
+    const where = open ? 'view open (onBatch)' : 'view closed (env.toast)';
+
+    it(`${where}: all new -> the old sentence, no reuse fields`, async () => {
+      const r = await runBatch([['A'], ['B'], ['C']], seq(3), { open });
+      assert.equal(r.text, 'DONE 3/3');
+      if (open) assert.deepEqual([r.batch.created, r.batch.reused, r.batch.reusedInBatch], [3, 0, 0]);
+      else assert.deepEqual(r.toasts, [['success', 'DONE 3/3']]);
+    });
+
+    for (const [label, order] of [['reused finishes after created', [0, 1]], ['reused finishes before created', [1, 0]]]) {
+      it(`${where}: duplicate inside the batch, ${label}`, async () => {
+        const r = await runBatch([['A'], ['A', 'exact-reused']], order, { open });
+        if (open) assert.deepEqual([r.batch.created, r.batch.reused, r.batch.reusedInBatch], [1, 1, 1]);
+        assert.equal(r.text, 'NEW 1; REUSED 1. (IN 1.) NAMES n1.png');
+      });
+    }
+
+    it(`${where}: duplicate of an existing asset, and two files of the same old asset`, async () => {
+      const one = await runBatch([['A'], ['OLD', 'exact-reused']], seq(2), { open });
+      assert.equal(one.text, 'NEW 1; REUSED 1. NAMES n1.png');
+      const two = await runBatch([['A'], ['OLD', 'exact-reused'], ['OLD', 'exact-reused']], seq(3), { open });
+      assert.equal(two.text, 'NEW 1; REUSED 2. NAMES n1.png, n2.png', 'both are existing, none "in batch"');
+      if (open) assert.equal(two.batch.reusedInBatch, 0);
+    });
+
+    it(`${where}: all reused, and more than 5 names`, async () => {
+      const all = await runBatch([['O1', 'exact-reused'], ['O2', 'exact-reused']], seq(2), { open });
+      assert.equal(all.text, 'ALL 2. NAMES n0.png, n1.png');
+      const many = await runBatch(Array.from({ length: 7 }, (_, i) => [`O${i}`, 'exact-reused']), seq(7), { open });
+      assert.equal(many.text, 'ALL 7. NAMES n0.png, n1.png, n2.png, n3.png, n4.png +2');
+      if (open) assert.equal(many.batch.ok, 7);
+    });
+  }
+
+  it('closed view: ok/fail/total keep their meaning; a failed file keeps the warning branch', async () => {
+    const toasts = [];
+    const store = getUploadStore({}, { toast: (type, text) => toasts.push([type, text]) });
+    const hooks = manualHooks();
+    const { v } = makeView('c');
+    v.t = t;
+    store.attach(v);
+    drop(store, v, fakes(2, 'n'), { hooks });
+    store.detach(v);
+    hooks.calls[0].resolve(okResult('A'));
+    hooks.calls[1].reject(new Error('x'));
+    await tick();
+    await tick();
+    assert.equal(toasts.length, 1);
+    assert.equal(toasts[0][0], 'warning');
+  });
+
+  it('closed view, mixed batch with a duplicate: the warning, then the duplicate summary (impl review)', async () => {
+    const toasts = [];
+    const store = getUploadStore({}, { toast: (type, text) => toasts.push([type, text]) });
+    const hooks = manualHooks();
+    const { v } = makeView('c');
+    v.t = t;
+    store.attach(v);
+    drop(store, v, fakes(2, 'm'), { hooks });
+    store.detach(v);
+    hooks.calls[0].resolve(okResult('R', 'exact-reused'));
+    hooks.calls[1].reject(new Error('x'));
+    await tick();
+    await tick();
+    assert.deepEqual(toasts.map((x) => x[0]), ['warning', 'success']);
+    assert.match(toasts[1][1], /^ALL 1\. NAMES m0\.png/);
+  });
+
+  it('the counters reset per batch', async () => {
+    const adapter = {};
+    const toasts = [];
+    const store = getUploadStore(adapter, { toast: (type, text) => toasts.push([type, text]) });
+    const { v } = makeView('c');
+    v.t = t;
+    store.attach(v);
+    for (const outcome of ['exact-reused', 'created']) {
+      const hooks = manualHooks();
+      drop(store, v, fakes(1, 'z'), { hooks });
+      store.detach(v);
+      hooks.calls[0].resolve(okResult('Q', outcome));
+      await tick();
+      await tick();
+      store.attach(v);
+    }
+    assert.equal(toasts[0][1], 'ALL 1. NAMES z0.png');
+    assert.equal(toasts[1][1], 'DONE 1/1');
   });
 });
