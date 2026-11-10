@@ -15,10 +15,14 @@ import { pickPole } from '../theme/color.js';
  * `--td-tooltip-text-align: center`; unknown values ignored). dwp aliases (dwp markup works unchanged): `data-dwp-tooltip` (text), `data-tooltip-pos` /
  * `data-dwp-tooltip-pos` (side). When both spellings are present the td one (`data-tooltip`,
  * `data-tooltip-position`) wins — a present but empty `data-tooltip` therefore disables a `data-dwp-tooltip`.
+ * v0.107.0: a line break in the text (`&#10;` in the attribute) breaks the line (`--td-tooltip-white-space: pre-line`);
+ * the shown text is trimmed; multi-line text aligns to the start (`--td-tooltip-multiline-align`) unless
+ * `data-tooltip-align` is set. Still text only (textContent), the accessible name collapses whitespace as before.
  *
  * DOM contract (one element, portaled to <body>):
  *   <div id="td-tooltip" class="td-tooltip td-glass-surface td-glass-surface--strong" role="tooltip" hidden
- *        [data-state="open"] data-placement="top|bottom|left|right" [data-custom] [data-align="start|center|end"]>
+ *        [data-state="open"] data-placement="top|bottom|left|right" [data-custom] [data-align="start|center|end"]
+ *        [data-multiline]>
  *     <span class="td-tooltip__content">{text}</span>
  *   </div>
  *   The arrow is `.td-tooltip::after` (same element → same fill/edge, no own backdrop-filter). Geometry via CSSOM:
@@ -593,8 +597,12 @@ export class TdTooltip {
     _refreshContent(el) {
         const tip = /** @type {HTMLElement} */ (this.tooltip);
         const text = this.getTooltipContent(el) || '';
-        if (this.tooltipContent) this.tooltipContent.textContent = text;
-        else tip.textContent = text;
+        // v0.107.0: the chip honours `\n` (white-space: pre-line); trim so a source-formatted attribute gets no blank
+        // first/last line; `data-multiline` lets CSS align multi-line text to the start.
+        const shown = text.trim();
+        if (this.tooltipContent) this.tooltipContent.textContent = shown;
+        else tip.textContent = shown;
+        tip.toggleAttribute('data-multiline', shown.includes('\n'));
         const bg = this._opaqueColor(el.dataset.tooltipColor);
         if (bg) {
             const fg = this._opaqueColor(el.dataset.tooltipTextColor) || this._getAccessibleTextColor(bg);

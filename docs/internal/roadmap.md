@@ -287,6 +287,7 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` (bỏ, owner 05/11: trái minimal surfaces ADR 0011) Khúc xạ SVG (Chromium-only, opt-in thử nghiệm)
 - `done` (Codex think-about 05/11, đồng thuận) Component còn lại từ dwp/135: select-enhance, style `<select>` gốc, reading-progress scroll-top, share → **giữ ở site**; cup-loader → **bỏ** (nhận diện AETV); skeleton / password meter / scroll-top → **kit đã có** (dwp tự chuyển khi sửa template). Duy nhất đáng mang: **avatar CSS-only** (`.td-avatar`, `--empty`, token `--td-avatar-size/-bg/-ring`), `done` v0.105.0 (plan [v0.105.0-avatar](plans/v0.105.0-avatar.md)): `.td-avatar` thuần CSS (hình 135) + `td_avatar` / `tdAvatar`; báo dwp-f5; 135 xoá khối `.td-avatar` riêng trong base.css khi nâng
 - `done` v0.106.0 (dsuite-7c 10/11, plan [v0.106.0-media-picker-grid-dedupe](plans/v0.106.0-media-picker-grid-dedupe.md)): media picker `columns: 'fixed'` (8/6/4/3/2/1 cột, token `--td-media-picker-fixed-card-min`, skeleton cột × 2) + toast cuối lô báo tệp trùng (tệp mới / trùng / trùng trong lô, ≤ 5 tên)
+- `done` v0.107.0 (dsuite-7c 10/11, plan [v0.107.0-tooltip-line-breaks](plans/v0.107.0-tooltip-line-breaks.md)): td-tooltip xuống dòng ở `&#10;` (`--td-tooltip-white-space: pre-line`), chữ nhiều dòng căn đầu dòng (`--td-tooltip-multiline-align`, `data-multiline`)
 
 - `done` textarea `autoresize` bằng CSS `field-sizing` (v0.13.0)
 - `todo` (owner 05/11: chưa làm, chờ site xin) input-field: floating label (additive) — cần user duyệt giao diện

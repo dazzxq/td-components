@@ -1512,6 +1512,8 @@
     "@color-scheme": "dark"
   },
   "added": {
+    "--td-tooltip-white-space": { "light": "pre-line", "dark": "pre-line", "why": "v0.107.0 td-tooltip: line breaks in the text (plan v0.107.0-tooltip-line-breaks QĐ1)" },
+    "--td-tooltip-multiline-align": { "light": "start", "dark": "start", "why": "v0.107.0 td-tooltip: multi-line text aligns start (plan v0.107.0-tooltip-line-breaks QĐ3)" },
     "--td-media-picker-fixed-card-min": { "light": "135px", "dark": "135px", "why": "v0.106.0 media picker columns 'fixed': card-width threshold (plan v0.106.0-media-picker-grid-dedupe QĐ2)" },
     "--td-avatar-fg": { "light": "rgb(28, 28, 30)", "dark": "rgb(245, 245, 247)", "why": "v0.105.0 .td-avatar: fg (plan v0.105.0-avatar QĐ3)" },
     "--td-avatar-bg": { "light": "rgb(240, 240, 242)", "dark": "rgb(44, 44, 48)", "why": "v0.105.0 .td-avatar: bg (plan v0.105.0-avatar QĐ3)" },

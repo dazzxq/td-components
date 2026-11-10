@@ -8,7 +8,8 @@
  * background-color and border-color (inherit), no backdrop-filter of its own. JS writes `--td-tooltip-arrow-x`
  * (top/bottom) / `--td-tooltip-arrow-y` (left/right) = the trigger centre in the padding box, so it keeps pointing
  * at the trigger when the chip is clamped to the viewport (50 % when unset).
- * State: [hidden] · [data-state="open"] (opacity-only fade) · data-placement · [data-custom] · [data-align].
+ * State: [hidden] · [data-state="open"] (opacity-only fade) · data-placement · [data-custom] · [data-align] ·
+ * [data-multiline] (v0.107.0: the text has a line break, white-space via --td-tooltip-white-space).
  * No interactive targets inside → no focus ring / coarse-pointer sizing needed.
  */
 @layer td.tokens {
@@ -23,6 +24,9 @@
 		--td-tooltip-arrow-size: 8px;
 		--td-tooltip-dur: 120ms;
 		--td-tooltip-text-align: center;
+		/* v0.107.0: `\n` in the text breaks the line (normal = the pre-0.107 behaviour); multi-line text aligns start */
+		--td-tooltip-white-space: pre-line;
+		--td-tooltip-multiline-align: start;
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
@@ -56,7 +60,7 @@
 		font-weight: var(--td-fw-normal);
 		line-height: var(--td-tooltip-leading);
 		text-align: var(--td-tooltip-text-align);
-		white-space: normal;
+		white-space: var(--td-tooltip-white-space);
 		overflow-wrap: break-word;
 		border-radius: var(--td-tooltip-radius);
 		pointer-events: none;
@@ -80,6 +84,10 @@
 		-webkit-backdrop-filter: none;
 		backdrop-filter: none;
 	}
+
+	/* v0.107.0 text with a line break ([data-multiline], set by JS) aligns start; BEFORE the [data-align] rules (same
+	   specificity) so data-tooltip-align on the trigger still wins. */
+	.td-tooltip[data-multiline] { text-align: var(--td-tooltip-multiline-align); }
 
 	/* v0.21.0 text alignment of wrapped text (trigger data-tooltip-align → chip data-align; unknown values ignored). */
 	.td-tooltip[data-align="start"] { text-align: start; }

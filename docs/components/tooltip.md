@@ -85,6 +85,23 @@ Chữ dài xuống nhiều dòng mặc định **căn giữa** (token `--td-tool
 Giá trị: `start` (trái với chữ trái-sang-phải), `center`, `end`. Giá trị khác bị bỏ qua (dùng mặc định). Kit chép giá
 trị sang chip thành `data-align` (không dùng inline style). Muốn cả site căn trái: `:root { --td-tooltip-text-align: start; }`.
 
+### Xuống dòng chủ động (0.107.0)
+
+Ký tự xuống dòng trong chữ tooltip thành xuống dòng thật (`white-space: pre-line`): trong HTML / Blade / PHP viết
+`&#10;`, trong JS là `\n`. Dấu cách liền nhau vẫn gộp làm một, dòng dài vẫn tự xuống theo `--td-tooltip-max-w`. Chữ
+không có ký tự xuống dòng hiện y như trước.
+
+```html
+<button type="button" aria-label="Trạng thái" data-tooltip="Đã duyệt: 12&#10;Chờ duyệt: 3&#10;Bị từ chối: 1">…</button>
+```
+
+- Chữ có xuống dòng **căn đầu dòng** (token `--td-tooltip-multiline-align: start`; kit đặt `data-multiline` lên chip).
+  `data-tooltip-align` trên trigger vẫn thắng, ví dụ `data-tooltip-align="center"`.
+- Khoảng trắng và xuống dòng ở **đầu / cuối** chữ bị bỏ, nên attribute viết xuống dòng trong mã nguồn không sinh dòng
+  trống.
+- Vẫn chỉ là chữ (`textContent`, không nhận HTML). Tên truy cập sinh từ chữ tooltip gộp xuống dòng thành dấu cách.
+- Muốn cả site như cũ (gộp xuống dòng thành dấu cách): `:root { --td-tooltip-white-space: normal; }`.
+
 ### Markup của dwp dùng nguyên
 
 ```html
@@ -227,6 +244,8 @@ tooltip vẫn hiện và vẫn được liên kết làm mô tả.
 | `--td-tooltip-fg` | `#fff` | Chữ chip mặc định. |
 | `--td-tooltip-border` | `transparent` (dark `rgb(255 255 255 / 16%)`, 0.41.0) | Viền chip; theme tối có viền sáng mờ để chip không chìm vào nền tối. |
 | `--td-tooltip-text-align` | `center` | Căn chữ mặc định (0.21.0); `data-tooltip-align` ghi đè cho từng tooltip. |
+| `--td-tooltip-white-space` | `pre-line` | Xuống dòng ở `&#10;` / `\n` (0.107.0); `normal` = gộp thành dấu cách như trước. |
+| `--td-tooltip-multiline-align` | `start` | Căn chữ khi chữ có xuống dòng (0.107.0); `data-tooltip-align` vẫn thắng. |
 
 Muốn chip sáng như 0.20 (nền bề mặt, chữ tối):
 
@@ -275,6 +294,7 @@ Một phần tử duy nhất dùng chung, gắn vào `<body>`:
 | `[data-placement="top\|bottom\|left\|right"]` | Phía thực tế sau khi lật. |
 | `[data-custom]` | Đang dùng màu tuỳ chỉnh (nền đặc). |
 | `[data-align="start\|center\|end"]` | Căn chữ lấy từ `data-tooltip-align` của trigger (0.21.0); không có → token mặc định. |
+| `[data-multiline]` | Chữ có xuống dòng (0.107.0): căn theo `--td-tooltip-multiline-align`. |
 | `.td-tooltip::after` | Mũi tên (pseudo-element, cùng nền và viền với chip). |
 
 Nếu trang đã có sẵn `<div id="td-tooltip" class="td-tooltip">` (ví dụ render server-side), kit dùng lại phần tử đó.

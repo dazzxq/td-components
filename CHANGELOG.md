@@ -4,6 +4,14 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.107.0
+
+- **td-tooltip: xuống dòng chủ động** (yêu cầu dsuite). `&#10;` trong `data-tooltip` / `data-dwp-tooltip` (`\n` trong
+  JS) giờ xuống dòng thật: token mới `--td-tooltip-white-space` (mặc định `pre-line`; `normal` = như cũ). Chữ không có
+  xuống dòng hiện y như trước. Khoảng trắng đầu/cuối chữ bị bỏ. Chữ nhiều dòng căn đầu dòng (chip có `data-multiline`,
+  token `--td-tooltip-multiline-align: start`); `data-tooltip-align` trên trigger vẫn thắng. Vẫn chỉ nhận chữ
+  (`textContent`), tên truy cập không đổi.
+
 ## 0.106.0
 
 **Media picker: lưới đủ hàng + toast báo tệp trùng** (yêu cầu dsuite 10/11; plan `docs/internal/plans/v0.106.0-media-picker-grid-dedupe.md`). Mặc định không đổi.
