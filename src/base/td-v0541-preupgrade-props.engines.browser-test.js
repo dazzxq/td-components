@@ -260,6 +260,16 @@ const CASES = [
       expect(Object.prototype.hasOwnProperty.call(el, 'renderOption')).to.equal(false);
     },
   },
+  // v0.108.0: server search provider, assigned before the upgrade (replayed on connect; forces the search box)
+  {
+    tag: 'td-dropdown', attrs: { 'aria-label': 'Tìm', searchable: 'false' },
+    props: () => ({ search: () => Promise.resolve([{ value: 'a', label: 'A' }]) }),
+    check(el) {
+      expect(typeof el.search).to.equal('function');
+      expect(Object.prototype.hasOwnProperty.call(el, 'search')).to.equal(false);
+      expect(!!el._search()).to.equal(true);
+    },
+  },
   {
     tag: 'td-chip-input', attrs: { 'aria-label': 'Vai trò', 'selection-only': '' },
     props: () => ({ createLabel: 'Tạo mới' }),

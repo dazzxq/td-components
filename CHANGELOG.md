@@ -4,6 +4,17 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.108.0
+
+- **td-dropdown: tìm phía server** (yêu cầu dsuite). Property `search(query, { signal }) => Promise<option[]>` (bật
+  tuỳ chọn; không gán = y như cũ) + attribute `min-chars` (mặc định 1) và `search-delay` (mặc định 250 ms): debounce,
+  huỷ request cũ (AbortSignal), bỏ kết quả về muộn. Có `search` thì không lọc cục bộ: danh sách = kết quả server đúng
+  thứ tự trả về (không nhóm). Trạng thái dưới ngưỡng (gợi ý gõ thêm, danh sách gốc của site nếu có), đang tìm (sau
+  400 ms), rỗng, lỗi + thử lại (nút / Enter) qua dòng `role=status` có sẵn; event `search-error` { query, error }. Chạy
+  với action mode + keep-open (chọn không đóng, giữ query + kết quả; đặt `item.disabled = true` trong `onPick` thì dòng
+  mờ ngay). Chuỗi mới `searchMinChars`, `searching`, `searchError`. `search` luôn hiện ô tìm (kể cả
+  `searchable="false"`).
+
 ## 0.107.0
 
 - **td-tooltip: xuống dòng chủ động** (yêu cầu dsuite). `&#10;` trong `data-tooltip` / `data-dwp-tooltip` (`\n` trong

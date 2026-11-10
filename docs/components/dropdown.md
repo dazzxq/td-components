@@ -543,6 +543,53 @@ const ok = await dd.reload();  // true = đã gán options; false = lỗi / bị
 2000 option có icon + mô tả + nhóm: mở menu và gõ tìm đều dưới mức người dùng thấy giật (số đo ở CHANGELOG 0.86.0).
 Trình duyệt cũ (Firefox < 125, Safari < 18) vẫn đúng, chỉ chậm hơn.
 
+### 12b. Tìm phía server (`search`, 0.108.0)
+
+Danh sách quá lớn để nạp hết (sản phẩm, khách hàng), cần tìm theo SKU / tên ngắn ở server mỗi lần gõ: gán `search` là hàm
+`(query, { signal }) => Promise<option[]>`. Không gán `search` → lọc cục bộ như cũ.
+
+```js
+const dd = document.querySelector('#related');   // <td-dropdown mode="action" keep-open min-chars="2" search-delay="250">
+dd.search = async (query, { signal }) => {
+  const res = await fetch(`/api/products?q=${encodeURIComponent(query)}`, { signal });
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();                              // mảng option như mục 1 / 1b (image, description, meta, disabled…)
+};
+dd.options = recentProducts;                      // tuỳ chọn: danh sách gốc hiện khi chưa gõ đủ ký tự
+```
+
+- **Khi nào gọi.** Mỗi lần gõ: chữ đã trim dài ≥ `min-chars` (mặc định 1) → gọi sau `search-delay` ms (mặc định 250)
+  kể từ phím cuối, với chữ đã trim. Gõ tiếp, `close()`, gán `search` mới, `destroy()` hay gỡ khỏi DOM → huỷ debounce và
+  `abort()` request đang chạy (`signal`); kết quả về muộn (kể cả khi hàm lờ `signal`) bị bỏ.
+- **Dưới ngưỡng** (kể cả chữ rỗng khi vừa mở): không gọi server; menu hiện **danh sách gốc** (`options` / `<select>` /
+  `load`, đúng thứ tự nhóm, không lọc; không đưa thì rỗng) và dòng gợi ý `labels.searchMinChars` (dòng `role="status"`,
+  trình đọc màn hình đọc). `min-chars="0"` → mở menu là gọi `search('')` ngay.
+- **Kết quả** hiện đúng thứ tự server trả: **không** lọc cục bộ, **không** chia nhóm (kể cả khi có `groups`), không dùng
+  `search-fields`. Kết quả **không** vào `options` (`el.options` giữ nguyên danh sách gốc). Dòng active = dòng bật đầu tiên.
+- **Trong lúc chờ.** Đang hiện kết quả của chữ trước → giữ các dòng đó tới khi kết quả mới về; quá 400 ms thì hiện
+  "Đang tìm…" + `aria-busy`. Vừa vượt ngưỡng (chưa có kết quả nào) → danh sách trống và "Đang tìm…" ngay (danh sách gốc
+  không bao giờ được hiện như kết quả của một chữ tìm).
+- **Lỗi** (reject, ném lỗi, kết quả không phải mảng object): "Không tìm được." + nút "Thử lại" (bấm, hoặc Enter khi không
+  có dòng active → chạy lại chữ hiện tại, không debounce) + event `search-error` `{ query, error }` + `console.warn`.
+  Trạng thái của `load` không bị đụng tới.
+- **Chọn ở chế độ select:** chọn một kết quả → nó là mục đang chọn (chữ trigger + giá trị form lấy từ nó) dù không có
+  trong `options`. Lưu ý: giá trị ban đầu (`value`, `setValue()`) vẫn tra trong `options`, và gán `options` mới vẫn bỏ
+  lựa chọn không còn trong danh sách → muốn có giá trị sẵn thì đưa mục đó vào `options` / `<select>`.
+- **`mode="action"` + `keep-open`:** chọn xong menu vẫn mở, giữ chữ tìm và kết quả (không gọi lại server), dòng active
+  nhảy sang dòng kế. Option `disabled: true` trong kết quả hiện mờ, không chọn được.
+- **Công thức: đánh dấu dòng đã chọn** — đặt `item.disabled = true` trong `onPick` (hoặc listener `pick`). Với kết quả
+  server, sau khi `onPick` + `pick` chạy xong dropdown vẽ lại các dòng từ **chính** các object đó (giữ vị trí cuộn), nên
+  dòng vừa chọn mờ ngay; dòng active nhảy sang dòng chọn được kế tiếp (không có thì dòng trước, không có nữa thì không
+  dòng nào), tính theo trạng thái sau handler.
+
+  ```js
+  dd.onPick = (item) => { item.disabled = true; addRelated(item.value); };
+  ```
+- **Ô tìm luôn có** khi gán `search`, kể cả `searchable="false"`. Gán / gỡ `search` lúc menu đang mở: ô tìm hiện / biến
+  mất tại chỗ (menu vẫn mở, focus vào ô tìm / về trigger); gỡ `search` → lọc cục bộ lại theo chữ đang gõ.
+- Type-ahead trên trigger đóng giữ nguyên (chạy trên các dòng đang có, không gọi server). Gán trước khi define vẫn nhận.
+- Chữ: `TdDropdown.labels.searchMinChars` (`{n}` = `min-chars`), `searching`, `searchError`; nút dùng `retry`.
+
 ### 13. Tự vẽ nhãn dòng (`renderOption`, 0.87.0)
 
 `renderOption(item, { query, selected })` trả nội dung cho phần **nhãn** của mỗi dòng option (dòng thường và dòng giàu
@@ -577,13 +624,15 @@ dd.renderOption = (item, { query }) => {
 | `label` | string | — | Nhãn hiển thị (`<label class="td-field__label">`), đặt tên cho combobox và listbox. |
 | `aria-label` | string | — | Tên truy cập khi không có `label` hiển thị (được chép vào nút trigger và listbox). |
 | `placeholder` | string | `Chọn một tùy chọn` | Chữ hiện khi chưa chọn gì. |
-| `searchable` | cờ mặc định BẬT | bật | Hiện ô tìm kiếm trong menu. Tắt: `"false"` / `"0"` / `"off"`. |
+| `searchable` | cờ mặc định BẬT | bật | Hiện ô tìm kiếm trong menu. Tắt: `"false"` / `"0"` / `"off"`. **0.108.0** Có `search` thì ô tìm luôn hiện. |
 | `allow-clear` | cờ mặc định BẬT | bật | Thêm dòng "Không chọn" ở đầu danh sách khi đã có lựa chọn. Tắt như trên. |
 | `max-height` | number | `5` | Số option hiển thị trước khi cuộn (mỗi option 40px; tối đa 100; có dòng giàu thông tin / nhóm thì đo thật, 0.84.0). Cũng là bước nhảy của PageUp/PageDown. |
 | `search-fields` | string | `label description keywords` | **0.84.0** Trường dùng để tìm (cách nhau bởi dấu cách / dấu phẩy). `label` = hành vi cũ. Đổi tại chỗ. |
 | `trigger-icon` | string | — | **0.84.0** `none` / `off` / `false` → trigger không hiện icon của option đã chọn. **0.85.0** Ở `mode="action"`: vắng → `plus`, tên icon khác → icon đó (phải có trong registry), `none` → không icon. |
 | `mode` | `select` \| `action` | `select` | **0.85.0** `action` = chế độ "chọn để thêm" ([mục 11](#11-chế-độ-chọn-để-thêm-modeaction-0850)). Đổi sẽ render lại. |
 | `keep-open` | cờ | tắt | **0.85.0** Chỉ ở `mode="action"`: chọn xong menu vẫn mở. `"false"` / `"0"` / `"off"` = tắt. Đọc lúc chọn, đổi không render lại. |
+| `min-chars` | number | `1` | **0.108.0** Chỉ khi có `search`: số ký tự (đã trim) tối thiểu để gọi server. Số nguyên ≥ 0; giá trị lạ → `1`. `0` = mở menu là tìm chữ rỗng. Đọc lúc dùng ([mục 12b](#12b-tìm-phía-server-search-01080)). |
+| `search-delay` | number | `250` | **0.108.0** Chỉ khi có `search`: debounce (ms, ≥ 0; giá trị lạ → `250`). Đọc lúc dùng. |
 | `trigger-meta` | string | — | **0.85.0** Chữ phụ mờ ở cuối trigger (ví dụ `4/10`), vào `aria-describedby` của trigger. Cả hai chế độ. Đổi tại chỗ. |
 | `value-key` | string | `value` | Key trong object option dùng làm giá trị. |
 | `label-key` | string | `label` | Key trong object option dùng làm chữ hiển thị. |
@@ -608,6 +657,7 @@ dd.renderOption = (item, { query }) => {
 | `onCreate` | `(query) => void` \| `null` | Callback khi kích hoạt dòng "Thêm mới" (0.22.0); nhận `query` (chuỗi). Chạy trước event `create`; ném lỗi → ghi `console.error`, event vẫn phát. |
 | `createLabel` | `string` (get/set) | Phản chiếu attribute `create-label` (`''` = tắt). |
 | `load` | `() => Promise<Array>` \| `null` | **0.86.0** Hàm nạp danh sách bất đồng bộ ([mục 12](#12-nạp-danh-sách-bất-đồng-bộ-load-0860)). Tự gọi một lần ở lần mở đầu. Gán lại (kể cả `null`) → bỏ lần nạp đang chờ; menu đang mở thì nạp ngay. Gán trước khi define vẫn nhận. |
+| `search` | `(query, { signal }) => Promise<Array>` \| `null` | **0.108.0** Tìm phía server ([mục 12b](#12b-tìm-phía-server-search-01080)). Gán lại (kể cả `null`) → huỷ lần tìm đang chờ / đang chạy, về danh sách gốc; ô tìm hiện / ẩn theo. Khác hàm → `null`. Gán trước khi define vẫn nhận. |
 | `reload()` | `() => Promise<boolean>` | **0.86.0** Gọi `load` ngay (menu mở hay đóng). `true` = đã gán options; `false` = không có `load`, lỗi, hoặc bị lần nạp mới hơn thay. Không bao giờ reject. |
 | `onPick` | `(item) => void` \| `null` | **0.85.0** Callback khi chọn một option ở `mode="action"`. Chạy trước event `pick`; ném lỗi thì ghi `console.error`, event vẫn phát. Gán trước khi define vẫn nhận. |
 | `mode` / `keepOpen` / `triggerMeta` | get/set | **0.85.0** Phản chiếu `mode` (`'select'` \| `'action'`), `keep-open` (boolean), `trigger-meta` (chuỗi). Gán trước khi define vẫn nhận. |
@@ -652,7 +702,10 @@ Object.assign(TdDropdown.labels, {
 | `picked` | `Đã chọn {label}` | **0.85.0** Câu thông báo lịch sự sau mỗi lần chọn ở `mode="action"`; `{label}` = nhãn option. `''` = tắt |
 | `loading` | `Đang tải…` | **0.86.0** Dòng trạng thái khi `load` đang chạy |
 | `loadError` | `Không tải được` | **0.86.0** Dòng trạng thái khi `load` lỗi |
-| `retry` | `Thử lại` | **0.86.0** Chữ nút nạp lại khi `load` lỗi |
+| `retry` | `Thử lại` | **0.86.0** Chữ nút nạp lại khi `load` lỗi (**0.108.0** cả khi `search` lỗi) |
+| `searchMinChars` | `Gõ ít nhất {n} ký tự để tìm` | **0.108.0** Gợi ý khi chữ tìm ngắn hơn `min-chars` (có `search`); `{n}` = `min-chars` |
+| `searching` | `Đang tìm…` | **0.108.0** Dòng trạng thái khi `search` chạy lâu (> 400 ms) hoặc chưa có kết quả nào |
+| `searchError` | `Không tìm được.` | **0.108.0** Dòng trạng thái khi `search` lỗi |
 
 Tất cả được escape / đưa vào bằng `textContent`. Placeholder của trigger ("Chọn một tùy chọn") đổi bằng attribute
 `placeholder`.
@@ -663,6 +716,7 @@ Tất cả được escape / đưa vào bằng `textContent`. Placeholder của 
 |---|---|---|---|
 | `change` | `{ value, item }` — `value` là giá trị gốc (hoặc `null`), `item` là object (hoặc `null`) | Người dùng chọn một mục hoặc chọn "Không chọn". Đúng **một** event mỗi lần chọn. `setValue()`, `updateData()`, form reset **không** phát. | có (`composed: true`) |
 | `create` | `{ query }` — chữ trong ô tìm kiếm, trim hai đầu (`''` nếu không có) | Người dùng kích hoạt dòng "Thêm mới" (`create-label`, 0.22.0). Phát **sau** khi menu đã đóng và focus đã về trigger, sau `onCreate`. Không kèm `change`. | có (`composed: true`) |
+| `search-error` | `{ query, error }` | **0.108.0** Hàm `search` reject / ném lỗi / trả thứ không phải mảng object. Không phát cho request đã bị huỷ hay bị thay. | có (`composed: true`) |
 | `pick` | `{ value, item }` | **0.85.0** Chỉ ở `mode="action"`: người dùng chọn một option (chuột, Enter, Space, Alt+↑). Đúng **một** event mỗi lần. Phát sau `onPick`, sau khi menu đóng và focus về trigger (`keep-open`: menu vẫn mở, focus giữ nguyên). Không kèm `change`. | có (`composed: true`) |
 
 ## Form

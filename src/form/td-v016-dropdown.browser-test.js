@@ -156,6 +156,9 @@ describe('B4 TdDropdown.labels', () => {
       loading: 'Đang tải…', // v0.86.0 load()
       loadError: 'Không tải được',
       retry: 'Thử lại',
+      searchMinChars: 'Gõ ít nhất {n} ký tự để tìm', // v0.108.0 search provider
+      searching: 'Đang tìm…',
+      searchError: 'Không tìm được.',
     });
     const el = dd('value="hn" required');
     const input = el._menuElement.querySelector('.td-dropdown__search');

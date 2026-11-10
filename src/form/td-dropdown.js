@@ -22,8 +22,10 @@ const TYPEAHEAD_MS = 500;
 // v0.82.0: the colourless dot; the colour is set only through circle.setAttribute('fill') (see _applySwatchFills)
 const SWATCH_SVG = '<svg class="td-dropdown__swatch" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><circle cx="6" cy="6" r="6"/></svg>';
 /** Properties that may be set on the element before it upgrades (they would shadow the class accessors). */
-const UPGRADE_PROPS = ['mode', 'keepOpen', 'triggerMeta', 'options', 'groups', 'onChange', 'onSelect', 'onCreate',
-  'createLabel', 'onPick', 'load', 'renderOption']; // v0.85.0: `mode` first, so a pre-upgrade action mode is in force before the <select> read
+const UPGRADE_PROPS = ['mode', 'search', 'keepOpen', 'triggerMeta', 'options', 'groups', 'onChange', 'onSelect',
+  'onCreate', 'createLabel', 'onPick', 'load', 'renderOption']; // v0.85.0: `mode` first, so a pre-upgrade action mode is in force before the <select> read
+/** v0.108.0 `search`: "Đang tìm…" only for slow responses (no flash on fast ones) — as td-chip-input */
+const SEARCH_LOADING_MS = 400;
 /** v0.84.0: tones of the icon tile / status dot (anything else → neutral). */
 const TONES = ['neutral', 'accent', 'success', 'warning', 'danger', 'info'];
 /** v0.84.0: the fields `search-fields` may name (all three by default). */
@@ -165,7 +167,7 @@ function safeCall(fn, arg, what) {
  * @element td-dropdown
  * @attr {string} label - Visible label (names the combobox; 0.9.0)
  * @attr {string} placeholder - Placeholder text (default "Chọn một tùy chọn")
- * @attr {boolean} searchable - Enable search filtering (default on)
+ * @attr {boolean} searchable - Enable search filtering (default on; v0.108.0: a `search` provider forces the box)
  * @attr {boolean} disabled - Disable the dropdown (also via ancestor <fieldset disabled>)
  * @attr {boolean} required - A value must be selected for the form to be valid
  * @attr {string} name - Form field name (submitted via the host)
@@ -191,6 +193,10 @@ function safeCall(fn, arg, what) {
  * @attr {boolean} keep-open - v0.85.0, action mode only: the menu stays open after a pick (the search text kept, the
  *   active row moves to the next enabled row, else the previous one); `false` / `0` / `off` = off. Read at pick time
  *   (not observed: toggling it never re-renders or closes the menu). The create row still closes the menu.
+ * @attr {number} min-chars - v0.108.0, with `search` only: the trimmed query length that calls the provider (integer
+ *   ≥ 0, default 1; anything else → 1). Below it (the empty query included) the menu shows the base list (`options`,
+ *   unfiltered) and the announced hint `labels.searchMinChars`; `0` = the empty query is searched on open. Read at use.
+ * @attr {number} search-delay - v0.108.0, with `search` only: debounce in ms (≥ 0, default 250; anything else → 250).
  * @attr {string} trigger-meta - v0.85.0, both modes: muted text at the trigger's inline end (e.g. "4/10"), escaped,
  *   in the trigger's `aria-describedby`; updated in place (no re-render). Empty / absent = none.
  * @fires change - When selection changes, detail: { value, item }
@@ -200,9 +206,11 @@ function safeCall(fn, arg, what) {
  * @fires create - The create row was activated, detail: { query } (search text trimmed, '' without one). Never a value:
  *   no selection change, no `change`, nothing submitted. Order: query snapshot → menu closed + focus on the trigger →
  *   `onCreate(query)` → `create`.
+ * @fires search-error - v0.108.0: the `search` provider rejected / resolved to something else than an array of
+ *   objects, detail: { query, error } (never for an aborted / superseded request).
  *
- * Texts: `TdDropdown.labels` (`search`, `none`, `noResults`, `required`, `createWithQuery`, `resultCount`, `picked`) —
- * override per site.
+ * Texts: `TdDropdown.labels` (`search`, `none`, `noResults`, `required`, `createWithQuery`, `resultCount`, `picked`,
+ * `loading`, `loadError`, `retry`, v0.108.0 `searchMinChars`, `searching`, `searchError`) — override per site.
  *
  * @property {Array<Object>} options - Array of option objects set via JS property (may be set before the element is
  *   defined). Re-assigning keeps the current selection when its value is still listed (else it is dropped); the
@@ -234,6 +242,16 @@ function safeCall(fn, arg, what) {
  *   throw is logged, the event still fires). Options re-assigned (`options` / `updateData()`) while an action menu is
  *   OPEN keep the typed search text (re-filtered), the active row (by value, else the nearest enabled row) and the
  *   scroll position — e.g. a site disabling the picked item inside its `pick` handler.
+ * @property {Function} search - v0.108.0: `(query, { signal }) => Promise<option[]>`, server search (may be set before
+ *   the element is defined; null / not a function = off, the local filter). Each keystroke at / above `min-chars` calls
+ *   it after `search-delay` with the trimmed query; a newer keystroke, close(), a new assignment, destroy() and
+ *   disconnect abort it (`signal`) and a late answer is dropped. Results are shown in the order returned (no local
+ *   filter, no `groups`, no `search-fields`) and never become `options`; picking one in select mode selects that item
+ *   (trigger + form value), even when it is not in `options`. While a new query waits, the shown results stay (status
+ *   `labels.searching` + `aria-busy` after 400 ms); with nothing shown yet the list empties at once. A failure shows
+ *   `labels.searchError` + the retry button (Enter retries too) and fires `search-error`. Action mode + `keep-open`:
+ *   after `onPick` + `pick` the result rows are re-rendered from the same objects (a host setting `item.disabled = true`
+ *   there sees it at once) and the active row advances from that state.
  */
 export class TdDropdown extends TdFormElement {
   static get observedAttributes() {
@@ -278,6 +296,10 @@ export class TdDropdown extends TdFormElement {
     loading: 'Đang tải…',
     loadError: 'Không tải được',
     retry: 'Thử lại',
+    /** v0.108.0 `search`: the hint below `min-chars` (`{n}` = min-chars), the slow-search status, the failed search. */
+    searchMinChars: 'Gõ ít nhất {n} ký tự để tìm',
+    searching: 'Đang tìm…',
+    searchError: 'Không tìm được.',
   };
 
   /** @type {TdDropdown[]} Track all open dropdowns for closeAllExcept */
@@ -327,6 +349,21 @@ export class TdDropdown extends TdFormElement {
     this._loadToken = 0;
     /** @private v0.86.0: the `active` mode of the last open() (re-applied when a load lands with no active row) */
     this._openActive = 'selected';
+
+    /** @private v0.108.0: the server search provider (`search` property; null = local filtering) */
+    this._searchProvider = null;
+    /** @private v0.108.0: bumped by every new / cancelled search; only the latest run may land */
+    this._searchSeq = 0;
+    this._searchTimer = 0;
+    this._searchLoadingTimer = 0;
+    /** @private v0.108.0: the AbortController of the request in flight */
+    this._searchCtrl = null;
+    /** @private v0.108.0: the query waiting (debounce) / running; null = none */
+    this._searchQuery = null;
+    /** @private v0.108.0: the query whose server results `_filteredData` holds; null = the base list is shown */
+    this._shownQuery = null;
+    /** @private v0.108.0: '' | 'loading' (status "Đang tìm…" + aria-busy) | 'error' (searchError + retry) */
+    this._searchState = '';
 
     this._boundPointerOutside = (e) => {
       const t = e.target;
@@ -531,7 +568,7 @@ export class TdDropdown extends TdFormElement {
   set options(data) {
     const snap = this._openSnapshot(); // v0.86.0: before setValue() below re-renders the rows
     this._options = Array.isArray(data) ? data : [];
-    this._filteredData = this._ordered(this._options);
+    if (!this._applyQuery()) this._filteredData = this._ordered(this._options); // v0.108.0: server results are kept
     if (!this._optionsInit) {
       this._optionsInit = true;
       // Before the first connect, early properties (value, value-key…) may still be replayed: defer (see _setupProperties).
@@ -652,6 +689,202 @@ export class TdDropdown extends TdFormElement {
     }
     if (this._isOpen && !hadActive && this._activeIndex < 0) this._setActive(this._openActiveIndex(this._openActive));
     return true;
+  }
+
+  /**
+   * v0.108.0: the server search provider `(query, { signal }) => Promise<option[]>` (null / not a function = off: the
+   * local filter as before). Its results are shown as they come (no local filtering, no grouping) and never become
+   * `options`. It forces the search box, even with `searchable="false"`. Assigning drops a pending / running search.
+   */
+  get search() { return this._searchProvider; }
+  set search(fn) {
+    const next = typeof fn === 'function' ? fn : null;
+    this._resetSearch();
+    this._searchProvider = next;
+    const menu = this._menuElement;
+    if (!menu) { // before the first render: afterRender builds the menu with / without the box
+      if (!this._applyQuery('')) this._filteredData = this._filtered('');
+      return;
+    }
+    const hadBox = !!this._search();
+    const wantBox = this._hasSearchBox();
+    const focusIn = menu.contains(document.activeElement);
+    if (hadBox !== wantBox) {
+      // the search box appears / disappears → rebuild the menu structure (an open menu stays open)
+      this._renderMenuContent();
+      this._applyName();
+    }
+    const q = this._query();
+    if (next && this._isOpen) this._onProviderInput(q);
+    else this._handleSearch(q); // provider: the base list (or the waiting state); none: the local filter again
+    if (!this._isOpen) return;
+    this._updatePosition();
+    if (hadBox === wantBox) return;
+    const box = this._search();
+    const trigger = this._trigger();
+    if (box && !isCoarsePointer()) box.focus();
+    else if (!box && focusIn && trigger) trigger.focus({ preventScroll: true });
+  }
+
+  /** @private v0.108.0: the menu has a search box (`searchable`, or forced by `search`) */
+  _hasSearchBox() { return this._isSearchable() || !!this._searchProvider; }
+  /** @private v0.108.0 (as td-chip-input): a non-negative integer attribute, else `def` */
+  _intAttr(attr, def) {
+    const n = parseInt(this.getAttribute(attr) ?? '', 10);
+    return Number.isFinite(n) && n >= 0 ? n : def;
+  }
+  /** @private v0.108.0: `min-chars` (default 1) */
+  _minChars() { return this._intAttr('min-chars', 1); }
+  /** @private v0.108.0: `search-delay` in ms (default 250) */
+  _searchDelay() { return this._intAttr('search-delay', 250); }
+  /** @private v0.108.0: the trimmed query is shorter than `min-chars` (the empty query too, unless min-chars is 0) */
+  _belowMin(query) { return String(query ?? '').trim().length < this._minChars(); }
+  /** @private v0.108.0: the search provider owns the status (a query ≥ min-chars is typed) */
+  _searchOwnsStatus() { return !!this._searchProvider && !this._belowMin(this._query()); }
+
+  /**
+   * @private v0.108.0: the rows for `query` while a provider is set (returns false without one → the caller filters
+   * locally). Below `min-chars`: the base list (`options` in display order, never filtered); at / above it: the server
+   * results being shown, else nothing (waiting) — `options` are never shown as the results of a query.
+   */
+  _applyQuery(query = this._query()) {
+    if (!this._searchProvider) return false;
+    if (this._belowMin(query)) this._filteredData = this._ordered(this._options);
+    else if (this._shownQuery === null) this._filteredData = [];
+    return true;
+  }
+
+  /** @private v0.108.0: drop the pending debounce + the request in flight; any later response is stale */
+  _cancelSearch() {
+    this._searchSeq++;
+    if (this._searchTimer) {
+      window.clearTimeout(this._searchTimer);
+      this._searchTimer = 0;
+    }
+    if (this._searchLoadingTimer) {
+      window.clearTimeout(this._searchLoadingTimer);
+      this._searchLoadingTimer = 0;
+    }
+    if (this._searchCtrl) {
+      this._searchCtrl.abort();
+      this._searchCtrl = null;
+    }
+  }
+
+  /** @private v0.108.0: cancel + forget the query / results / state (back to the base list on the next render) */
+  _resetSearch() {
+    this._cancelSearch();
+    this._searchQuery = null;
+    this._shownQuery = null;
+    this._searchState = '';
+  }
+
+  /**
+   * @private v0.108.0: typing with a provider. Below `min-chars` → the base list + hint now (no request); else the
+   * request after `search-delay`. Meanwhile the shown results stay (status after 400 ms), or — when nothing was shown
+   * (just crossed the threshold / failed) — the list empties and "Đang tìm…" shows at once.
+   */
+  _onProviderInput(raw) {
+    this._cancelSearch();
+    const q = String(raw ?? '').trim();
+    if (this._belowMin(q)) {
+      this._searchQuery = null;
+      this._shownQuery = null;
+      this._searchState = '';
+      this._handleSearch(q);
+      return;
+    }
+    if (q === this._shownQuery && this._searchState !== 'error') {
+      // back to the query on screen (a newer one was cancelled): nothing to fetch
+      this._searchQuery = null;
+      if (this._searchState) {
+        this._searchState = '';
+        this._syncStatus();
+      }
+      return;
+    }
+    this._searchQuery = q;
+    if (this._shownQuery === null || this._searchState === 'error') this._showSearching();
+    this._searchTimer = window.setTimeout(() => {
+      this._searchTimer = 0;
+      this._runSearch(q);
+    }, this._searchDelay());
+  }
+
+  /** @private v0.108.0: no rows + "Đang tìm…" now (nothing current to keep on screen) */
+  _showSearching() {
+    this._shownQuery = null;
+    this._filteredData = [];
+    this._searchState = 'loading';
+    this._renderMenuOptions();
+    if (this._isOpen) this._setActive(-1);
+  }
+
+  /** @private v0.108.0: run the failed query again now (retry button / Enter), no debounce */
+  _retrySearch() {
+    const q = this._query().trim();
+    if (!this._searchProvider || this._belowMin(q)) return;
+    this._cancelSearch();
+    this._showSearching();
+    this._runSearch(q);
+  }
+
+  /**
+   * @private v0.108.0: one provider call; only the latest one lands (seq + AbortSignal — a provider ignoring the signal
+   * is dropped). Results replace the rows in their order; a rejection / a non-array → `searchError` + retry +
+   * `search-error` { query, error }.
+   */
+  async _runSearch(q) {
+    this._cancelSearch();
+    const fn = this._searchProvider;
+    if (!fn) return;
+    const seq = this._searchSeq;
+    const ctrl = new AbortController();
+    this._searchCtrl = ctrl;
+    this._searchQuery = q;
+    if (this._searchState !== 'loading') {
+      this._searchLoadingTimer = window.setTimeout(() => {
+        this._searchLoadingTimer = 0;
+        if (seq !== this._searchSeq) return;
+        this._searchState = 'loading';
+        this._syncStatus();
+      }, SEARCH_LOADING_MS);
+    }
+    let res;
+    let failed = false;
+    let error;
+    try {
+      res = await fn.call(this, q, { signal: ctrl.signal });
+      if (!Array.isArray(res) || !res.every((o) => o !== null && typeof o === 'object')) {
+        throw new TypeError('search() did not resolve to an array of option objects');
+      }
+    } catch (err) {
+      failed = true;
+      error = err;
+    }
+    if (seq !== this._searchSeq || ctrl.signal.aborted) return; // stale / cancelled → dropped
+    if (this._searchLoadingTimer) {
+      window.clearTimeout(this._searchLoadingTimer);
+      this._searchLoadingTimer = 0;
+    }
+    this._searchCtrl = null;
+    this._searchQuery = null;
+    this._shownQuery = q;
+    if (failed) {
+      console.warn('td-dropdown: search failed', error);
+      this._filteredData = [];
+      this._searchState = 'error';
+      this._renderMenuOptions();
+      if (this._isOpen) this._setActive(-1);
+      this.emit('search-error', { query: q, error });
+      return;
+    }
+    this._searchState = '';
+    this._filteredData = res;
+    this._renderMenuOptions();
+    const scroller = this._scroller();
+    if (scroller) scroller.scrollTop = 0;
+    if (this._isOpen) this._setActive(this._nav.findIndex((n) => n.item && !this._isItemDisabled(n.item)));
   }
 
   get mode() { return this._isAction() ? 'action' : 'select'; }
@@ -1227,6 +1460,10 @@ export class TdDropdown extends TdFormElement {
   disconnectedCallback() {
     this._cancelSsrDefer(); // v0.26.0: a focused shell still waiting for its blur — re-evaluated on reconnect
     this._clearSearchFocusTimer();
+    if (this._searchProvider) { // v0.108.0: drop the search; a reconnect starts from the base list
+      this._resetSearch();
+      this._applyQuery('');
+    }
     this._clearTypeahead();
     if (this._isOpen) {
       this._removeGlobalListeners();
@@ -1248,7 +1485,7 @@ export class TdDropdown extends TdFormElement {
     if (!menu) return;
     const id = this.escapeHtml(this.id);
     const searchLabel = this.escapeHtml(String(TdDropdown.labels.search ?? ''));
-    const search = this._isSearchable()
+    const search = this._hasSearchBox() // v0.108.0: `search` forces the box
       ? `<div class="td-dropdown__search-wrap"><input type="text" class="td-dropdown__search" aria-label="${searchLabel}"`
         + ` placeholder="${searchLabel}..." autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="${id}-listbox"></div>`
       : '';
@@ -1277,7 +1514,8 @@ export class TdDropdown extends TdFormElement {
         + ` aria-selected="false" data-value="${CLEAR}" data-nav="${nav.length - 1}"><span class="td-dropdown__option-label">${esc(TdDropdown.labels.none ?? '')}</span></div>`;
     }
     // v0.84.0: group wrappers (only while `groups` is set); `_filteredData` is already in display order
-    const groupIndex = this._groupIndex();
+    // v0.108.0: server results are flat, in the order returned (never grouped)
+    const groupIndex = this._searchProvider && this._shownQuery !== null ? null : this._groupIndex();
     let openGroup = -1; // index of the group whose wrapper is open (-1 = none)
     let measured = false; // a rich row or a group header is rendered → measured listMax
     const wasMeasured = this._measured;
@@ -1340,14 +1578,32 @@ export class TdDropdown extends TdFormElement {
     }
     fillIconSlots(list);
     this._nav = nav;
+    this._syncStatus(list);
+    if (this._activeIndex >= nav.length) this._activeIndex = -1;
+    this._syncActive(false);
+    // v0.84.0: rows of mixed heights → re-measure the scroller while open (also when leaving the measured layout)
+    if (this._isOpen && (this._measured || wasMeasured)) this._updatePosition();
+  }
+
+  /**
+   * @private The status line (`role=status`: load / search state, hint, "no results", result count) + the load UI
+   * (data-load, aria-busy, retry). v0.108.0: split out of _renderMenuOptions (the slow-search timer updates it alone).
+   */
+  _syncStatus(list = this._list()) {
+    if (!this._menuElement) return;
     const empty = this._menuElement.querySelector('.td-dropdown__empty');
     this._syncLoadUi(list, empty);
-    const loadMsg = this._loadState === 'loading' ? TdDropdown.labels.loading
-      : this._loadState === 'error' ? TdDropdown.labels.loadError : null;
-    if (empty && loadMsg != null) {
+    const state = this._uiState();
+    const searchOwns = this._searchOwnsStatus();
+    const loadMsg = state === 'loading' ? (searchOwns ? TdDropdown.labels.searching : TdDropdown.labels.loading)
+      : state === 'error' ? (searchOwns ? TdDropdown.labels.searchError : TdDropdown.labels.loadError) : null;
+    // v0.108.0: below `min-chars` the hint is always shown (after a load status)
+    const hintTpl = this._searchProvider && !searchOwns ? String(TdDropdown.labels.searchMinChars ?? '') : '';
+    const hint = hintTpl ? hintTpl.split('{n}').join(String(this._minChars())) : '';
+    if (empty && (loadMsg != null || hint)) {
       // v0.86.0: loading / failed wins over "no results" and the result count
       if (empty.hasAttribute('data-count')) empty.removeAttribute('data-count');
-      const msg = String(loadMsg ?? '');
+      const msg = [loadMsg != null ? String(loadMsg ?? '') : '', hint].filter(Boolean).join(' · ');
       if (empty.textContent !== msg) empty.textContent = msg;
     } else if (empty) {
       let msg = this._filteredData.length ? '' : String(TdDropdown.labels.noResults ?? '');
@@ -1363,10 +1619,15 @@ export class TdDropdown extends TdFormElement {
       if (count !== empty.hasAttribute('data-count')) empty.toggleAttribute('data-count', count);
       if (empty.textContent !== msg) empty.textContent = msg;
     }
-    if (this._activeIndex >= nav.length) this._activeIndex = -1;
-    this._syncActive(false);
-    // v0.84.0: rows of mixed heights → re-measure the scroller while open (also when leaving the measured layout)
-    if (this._isOpen && (this._measured || wasMeasured)) this._updatePosition();
+  }
+
+  /**
+   * @private What the menu's load UI shows: '' | 'loading' | 'error'. v0.108.0: the search state while a query ≥
+   * `min-chars` is typed (the `load` state is not touched), else the v0.86.0 load state.
+   */
+  _uiState() {
+    if (this._searchOwnsStatus()) return this._searchState;
+    return this._loadState === 'loading' || this._loadState === 'error' ? this._loadState : '';
   }
 
   /**
@@ -1375,7 +1636,7 @@ export class TdDropdown extends TdFormElement {
    */
   _syncLoadUi(list, empty) {
     const menu = this._menuElement;
-    const state = this._loadState === 'loading' || this._loadState === 'error' ? this._loadState : '';
+    const state = this._uiState(); // v0.108.0: the search state wins while it owns the status
     if (menu && (menu.getAttribute('data-load') || '') !== state) {
       if (state) menu.setAttribute('data-load', state);
       else menu.removeAttribute('data-load');
@@ -1621,6 +1882,17 @@ export class TdDropdown extends TdFormElement {
    */
   _pickItem(item) {
     if (this._isDisabled() || !item || this._isItemDisabled(item)) return;
+    // v0.108.0: keep-open over server results → the rows are re-rendered AFTER the handlers (a host marking the picked
+    // item `disabled = true` in onPick / `pick` sees it at once) and the active row advances from that state
+    const query = this._searchProvider && this._keepOpen() && this._isOpen ? this._shownQuery : null;
+    if (query !== null) {
+      const from = this._activeIndex;
+      if (this._onPick) safeCall(this._onPick, item, 'onPick');
+      this.emit('pick', { value: item[this._getValueKey()], item });
+      this._announcePicked(item);
+      if (this._isOpen && this._shownQuery === query) this._refreshAfterPick(from);
+      return;
+    }
     if (this._keepOpen() && this._isOpen) {
       // the next pickable OPTION row (never the create row: Enter there would leave the menu), else the previous one
       const from = this._activeIndex;
@@ -1637,6 +1909,22 @@ export class TdDropdown extends TdFormElement {
     if (this._onPick) safeCall(this._onPick, item, 'onPick');
     this.emit('pick', { value: item[this._getValueKey()], item });
     this._announcePicked(item);
+  }
+
+  /**
+   * @private v0.108.0: keep-open pick over server results — re-render the same item objects (scroll kept), then the
+   * active row = the next pickable row after `from` (no wrap), else the previous one, else none.
+   */
+  _refreshAfterPick(from) {
+    const scroller = this._scroller();
+    const top = scroller ? scroller.scrollTop : 0;
+    this._renderMenuOptions();
+    if (scroller && scroller.scrollTop !== top) scroller.scrollTop = top;
+    const pickable = (i) => !!this._nav[i] && !!this._nav[i].item && this._isNavEnabled(i);
+    let next = -1;
+    for (let i = from + 1; i < this._nav.length && next < 0; i++) if (pickable(i)) next = i;
+    for (let i = Math.min(from, this._nav.length) - 1; i >= 0 && next < 0; i--) if (pickable(i)) next = i;
+    this._setActive(next);
   }
 
   /**
@@ -1702,7 +1990,8 @@ export class TdDropdown extends TdFormElement {
     });
     menu.addEventListener('click', (e) => {
       if (e.target instanceof Element && e.target.closest('.td-dropdown__retry')) {
-        if (this._loadState === 'error') this._runLoad();
+        if (this._searchOwnsStatus()) { if (this._searchState === 'error') this._retrySearch(); } // v0.108.0
+        else if (this._loadState === 'error') this._runLoad();
         return;
       }
       const option = e.target instanceof Element ? e.target.closest('.td-dropdown__option') : null;
@@ -1724,7 +2013,8 @@ export class TdDropdown extends TdFormElement {
     });
     menu.addEventListener('input', (e) => {
       if (e.target instanceof HTMLInputElement && e.target.classList.contains('td-dropdown__search')) {
-        this._handleSearch(e.target.value);
+        if (this._searchProvider) this._onProviderInput(e.target.value); // v0.108.0
+        else this._handleSearch(e.target.value);
       }
     });
     menu.addEventListener('keydown', (e) => {
@@ -1756,7 +2046,7 @@ export class TdDropdown extends TdFormElement {
         this.open({ active: key === 'Home' ? 'first' : 'last' });
       } else if (printable) {
         e.preventDefault();
-        this.open({ active: 'selected', focusSearch: false });
+        this.open({ active: 'selected', focusSearch: false, typeahead: true }); // v0.108.0: no server call
         this._typeahead(key);
       }
       return;
@@ -1795,7 +2085,10 @@ export class TdDropdown extends TdFormElement {
         e.preventDefault();
         if (source === 'trigger') this._suppressClick = performance.now();
         if (this._commitActive()) return;
-        if (this._loadState === 'error' && this._load) this._runLoad(); // v0.86.0: Enter = "Thử lại", stays open
+        if (this._searchOwnsStatus()) { // v0.108.0: Enter on a failed search = "Thử lại", stays open
+          if (this._searchState === 'error') this._retrySearch();
+          else if (source === 'trigger') this.close();
+        } else if (this._loadState === 'error' && this._load) this._runLoad(); // v0.86.0: Enter = "Thử lại", stays open
         else if (source === 'trigger') this.close();
         return;
       case ' ':
@@ -1877,7 +2170,7 @@ export class TdDropdown extends TdFormElement {
   }
 
   _handleSearch(query) {
-    this._filteredData = this._filtered(query);
+    if (!this._applyQuery(query)) this._filteredData = this._filtered(query); // v0.108.0: a provider never filters locally
     this._renderMenuOptions();
     // Active = first matching option (the clear option is skipped). Closed (a `groups` / `search-fields` change): open()
     // picks the active option.
@@ -2000,6 +2293,13 @@ export class TdDropdown extends TdFormElement {
       onCovered: () => this._closeCovered(),
     });
 
+    // v0.108.0: `min-chars="0"` → the empty query is searched at once on open (not when a closed-trigger
+    // type-ahead opens it: that runs on the base rows, without the server)
+    if (this._searchProvider && !opts.typeahead && this._searchQuery === null && this._shownQuery === null && !this._belowMin(this._query())) {
+      this._showSearching();
+      this._runSearch(this._query().trim());
+    }
+
     const mode = opts.active || 'selected';
     this._openActive = mode;
     this._activeIndex = -1;
@@ -2064,7 +2364,13 @@ export class TdDropdown extends TdFormElement {
     this._releaseLayer();
 
     // Reset search
-    if (searchInput && (searchInput.value || this._filteredData.length !== this._options.length)) {
+    if (this._searchProvider) {
+      // v0.108.0: the pending / running search is dropped; back to the base list
+      this._resetSearch();
+      if (searchInput) searchInput.value = '';
+      this._filteredData = this._ordered(this._options); // the base list, also with min-chars="0"
+      this._renderMenuOptions();
+    } else if (searchInput && (searchInput.value || this._filteredData.length !== this._options.length)) {
       searchInput.value = '';
       this._filteredData = this._ordered(this._options);
       this._renderMenuOptions();
@@ -2214,7 +2520,7 @@ export class TdDropdown extends TdFormElement {
   updateData(newData) {
     const snap = this._openSnapshot();
     this._options = Array.isArray(newData) ? newData : [];
-    this._filteredData = this._ordered(this._options);
+    if (!this._applyQuery()) this._filteredData = this._ordered(this._options); // v0.108.0: server results are kept
     this._optionsInit = true;
     this._reconcileSelection();
     // Resolve a value set before these options arrived (same as the `options` setter).
@@ -2235,7 +2541,7 @@ export class TdDropdown extends TdFormElement {
     const { prevIndex, prev, top } = snap || { prevIndex: -1, prev: undefined, top: 0 };
     const vk = this._getValueKey();
     const scroller = this._scroller();
-    this._filteredData = this._filtered(this._query());
+    if (!this._applyQuery()) this._filteredData = this._filtered(this._query()); // v0.108.0: never a local filter
     this._renderMenuOptions();
     let i = -1;
     if (prev && prev.item) {
@@ -2265,6 +2571,7 @@ export class TdDropdown extends TdFormElement {
 
   destroy() {
     this._loadToken++; // v0.86.0: a pending load never lands on a destroyed dropdown
+    this._resetSearch(); // v0.108.0: nor a pending / running search
     this._clearSearchFocusTimer();
     this._clearTypeahead();
     this._removeGlobalListeners();
