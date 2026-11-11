@@ -4,6 +4,8 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+- Test: `td-v082` swatch value-title test polls for the ellipsis title instead of a fixed 80 ms wait (WebKit CI flake). No product change.
+
 ## 0.109.0
 
 - **td-otp-input: tự gửi khi nhập đủ mã, mặc định bật** (yêu cầu dsuite). Sau `complete` (gõ / dán / tự điền), không bị

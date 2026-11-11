@@ -133,7 +133,8 @@ describe('td-dropdown swatch', () => {
     const el = dd('value="l"', [long]);
     el.style.display = 'block'; // eslint-disable-line -- test-only sizing via CSSOM
     el.style.width = '140px';
-    await wait(80);
+    // the ellipsis title is set after a resize observation: poll (a fixed 80 ms flaked on WebKit CI)
+    for (let t = 0; t < 40 && valueSpan(el).getAttribute('title') !== long.label; t++) await wait(25);
     expect(valueSpan(el).querySelector('svg')).to.exist;
     expect(valueSpan(el).getAttribute('title')).to.equal(long.label);
   });
