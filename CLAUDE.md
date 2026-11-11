@@ -27,7 +27,7 @@ nâng cấp). Tài liệu nội bộ (vision, roadmap, architecture, conventions
 | Components | Web Components (Custom Elements v1) + ElementInternals | Browser native |
 | Styling | CSS token `--td-*` + `@layer td.tokens, td.component, td.utilities`, một file `td.css`; CSSOM cho giá trị per-instance | [ADR 0008](docs/internal/decisions/0008-drop-tailwind-token-css.md) |
 | Module system | ES Modules, ship source | Không bundle |
-| Dev | Vite, Storybook 8.6 (`@storybook/web-components-vite`, story bằng chuỗi HTML thường) | |
+| Dev | Vite, Storybook 10 (`@storybook/web-components-vite`, Vite 8, story bằng chuỗi HTML thường) | |
 | Test | `node --test` + DOM shim, `@web/test-runner` + Playwright, CSP gate Playwright | |
 
 **Không dùng:** Lit, Shadow DOM, SASS/LESS, TypeScript, bundle output.

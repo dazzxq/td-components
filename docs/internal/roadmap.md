@@ -147,7 +147,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - dsuite 2026-10-08 (owner không làm): chuyển `data-*` của toggle xuống input trong (host là control); `td-dropdown` `locked`; component gập / mở (dùng `<details>` gốc); `choice-group` chỉ đọc; thanh hành động nổi kiểu kính (`aehh-mobile-nav`)
 - Toggle có `on-text` + nhãn dài xuống dòng: công tắc không căn giữa khối chữ (có sẵn, phát hiện ở v0.59.1); bố cục "nhãn sát trái — công tắc sát phải cả hàng" là việc của site
 - Đổi theme lúc chạy (`TdTheme.apply`, theming R3) — light / dark / auto + bộ sinh màu + theme theo vùng đã xong ở v0.41 / v0.42
-- component dwp/135 chưa quyết; Trusted Types; khúc xạ SVG; Storybook 9+ (wtr 1.0 xong v0.100.0) (xem mục Later bên dưới)
+- component dwp/135 chưa quyết; Trusted Types; khúc xạ SVG (wtr 1.0 xong v0.100.0, Storybook 10 xong 12/11) (xem mục Later bên dưới)
 
 ## Done — v0.4.1 bugfix (2026-09-27, xem CHANGELOG)
 
@@ -292,10 +292,9 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` v0.109.0 (dsuite-f6 11/11, plan [v0.109.0-otp-auto-submit](plans/v0.109.0-otp-auto-submit.md)): td-otp-input tự gửi khi đủ mã (form → requestSubmit; TdModal → nút `[data-td-default]` / primary duy nhất), `no-auto-submit`, `complete` cancelable.
 
 - `done` textarea `autoresize` bằng CSS `field-sizing` (v0.13.0)
-- `todo` (owner 05/11: chưa làm, chờ site xin) input-field: floating label (additive) — cần user duyệt giao diện
 
 - `done` (huỷ) K4 dwp: subset `td.css`: owner 05/11 không làm; dwp tự build từ `src/styles/` + `manifest.json`, kit giữ hợp đồng nguồn CSS ([conventions](conventions.md#release))
-- `todo` Dev deps: nâng `@web/test-runner` 1.x (bỏ `extract-zip` qua puppeteer) và Storybook 9 (bỏ `uuid` cũ) — breaking, chỉ ảnh hưởng tooling
+- `done` Dev deps: `@web/test-runner` 1.x (v0.100.0); Storybook 8.6 → 10.6 + Vite 6 → 8 (12/11, chỉ tooling: bỏ `addon-essentials` vì đã vào core; 450 story render sạch, demo chạy)
 
 - dark theme: tinh chỉnh giá trị (hiện chỉ tính toán, chưa render thử)
 - `done` toggle `commit()` / trạng thái pending (optimistic) (v0.13.0)

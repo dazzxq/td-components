@@ -211,9 +211,8 @@
   "license": "MIT",
   "devDependencies": {
     "@esm-bundle/chai": "^4.3.4",
-    "@storybook/addon-a11y": "^8.6.19",
-    "@storybook/addon-essentials": "^8.6.19",
-    "@storybook/web-components-vite": "^8.6.19",
+    "@storybook/addon-a11y": "^10.6.7",
+    "@storybook/web-components-vite": "^10.6.7",
     "@tailwindcss/cli": "4.3.5",
     "@web/test-runner": "^1.0.0",
     "@web/test-runner-playwright": "^1.0.0",
@@ -226,7 +225,7 @@
     "prosemirror-state": "1.4.4",
     "prosemirror-transform": "1.12.5",
     "prosemirror-view": "1.42.9",
-    "storybook": "^8.6.19",
-    "vite": "^6.4.5"
+    "storybook": "^10.6.7",
+    "vite": "^8.3.8"
   }
 }

@@ -66,7 +66,7 @@ Chi tiết và danh sách raw-HTML hatch: [security.md](security-model.md).
   `browser` × 3 (root config / nhóm `engines` / các nhóm còn lại), `csp` × 2 profile, `engines` (spec) + `test:ci:misc`,
   `responsive` × 3 engine, `theme` (contrast / page-contrast × 3 engine), `visual`, `php80`; wall time ≈ job dài nhất. Script shard ở `package.json` (`test:ci:*`); thêm gate mới vào `npm test` thì thêm cả vào một shard.
   Chạy CI trên nhánh bất kỳ đã push (không chiếm trình duyệt của máy dev): `gh workflow run test.yml --ref <nhánh>`.
-- Storybook: `npm run storybook` (dev), `npm run build-storybook` (hiện đang hỏng, xem B7 trong [roadmap](roadmap.md)).
+- Storybook: `npm run storybook` (dev), `npm run build-storybook` (build tĩnh). Storybook 10 + Vite 8; addon duy nhất là `@storybook/addon-a11y` (controls / actions / viewport có sẵn trong core).
 
 ## Release
 
@@ -90,7 +90,7 @@ và manifest giữ dạng máy đọc được. Đổi cấu trúc `manifest.jso
 
 - `emit()` luôn `bubbles: true, composed: true`.
 - Test Node dùng `node --test` + DOM shim, không thêm dependency test.
-- Storybook pin 8.6.x.
+- Storybook 10.x + Vite 8 (từ 12/11; ESM-only). Máy dev cần Node `^20.19` hoặc `≥ 22.12` (CI chạy 22). `engines.node >= 20` trong `package.json` là hợp đồng cài kit của consumer (kit không chạy Node), cố ý không nâng theo tooling dev.
 - Dữ liệu phức tạp (options, columns, tabs) set qua JS property, không qua attribute.
 - API form thống nhất: `getValue()` / `setValue()` / `setError()` + `checkValidity()`.
 - Menu dropdown portal ra `document.body` với `position: fixed`.

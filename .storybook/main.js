@@ -1,10 +1,8 @@
 /** @type {import('@storybook/web-components-vite').StorybookConfig} */
 const config = {
   stories: ['../src/**/*.stories.js'],
-  addons: [
-    '@storybook/addon-essentials',
-    '@storybook/addon-a11y',
-  ],
+  // Storybook 10: controls / actions / viewport / backgrounds are built into core (no addon-essentials).
+  addons: ['@storybook/addon-a11y'],
   framework: '@storybook/web-components-vite',
   staticDirs: ['./public'],
 };
