@@ -4,6 +4,16 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.109.0
+
+- **td-otp-input: tự gửi khi nhập đủ mã, mặc định bật** (yêu cầu dsuite). Sau `complete` (gõ / dán / tự điền), không bị
+  chặn: ô trong form → `form.requestSubmit()`; trong TdModal → bấm nút footer `[data-td-default]`, không có thì nút
+  `.td-btn--primary` duy nhất (disabled / `aria-busy` → bỏ qua; không có / nhiều primary → không bấm); ngoài ra không làm
+  gì. Tắt: attribute `no-auto-submit` (property `noAutoSubmit`), hoặc `e.preventDefault()` trong listener `complete` (event
+  giờ cancelable), hoặc ô disabled / readonly. Gán `value` bằng code không bao giờ gửi. Docs: otp-input.md mục 2b.
+- **Breaking (hành vi):** site đang tự `requestSubmit()` / bấm nút trong listener `complete` sẽ gửi hai lần → bỏ listener
+  đó, hoặc thêm `no-auto-submit`. Chỉ dsuite đang dùng td-otp-input.
+
 ## 0.108.0
 
 - **td-dropdown: tìm phía server** (yêu cầu dsuite). Property `search(query, { signal }) => Promise<option[]>` (bật

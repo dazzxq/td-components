@@ -289,6 +289,7 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` v0.106.0 (dsuite-7c 10/11, plan [v0.106.0-media-picker-grid-dedupe](plans/v0.106.0-media-picker-grid-dedupe.md)): media picker `columns: 'fixed'` (8/6/4/3/2/1 cột, token `--td-media-picker-fixed-card-min`, skeleton cột × 2) + toast cuối lô báo tệp trùng (tệp mới / trùng / trùng trong lô, ≤ 5 tên)
 - `done` v0.107.0 (dsuite-7c 10/11, plan [v0.107.0-tooltip-line-breaks](plans/v0.107.0-tooltip-line-breaks.md)): td-tooltip xuống dòng ở `&#10;` (`--td-tooltip-white-space: pre-line`), chữ nhiều dòng căn đầu dòng (`--td-tooltip-multiline-align`, `data-multiline`)
 - `done` v0.108.0 (dsuite-7c 10/11, plan [v0.108.0-dropdown-server-search](plans/v0.108.0-dropdown-server-search.md)): td-dropdown `search(query, { signal })` + `min-chars` / `search-delay`, không lọc cục bộ, trạng thái dưới ngưỡng / đang tìm / rỗng / lỗi + thử lại, keep-open
+- `done` v0.109.0 (dsuite-f6 11/11, plan [v0.109.0-otp-auto-submit](plans/v0.109.0-otp-auto-submit.md)): td-otp-input tự gửi khi đủ mã (form → requestSubmit; TdModal → nút `[data-td-default]` / primary duy nhất), `no-auto-submit`, `complete` cancelable.
 
 - `done` textarea `autoresize` bằng CSS `field-sizing` (v0.13.0)
 - `todo` (owner 05/11: chưa làm, chờ site xin) input-field: floating label (additive) — cần user duyệt giao diện

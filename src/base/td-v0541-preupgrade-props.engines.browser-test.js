@@ -200,7 +200,7 @@ const CASES = [
       expect(document.getElementById(`${el.id}-unit`)?.textContent).to.equal('đô la');
     },
   },
-  { tag: 'td-otp-input', attrs: { label: 'OTP' }, props: () => ({ length: 4, charset: 'numeric', value: '1234' }) },
+  { tag: 'td-otp-input', attrs: { label: 'OTP' }, props: () => ({ length: 4, charset: 'numeric', value: '1234', noAutoSubmit: true }) }, // v0.109.0: noAutoSubmit
   {
     tag: 'td-color-picker', attrs: { label: 'Màu' },
     props: () => ({ value: '#112233', custom: false, eyedropper: false, presets: [{ value: '#ffffff', label: 'Trắng' }] }),

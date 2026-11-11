@@ -6,7 +6,8 @@
 chữ, ví dụ Steam Guard 5 ký tự `WMX7Q`) — cho đăng nhập 2 bước (2FA), xác thực lại trước thao tác nhạy cảm (step-up),
 xác nhận email/điện thoại. Bên trong chỉ có **một** `<input type="text" autocomplete="one-time-code">` thật — gõ, dán,
 tự điền từ SMS / trình quản lý mật khẩu, IME đều là của trình duyệt — phủ trong suốt lên N ô vẽ trang trí. Form-associated:
-gửi **một** giá trị dưới `name`. Component **chỉ nhận mã**: không tự submit, không gọi API, không đếm ngược, không có nút
+gửi **một** giá trị dưới `name`. Từ 0.109.0 nhập đủ mã là **tự gửi** form chứa nó (hoặc bấm
+nút chính của modal; tắt bằng `no-auto-submit`, xem mục 2b). Component không gọi API, không đếm ngược, không có nút
 "gửi lại" — đó là việc của trang. **Không** dùng cho mật khẩu, mã dài hơn 10 ký tự, mã có ký tự đặc biệt / phân nhóm
 hiển thị (`ABCD-1234`) hay số điện thoại — dùng [input field](input-field.md).
 
@@ -27,12 +28,7 @@ hiển thị (`ABCD-1234`) hay số điện thoại — dùng [input field](inpu
 
 <script type="module">
   import '@dazzxq/td-components/otp-input';
-
-  const otp = document.getElementById('otp');
-  otp.addEventListener('complete', (e) => {
-    // đủ 6 số — trang tự quyết: submit luôn, hay gọi API
-    document.getElementById('otp-form').requestSubmit();
-  });
+  // đủ 6 số → form tự gửi (0.109.0). Muốn tự xử lý (gọi API...): thêm `no-auto-submit` rồi nghe `complete`.
 </script>
 ```
 
@@ -73,13 +69,13 @@ Form gửi `code=123456` (đúng một mục). `required` + rỗng → form khô
 - Câu báo thiếu ký tự: số → `messages.tooShort` (`Mã gồm {length} chữ số.`), có chữ → `messages.tooShortChars`
   (`Mã gồm {length} ký tự.`).
 
-### 2. Event `complete` — và vì sao component không tự submit
+### 2. Event `complete`
 
 `complete` (`detail: { value }`) phát **một lần cho mỗi "lượt"**: khi ký tự thứ `length` (mặc định 6) vào với một giá trị chưa phát. Xoá một số
 (hoặc gọi `reset()`) thì "lượt" mới bắt đầu, đủ 6 số lại phát. Gán `value` bằng code **không bao giờ** phát.
 
-Component cố ý **không** submit, không gọi API, không đếm ngược: mỗi app có luồng riêng (submit form, gọi `fetch`,
-khoá tài khoản, giới hạn tần suất, gửi lại mã). Ví dụ app gọi API khi đủ mã và tự xử lý lỗi:
+Component không gọi API, không đếm ngược. Từ 0.109.0 nó **tự gửi** khi đủ mã nếu tìm được đích (form hoặc nút chính
+của modal, xem mục 2b); ngoài form / modal thì chỉ phát `complete`. Ví dụ app gọi API khi đủ mã và tự xử lý lỗi:
 
 ```html
 <td-otp-input id="otp" name="code" label="Mã từ ứng dụng xác thực"></td-otp-input>
@@ -128,6 +124,30 @@ khoá tài khoản, giới hạn tần suất, gửi lại mã). Ví dụ app g�
 
 Mã HTTP (412 / 423 / 429…) là ví dụ — đặt theo API của bạn. Server **luôn** phải tự kiểm mã, giới hạn số lần thử và hết
 hạn mã; component chỉ là ô nhập.
+
+### 2b. Tự gửi khi đủ mã (0.109.0, mặc định bật)
+
+Ngay sau `complete` (gõ, dán, SMS / trình quản lý mật khẩu tự điền), nếu không bị chặn, component tìm đích theo thứ tự:
+
+1. Ô nằm trong `<form>` → `form.requestSubmit()` (chạy kiểm tra hợp lệ của form + event `submit` như bấm nút gửi).
+2. Ô nằm trong [modal](modal.md) → bấm nút ở footer có `data-td-default`; không có thì nút `.td-btn--primary` **duy
+   nhất** của footer (`actions` với `variant: 'primary'`). Nút disabled / đang bận (`aria-busy`) thì bỏ qua; không có
+   hoặc có từ hai nút primary trở lên → không bấm gì.
+3. Không có đích → chỉ có `complete`.
+
+Không tự gửi khi: có attribute `no-auto-submit` (property `noAutoSubmit`), listener `complete` gọi `e.preventDefault()`
+(chỉ lượt đó), ô `disabled` / `readonly`. Gán `value` bằng code không phát `complete` nên không bao giờ gửi; `reset()`
+mở lượt mới như cũ.
+
+> **Nâng từ < 0.109.0:** nếu listener `complete` đang tự `requestSubmit()` / bấm nút, bỏ nó đi (không thì gửi hai lần),
+> hoặc thêm `no-auto-submit`.
+
+```html
+<form method="post" action="/login/otp">
+  <td-otp-input name="code" label="Mã xác thực" required></td-otp-input>
+  <button type="submit" class="td-btn td-btn--primary">Xác nhận</button>   <!-- vẫn giữ cho người bấm tay -->
+</form>
+```
 
 ### 3. Trong form thường
 
@@ -245,6 +265,7 @@ option và id: [Adapter PHP › td_otp_input](../guides/php-adapter.md#td_otp_in
 | `readonly` | boolean | — | Xem được, không sửa; ô có nền read-only. |
 | `error-text` | string | — | Lỗi hiển thị (error contract). |
 | `aria-label` | string | — | Tên truy cập khi không có `label`. |
+| `no-auto-submit` | boolean | — | **0.109.0** Tắt tự gửi khi đủ mã (chỉ phát `complete`). Property `noAutoSubmit`. Xem mục 2b. |
 | `helper-text` | string | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
 ## Property & method
@@ -277,7 +298,7 @@ TdOtpInput.messages.tooShort = 'Enter all {length} digits.';
 | Event | detail | Khi nào | bubbles? |
 |---|---|---|---|
 | `input` | — (event native) | Mỗi lần người dùng gõ / dán / xoá / tự điền. Phát từ input bên trong; lúc trang nhận, `otp.value` đã được chuẩn hoá. | có |
-| `complete` | `{ value }` | Ký tự thứ `length` vào với giá trị chưa phát trong "lượt" này. Đúng **một lần** mỗi lượt; xoá một số hoặc `reset()` mở lượt mới. Gán `value` bằng code và `form.reset()` **không** phát. | có (composed) |
+| `complete` | `{ value }` | Ký tự thứ `length` vào với giá trị chưa phát trong "lượt" này. Đúng **một lần** mỗi lượt; xoá một số hoặc `reset()` mở lượt mới. Gán `value` bằng code và `form.reset()` **không** phát. **0.109.0:** cancelable; `preventDefault()` = lượt này không tự gửi (mục 2b). | có (composed) |
 
 Không có event `change` riêng (input bên trong vẫn phát `change` native khi blur).
 

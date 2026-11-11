@@ -45,7 +45,10 @@ export function otpDigits(raw) {
  *   `autocomplete="one-time-code"`.
  * - `input` is the native event (bubbles from the inner input; the value is already normalised). `complete`
  *   (`detail: { value }`) fires ONCE per "generation": when the `length`-th character arrives with a value not completed yet;
- *   deleting a digit or `reset()` re-arms it. The component never submits, never calls an API, never counts down.
+ *   deleting a digit or `reset()` re-arms it. v0.109.0: `complete` is cancelable and, unless `no-auto-submit` /
+ *   `preventDefault()` / disabled / readonly, the component then SUBMITS: its form (`requestSubmit()`), else inside a
+ *   TdModal the footer's `[data-td-default]` button or its only `.td-btn--primary` (skipped when disabled / busy), else
+ *   nothing. Assigning `value` in code never fires `complete`, so never submits. Never calls an API, never counts down.
  * - Constraint validation: `required` + empty → valueMissing; 1…length−1 characters → tooShort (`messages.tooShort` for
  *   numeric, `messages.tooShortChars` for letter charsets). `disabled`, `readonly`, error
  *   contract (`error-text`, `setError()`): the cells take the error colour.
@@ -112,6 +115,11 @@ export class TdOtpInput extends TdFormElement {
   }
 
   static get booleanAttributes() { return [...super.booleanAttributes, 'readonly']; }
+
+  /** v0.109.0: `true` → a full code only fires `complete` (no auto-submit) — reflects `no-auto-submit`. */
+  get noAutoSubmit() { return this.hasAttribute('no-auto-submit'); }
+
+  set noAutoSubmit(v) { this.toggleAttribute('no-auto-submit', !!v); }
 
   static get errorContract() { return true; }
 
@@ -317,11 +325,36 @@ export class TdOtpInput extends TdFormElement {
     if (digits.length === n) {
       if (this._completed !== digits) {
         this._completed = digits;
-        this.emit('complete', { value: digits });
+        // v0.109.0: cancelable — preventDefault() skips this auto-submit
+        const ev = new CustomEvent('complete', { bubbles: true, composed: true, cancelable: true, detail: { value: digits } });
+        if (this.dispatchEvent(ev)) this._autoSubmit();
       }
     } else {
       this._completed = null; // a shorter value re-arms `complete`
     }
+  }
+
+  /**
+   * @private v0.109.0: after an uncancelled `complete` (user input only): the owning form → requestSubmit(); else inside a
+   * TdModal → its footer's `[data-td-default]` button, or its ONE `.td-btn--primary` (disabled / busy → nothing); else
+   * nothing. Off with `no-auto-submit`, or while disabled / readonly.
+   */
+  _autoSubmit() {
+    if (this.noAutoSubmit || this.hasAttribute('readonly') || this.hasAttribute('disabled') || this.matches(':disabled')) return;
+    const input = this._focusTarget();
+    if (input && (input.disabled || input.readOnly)) return;
+    const form = this.form; // the OWNING form only (ElementInternals), never a non-owning ancestor
+    if (form) {
+      if (typeof form.requestSubmit === 'function') form.requestSubmit(); else form.submit();
+      return;
+    }
+    const footer = this.closest('.td-modal__dialog')?.querySelector('.td-modal__footer');
+    if (!footer) return;
+    const marked = footer.querySelector('[data-td-default]');
+    const primaries = footer.querySelectorAll('.td-btn--primary');
+    const btn = marked || (primaries.length === 1 ? primaries[0] : null);
+    if (!btn || btn.disabled || btn.getAttribute('aria-busy') === 'true') return;
+    btn.click();
   }
 
   /** @private A click on cell N puts the caret there (never past the digits typed). */

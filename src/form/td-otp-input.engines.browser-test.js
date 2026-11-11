@@ -119,7 +119,7 @@ describe('td-otp-input — typing, paste, normalisation', () => {
   });
 });
 
-describe('td-otp-input — `complete` (once per generation, never submits)', () => {
+describe('td-otp-input — `complete` (once per generation)', () => {
   it('fires once when the 6th digit is typed; more input does not fire again; deleting re-arms', async () => {
     const el = otp();
     const rec = completes(el);
@@ -162,8 +162,8 @@ describe('td-otp-input — `complete` (once per generation, never submits)', () 
     expect(rec).to.deep.equal(['111111']);
   });
 
-  it('does not submit the form on its own', async () => {
-    const wrap = mount('<form><td-otp-input name="code"></td-otp-input></form>');
+  it('no-auto-submit: does not submit the form on its own (pre-v0.109 behaviour; v0.109 auto-submit in td-v109-otp-auto-submit)', async () => {
+    const wrap = mount('<form><td-otp-input name="code" no-auto-submit></td-otp-input></form>');
     let submits = 0;
     wrap.querySelector('form').addEventListener('submit', (e) => { submits++; e.preventDefault(); });
     fill(wrap.querySelector('td-otp-input'), '123456', 'insertFromPaste');
@@ -182,7 +182,7 @@ describe('td-otp-input — `complete` (once per generation, never submits)', () 
 
 describe('td-otp-input — form association', () => {
   it('one FormData entry under `name`; required: empty → valueMissing, partial → invalid, full → valid', () => {
-    const wrap = mount('<form><td-otp-input name="otp_code" required></td-otp-input></form>');
+    const wrap = mount('<form><td-otp-input name="otp_code" required no-auto-submit></td-otp-input></form>');
     const form = wrap.querySelector('form');
     const el = wrap.querySelector('td-otp-input');
     expect(el.checkValidity()).to.equal(false);
