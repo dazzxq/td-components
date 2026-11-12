@@ -6,7 +6,7 @@ Trang này trả lời bốn câu hỏi: kit đánh số phiên bản thế nào
 khi có sự cố, và cần kiểm tra gì sau khi nâng cấp. Chi tiết "bản nào đổi gì, site phải sửa gì" nằm ở
 [breaking-changes.md](breaking-changes.md); bảng đổi tên class cũ → class mới nằm ở [class-map.md](class-map.md).
 
-Phiên bản hiện tại: **0.109.0** (`package.json` → `"version": "0.109.0"`, tag git `v0.109.0`).
+Phiên bản hiện tại: **0.109.1** (`package.json` → `"version": "0.109.1"`, tag git `v0.109.1`).
 
 ## Chính sách phiên bản
 

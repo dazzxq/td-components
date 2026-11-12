@@ -290,6 +290,7 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` v0.107.0 (dsuite-7c 10/11, plan [v0.107.0-tooltip-line-breaks](plans/v0.107.0-tooltip-line-breaks.md)): td-tooltip xuống dòng ở `&#10;` (`--td-tooltip-white-space: pre-line`), chữ nhiều dòng căn đầu dòng (`--td-tooltip-multiline-align`, `data-multiline`)
 - `done` v0.108.0 (dsuite-7c 10/11, plan [v0.108.0-dropdown-server-search](plans/v0.108.0-dropdown-server-search.md)): td-dropdown `search(query, { signal })` + `min-chars` / `search-delay`, không lọc cục bộ, trạng thái dưới ngưỡng / đang tìm / rỗng / lỗi + thử lại, keep-open
 - `done` v0.109.0 (dsuite-f6 11/11, plan [v0.109.0-otp-auto-submit](plans/v0.109.0-otp-auto-submit.md)): td-otp-input tự gửi khi đủ mã (form → requestSubmit; TdModal → nút `[data-td-default]` / primary duy nhất), `no-auto-submit`, `complete` cancelable.
+- `done` v0.109.1 (dsuite-9f 13/11): td-media-picker cursor ‹ › giống hệt nút nav của td-pagination (tròn, cùng cỡ / viền / trạng thái); chỉ CSS. Kèm Storybook 10 + Vite 8 (tooling) và sửa test chập chờn swatch.
 
 - `done` textarea `autoresize` bằng CSS `field-sizing` (v0.13.0)
 

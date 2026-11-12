@@ -84,6 +84,7 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-media-picker__back',
   '.td-media-picker__card',
   '.td-media-picker__coll',
+  '.td-media-picker__cursor > td-button > .td-btn',
   '.td-menu-btn',
   '.td-menu__item',
   '.td-modal__close',

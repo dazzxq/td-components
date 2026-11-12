@@ -16413,6 +16413,57 @@
 		white-space: nowrap;
 	}
 
+	/* v0.109.1 (dsuite 13/11): the cursor ‹ › look exactly like td-pagination's nav buttons (pagination.css
+	   .td-pagination__nav): a circle of --td-pagination-item-size, 1px control border, transparent, hover wash, faded when
+	   disabled. Still <td-button> underneath (single-flight `loading` spinner, native disabled, aria-label); only the
+	   button's box is restyled, so the td-button contract is unchanged. */
+	.td-media-picker__cursor > td-button > .td-btn {
+		inline-size: var(--td-pagination-item-size, 2rem);
+		min-inline-size: var(--td-pagination-item-size, 2rem);
+		block-size: var(--td-pagination-item-size, 2rem);
+		min-height: 0;
+		padding: 0;
+		color: var(--td-color-text);
+		background-color: transparent;
+		border: 1px solid var(--td-control-border);
+		border-radius: var(--td-radius-full);
+		box-shadow: none;
+	}
+
+	/* the host as a flex box: no inline line box around the inline-flex .td-btn (the 20px chevron made it 33px tall) */
+	.td-media-picker__cursor > td-button {
+		display: flex;
+	}
+
+	/* the chevron at td-pagination's --td-icon-m (td-button sm alone renders a text-relative ~15px icon) */
+	.td-media-picker__cursor > td-button > .td-btn .td-btn__icon svg {
+		inline-size: var(--td-icon-m);
+		block-size: var(--td-icon-m);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-picker__cursor > td-button > .td-btn:hover:not(:disabled, [aria-busy="true"]) {
+			background-color: var(--td-color-hover-strong);
+		}
+	}
+
+	.td-media-picker__cursor > td-button > .td-btn:is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-media-picker__cursor > td-button > .td-btn:disabled {
+		color: var(--td-color-text);
+		background-color: transparent;
+		border-color: var(--td-control-border);
+		opacity: 0.45;
+	}
+
+	@media (forced-colors: active) {
+		.td-media-picker__cursor > td-button > .td-btn { border-color: ButtonText; }
+		.td-media-picker__cursor > td-button > .td-btn:disabled { color: GrayText; border-color: GrayText; opacity: 1; }
+	}
+
 	/* content-sized inside the one-row toolbar: opt out of td-pagination's inline-size containment (ADR 0014 §4 — a
 	   contained host would collapse to 0 and stack its pages vertically); the picker lays the pager out itself */
 	.td-media-picker__pager td-pagination {

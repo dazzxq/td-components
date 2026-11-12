@@ -4,6 +4,15 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.109.1
+
+**`td-media-picker`: nút ‹ › phân trang cursor giống hệt nút ‹ › của `td-pagination`** (dsuite 13/11). Trước là nút
+secondary vuông bo góc, lệch với điều khiển trang của bảng. Giờ tròn, cỡ `--td-pagination-item-size`, viền
+`--td-control-border`, nền trong, hover / nhấn / focus / disabled (mờ 0.45) như `.td-pagination__nav`; forced colours
+như pagination. Vẫn là `<td-button>` (giữ `loading` single-flight, `disabled` native, `aria-label` "Trang trước" / "Trang
+sau"); chỉ CSS, không đổi API. Chế độ `pages` đã dùng `td-pagination` thật nên vốn tròn. Test so computed style với
+`td-pagination` thật trên 3 engine.
+
 - Tooling: Storybook 8.6 → 10.6 (`addon-essentials` bỏ, đã vào core; giữ `addon-a11y`), Vite 6.4 → 8.3. Chỉ dev deps, không đổi gì cho consumer.
 
 - Test: `td-v082` swatch value-title test polls for the ellipsis title instead of a fixed 80 ms wait (WebKit CI flake). No product change.

@@ -626,7 +626,8 @@ filter → về trang 1.
 
 ### `'cursor'` (mặc định — hợp đồng dsuite)
 
-- `‹` / `›` (`<td-button size="sm" variant="secondary">`), chữ "Hiển thị {from}-{to} / {total} media" khi adapter trả
+- `‹` / `›` (`<td-button>`; từ 0.109.1 trông y hệt nút ‹ › của [`td-pagination`](pagination.md): tròn, cỡ
+  `--td-pagination-item-size`, viền `--td-control-border`, mờ khi disabled), chữ "Hiển thị {from}-{to} / {total} media" khi adapter trả
   `total`, không có thì "Trang {n}".
 - Kit gửi `cursor = nextCursor` của trang trước và **tự giữ chồng cursor** các trang đã qua để lùi — adapter không cần
   `previousCursor`. Không nhảy trang được (cursor không cho phép).
