@@ -99,7 +99,7 @@ const SEL = {
   uploadDialog: 'body > .td-media-picker-upload:not([data-state="closing"])',
   urlTab: '.td-media-picker-upload .td-tabs__tab[data-tab-id="url"]', // tabs only exist when both sources are available
   urlInput: '.td-media-picker-upload__url input',
-  deleteBtn: '.td-media-picker__delete', // detail action row; only rendered with capabilities.delete (opt-in)
+  deleteBtn: '.td-media-picker__delete button', // inner button of the icon-only td-action-button; detail action row; only rendered with capabilities.delete (opt-in)
   blocked: '.td-media-picker__blocked',
 };
 // Mock adapter: newest first (page 1 = m60 … m31); delete(id) → blocked when the numeric id % 7 === 3. m59 is an image

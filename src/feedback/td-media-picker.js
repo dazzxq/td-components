@@ -70,6 +70,11 @@
  * `span.td-badge.td-media-picker__reused` "Đã có trong thư viện" for this open (pinned at the start of the grid until
  * a user navigation when it is not on the page). Caps 100 files / 256 MiB per adapter. `TdMediaPicker.uploads` /
  * `TdMediaPicker.cancelUploads()`.
+ * v0.110.0 (plan v0.110.0-media-picker-load-more): `loadMore` (opt-in) APPENDS the next page instead of replacing the
+ * grid — root `[data-load-more="auto|button"]`, after the grid `div.td-media-picker__more[hidden]` >
+ * `div.td-media-picker__sentinel[aria-hidden]` + `p.td-media-picker__more-error[hidden]` + `td-button.td-media-picker__more-btn`
+ * ("Tải thêm" / "Thử lại"); the pager slot holds `p.td-media-picker__count` ("n/total" aria-hidden + a td-sr-only
+ * sentence) instead of ‹ › / td-pagination. `pageSize: 'auto'` (+ `maxPageSize`) is measured once per reset.
  *
  * @element td-media-picker
  * @property {object} options - OpenMediaPickerOptions (merged over TdMediaPicker.defaults at open())
@@ -94,10 +99,9 @@ import {
   DefaultsRegistry, resolveOptions, cancelledOutcome, buildOutcome, normalizeAsset, normalizePage, normalizeFacets,
   normalizeFields, normalizeError, canDo, buildListRequest, requestKey, LatestRequest, SelectionModel, InitialLoad,
   Debouncer, SessionCache, formatLabel, PageState, defaultTitle, normalizeDeleteResult, normalizeDownloadResult,
-  normalizeCollections,
+  normalizeCollections, autoPageSize, PAGE_SIZE_DEFAULT,
 } from '../utils/media-picker-core.js';
 import { createFacetControl, FieldForm, FIELD_LABELS } from './media-picker-fields.js';
-import { TdMenu } from './td-menu.js';
 import { openUploadDialog, UPLOAD_LABELS } from './media-picker-upload.js';
 import { createGridDrop } from './media-picker-drop.js';
 import { pageUploadSlots, uploadStats, cancelAllUploads } from './media-picker-uploads.js';
@@ -109,6 +113,7 @@ import '../display/td-empty-state.js';
 import '../display/td-pagination.js';
 import '../display/td-copy.js';
 import '../form/td-button.js';
+import '../form/td-action-button.js';
 import '../form/td-input-field.js';
 import './td-alert.js';
 
@@ -205,6 +210,16 @@ function makeButton(label, { variant = 'secondary', size, icon, cls, aria } = {}
 }
 
 /** A user action on a `<td-button>` host — ignored while disabled / loading (a programmatic host.click() included). */
+/** @private v0.110.0 (QĐ6): an icon-only detail action (`td-action-button` preset; label = accessible name + tooltip) */
+function actionButton(action, label, cls) {
+  const b = document.createElement('td-action-button');
+  b.setAttribute('action', action);
+  b.setAttribute('size', 'sm');
+  if (label) b.setAttribute('label', label);
+  b.className = cls;
+  return b;
+}
+
 const usable = (b) => !b.hasAttribute('disabled') && !b.hasAttribute('loading');
 
 /**
@@ -262,6 +277,13 @@ export class TdMediaPicker extends HTMLElement {
     prevPage: 'Trang trước',
     nextPage: 'Trang sau',
     resultsCount: '{n} kết quả',
+    /** v0.110.0 (plan v0.110.0-media-picker-load-more): `loadMore` — the button, the append error, the live note, the count */
+    loadMore: 'Tải thêm',
+    loadMoreError: 'Không tải được',
+    loadedMore: 'Đã tải thêm {n}',
+    loadedOf: '{n}/{total}',
+    loadedOfLabel: 'Đã tải {n} trên {total} media',
+    loaded: '{n} media',
     ...EMPTY_LABELS,
     retry: 'Thử lại',
     back: 'Quay lại',
@@ -523,6 +545,9 @@ export class TdMediaPicker extends HTMLElement {
     // v0.66.0 (K8): the site's explicit `capabilities.collections: false` wins over `initialCollection` — a legacy session
     const collOff = !!opts.capabilities && opts.capabilities.collections === false;
     const initialCollection = collOff ? null : opts.initialCollection;
+    // v0.110.0 `pageSize: 'auto'`: a number until the first measure (once per reset, see `_loadPage`)
+    const autoSize = opts.pageSize === 'auto';
+    const pageSize = autoSize ? Math.min(PAGE_SIZE_DEFAULT, opts.maxPageSize) : opts.pageSize;
     const s = {
       id,
       opts,
@@ -536,8 +561,16 @@ export class TdMediaPicker extends HTMLElement {
       cache: new SessionCache(),
       query: opts.initialQuery.trim(),
       filters: { ...opts.initialFilters },
-      pageSize: opts.pageSize,
-      pages: new PageState({ mode: opts.pagination, pageSize: opts.pageSize, warn: (m) => warnOnce('pages', m) }),
+      pageSize,
+      autoSize,
+      pages: new PageState({ mode: opts.pagination, pageSize, warn: (m) => warnOnce('pages', m) }),
+      /** v0.110.0 `loadMore`: `{ trigger, maxItems }` | null (off: each page replaces the grid) */
+      lm: opts.loadMore || null,
+      lmBusy: 0, // the PageState token of the append in flight (0 = none)
+      lmError: false, // the last append failed → "Không tải được" + "Thử lại", no auto load until a click
+      lmDry: 0, // appends in a row that added no new card (≥ 3 → no more auto loads)
+      lmTotal: undefined, // `total` of the last committed page (−1 per in-place delete)
+      lmRaf: 0,
       lastHow: 'reload',
       cols: 0, // v0.106.0 `columns: 'fixed'`: the measured column count (0 = not measured yet)
       /** @type {Map<string, HTMLElement>} grid items by id */
@@ -626,6 +659,18 @@ export class TdMediaPicker extends HTMLElement {
       ro.observe(s.els.results);
       s.ctrl.signal.addEventListener('abort', () => ro.disconnect(), { once: true });
     }
+    // v0.110.0 `loadMore` trigger 'auto': ONE IntersectionObserver per open on the sentinel (root = the results scroller,
+    // half a viewport ahead); "Tải thêm" stays for the keyboard / no IO. Ends with the picker.
+    if (s.lm) {
+      if (s.lm.trigger === 'auto' && typeof IntersectionObserver === 'function') {
+        const io = new IntersectionObserver((entries) => {
+          if (entries.some((en) => en.isIntersecting)) this._loadMore(false);
+        }, { root: s.els.results, rootMargin: '0px 0px 50% 0px' });
+        io.observe(s.els.sentinel);
+        s.ctrl.signal.addEventListener('abort', () => io.disconnect(), { once: true });
+      }
+      s.ctrl.signal.addEventListener('abort', () => { if (s.lmRaf) cancelAnimationFrame(s.lmRaf); s.lmRaf = 0; }, { once: true });
+    }
     // initialIds transaction (decision 15)
     if (opts.selection.initialIds.length) {
       s.initial = new InitialLoad({
@@ -671,6 +716,7 @@ export class TdMediaPicker extends HTMLElement {
     root.setAttribute('data-mode', s.mode);
     root.setAttribute('data-detail-empty', ''); // review ISSUE-4: nothing viewed yet
     if (s.opts.columns === 'fixed') root.setAttribute('data-columns', 'fixed'); // v0.106.0
+    if (s.lm) root.setAttribute('data-load-more', s.lm.trigger); // v0.110.0
     // Static markup only (no interpolation); every dynamic value is set through the DOM below.
     root.innerHTML = '<div class="td-modal__backdrop" aria-hidden="true"></div>'
       + '<div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg td-media-picker__dialog"'
@@ -743,6 +789,7 @@ export class TdMediaPicker extends HTMLElement {
     retry.addEventListener('click', () => { if (usable(retry)) this._loadPage(s.lastHow, { autoFirst: s.autoRetry === true, ...(s.opening ? { source: 'open' } : {}) }); });
     e.error.appendChild(retry);
     e.retry = retry;
+    if (s.lm) this._buildLoadMore();
     // footer (decision 17)
     // v0.36.0 (review ISSUE-5, plan QĐ 55): ONE chip "n đã chọn ×" = the count AND "Bỏ chọn tất cả" (label + name follow
     // every selection change in _renderSelection)
@@ -1160,6 +1207,20 @@ export class TdMediaPicker extends HTMLElement {
     });
     pager.append(cursorBox, pg);
     Object.assign(e, { prev, next, pageInfo: info, cursorBox, pagination: pg, filters });
+    if (s.lm) {
+      // v0.110.0 (QĐ3): `loadMore` shows "n/total" (visible, aria-hidden) + the long sentence for screen readers instead of ‹ ›
+      const count = document.createElement('p');
+      count.className = 'td-media-picker__count';
+      const shown = document.createElement('span');
+      shown.setAttribute('aria-hidden', 'true');
+      const spoken = document.createElement('span');
+      spoken.className = 'td-sr-only';
+      count.append(shown, spoken);
+      cursorBox.hidden = true;
+      pg.hidden = true;
+      pager.appendChild(count);
+      Object.assign(e, { count, countShown: shown, countSpoken: spoken });
+    }
     // v0.36.0 (QĐ 51): < 720 the pager moves under the grid (end of the results scroller); back into the toolbar ≥ 720
     if (typeof matchMedia === 'function') {
       s.mqMd = matchMedia(mqBelow('md'));
@@ -1392,7 +1453,21 @@ export class TdMediaPicker extends HTMLElement {
     const s = this._s;
     if (!this._live(s)) return;
     s.autoRetry = false; // v0.67.0: any other load ends the "retry of the opening load" window (Retry passes `autoFirst` itself)
-    if (o.reset) s.pages.reset();
+    if (s.lm) {
+      // v0.110.0 `loadMore`: every list load here is page 1 (appends go through _loadMore); one after appends is a reset.
+      // A reset always wins: it supersedes the append in flight (same list slot + PageState token), clears the append state.
+      if (how !== 'reload') return;
+      if (s.pages.page !== 1) o = { ...o, reset: true };
+      this._lmClear();
+    }
+    // v0.110.0 `pageSize: 'auto'`: measured ONCE per reset (and on the opening load), never on a resize in between
+    if (s.autoSize && (o.reset || s.opening)) {
+      if (!o.keepGrid) this._showLoading(); // the skeleton is the measure while the grid is hidden
+      s.pageSize = this._autoPageSize();
+      s.pages.reset({ pageSize: s.pageSize });
+    } else if (o.reset) {
+      s.pages.reset();
+    }
     const r = s.pages.begin(how);
     if (!r) {
       this._renderPager();
@@ -1449,7 +1524,12 @@ export class TdMediaPicker extends HTMLElement {
       s.opening = false;
       if (s.openNote) this._announce(s.openNote); // a first render without its own announcement
       s.openNote = null;
+      if (s.lm) {
+        s.lmTotal = page.total;
+        s.els.results.scrollTop = 0; // a new result set starts at the top
+      }
       this._renderPager();
+      if (s.lm) this._lmRecheck();
       if (o.nav) {
         s.els.results.scrollTop = 0;
         this._focus(s.els.heading);
@@ -1471,6 +1551,7 @@ export class TdMediaPicker extends HTMLElement {
     s.els.grid.hidden = true;
     s.els.error.hidden = false;
     if (s.els.itemsHead) this._syncSectionHeads();
+    if (s.lm) this._renderPager(); // the count + "Tải thêm" leave with the grid
   }
 
   /** @private v0.106.0: the skeleton card count — 30 ('auto', as before) or 2 rows of the current column count ('fixed') */
@@ -1728,6 +1809,11 @@ export class TdMediaPicker extends HTMLElement {
     const s = this._s;
     const e = s.els;
     const ps = s.pages;
+    if (s.lm) {
+      this._renderCount();
+      this._lmSync();
+      return;
+    }
     const visible = !!ps.visible;
     e.pager.hidden = !visible;
     if (!visible) return;
@@ -1755,6 +1841,209 @@ export class TdMediaPicker extends HTMLElement {
     e.pageInfo.textContent = ps.total !== undefined && ps.from !== undefined
       ? this._t('pageInfo', { from: ps.from, to: ps.to, total: ps.total })
       : this._t('page', { n: ps.page });
+  }
+
+  // --- v0.110.0 load more (plan v0.110.0-media-picker-load-more QĐ1-5) ---
+
+  /**
+   * @private the end of the grid: an `aria-hidden` sentinel (IntersectionObserver target), the short append error and ONE
+   * `<td-button>` ghost sm — "Tải thêm", or "Thử lại" after a failed append. Built only in a `loadMore` open.
+   */
+  _buildLoadMore() {
+    const s = this._s;
+    const e = s.els;
+    const more = document.createElement('div');
+    more.className = 'td-media-picker__more';
+    more.hidden = true;
+    const sentinel = document.createElement('div');
+    sentinel.className = 'td-media-picker__sentinel';
+    sentinel.setAttribute('aria-hidden', 'true');
+    const err = document.createElement('p');
+    err.className = 'td-media-picker__more-error';
+    err.hidden = true;
+    const btn = makeButton(this._t('loadMore'), { variant: 'ghost', size: 'sm', cls: 'td-media-picker__more-btn' });
+    btn.addEventListener('click', () => { if (usable(btn)) this._loadMore(true); });
+    more.append(sentinel, err, btn);
+    e.grid.after(more);
+    Object.assign(e, { more, sentinel, moreError: err, moreBtn: btn });
+  }
+
+  /** @private a reset: forget the append state (the append in flight is superseded by the reset's own request) */
+  _lmClear() {
+    const s = this._s;
+    s.lmBusy = 0;
+    s.lmError = false;
+    s.lmDry = 0;
+    if (s.lmRaf) cancelAnimationFrame(s.lmRaf);
+    s.lmRaf = 0;
+  }
+
+  /** @private may the sentinel load by itself: trigger 'auto', under `maxItems`, no append error, not 3 dry appends in a row */
+  _lmAutoOk() {
+    const s = this._s;
+    return s.lm.trigger === 'auto' && !s.lmError && s.lmDry < 3 && s.items.size < s.lm.maxItems;
+  }
+
+  /** @private the count in the pager slot (QĐ3): "n/total" (or "n media" without total); hidden while the grid is */
+  _renderCount() {
+    const s = this._s;
+    const e = s.els;
+    const n = s.items.size;
+    e.pager.hidden = !n || e.grid.hidden || !e.error.hidden;
+    if (e.pager.hidden) return;
+    const total = s.lmTotal;
+    const shown = total !== undefined ? this._t('loadedOf', { n, total }) : this._t('loaded', { n });
+    const spoken = total !== undefined ? this._t('loadedOfLabel', { n, total }) : shown;
+    if (e.countShown.textContent !== shown) e.countShown.textContent = shown;
+    if (e.countSpoken.textContent !== spoken) e.countSpoken.textContent = spoken;
+  }
+
+  /** @private sentinel + "Tải thêm" / "Thử lại": shown under a shown grid while there is more (or after a failed append) */
+  _lmSync() {
+    const s = this._s;
+    const e = s.els;
+    if (!e.more) return;
+    const gridShown = !e.grid.hidden && s.items.size > 0 && e.error.hidden;
+    e.more.hidden = !(gridShown && (s.lmError || s.pages.hasNext));
+    e.moreError.hidden = !s.lmError;
+    const text = s.lmError ? this._t('loadMoreError') : '';
+    if (e.moreError.textContent !== text) e.moreError.textContent = text;
+    const label = s.lmError ? this._t('retry') : this._t('loadMore');
+    if (e.moreBtn.getAttribute('label') !== label) e.moreBtn.setAttribute('label', label);
+    e.moreBtn.toggleAttribute('loading', !!s.lmBusy);
+  }
+
+  /** @private the sentinel lies inside the observer's zone (the results box + half its height below) */
+  _lmInZone() {
+    const e = this._s.els;
+    if (e.more.hidden) return false;
+    const rr = e.results.getBoundingClientRect();
+    if (!(rr.height > 0)) return false;
+    const sr = e.sentinel.getBoundingClientRect();
+    return sr.top <= rr.bottom + rr.height * 0.5 && sr.bottom >= rr.top;
+  }
+
+  /**
+   * @private Codex plan r1 #1: the observer only fires on a CHANGE — after each page lands, when there is more and the
+   * sentinel is still in the zone (a tall screen, a page of duplicates), ONE `next` is booked for the next frame.
+   */
+  _lmRecheck() {
+    const s = this._s;
+    if (!s.lm || s.lmRaf || s.pages.pending || !s.pages.hasNext || !this._lmAutoOk()) return;
+    s.lmRaf = requestAnimationFrame(() => {
+      s.lmRaf = 0;
+      if (this._live(s) && this._lmInZone()) this._loadMore(false);
+    });
+  }
+
+  /**
+   * @private Append the next page (QĐ2). Single-flight among list loads: nothing starts while one runs (an append or a
+   * reset). `user` = the button (also after an error, past `maxItems`, after dry appends); else the sentinel.
+   * @param {boolean} user
+   */
+  _loadMore(user) {
+    const s = this._s;
+    if (!this._live(s) || !s.lm || s.pages.pending || !s.pages.hasNext || !s.items.size) return;
+    if (!user && !this._lmAutoOk()) return;
+    if (!s.els.error.hidden || s.els.grid.hidden) return;
+    const r = s.pages.begin('next');
+    if (!r) return;
+    s.lmBusy = r.token;
+    s.lmError = false;
+    const state = this._listState();
+    s.els.results.setAttribute('aria-busy', 'true');
+    this._lmSync();
+    s.req.list.run((signal) => s.adapter.list(buildListRequest(state, { cursor: r.cursor, page: r.page, signal }))).then((res) => {
+      if (!this._live(s)) return;
+      if (s.lmBusy === r.token) s.lmBusy = 0;
+      if (res.stale) { // a reset superseded it: that request owns aria-busy and the grid now
+        s.pages.rollback(r.token);
+        return;
+      }
+      s.els.results.setAttribute('aria-busy', 'false');
+      let page;
+      try {
+        if ('error' in res) throw res.error;
+        page = normalizePage(res.value, { safeUrl: safeMediaUrl, kinds: s.kinds, limit: s.pageSize, metadataKeys: s.metaKeys,
+          pagination: s.opts.pagination, warn: (m) => warnOnce(`page:${m}`, m) });
+      } catch (err) {
+        s.pages.rollback(r.token);
+        this._lmFail(err);
+        return;
+      }
+      if (!s.pages.commit(r.token, page)) return; // superseded
+      if (page.hidden) warnOnce('kinds', 'td-media-picker: the adapter returned items of other kinds — hidden (filter by `kinds`).');
+      this._appendPage(page);
+    });
+  }
+
+  /** @private a failed append keeps every card: short text + "Thử lại" in place, the operation-error event, no auto load */
+  _lmFail(err) {
+    const s = this._s;
+    const n = normalizeError(err, null, { operation: 'list' });
+    if (n) {
+      this._emit('operation-error', { operation: 'list', code: n.code, retryable: n.retryable });
+      s.lmError = true;
+      this._announce(this._t('loadMoreError'));
+    }
+    this._renderPager();
+  }
+
+  /** @private add a page at the end of the grid: one fragment, cards already shown (by id) skipped, focus untouched */
+  _appendPage(page) {
+    const s = this._s;
+    const grid = s.els.grid;
+    const done = s.drop ? new Set(s.drop.doneIds()) : null; // v0.93.0: a finished dropped card already shows that asset
+    const frag = document.createDocumentFragment();
+    let added = 0;
+    for (const a of page.items) {
+      s.cache.putAsset(a);
+      if (s.items.has(a.id) || (done && done.has(a.id))) continue;
+      const el = this._itemEl(a);
+      s.items.set(a.id, el);
+      frag.appendChild(el);
+      added += 1;
+    }
+    grid.appendChild(frag);
+    s.lmTotal = page.total;
+    s.lmDry = added ? 0 : s.lmDry + 1;
+    this._syncGrid();
+    if (added) this._announce(this._t('loadedMore', { n: added }));
+    this._renderPager();
+    this._lmRecheck();
+  }
+
+  /**
+   * @private QĐ4 `pageSize: 'auto'`: columns = tracks of the grid's (or, while it is hidden / empty, the skeleton's)
+   * computed `grid-template-columns`; row = a card's layout height + row gap; height = the results' content box.
+   * Layout sizes (offsetHeight / clientHeight) so the opening scale motion does not skew them. Not laid out → default.
+   * @returns {number}
+   */
+  _autoPageSize() {
+    const s = this._s;
+    const e = s.els;
+    if (s.opts.columns === 'fixed') this._measureCols();
+    const useGrid = !e.grid.hidden && s.items.size > 0;
+    const box = useGrid ? e.grid : e.skeleton;
+    const card = useGrid ? s.items.values().next().value : e.skeleton.firstElementChild;
+    let cols = 0;
+    let rowH = 0;
+    let height = 0;
+    if (box && card && !box.hidden) {
+      const cs = getComputedStyle(box);
+      cols = String(cs.gridTemplateColumns || '').trim().split(/\s+/).filter((x) => x && x !== 'none').length;
+      rowH = (/** @type {HTMLElement} */ (card)).offsetHeight + (parseFloat(cs.rowGap) || 0);
+      const rs = getComputedStyle(e.results);
+      height = e.results.clientHeight - (parseFloat(rs.paddingTop) || 0) - (parseFloat(rs.paddingBottom) || 0);
+    }
+    // lane review: a reset that keeps the grid with no card (e.g. the last card deleted) has nothing laid out to measure →
+    // keep the size of the last real measurement instead of falling back to the default
+    if (!(cols > 0 && rowH > 0 && height > 0)) {
+      if (s.autoMeasured) return s.pageSize;
+    } else {
+      s.autoMeasured = true;
+    }
+    return autoPageSize({ cols, height, rowH, maxPageSize: s.opts.maxPageSize });
   }
 
   /** @private */
@@ -2591,8 +2880,13 @@ export class TdMediaPicker extends HTMLElement {
     const actions = document.createElement('div');
     actions.className = 'td-media-picker__detail-actions';
     if (canDo('downloadOriginal', s.adapter, s.caps, asset) && typeof s.adapter.download === 'function') {
-      const dlb = makeButton(t('download'), { size: 'sm', icon: 'download', cls: 'td-media-picker__download' });
-      dlb.addEventListener('click', () => { if (usable(dlb)) dlb.run(() => this._download(asset)); });
+      // v0.110.0 (dsuite 13/11, QĐ6): icon-only td-action-button, the label is its accessible name + tooltip
+      const dlb = actionButton('download', t('download'), 'td-media-picker__download');
+      dlb.addEventListener('click', () => {
+        if (!usable(dlb)) return;
+        dlb.setAttribute('loading', '');
+        Promise.resolve(this._download(asset)).finally(() => dlb.removeAttribute('loading'));
+      });
       actions.appendChild(dlb);
     }
     const copyUrl = canDo('copyLink', s.adapter, s.caps, asset) ? this._absoluteUrl(asset.urls.preview) : '';
@@ -2605,27 +2899,12 @@ export class TdMediaPicker extends HTMLElement {
       actions.appendChild(cp);
     }
     if (canDo('delete', s.adapter, s.caps, asset) && typeof s.adapter.delete === 'function') {
-      const del = makeButton(t('delete'), { variant: 'danger', size: 'sm', icon: 'trash', cls: 'td-media-picker__delete' });
+      const del = actionButton('delete', t('delete'), 'td-media-picker__delete'); // tone danger (preset)
       del.addEventListener('click', () => { if (usable(del)) this._confirmDelete(asset); });
       actions.appendChild(del);
     }
     if (saveBtn) actions.appendChild(saveBtn);
-    // review ISSUE-3 (plan QĐ 56): at most 3 actions inline below 720 — "Lưu" always stays, the rest in order; the others
-    // are marked [data-overflow] (CSS hides them < 720) and offered by an internal "Thêm" TdMenu that clicks them
-    const inline = [...actions.children];
-    const keep = new Set(saveBtn ? [saveBtn] : []);
-    for (const b of inline) if (keep.size < 3 && !keep.has(b)) keep.add(b);
-    const overflowed = inline.filter((b) => !keep.has(b));
-    if (overflowed.length) {
-      for (const b of overflowed) b.setAttribute('data-overflow', '');
-      const more = makeButton(t('detailMore'), { size: 'sm', icon: 'more', aria: t('detailMore'), cls: 'td-media-picker__detail-more' });
-      actions.insertBefore(more, saveBtn || null);
-      // review ISSUE-7: TdMenu's default dismissal (an outside press passes through) — 'swallow' is lightbox-only
-      TdMenu.bind(more, () => overflowed.filter((b) => b.isConnected).map((b) => ({
-        label: b.getAttribute('label') || b.getAttribute('aria-label') || b.textContent.trim(),
-        onSelect: () => (b.querySelector('button') || b).click(),
-      })), { align: 'end' });
-    }
+    // v0.110.0 (QĐ6): three icons + "Lưu" fit every width — no "Thêm" overflow menu any more (`detailMore` label kept)
     if (actions.childNodes.length) {
       const hr2 = document.createElement('hr');
       hr2.className = 'td-media-picker__divider';
@@ -2782,7 +3061,8 @@ export class TdMediaPicker extends HTMLElement {
       try { TdToast.success(msg, this._toastOptions()); } catch { /* ignore */ }
       this._emit('asset-change', { operation: 'update', asset });
       this._loadFacets();
-      this._loadPage('reload', { keepGrid: true });
+      // v0.110.0 `loadMore`: the card is repainted in place (above); a list reload would drop the appended pages
+      if (!s.lm) this._loadPage('reload', { keepGrid: true });
     });
   }
 
@@ -2926,7 +3206,20 @@ export class TdMediaPicker extends HTMLElement {
     try { TdToast.success(msg, this._toastOptions()); } catch { /* ignore */ }
     this._emit('asset-change', { operation: 'delete', id });
     this._loadFacets({ fresh: true });
-    this._loadPage('reload', { keepGrid: true, stepBack: true });
+    if (s.lm && s.items.size) {
+      // v0.110.0 `loadMore`: the card leaves in place, the total −1, NO reload (the scroll position stays)
+      if (item && s.lmTotal !== undefined && s.lmTotal > 0) s.lmTotal -= 1;
+      // Codex impl r1: keep the transport's total in step too (pages: hasNext / pageCount read it)
+      if (item && s.pages && Number.isInteger(s.pages.total) && s.pages.total > 0) s.pages.total -= 1;
+      this._syncGrid();
+      this._renderPager();
+      this._autoPreview({ items: [...s.items.keys()].map((k) => ({ id: k })) });
+      this._lmRecheck();
+    } else if (s.lm) {
+      this._loadPage('reload', { reset: true, keepGrid: true }); // the last card shown went: start over
+    } else {
+      this._loadPage('reload', { keepGrid: true, stepBack: true });
+    }
     requestAnimationFrame(() => { if (this._live(s) && s.handle.layer.isTop()) this._focus(s.els.heading); });
   }
 

@@ -183,7 +183,11 @@
  * @property {string} [locale]
  * @property {Partial<Record<string, string|((params: unknown) => string)>>} [messages]
  * @property {string} [title] v0.32 addition (default: `defaultTitle(selection.kinds, labels)`, v0.33 decision 6)
- * @property {number} [pageSize] v0.32 addition: 1-100 (default 30 since v0.33, was 40) → `limit`
+ * @property {number|'auto'} [pageSize] v0.32 addition: 1-100 (default 30 since v0.33, was 40) → `limit`; v0.110.0 `'auto'`:
+ *   measured once per reset (columns × (visible rows + 1), capped by `maxPageSize`, see `autoPageSize`)
+ * @property {number} [maxPageSize] v0.110.0: integer 1-100 (default 72; anything else → 72) — the cap of `pageSize: 'auto'`
+ * @property {boolean|{ trigger?: 'auto'|'button', maxItems?: number }} [loadMore] v0.110.0: false (default) = each page
+ *   REPLACES the grid; true = `{ trigger: 'auto' }` = the next page is APPENDED (sentinel + "Tải thêm"); see `normalizeLoadMore`
  * @property {'auto'|'fixed'} [columns] v0.106.0: 'auto' (default) = the auto-fill grid; 'fixed' = 8/6/4/3/2/1 columns (always a
  *   divisor of 24, so a pageSize of 24 fills every row; card min width = token `--td-media-picker-fixed-card-min`); unknown → 'auto' + a
  *   warning; also via configureDefaults
@@ -220,6 +224,10 @@ const TEXT_MAX = 200;
 const ID_MAX = 512;
 export const PAGE_SIZE_DEFAULT = 30; // v0.33 decision 13 (dcms2); was 40
 export const PAGINATION_MODES = Object.freeze(['cursor', 'pages']);
+/** v0.110.0: `maxPageSize` default (the cap of `pageSize: 'auto'`) and the `loadMore` bounds */
+export const MAX_PAGE_SIZE_DEFAULT = 72;
+export const LOAD_MORE_TRIGGERS = Object.freeze(['auto', 'button']);
+export const LOAD_MORE_MAX_ITEMS = Object.freeze({ min: 60, max: 2000, default: 600 });
 /** v0.106.0: grid column modes of the picker ('auto' = the old auto-fill grid; 'fixed' = 8/6/4/3/2/1 columns, divisors of 24) */
 export const COLUMN_MODES = Object.freeze(['auto', 'fixed']);
 
@@ -620,6 +628,48 @@ const CROP_RATIO_MIN = 0.01; // review R1 #5: public range [0.01, 100] (= media-
 const CROP_RATIO_MAX = 100;
 let warnedCropRatio = false;
 let warnedCropMultiple = false;
+let warnedLoadMore = false;
+
+/**
+ * v0.110.0 (plan v0.110.0-media-picker-load-more QĐ1): the `loadMore` option → `null` (off: each page replaces the grid)
+ * or `{ trigger, maxItems }`. `false` / `undefined` / `null` → null; `true` → `{ trigger: 'auto', maxItems: 600 }`; an
+ * object → its `trigger` ('auto' default | 'button') + `maxItems` (an integer 60-2000, anything else → 600). Any other
+ * value (a string, a number, an unknown `trigger`) → ONE warning per module + null.
+ * @param {unknown} v @param {(...a: unknown[]) => void} [warn]
+ * @returns {{ trigger: 'auto'|'button', maxItems: number }|null}
+ */
+export function normalizeLoadMore(v, warn = console.warn) {
+  if (v === undefined || v === null || v === false) return null;
+  const M = LOAD_MORE_MAX_ITEMS;
+  if (v === true) return { trigger: 'auto', maxItems: M.default };
+  if (isObj(v) && (v.trigger === undefined || LOAD_MORE_TRIGGERS.includes(v.trigger))) {
+    const mi = v.maxItems;
+    const maxItems = Number.isInteger(mi) && mi >= M.min && mi <= M.max ? mi : M.default;
+    return { trigger: v.trigger === 'button' ? 'button' : 'auto', maxItems };
+  }
+  if (!warnedLoadMore) {
+    warnedLoadMore = true;
+    try { warn("td-media-picker: options.loadMore must be a boolean or { trigger: 'auto'|'button', maxItems? } — load more is off."); } catch { /* ignore */ }
+  }
+  return null;
+}
+
+/**
+ * v0.110.0 (QĐ4) `pageSize: 'auto'`: `n = cols × (ceil(height / rowH) + 1)`, then `min(n, maxPageSize)`, then (when
+ * `n ≥ cols`) rounded DOWN to a multiple of `cols` — `maxPageSize` always wins (`maxPageSize < cols` → `maxPageSize`, a
+ * partial row). Not laid out (any input ≤ 0 / not finite) → `min(PAGE_SIZE_DEFAULT, maxPageSize)`.
+ * @param {{ cols: number, height: number, rowH: number, maxPageSize?: number }} m
+ * @returns {number} an integer 1-100
+ */
+export function autoPageSize({ cols, height, rowH, maxPageSize = MAX_PAGE_SIZE_DEFAULT }) {
+  const max = Number.isInteger(maxPageSize) && maxPageSize >= 1 && maxPageSize <= 100 ? maxPageSize : MAX_PAGE_SIZE_DEFAULT;
+  const c = Math.floor(Number(cols));
+  const ok = (x) => Number.isFinite(x) && x > 0;
+  if (!ok(c) || !ok(height) || !ok(rowH)) return Math.min(PAGE_SIZE_DEFAULT, max);
+  let n = Math.min(c * (Math.ceil(height / rowH) + 1), max);
+  if (n >= c) n = Math.floor(n / c) * c;
+  return Math.max(1, n);
+}
 
 /**
  * Resolve the options of one open (decision 6): `defaults`, then each layer in INCREASING priority (shallow merge per
@@ -631,7 +681,8 @@ let warnedCropMultiple = false;
  * TypeError) and `collections` (→ `{ showWithoutQuery }`, a non-object → TypeError); `null` for either = absent (like
  * undefined: skipped, never overrides a lower layer). v0.67.0 / v0.68.0 / v0.72.0: `autoSelectFirst` (absent → ON for a single
  * picker, OFF for a `multiple` one; a present value wins: only `false` turns it off, also from `defaults`; `null` = absent like
- * the two keys above).
+ * the two keys above). v0.110.0: `pageSize: 'auto'` is kept as the string, `maxPageSize` (integer 1-100, else 72),
+ * `loadMore` → `normalizeLoadMore()` (`{ trigger, maxItems } | null`).
  * @param {object|null|undefined} defaults
  * @param {...(object|null|undefined)} layers last argument may be `{ warn }` only when it is the sole key
  * @returns {OpenMediaPickerOptions & { cropResolved: { aspectRatio: number|null, allowFocalPoint: boolean, mode: 'box'|'pan', shape: 'rect'|'circle' } | null,
@@ -672,7 +723,11 @@ export function resolveOptions(defaults, ...layers) {
   }
   const kinds = Array.isArray(sel.kinds) ? [...new Set(sel.kinds.filter((k) => KINDS.includes(k)))] : [];
   const ps = Number(merged.pageSize);
-  const pageSize = merged.pageSize === undefined || !Number.isFinite(ps) ? PAGE_SIZE_DEFAULT : Math.min(100, Math.max(1, Math.round(ps)));
+  // v0.110.0: `'auto'` is kept as is (the picker measures it once per reset, capped by `maxPageSize`)
+  const pageSize = merged.pageSize === 'auto' ? 'auto'
+    : merged.pageSize === undefined || !Number.isFinite(ps) ? PAGE_SIZE_DEFAULT : Math.min(100, Math.max(1, Math.round(ps)));
+  const mps = merged.maxPageSize;
+  const maxPageSize = Number.isInteger(mps) && mps >= 1 && mps <= 100 ? mps : MAX_PAGE_SIZE_DEFAULT;
   const up = isObj(merged.upload) ? merged.upload : {};
   let cropResolved = null;
   if (isObj(merged.crop) && merged.crop.enabled === true) {
@@ -733,6 +788,8 @@ export function resolveOptions(defaults, ...layers) {
     ...merged,
     selection: { mode, maxItems, initialIds: maxItems ? ids.slice(0, maxItems) : ids, kinds: kinds.length ? kinds : null },
     pageSize,
+    maxPageSize,
+    loadMore: normalizeLoadMore(merged.loadMore, warn),
     pagination,
     columns,
     upload: {
@@ -759,7 +816,7 @@ export function resolveOptions(defaults, ...layers) {
 }
 
 /** Test hook: forget the one-time crop warnings. */
-export function _resetCoreWarnings() { warnedCropRatio = false; warnedCropMultiple = false; }
+export function _resetCoreWarnings() { warnedCropRatio = false; warnedCropMultiple = false; warnedLoadMore = false; }
 
 /**
  * Module-level defaults (decision 6 — `TdMediaPicker.configureDefaults()`): each configure REPLACES the whole object
@@ -1463,8 +1520,13 @@ export class PageState {
     this.reset();
   }
 
-  /** Back to page 1 (query / filter change): stack + total cleared; a pending request becomes stale. */
-  reset() {
+  /**
+   * Back to page 1 (query / filter change): stack + total cleared; a pending request becomes stale. v0.110.0: an integer
+   * `pageSize` ≥ 1 replaces the page size from now on (`pageSize: 'auto'` is measured once per reset).
+   * @param {{ pageSize?: number }} [o]
+   */
+  reset({ pageSize } = {}) {
+    if (Number.isInteger(pageSize) && pageSize >= 1) this.pageSize = pageSize;
     this.page = 1;
     /** @type {Array<string|null>} cursor that fetched page i + 1 */
     this._cursors = [null];

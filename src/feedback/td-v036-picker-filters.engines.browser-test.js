@@ -195,30 +195,6 @@ describe('v0.36.0 picker toolbar < 1024 + filter sheet', () => {
     });
   }
 
-  it('ISSUE-7: the detail "Thêm" menu keeps the default dismissal — an outside click closes it AND passes through', async () => {
-    await setViewport({ width: 390, height: 844 });
-    await openReady({ selection: { mode: 'multiple' }, assetFields: assetFields(),
-      capabilities: { delete: true, downloadOriginal: true, copyLink: true } });
-    item('m60').querySelector('[data-td-media-open]').click();
-    await until(() => pickerRoot().getAttribute('data-view') === 'detail' && q('.td-media-picker__detail-more'), 4000, 'pane');
-    q('.td-media-picker__detail-more button').click();
-    await until(() => document.querySelector('.td-menu[data-state="open"]'), 4000, 'menu');
-    const target = q('.td-media-picker__detail-name');
-    let reached = 0;
-    const count = () => { reached++; };
-    target.addEventListener('pointerdown', count);
-    target.addEventListener('click', count);
-    const r = target.getBoundingClientRect();
-    const o = { bubbles: true, cancelable: true, composed: true, pointerId: 41, pointerType: 'mouse', isPrimary: true,
-      button: 0, clientX: r.left + 4, clientY: r.top + 4 };
-    target.dispatchEvent(new PointerEvent('pointerdown', o));
-    target.dispatchEvent(new PointerEvent('pointerup', o));
-    target.dispatchEvent(new MouseEvent('click', { ...o, detail: 1 }));
-    await raf();
-    expect(!!document.querySelector('.td-menu[data-state="open"]'), 'menu closed').to.equal(false);
-    expect(reached, 'pointerdown + click reached the page').to.equal(2);
-  });
-
   it('Xoá lọc changes only the draft; Escape discards it (committed untouched, no request, controls destroyed)', async () => {
     await setViewport({ width: 768, height: 1024 });
     const { ad } = await openReady({ selection: { mode: 'multiple' }, initialFilters: { album: 1 } });
@@ -328,7 +304,7 @@ describe('v0.36.0 picker auto preview (QĐ 69)', () => {
     await until(() => detailName() === 'anh-49.jpg' && getComputedStyle(det).display !== 'none', 4000, 'back with a preview');
   });
 
-  it('ISSUE-3: < 720 the back arrow sits in the dialog header only while the pane is open; ≤ 3 actions inline, the rest in "Thêm"', async () => {
+  it('ISSUE-3: < 720 the back arrow sits in the dialog header only while the pane is open; all detail actions inline (no "Thêm" menu)', async () => {
     await setViewport({ width: 390, height: 844 });
     await openReady({ selection: { mode: 'multiple' }, assetFields: assetFields(),
       capabilities: { delete: true, downloadOriginal: true, copyLink: true } });
@@ -338,15 +314,11 @@ describe('v0.36.0 picker auto preview (QĐ 69)', () => {
     await until(() => pickerRoot().getAttribute('data-view') === 'detail' && detailName() === 'anh-60.jpg', 4000, 'pane');
     await until(() => visible(back), 4000, 'back shown');
     const actions = q('.td-media-picker__detail-actions');
+    expect(q('.td-media-picker__detail-more') === null, 'no "Thêm" menu').to.equal(true);
     const shownKids = [...actions.children].filter(visible);
-    expect(shownKids.length, 'at most 3 inline + "Thêm"').to.be.at.most(4);
-    const more = q('.td-media-picker__detail-more');
-    expect(visible(more), '"Thêm" shown').to.equal(true);
-    more.querySelector('button').click();
-    await until(() => document.querySelector('.td-menu[data-state="open"]'), 4000, 'menu');
-    const items = [...document.querySelectorAll('.td-menu[data-state="open"] .td-menu__item')].map((n) => n.textContent.trim());
-    expect(items.length).to.be.at.least(1);
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(shownKids.length, 'download + copy + delete + save all inline').to.equal(4);
+    expect(q('.td-media-picker__download button').getAttribute('aria-label')).to.equal('Tải về');
+    expect(q('.td-media-picker__delete button').classList.contains('td-btn--action-danger')).to.equal(true);
     back.click();
     await until(() => pickerRoot().getAttribute('data-view') === 'grid', 4000, 'grid');
   });

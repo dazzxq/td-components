@@ -80,14 +80,26 @@ describe('v0.33 td-media-picker — action row (decisions 18, 26)', () => {
     await openReady({ assetFields: [{ key: 'title', label: 'Tiêu đề', control: 'text' }],
       capabilities: { delete: true, downloadOriginal: true, copyLink: true } });
     await view('m60');
-    // v0.36.0 (review ISSUE-3): the overflowed action is still in the row (shown ≥ 720, behind "Thêm" < 720) + the "Thêm" button
+    // v0.110.0 (QĐ6): every offered action is inline (icon-only td-action-button for Tải về / Xoá); no "Thêm" menu
     expect(names()).to.deep.equal(['td-media-picker__download', 'td-media-picker__copy', 'td-media-picker__delete',
-      'td-media-picker__detail-more', 'td-media-picker__save']);
-    expect(q('.td-media-picker__delete').hasAttribute('data-overflow')).to.equal(true);
+      'td-media-picker__save']);
+    expect(q('.td-media-picker__detail-more') === null, 'no Thêm menu').to.equal(true);
+    expect(q('.td-media-picker__detail-actions [data-overflow]') === null, 'no overflow marks').to.equal(true);
     const dl = q('.td-media-picker__download');
-    expect([dl.getAttribute('variant'), dl.getAttribute('size'), dl.getAttribute('icon')]).to.deep.equal(['secondary', 'sm', 'download']);
+    expect(dl.localName).to.equal('td-action-button');
+    expect([dl.getAttribute('action'), dl.getAttribute('size'), dl.getAttribute('label')]).to.deep.equal(['download', 'sm', 'Tải về']);
+    const dlBtn = dl.querySelector('button.td-btn.td-btn--action');
+    expect(dlBtn.getAttribute('aria-label')).to.equal('Tải về');
     const del = q('.td-media-picker__delete');
-    expect([del.getAttribute('variant'), del.getAttribute('size'), del.getAttribute('icon')]).to.deep.equal(['danger', 'sm', 'trash']);
+    expect(del.localName).to.equal('td-action-button');
+    expect([del.getAttribute('action'), del.getAttribute('size')]).to.deep.equal(['delete', 'sm']);
+    const delBtn = del.querySelector('button.td-btn.td-btn--action');
+    expect(delBtn.getAttribute('aria-label')).to.equal(del.getAttribute('label'));
+    expect(delBtn.classList.contains('td-btn--action-danger'), 'delete tone danger').to.equal(true);
+    for (const el of q('.td-media-picker__detail-actions').children) {
+      const r = el.getBoundingClientRect();
+      expect(r.width > 0 && r.height > 0, el.className + ' visible').to.equal(true);
+    }
     expect(q('.td-media-picker__copy').getAttribute('size')).to.equal('sm');
   });
 

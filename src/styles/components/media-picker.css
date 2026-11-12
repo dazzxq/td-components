@@ -315,6 +315,51 @@
 		padding-block: 0.75rem 0.25rem;
 	}
 
+	/* --- v0.110.0 loadMore: "n/total" in the pager slot; sentinel + "Tải thêm" / "Thử lại" under the grid --- */
+	.td-media-picker__count {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		font-variant-numeric: tabular-nums;
+		color: var(--td-color-text-muted);
+		white-space: nowrap;
+	}
+
+	.td-media-picker__more {
+		display: flex;
+		flex: none;
+		flex-direction: column;
+		gap: var(--td-space-sm);
+		align-items: center;
+		padding-block: 0.25rem 0.5rem;
+	}
+
+	.td-media-picker__more[hidden] {
+		display: none;
+	}
+
+	.td-media-picker__sentinel {
+		inline-size: 100%;
+		block-size: 1px;
+	}
+
+	.td-media-picker__more-error {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-muted);
+	}
+
+	/* off-screen cards skip layout / paint (QĐ5). On the thumb + text, not the card: the card's paint containment would
+	   clip the opener's outside focus ring. The thumb keeps its 3:2 box (aspect-ratio); the text box remembers its size. */
+	.td-media-picker[data-load-more] .td-media-picker__thumb {
+		content-visibility: auto;
+		contain-intrinsic-size: auto 200px auto 133px;
+	}
+
+	.td-media-picker[data-load-more] .td-media-picker__info {
+		content-visibility: auto;
+		contain-intrinsic-size: auto 200px auto 4.5rem;
+	}
+
 	/* --- content: [list flex-1 | detail 25rem] (decision 6) --- */
 	.td-media-picker__content {
 		display: flex;
@@ -772,10 +817,6 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
-	.td-media-picker__detail-more {
-		display: none;
-	}
-
 	.td-media-picker__preview {
 		position: relative;
 		display: flex;
@@ -875,12 +916,16 @@
 		overflow-wrap: anywhere;
 	}
 
+	/* v0.110.0 (QĐ6): icon-only actions (Tải về · Copy · Xoá) start the row, "Lưu" (text) ends it */
 	.td-media-picker__detail-actions {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.5rem;
+		gap: var(--td-space-xs);
 		align-items: center;
-		justify-content: flex-end;
+	}
+
+	.td-media-picker__detail-actions > .td-media-picker__save {
+		margin-inline-start: auto;
 	}
 
 	.td-media-picker__notice {
@@ -1072,15 +1117,6 @@
 		}
 
 		.td-media-picker[data-view="detail"] .td-media-picker__back {
-			display: inline-flex;
-		}
-
-		/* ISSUE-3: ≤ 3 actions inline, the rest behind "Thêm" */
-		.td-media-picker__detail-actions > [data-overflow] {
-			display: none;
-		}
-
-		.td-media-picker__detail-actions > .td-media-picker__detail-more {
 			display: inline-flex;
 		}
 

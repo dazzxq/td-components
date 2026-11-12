@@ -4,6 +4,25 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.110.0
+
+**`td-media-picker`: cuộn để tải thêm, `pageSize: 'auto'`, đếm theo bộ lọc, nút icon ở panel chi tiết** (owner + dsuite 13/11).
+Trên màn to lưới chỉ có vài hàng rồi trống phía dưới; giờ có thể cuộn liên tục.
+
+- `loadMore` (opt-in, mặc định `false` = như cũ): `true` hoặc `{ trigger: 'auto' | 'button', maxItems }`. Trang kế nối vào
+  lưới, lưới tự cuộn; gần đáy tự tải (một IntersectionObserver), luôn có nút "Tải thêm" cho bàn phím. Quá `maxItems`
+  (mặc định 600) thì ngừng tự tải, chỉ còn nút. Lỗi khi nối giữ thẻ cũ + "Thử lại". Đổi tìm kiếm / bộ lọc hủy request đang
+  nối và về đầu. Xoá / lưu không tải lại danh sách (giữ vị trí cuộn). `pagination` vẫn là transport của adapter.
+- Số đếm gọn ở header thay ‹ ›: `48/312` (tên truy cập "Đã tải 48 trên 312 media"); `total` là con số adapter trả cho
+  chính request đó, nên **theo bộ lọc**. Adapter nên trả `total` đã lọc ở cả transport cursor.
+- `pageSize: 'auto'` + `maxPageSize` (mặc định 72): số cột × số hàng vừa khung + 1, bội số của số cột, tính một lần mỗi
+  lần reset; `maxPageSize` luôn thắng.
+- Hiệu năng: thẻ `content-visibility: auto` (thẻ ngoài khung không layout / paint), nối bằng một fragment, ảnh lazy.
+- Panel chi tiết: "Tải về" và "Xoá" thành `td-action-button` chỉ icon (nhãn = tooltip + tên truy cập, Xoá tone danger),
+  Copy vốn chỉ icon, "Lưu" giữ chữ ở cuối hàng. Bỏ menu "Thêm" (key `detailMore` giữ, không dùng).
+- **Breaking (giao diện):** test / CSS của site bám `.td-media-picker__detail-more` hoặc bấm nút Tải về / Xoá theo chữ cần
+  đổi sang `.td-media-picker__download button` / `.td-media-picker__delete button`.
+
 ## 0.109.1
 
 **`td-media-picker`: nút ‹ › phân trang cursor giống hệt nút ‹ › của `td-pagination`** (dsuite 13/11). Trước là nút

@@ -197,13 +197,13 @@ số cột, tự cập nhật khi đổi bề rộng.
 
 Từ trên xuống: **xem trước vuông 1:1** (`contain`; video = poster, không nhúng player; file = icon + tên) → "TÊN FILE" →
 **form `assetFields` luôn mở inline** (khi `editMetadata` được phép; không thì field hiện dạng chữ) → các dòng info
-("Kích thước", "Độ phân giải", "Loại", "Tải lên", "Bởi") → **hàng nút căn phải**, mỗi nút chỉ hiện khi được phép:
+("Kích thước", "Độ phân giải", "Loại", "Tải lên", "Bởi") → **hàng nút**: ba nút **chỉ icon** ở đầu hàng, "Lưu" (có chữ) ở cuối hàng (0.110.0), mỗi nút chỉ hiện khi được phép:
 
 | # | Nút | Hiện khi |
 |---|---|---|
-| 1 | "Tải về" (secondary sm, icon `download`) | `canDo('downloadOriginal')` + có `adapter.download` — [Tải về](#tải-về-bản-gốc) |
-| 2 | "Copy link" (`<td-copy size="sm">`) | `capabilities.copyLink` — [Copy link](#copy-link) |
-| 3 | "Xoá" (danger sm, icon `trash`) | `canDo('delete')` + có `adapter.delete` — [Xoá](#xoá) |
+| 1 | "Tải về": `<td-action-button action="download" size="sm">` (0.110.0, chỉ icon; nhãn = tên truy cập + tooltip; đang tải → `loading`) | `canDo('downloadOriginal')` + có `adapter.download` — [Tải về](#tải-về-bản-gốc) |
+| 2 | "Copy link" (`<td-copy size="sm">`, chỉ icon) | `capabilities.copyLink` — [Copy link](#copy-link) |
+| 3 | "Xoá": `<td-action-button action="delete" size="sm">` (0.110.0, chỉ icon, tone `danger`; nhãn theo `labels.delete`, site đổi thành "Lưu trữ" thì tooltip đổi theo) | `canDo('delete')` + có `adapter.delete` — [Xoá](#xoá) |
 | 4 | "Lưu" (success sm, icon `check`) | Có form sửa; **chỉ bật khi form bẩn** |
 
 - **Luôn có xem trước** (0.36.0, từ 720px; thứ tự: mục đang xem nếu còn trong kết quả → mục **đã chọn** đầu tiên có trong
@@ -264,7 +264,7 @@ interface MediaListRequest {
   filters: Record<string, FilterValue>;   // bản sao — adapter sửa cũng không ảnh hưởng picker
   cursor: string | null;                  // opaque với kit (null = trang đầu; luôn null ở pagination 'pages')
   page?: number;                          // 0.33: chỉ ở pagination 'pages' — số trang, bắt đầu từ 1
-  limit: number;                          // = pageSize (mặc định 30)
+  limit: number;                          // = pageSize (mặc định 30); 0.110: pageSize 'auto' → đo lại mỗi reset, có thể khác giữa hai lần reset
   collectionId?: string | null;           // 0.66: CHỈ phiên có bộ sưu tập — null = cấp ngoài, id = đang trong bộ sưu tập
   sort?: { key: string; direction: 'asc' | 'desc' };   // kit không đặt (muốn sắp xếp: facet key `sort`)
   context?: unknown;                      // chuyển nguyên từ options.context, kit không đọc
@@ -296,6 +296,7 @@ interface MediaPage {
   nextCursor: string | null;              // null = hết (pagination 'pages': bỏ qua)
   previousCursor?: string | null;         // kit không dùng — tự giữ chồng cursor
   total?: number;                         // số nguyên ≥ 0; BẮT BUỘC ở pagination 'pages'
+                                          // 0.110: số khớp query + filters (không phải cả kho) — loadMore hiện "n/total"
 }
 
 interface FacetOption { value: Scalar; label: string; count?: number; disabled?: boolean }
@@ -421,8 +422,9 @@ TdMediaPicker.configureDefaults({
   messages: { title: 'Kho ảnh' }, // ghi đè nhãn cho mọi lần mở
   context: { siteId: 3 },         // chuyển nguyên vào mọi lời gọi adapter
   upload: { accept: 'image/*', maxSize: '10MB', acceptLabel: 'JPG, PNG, WEBP' }, // 0.90: + imageResize: { … }
-  pageSize: 30,
+  pageSize: 30,                   // 0.110: hoặc 'auto' (+ maxPageSize)
   pagination: 'cursor',           // hoặc 'pages'
+  loadMore: false,                // 0.110: true | { trigger: 'auto' | 'button', maxItems }
 });
 TdMediaPicker.defaults;           // bản sao nông của object đã cấu hình
 ```
@@ -462,7 +464,9 @@ const outcome = await TdMediaPicker.open({
 | `messages` | `Record<string, string \| (params) => string>` | `{}` | Ghi đè nhãn **cho lần mở này** |
 | `themeRoot` | `Element` | — | 0.42.0: hiển thị theo theme của vùng `[data-td-theme]` chứa phần tử này ([theming › Theme theo vùng](../customization/theming.md#popup-mở-từ-trong-vùng), ADR 0020). Không truyền → theme của trang. |
 | `title` | `string` | theo `selection.kinds` | "Chọn ảnh" / "Chọn video" / "Chọn tài liệu" / "Chọn media" |
-| `pageSize` | số 1–100 | `30` | → `limit` (0.32: 40) |
+| `pageSize` | số 1–100 \| `'auto'` | `30` | → `limit` (0.32: 40). 0.110.0: `'auto'` = đủ khung lưới + 1 hàng, bội số của số cột, đo **một lần mỗi reset** (mở, đổi query / filter / bộ sưu tập) — [pageSize auto](#pagesize-auto--maxpagesize-01100) |
+| `maxPageSize` | số nguyên 1–100 | `72` | 0.110.0: trần của `pageSize: 'auto'`; luôn thắng. Giá trị lạ → `72` |
+| `loadMore` | `false` \| `true` \| `{ trigger?: 'auto' \| 'button', maxItems?: 60–2000 }` | `false` | 0.110.0: trang sau **nối thêm** vào lưới thay vì thay trang — [Tải thêm](#tải-thêm--loadmore-01100). `true` = `{ trigger: 'auto', maxItems: 600 }`. Giá trị lạ → tắt + một cảnh báo |
 | `pagination` | `'cursor'` \| `'pages'` | `'cursor'` | 0.33 — [Phân trang](#phân-trang--hai-chế-độ) |
 | `columns` | `'auto'` \| `'fixed'` | `'auto'` | 0.106.0 — [Lưới đủ hàng](#lưới-đủ-hàng--columns-fixed-01060). Giá trị lạ → `'auto'` + một cảnh báo |
 | `upload` | `{ accept?, maxSize?, multiple? = true, acceptLabel?, imageResize? }` | — | Chuyển cho `td-dropzone` ([dropzone](dropzone.md)). `acceptLabel` (0.33) chỉ là **chữ** trên badge / mô tả tab URL, không phải bộ lọc; thiếu thì suy từ `accept`. `imageResize` (0.90.0): policy tối ưu ảnh trước khi upload — xem [Tối ưu ảnh trước khi upload](#tối-ưu-ảnh-trước-khi-upload--uploadimageresize-0900). **Object `upload` của `open()` thay nguyên object `upload` của defaults** (không merge từng key) |
@@ -620,7 +624,7 @@ trình duyệt chỉ là UX.
 
 ## Phân trang — hai chế độ
 
-Mỗi trang **thay** nội dung lưới (không còn "Tải thêm"); lựa chọn giữ qua các trang (theo id). Có trang mới → danh sách
+Mặc định mỗi trang **thay** nội dung lưới (muốn nối thêm: [`loadMore`](#tải-thêm--loadmore-01100)); lựa chọn giữ qua các trang (theo id). Có trang mới → danh sách
 cuộn lên đầu, focus về tiêu đề vùng kết quả, live region đọc "Trang {n}". Ẩn phân trang khi chỉ có một trang. Đổi query /
 filter → về trang 1.
 
@@ -659,6 +663,45 @@ export const mediaAdapter = {
 
 TdMediaPicker.configureDefaults({ adapter: mediaAdapter, pagination: 'pages' });
 ```
+
+### Tải thêm — `loadMore` (0.110.0)
+
+Bật `loadMore` thì trang sau **nối vào cuối lưới** thay vì thay trang; dùng được với cả `'cursor'` lẫn `'pages'` (kit
+gửi `cursor` / `page` kế tiếp như thường). Hợp với màn lớn, kho nhiều ảnh.
+
+```js
+TdMediaPicker.configureDefaults({ adapter: mediaAdapter, loadMore: true, pageSize: 'auto' });
+// hoặc chỉ nút, không tự tải khi cuộn; trần tự tải 300 thẻ
+TdMediaPicker.open({ loadMore: { trigger: 'button', maxItems: 300 } });
+```
+
+- **Giao diện**: ‹ › / `td-pagination` ẩn; vị trí đó hiện số gọn `"{n}/{total}"` (đọc "Đã tải {n} trên {total} media";
+  adapter không trả `total` → `"{n} media"`). `total` là số **khớp query + filter** của adapter. Cuối lưới: một sentinel
+  (`aria-hidden`) và nút **"Tải thêm"** (`td-button` ghost sm) — nút luôn có khi còn trang (bàn phím, trình duyệt không có
+  IntersectionObserver). Hết trang → khối ẩn, không có chữ "đã hết".
+- **`trigger: 'auto'`** (mặc định): sentinel đến gần đáy vùng cuộn (cách nửa chiều cao) → tự tải. Sau mỗi lần nối, kit
+  kiểm tra lại: sentinel vẫn trong vùng (trang ngắn hơn khung) → tải tiếp. Tự tải dừng khi đủ `maxItems` thẻ (mặc định
+  600), hoặc 3 lần liền không có thẻ mới (adapter trả trùng); nút "Tải thêm" vẫn tải được. **`'button'`**: chỉ nút.
+- **Single-flight**: trong lúc nối, nút `loading`, sentinel / bấm thêm bị bỏ qua. **Reset thắng**: đổi query / filter /
+  bộ sưu tập (hay "Thử lại" lỗi toàn lưới) abort lần nối đang chạy, kết quả muộn bị bỏ; lưới về trang 1, cuộn về đầu.
+- **Trùng id** giữa các trang (dữ liệu chèn mới giữa hai lần tải) → chỉ thẻ mới được thêm. Live region đọc
+  "Đã tải thêm {n}"; focus không đổi.
+- **Lỗi khi nối**: thẻ đã có **giữ nguyên**; dưới lưới hiện "Không tải được" + nút đổi thành "Thử lại" (tải lại đúng trang đó).
+  Event `operation-error` `{ operation: 'list' }` như lỗi list thường.
+- **Xoá / lưu không tải lại danh sách**: xoá → thẻ rời khỏi lưới tại chỗ, `total` −1, vị trí cuộn giữ nguyên; lưu →
+  thẻ vẽ lại tại chỗ. Xoá hết thẻ đang hiện → tải lại trang 1. Ở `'pages'`, xoá làm offset phía server lùi một: lần nối
+  sau có thể **bỏ sót một** mục (mục đó hiện lại khi reset) — chấp nhận để không phải tải lại.
+- **Hiệu năng**: ở chế độ này ảnh và phần chữ của thẻ dùng `content-visibility: auto` — trình duyệt bỏ qua vẽ thẻ ngoài
+  màn hình. Lưới dài vẫn là DOM thật (không ảo hoá); `maxItems` là cái chặn chính.
+
+### `pageSize: 'auto'` + `maxPageSize` (0.110.0)
+
+`pageSize: 'auto'` đo khung kết quả **một lần mỗi reset** (mở picker, đổi query / filter / bộ sưu tập — không đo lại khi
+đổi cỡ cửa sổ hay khi nối trang): `n = cols × (ceil(h / rowH) + 1)` (đủ khung + một hàng), rồi `n = min(n, maxPageSize)`,
+rồi nếu `n ≥ cols` làm tròn **xuống** bội số của `cols`. `maxPageSize` (mặc định 72) **luôn thắng**: nhỏ hơn số cột thì
+trang = đúng `maxPageSize` (một hàng lẻ). Không đo được (chưa có layout) → `min(30, maxPageSize)`. Adapter nhận `limit`
+có thể khác giữa các lần reset; một lần reset thì mọi lần nối cùng `limit`. Ở `'pages'`, `td-pagination` đổi
+`items-per-page` theo.
 
 ## Chọn: đơn / nhiều
 
@@ -1288,8 +1331,8 @@ chọn chưa xác nhận **không** tính là việc dở. `close()` bằng code
   hàng. Không tự mở chi tiết khi tải danh sách.
 - Panel chi tiết là **pane full màn hình trượt vào từ phải**; "Quay lại" là **mũi tên 44px trên header hộp thoại** (0.36.0,
   chỉ hiện khi pane đang mở; tên `back`); mở pane → focus tiêu đề pane; Quay lại → focus về card vừa xem. Footer "Đóng /
-  Chèn" vẫn hiện bên dưới. Hàng nút của pane hiện **tối đa 3** (luôn giữ "Lưu"); phần còn lại vào nút **"Thêm"** (menu,
-  nhãn `detailMore`). dcms2 không có lối ra này.
+  Chèn" vẫn hiện bên dưới. Từ 0.110.0 hàng nút luôn hiện đủ (3 icon + "Lưu" vừa mọi bề
+  rộng); menu **"Thêm"** đã bỏ (key `detailMore` còn trong `labels` cho tương thích, không dùng). dcms2 không có lối ra này.
 - 720–1023px: khi không có mục nào đang xem (kết quả rỗng) cột chi tiết **thu lại**, lưới dùng hết bề ngang; có xem trước
   → cột hiện lại.
 - Dialog tải lên là bottom sheet cao theo nội dung, không footer. Header các hộp thoại gọn (≤ 56px, [modal](modal.md)).
@@ -1312,6 +1355,8 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `filtersApply` · `filtersClear` · `filtersClose` (0.36) | "Áp dụng" · "Xoá lọc" · "Đóng bộ lọc" |
 | `pagination` · `pageItem` · `pageInfo` · `page` | "Phân trang media" · "media" · "Hiển thị {from}-{to} / {total} media" · "Trang {n}" |
 | `prevPage` · `nextPage` · `resultsCount` | "Trang trước" · "Trang sau" · "{n} kết quả" |
+| `loadMore` · `loadMoreError` · `loadedMore` (0.110) | "Tải thêm" · "Không tải được" · "Đã tải thêm {n}" |
+| `loadedOf` · `loadedOfLabel` · `loaded` (0.110) | "{n}/{total}" · "Đã tải {n} trên {total} media" · "{n} media" |
 | `collections` · `allItems` · `location` (0.66) | "Album" · "Tất cả" · "Vị trí" |
 | `collectionCount` · `collectionName` (0.66) | "{n} ảnh" · "{label}, {n} ảnh" |
 | `collectionsTruncated` · `collectionEntered` · `collectionLeft` (0.66) | "Gõ thêm để thu hẹp" · "{label}: {n} kết quả" · "Tất cả: {n} kết quả" |
@@ -1518,6 +1563,8 @@ Ghi nhớ khi viết adapter:
           <div class="td-media-picker__pager[ td-media-picker__pager--below]">   <!-- < 720px: JS dời node xuống cuối __results -->
             <div class="td-media-picker__cursor"><p class="td-media-picker__page-info"> .td-media-picker__prev .td-media-picker__next</div>
             | <td-pagination>
+            <!-- 0.110.0, chỉ loadMore (cursor + td-pagination ẩn): -->
+            <p class="td-media-picker__count"><span aria-hidden="true">20/60</span><span class="td-sr-only">Đã tải 20 trên 60 media</span></p>
           </div>
         </div>
       </div>
@@ -1547,6 +1594,10 @@ Ghi nhớ khi viết adapter:
             span.td-media-picker__upload-failed-actions > .td-media-picker__upload-retry-all · .td-media-picker__upload-remove-all
           </div>
           <td-media-grid class="td-media-picker__grid" select-mode="tick">.td-media-picker__card[data-reused] …</td-media-grid>
+          <!-- 0.110.0, chỉ loadMore (gốc picker có [data-load-more="auto|button"]): -->
+          <div class="td-media-picker__more" hidden>
+            div.td-media-picker__sentinel[aria-hidden] · p.td-media-picker__more-error[hidden] · td-button.td-media-picker__more-btn
+          </div>
           <!-- 0.95.0: [data-reused] → span.td-badge.td-media-picker__reused "Đã có trong thư viện" trong __info -->
           .td-media-picker__skeleton | td-empty-state.td-media-picker__empty | .td-media-picker__error[role=alert] + .td-media-picker__retry
         </section>

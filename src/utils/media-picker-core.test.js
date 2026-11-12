@@ -9,7 +9,7 @@ import {
   resolveOptions, DefaultsRegistry, buildListRequest, requestKey, LatestRequest, SelectionModel, InitialLoad, Debouncer,
   SessionCache, ScalarTokens, buildOutcome, cancelledOutcome, formatLabel, LIMITS, VALUE_LIMITS, normalizeOptions,
   validateRemoteUrl, normalizeDeleteResult, normalizeDownloadResult, safeFilename, defaultTitle, normalizeUploadResult,
-  PageState, PAGE_SIZE_DEFAULT, REMOTE_URL_MAX, _resetCoreWarnings, normalizeCollections,
+  PageState, PAGE_SIZE_DEFAULT, REMOTE_URL_MAX, _resetCoreWarnings, normalizeCollections, normalizeLoadMore, autoPageSize,
 } from './media-picker-core.js';
 import { safeMediaUrl } from './media-url.js';
 import { parseCropMode, parseCropShape, CROP_MODE_CASES, CROP_SHAPE_CASES } from './media-field-model.js';
@@ -1527,5 +1527,101 @@ describe('v0.33 PageState (decision 13)', () => {
     const ps = new PageState({ mode: 'x', pageSize: 0 });
     assert.equal(ps.mode, 'cursor');
     assert.equal(ps.pageSize, PAGE_SIZE_DEFAULT);
+  });
+});
+
+describe('v0.110.0 loadMore / pageSize auto / maxPageSize (plan v0.110.0-media-picker-load-more QĐ1, QĐ4)', () => {
+  it('normalizeLoadMore: off by default; true → auto 600; object trigger + maxItems bounds', () => {
+    assert.equal(normalizeLoadMore(undefined), null);
+    assert.equal(normalizeLoadMore(null), null);
+    assert.equal(normalizeLoadMore(false), null);
+    assert.deepEqual(normalizeLoadMore(true), { trigger: 'auto', maxItems: 600 });
+    assert.deepEqual(normalizeLoadMore({}), { trigger: 'auto', maxItems: 600 });
+    assert.deepEqual(normalizeLoadMore({ trigger: 'button' }), { trigger: 'button', maxItems: 600 });
+    assert.deepEqual(normalizeLoadMore({ trigger: 'auto', maxItems: 60 }), { trigger: 'auto', maxItems: 60 });
+    assert.deepEqual(normalizeLoadMore({ maxItems: 2000 }), { trigger: 'auto', maxItems: 2000 });
+    for (const bad of [59, 2001, 120.5, '300', NaN, -1]) {
+      assert.equal(normalizeLoadMore({ maxItems: bad }).maxItems, 600, `maxItems ${String(bad)} → default`);
+    }
+  });
+
+  it('normalizeLoadMore: a strange value → null + ONE warning per module (raw value never echoed)', () => {
+    _resetCoreWarnings();
+    const warns = [];
+    const w = (m) => warns.push(m);
+    assert.equal(normalizeLoadMore('yes', w), null);
+    assert.equal(normalizeLoadMore(1, w), null);
+    assert.equal(normalizeLoadMore({ trigger: 'scroll' }, w), null);
+    assert.equal(normalizeLoadMore([true], w), null);
+    assert.equal(warns.length, 1);
+    assert.ok(!warns[0].includes('scroll'));
+    _resetCoreWarnings();
+  });
+
+  it('resolveOptions: loadMore + maxPageSize + pageSize auto; defaults layer; open opts win; defaults unchanged', () => {
+    const base = resolveOptions({ adapter: adapter() });
+    assert.equal(base.loadMore, null);
+    assert.equal(base.maxPageSize, 72);
+    assert.equal(base.pageSize, 30);
+    assert.deepEqual(resolveOptions({ adapter: adapter(), loadMore: true }).loadMore, { trigger: 'auto', maxItems: 600 }, 'via configureDefaults');
+    assert.equal(resolveOptions({ adapter: adapter(), loadMore: true }, { loadMore: false }).loadMore, null, 'open opts win');
+    assert.deepEqual(resolveOptions({ adapter: adapter() }, { loadMore: { trigger: 'button', maxItems: 100 } }).loadMore,
+      { trigger: 'button', maxItems: 100 });
+    assert.equal(resolveOptions({ adapter: adapter() }, { pageSize: 'auto' }).pageSize, 'auto');
+    assert.equal(resolveOptions({ adapter: adapter(), pageSize: 'auto' }, { pageSize: 24 }).pageSize, 24);
+    assert.equal(resolveOptions({ adapter: adapter() }, { pageSize: 'AUTO' }).pageSize, 30, 'only the exact string');
+    assert.equal(resolveOptions({ adapter: adapter() }, { maxPageSize: 40 }).maxPageSize, 40);
+    assert.equal(resolveOptions({ adapter: adapter(), maxPageSize: 40 }).maxPageSize, 40, 'via configureDefaults');
+    for (const bad of [0, 101, 12.5, '40', null, -3]) {
+      assert.equal(resolveOptions({ adapter: adapter() }, { maxPageSize: bad }).maxPageSize, 72, `maxPageSize ${String(bad)} → 72`);
+    }
+  });
+
+  it('autoPageSize: cols × (rows + 1), multiple of cols, maxPageSize always wins', () => {
+    // plan boundary cases
+    assert.equal(autoPageSize({ cols: 8, height: 600, rowH: 200, maxPageSize: 5 }), 5, 'max < cols → max (partial row)');
+    assert.equal(autoPageSize({ cols: 6, height: 600, rowH: 200, maxPageSize: 72 }), 24, '3 rows fit → 4 rows of 6');
+    assert.equal(autoPageSize({ cols: 6, height: 600, rowH: 200, maxPageSize: 20 }), 18, 'capped then rounded down');
+    assert.equal(autoPageSize({ cols: 6, height: 610, rowH: 200, maxPageSize: 72 }), 30, 'a partly visible row counts');
+    assert.equal(autoPageSize({ cols: 8, height: 2000, rowH: 200, maxPageSize: 72 }), 72, '88 → 72 (a multiple of 8)');
+    assert.equal(autoPageSize({ cols: 7, height: 2000, rowH: 200 }), 70, 'default max 72 → 70 (multiple of 7)');
+    assert.equal(autoPageSize({ cols: 1, height: 100, rowH: 200 }), 2);
+    assert.equal(autoPageSize({ cols: 6, height: 600, rowH: 200, maxPageSize: 6 }), 6, 'max = cols → one row');
+  });
+
+  it('autoPageSize: not laid out → min(30, maxPageSize); invalid maxPageSize → 72', () => {
+    assert.equal(autoPageSize({ cols: 0, height: 600, rowH: 200 }), 30);
+    assert.equal(autoPageSize({ cols: 4, height: 0, rowH: 200 }), 30);
+    assert.equal(autoPageSize({ cols: 4, height: 600, rowH: 0 }), 30);
+    assert.equal(autoPageSize({ cols: 4, height: NaN, rowH: 200 }), 30);
+    assert.equal(autoPageSize({ cols: 0, height: 0, rowH: 0, maxPageSize: 12 }), 12);
+    assert.equal(autoPageSize({ cols: 8, height: 4000, rowH: 100, maxPageSize: 500 }), 72, 'bad max → 72');
+  });
+
+  it('PageState.reset({ pageSize }) replaces the page size (pageCount / hasNext follow); a bad value keeps it', () => {
+    const ps = new PageState({ mode: 'pages', pageSize: 30 });
+    ps.reset({ pageSize: 24 });
+    assert.equal(ps.pageSize, 24);
+    ps.commit(ps.begin('reload').token, { items: new Array(24).fill(0), nextCursor: null, total: 60 });
+    assert.equal(ps.pageCount, 3);
+    assert.equal(ps.hasNext, true);
+    ps.reset({ pageSize: 0 });
+    assert.equal(ps.pageSize, 24);
+    ps.reset();
+    assert.equal(ps.pageSize, 24);
+    ps.reset({ pageSize: 2.5 });
+    assert.equal(ps.pageSize, 24);
+  });
+
+  it('PageState: a reset supersedes a pending next (token) in both modes', () => {
+    for (const mode of ['cursor', 'pages']) {
+      const ps = new PageState({ mode, pageSize: 2 });
+      ps.commit(ps.begin('reload').token, { items: [1, 2], nextCursor: 'c2', total: 6 });
+      const nx = ps.begin('next');
+      assert.ok(nx);
+      ps.reset({ pageSize: 3 });
+      assert.equal(ps.commit(nx.token, { items: [3, 4], nextCursor: 'c4', total: 6 }), false, `${mode}: stale after reset`);
+      assert.equal(ps.page, 1);
+    }
   });
 });

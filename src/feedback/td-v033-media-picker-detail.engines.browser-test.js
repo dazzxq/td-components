@@ -111,8 +111,10 @@ describe('v0.33 td-media-picker — detail panel (decision 18)', () => {
     expect(facts[4]).to.equal('Bởi:Biên tập viên B');
     expect(getComputedStyle(q('.td-media-picker__facts')).fontSize).to.equal('12px');
     const actions = q('.td-media-picker__detail-actions');
-    expect(getComputedStyle(actions).justifyContent).to.equal('flex-end');
+    // v0.110.0 (QĐ6): icon-only actions start the row, "Lưu" is pushed to the end (margin-inline-start: auto)
     const save = saveBtn();
+    expect(getComputedStyle(save).marginInlineStart).to.not.equal('0px');
+    expect(Math.abs(save.getBoundingClientRect().right - actions.getBoundingClientRect().right) < 2, 'Lưu at the row end').to.equal(true);
     expect([save.getAttribute('variant'), save.getAttribute('size'), save.getAttribute('icon')]).to.deep.equal(['success', 'sm', 'check']);
     expect(save.hasAttribute('disabled')).to.equal(true);
   });
