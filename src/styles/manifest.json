@@ -52,6 +52,7 @@
     "components/repeater.css",
     "components/sortable.css",
     "components/masked-value.css",
+    "components/thumb.css",
     "components/media-picker.css",
     "components/media-picker-upload.css",
     "components/media-field.css",

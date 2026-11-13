@@ -1,0 +1,59 @@
+/*
+ * Thumbnail loader cells (src/utils/thumb-loader.js) — shared by td-media-picker (v0.111.0), td-media-field and
+ * td-media-gallery (v0.112.0, plan v0.112.0-media-field-gallery-thumb-loader QĐ6). Moved out of media-picker.css so a
+ * page with only a field / gallery gets the same waiting shimmer + failed frame. The cell must be positioned
+ * (`position: relative`) by its component.
+ */
+@layer td.component {
+	/*
+	 * v0.111.0 (plan v0.111.0-media-picker-thumb-loader, QĐ3): thumbnails through the loader (src/utils/thumb-loader.js).
+	 * Only under the loader's root class + a marked cell, so `thumbLoader: false` keeps the pre-0.111 look. The image stays
+	 * in the layout (opacity, never display:none: the browser still decodes it) and fades in once loaded; until then the
+	 * cell shimmers (the kit skeleton's band); a failed cell shows a faint picture frame, never a broken-image icon.
+	 */
+	.td-thumbs-js [data-td-thumb-cell] img[data-td-src] {
+		transition: opacity 150ms ease-out;
+	}
+
+	.td-thumbs-js [data-td-thumb-cell]:not(.is-thumb-loaded) img[data-td-src] {
+		opacity: 0;
+	}
+
+	.td-thumbs-js [data-td-thumb-cell]:not(.is-thumb-loaded):not(.is-thumb-failed)::before {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		content: "";
+		background: linear-gradient(90deg, transparent, var(--td-skeleton-shine), transparent);
+		transform: translateX(-100%);
+		animation: td-skeleton-shimmer var(--td-skeleton-dur) ease-in-out infinite;
+	}
+
+	.td-thumbs-js [data-td-thumb-cell].is-thumb-failed::after {
+		position: absolute;
+		inset-block-start: 50%;
+		inset-inline-start: 50%;
+		box-sizing: border-box;
+		width: 28px;
+		height: 22px;
+		margin-block-start: -11px;
+		margin-inline-start: -14px;
+		pointer-events: none;
+		color: var(--td-color-text-muted);
+		content: "";
+		background: radial-gradient(circle at 70% 32%, currentcolor 0 2.5px, transparent 3px);
+		border: 2px solid currentcolor;
+		border-radius: 3px;
+		opacity: 0.4;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-thumbs-js [data-td-thumb-cell] img[data-td-src] {
+			transition: none;
+		}
+
+		.td-thumbs-js [data-td-thumb-cell]:not(.is-thumb-loaded):not(.is-thumb-failed)::before {
+			animation: none;
+		}
+	}
+}

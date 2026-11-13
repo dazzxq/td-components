@@ -4,6 +4,27 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.112.0
+
+**`td-media-field` / `td-media-gallery`: ảnh xem trước đi qua thumb loader (ngân sách WAF chung, không còn ảnh vỡ)**
+(owner + dsuite + dcms2 + dwp 13/11). Nối tiếp 0.111: picker đã chạy theo nhịp, nhưng field và gallery vẫn tải ảnh thẳng
+nên một form nhiều gallery vẫn có thể chạm luật WAF của CDN ảnh.
+
+- Ảnh xem trước của field (nút mở `__open`) và gallery (`__media`) được nhận quản lý sau bước kiểm SSR: markup và helper
+  PHP giữ nguyên (`src` + `loading="lazy"`), JS gắn `data-td-managed-img` / `data-td-thumb-cell`, rồi broker của host ảnh
+  xếp lượt, thử lại khi lỗi, ô lỗi hiện khung thay cho icon vỡ. Mỗi instance một loader; ảnh bị thay (đổi ảnh, chọn từ
+  picker, xoá, sắp xếp, gán `items`) được trả slot ngay.
+- Property mới `thumbLoader` trên cả hai: mặc định bật; `false` → như 0.111; object → `configureThumbBudget` (vd
+  `{ budgetKey: 'cdn', wafBudget: { limit: 2000 } }`). Gán được trước khi định nghĩa element; đổi khi đang chạy thì áp ngay.
+- Tháo khỏi DOM / tắt loader: loader dừng trước (huỷ ảnh đang tải), rồi ảnh trở lại đúng markup gốc, nên gắn lại vẫn bind
+  tại chỗ (không vẽ lại).
+- Crop preview đọc kích thước ảnh từ sự kiện `load` của chính ảnh được quản lý, ảnh ở xa tải xong vẫn ra đúng khung crop.
+- `thumb-loader`: ảnh không có layout box (`display: none` ở chính nó hoặc tổ tiên: tab, thẻ ẩn) tính là ở xa, hiện ra
+  mới tải (dsuite).
+- CSS trạng thái thumb (hiện dần, shimmer, khung lỗi, reduced motion) tách thành `components/thumb.css` dùng chung cho
+  picker / field / gallery. Baseline CSP field / gallery chụp lại (chỉ thêm `transition: opacity` của ảnh).
+- Test site đọc `img.src` của field / gallery: ảnh ở xa giữ URL trong `data-td-src` tới khi tới lượt.
+
 ## 0.111.0
 
 **`td-media-picker`: bộ tải thumbnail có ngân sách theo luật WAF, không còn ảnh vỡ; skeleton lấp kín khung** (owner +

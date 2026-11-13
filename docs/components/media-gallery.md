@@ -447,6 +447,7 @@ từng byte). Trang đã cache với marker `@1` (trước 0.81) được JS **r
 | `setSelection(arr \| null)` | method | Im lặng, qua `validateItems` |
 | `adapter` | `MediaPickerAdapter \| null` | Adapter riêng của gallery |
 | `pickerOptions` | `object \| null` | Option trộn lên `TdMediaPicker.configureDefaults()` khi mở (trừ `selection` / `crop`) |
+| `thumbLoader` | `undefined \| false \| object` | 0.112: ảnh xem trước đi qua [thumb loader](thumb-loader.md) (ngân sách WAF chung của host ảnh, thử lại, không hiện icon ảnh vỡ). Mặc định bật; `false` → như 0.111; object → cấu hình broker (`configureThumbBudget`, vd `{ budgetKey: 'cdn', wafBudget: { limit: 2000 } }`). Gán được trước khi định nghĩa element; đổi khi đang chạy thì áp ngay |
 | `setError(msg)` / `clearError()` | method | Hợp đồng lỗi chung |
 | `TdMediaGallery.MAX_ITEMS` | `100` | Trần cứng |
 | `TdMediaGallery.LAZY_CONCURRENCY` | `4` | `adapter.get` song song tối đa |

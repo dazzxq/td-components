@@ -302,7 +302,7 @@
       "border-bottom-right-radius": "0px",
       "box-shadow": "none",
       "transform": "none",
-      "transition": "all",
+      "transition": "opacity 0.15s ease-out",
       "backdrop-filter": "none",
       "-webkit-backdrop-filter": "",
       "font-size": "14px",

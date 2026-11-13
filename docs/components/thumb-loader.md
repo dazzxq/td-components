@@ -161,6 +161,13 @@ Gọi `loader.release(root)` trước khi thay và `loader.scan(root)` sau khi t
 lượt đó không qua broker.
 Ảnh thử của `swap` mang theo `referrerpolicy` và `crossorigin` của ảnh đích.
 
+### td-media-field và td-media-gallery (0.112)
+
+Hai component tự nối loader, site không phải làm gì. Markup và helper PHP giữ nguyên (`src` + `loading="lazy"`): JS
+nhận quản lý ảnh có sẵn (`data-td-managed-img`, ô là nút mở của field / `__media` của gallery) sau bước kiểm SSR. Tháo
+component ra hoặc gán `thumbLoader = false` thì loader dừng trước, rồi ảnh trở lại đúng markup gốc. Cấu hình broker
+riêng: `el.thumbLoader = { budgetKey: 'cdn', wafBudget: { limit: 2000 } }`. Trước khi JS chạy, ảnh lỗi vẫn do trình duyệt hiển thị.
+
 ## Giới hạn
 
 - **Chính sách cache là của site.** Kit không giả định gì. Gợi ý: tách `max-age` của trình duyệt (dài) khỏi `s-maxage`
@@ -169,6 +176,7 @@ lượt đó không qua broker.
   định chỉ dùng 40% luật.
 - **Mạng chung NAT** (toà soạn nhiều máy): CDN thấy một IP, client không thấy nhau. Cổng mở theo cụm lỗi là lưới cuối.
 - Sổ chung qua `localStorage` là phối hợp, không phải trần cứng: vài tab cùng lúc có thể vượt vài lượt.
+- Ảnh không có layout box (chính nó hoặc tổ tiên `display: none`: tab, thẻ ẩn) tính là ở xa; hiện ra thì tải (0.112).
 - Loader đo khoảng cách theo chiều dọc. Lưới cuộn ngang tải mọi ô trong vùng dọc.
 - Ảnh chờ quá 20 giây mà chưa có `load` / `error` thì bị huỷ và tính là một lần lỗi, để host treo không giữ hết slot.
 - Loader chỉ dùng class và attribute, không đụng `style` (CSP strict).

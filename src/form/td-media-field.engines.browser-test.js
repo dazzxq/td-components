@@ -315,7 +315,8 @@ describe('td-media-field — form value', () => {
       expect(!!q(el, 'img'), 'A never populates').to.equal(false);
       B.calls.get[0].resolve();
       for (let i = 0; i < 50 && !q(el, 'img'); i++) await tick();
-      expect(q(el, 'img').getAttribute('src').includes('/b/')).to.equal(true);
+      const im = q(el, 'img'); // 0.112: a queued preview keeps its URL in data-td-src until its turn
+      expect((im.getAttribute('src') || im.getAttribute('data-td-src') || '').includes('/b/')).to.equal(true);
     } finally {
       TdMediaPicker.configureDefaults({});
     }

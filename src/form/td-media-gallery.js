@@ -9,6 +9,7 @@ import { isAdapter, normalizeAsset, normalizeError } from '../utils/media-picker
 import { safeMediaUrl } from '../utils/media-url.js';
 import { SortableController, SORTABLE_LABELS } from '../utils/sortable-controller.js';
 import { OrderedCollectionModel } from '../utils/ordered-collection.js';
+import { PreviewThumbs } from '../utils/preview-thumbs.js';
 import {
   parseAspectRatio, parseCrop, parseFocal, parseKinds, parseCropRatio, parseCropMode, parseCropShape, serializeCrop, serializeFocal,
   cropRatioInRange, cropPreviewVars, galleryEntries, validateItems, parseItems, encodeGalleryState, decodeGalleryState,
@@ -196,6 +197,13 @@ export class TdMediaGallery extends TdFormElement {
     this._gets = new Map();
     this._adapterProp = null;
     this._pickerOptions = null;
+    /** v0.112.0: `thumbLoader` (undefined = on, false = off, object = broker config) + the tiles' loader */
+    this._thumbCfg = undefined;
+    this._thumbs = new PreviewThumbs(this, {
+      images: () => [...this.querySelectorAll('img.td-media-gallery__img')],
+      cellOf: (img) => img.closest('.td-media-gallery__media'),
+      config: () => this._thumbCfg,
+    });
     /** @type {{ role: string, id: string|null }|null} the focused control (kept across a move) */
     this._focusMark = null;
     this._warned = new Set();
@@ -212,7 +220,7 @@ export class TdMediaGallery extends TdFormElement {
     const reconnect = this._initialized;
     if (!this._initialized) {
       // properties assigned before define live in own data properties that shadow the accessors below
-      for (const p of ['adapter', 'pickerOptions', 'value']) {
+      for (const p of ['adapter', 'pickerOptions', 'value', 'thumbLoader']) {
         if (Object.prototype.hasOwnProperty.call(this, p)) {
           const v = this[p];
           delete this[p];
@@ -237,6 +245,7 @@ export class TdMediaGallery extends TdFormElement {
     this._abortGets();
     this._cancelLimitSay();
     for (const it of this._items) this._clearCropPreview(this._liOf.get(it)); // re-bind compares the markup
+    this._thumbs.teardown(); // v0.112.0: loader off first, then the previews back to render()'s markup
   }
 
   // --- Public API ---
@@ -284,6 +293,19 @@ export class TdMediaGallery extends TdFormElement {
   set pickerOptions(o) {
     this._pickerOptions = o && typeof o === 'object' ? o : null;
     this._sourceChanged();
+  }
+
+  /**
+   * v0.112.0: the tiles' previews through the thumbnail loader (page-wide WAF budget of their host, only near the
+   * viewport, retry, no broken-image icon). `false` → off (the pre-0.112 previews); an object → the broker config
+   * (`configureThumbBudget`); else on.
+   * @returns {any}
+   */
+  get thumbLoader() { return this._thumbCfg; }
+
+  set thumbLoader(v) {
+    this._thumbCfg = v;
+    if (this._initialized) this._thumbs.reconfigure();
   }
 
   /**
@@ -575,12 +597,14 @@ export class TdMediaGallery extends TdFormElement {
     if (!ul) return;
     const cell = this._addCell;
     this._own(() => (cell ? ul.replaceChildren(...lis, cell) : ul.replaceChildren(...lis)));
+    this._thumbs.sync();
   }
 
   /** @private everything that depends on the list: names, cover, count, Add, crop buttons / previews, form */
   _afterListChange() {
     this._relabel();
     this._syncForm();
+    this._thumbs.sync(); // v0.112.0: tiles that left are released, new ones (connected now) adopted
   }
 
   /** @private DOM changes of the gallery itself never count as outside changes of the list */
@@ -1022,6 +1046,7 @@ export class TdMediaGallery extends TdFormElement {
     this._syncForm();
     this._applyErrorState();
     this._lazyPump();
+    this._thumbs.sync(); // v0.112.0: after the SSR gate / render — the markup itself never changes
   }
 
   /**
@@ -1238,6 +1263,7 @@ export class TdMediaGallery extends TdFormElement {
     tpl.innerHTML = this._previewHtml(it);
     fillIconSlots(tpl.content);
     media.querySelector(':scope > .td-media-gallery__sizer')?.after(tpl.content);
+    this._thumbs.sync(); // v0.112.0: the old preview released, the new one adopted
   }
 
   /**

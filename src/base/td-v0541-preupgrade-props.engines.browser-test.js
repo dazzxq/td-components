@@ -297,11 +297,11 @@ const CASES = [
   { tag: 'td-dropzone', attrs: { label: 'Tệp' }, props: () => ({ upload: fn(), imageResize: { maxBytes: 500000 } }) },
   {
     tag: 'td-media-field', attrs: { label: 'Ảnh' },
-    props: () => ({ adapter: { get: async () => null }, pickerOptions: { title: 'Chọn ảnh' }, value: 'img-1' }),
+    props: () => ({ adapter: { get: async () => null }, pickerOptions: { title: 'Chọn ảnh' }, value: 'img-1', thumbLoader: false }),
   },
   {
     tag: 'td-media-gallery', attrs: { label: 'Bộ ảnh' },
-    props: () => ({ adapter: { get: async () => null }, pickerOptions: { title: 'Chọn ảnh' }, value: ['a', 'b'] }),
+    props: () => ({ adapter: { get: async () => null }, pickerOptions: { title: 'Chọn ảnh' }, value: ['a', 'b'], thumbLoader: false }),
   },
   { tag: 'td-password-meter', props: () => ({ score: fn() }) },
   { tag: 'td-scan-input', attrs: { label: 'Quét' }, props: () => ({ validate: fn(), value: 'ABC1', muted: true }) },

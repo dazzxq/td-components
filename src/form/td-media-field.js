@@ -7,6 +7,7 @@ import { TdMediaPicker, onDefaultsChange } from '../feedback/td-media-picker.js'
 import { openCropDialog } from '../feedback/crop-dialog.js';
 import { isAdapter, normalizeAsset, normalizeError, LatestRequest } from '../utils/media-picker-core.js';
 import { safeMediaUrl } from '../utils/media-url.js';
+import { PreviewThumbs } from '../utils/preview-thumbs.js';
 import {
   KINDS, parseAspectRatio, parseCrop, parseFocal, parseKinds, parseCropRatio, parseCropMode, parseCropShape, serializeCrop, serializeFocal, cropRatioInRange,
   cropPreviewVars, fieldEntries, encodeState, decodeState,
@@ -181,6 +182,13 @@ export class TdMediaField extends TdFormElement {
     this._getReq = new LatestRequest();
     this._adapterProp = null;
     this._pickerOptions = null;
+    /** v0.112.0: `thumbLoader` (undefined = on, false = off, object = broker config) + the preview's loader */
+    this._thumbCfg = undefined;
+    this._thumbs = new PreviewThumbs(this, {
+      images: () => { const img = this._part('img'); return img ? [img] : []; },
+      cellOf: () => this._part('open'),
+      config: () => this._thumbCfg,
+    });
     /** @type {string|null} role of the control that had the focus (kept across a move) */
     this._focusRole = null;
     this._warned = new Set();
@@ -190,7 +198,7 @@ export class TdMediaField extends TdFormElement {
     const reconnect = this._initialized;
     if (!this._initialized) {
       // properties assigned before define live in own data properties that shadow the accessors below
-      for (const p of ['adapter', 'pickerOptions']) {
+      for (const p of ['adapter', 'pickerOptions', 'thumbLoader']) {
         if (Object.prototype.hasOwnProperty.call(this, p)) {
           const v = this[p];
           delete this[p];
@@ -214,6 +222,7 @@ export class TdMediaField extends TdFormElement {
     this._getReq.abort();
     this._abortCrop();
     this._clearCropPreview(); // CSSOM vars off while detached: a re-connect re-binds the markup unchanged
+    this._thumbs.teardown(); // v0.112.0: loader off first, then the preview back to render()'s markup
   }
 
   // --- Public API ---
@@ -248,6 +257,18 @@ export class TdMediaField extends TdFormElement {
   set pickerOptions(o) {
     this._pickerOptions = o && typeof o === 'object' ? o : null;
     this._sourceChanged();
+  }
+
+  /**
+   * v0.112.0: the preview through the thumbnail loader (page-wide WAF budget of its host, retry, no broken-image icon).
+   * `false` → off (the pre-0.112 preview); an object → the broker config (`configureThumbBudget`); else on.
+   * @returns {any}
+   */
+  get thumbLoader() { return this._thumbCfg; }
+
+  set thumbLoader(v) {
+    this._thumbCfg = v;
+    if (this._initialized) this._thumbs.reconfigure();
   }
 
   /**
@@ -639,6 +660,7 @@ export class TdMediaField extends TdFormElement {
     this._syncCropPreview();
     this._syncForm();
     this._applyErrorState();
+    this._thumbs.sync(); // v0.112.0: after the SSR gate / render — the markup itself never changes
   }
 
   /** @protected v0.54.0: the helper note keeps its `span.td-media-field__help#{id}-help` (contract @1) */
@@ -717,6 +739,7 @@ export class TdMediaField extends TdFormElement {
     if (alt && alt.value !== this._alt) alt.value = this._alt;
     this._syncCropPreview();
     this._syncForm();
+    this._thumbs.sync(); // v0.112.0: the old preview is released, the new one adopted
   }
 
   // --- v0.35 crop: button, preview ---

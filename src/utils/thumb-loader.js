@@ -282,6 +282,15 @@ export function createThumbLoader(opts = {}) {
     const v = viewBox();
     return r.bottom >= v.top - margin && r.top <= v.bottom + margin;
   };
+  /**
+   * v0.112.0 (dsuite): no layout box (display:none itself or an ancestor: a hidden tab / card) = not near the viewport,
+   * whatever its 0x0 rect says; the IntersectionObserver reports it once it shows. A displayed 0x0 image still counts.
+   */
+  const hasBox = (el) => !(el && typeof el.getClientRects === 'function' && el.getClientRects().length === 0);
+  const nearView = (el) => {
+    const r = rectOf(el);
+    return r ? hasBox(el) && inMargin(r) : null; // null: no geometry (no DOM): the caller's default
+  };
   const isFast = () => now() - lastSampleAt <= c.SAMPLE_FRESH_MS && speed > c.FAST_VIEWPORTS_PER_S * rootH();
 
   /* ---------- cell helpers ---------- */
@@ -690,8 +699,7 @@ export function createThumbLoader(opts = {}) {
       return;
     }
     io.observe(s.img);
-    const r = rectOf(s.img);
-    if (r && inMargin(r)) {
+    if (nearView(s.img)) {
       s.inView = true;
       s.seenAt = now();
       entered(s);
@@ -717,14 +725,12 @@ export function createThumbLoader(opts = {}) {
       }
       live.add(s); // failed before the script ran → recovery
       if (io) io.observe(img);
-      const r = rectOf(img);
-      s.inView = !io || !r || inMargin(r);
+      s.inView = !io || false !== nearView(img);
       s.seenAt = now();
       errorPath(s, null);
       return;
     }
-    const r = rectOf(img);
-    if (!r || inMargin(r)) {
+    if (false !== nearView(img)) {
       live.add(s); // the browser is loading it now: hold a slot until load / error
       if (io) io.observe(img);
       s.inView = true;

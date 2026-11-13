@@ -127,7 +127,7 @@ describe('td-media-gallery v0.81 — the red X', () => {
     const { el, rec } = mount(3);
     const x = remove(lis(el)[1]);
     expect(x.classList.contains('td-media-gallery__btn')).to.equal(false);
-    expect(x.parentElement.className).to.equal('td-media-gallery__media');
+    expect(x.parentElement.classList.contains('td-media-gallery__media')).to.equal(true); // v0.112.0: + is-thumb-* (loader)
     x.click();
     expect(el.value).to.deep.equal(['m1', 'm3']);
     expect(rec).to.deep.equal(['input:remove', 'change:remove']);

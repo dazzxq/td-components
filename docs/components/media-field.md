@@ -486,6 +486,7 @@ X / cắt là nút tròn nằm trong góc khung). Khung ảnh không bao giờ r
 | `setSelection(selected \| null)` | `(SelectedMedia \| SelectedMedia[] \| null) => void` | Gán id + ảnh (`asset.urls.preview`) + alt (`usage.altText`, không có → `defaultAltText`) + crop (`usage.crop.normalized`) + focal (`usage.focalPoint`, 0.35) bằng code, im lặng, không làm tròn. `null` / `[]` / thiếu `assetId` → xoá hết |
 | `adapter` | `MediaPickerAdapter \| null` | Adapter riêng cho field |
 | `pickerOptions` | `Partial<OpenMediaPickerOptions>` | Option riêng khi mở picker (trừ `selection`) |
+| `thumbLoader` | `undefined \| false \| object` | 0.112: ảnh xem trước đi qua [thumb loader](thumb-loader.md) (ngân sách WAF chung của host ảnh, thử lại, không hiện icon ảnh vỡ). Mặc định bật; `false` → như 0.111; object → cấu hình broker (`configureThumbBudget`, vd `{ budgetKey: 'cdn', wafBudget: { limit: 2000 } }`). Gán được trước khi định nghĩa element; đổi khi đang chạy thì áp ngay |
 | `setError(msg)` / `clearError()` / `errorMessage` | | Hợp đồng lỗi |
 | `form`, `validity`, `validationMessage`, `willValidate`, `checkValidity()`, `reportValidity()` | | Như control native |
 | `TdMediaField.labels` | static | Nhãn (dưới) |

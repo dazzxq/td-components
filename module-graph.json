@@ -534,7 +534,8 @@
       "src/icons/td-icon.js",
       "src/utils/media-field-model.js",
       "src/utils/media-picker-core.js",
-      "src/utils/media-url.js"
+      "src/utils/media-url.js",
+      "src/utils/preview-thumbs.js"
     ],
     "src/form/td-media-gallery.js": [
       "src/base/td-base-element.js",
@@ -546,6 +547,7 @@
       "src/utils/media-picker-core.js",
       "src/utils/media-url.js",
       "src/utils/ordered-collection.js",
+      "src/utils/preview-thumbs.js",
       "src/utils/sortable-controller.js"
     ],
     "src/form/td-number-input.js": [
@@ -749,6 +751,9 @@
     "src/utils/preload-window.js": [],
     "src/utils/press.js": [
       "src/utils/gesture.js"
+    ],
+    "src/utils/preview-thumbs.js": [
+      "src/utils/thumb-loader.js"
     ],
     "src/utils/range-selection.js": [
       "src/utils/calendar-model.js"

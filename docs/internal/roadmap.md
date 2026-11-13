@@ -293,7 +293,9 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` v0.109.1 (dsuite-9f 13/11): td-media-picker cursor ‹ › giống hệt nút nav của td-pagination (tròn, cùng cỡ / viền / trạng thái); chỉ CSS. Kèm Storybook 10 + Vite 8 (tooling) và sửa test chập chờn swatch.
 - `done` v0.110.0 (owner + dsuite-9f 13/11): td-media-picker `loadMore` (cuộn tải thêm, opt-in), `pageSize: 'auto'` + `maxPageSize`, số đếm n/total theo bộ lọc, nút chi tiết chỉ icon (`td-action-button`). Plan: internal/plans/v0.110.0-media-picker-load-more.md. Phát hành cùng v0.109.1.
 - `done` v0.111.0 (owner + dsuite-9f + dcms2-76 + dwp-f5 13/11): bộ tải thumbnail `thumb-loader` (broker chung trang theo `wafBudget`, retry, cổng chặn + canary + backoff, SSR adoption, swap) gắn mặc định vào td-media-picker; skeleton lấp khung; harness WAF `test/perf/thumb-loader-sim.mjs`. Plan: internal/plans/v0.111.0-media-picker-thumb-loader.md.
-- `todo` v0.112: gắn thumb-loader vào td-media-field / td-media-gallery (phải viết lại đường crop đọc naturalWidth + load).
+- `done` v0.112.0: thumb-loader cho ảnh xem trước td-media-field / td-media-gallery (nhận quản lý markup có sẵn, property `thumbLoader`, `thumb.css` dùng chung, ảnh ẩn tính là ở xa) — plan [v0.112.0](plans/v0.112.0-media-field-gallery-thumb-loader.md)
+- `todo` flake: WebKit `ResizeObserver loop completed…` (uncaught) trong `td-v110-media-picker-load-more` › "pages transport, a delete crossing a page boundary" (~50% local WebKit, có cả trên main 14/11): tìm RO ghi layout trong callback, đẩy sang rAF
+- `todo` v0.113: picker `crop.mode = 'focal'` (chỉ chấm điểm trọng tâm, không khung cắt, luôn `crop = null`) — dcms2 13/11 (owner dcms2 bỏ crop tay; phase 3 của họ chờ)
 
 - `done` textarea `autoresize` bằng CSS `field-sizing` (v0.13.0)
 
