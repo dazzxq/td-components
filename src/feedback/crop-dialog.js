@@ -112,8 +112,11 @@ function boxOpt(v) {
  * @param {number} [opts.naturalWidth] original size (integers 1–100000, both or neither; omit ⇒ no `pixels`)
  * @param {number} [opts.naturalHeight]
  * @param {number|null} [opts.aspectRatio=null] a number ⇒ locked (title "Cắt ảnh · 16:9"); null ⇒ free + presets
- * @param {'box'|'pan'} [opts.mode='box'] v0.75.0: `pan` ⇒ `<td-cropper mode="pan">` (frame still, image moves — avatars);
- *   same grammar as the attribute (trimmed, case-insensitive; anything else = `box`, no attribute set)
+ * @param {'box'|'pan'|'focal'} [opts.mode='box'] v0.75.0: `pan` ⇒ `<td-cropper mode="pan">` (frame still, image moves —
+ *   avatars); v0.113.0: `focal` ⇒ `<td-cropper mode="focal">` (a focal point only: title `TdCropper.labels.focalTitle`,
+ *   `aspectRatio` / `shape` / `crop` / `allowFocalPoint` ignored, "Áp dụng" as soon as the image is ready, result
+ *   `crop: null` + the focal point, `changed` = the focal point moved from `focalPoint`). Same grammar as the attribute
+ *   (trimmed, case-insensitive; anything else = `box`, no attribute set)
  * @param {'rect'|'circle'} [opts.shape='rect'] v0.75.0: `circle` ⇒ `shape="circle"` (the cropper ignores it unless pan + 1:1)
  * @param {{x:number,y:number,width:number,height:number}|null} [opts.crop=null] normalised start crop
  * @param {{x:number,y:number}|null} [opts.focalPoint=null]
@@ -136,12 +139,13 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
   if (signal && signal.aborted) return Promise.resolve({ status: 'cancelled' });
   const L = TdCropper.labels;
   const str = (v, d) => (typeof v === 'string' && v.trim() ? v : d);
+  const focal = parseCropMode(o.mode) === 'focal'; // v0.113.0
   let lock = null;
-  if (o.aspectRatio != null) {
+  if (o.aspectRatio != null && !focal) { // focal: no box ⇒ no ratio, silently
     if (cropRatioInRange(o.aspectRatio)) lock = o.aspectRatio;
     else warnRatioOnce(); // review R1 #5: rejected (free crop), never silently
   }
-  const cropIn = boxOpt(o.crop);
+  const cropIn = focal ? null : boxOpt(o.crop);
   const focalIn = clampFocal(o.focalPoint);
   const id = `td-crop-dialog-${++seq}`;
 
@@ -173,7 +177,7 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
   const dialog = q('.td-crop-dialog__dialog');
   const title = q('.td-modal__title');
   title.id = `${id}-title`;
-  const head = str(o.title, L.dialogTitle);
+  const head = str(o.title, focal ? L.focalTitle : L.dialogTitle);
   title.textContent = lock ? `${head} · ${ratioLabel(lock)}` : head;
   dialog.setAttribute('aria-labelledby', title.id);
   const x = q('.td-modal__close');
@@ -189,8 +193,9 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
   cropper.className = 'td-crop-dialog__cropper';
   if (lock) cropper.setAttribute('aspect-ratio', ratioAttr(lock));
   // v0.75.0: only the allowlisted constants are ever set (absent option ⇒ no attribute, the 0.74 DOM)
-  if (parseCropMode(o.mode) === 'pan') cropper.setAttribute('mode', 'pan');
-  if (parseCropShape(o.shape) === 'circle') cropper.setAttribute('shape', 'circle');
+  if (focal) cropper.setAttribute('mode', 'focal');
+  else if (parseCropMode(o.mode) === 'pan') cropper.setAttribute('mode', 'pan');
+  if (!focal && parseCropShape(o.shape) === 'circle') cropper.setAttribute('shape', 'circle');
   const nw = sizeAttr(o.naturalWidth);
   const nh = sizeAttr(o.naturalHeight);
   if (nw && nh) {
@@ -198,14 +203,14 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
     cropper.setAttribute('natural-height', nh);
   }
   if (typeof o.alt === 'string' && o.alt) cropper.setAttribute('alt', o.alt);
-  if (o.allowFocalPoint) cropper.setAttribute('focal-point', '');
+  if (o.allowFocalPoint && !focal) cropper.setAttribute('focal-point', ''); // focal: the tool is always on
   cropper.crop = cropIn;
   cropper.focalPoint = focalIn;
   cropper.setAttribute('src', typeof o.src === 'string' ? o.src : '');
   q('.td-crop-dialog__body').appendChild(cropper);
 
-  const focusBox = () => {
-    const box = /** @type {HTMLElement|null} */ (cropper.querySelector('.td-cropper__box'));
+  const focusBox = () => { // focal mode: the focal point (there is no box)
+    const box = /** @type {HTMLElement|null} */ (cropper.querySelector(focal ? '.td-cropper__focal' : '.td-cropper__box'));
     if (box) { try { box.focus({ preventScroll: true }); } catch { /* ignore */ } }
   };
   /** focus is still "nowhere in particular" (the dialog itself, or nothing inside the root) */
@@ -245,6 +250,11 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
   const apply = () => {
     if (done || confirmBtn.disabled) return;
     const r = cropper.getResult();
+    if (focal) { // QĐ2a: only a ready image is needed (focalPoint is never null then); the crop is always null
+      if (!r.focalPoint) return;
+      finish({ status: 'applied', crop: null, focalPoint: r.focalPoint, changed: focalChanged(focalIn, r.focalPoint) });
+      return;
+    }
     if (!r.crop) return; // not ready (the button is disabled then anyway)
     const crop = isWholeImage(r.crop) ? null : r.crop;
     const changed = cropChanged(cropIn, crop ? crop.normalized : null, size.W, size.H)

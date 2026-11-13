@@ -19307,6 +19307,8 @@
  * v0.73.0 pan mode (plan cropper-pan-mode M1): host [data-mode="pan"] (the frame stands still, the image moves under it)
  * and [data-shape="circle"] — constants set by JS, absent in box mode, so every rule of them is at the end of this file
  * and no older rule changes. Same CSSOM properties: the image rect is larger than the stage, the box sits inside it.
+ * v0.113.0 focal mode: host [data-mode="focal"] (JS constant) — the box, ratios, zoom and focal toggle are hidden; rules
+ * at the end of this file, no older rule changes.
  */
 @layer td.tokens {
 	:root {
@@ -19898,6 +19900,24 @@
 
 	td-cropper[data-shape="circle"] .td-cropper__grid {
 		overflow: hidden;
+	}
+}
+
+/* ===== v0.113.0 focal mode: a focal point only, no crop (plan v0.113.0-focal-only-mode QĐ1) ===== */
+@layer td.component {
+	/* no box: its line, dim, grid and handles go with it (the whole image stays undimmed); no ratios, no zoom, and the
+	   focal tool is always on (no toggle) — "Đặt lại" is the only tool left */
+	td-cropper[data-mode="focal"] .td-cropper__box,
+	td-cropper[data-mode="focal"] .td-cropper__ratios,
+	td-cropper[data-mode="focal"] .td-cropper__zoom-in,
+	td-cropper[data-mode="focal"] .td-cropper__zoom-out,
+	td-cropper[data-mode="focal"] .td-cropper__focal-toggle {
+		display: none;
+	}
+
+	/* a press anywhere on the stage puts the point there — only when it can (loading / error / disabled: default) */
+	td-cropper[data-mode="focal"][data-state="ready"]:not([disabled]) .td-cropper__stage {
+		cursor: crosshair;
 	}
 }
 

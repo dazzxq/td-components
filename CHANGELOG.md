@@ -4,6 +4,30 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.113.0
+
+**Chế độ chỉ chọn điểm trọng tâm: `crop.mode = 'focal'` / `crop-mode="focal"`** (dcms2 13/11, owner dcms2 bỏ cắt tay).
+Người dùng chỉ đặt một điểm, kết quả luôn `crop = null` + `focalPoint`; site tự cắt ở server theo điểm đó. Plan:
+`docs/internal/plans/v0.113.0-focal-only-mode.md`.
+
+- `<td-cropper mode="focal">`: không khung, không tỉ lệ, không zoom, không nút bật / tắt điểm; điểm luôn bật (mặc định
+  giữa ảnh, không phát `focal-change` cho giá trị mặc định); nhấn / chạm bất kỳ đâu trên ảnh đặt điểm và kéo tiếp trong
+  cùng cử chỉ; phím mũi tên trên marker; "Đặt lại" về điểm vào. `crop` / `aspect-ratio` / `shape` bị bỏ qua,
+  `getResult().crop` luôn `null`. Con lăn cuộn trang (không có gì để zoom); nhấn ngoài ảnh kẹp điểm về mép gần nhất.
+- `openCropDialog({ mode: 'focal', focalPoint })`: tiêu đề nhãn `focalTitle` "Chọn điểm trọng tâm", "Áp dụng" chỉ cần
+  ảnh sẵn sàng, kết quả `{ status: 'applied', crop: null, focalPoint, changed }`.
+- Picker `crop: { mode: 'focal', focalPoint? }`: tự bật bước chọn điểm (không cần `enabled`; `enabled: false` vẫn tắt),
+  ép `allowFocalPoint`, bỏ tỉ lệ / hình; `focalPoint` là điểm bắt đầu (mở lại từ giá trị hiện có); `usage.crop` luôn
+  `null`. Luật `multiple` ⇒ bỏ bước cắt giữ nguyên.
+- `<td-media-field>` / `<td-media-gallery>` `crop-mode="focal"` (+ PHP `crop_mode => 'focal'`): nút "Điểm trọng tâm"
+  (`focalEdit`), hộp chọn điểm `focalTitle`, `[focal]` tự bật (không cần `focal-point`), `[crop]` luôn `null`, xem
+  trước không áp crop. Attribute `crop` / `items[].crop` bị bỏ qua nhưng không bị xoá (đổi về `box` thấy lại).
+- `box` / `pan` không đổi (baseline CSP cũ giữ nguyên từng byte). Ma trận CSP thêm `td-cropper.focal`,
+  `td-media-field.focal`. Bảng parity JS = PHP `CROP_MODE_CASES` thêm `focal`.
+- Sửa flake WebKit "ResizeObserver loop completed with undelivered notifications" (td-v110 loadMore): callback RO của
+  `value-title.js` (dropdown trong thanh công cụ picker) đọc `scrollWidth` ngay trong lượt giao, ép layout làm lưới ảnh
+  đổi cỡ; giờ kiểm ở frame sau.
+
 ## 0.112.0
 
 **`td-media-field` / `td-media-gallery`: ảnh xem trước đi qua thumb loader (ngân sách WAF chung, không còn ảnh vỡ)**

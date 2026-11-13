@@ -263,6 +263,8 @@ export class TdMediaPicker extends HTMLElement {
     confirm: 'Chèn',
     confirmCount: 'Chèn ({n})',
     cropTitle: 'Cắt ảnh',
+    /** v0.113.0: the title of the step with `crop.mode = 'focal'` */
+    focalTitle: 'Chọn điểm trọng tâm',
     cropBack: 'Quay lại',
     cropConfirm: 'Chèn',
     cropUnavailable: 'Không mở được ảnh để cắt.',
@@ -3581,12 +3583,15 @@ export class TdMediaPicker extends HTMLElement {
    * does not open, the picker stays open (selection kept) and its live region says so — never a finish without the
    * crop the app asked for. Quay lại / Escape / × → back to the picker, focus on "Chèn". Applied → the ONE end path with
    * `usage.crop` (whole image → null, already by the dialog) + `usage.focalPoint` (only with `allowFocalPoint`).
+   * v0.113.0: `cropResolved.mode === 'focal'` → the dialog in focal mode from `cropResolved.focalPoint`, title `focalTitle`;
+   * the outcome is `{ crop: null, focalPoint }`.
    * @param {import('../utils/media-picker-core.js').MediaAsset} asset
    */
   _openCrop(asset) {
     const s = this._s;
     if (!this._live(s) || s.crop) return;
     const cfg = s.opts.cropResolved;
+    const focal = cfg.mode === 'focal';
     const src = safeMediaUrl(asset.urls && asset.urls.preview);
     if (!src) {
       this._announce(this._t('cropUnavailable'));
@@ -3609,12 +3614,12 @@ export class TdMediaPicker extends HTMLElement {
         naturalWidth: known ? naturalWidth : undefined,
         naturalHeight: known ? naturalHeight : undefined,
         aspectRatio: cfg.aspectRatio,
-        mode: cfg.mode, // v0.75.0: resolved ('box' | 'pan'), the dialog sets the attribute only for `pan`
+        mode: cfg.mode, // v0.75.0: resolved ('box' | 'pan'); v0.113.0 'focal' (no frame, only the focal point)
         shape: cfg.shape,
         crop: null,
-        focalPoint: null,
+        focalPoint: focal ? (cfg.focalPoint ? { ...cfg.focalPoint } : null) : null, // v0.113.0 QĐ3b: the starting point
         allowFocalPoint: cfg.allowFocalPoint,
-        title: this._t('cropTitle'),
+        title: this._t(focal ? 'focalTitle' : 'cropTitle'),
         confirmLabel: this._t('cropConfirm'),
         cancelLabel: this._t('cropBack'),
         nested: true,
@@ -3628,7 +3633,8 @@ export class TdMediaPicker extends HTMLElement {
       if (!this._live(s) || s.crop !== step) return;
       s.crop = null;
       if (res && res.status === 'applied') {
-        const usage = { crop: res.crop || null, focalPoint: cfg.allowFocalPoint ? (res.focalPoint || null) : null };
+        // v0.113.0 (QĐ3 / QĐ4b): the focal mode never yields a crop, whatever the dialog returns
+        const usage = { crop: focal ? null : res.crop || null, focalPoint: cfg.allowFocalPoint ? (res.focalPoint || null) : null };
         this._teardown(buildOutcome(s.model, new Map([[asset.id, usage]])), false);
         return;
       }

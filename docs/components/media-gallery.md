@@ -314,6 +314,12 @@ Cần `usage` (thiếu → bỏ + một cảnh báo). Nút **Cắt** trên ô �
   bên dưới ([Cropper › mode](cropper.md#hai-kiểu-thao-tác--mode-0730)); `circle` chỉ vẽ tròn khi `pan` và tỉ lệ cắt đang là 1:1
   (`crop-ratio="1"` hoặc gallery `aspect-ratio` 1:1). Cắt khoảng trắng, không phân biệt hoa thường, giá trị lạ = mặc định
   (`box` / `rect`). Đọc lúc mở hộp (đổi giữa chừng → hộp kế tiếp theo); cần `usage` (thiếu → cùng cảnh báo với `croppable`).
+- **`crop-mode="focal"` (0.113.0)**: nút trên mỗi ô đọc **"Điểm trọng tâm {name}"** (`labels.focalEdit`) và mở hộp chọn
+  điểm (tiêu đề `labels.focalTitle` "Chọn điểm trọng tâm", không khung / tỉ lệ, bắt đầu từ `focal` của ô; chưa có → giữa ảnh).
+  `focal-point` được ngầm bật (luôn gửi `name[i][focal]`), mọi `name[i][crop]` **luôn `null`**, `selection[i].usage.crop`
+  luôn `null`, ô không áp CSS cắt. `items[].crop` vào bị bỏ qua cho trạng thái hiệu lực nhưng vẫn giữ (đổi về `box` → thấy
+  lại); kết quả hộp chọn điểm không đặt crop. Picker "Thêm" vẫn chọn nhiều, không có bước cắt / chọn điểm (`crop: { enabled: false }`).
+  Đổi `crop-mode` lúc chạy → nhãn, FormData và ảnh xem trước cập nhật tại chỗ, không phát sự kiện. PHP `'crop_mode' => 'focal'`.
 - "Áp dụng" có đổi → `input` + `change` (`reason: 'crop'`). Huỷ / không đổi → giữ chuỗi gốc **đúng từng byte**.
 - Ô ảnh xem trước đúng vùng cắt khi tỉ lệ vùng cắt khớp tỉ lệ ô (± 2 %), như field.
 - **Một luồng cắt mỗi gallery.** Luồng bị huỷ im lặng (không mở hộp / không áp kết quả) khi ảnh đó bị gỡ, id đổi
@@ -395,6 +401,7 @@ echo td_media_gallery('gallery', $product->galleryItems(), [
 // $items: [['id' => 'a_9f2c', 'src' => $thumbUrl, 'name' => 'ao.jpg', 'alt' => '…', 'caption' => '…', 'crop' => [...] | '{"v":1,…}' | null], …]
 // 0.51: 'caption' => true | 'line' | 'multiline', 'alt_maxlength' => 255, 'caption_maxlength' => 500
 // 0.75: 'crop_mode' => 'pan', 'crop_shape' => 'circle' (in crop-mode="pan" crop-shape="circle"; giá trị khác → không in)
+// 0.113: 'crop_mode' => 'focal' (in crop-mode="focal"; mọi name[i][crop] = null, tự in name[i][focal])
 ```
 
 In host `<td-media-gallery data-td-ssr="media-gallery@2">` + đúng cây `render()` + hidden input gửi đúng FormData ở
@@ -424,7 +431,7 @@ từng byte). Trang đã cache với marker `@1` (trước 0.81) được JS **r
 | `caption-maxlength` | 1…1000 | — | (0.51, cần `caption`) giới hạn mềm của chú thích |
 | `croppable` | boolean | — | (cần `usage`) nút Cắt từng ảnh |
 | `crop-ratio` | `W/H` · `W:H` · số · `free` | `aspect-ratio`, rồi tự do | Một tỉ lệ cho cả gallery, [0.01, 100] |
-| `crop-mode` | `box` · `pan` | `box` | (0.75.0, cần `usage`) `pan` = khung cố định, kéo / phóng ảnh (avatar) |
+| `crop-mode` | `box` · `pan` · `focal` | `box` | (0.75.0, cần `usage`) `pan` = khung cố định, kéo / phóng ảnh (avatar); 0.113.0 `focal` = chỉ điểm trọng tâm, `name[i][crop]` luôn `null` |
 | `crop-shape` | `rect` · `circle` | `rect` | (0.75.0, cần `usage`) `circle` = khung tròn; chỉ khi `pan` + tỉ lệ cắt 1:1 |
 | `focal-point` | boolean | — | (cần `usage`) gửi `name[i][focal]` + chọn trong hộp cắt |
 | `cover` | boolean | — | Badge "Ảnh bìa" trên ô đầu |

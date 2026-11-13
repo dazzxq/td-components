@@ -19,6 +19,9 @@
  * @module utils/media-picker-core
  */
 
+// v0.113.0: the one import of this core — a pure, DOM-free geometry helper (focal point clamp + quantise)
+import { clampFocal } from './crop-geometry.js';
+
 /** @typedef {string|number|boolean|null} Scalar */
 /** @typedef {Scalar|Scalar[]} FilterValue */
 
@@ -174,8 +177,9 @@
  * @property {FieldDescriptor[]} [uploadFields]
  * @property {{ mode: 'single'|'multiple', maxItems?: number, initialIds?: string[],
  *   kinds?: Array<'image'|'video'|'file'> }} selection
- * @property {{ enabled: boolean, aspectRatio?: number, allowFocalPoint?: boolean, mode?: 'box'|'pan',
- *   shape?: 'rect'|'circle' }} [crop] v0.35 (`mode` / `shape`: v0.75.0 — `pan` keeps the crop frame still and moves the image, `circle` rounds it; see `<td-cropper>`): single mode + an image ⇒
+ * @property {{ enabled?: boolean, aspectRatio?: number, allowFocalPoint?: boolean, mode?: 'box'|'pan'|'focal',
+ *   shape?: 'rect'|'circle', focalPoint?: { x: number, y: number } }} [crop] v0.35 (`mode` / `shape`: v0.75.0 — `pan` keeps the crop frame still and moves the image, `circle` rounds it; see `<td-cropper>`;
+ *   v0.113.0 `focal`: no frame, only the focal point — on without `enabled`, `usage.crop` always null; `focalPoint` = its starting point): single mode + an image ⇒
  *   "Chèn" opens the crop step (`td-cropper`); `usage.crop` / `focalPoint` are then filled (`resolveOptions` → `cropResolved`)
  * @property {string} [initialQuery]
  * @property {Record<string, FilterValue>} [initialFilters]
@@ -622,8 +626,10 @@ export function isAdapter(a) {
 }
 
 /** v0.75.0: the `crop.mode` / `crop.shape` grammar of media-field-model `parseCropMode` / `parseCropShape` (kept inline —
- * this core imports nothing; a node test locks the two together): trimmed, case-insensitive allowlist, else the default. */
+ * a node test locks the two together): trimmed, case-insensitive allowlist, else the default. */
 const cropWord = (v, word) => typeof v === 'string' && v.trim().toLowerCase() === word;
+/** v0.113.0: the `crop.mode` allowlist (= parseCropMode); anything else → 'box'. */
+const CROP_MODES = ['pan', 'focal'];
 const CROP_RATIO_MIN = 0.01; // review R1 #5: public range [0.01, 100] (= media-field-model CROP_RATIO_MIN / MAX)
 const CROP_RATIO_MAX = 100;
 let warnedCropRatio = false;
@@ -675,7 +681,9 @@ export function autoPageSize({ cols, height, rowH, maxPageSize = MAX_PAGE_SIZE_D
  * Resolve the options of one open (decision 6): `defaults`, then each layer in INCREASING priority (shallow merge per
  * key; an `undefined` value never overrides). `selection` never comes from `defaults`. Normalises `selection`,
  * `pageSize` (1-100, default 30), `columns` ('auto' | 'fixed', v0.106.0, invalid → warned + 'auto'), `pagination` ('cursor' | 'pages', invalid → warned + 'cursor'), `upload` (+ text
- * `acceptLabel`), `messages`, `crop` (v0.35 decision 23 → `cropResolved = { aspectRatio, allowFocalPoint, mode, shape } | null` (v0.75.0: `mode` 'box'|'pan', `shape` 'rect'|'circle', unknown → the default): a bad
+ * `acceptLabel`), `messages`, `crop` (v0.35 decision 23 → `cropResolved = { aspectRatio, allowFocalPoint, mode, shape } | null` (v0.75.0: `mode` 'box'|'pan', `shape` 'rect'|'circle', unknown → the default;
+ * v0.113.0 `mode: 'focal'` → on unless `enabled: false`, `{ aspectRatio: null, allowFocalPoint: true, mode: 'focal', shape: 'rect', focalPoint }`
+ * with `focalPoint` = `clampFocal(crop.focalPoint)` (invalid → null, silently)): a bad
  * `aspectRatio` warns once ⇒ free; `selection.mode = 'multiple'` warns once ⇒ no crop; unknown keys ignored). No valid adapter → TypeError (a
  * programming error). v0.66.0 (K8): `initialCollection` (never from `defaults`; `{ id, label }` | null, a bad shape →
  * TypeError) and `collections` (→ `{ showWithoutQuery }`, a non-object → TypeError); `null` for either = absent (like
@@ -685,7 +693,8 @@ export function autoPageSize({ cols, height, rowH, maxPageSize = MAX_PAGE_SIZE_D
  * `loadMore` → `normalizeLoadMore()` (`{ trigger, maxItems } | null`).
  * @param {object|null|undefined} defaults
  * @param {...(object|null|undefined)} layers last argument may be `{ warn }` only when it is the sole key
- * @returns {OpenMediaPickerOptions & { cropResolved: { aspectRatio: number|null, allowFocalPoint: boolean, mode: 'box'|'pan', shape: 'rect'|'circle' } | null,
+ * @returns {OpenMediaPickerOptions & { cropResolved: { aspectRatio: number|null, allowFocalPoint: boolean, mode: 'box'|'pan'|'focal', shape: 'rect'|'circle',
+ *     focalPoint?: { x: number, y: number } | null } | null,
  *   capabilitiesResolved: MediaCapabilities, initialCollection: { id: string, label: string } | null,
  *   collections: { showWithoutQuery: boolean }, autoSelectFirst: boolean }}
  */
@@ -730,12 +739,21 @@ export function resolveOptions(defaults, ...layers) {
   const maxPageSize = Number.isInteger(mps) && mps >= 1 && mps <= 100 ? mps : MAX_PAGE_SIZE_DEFAULT;
   const up = isObj(merged.upload) ? merged.upload : {};
   let cropResolved = null;
-  if (isObj(merged.crop) && merged.crop.enabled === true) {
+  // v0.113.0 (QĐ3a): `mode: 'focal'` turns the step on by itself (absent `enabled`); an explicit `enabled: false` still wins
+  const cropMode = isObj(merged.crop) ? CROP_MODES.find((m) => cropWord(merged.crop.mode, m)) ?? 'box' : 'box';
+  if (isObj(merged.crop) && (merged.crop.enabled === true || (cropMode === 'focal' && merged.crop.enabled === undefined))) {
     if (mode === 'multiple') {
       if (!warnedCropMultiple) {
         warnedCropMultiple = true;
         try { warn("td-media-picker: crop needs selection.mode = 'single' — crop ignored for this multiple picker."); } catch { /* ignore */ }
       }
+    } else if (cropMode === 'focal') {
+      // v0.113.0 (QĐ3 / QĐ3b): no frame — the focal point is always on, no ratio (no warning), rect; a valid
+      // `crop.focalPoint` is the dialog's starting point (invalid → ignored silently)
+      cropResolved = {
+        aspectRatio: null, allowFocalPoint: true, mode: 'focal', shape: 'rect',
+        focalPoint: clampFocal(isObj(merged.crop.focalPoint) ? merged.crop.focalPoint : null),
+      };
     } else {
       const ar = merged.crop.aspectRatio;
       let aspectRatio = null;
@@ -749,7 +767,7 @@ export function resolveOptions(defaults, ...layers) {
       cropResolved = {
         aspectRatio,
         allowFocalPoint: merged.crop.allowFocalPoint === true,
-        mode: cropWord(merged.crop.mode, 'pan') ? 'pan' : 'box',
+        mode: cropMode,
         shape: cropWord(merged.crop.shape, 'circle') ? 'circle' : 'rect',
       };
     }

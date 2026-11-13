@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.112.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.112.0', __DIR__ . '/public/assets/vendor/td-components/0.112.0');
+ *   require_once '/path/to/vendor/td-components/0.113.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.113.0', __DIR__ . '/public/assets/vendor/td-components/0.113.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -412,6 +412,8 @@ namespace TdComponents {
             'video' => 'Video',
             /** v0.35 */
             'crop' => 'Cắt ảnh',
+            /** v0.113.0: the crop button with crop_mode 'focal' */
+            'focalEdit' => 'Điểm trọng tâm',
         ];
         /** v0.43.0: td_media_gallery (always the element <td-media-gallery> + the no-JS inputs, ADR 0021). */
         public const SSR_MEDIA_GALLERY = 'media-gallery@2';
@@ -434,6 +436,8 @@ namespace TdComponents {
             'handle' => 'Sắp xếp {name}',
             'remove' => 'Gỡ {name}',
             'crop' => 'Cắt {name}',
+            /** v0.113.0: the crop button with crop_mode 'focal' */
+            'focalEdit' => 'Điểm trọng tâm {name}',
             /** v0.81.0: collapsed usage fields + set-cover */
             'edit' => 'Mô tả {name}',
             'makeCover' => 'Đặt {name} làm ảnh bìa',
@@ -3560,6 +3564,7 @@ namespace {
      * unless the field holds an image with a preview_src; then preview_src MUST be the whole, un-cropped image — any
      * size), crop_ratio (`W/H`, `W:H`, one number or `free`; invalid → dropped + one E_USER_WARNING), crop_mode / crop_shape
      * (v0.75.0, `usage` only: `pan` / `circle` — JS-trimmed, any case — print `crop-mode="pan"` / `crop-shape="circle"`;
+     * v0.113.0 `focal` prints `crop-mode="focal"`, implies focal_point and submits `name[crop]` = null;
      * anything else prints nothing, silently), focal_point (bool:
      * prints the hidden `input.td-media-field__focal` `name[focal]` after `name[crop]`), focal (array x / y in 0..1 or
      * the JSON v1 string `{"v":1,"x","y"}` → printed / submitted as JSON v1; invalid → null + one E_USER_WARNING). The
@@ -3609,7 +3614,7 @@ namespace {
         $cropRatio = null;
         $focal = null;
         $given = static fn (string $key): bool => ($o[$key] ?? null) !== null && $o[$key] !== '' && $o[$key] !== 'null';
-        $cropMode = td__media_crop_word($o['crop_mode'] ?? null, 'pan');
+        $cropMode = td__media_crop_mode($o['crop_mode'] ?? null);
         $cropShape = td__media_crop_word($o['crop_shape'] ?? null, 'circle');
         $v35 = !empty($o['croppable']) || !empty($o['focal_point']) || $given('crop_ratio') || $given('focal')
             || $cropMode !== null || $cropShape !== null;
@@ -3618,7 +3623,8 @@ namespace {
             $cropMode = $cropShape = null;
         } elseif ($v35) {
             $croppable = !empty($o['croppable']);
-            $focalOn = !empty($o['focal_point']);
+            // v0.113.0 (QĐ4): crop_mode 'focal' implies focal_point
+            $focalOn = !empty($o['focal_point']) || $cropMode === 'focal';
             $crRaw = isset($o['crop_ratio']) && is_scalar($o['crop_ratio']) && !is_bool($o['crop_ratio']) ? (string) $o['crop_ratio'] : null;
             if ($crRaw !== null && $crRaw !== '' && td__media_crop_ratio($crRaw)) {
                 $cropRatio = $crRaw;
@@ -3641,7 +3647,9 @@ namespace {
         $hidden = static fn (string $class, string $n, string $v): string => '<input type="hidden" class="' . $class . '" name="'
             . Td::e($n) . '" value="' . Td::e($v) . '"' . $dis . '>';
         $valueInput = $named ? $hidden('td-media-field__value', $usage ? $name . '[id]' : $name, $id) : '';
-        $cropInput = $named && $usage ? $hidden('td-media-field__crop', $name . '[crop]', $crop ?? 'null') : '';
+        // v0.113.0 (QĐ4b): crop_mode 'focal' → name[crop] is always null (the `crop` attribute is kept, unused)
+        $cropInput = $named && $usage ? $hidden('td-media-field__crop', $name . '[crop]', $cropMode === 'focal' ? 'null' : ($crop ?? 'null')) : '';
+        $cropLabel = $L[$cropMode === 'focal' ? 'focalEdit' : 'crop'];
         $focalInput = $named && $focalOn ? $hidden('td-media-field__focal', $name . '[focal]', $focal ?? 'null') : '';
 
         if (!$filled) {
@@ -3682,7 +3690,7 @@ namespace {
             'crop-ratio' => $cropRatio,
             'crop-mode' => $cropMode,
             'crop-shape' => $cropShape,
-            'focal-point' => $focalOn,
+            'focal-point' => $focalOn && ($cropMode !== 'focal' || !empty($o['focal_point'])), // v0.113.0: implied by crop_mode focal, printed only when given
             'focal' => $focal,
             'hide-label' => $hideLabel,
             'hide-hints' => $hideHints,
@@ -3707,9 +3715,9 @@ namespace {
             . '<div class="td-media-field__tools"' . ($filled ? '' : ' hidden') . '>'
             . ($croppable
                 ? '<button type="button" class="td-media-field__tool td-media-field__crop-btn" aria-haspopup="dialog" aria-labelledby="'
-                    . $hid . '-crop-t ' . $hid . '-label" title="' . Td::e($L['crop']) . '"' . ($filled && $k === 'image' && $src !== null ? '' : ' hidden') . $dis . '>'
+                    . $hid . '-crop-t ' . $hid . '-label" title="' . Td::e($cropLabel) . '"' . ($filled && $k === 'image' && $src !== null ? '' : ' hidden') . $dis . '>'
                     . '<span class="td-media-field__icon" data-td-icon="crop" aria-hidden="true">' . Td::icon('crop') . '</span>'
-                    . '<span class="td-sr-only" id="' . $hid . '-crop-t">' . Td::e($L['crop']) . '</span></button>'
+                    . '<span class="td-sr-only" id="' . $hid . '-crop-t">' . Td::e($cropLabel) . '</span></button>'
                 : '')
             . '<button type="button" class="td-media-field__tool td-media-field__remove" aria-labelledby="' . $hid . '-remove-t ' . $hid . '-label" title="'
             . Td::e($L['remove']) . '"' . $dis . '><span class="td-media-field__icon" data-td-icon="close" aria-hidden="true">' . Td::icon('close') . '</span>'
@@ -3845,7 +3853,8 @@ namespace {
      * @internal v0.75.0 parseCropMode() / parseCropShape() of src/utils/media-field-model.js (CROP_MODE_CASES /
      * CROP_SHAPE_CASES parity): the canonical word (`pan` / `circle`) when $v is a string that equals it after a JS trim
      * and a lower-case, else null (absent, `box` / `rect`, unknown, not a string ⇒ nothing is printed — the default).
-     * Only the constant is ever printed, never the caller's string.
+     * Only the constant is ever printed, never the caller's string. v0.113.0: crop_mode allows `pan` | `focal`
+     * (td__media_crop_mode()).
      */
     function td__media_crop_word(mixed $v, string $word): ?string
     {
@@ -3855,6 +3864,12 @@ namespace {
         $ws = Td::JS_WS;
         $t = preg_replace('/^[' . $ws . ']+|[' . $ws . ']+$/uD', '', $v);
         return is_string($t) && strtolower($t) === $word ? $word : null;
+    }
+
+    /** @internal v0.113.0 parseCropMode() parity: `pan` | `focal` (the constant), else null (`box` / unknown → nothing printed). */
+    function td__media_crop_mode(mixed $v): ?string
+    {
+        return td__media_crop_word($v, 'pan') ?? td__media_crop_word($v, 'focal');
     }
 
     /** @internal v0.35 parseCropRatio() of src/utils/media-field-model.js: `free` (any case, JS-trimmed) or a valid ratio. */
@@ -3991,7 +4006,8 @@ namespace {
      * src/utils/media-field-model.js (GALLERY_CASES parity). src through td__media_url (refused → no image, item kept);
      * an invalid crop / focal → null; unknown keys ignored.
      * Options: label, helper_text, error_text, required, disabled, min, max (integer 1..100, default and ceiling 100),
-     * usage, croppable / crop_ratio / crop_mode / crop_shape (v0.75.0: `pan` / `circle`, else nothing printed) / focal_point (usage only — else dropped + ONE E_USER_WARNING), cover, aspect_ratio
+     * usage, croppable / crop_ratio / crop_mode / crop_shape (v0.75.0: `pan` / `circle`, v0.113.0 crop_mode `focal` — implies
+     * focal_point, every `name[i][crop]` null —, else nothing printed) / focal_point (usage only — else dropped + ONE E_USER_WARNING), cover, aspect_ratio
      * (`W/H`, `W:H` or one number; the tile ratio, default 1:1), preview_fit (cover|contain), accept_kind, prompt, id,
      * class, attrs (host: allowlisted; owned names and data-td-* reserved).
      * Fail closed (decision 15) — items not a list / > 100 / an item without a valid unique id / an id of another type /
@@ -4038,7 +4054,7 @@ namespace {
         $focalOn = false;
         $cropRatio = null;
         $crRaw = isset($o['crop_ratio']) && is_scalar($o['crop_ratio']) && !is_bool($o['crop_ratio']) ? (string) $o['crop_ratio'] : null;
-        $cropMode = td__media_crop_word($o['crop_mode'] ?? null, 'pan');
+        $cropMode = td__media_crop_mode($o['crop_mode'] ?? null);
         $cropShape = td__media_crop_word($o['crop_shape'] ?? null, 'circle');
         $v35 = !empty($o['croppable']) || !empty($o['focal_point']) || ($crRaw !== null && $crRaw !== '')
             || $cropMode !== null || $cropShape !== null;
@@ -4047,7 +4063,8 @@ namespace {
             $cropMode = $cropShape = null;
         } elseif ($v35) {
             $croppable = !empty($o['croppable']);
-            $focalOn = !empty($o['focal_point']);
+            // v0.113.0 (QĐ4): crop_mode 'focal' implies focal_point
+            $focalOn = !empty($o['focal_point']) || $cropMode === 'focal';
             if ($crRaw !== null && $crRaw !== '' && td__media_crop_ratio($crRaw)) {
                 $cropRatio = $crRaw;
             } elseif ($crRaw !== null && $crRaw !== '') {
@@ -4156,7 +4173,7 @@ namespace {
             'crop-ratio' => $cropRatio,
             'crop-mode' => $cropMode,
             'crop-shape' => $cropShape,
-            'focal-point' => $focalOn,
+            'focal-point' => $focalOn && ($cropMode !== 'focal' || !empty($o['focal_point'])), // v0.113.0: implied by crop_mode focal, printed only when given
             'cover' => $cover,
             'aspect-ratio' => $ratio !== null ? $ratioRaw : null,
             'preview-fit' => $fit,
@@ -4240,7 +4257,7 @@ namespace {
                     : '')
                 . ($croppable
                     ? '<button type="button" class="td-media-gallery__btn td-media-gallery__crop-btn" aria-haspopup="dialog" aria-label="'
-                        . Td::e($f($L['crop'], ['name' => $full])) . '"' . ($k === 'image' && $it['src'] !== '' ? '' : ' hidden') . $dis . '>' . $ico('crop') . '</button>'
+                        . Td::e($f($L[$cropMode === 'focal' ? 'focalEdit' : 'crop'], ['name' => $full])) . '"' . ($k === 'image' && $it['src'] !== '' ? '' : ' hidden') . $dis . '>' . $ico('crop') . '</button>'
                     : '')
                 . ($usage
                     ? '<button type="button" class="td-media-gallery__btn td-media-gallery__edit" aria-expanded="false" aria-label="' . Td::e($f($L['edit'], ['name' => $full])) . '">'
@@ -4265,7 +4282,8 @@ namespace {
                                 . ($cap !== '' ? ' value="' . Td::e($cap) . '"' : '') . $dis . '>')
                         . '</label>' . $capSpans
                     : '')
-                . ($named && $usage ? $hidden('td-media-gallery__crop', $name . '[' . $i . '][crop]', $it['crop'] ?? 'null') : '')
+                // v0.113.0 (QĐ4b): crop_mode 'focal' → name[i][crop] is always null (items[].crop kept, unused)
+                . ($named && $usage ? $hidden('td-media-gallery__crop', $name . '[' . $i . '][crop]', $cropMode === 'focal' ? 'null' : ($it['crop'] ?? 'null')) : '')
                 . ($named && $usage && $focalOn ? $hidden('td-media-gallery__focal', $name . '[' . $i . '][focal]', $it['focal'] ?? 'null') : '')
                 . '</li>';
         }

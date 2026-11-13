@@ -736,7 +736,9 @@
     "src/utils/media-field-model.js": [
       "src/utils/media-url.js"
     ],
-    "src/utils/media-picker-core.js": [],
+    "src/utils/media-picker-core.js": [
+      "src/utils/crop-geometry.js"
+    ],
     "src/utils/media-selection-group.js": [
       "src/utils/layers.js"
     ],

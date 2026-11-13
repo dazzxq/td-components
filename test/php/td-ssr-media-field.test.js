@@ -370,7 +370,7 @@ describe('php/td.php — td_media_field (v0.32.0, contract media-field@2)', opts
       ...shapes.map((v) => ['r', 'm1', { usage: true, croppable: true, crop_shape: v }]),
     ]);
     modes.forEach((input, i) => {
-      assert.equal(hostAttr(out[i].html, 'crop-mode'), parseCropMode(input) === 'pan' ? 'pan' : null, JSON.stringify(input));
+      assert.equal(hostAttr(out[i].html, 'crop-mode'), (parseCropMode(input) === 'box' ? null : parseCropMode(input)), JSON.stringify(input));
       assert.equal(hostAttr(out[i].html, 'crop-shape'), null);
       assert.equal(out[i].warns, 0);
       assert.ok(!out[i].html.includes('onclick'), out[i].html);
@@ -396,6 +396,24 @@ describe('php/td.php — td_media_field (v0.32.0, contract media-field@2)', opts
     assert.equal(hostAttr(spoof.html, 'crop-mode'), null);
     assert.equal(hostAttr(spoof.html, 'crop-shape'), null);
     assert.ok(!/crop-(mode|shape)/i.test(plain.html), 'box / rect print nothing');
+  });
+
+  test('v0.113 crop_mode focal: crop attribute kept, og[crop] = null, og[focal] implied (no focal_point), focalEdit label', () => {
+    const crop = { x: 0.1, y: 0.1, width: 0.5, height: 0.5 };
+    const [f, empty] = run([
+      ['og', 'm1', { usage: true, croppable: true, crop_mode: 'focal', crop, focal: { x: 0.3, y: 0.6 }, preview_src: '/a.jpg' }],
+      ['og', 'm1', { usage: true, croppable: true, crop_mode: ' FOCAL ', crop, preview_src: '/a.jpg' }],
+    ]);
+    for (const x of [f, empty]) {
+      assert.equal(x.warns, 0);
+      assert.equal(hostAttr(x.html, 'crop-mode'), 'focal');
+      assert.equal(hostAttr(x.html, 'focal-point'), null, 'implied, not printed');
+      assert.ok(hostAttr(x.html, 'crop'), 'the stored crop stays on the host (back on a switch to box)');
+      assert.ok(x.html.includes('<input type="hidden" class="td-media-field__crop" name="og[crop]" value="null">'), x.html);
+      assert.ok(x.html.includes('title="Điểm trọng tâm"'), x.html);
+    }
+    assert.ok(f.html.includes(`name="og[focal]" value="${esc('{"v":1,"x":0.3,"y":0.6}')}"`), f.html);
+    assert.ok(empty.html.includes('name="og[focal]" value="null"'), empty.html);
   });
 
   test('v0.75 crop_mode / crop_shape without usage: dropped + ONE warning (like crop_ratio); box / rect never warn', () => {

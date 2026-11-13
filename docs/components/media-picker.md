@@ -494,7 +494,7 @@ const outcome = await TdMediaPicker.open({
 | `autoSelectFirst` | `boolean` | theo chế độ | 0.67.0 (opt-in) → bật mặc định từ 0.68.0 → **từ 0.72.0 mặc định chỉ bật cho picker chọn MỘT ảnh (`selection.mode: 'single'`), tắt cho `multiple`**: chọn sẵn asset đầu tiên chọn được của lần tải danh sách đầu — [Tự chọn ảnh đầu](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670). Giá trị đã đặt thắng ở cả hai chế độ: chỉ boolean `false` mới tắt, mọi giá trị khác có mặt (kể cả `true`) bật; `null` / vắng = mặc định theo chế độ; lấy được từ defaults; `open({ autoSelectFirst: false })` tắt riêng lần mở, `open({ autoSelectFirst: true, selection: { mode: 'multiple' } })` bật cho picker nhiều ảnh |
 | `thumbLoader` | `true` \| `false` \| object cấu hình broker | `true` | 0.111.0: thumbnail tải có nhịp qua [thumb loader](thumb-loader.md). Object (ví dụ `{ wafBudget: { limit: 2000 } }`) chuyển cho `configureThumbBudget`. `false` = markup cũ (`src` + `loading="lazy"`) — [Thumbnail tải có nhịp](#thumbnail-tải-có-nhịp--thumbloader-01110) |
 | `onThumbGate` | `({ until, remainingMs }) => boolean \| void` | — | 0.111.0: CDN đang chặn ảnh. Trả `false` thì kit không hiện toast |
-| `crop` | `{ enabled, aspectRatio?, allowFocalPoint?, mode?, shape? }` | — | 0.35.0 (`mode` / `shape`: 0.75.0): `enabled: true` + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `[0.01, 100]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
+| `crop` | `{ enabled?, aspectRatio?, allowFocalPoint?, mode?, shape?, focalPoint? }` | — | 0.35.0 (`mode` / `shape`: 0.75.0; `mode: 'focal'` + `focalPoint`: 0.113.0): `enabled: true` (hoặc `mode: 'focal'`) + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `[0.01, 100]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
 
 - **Một picker một lúc**: gọi `open()` khi đã có picker mở → resolve ngay `{ status: 'cancelled', reason:
   'programmatic' }` + cảnh báo một lần (không chồng picker).
@@ -568,6 +568,18 @@ Luồng (giống dcms2: cắt **sau khi chọn**):
   (`usage.crop`) vẫn là hình chữ nhật/vuông theo toạ độ ảnh gốc; `circle` chỉ là hình khung. [Media field](media-field.md) tự đặt hai
   key này từ `crop-mode` / `crop-shape`.
 - `usage.focalPoint` chỉ có khi `allowFocalPoint: true` và người dùng bật điểm trọng tâm.
+- **`crop.mode: 'focal'` (0.113.0) — chỉ điểm trọng tâm**: `crop: { mode: 'focal' }` tự bật bước (vắng `enabled` vẫn bật;
+  `enabled: false` tường minh vẫn tắt). Bước là hộp chọn điểm (tiêu đề nhãn `focalTitle` "Chọn điểm trọng tâm", không khung,
+  không tỉ lệ — [Cropper › mode focal](cropper.md)); `resolveOptions` ép `allowFocalPoint: true`, `aspectRatio: null` (không
+  cảnh báo), `shape: 'rect'`. `crop.focalPoint` (`{ x, y }` 0..1, kẹp + làm tròn như `clampFocal`; sai → bỏ qua im lặng) là
+  điểm bắt đầu (chưa có → giữa ảnh), thành `cropResolved.focalPoint`. Kết quả luôn `usage = { crop: null, focalPoint }`.
+  [Media field](media-field.md) `crop-mode="focal"` tự đặt key này kèm `focal` hiện có.
+
+  ```js
+  const r = await TdMediaPicker.open({ selection: { mode: 'single', kinds: ['image'] },
+    crop: { mode: 'focal', focalPoint: saved ?? undefined } });
+  if (r.status === 'selected') save({ id: r.selection[0].assetId, focal: r.selection[0].usage.focalPoint }); // crop luôn null
+  ```
 - `selection.mode = 'multiple'` + `crop` → cảnh báo console **một lần**, bỏ crop (như dcms2: chọn nhiều không crop).
 - `aspectRatio` không phải số hữu hạn trong `[0.01, 100]` (gồm hai đầu) → bị từ chối + cảnh báo một lần, cắt **tự do**. Muốn nhập `"16:9"` thì tự đổi
   sang `16 / 9` (field làm việc này từ thuộc tính `crop-ratio`).
@@ -1370,6 +1382,7 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `title` · `titleImage` · `titleVideo` · `titleFile` | "Chọn media" · "Chọn ảnh" · "Chọn video" · "Chọn tài liệu" (option `title` thắng) |
 | `close` · `cancel` · `confirm` · `confirmCount` | "Đóng" · "Đóng" · "Chèn" · "Chèn ({n})" |
 | `cropTitle` · `cropBack` · `cropConfirm` · `cropUnavailable` (0.35) | "Cắt ảnh" · "Quay lại" · "Chèn" · "Không mở được ảnh để cắt." (nhãn bên trong vùng cắt: [`TdCropper.labels`](cropper.md#nhãn--tdcropperlabels)) |
+| `focalTitle` (0.113) | "Chọn điểm trọng tâm" — tiêu đề bước với `crop.mode: 'focal'` |
 | `search` · `searchPlaceholder` | "Tìm media" (nhãn ẩn) · "Tìm kiếm media…" |
 | `upload` · `results` · `grid` | "Tải lên" · "Kết quả" · "Media" |
 | `filters` · `filtersActive` · `filtersTitle` (0.36) | "Bộ lọc" · "Bộ lọc, {n} đang áp dụng" · "Bộ lọc" |

@@ -135,11 +135,14 @@ export function cropRatioInRange(r) {
 
 /**
  * v0.75.0 (cropper-pan M2) — `crop-mode` / `crop.mode` / PHP `crop_mode`: the SAME grammar as `<td-cropper mode>`
- * (trim + lower-case, allowlist): `pan` ⇒ `'pan'`; anything else (absent, `box`, unknown, empty, a non-string) ⇒ `'box'`.
- * @param {unknown} v @returns {'box'|'pan'}
+ * (trim + lower-case, allowlist): `pan` ⇒ `'pan'`; v0.113.0 `focal` ⇒ `'focal'` (only the focal point, never a crop);
+ * anything else (absent, `box`, unknown, empty, a non-string) ⇒ `'box'`.
+ * @param {unknown} v @returns {'box'|'pan'|'focal'}
  */
 export function parseCropMode(v) {
-  return typeof v === 'string' && v.trim().toLowerCase() === 'pan' ? 'pan' : 'box';
+  if (typeof v !== 'string') return 'box';
+  const t = v.trim().toLowerCase();
+  return t === 'pan' || t === 'focal' ? t : 'box';
 }
 
 /**
@@ -326,6 +329,8 @@ export const CROP_RATIO_CASES = Object.freeze([
 export const CROP_MODE_CASES = Object.freeze([
   ['pan', 'pan'], ['PAN', 'pan'], [' Pan\t', 'pan'], ['\n pan \n', 'pan'], ['\u00a0pan\u00a0', 'pan'], ['\ufeffpan', 'pan'], ['\u200bpan', 'box'],
   ['box', 'box'], ['', 'box'], ['   ', 'box'], ['pan2', 'box'], ['pa n', 'box'], ['panning', 'box'], ['free', 'box'],
+  // v0.113.0
+  ['focal', 'focal'], ['FOCAL', 'focal'], [' Focal\t', 'focal'], ['\u00a0focal', 'focal'], ['focals', 'box'], ['foc al', 'box'],
 ]);
 export const CROP_SHAPE_CASES = Object.freeze([
   ['circle', 'circle'], ['CIRCLE', 'circle'], [' Circle ', 'circle'], ['\tcircle\n', 'circle'], ['\u00a0circle', 'circle'], ['\u2003circle\u2003', 'circle'], ['cir\u0000cle', 'rect'],

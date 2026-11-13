@@ -539,12 +539,12 @@ field gọi `adapter.get` lười. Event `input` / `change` (`{ value, selection
 `TdMediaField.labels` (bảng đủ ở [media-field.md › Nhãn](../components/media-field.md#nhãn--tdmediafieldlabels)). PHP
 `td_media_field()` in nhãn mặc định — đổi nhãn → field render lại an toàn lúc nâng cấp.
 
-**Cắt ảnh (0.35.0)** — option `crop: { enabled, aspectRatio?, allowFocalPoint?, mode?, shape? }` (0.75.0: `mode: 'pan'` khung cố định kéo / phóng ảnh, `shape: 'circle'` khung tròn khi `pan` + tỉ lệ 1:1; field: `crop-mode` / `crop-shape`; hộp thoại `TdCropper.openDialog({ mode, shape })`) của `open()` / `configureDefaults` bật
+**Cắt ảnh (0.35.0)** — option `crop: { enabled, aspectRatio?, allowFocalPoint?, mode?, shape? }` (0.75.0: `mode: 'pan'` khung cố định kéo / phóng ảnh; 0.113.0: `mode: 'focal'` chỉ chọn điểm trọng tâm, không cần `enabled`, `shape: 'circle'` khung tròn khi `pan` + tỉ lệ 1:1; field: `crop-mode` / `crop-shape`; hộp thoại `TdCropper.openDialog({ mode, shape })`) của `open()` / `configureDefaults` bật
 bước cắt sau "Chèn" ([media-picker.md › Cắt ảnh](../components/media-picker.md#cắt-ảnh--option-crop-0350)); field
 `croppable` luôn tự đặt `crop` ở `open()` (không `croppable` → `{ enabled: false }`). `TdCropper` ([cropper.md](../components/cropper.md)):
 `TdCropper.presets` (preset toàn site, `{ label, ratio: number | null }[]`), `TdCropper.labels`, `TdCropper.openDialog(opts)`
 (Promise `applied` / `cancelled`, không reject). Nhãn picker thêm `cropTitle` "Cắt ảnh" · `cropBack` "Quay lại" ·
-`cropConfirm` "Chèn" · `cropUnavailable`; nhãn cắt của field: xem [media-field.md › Nhãn](../components/media-field.md#nhãn--tdmediafieldlabels).
+`cropConfirm` "Chèn" · `cropUnavailable` · `focalTitle` "Chọn điểm trọng tâm" (0.113.0, `crop: { mode: 'focal' }`: chỉ chọn điểm trọng tâm, `usage.crop` luôn `null`; field / gallery `crop-mode="focal"` thêm `focalEdit` "Điểm trọng tâm" + `focalTitle`); nhãn cắt của field: xem [media-field.md › Nhãn](../components/media-field.md#nhãn--tdmediafieldlabels).
 
 ---
 

@@ -3,8 +3,8 @@
  * td-datetime-picker (not a package export). The element that shows the selected value gets `title` = the full value
  * while its text is cut (…); the title is removed when the text fits, the placeholder is shown or the value is empty.
  *
- * One ResizeObserver per watcher (re-checks on resize, no polling). A value change re-checks in the NEXT frame (one per
- * change, coalesced) — never a synchronous layout read during render / setValue (that started style transitions from a
+ * One ResizeObserver per watcher (re-checks on resize, no polling). A value change or a resize re-checks in the NEXT
+ * frame (coalesced; never a layout read inside the ResizeObserver delivery) — never a synchronous layout read during render / setValue (that started style transitions from a
  * stale state, e.g. the datetime error border).
  */
 
@@ -43,7 +43,10 @@ export class ValueTitleWatcher {
     /** @type {Element|null} */
     this.el = null;
     this._raf = 0;
-    this._ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => this.sync()) : null;
+    // the resize check runs in the next frame too (coalesced): its scrollWidth read inside the RO delivery forces a
+    // layout that can resize a SHALLOWER observed element (e.g. a media grid reflowing after a card left) → WebKit
+    // "ResizeObserver loop completed with undelivered notifications"
+    this._ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => this.schedule()) : null;
   }
 
   /** Observe `el` (its initial ResizeObserver notification, after layout, does the first check). */

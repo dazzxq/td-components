@@ -113,7 +113,9 @@ const fill = (t, params) => String(t ?? '').replace(/\{(\w+)\}/g, (m, k) => (k i
  * @attr {string} alt @attr {string} crop - JSON v1 (kept as is)
  * @attr {boolean} croppable - v0.35 (usage only): "Cắt ảnh" button + the picker's crop step
  * @attr {string} crop-ratio - v0.35: `W/H` | `W:H` | number | `free` (absent → aspect-ratio, then free)
- * @attr {string} crop-mode - v0.75.0 (usage only): `pan` (the crop dialog keeps its frame still, the image moves — avatars) | `box` (default)
+ * @attr {string} crop-mode - v0.75.0 (usage only): `pan` (the crop dialog keeps its frame still, the image moves — avatars) | `box` (default);
+ *   v0.113.0 `focal`: the crop step only picks the focal point (button "Điểm trọng tâm"), `focal-point` implied, `name[crop]`
+ *   always `null` (an incoming `crop` is kept but unused), no crop preview
  * @attr {string} crop-shape - v0.75.0 (usage only): `circle` (round frame; only with `crop-mode="pan"` and a 1:1 crop) | `rect` (default)
  * @attr {boolean} focal-point - v0.35 (usage only): submit `name[focal]` (+ edited in the crop dialog when croppable)
  * @attr {string} focal - v0.35: JSON v1 `{"v":1,"x","y"}` (kept as is)
@@ -145,6 +147,10 @@ export class TdMediaField extends TdFormElement {
     /** v0.35 */
     crop: 'Cắt ảnh',
     cropError: 'Không tải được ảnh để cắt.',
+    /** v0.113.0: the crop button with `crop-mode="focal"` */
+    focalEdit: 'Điểm trọng tâm',
+    /** v0.113.0: the dialog title with `crop-mode="focal"` (same key as the gallery / picker) */
+    focalTitle: 'Chọn điểm trọng tâm',
   };
 
   static get observedAttributes() {
@@ -278,7 +284,8 @@ export class TdMediaField extends TdFormElement {
    */
   get selection() {
     if (!this._value) return [];
-    const c = this._cropRaw ? parseCrop(this._cropRaw) : null;
+    const cr = this._effCropRaw();
+    const c = cr ? parseCrop(cr) : null;
     const f = this._focalOn() && this._focalRaw ? parseFocal(this._focalRaw) : null;
     return [{
       assetId: this._value,
@@ -363,8 +370,19 @@ export class TdMediaField extends TdFormElement {
   /** @private v0.35: the crop UI is on (`croppable` + `usage`) */
   _croppable() { return this.hasAttribute('croppable') && this._usageFor35(); }
 
-  /** @private v0.35: `name[focal]` is submitted (`focal-point` + `usage`) */
-  _focalOn() { return this.hasAttribute('focal-point') && this._usageFor35(); }
+  /** @private v0.35: `name[focal]` is submitted (`focal-point` + `usage`; v0.113.0: implied by `crop-mode="focal"`) */
+  _focalOn() { return (this.hasAttribute('focal-point') || this._focalMode()) && this._usageFor35(); }
+
+  /**
+   * @private v0.113.0 (QĐ4 / QĐ4b): `crop-mode="focal"` + `usage` — the crop step only picks the focal point; the
+   * effective crop is always null (the stored `crop` attribute / value is kept, unused, so `box` brings it back)
+   */
+  _focalMode() {
+    return parseCropMode(this.getAttribute('crop-mode')) === 'focal' && this.hasAttribute('usage');
+  }
+
+  /** @private v0.113.0: the crop the field uses (preview, selection, FormData, state): null in focal mode */
+  _effCropRaw() { return this._focalMode() ? null : this._cropRaw; }
 
   /**
    * @private v0.35 (decision 27): the locked crop ratio (w / h) or null (free): `crop-ratio` (`free` → null; invalid →
@@ -385,6 +403,12 @@ export class TdMediaField extends TdFormElement {
     // review R1 #5: the frame's aspect-ratio is valid up to 10000:1, the crop ratio only in [0.01, 100]
     this._warnOnce('crop-ratio-frame', 'td-media-field: aspect-ratio is outside the crop ratio range [0.01, 100] — the crop is free.');
     return null;
+  }
+
+  /** @private v0.113.0: the current focal point (`{ x, y }` copy) or null */
+  _focalPoint() {
+    const f = this._focalRaw ? parseFocal(this._focalRaw)?.focal : null;
+    return f ? { ...f } : null;
   }
 
   /** @private */
@@ -568,6 +592,7 @@ export class TdMediaField extends TdFormElement {
     const described = [help && !err ? `${id}-help` : '', err ? `${id}-error` : ''].filter(Boolean).join(' ');
     const croppable = this._croppable();
     this._focalOn(); // warns once when focal-point / focal lack usage
+    const cropLabel = this._label(this._focalMode() ? 'focalEdit' : 'crop'); // v0.113.0
     let inner;
     if (!filled) {
       const prompt = this.getAttribute('prompt') || this._label(`prompt.${kind}`);
@@ -592,8 +617,8 @@ export class TdMediaField extends TdFormElement {
       + inner + `<span class="td-sr-only" id="${e(id)}-state">${e(state)}</span></button>`
       + `<div class="td-media-field__tools"${filled ? '' : ' hidden'}>`
       + (croppable
-        ? `<button type="button" class="td-media-field__tool td-media-field__crop-btn" aria-haspopup="dialog" aria-labelledby="${e(id)}-crop-t ${e(id)}-label" title="${e(this._label('crop'))}"${this._cropBtnShown() ? '' : ' hidden'}${dis}>`
-          + `<span class="td-media-field__icon" data-td-icon="crop" aria-hidden="true"></span><span class="td-sr-only" id="${e(id)}-crop-t">${e(this._label('crop'))}</span></button>`
+        ? `<button type="button" class="td-media-field__tool td-media-field__crop-btn" aria-haspopup="dialog" aria-labelledby="${e(id)}-crop-t ${e(id)}-label" title="${e(cropLabel)}"${this._cropBtnShown() ? '' : ' hidden'}${dis}>`
+          + `<span class="td-media-field__icon" data-td-icon="crop" aria-hidden="true"></span><span class="td-sr-only" id="${e(id)}-crop-t">${e(cropLabel)}</span></button>`
         : '')
       + `<button type="button" class="td-media-field__tool td-media-field__remove" aria-labelledby="${e(id)}-remove-t ${e(id)}-label" title="${e(this._label('remove'))}"${dis}>`
       + `<span class="td-media-field__icon" data-td-icon="close" aria-hidden="true"></span><span class="td-sr-only" id="${e(id)}-remove-t">${e(this._label('remove'))}</span></button></div></div>`
@@ -803,9 +828,10 @@ export class TdMediaField extends TdFormElement {
     if (!img) return;
     const square = this._square();
     const frameRatio = !square && this._croppable() && this._kind === 'image' ? this._ratio() : null;
+    const cropRaw = this._effCropRaw(); // v0.113.0: no crop CSS in focal mode
     const crop = square
-      ? (this._croppable() && this._kind === 'image' && this._cropRaw ? parseCrop(this._cropRaw)?.crop : null)
-      : (frameRatio && this._cropRaw ? parseCrop(this._cropRaw)?.crop : null);
+      ? (this._croppable() && this._kind === 'image' && cropRaw ? parseCrop(cropRaw)?.crop : null)
+      : (frameRatio && cropRaw ? parseCrop(cropRaw)?.crop : null);
     let vars = null;
     let viewRatio = 0;
     if (crop) {
@@ -859,6 +885,7 @@ export class TdMediaField extends TdFormElement {
     }
     // review SEC-1: the restore state carries no preview URL / server label (re-fetched with adapter.get on restore)
     this._setFormValue(fd, encodeState({ id: this._value, alt: this._alt, cropRaw: this._cropRaw, focalRaw: this._focalRaw }));
+    // v0.113.0: the restore state keeps the stored crop (unused in focal mode, back on a switch to box); FormData uses _effCropRaw
     if (this.hasAttribute('required') && !this._value) {
       const kind = this._kinds()[0];
       this._setValidity({ valueMissing: true },
@@ -870,7 +897,7 @@ export class TdMediaField extends TdFormElement {
 
   /** @private the FormData entries (decision 24; v0.35 decision 29: + `name[focal]` with `focal-point`) */
   _entries() {
-    return fieldEntries(this.getAttribute('name'), { id: this._value, alt: this._alt, cropRaw: this._cropRaw, focalRaw: this._focalRaw },
+    return fieldEntries(this.getAttribute('name'), { id: this._value, alt: this._alt, cropRaw: this._effCropRaw(), focalRaw: this._focalRaw },
       this.hasAttribute('usage'), { focal: this._focalOn() });
   }
 
@@ -937,8 +964,11 @@ export class TdMediaField extends TdFormElement {
         this._focalRaw = this._focalFromAttr();
         this._syncForm();
         return;
-      case 'crop-ratio':
       case 'crop-mode':
+        // v0.113.0: focal <-> box / pan changes the button label, the implied focal entry, the crop preview and FormData
+        this._update();
+        return;
+      case 'crop-ratio':
       case 'crop-shape':
         return; // read when the picker / crop dialog opens
       case 'preview-fit':
@@ -973,14 +1003,16 @@ export class TdMediaField extends TdFormElement {
       selection: { mode: 'single', initialIds: this._value ? [this._value] : [], kinds: this._kinds() },
       // v0.35 decision 28 (review R2 #7): ALWAYS the highest priority — a site's pickerOptions.crop / configureDefaults
       // ({ crop }) never opens the crop step for a field that is not croppable
-      crop: this._croppable()
-        ? {
-          enabled: true, aspectRatio: this._cropRatio(), allowFocalPoint: this._focalOn(),
-          // v0.75.0: only a non-default value is passed (absent attributes ⇒ the exact 0.74 `crop` object)
-          ...(parseCropMode(this.getAttribute('crop-mode')) === 'pan' ? { mode: 'pan' } : {}),
-          ...(parseCropShape(this.getAttribute('crop-shape')) === 'circle' ? { shape: 'circle' } : {}),
-        }
-        : { enabled: false },
+      crop: !this._croppable() ? { enabled: false }
+        : this._focalMode()
+          // v0.113.0 (QĐ4a / QĐ3b): the focal step, starting from the field's current focal point
+          ? { enabled: true, mode: 'focal', allowFocalPoint: true, ...(this._focalPoint() ? { focalPoint: this._focalPoint() } : {}) }
+          : {
+            enabled: true, aspectRatio: this._cropRatio(), allowFocalPoint: this._focalOn(),
+            // v0.75.0: only a non-default value is passed (absent attributes ⇒ the exact 0.74 `crop` object)
+            ...(parseCropMode(this.getAttribute('crop-mode')) === 'pan' ? { mode: 'pan' } : {}),
+            ...(parseCropShape(this.getAttribute('crop-shape')) === 'circle' ? { shape: 'circle' } : {}),
+          },
     };
     const label = this.getAttribute('label');
     if (label) opts.title = label;
@@ -1041,8 +1073,10 @@ export class TdMediaField extends TdFormElement {
     if (!asset) preview.kind = this._kind;
     const croppable = this._croppable();
     const focalOn = this._focalOn();
+    const focalMode = this._focalMode();
     // table 28b: the crop step's result (croppable only); the UI path → serializeCrop / serializeFocal
-    const cropRaw = croppable ? serializeCrop(sel.usage?.crop?.normalized) : null;
+    // v0.113.0 (QĐ4b): focal mode → a picker result never sets a crop
+    const cropRaw = croppable && !focalMode ? serializeCrop(sel.usage?.crop?.normalized) : null;
     const focalRaw = croppable && focalOn ? serializeFocal(sel.usage?.focalPoint) : null;
     if (sel.assetId === this._value) {
       if (!croppable) {
@@ -1052,7 +1086,7 @@ export class TdMediaField extends TdFormElement {
       }
       // croppable: refresh the asset / preview AND apply the crop step's crop + focal; numbers equal (± 1e-6) → the
       // original strings are kept byte-identical, no event
-      const cropSame = sameNums(cropForCompare(this._cropRaw ? parseCrop(this._cropRaw)?.crop : null),
+      const cropSame = focalMode || sameNums(cropForCompare(this._cropRaw ? parseCrop(this._cropRaw)?.crop : null),
         cropForCompare(cropRaw ? parseCrop(cropRaw).crop : null), CROP_KEYS);
       const focalSame = !focalOn
         || sameNums(this._focalRaw ? parseFocal(this._focalRaw)?.focal : null, focalRaw ? parseFocal(focalRaw).focal : null, ['x', 'y']);
@@ -1184,34 +1218,41 @@ export class TdMediaField extends TdFormElement {
     if (gen !== this._pickGen) return;
     if (!source) { release(); return; }
     const focalOn = this._focalOn();
-    const ratio = this._cropRatio();
-    const crop = this._cropRaw ? parseCrop(this._cropRaw)?.crop ?? null : null;
-    const focal = focalOn && this._focalRaw ? parseFocal(this._focalRaw)?.focal ?? null : null;
+    const focalMode = this._focalMode();
     const opener = this._part('crop') || btn;
-    let res;
-    try {
-      res = await openCropDialog({
-        ...source,
-        themeRoot: this, // v0.42.0 (ADR 0020)
-        alt: this._alt || this._previewAlt,
-        aspectRatio: ratio,
+    const common = { ...source, themeRoot: this /* v0.42.0 (ADR 0020) */, alt: this._alt || this._previewAlt, nested: false, signal: ctrl.signal, opener };
+    let dialogOpts;
+    if (focalMode) {
+      // v0.113.0 (QĐ3b / QĐ4b): no frame, no ratio, no crop in; the current focal point is the start
+      dialogOpts = {
+        ...common, mode: 'focal', aspectRatio: null, shape: 'rect', crop: null, focalPoint: this._focalPoint(),
+        allowFocalPoint: true, title: this._label('focalTitle'),
+      };
+    } else {
+      const crop = this._cropRaw ? parseCrop(this._cropRaw)?.crop ?? null : null;
+      const focal = focalOn && this._focalRaw ? parseFocal(this._focalRaw)?.focal ?? null : null;
+      dialogOpts = {
+        ...common,
+        aspectRatio: this._cropRatio(),
         mode: parseCropMode(this.getAttribute('crop-mode')), // v0.75.0: `pan` only reaches the cropper
         shape: parseCropShape(this.getAttribute('crop-shape')),
         crop: crop ? { ...crop } : null,
         focalPoint: focal ? { ...focal } : null,
         allowFocalPoint: focalOn,
         title: this._label('crop'), // the dialog appends " · {ratio}" itself when the ratio is locked
-        nested: false,
-        signal: ctrl.signal,
-        opener,
-      });
+      };
+    }
+    let res;
+    try {
+      res = await openCropDialog(dialogOpts);
     } catch (err) {
       if (release()) console.warn(`td-media-field: the crop dialog failed (${err && typeof err.name === 'string' ? err.name : 'error'})`);
       return;
     }
     if (!release() || !this.isConnected) return;
     if (!res || res.status !== 'applied' || !res.changed) return;
-    const cropRaw = res.crop ? serializeCrop(res.crop.normalized) : null;
+    // v0.113.0 (QĐ4b): a focal-mode result never sets the crop (the stored one stays, unused)
+    const cropRaw = focalMode ? this._cropRaw : res.crop ? serializeCrop(res.crop.normalized) : null;
     const focalRaw = focalOn ? (res.focalPoint ? serializeFocal(res.focalPoint) : null) : this._focalRaw;
     this._cropRaw = cropRaw;
     this._focalRaw = focalRaw;

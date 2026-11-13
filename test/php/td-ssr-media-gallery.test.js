@@ -146,7 +146,7 @@ describe('php/td.php — td_media_gallery (v0.43.0, contract media-gallery@2; @1
       ...shapes.map((v) => ['c', items, { usage: true, croppable: true, crop_shape: v }]),
     ]);
     modes.forEach((input, i) => {
-      assert.equal(hostAttr(out[i].html, 'crop-mode'), parseCropMode(input) === 'pan' ? 'pan' : null, JSON.stringify(input));
+      assert.equal(hostAttr(out[i].html, 'crop-mode'), (parseCropMode(input) === 'box' ? null : parseCropMode(input)), JSON.stringify(input));
       assert.equal(hostAttr(out[i].html, 'crop-shape'), null);
       assert.deepEqual(out[i].warns, []);
       assert.ok(!out[i].html.includes('onclick'), out[i].html);
@@ -170,6 +170,21 @@ describe('php/td.php — td_media_gallery (v0.43.0, contract media-gallery@2; @1
     assert.equal(hostAttr(spoof.html, 'crop-mode'), null);
     assert.equal(hostAttr(spoof.html, 'crop-shape'), null);
     assert.ok(!/crop-(mode|shape)/i.test(plain.html), 'box / rect print nothing');
+  });
+
+  test('v0.113 crop_mode focal: per tile [crop] = null, [focal] implied (no focal_point), focalEdit label', () => {
+    const crop = { x: 0.1, y: 0.1, width: 0.5, height: 0.5 };
+    const { html, warns } = one('g', [{ id: 'm1', src: '/a.jpg', crop }, { id: 'm2', src: '/b.jpg', crop, focal: { x: 0.2, y: 0.8 } }],
+      { usage: true, croppable: true, crop_mode: 'focal' });
+    assert.deepEqual(warns, []);
+    assert.equal(hostAttr(html, 'crop-mode'), 'focal');
+    assert.equal(hostAttr(html, 'focal-point'), null, 'implied, not printed');
+    const fd = Object.fromEntries(entries(html));
+    assert.equal(fd['g[0][crop]'], 'null');
+    assert.equal(fd['g[1][crop]'], 'null');
+    assert.equal(fd['g[0][focal]'], 'null');
+    assert.equal(fd['g[1][focal]'], '{"v":1,"x":0.2,"y":0.8}');
+    assert.ok(html.includes('aria-label="Điểm trọng tâm Ảnh 1 trên 2: m1"'), html);
   });
 
   test('v0.75 crop_mode / crop_shape without usage: dropped + ONE warning; box / rect never warn', () => {

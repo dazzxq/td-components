@@ -1625,3 +1625,61 @@ describe('v0.110.0 loadMore / pageSize auto / maxPageSize (plan v0.110.0-media-p
     }
   });
 });
+
+describe('v0.113.0 cropResolved: crop.mode = focal (plan v0.113.0-focal-only-mode QĐ3 / QĐ3a / QĐ3b)', () => {
+  const FOCAL = { aspectRatio: null, allowFocalPoint: true, mode: 'focal', shape: 'rect' };
+  const run = (crop, sel) => {
+    _resetCoreWarnings();
+    const warns = [];
+    const c = resolveOptions({ adapter: adapter() }, { crop, ...(sel ? { selection: sel } : {}) }, { warn: (m) => warns.push(m) }).cropResolved;
+    return { c, warns };
+  };
+
+  it('focal turns the step on without `enabled`; an explicit enabled: false still turns it off', () => {
+    assert.deepEqual(run({ mode: 'focal' }).c, { ...FOCAL, focalPoint: null });
+    assert.deepEqual(run({ mode: ' FOCAL\n' }).c, { ...FOCAL, focalPoint: null });
+    assert.deepEqual(run({ enabled: true, mode: 'focal' }).c, { ...FOCAL, focalPoint: null });
+    assert.equal(run({ enabled: false, mode: 'focal' }).c, null);
+    // only `focal` opens without `enabled` — box / pan keep the v0.35 gate
+    assert.equal(run({ mode: 'pan' }).c, null);
+    assert.equal(run({ mode: 'box' }).c, null);
+    assert.equal(run({ mode: 'focals' }).c, null);
+    // a higher layer switches a focal default off (the media field always passes `crop`)
+    assert.equal(resolveOptions({ adapter: adapter(), crop: { mode: 'focal' } }, { crop: { enabled: false } }).cropResolved, null);
+  });
+
+  it('forces allowFocalPoint true, aspectRatio null (no warning), shape rect', () => {
+    const { c, warns } = run({ mode: 'focal', aspectRatio: 16 / 9, allowFocalPoint: false, shape: 'circle' });
+    assert.deepEqual(c, { ...FOCAL, focalPoint: null });
+    const bad = run({ mode: 'focal', aspectRatio: 'x' });
+    assert.deepEqual(bad.c, { ...FOCAL, focalPoint: null });
+    assert.deepEqual([...warns, ...bad.warns], [], 'a frame-less mode never warns about the ratio');
+  });
+
+  it('crop.focalPoint passes through clampFocal; invalid → null, silently', () => {
+    assert.deepEqual(run({ mode: 'focal', focalPoint: { x: 0.25, y: 0.75 } }).c.focalPoint, { x: 0.25, y: 0.75 });
+    assert.deepEqual(run({ mode: 'focal', focalPoint: { x: 1.5, y: -2 } }).c.focalPoint, { x: 1, y: 0 });
+    assert.deepEqual(run({ mode: 'focal', focalPoint: { x: 0.1234567, y: 0.5 } }).c.focalPoint, { x: 0.123457, y: 0.5 });
+    for (const bad of [null, undefined, 'x', 1, [], { x: NaN, y: 0 }, { x: '0.5', y: 0.5 }, { x: 0.5 }]) {
+      const { c, warns } = run({ mode: 'focal', focalPoint: bad });
+      assert.equal(c.focalPoint, null, JSON.stringify(bad));
+      assert.deepEqual(warns, []);
+    }
+  });
+
+  it('box / pan are unchanged (no focalPoint key); multiple still drops the step and warns once', () => {
+    assert.deepEqual(run({ enabled: true, mode: 'pan', focalPoint: { x: 0.5, y: 0.5 } }).c, { aspectRatio: null, allowFocalPoint: false, mode: 'pan', shape: 'rect' });
+    assert.deepEqual(run({ enabled: true, focalPoint: { x: 0.5, y: 0.5 } }).c, { aspectRatio: null, allowFocalPoint: false, mode: 'box', shape: 'rect' });
+    const m = run({ mode: 'focal' }, { mode: 'multiple' });
+    assert.equal(m.c, null);
+    assert.equal(m.warns.length, 1);
+    assert.match(m.warns[0], /single/);
+  });
+
+  it('the crop.mode grammar = parseCropMode (focal included)', () => {
+    for (const input of ['focal', 'FOCAL', ' Focal\t', ' focal', 'focal2', 'foc al', '']) {
+      const c = run({ enabled: true, mode: input }).c;
+      assert.equal(c.mode, parseCropMode(input), JSON.stringify(input));
+    }
+  });
+});

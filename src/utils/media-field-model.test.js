@@ -241,3 +241,15 @@ describe('v0.75.0 parseCropMode / parseCropShape (the <td-cropper mode / shape> 
     assert.equal(parseCropMode('pan;x'), 'box');
   });
 });
+
+describe('v0.113.0 parseCropMode: focal', () => {
+  it('focal is the third word of the allowlist (same trim / case rules), anything near it is box', () => {
+    for (const ok of ['focal', 'FOCAL', ' Focal\t', '\n focal \n', ' focal ', '﻿focal']) assert.equal(parseCropMode(ok), 'focal', JSON.stringify(ok));
+    for (const bad of ['focals', 'foc al', 'focal;x', 'focal\u0000', '​focal', 'focus', 'focal-point', 'focalpoint']) {
+      assert.equal(parseCropMode(bad), 'box', JSON.stringify(bad));
+    }
+    assert.equal(parseCropShape('focal'), 'rect');
+    assert.equal(parseCropMode('pan'), 'pan');
+    assert.equal(parseCropMode('box'), 'box');
+  });
+});

@@ -74,3 +74,12 @@ export const PanLarge = {
   name: 'Pan: ảnh lớn 4000 × 3000',
   ...story(' natural-width="4000" natural-height="3000" mode="pan" aspect-ratio="1:1" shape="circle"', { img: '/cropper/crop-large.png' }),
 };
+
+// v0.113.0 — mode="focal": a focal point only, no crop box (the server crops around the point). Press anywhere on the
+// image to place the point and keep dragging it; arrows on the marker; "Đặt lại" goes back to the starting value.
+
+/** Focal only, starting at a given point (no value ⇒ the centre, without an event). */
+export const FocalOnly = {
+  name: 'Chỉ điểm trọng tâm',
+  ...story(' natural-width="1600" natural-height="900" mode="focal" focal=\'{"v":1,"x":0.35,"y":0.6}\''),
+};

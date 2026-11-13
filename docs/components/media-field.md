@@ -320,6 +320,7 @@ Gửi form: `og[id]=a_9f2c`, `og[alt]=…`, `og[crop]={"v":1,…}`, `og[focal]={
 |---|---|
 | `croppable` | Bật cắt ảnh: nút icon **"Cắt ảnh"** (cạnh X) + bước cắt khi chọn ảnh qua picker |
 | `crop-mode` | 0.75.0: `pan` \| `box` (mặc định). `pan` = hộp cắt giữ khung cố định, người dùng kéo / phóng **ảnh** (avatar) — xem [Cropper › mode](cropper.md#hai-kiểu-thao-tác--mode-0730). Cắt khoảng trắng, không phân biệt hoa thường; giá trị lạ = `box`, im lặng. Áp cho cả nút "Cắt ảnh" và bước cắt của picker (thắng `pickerOptions.crop`). Cần `usage` + `croppable` |
+| `crop-mode="focal"` | 0.113.0: chỉ chọn **điểm trọng tâm**, không bao giờ cắt — xem [Chỉ điểm trọng tâm](#chỉ-điểm-trọng-tâm--crop-modefocal-01130) |
 | `crop-shape` | 0.75.0: `circle` \| `rect` (mặc định). `circle` = khung tròn trong hộp cắt; chỉ có tác dụng khi `crop-mode="pan"` **và** tỉ lệ cắt đang là 1:1 (ví dụ `crop-ratio="1"`), ngoài ra cropper cảnh báo một lần và vẽ khung chữ nhật. Chỉ đổi hình khung; ảnh xem trước và `name[crop]` không đổi (vẫn hình vuông) — muốn avatar tròn, bo tròn ảnh xem trước bằng CSS của site (xem dưới). Giá trị lạ = `rect` |
 | `crop-ratio` | Tỉ lệ khung cắt: `W/H` \| `W:H` \| số \| `free`; tỉ lệ phải trong **[0.01, 100]**. **Vắng** (hoặc sai / ngoài khoảng: một cảnh báo) → theo `aspect-ratio` của khung (khung ngoài [0.01, 100] → tự do + cảnh báo); vắng cả hai → tự do (như dcms2 tách tỉ lệ cắt khỏi tỉ lệ hiển thị) |
 | `focal-point` | Bật điểm trọng tâm: công cụ trong hộp cắt (khi `croppable`) + mục thứ tư `name[focal]` |
@@ -379,6 +380,27 @@ phát event, nên `detail.selection` luôn là state mới.
 Chỉ crop do **UI cắt** tạo ra (bước cắt của picker, "Áp dụng") đi qua bộ chuẩn hoá (6 chữ số thập phân, luôn hợp lệ với
 `parseCrop`); mọi đường khác giữ đúng ngữ nghĩa 0.34.
 
+#### Chỉ điểm trọng tâm — `crop-mode="focal"` (0.113.0)
+
+Site tự cắt ảnh ở server theo điểm trọng tâm (render ảnh gốc), người dùng chỉ chọn **một điểm**:
+
+```html
+<td-media-field name="og" usage croppable crop-mode="focal" aspect-ratio="1.91"></td-media-field>
+```
+
+- Nút icon (cạnh X) đọc **"Điểm trọng tâm"** (nhãn `TdMediaField.labels.focalEdit`) và mở hộp chọn điểm có tiêu đề `focalTitle` "Chọn điểm trọng tâm"
+  ([Cropper › mode focal](cropper.md)): không khung cắt, không tỉ lệ, bắt đầu từ `focal` hiện tại (chưa có → giữa ảnh).
+  Bước của picker khi chọn ảnh cũng là bước chọn điểm (`pickerOptions` field tự dựng:
+  `crop: { enabled: true, mode: 'focal', allowFocalPoint: true, focalPoint }`, `focalPoint` = giá trị `focal` hiện có).
+- `focal-point` được **ngầm bật**: luôn gửi `og[focal]` (JSON v1 hoặc `null`), không cần thuộc tính `focal-point`.
+- `og[crop]` **luôn `null`**, `selection[0].usage.crop` luôn `null`, ảnh xem trước không áp CSS cắt. Thuộc tính `crop`
+  (hoặc `usage.crop` của `setSelection` / kết quả picker) bị **bỏ qua** cho trạng thái hiệu lực nhưng **không bị xoá**:
+  đổi `crop-mode` về `box` thì thấy lại crop cũ. Kết quả picker / hộp chọn điểm không bao giờ đặt crop.
+- `crop-ratio` / `crop-shape` bị bỏ qua ở chế độ này; `aspect-ratio` vẫn chỉ là khung xem trước. Vẫn cần `usage` +
+  `croppable` (thiếu `croppable` → không có nút / bước chọn điểm, chỉ round-trip `focal` như `focal-point`).
+- Đổi `crop-mode` lúc chạy → nhãn nút, mục `og[focal]`, `og[crop]` và ảnh xem trước cập nhật tại chỗ, không phát sự kiện.
+- PHP: `'crop_mode' => 'focal'` in `crop-mode="focal"`, hidden `og[crop]` = `null` và tự in hidden `og[focal]`.
+
 #### Avatar tròn (0.75.0)
 
 ```html
@@ -398,6 +420,7 @@ khung 1:1 (`aspect-ratio="1"`): `td-media-field[name="avatar"] :is(.td-media-fie
     'croppable'   => true,                       // in nút icon "Cắt ảnh" (ẩn tới khi JS chạy, như X)
     'crop_ratio'  => '1.91',                     // tuỳ chọn; vắng → theo aspect_ratio; 'free' → tự do
     // 'crop_mode' => 'pan', 'crop_shape' => 'circle',  // 0.75.0, tuỳ chọn: in crop-mode="pan" / crop-shape="circle"
+    // 'crop_mode' => 'focal',                        // 0.113.0: chỉ điểm trọng tâm — og[crop] luôn null, tự in og[focal]
     'focal_point' => true,                       // in hidden og[focal]
     'alt'   => $seo->og_alt,
     'crop'  => $seo->og_crop,                    // mảng x/y/width/height | JSON v1 | null — in như 0.34
@@ -407,7 +430,7 @@ khung 1:1 (`aspect-ratio="1"`): `td-media-field[name="avatar"] :is(.td-media-fie
 ]) ?>
 ```
 
-`focal` / `crop_ratio` sai → bỏ + một `E_USER_WARNING`. `crop_mode` / `crop_shape` (0.75.0) chỉ nhận `pan` / `circle`, luật chuẩn hoá đủ ở [Adapter PHP › td_media_field](../guides/php-adapter.md#td_media_field-0320). Phần in crop **không đổi** so với 0.34 (cùng byte). Bốn option
+`focal` / `crop_ratio` sai → bỏ + một `E_USER_WARNING`. `crop_mode` / `crop_shape` (0.75.0) chỉ nhận `pan` / `circle` (0.113.0: `crop_mode` nhận thêm `focal`), luật chuẩn hoá đủ ở [Adapter PHP › td_media_field](../guides/php-adapter.md#td_media_field-0320). Phần in crop **không đổi** so với 0.34 (cùng byte). Bốn option
 0.35 thiếu `usage` → bỏ cả bốn + một `E_USER_WARNING`. Không có JS: hidden `og[crop]` / `og[focal]` gửi lại đúng giá trị server in ra; nút "Cắt ảnh" ẩn.
 Bảng option đầy đủ: [Adapter PHP › td_media_field](../guides/php-adapter.md#td_media_field-0320).
 
@@ -466,7 +489,7 @@ X / cắt là nút tròn nằm trong góc khung). Khung ảnh không bao giờ r
 | `crop` | JSON v1 | — | Crop mặc định (usage); sai định dạng → coi như `null` |
 | `croppable` | boolean | — | 0.35: nút icon "Cắt ảnh" + bước cắt khi chọn (cần `usage`) |
 | `crop-ratio` | `W/H` \| `W:H` \| số \| `free` | theo `aspect-ratio` | 0.35: tỉ lệ khung cắt |
-| `crop-mode` | `box` \| `pan` | `box` | 0.75.0: kiểu thao tác của hộp cắt (cần `usage` + `croppable`) |
+| `crop-mode` | `box` \| `pan` \| `focal` | `box` | 0.75.0: kiểu thao tác của hộp cắt (cần `usage` + `croppable`); 0.113.0 `focal` = chỉ điểm trọng tâm, `name[crop]` luôn `null` |
 | `crop-shape` | `rect` \| `circle` | `rect` | 0.75.0: hình khung của hộp cắt; tròn chỉ khi `pan` + tỉ lệ 1:1 |
 | `focal-point` | boolean | — | 0.35: điểm trọng tâm + mục `name[focal]` (cần `usage`) |
 | `focal` | JSON v1 `{"v":1,"x","y"}` | — | 0.35: focal mặc định; sai → `null` |
@@ -510,6 +533,8 @@ phát event.
 | `remove` | "Gỡ" (nút X có tên trợ năng "Gỡ {nhãn}", tooltip "Gỡ") |
 | `crop` | "Cắt ảnh" (0.35; nút icon có tên "Cắt ảnh {nhãn}", tooltip "Cắt ảnh"; tiêu đề hộp cắt = "Cắt ảnh · {tỉ lệ}" khi khoá) |
 | `cropError` | "Không tải được ảnh để cắt." (0.35; khi `adapter.get` lỗi không có `userMessage` / không có URL ảnh an toàn) |
+| `focalEdit` | "Điểm trọng tâm" (0.113; nút chọn điểm với `crop-mode="focal"`) |
+| `focalTitle` | "Chọn điểm trọng tâm" (0.113; tiêu đề hộp chọn điểm với `crop-mode="focal"`) |
 | `alt` | "Mô tả ảnh (alt)" |
 | `empty` | "Chưa chọn" (đọc cho trình đọc màn hình) |
 | `selected` | "Đã chọn: {name}" |

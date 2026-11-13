@@ -70,12 +70,14 @@ if (res.status === 'applied' && res.changed) {
 
 ## Hai kiểu thao tác — `mode` (0.73.0)
 
-Cùng một kết quả (`CropValue`), hai cách làm việc trên ảnh. Chọn bằng attribute `mode`:
+Cùng một kết quả (`CropValue`), hai cách làm việc trên ảnh; từ 0.113.0 thêm `focal` (chỉ điểm trọng tâm, không crop).
+Chọn bằng attribute `mode`:
 
 | `mode` | Ai di chuyển | Khung | Dùng cho |
 |---|---|---|---|
 | `box` (mặc định, như từ 0.35.0) | **Khung** kéo / đổi cỡ trên ảnh đứng yên | Tự do hoặc khoá tỉ lệ; 4 góc + 4 cạnh | Cắt tự do: ảnh bìa, ảnh OG, ảnh sản phẩm |
 | `pan` | **Ảnh** kéo / phóng dưới một khung cố định | Luôn có tỉ lệ (mặc định 1:1), đứng giữa vùng cắt, không tay nắm | Avatar: mặt người luôn to bằng khung |
+| `focal` (0.113.0) | **Điểm trọng tâm** trên ảnh đứng yên | **Không có khung**: kết quả `crop` luôn `null` | Site cắt ở server theo điểm trọng tâm, người dùng không được cắt tay |
 
 ```html
 <!-- avatar: khung vuông cố định, kéo ảnh bên dưới -->
@@ -118,6 +120,31 @@ Trong `pan`:
   không có `mode="pan"`, hoặc `aspect-ratio` khoá khác 1) ⇒ một `console.warn` mỗi element rồi bỏ qua.
 - **Đổi `mode` lúc chạy** (im lặng, không event): cử chỉ đang dở bị huỷ; giữ tỉ lệ đang chọn nếu danh sách mới còn; `box →
   pan` mà tỉ lệ đổi thì về khung lớn nhất của tỉ lệ đó quanh tâm cũ (chưa có mức zoom nào để giữ).
+
+### Chỉ chọn điểm trọng tâm — `mode="focal"` (0.113.0)
+
+```html
+<td-cropper src="https://cdn.example.com/o/a_9f2c.jpg" alt="iPhone 17 trên bàn"
+            natural-width="4032" natural-height="3024" mode="focal"
+            focal='{"v":1,"x":0.4,"y":0.35}'></td-cropper>
+```
+
+- **Ảnh đứng yên** (contain như `box`), host có `data-mode="focal"`. **Ẩn**: khung cắt (kèm tay nắm, lưới, lớp mờ), nhóm tỉ
+  lệ, nút − / +, nút bật / tắt điểm trọng tâm. Còn mỗi nút **"Đặt lại"**: về điểm được đưa vào (`focal` / `focalPoint`),
+  chưa có thì về giữa ảnh.
+- **Luôn có điểm**: chưa có giá trị ⇒ giữa ảnh `{ x: 0.5, y: 0.5 }` khi ảnh sẵn sàng, **không** phát `focal-change` cho giá trị
+  mặc định này. Gán `focalPoint = null` khi ảnh đã sẵn sàng cũng về giữa.
+- **Chuột / chạm**: nhấn **bất kỳ đâu trên vùng cắt** đặt điểm tại đó và kéo tiếp được ngay trong cùng cử chỉ (một
+  `focal-change { source: 'pointer' }` khi thả). Nhấn ngoài ảnh (vùng đệm / letterbox) ⇒ điểm dính mép gần nhất. Escape khi
+  đang kéo ⇒ về điểm cũ, không event. Không wheel / pinch / phím `+` `-` (không có gì để zoom; wheel để trang cuộn).
+- **Bàn phím**: Tab tới điểm trọng tâm (khung và 4 góc ra khỏi thứ tự Tab), mũi tên như `box` (1 %, Shift 10 %).
+- **`crop` bị bỏ qua**: attribute / property `crop` được giữ nhưng không dùng; `crop` và `getResult().crop` luôn `null`,
+  `focalPoint` luôn khác `null` khi ảnh đã sẵn sàng. Không bao giờ có `crop-input` / `crop-change`. `aspect-ratio` / `shape`
+  bị bỏ qua **im lặng** (không cảnh báo, không `data-locked` / `data-shape`).
+- **Đổi `mode` lúc chạy**: như trên (cử chỉ dở bị huỷ, không event). Rời `focal` thì khung tính lại từ `crop` đã đưa vào (nên
+  về `box` vẫn thấy lại crop cũ) và điểm giữa do kit tự đặt (người dùng chưa đụng) bị bỏ ⇒ `focalPoint` về `null`; điểm người
+  dùng đã chọn được giữ.
+- Hộp thoại: `TdCropper.openDialog({ mode: 'focal', focalPoint })` — [mục Hộp thoại](#hộp-thoại--tdcropperopendialogopts).
 
 Giá trị lạ / rỗng của `mode` = `box`, của `shape` = `rect` (so khớp sau `trim().toLowerCase()`, không cảnh báo). Mọi giá
 trị chỉ được **so sánh** với danh sách trắng; không chép vào DOM hay CSS. Từ **0.75.0** (M2) cùng hai tham số này đi qua
@@ -320,7 +347,8 @@ TdCropper.openDialog(opts: {
   alt?: string;                    // nhãn của vùng cắt
   naturalWidth?: number; naturalHeight?: number;   // kích thước gốc (cả hai) ⇒ có pixels + kiểm tỉ lệ
   aspectRatio?: number | null;     // số w/h ⇒ khoá; null / thiếu ⇒ tự do (có bộ chọn preset)
-  mode?: 'box' | 'pan';            // 0.75.0: 'pan' ⇒ <td-cropper mode="pan"> (khung cố định, kéo / phóng ảnh — avatar); mặc định 'box'
+  mode?: 'box' | 'pan' | 'focal';  // 0.75.0: 'pan' ⇒ <td-cropper mode="pan"> (khung cố định, kéo / phóng ảnh — avatar); mặc định 'box'
+                                   // 0.113.0: 'focal' ⇒ <td-cropper mode="focal"> (chỉ điểm trọng tâm, mục dưới)
   shape?: 'rect' | 'circle';       // 0.75.0: 'circle' ⇒ shape="circle"; cropper chỉ vẽ tròn khi pan + tỉ lệ 1:1, ngoài ra bỏ qua
   crop?: CropBox | null;           // normalized hiện tại (null ⇒ khung mặc định)
   focalPoint?: FocalPoint;         // điểm hiện tại
@@ -340,6 +368,11 @@ TdCropper.openDialog(opts: {
   `pan` / `circle` mới đặt attribute lên cropper (hằng của kit, không chép chuỗi của site); mọi giá trị khác (`box`, `rect`, lạ,
   rỗng, không phải chuỗi) = không đặt attribute. Hộp thoại `pan` nên có `aspectRatio: 1` cho avatar; thiếu khoá tỉ lệ thì cropper
   `pan` mặc định 1:1 nhưng cho đổi preset. `shape: 'circle'` mà không `pan` hoặc tỉ lệ ≠ 1 ⇒ cropper cảnh báo một lần và vẽ khung chữ nhật.
+- **`mode: 'focal'` (0.113.0)**: cropper `mode="focal"` nhận `focalPoint` làm điểm vào (cũng là đích của "Đặt lại"; thiếu ⇒
+  giữa ảnh). Tiêu đề mặc định là nhãn `labels.focalTitle` ("Chọn điểm trọng tâm", `title` vẫn ghi đè được, không có hậu tố tỉ
+  lệ). `aspectRatio` / `shape` / `crop` / `allowFocalPoint` bị bỏ qua. "Áp dụng" bật ngay khi ảnh sẵn sàng (không cần crop) và
+  resolve `{ status: 'applied', crop: null, focalPoint, changed }` với `changed` = điểm lệch điểm vào quá 1e-6 (không có
+  `focalPoint` đầu vào ⇒ `changed: true`, vì giữa ảnh là giá trị mới cần lưu). Focus vào điểm trọng tâm thay cho khung.
 - **Huỷ resolve**, không reject (Escape / × / "Huỷ" / `signal` abort ⇒ `{ status: 'cancelled' }`). Promise **chỉ reject**
   khi đã có một hộp cắt khác đang mở (một hộp một lúc — picker và field dùng chung).
 - `crop = null` khi khung phủ toàn ảnh. `changed = false` khi kết quả lệch giá trị đầu vào **không quá 1 pixel ảnh gốc** mỗi trục (`null` đầu vào = toàn ảnh) và focal không đổi (sai số
@@ -378,7 +411,7 @@ còn.
 | `focal-point` | boolean | — | Bật công cụ điểm trọng tâm |
 | `focal` | JSON v1 `{"v":1,"x","y"}` | — | Điểm trọng tâm ban đầu |
 | `disabled` | boolean | — | Không tương tác, không event |
-| `mode` | `box` \| `pan` | `box` | 0.73.0. `pan` = khung cố định, kéo / phóng **ảnh** ([mục trên](#hai-kiểu-thao-tác--mode-0730)); giá trị lạ = `box`, im lặng |
+| `mode` | `box` \| `pan` \| `focal` | `box` | 0.73.0. `pan` = khung cố định, kéo / phóng **ảnh** ([mục trên](#hai-kiểu-thao-tác--mode-0730)); 0.113.0 `focal` = chỉ điểm trọng tâm, không khung ([mục trên](#chỉ-chọn-điểm-trọng-tâm--modefocal-01130)); giá trị lạ = `box`, im lặng |
 | `shape` | `rect` \| `circle` | `rect` | 0.73.0. `circle` = vẽ khung tròn; chỉ khi `mode="pan"` và tỉ lệ đang áp dụng 1:1, output vẫn vuông; giá trị lạ = `rect` |
 
 ## Property & method
@@ -429,6 +462,7 @@ preset nằm ở `TdCropper.presets` (`label`), không ở đây.
 | `loading` | "Đang tải ảnh…" |
 | `errorSrc` · `errorLoad` · `errorSize` · `errorRatio` | "Địa chỉ ảnh không hợp lệ" · "Không tải được ảnh" · "Không xác định được kích thước ảnh" · "Ảnh xem trước không khớp tỉ lệ ảnh gốc" |
 | `dialogTitle` · `dialogApply` · `dialogCancel` · `dialogClose` | "Cắt ảnh" · "Áp dụng" · "Huỷ" · "Đóng" (hộp thoại; option `title` / `confirmLabel` / `cancelLabel` thắng) |
+| `focalTitle` | 0.113.0: "Chọn điểm trọng tâm" (tiêu đề hộp thoại `mode: 'focal'`; option `title` thắng) |
 
 ## Tuỳ biến giao diện
 
@@ -490,6 +524,9 @@ Light DOM do element dựng (không có helper PHP):
 - `data-mode="pan"` / `data-shape="circle"` (0.73.0): hằng do JS đặt sau khi attribute `mode` / `shape` khớp danh sách
   trắng; kiểu `box` và khung chữ nhật **không có** hai attribute này. CSS của `pan` chỉ bám vào chúng, không bám `[mode]`.
   `.td-cropper__zoom` chỉ tồn tại ở `pan`; tay nắm `display: none` (ra khỏi thứ tự Tab và cây trợ năng).
+- `data-mode="focal"` (0.113.0): hằng do JS đặt, cùng cách. CSS ẩn (`display: none`) `.td-cropper__box` (kèm tay nắm, lưới,
+  lớp mờ), `.td-cropper__ratios`, `.td-cropper__zoom-in` / `__zoom-out`, `.td-cropper__focal-toggle`; con trỏ `crosshair` trên
+  vùng cắt khi sẵn sàng. Không bao giờ có `data-locked` / `data-shape` / `data-small-box`.
 - Vùng mờ ngoài khung = `box-shadow` lan rộng của `.td-cropper__box` trong `.td-cropper__stage` `overflow: hidden`.
 
 ## Bàn phím & trợ năng
@@ -513,6 +550,8 @@ cho chuột / chạm (`aria-hidden`, không focus) — 4 góc đã chỉnh đư�
 - **`pan`** (0.73.0): tab qua toolbar (nhóm tỉ lệ nếu không khoá, − , **thanh trượt zoom**, + , Đặt lại) rồi tới **khung**
   (`aria-describedby` đọc giá trị hiện tại + `labels.panHelp`); 4 góc không còn trong thứ tự Tab. Thanh trượt dùng bàn phím
   của [td-slider](slider.md) (mũi tên, Home / End).
+- **`focal`** (0.113.0): tab qua "Đặt lại" rồi tới **điểm trọng tâm** (khung và 4 góc ra khỏi thứ tự Tab); chỉ mũi tên /
+  Shift + mũi tên trên điểm, không `+` / `-`.
 - Mũi tên theo hướng **vật lý**: ← luôn sang trái, kể cả trang RTL (toolbar vẫn theo RTL). Ctrl / ⌘ + phím không bị
   nuốt.
 - ARIA: vùng cắt `role="group"` "Cắt ảnh: {alt}"; khung `role="group"` + `aria-roledescription="khung cắt"` +
@@ -539,6 +578,7 @@ cho chuột / chạm (`aria-hidden`, không focus) — 4 góc đã chỉnh đư�
 
 - **Cắt ảnh là thao tác kéo thiết yếu** (WCAG 2.5.7 "essential"): kéo khung, kéo tay nắm, pinch hai ngón để zoom. Cách thay thế không cần kéo: bàn phím (tay nắm + phím mũi tên) và ô tỉ lệ. Mặt cắt `touch-action: none`.
 - **`pan` (0.73.0)**: kéo một ngón **ở bất kỳ đâu trên vùng cắt** dịch ảnh ngay (không ngưỡng kéo vì vùng cắt không có thao tác chạm); hai ngón vừa phóng vừa đi theo trung điểm. Zoom còn có nút − / + và thanh trượt (vùng chạm ≥ 44px). Dịch ảnh vẫn chỉ bằng kéo hoặc bàn phím — xem đánh đổi WCAG 2.5.7 ở [Trợ năng](../guides/accessibility.md).
+- **`focal` (0.113.0)**: chạm **bất kỳ đâu trên vùng cắt** đặt điểm tại đó, không nhấc tay kéo tiếp được (vùng chạm = cả vùng cắt). Không pinch / wheel. Cách thay thế không cần kéo: chạm một lần, hoặc bàn phím trên điểm.
 - Ô tỉ lệ có hình nhấn; hover chỉ trên con trỏ mịn. Ngón tay bị huỷ giữa chừng (`pointercancel`) kết thúc cử chỉ gọn.
 
 Chuẩn chung: [Cảm ứng](../guides/touch.md).

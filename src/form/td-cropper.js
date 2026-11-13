@@ -10,7 +10,7 @@
  * Attributes (scalar): `src` (safeMediaUrl — never `blob:` / `data:`; refused ⇒ error `src`, the `<img>` gets no src),
  * `alt`, `natural-width` / `natural-height` (integers 1–100000; both or neither), `aspect-ratio` (`W/H` | `W:H` | number
  * ⇒ LOCKED, the ratio presets are hidden), `crop` (JSON v1 `{"v":1,"x","y","width","height"}`), `focal-point` (boolean:
- * the focal-point tool), `focal` (JSON v1 `{"v":1,"x","y"}`), `disabled`, `mode` (`box` default | `pan`), `shape` (`rect`
+ * the focal-point tool), `focal` (JSON v1 `{"v":1,"x","y"}`), `disabled`, `mode` (`box` default | `pan` | `focal`), `shape` (`rect`
  * default | `circle`).
  *
  * v0.73.0 (plan docs/internal/plans/v0.73.0-cropper-pan-mode.md M1) — two ways to work on the SAME model rect:
@@ -22,6 +22,14 @@
  * kept and still returned), a zoom slider (`<td-slider class="td-cropper__zoom">`, created only in pan, between − and +)
  * and square integer pixels for a 1:1 crop. `shape="circle"` rounds the frame (display only — the output stays the
  * bounding square) while the mode is pan and the ratio in force is 1:1. Unknown values = the default, silently.
+ * v0.113.0 (plan docs/internal/plans/v0.113.0-focal-only-mode.md QĐ1) — `mode="focal"`: a focal point only, no crop. The
+ * image is contain-fitted and stands still (as in box); host `data-mode="focal"`; CSS hides the box (+ handles, grid,
+ * dim), the ratio group, the zoom buttons and the focal toggle — "Đặt lại" stays and goes back to the focal value the
+ * cropper was given (`focal` / `focalPoint`), else the centre. The tool is always on: no value ⇒ the centre `{0.5, 0.5}`
+ * once the image is ready (no `focal-change` for it). A pointer / touch down anywhere on the stage places the point
+ * there and drags it on in the same gesture; arrows on the marker as in box; no wheel / pinch / +/− zoom. `crop`
+ * (attribute / property) is kept but not used (a switch back to box / pan sees it again), `crop` / `getResult().crop`
+ * are always null, `focalPoint` is never null once ready. `aspect-ratio` / `shape` are ignored silently.
  * Properties: `crop` (get `CropValue | null`; set `{ normalized } | { x, y, width, height } | null` — silently),
  * `focalPoint` (`{ x, y } | null`, silently), `presets` (`{ label, ratio: number | null }[]`, default
  * `TdCropper.presets`), `reset()` (silent), `getResult()` → `{ crop, focalPoint }`.
@@ -36,8 +44,8 @@
  *
  * State: host `data-state="loading|ready|error"` (+ `data-error="<kind>"`), `data-locked` (a ratio is in force: 4 corner
  * handles only), `data-dragging` (rule-of-thirds grid), `data-small-box` (displayed box < 88 px: CSS hides the edge
- * handles on coarse pointers; never in pan), `data-mode="pan"` / `data-shape="circle"` (v0.73.0: constants set by JS
- * after the attribute matched the allowlist — absent in box mode / for a rectangle). CSSOM (display px, removed on disconnect): `--_tdc-img-x/y/w/h`, `--_tdc-box-x/y/w/h`,
+ * handles on coarse pointers; never in pan / focal), `data-mode="pan|focal"` / `data-shape="circle"` (v0.73.0 / v0.113.0:
+ * constants set by JS after the attribute matched the allowlist — absent in box mode / for a rectangle). CSSOM (display px, removed on disconnect): `--_tdc-img-x/y/w/h`, `--_tdc-box-x/y/w/h`,
  * `--_tdc-focal-x/y`.
  *
  * DOM (built once; every text through textContent / setAttribute):
@@ -92,6 +100,8 @@ const LIVE_MS = 400;
 const SMALL_BOX = 88;
 /** Zoom slider of pan mode: positions 0 … ZOOM_STEPS on a log scale (0 = the widest view). */
 const ZOOM_STEPS = 100;
+/** v0.113.0 focal mode: the point used when the cropper was given none. */
+const CENTRE = Object.freeze({ x: 0.5, y: 0.5 });
 let uid = 0;
 
 const fmt = (s, p) => String(s ?? '').replace(/\{(\w+)\}/g, (m, k) => (Object.hasOwn(p, k) ? String(p[k]) : m));
@@ -193,6 +203,7 @@ export class TdCropper extends TdBaseElement {
     errorRatio: 'Ảnh xem trước không khớp tỉ lệ ảnh gốc',
     // crop dialog (src/feedback/crop-dialog.js)
     dialogTitle: 'Cắt ảnh',
+    focalTitle: 'Chọn điểm trọng tâm', // v0.113.0: title of the dialog in mode 'focal'
     dialogApply: 'Áp dụng',
     dialogCancel: 'Huỷ',
     dialogClose: 'Đóng',
@@ -236,6 +247,8 @@ export class TdCropper extends TdBaseElement {
     /** @type {{x:number,y:number}|null} */
     this._focalIn = null;
     this._focalSet = false;
+    /** v0.113.0 focal mode: `_focal` is the centre put there because there was no value (dropped on leaving focal) */
+    this._focalAuto = false;
     /** @type {Array<{label:string,ratio:number|null}>|null} per-element presets (null ⇒ TdCropper.presets) */
     this._presetList = null;
     this._presetIdx = 0;
@@ -351,6 +364,8 @@ export class TdCropper extends TdBaseElement {
         this._focal = parseFocal(newVal)?.focal ?? null;
         this._focalIn = this._focal ? { ...this._focal } : null;
         this._focalSet = true;
+        this._focalAuto = false;
+        this._autoFocal();
         this._renderVars();
         this._syncFocalUi();
         this._syncDesc();
@@ -375,7 +390,7 @@ export class TdCropper extends TdBaseElement {
    * @type {CropValue|null}
    */
   get crop() {
-    if (!this._ready()) return null;
+    if (!this._ready() || this._focalMode()) return null; // v0.113.0: focal mode never has a crop
     const o = { W: this._W, H: this._H, pixelsKnown: this._pixelsKnown, ratio: this._ratio() };
     if (o.ratio === 1 && this._pan()) /** @type {any} */ (o).square = true; // pan 1:1: integer pixels exactly square
     return toOutput(/** @type {Rect} */ (this._rect), o);
@@ -394,6 +409,8 @@ export class TdCropper extends TdBaseElement {
     this._focal = clampFocal(v);
     this._focalIn = this._focal ? { ...this._focal } : null;
     this._focalSet = true;
+    this._focalAuto = false;
+    this._autoFocal();
     this._renderVars();
     this._syncFocalUi();
     this._syncDesc();
@@ -555,7 +572,8 @@ export class TdCropper extends TdBaseElement {
     this._W = this._nat ? this._nat.w : iw;
     this._H = this._nat ? this._nat.h : ih;
     this._pixelsKnown = !!this._nat;
-    this._rect = normalizeInitial(this._cropIn, { W: this._W, H: this._H, ratio: this._ratio() });
+    this._rect = normalizeInitial(this._cropStart(), { W: this._W, H: this._H, ratio: this._ratio() });
+    this._autoFocal(); // v0.113.0 focal mode: the centre when there is no value (silent)
     this._setState('ready');
     this._announceNow('');
     this._measure();
@@ -605,8 +623,27 @@ export class TdCropper extends TdBaseElement {
   /** @private v0.73.0: is the mode `pan` (the frame stands still, the image moves)? Anything else = `box`. */
   _pan() { return word(this.getAttribute('mode')) === 'pan'; }
 
+  /** @private v0.113.0: is the mode `focal` (a focal point only, no crop box)? */
+  _focalMode() { return word(this.getAttribute('mode')) === 'focal'; }
+
+  /** @private v0.113.0: the host `data-mode` value of the mode in force (`null` = box) */
+  _modeAttr() { return this._pan() ? 'pan' : this._focalMode() ? 'focal' : null; }
+
+  /** @private v0.113.0: the crop the box starts from — focal mode ignores the `crop` attribute / property */
+  _cropStart() { return this._focalMode() ? null : this._cropIn; }
+
+  /**
+   * @private v0.113.0 focal mode: no value once the image is ready ⇒ the centre, silently (`_focalAuto`: dropped again
+   * when the mode changes to box / pan, so a value nobody gave never leaves focal mode)
+   */
+  _autoFocal() {
+    if (this._focal || !this._focalMode() || !this._rect || !(this._W > 0)) return;
+    this._focal = { ...CENTRE };
+    this._focalAuto = true;
+  }
+
   /** @private pan has no focal-point tool (the frame is the subject); an existing focal value is kept as it is */
-  _focalTool() { return this.hasAttribute('focal-point') && !this._pan(); }
+  _focalTool() { return this._focalMode() || (this.hasAttribute('focal-point') && !this._pan()); }
 
   /** @private */
   _presets() { return this._presetList || cleanPresets(TdCropper.presets); }
@@ -626,6 +663,7 @@ export class TdCropper extends TdBaseElement {
 
   /** @private the ratio in force: the `aspect-ratio` lock, else the selected preset's (null = free; pan: 1) */
   _ratio() {
+    if (this._focalMode()) return null; // v0.113.0: no box ⇒ no ratio (`aspect-ratio` / presets ignored)
     if (this._lock) return this._lock;
     const pan = this._pan();
     const p = this._choices(pan)[this._presetIdx];
@@ -666,7 +704,7 @@ export class TdCropper extends TdBaseElement {
     const a = parseAspectRatio(raw);
     const r = a ? a.w / a.h : null;
     this._lock = r !== null && cropRatioInRange(r) ? r : null;
-    if (raw !== null && raw.trim() !== '' && this._lock === null && !warnedRatio) {
+    if (raw !== null && raw.trim() !== '' && this._lock === null && !warnedRatio && !this._focalMode()) {
       warnedRatio = true; // review R1 #5: rejected (free), never silently; bounded (the value is not echoed)
       console.warn('td-cropper: aspect-ratio must be W/H, W:H or a number with a ratio in [0.01, 100] — rejected, the crop is free.');
     }
@@ -674,7 +712,7 @@ export class TdCropper extends TdBaseElement {
 
   /** @private crop attribute / property → the box (silent) */
   _applyCropIn() {
-    if (!this._ready() || this._g) return;
+    if (!this._ready() || this._g || this._focalMode()) return; // focal: kept for a switch back, not used
     this._rect = normalizeInitial(this._cropIn, { W: this._W, H: this._H, ratio: this._ratio() });
     this._renderVars();
     this._syncDesc();
@@ -736,7 +774,8 @@ export class TdCropper extends TdBaseElement {
     set('--_tdc-box-y', d.y);
     set('--_tdc-box-w', d.w);
     set('--_tdc-box-h', d.h);
-    this.toggleAttribute('data-small-box', !pan && (d.w < SMALL_BOX || d.h < SMALL_BOX)); // pan: no handles to hide
+    // pan / focal: no handles to hide
+    this.toggleAttribute('data-small-box', !pan && !this._focalMode() && (d.w < SMALL_BOX || d.h < SMALL_BOX));
     if (this._focal) {
       set('--_tdc-focal-x', this._focal.x * f.w);
       set('--_tdc-focal-y', this._focal.y * f.h);
@@ -824,27 +863,39 @@ export class TdCropper extends TdBaseElement {
   _syncMode(init) {
     if (!this._els) return;
     const pan = this._pan();
-    const flip = pan !== this.hasAttribute('data-mode');
+    const want = this._modeAttr(); // v0.113.0: 'pan' | 'focal' | null (box)
+    const had = this.getAttribute('data-mode'); // the mode we leave (a constant this method wrote)
+    const flip = want !== had;
     if (flip && !init) { // nothing of the mode we leave may land in the new one
       if (this._g) this._finish(false);
       this._endZoom(false);
       this._dropWheel();
     }
-    if (flip && pan) this.setAttribute('data-mode', 'pan');
+    if (flip && want) this.setAttribute('data-mode', want);
     else if (flip) this.removeAttribute('data-mode');
     this._syncZoomEl();
-    // pan has no handle and no focal point: their help texts must not be read either (box: no `hidden`, as before)
-    this._els.cornerDesc.hidden = this._els.focalDesc.hidden = pan;
+    // pan has no handle and no focal point: their help texts must not be read either (box: no `hidden`, as before);
+    // focal: no handle, the focal point is the only control
+    this._els.cornerDesc.hidden = pan || want === 'focal';
+    this._els.focalDesc.hidden = pan;
     if (init || !flip) return;
-    const prev = this._choices(!pan)[this._presetIdx]; // `_presetIdx` still indexes the list of the mode we leave
-    const was = this._lock || (prev && prev.ratio) || (pan ? null : 1);
+    const wasPan = had === 'pan';
+    const focalIn = want === 'focal' || had === 'focal';
+    const prev = this._choices(wasPan)[this._presetIdx]; // `_presetIdx` still indexes the list of the mode we leave
+    const was = had === 'focal' ? null : this._lock || (prev && prev.ratio) || (wasPan ? 1 : null);
     const keep = prev ? this._choices(pan).findIndex((p) => p.ratio === prev.ratio) : -1;
     this._presetIdx = keep < 0 ? this._defaultPresetIdx() : keep;
     this._renderPresets();
+    // v0.113.0: a centre nobody gave stays in focal mode; into focal: the centre when there is no value
+    if (had === 'focal' && this._focalAuto) this._focal = null;
+    this._focalAuto = false;
+    this._autoFocal();
     if (this._ready()) {
-      // into pan from another ratio (or a free box): the largest rect of the new one — there is no zoom level to keep
       const r = this._ratio();
-      if (pan && r && r !== was) this._rect = applyPreset(/** @type {Rect} */ (this._rect), r, this._W, this._H);
+      // into / out of focal: the box starts again from the crop that was given (focal: the whole image, no ratio)
+      if (focalIn) this._rect = normalizeInitial(this._cropStart(), { W: this._W, H: this._H, ratio: r });
+      // into pan from another ratio (or a free box): the largest rect of the new one — there is no zoom level to keep
+      else if (pan && r && r !== was) this._rect = applyPreset(/** @type {Rect} */ (this._rect), r, this._W, this._H);
       this._measure(); // the stage padding differs (--td-cropper-pan-inset); pan also drops data-small-box
     }
     this._syncDisabled();
@@ -864,7 +915,7 @@ export class TdCropper extends TdBaseElement {
     // exactly 1, the same test as the square pixels of the output (`crop`): a near-square frame is not drawn round
     if (want && pan && r === 1) this.setAttribute('data-shape', 'circle');
     else this.removeAttribute('data-shape');
-    if (want && !this._warnedShape && (!pan || (!!this._lock && this._lock !== 1))) {
+    if (want && !this._warnedShape && !this._focalMode() && (!pan || (!!this._lock && this._lock !== 1))) { // focal: silent
       this._warnedShape = true; // bounded: the attribute values are not echoed
       console.warn('td-cropper: shape="circle" needs mode="pan" and a 1:1 ratio — ignored, the frame is a rectangle.');
     }
@@ -977,8 +1028,9 @@ export class TdCropper extends TdBaseElement {
     const on = this._interactive();
     for (const b of [e.zoomOut, e.zoomIn, e.focalBtn, e.reset]) b.disabled = !on;
     const ti = on ? 0 : -1;
-    e.box.tabIndex = ti;
-    const cti = this._pan() ? -1 : ti; // pan: no handles (hidden by CSS too)
+    const focal = this._focalMode(); // v0.113.0: no box, no handles (hidden by CSS too) — the focal point only
+    e.box.tabIndex = focal ? -1 : ti;
+    const cti = this._pan() || focal ? -1 : ti; // pan: no handles (hidden by CSS too)
     for (const c of e.corners) c.tabIndex = cti;
     e.focal.tabIndex = ti;
     if (on) e.box.removeAttribute('aria-disabled');
@@ -1079,6 +1131,7 @@ export class TdCropper extends TdBaseElement {
   _setFocal(f, source) {
     if (!focalChanged(this._focal, f)) return false;
     this._focal = f;
+    this._focalAuto = false;
     this._renderVars();
     this._syncFocalUi();
     this.emit('focal-change', { focalPoint: this.focalPoint, source });
@@ -1123,13 +1176,16 @@ export class TdCropper extends TdBaseElement {
     const prevFocal = this._focal;
     if (!this._lock) this._presetIdx = this._defaultPresetIdx();
     if (this._els) this._syncPresetUi();
-    if (this._ready()) this._rect = normalizeInitial(this._cropIn, { W: this._W, H: this._H, ratio: this._ratio() });
+    if (this._ready()) this._rect = normalizeInitial(this._cropStart(), { W: this._W, H: this._H, ratio: this._ratio() });
     this._focal = this._focalIn ? { ...this._focalIn } : null;
+    this._focalAuto = false;
+    this._autoFocal(); // v0.113.0 focal mode: no starting value ⇒ back to the centre
     this._renderVars();
     this._syncLocked();
     this._syncFocalUi();
     if (!user || !this._ready()) return;
-    const boxChanged = !sameRect(prevRect, this._rect) || prevIdx !== this._presetIdx;
+    // focal mode has no box: never a crop-change
+    const boxChanged = !this._focalMode() && (!sameRect(prevRect, this._rect) || prevIdx !== this._presetIdx);
     if (boxChanged) this._changed('reset');
     if (focalChanged(prevFocal, this._focal)) {
       this.emit('focal-change', { focalPoint: this.focalPoint, source: 'reset' });
@@ -1144,6 +1200,7 @@ export class TdCropper extends TdBaseElement {
   _onToolClick(e) {
     const b = e.target instanceof Element ? e.target.closest('button') : null;
     if (!b || b.disabled || !this._interactive()) return;
+    if (this._focalMode() && b !== this._els.reset) return; // v0.113.0: "Đặt lại" is the only tool (the rest is hidden)
     if (b.classList.contains('td-cropper__ratio')) this._selectPreset(Number(b.getAttribute('data-index')), true);
     else if (b === this._els.zoomOut) this._zoom(1 / ZOOM_STEP, 'button');
     else if (b === this._els.zoomIn) this._zoom(ZOOM_STEP, 'button');
@@ -1153,7 +1210,7 @@ export class TdCropper extends TdBaseElement {
 
   /** @private radiogroup: arrows follow the writing direction (the toolbar is RTL-aware), Home / End */
   _onRatioKey(e) {
-    if (e.ctrlKey || e.metaKey || e.altKey || !this._interactive()) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || !this._interactive() || this._focalMode()) return;
     const n = this._choices().length;
     const rtl = getComputedStyle(this).direction === 'rtl';
     let i = this._presetIdx;
@@ -1174,12 +1231,14 @@ export class TdCropper extends TdBaseElement {
   _onKey(e) {
     if (e.ctrlKey || e.metaKey || e.altKey || !this._interactive() || this._g) return;
     const { box, focal } = this._els;
-    if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
+    const fm = this._focalMode();
+    if (fm && e.target !== focal) return; // v0.113.0: no zoom keys, nothing to move but the focal point
+    if (!fm && (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd')) {
       e.preventDefault();
       this._zoom(ZOOM_STEP, 'keyboard');
       return;
     }
-    if (e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract') {
+    if (!fm && (e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract')) {
       e.preventDefault();
       this._zoom(1 / ZOOM_STEP, 'keyboard');
       return;
@@ -1221,7 +1280,7 @@ export class TdCropper extends TdBaseElement {
 
   /** @private */
   _onWheel(e) {
-    if (!this._interactive()) return; // not ready: let the page scroll
+    if (!this._interactive() || this._focalMode()) return; // not ready / focal mode (nothing to zoom): let the page scroll
     e.preventDefault(); // only over the stage (the listener is on the stage): the page scrolls everywhere else
     if (this._g) return;
     if (isTrackpadDelta(e.deltaY, e.deltaMode)) {
@@ -1266,7 +1325,9 @@ export class TdCropper extends TdBaseElement {
     const g = this._g;
     if (g) {
       // a second finger turns a one-finger touch gesture into a pinch (Playwright has no multi-touch: tests synthesise)
-      if (touch && g.touch && g.kind !== 'pinch' && this._touches.size === 2 && this._touches.has(g.id)) this._startPinch(e);
+      // (focal mode: no pinch — there is nothing to zoom; the second finger is ignored)
+      if (touch && g.touch && g.kind !== 'pinch' && this._touches.size === 2 && this._touches.has(g.id)
+        && !this._focalMode()) this._startPinch(e);
       e.preventDefault();
       return;
     }
@@ -1274,8 +1335,20 @@ export class TdCropper extends TdBaseElement {
     const { box, focal } = this._els;
     const h = t ? t.closest('[data-handle]') : null;
     let kind;
+    /** @type {{x:number,y:number}|null} v0.113.0 focal mode: where the press puts the point (null: on the marker) */
+    let place = null;
     // pan: anywhere in the stage drags the image; no tap action there, so no drag threshold (the image follows at once)
     if (this._pan()) kind = 'pan';
+    else if (this._focalMode()) {
+      // focal: anywhere in the stage puts the point there, then drags it on (one gesture, no threshold); on the marker
+      // it is dragged from where it is. Off the image (letterbox / padding) the point is clamped to the nearest edge.
+      if (!this._fit) return;
+      kind = 'focal';
+      if (!(t && !focal.hidden && focal.contains(t))) {
+        const p = this._clientToModel(e.clientX, e.clientY);
+        place = clampFocal({ x: p.x / this._W, y: p.y / this._H });
+      }
+    }
     else if (h && box.contains(h)) kind = 'resize';
     else if (t && !focal.hidden && focal.contains(t)) kind = 'focal';
     else if (t && box.contains(t)) kind = 'move';
@@ -1300,10 +1373,16 @@ export class TdCropper extends TdBaseElement {
       rect0: rect,
       origin: rect,
       focal0: this._focal ? { ...this._focal } : null,
+      base: place, // focal mode: the drag goes on from the placed point
       // a tap (≤ 4 px) sets the focal point: on the image, or on the box while the focal tool is on
       threshold: kind === 'tap' || (kind === 'move' && this._focalTool()),
       moved: false,
     };
+    if (place) { // shown at once; the event comes at the end of the gesture (Escape puts the old point back)
+      this._focal = place;
+      this._renderVars();
+      this._syncFocalUi();
+    }
     try { this._els.stage.setPointerCapture(e.pointerId); } catch { /* synthetic / already gone */ }
     // Escape during a drag: restore, swallow (window capture runs before the layer registry's document listener, so
     // a surrounding dialog never sees it), no event.
@@ -1401,8 +1480,9 @@ export class TdCropper extends TdBaseElement {
       if (g.kind === 'pan') next = panBy(g.rect0, dxp, dyp, s, W, H);
       else if (g.kind === 'move') next = moveBy(g.rect0, dx, dy, W, H);
       else if (g.kind === 'resize') next = resizeFrom(g.handle, g.rect0, { dx, dy }, { ratio: this._ratio(), W, H });
-      else if (g.kind === 'focal' && g.focal0) {
-        this._focal = clampFocal({ x: g.focal0.x + dx / W, y: g.focal0.y + dy / H });
+      else if (g.kind === 'focal' && (g.base || g.focal0)) {
+        const b = g.base || g.focal0; // focal mode: from the point the press placed
+        this._focal = clampFocal({ x: b.x + dx / W, y: b.y + dy / H });
         this._renderVars();
         return;
       } else return; // a tap that moved: nothing
@@ -1445,6 +1525,7 @@ export class TdCropper extends TdBaseElement {
     }
     if (!sameRect(this._rect, g.origin)) this._changed(g.source);
     if (focalChanged(g.focal0, this._focal)) {
+      this._focalAuto = false;
       this._syncFocalUi();
       this.emit('focal-change', { focalPoint: this.focalPoint, source: 'pointer' });
       this._queueLive(this._focalSentence());

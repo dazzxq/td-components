@@ -93,7 +93,9 @@ const LOAD_BOUND = new WeakSet();
  * @element td-media-gallery
  * @attr {string} name @attr {string} label @attr {string} items - JSON (default / reset)
  * @attr {boolean} usage @attr {boolean} croppable @attr {string} crop-ratio @attr {boolean} focal-point
- * @attr {string} crop-mode - v0.75.0: `pan` (the crop dialog keeps its frame still, the image moves — avatars) | `box` (default)
+ * @attr {string} crop-mode - v0.75.0: `pan` (the crop dialog keeps its frame still, the image moves — avatars) | `box` (default);
+ *   v0.113.0 `focal`: each tile's step only picks the focal point ("Điểm trọng tâm {name}"), `focal-point` implied,
+ *   `name[i][crop]` always `null` (an incoming `items[].crop` is kept but unused), no crop preview
  * @attr {string} crop-shape - v0.75.0: `circle` (round frame; only with `crop-mode="pan"` and a 1:1 crop) | `rect` (default)
  * @attr {boolean} cover - the first item is the cover (badge + name suffix)
  * @attr {string} aspect-ratio - the tile ratio (default 1:1) @attr {string} preview-fit - cover | contain
@@ -133,6 +135,8 @@ export class TdMediaGallery extends TdFormElement {
     handle: 'Sắp xếp {name}',
     remove: 'Gỡ {name}',
     crop: 'Cắt {name}',
+    /** v0.113.0: the crop button with `crop-mode="focal"` (= Td::MEDIA_GALLERY_LABELS) */
+    focalEdit: 'Điểm trọng tâm {name}',
     // v0.81.0: collapsed usage fields + set-cover (dsuite K3)
     edit: 'Mô tả {name}',
     makeCover: 'Đặt {name} làm ảnh bìa',
@@ -161,6 +165,8 @@ export class TdMediaGallery extends TdFormElement {
     min: 'Cần ít nhất {min} {kind}.',
     max: 'Tối đa {max} {kind}.',
     cropTitle: 'Cắt ảnh',
+    /** v0.113.0: the dialog title with `crop-mode="focal"` */
+    focalTitle: 'Chọn điểm trọng tâm',
     cropError: 'Không tải được ảnh để cắt.',
   };
 
@@ -316,8 +322,9 @@ export class TdMediaGallery extends TdFormElement {
     this._initLive();
     const focalOn = this._focalOn();
     const mode = this._captionMode();
+    const focalMode = this._focalMode();
     return this._items.map((it) => {
-      const c = it.cropRaw ? parseCrop(it.cropRaw) : null;
+      const c = !focalMode && it.cropRaw ? parseCrop(it.cropRaw) : null;
       const f = focalOn && it.focalRaw ? parseFocal(it.focalRaw) : null;
       return {
         assetId: it.id,
@@ -462,8 +469,24 @@ export class TdMediaGallery extends TdFormElement {
   /** @private */
   _croppable() { return this.hasAttribute('croppable') && this._usageOn(); }
 
-  /** @private */
-  _focalOn() { return this.hasAttribute('focal-point') && this._usageOn(); }
+  /** @private v0.113.0: `focal-point`, or implied by `crop-mode="focal"` */
+  _focalOn() { return (this.hasAttribute('focal-point') || this._focalMode()) && this._usageOn(); }
+
+  /**
+   * @private v0.113.0 (QĐ4 / QĐ4b): `crop-mode="focal"` + `usage` — the per-tile step only picks the focal point; every
+   * tile's effective crop is null (the stored `items[].crop` is kept, unused, so `box` brings it back)
+   */
+  _focalMode() {
+    return parseCropMode(this.getAttribute('crop-mode')) === 'focal' && this.hasAttribute('usage');
+  }
+
+  /** @private v0.113.0: the items as the form / selection see them (crop null in focal mode) */
+  _effItems() {
+    return this._focalMode() ? this._items.map((it) => ({ ...it, cropRaw: null })) : this._items;
+  }
+
+  /** @private v0.113.0: the crop button label key */
+  _cropKey() { return this._focalMode() ? 'focalEdit' : 'crop'; }
 
   /** @private decision 12: crop-ratio (`free` → null) → else the tile's aspect-ratio → else free */
   _cropRatio() {
@@ -806,7 +829,7 @@ export class TdMediaGallery extends TdFormElement {
           + `${i === 0 ? ' hidden' : ''}${dis}>${icon('star')}</button>`
         : '')
       + (this._croppable()
-        ? `<button type="button" class="td-media-gallery__btn td-media-gallery__crop-btn" aria-haspopup="dialog" aria-label="${e(this._label('crop', { name: full }))}"`
+        ? `<button type="button" class="td-media-gallery__btn td-media-gallery__crop-btn" aria-haspopup="dialog" aria-label="${e(this._label(this._cropKey(), { name: full }))}"`
           + `${this._cropBtnShown(it) ? '' : ' hidden'}${dis}>${icon('crop')}</button>`
         : '')
       + (usage
@@ -1282,7 +1305,7 @@ export class TdMediaGallery extends TdFormElement {
       const full = this._fullName(it, i, n);
       set(this._part('handle', li), 'aria-label', this._label('handle', { name: full }));
       set(this._part('remove', li), 'aria-label', this._label('remove', { name: full }));
-      set(this._part('crop', li), 'aria-label', this._label('crop', { name: full }));
+      set(this._part('crop', li), 'aria-label', this._label(this._cropKey(), { name: full }));
       set(this._part('edit', li), 'aria-label', this._label('edit', { name: full }));
       const cb = this._part('coverBtn', li);
       if (cb) {
@@ -1355,7 +1378,7 @@ export class TdMediaGallery extends TdFormElement {
     const img = this._part('img', li);
     if (!img) return;
     const r = this._ratio() || { w: 1, h: 1 };
-    const crop = this._croppable() && it.kind === 'image' && it.cropRaw ? parseCrop(it.cropRaw)?.crop : null;
+    const crop = this._croppable() && !this._focalMode() && it.kind === 'image' && it.cropRaw ? parseCrop(it.cropRaw)?.crop : null;
     let vars = null;
     if (crop) {
       const a = it.asset;
@@ -1381,7 +1404,7 @@ export class TdMediaGallery extends TdFormElement {
   /** @private the FormData entries (decision 14), null when nothing is submitted */
   _entries() {
     if (this._isBroken() || this._isOverflow()) return null;
-    return galleryEntries(this.getAttribute('name'), this._items, {
+    return galleryEntries(this.getAttribute('name'), this._effItems(), {
       usage: this.hasAttribute('usage'), focal: this._focalOn(), caption: this._captionMode(),
     });
   }
@@ -1401,6 +1424,7 @@ export class TdMediaGallery extends TdFormElement {
       for (const [k, v] of entries) fd.append(k, v);
     }
     // v0.51.0 QĐ 15: caption on → every item carries its raw caption ("" too); off → the v0.50 bytes
+    // v0.113.0: the restore state keeps the stored crops (unused in focal mode, back on a switch to box); FormData uses _effItems
     this._setFormValue(fd, encodeGalleryState(this._items, { caption: this._captionMode() !== null }));
     const n = this._items.length;
     const max = this._max();
@@ -1468,8 +1492,12 @@ export class TdMediaGallery extends TdFormElement {
         if ((oldVal ?? '').endsWith('[]') !== (newVal ?? '').endsWith('[]')) this._doRender();
         else this._syncForm();
         return;
-      case 'crop-ratio':
       case 'crop-mode':
+        // v0.113.0: focal <-> box / pan changes the crop labels, the implied focal entries, the previews and FormData
+        this._relabel();
+        this._syncForm();
+        return;
+      case 'crop-ratio':
       case 'crop-shape':
       case 'preview-fit':
         return; // read when the dialog opens / CSS only
@@ -1820,25 +1848,25 @@ export class TdMediaGallery extends TdFormElement {
     if (!source) { release(); this._cropFail(); return; }
     const it = this._itemOf.get(li);
     const focalOn = this._focalOn();
+    const focalMode = this._focalMode();
     const crop = it.cropRaw ? parseCrop(it.cropRaw)?.crop ?? null : null;
     const focal = focalOn && it.focalRaw ? parseFocal(it.focalRaw)?.focal ?? null : null;
+    const common = { ...source, themeRoot: this, alt: it.alt || it.previewAlt, nested: false, signal: c.ctrl.signal, opener: btn || undefined };
     let res;
     try {
-      res = await openCropDialog({
-        ...source,
-        themeRoot: this,
-        alt: it.alt || it.previewAlt,
-        aspectRatio: this._cropRatio(),
-        mode: parseCropMode(this.getAttribute('crop-mode')), // v0.75.0: `pan` only reaches the cropper
-        shape: parseCropShape(this.getAttribute('crop-shape')),
-        crop: crop ? { ...crop } : null,
-        focalPoint: focal ? { ...focal } : null,
-        allowFocalPoint: focalOn,
-        title: this._label('cropTitle'),
-        nested: false,
-        signal: c.ctrl.signal,
-        opener: btn || undefined,
-      });
+      res = await openCropDialog(focalMode
+        // v0.113.0 (QĐ3b / QĐ4b): no frame, no ratio, no crop in; the tile's current focal point is the start
+        ? { ...common, mode: 'focal', aspectRatio: null, shape: 'rect', crop: null, focalPoint: focal ? { ...focal } : null, allowFocalPoint: true, title: this._label('focalTitle') }
+        : {
+          ...common,
+          aspectRatio: this._cropRatio(),
+          mode: parseCropMode(this.getAttribute('crop-mode')), // v0.75.0: `pan` only reaches the cropper
+          shape: parseCropShape(this.getAttribute('crop-shape')),
+          crop: crop ? { ...crop } : null,
+          focalPoint: focal ? { ...focal } : null,
+          allowFocalPoint: focalOn,
+          title: this._label('cropTitle'),
+        });
     } catch (err) {
       if (release()) console.warn(`td-media-gallery: the crop dialog failed (${err && typeof err.name === 'string' ? err.name : 'error'})`);
       return;
@@ -1847,7 +1875,7 @@ export class TdMediaGallery extends TdFormElement {
     release();
     if (!res || res.status !== 'applied' || !res.changed) return;
     const cur = this._itemOf.get(li);
-    cur.cropRaw = res.crop ? serializeCrop(res.crop.normalized) : null;
+    if (!focalMode) cur.cropRaw = res.crop ? serializeCrop(res.crop.normalized) : null; // v0.113.0: focal never sets a crop
     if (focalOn) cur.focalRaw = res.focalPoint ? serializeFocal(res.focalPoint) : null;
     this._syncCropPreview(li, cur);
     this._syncForm();
@@ -2035,7 +2063,7 @@ export class TdMediaGallery extends TdFormElement {
     const focal = this._focalOn();
     const mode = this._captionMode();
     const printed = name && !this._isBroken() && !this._isOverflow()
-      ? galleryEntries(name, this._items, { usage, focal, caption: mode }) || [] : [];
+      ? galleryEntries(name, this._effItems(), { usage, focal, caption: mode }) || [] : [];
     const expect = printed.filter(([k]) => !(usage && (k.endsWith('[alt]') || k.endsWith('[caption]'))));
     const hidden = this._ssrHidden();
     if (hidden.length !== expect.length) return false;
