@@ -664,7 +664,8 @@ describe('td-media-picker — list states', () => {
     const promise = TdMediaPicker.open({ adapter: ad, pageSize: 20, autoSelectFirst: false });
     await until(() => ad.calls.list.length);
     expect(q('.td-media-picker__skeleton').hidden).to.equal(false);
-    expect(q('.td-media-picker__skeleton').querySelectorAll('.td-media-picker__skeleton-card').length).to.equal(30);
+    const skn = q('.td-media-picker__skeleton').querySelectorAll('.td-media-picker__skeleton-card').length;
+    expect(skn).to.be.within(1, 20); // v0.111.0: fills the frame, capped at pageSize 20
     expect(q('.td-media-picker__results').getAttribute('aria-busy')).to.equal('true');
     ad.calls.list[0].resolve();
     await until(() => items().length === 20);

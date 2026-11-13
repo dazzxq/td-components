@@ -4,6 +4,36 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.111.0
+
+**`td-media-picker`: bộ tải thumbnail có ngân sách theo luật WAF, không còn ảnh vỡ; skeleton lấp kín khung** (owner +
+dsuite + dcms2 + dwp 13/11). Cuộn picker một lúc là chạm rate limit Cloudflare của CDN ảnh (đếm cả HIT, theo IP), rồi
+storefront cũng bị chặn 10 s; ảnh lỗi để lại icon vỡ.
+
+- Module mới `@dazzxq/td-components/thumb-loader` (`createThumbLoader`, `configureThumbBudget`, `getThumbBudget`, cũng có
+  ở barrel): port cơ chế đang chạy ở dwp rồi cải tiến. Một broker chung cả trang cho mỗi host ảnh; mỗi lưới một loader.
+  - Chỉ tải quanh khung nhìn (vùng đệm 300–600 px theo chiều cao khung), chờ 120 ms chỉ khi cuộn nhanh.
+  - Ưu tiên: đang thấy > người dùng mở > phía trước theo hướng cuộn > còn lại; giữ 2 luồng cho ảnh đang thấy.
+  - Nhịp từ `wafBudget { limit, windowSeconds }`: 40 % ngưỡng, tối đa `maxRate` 30/s, burst 6, 6 luồng; Save-Data / 2g
+    chậm hơn.
+  - Lỗi: gỡ `src` ngay (không icon vỡ), tự thử lại, tối đa 3 lần mỗi ảnh mỗi phiên trang; nhiều ảnh lỗi cùng lúc → dừng
+    12 s, thử 2 ảnh canary, lỗi tiếp thì 24 / 48 / 60 s; mỗi lần chặn nhịp giảm một nửa rồi hồi dần. Cổng chặn chia sẻ
+    giữa các tab cùng origin.
+  - Ảnh SSR: giữ ảnh LCP / eager, nhận quản lý ảnh có sẵn (`data-td-managed-img`), cứu cả ảnh đã lỗi trước khi JS chạy;
+    `observe(root)` cho phần "Xem thêm", `swap()` cho ảnh đổi theo màu. Không đụng `el.style`.
+  - Giới hạn an toàn: ảnh chờ quá 20 s tính là lỗi (host treo không giữ hết luồng); `srcset` quá 16 384 ký tự hoặc 16
+    candidate bị bỏ; ảnh thử của `swap()` giữ `referrerpolicy` / `crossorigin` của ảnh đích.
+  - `sharedWindow` (cộng sổ giữa các tab và trang trước) mặc định **tắt**: harness `test/perf/thumb-loader-sim.mjs` không
+    thấy lợi ở 750 / 2000 và thấy tải chậm hơn với 2 tab.
+- Picker dùng bộ tải mặc định: thumbnail, ảnh bìa collection, ảnh xem trước ở panel chi tiết. Ô chờ có shimmer, ảnh hiện
+  dần 150 ms, ảnh hỏng hẳn để icon mờ; giảm chuyển động thì tắt hiệu ứng. `thumbLoader: false` quay về `src` +
+  `loading=lazy` như cũ; `thumbLoader: { wafBudget, maxRate, sharedWindow }` cấu hình broker. Bị chặn thì toast
+  `labels.thumbGate` ("Bạn thao tác quá nhanh, chờ một chút nhé"); hook `onThumbGate(info)` trả `false` để tắt toast.
+  "Thử lại" và mở lại picker thử lại các ảnh đã hỏng.
+- Skeleton lúc tải lấp kín khung (số cột × số hàng thấy + 1, tối đa bằng page size); trước là 30 thẻ cố định hoặc 2 hàng.
+- **Lưu ý cho test của site:** thumbnail trong picker không còn `src` ngay khi render; chờ class `is-thumb-loaded` trên ô
+  (`[data-td-thumb-cell]`) hoặc tắt bằng `thumbLoader: false`.
+
 ## 0.110.0
 
 **`td-media-picker`: cuộn để tải thêm, `pageSize: 'auto'`, đếm theo bộ lọc, nút icon ở panel chi tiết** (owner + dsuite 13/11).

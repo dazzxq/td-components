@@ -26,6 +26,7 @@ changes khi đổi):
 | `./icon-element` | định nghĩa `<td-icon>` | [Icons](icons.md) |
 | `./icons.json` | dữ liệu icon (cho PHP / SSR) | [Icons](icons.md#markup-hợp-đồng-ssr) |
 | `./form-validation` | `TdFormValidation` | [Form validation](form-validation.md) |
+| `./thumb-loader` | `createThumbLoader`, `configureThumbBudget`, `getThumbBudget` (+ hằng `THUMB`, `CLS`, `ATTR`, `ROOT_CLASS`) | [Thumb loader](thumb-loader.md) |
 | `./base`, `./form-element`, `./sample` | `TdBaseElement` (có `escapeHtml()`, `safeColor()`), `TdFormElement`, `<td-sample>` | [Base element](base-element.md) |
 
 ### Import từ barrel

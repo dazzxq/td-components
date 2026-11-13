@@ -392,3 +392,39 @@ describe('v0.110 td-media-picker — pageSize auto + maxPageSize (QĐ4)', () => 
     await setViewport({ width: 1280, height: 800 });
   });
 });
+
+describe('v0.111.0 td-media-picker — the skeleton fills the frame (owner)', () => {
+  const skel = () => [...(q('.td-media-picker__skeleton')?.children || [])];
+  const shownSkeleton = async (ad) => {
+    await until(() => ad.calls.list.length === 1, 4000, 'first list');
+    await until(() => pickerRoot()?.getAttribute('data-state') === 'open', 4000, 'open');
+    await until(() => !q('.td-media-picker__skeleton').hidden && skel().length > 0, 4000, 'skeleton');
+  };
+
+  for (const columns of ['fixed', 'auto']) {
+    it(`columns '${columns}', pageSize 'auto' at 2560×1440: skeleton = the page size, past the bottom of the frame`, async () => {
+      await setViewport({ width: 2560, height: 1440 });
+      const ad = createMockAdapter({ manual: true, count: 200 });
+      TdMediaPicker.open({ autoSelectFirst: false, columns, pageSize: 'auto', adapter: ad });
+      await shownSkeleton(ad);
+      const limit = lastReq(ad).limit;
+      expect(skel().length).to.equal(limit);
+      expect(limit).to.be.above(columns === 'fixed' ? 16 : 30); // not 2 rows of 8 / not the old fixed 30
+      expect(skel().at(-1).getBoundingClientRect().bottom).to.be.greaterThan(results().getBoundingClientRect().bottom);
+      ad.calls.list[0].resolve();
+      await until(() => items().length === limit, 4000, 'page 1');
+      await setViewport({ width: 1280, height: 800 });
+    });
+  }
+
+  it('a numeric pageSize caps the skeleton (never more placeholders than cards coming)', async () => {
+    await setViewport({ width: 2560, height: 1440 });
+    const ad = createMockAdapter({ manual: true, count: 200 });
+    TdMediaPicker.open({ autoSelectFirst: false, pageSize: 12, adapter: ad });
+    await shownSkeleton(ad);
+    expect(skel().length).to.be.at.most(12);
+    ad.calls.list[0].resolve();
+    await until(() => items().length === 12, 4000, 'page 1');
+    await setViewport({ width: 1280, height: 800 });
+  });
+});

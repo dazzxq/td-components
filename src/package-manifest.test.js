@@ -488,3 +488,13 @@ test('v0.96.0: ./button-busy export (pure module: NOT in sideEffects), setButton
   assert.match(src, /export \{ setButtonBusy, runWithButton \} from '\.\/src\/form\/button-busy\.js';/);
   assert.doesNotMatch(src, /syncButtonState/, 'the internal writer is not exported');
 });
+
+test('v0.111.0: ./thumb-loader export (pure module: NOT in sideEffects) resolves through the package name; barrel names', async () => {
+  assert.equal(pkg.exports['./thumb-loader'], './src/utils/thumb-loader.js');
+  assert.ok(!pkg.sideEffects.includes('./src/utils/thumb-loader.js'), 'no customElements.define → no side effect');
+  assert.ok(!Object.values(pkg.exports).some((t) => /thumb-budget/.test(t)), 'the broker module has no subpath of its own');
+  const mod = await import(`${pkg.name}/thumb-loader`); // package self-reference: resolved through the exports map
+  for (const k of ['createThumbLoader', 'configureThumbBudget', 'getThumbBudget']) assert.equal(typeof mod[k], 'function', k);
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ createThumbLoader, configureThumbBudget, getThumbBudget \} from '\.\/src\/utils\/thumb-loader\.js';/);
+});

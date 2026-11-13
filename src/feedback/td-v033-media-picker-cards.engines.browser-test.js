@@ -99,7 +99,7 @@ describe('v0.33 td-media-picker — cards (decisions 11-12)', () => {
     expect(meta.getBoundingClientRect().right <= info.getBoundingClientRect().right + 0.5).to.equal(true);
   });
 
-  it('card markup: opener holds thumb 3:2 (img contain, no-referrer / lazy / async) + name (title) + "size • DD/MM/YYYY HH:mm" + badges; tick after the opener', async () => {
+  it('card markup: opener holds thumb 3:2 (img contain, no-referrer / async, via the thumb loader) + name (title) + "size • DD/MM/YYYY HH:mm" + badges; tick after the opener', async () => {
     await setViewport({ width: 1440, height: 900 });
     await openReady({ selection: { mode: 'multiple' } });
     const card = item('m60');
@@ -114,7 +114,11 @@ describe('v0.33 td-media-picker — cards (decisions 11-12)', () => {
     const img = thumb.querySelector('img');
     expect(getComputedStyle(img).objectFit).to.equal('contain');
     expect(Math.abs(img.getBoundingClientRect().width - tr.width) <= 0.5, 'img fills the thumb width').to.equal(true);
-    for (const [a, v] of [['referrerpolicy', 'no-referrer'], ['loading', 'lazy'], ['decoding', 'async']]) expect(img.getAttribute(a)).to.equal(v);
+    for (const [a, v] of [['referrerpolicy', 'no-referrer'], ['decoding', 'async']]) expect(img.getAttribute(a)).to.equal(v);
+    // v0.111.0: through the thumbnail loader — no `loading=lazy`, `src` only once admitted (the cell says loaded)
+    expect(img.hasAttribute('loading'), 'no loading=lazy').to.equal(false);
+    await until(() => thumb.classList.contains('is-thumb-loaded'), 4000, 'thumb loaded');
+    expect(img.getAttribute('src')).to.equal(img.getAttribute('data-td-src'));
     const name = open.querySelector('.td-media-picker__name');
     expect(name.textContent).to.equal('anh-60.jpg');
     expect(name.title).to.equal('anh-60.jpg');

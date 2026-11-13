@@ -106,6 +106,18 @@ const SEL = {
 // on page 1.
 const BLOCKED_ID = 'm59';
 
+/** v0.111.0: thumbnails load through the thumb loader; shoot only once every cell in the viewport has settled. */
+async function thumbsSettled(page) {
+  await page.waitForFunction(() => {
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    const cells = [...document.querySelectorAll('.td-media-picker [data-td-thumb-cell]')].filter((c) => {
+      const r = c.getBoundingClientRect();
+      return r.width > 0 && r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw;
+    });
+    return cells.length > 0 && cells.every((c) => c.classList.contains('is-thumb-loaded') || c.classList.contains('is-thumb-failed'));
+  });
+}
 async function openPicker(page, selection = { mode: 'single' }, capabilities = undefined) {
   await page.evaluate(({ sel, caps }) => {
     window.__adapter = window.createMockAdapter();
@@ -115,6 +127,7 @@ async function openPicker(page, selection = { mode: 'single' }, capabilities = u
     window.__outcome = window.TdMediaPicker.open(opts);
   }, { sel: selection, caps: capabilities });
   await page.locator(`${PICKER} [data-td-media-item]`).first().waitFor({ state: 'visible' });
+  await thumbsSettled(page);
 }
 const card = (page, id) => page.locator(`${PICKER} [data-td-media-item][data-id="${id}"]`);
 const nthCard = (page, n) => page.locator(`${PICKER} [data-td-media-item]`).nth(n);
@@ -170,6 +183,7 @@ const STATES = {
         crop: { enabled: true, aspectRatio: 1.91, allowFocalPoint: true } });
     });
     await page.locator(`${PICKER} [data-td-media-item]`).first().waitFor({ state: 'visible' });
+    await thumbsSettled(page);
     await nthCard(page, 1).locator('[data-td-media-open]').click();
     await picker(page).locator('.td-media-picker__confirm').click();
     await page.locator('.td-crop-dialog[data-state="open"] td-cropper[data-state="ready"]').waitFor({ state: 'visible' });

@@ -54,6 +54,23 @@ async function closeAll() {
 }
 afterEach(closeAll);
 
+
+// v0.111.0: skeleton = tracks × (visible rows + 1), capped at the page size → assert the invariant, not a constant
+function expectSkeletonFills(sk, cap) {
+  const n = sk.childElementCount;
+  const t = getComputedStyle(sk).gridTemplateColumns.trim().split(/\s+/).filter((x) => x && x !== 'none').length;
+  const card = sk.firstElementChild;
+  const rowH = card.offsetHeight + (parseFloat(getComputedStyle(sk).rowGap) || 0);
+  const res = sk.closest('.td-media-picker__results');
+  const rs = getComputedStyle(res);
+  const h = res.clientHeight - parseFloat(rs.paddingTop) - parseFloat(rs.paddingBottom);
+  expect(n).to.be.within(1, cap);
+  if (n < cap) {
+    expect(n % t, `count ${n} is whole rows of ${t}`).to.equal(0);
+    expect((n / t) * rowH, 'rows cover the frame').to.be.at.least(h);
+  }
+}
+
 describe('v0.106 td-media-picker columns: fixed', () => {
   it('widths → 8/6/4/3/2/1 columns (data-cols, grid tracks, real card positions); every column count divides 24', async () => {
     await open({ columns: 'fixed', pageSize: 24 }, { count: 60 });
@@ -81,24 +98,24 @@ describe('v0.106 td-media-picker columns: fixed', () => {
     expect(new Set(items().map((e) => Math.round(e.getBoundingClientRect().top))).size).to.equal(8);
   });
 
-  it('skeleton = N × 2 cards with the same column count; follows a width change while it shows; 1 column → 2 cards', async () => {
+  it('skeleton = whole rows filling the frame with the same column count; follows a width change while it shows', async () => {
     const { ad } = await open({ columns: 'fixed' }, { manual: true });
     const sk = () => q('.td-media-picker__skeleton');
     await until(() => !sk().hidden, 4000, 'skeleton');
     await frame();
     await setWidth(1300);
     expect(cols()).to.equal('8');
-    expect(sk().childElementCount).to.equal(16);
+    expectSkeletonFills(sk(), 24);
     expect(tracks(sk())).to.equal(8);
     await setWidth(800);
-    expect(sk().childElementCount).to.equal(8);
+    expectSkeletonFills(sk(), 24);
     expect(tracks(sk())).to.equal(4);
     await setWidth(250);
     expect(cols()).to.equal('1');
-    expect(sk().childElementCount).to.equal(2);
+    expectSkeletonFills(sk(), 24);
     expect(tracks(sk())).to.equal(1);
     await setWidth(500);
-    expect(sk().childElementCount).to.equal(6);
+    expectSkeletonFills(sk(), 24);
     ad.calls.list[0].resolve();
     await firstPage();
   });
@@ -116,20 +133,20 @@ describe('v0.106 td-media-picker columns: fixed', () => {
     expect(cols()).to.equal('8');
   });
 
-  it("'auto' (default) and an unknown value: no data-columns / data-cols, 30 skeleton cards", async () => {
+  it("'auto' (default) and an unknown value: no data-columns / data-cols, skeleton fills the frame", async () => {
     const warn = console.warn;
     const warns = [];
     console.warn = (m) => warns.push(String(m));
     try {
       await open({}, { manual: true });
       expect(pickerRoot().hasAttribute('data-columns')).to.equal(false);
-      expect(q('.td-media-picker__skeleton').childElementCount).to.equal(30);
+      expectSkeletonFills(q('.td-media-picker__skeleton'), 30);
       await setWidth(800);
       expect(pickerRoot().hasAttribute('data-cols')).to.equal(false);
       await closeAll();
       await open({ columns: 'grid' }, { manual: true });
       expect(pickerRoot().hasAttribute('data-columns')).to.equal(false);
-      expect(q('.td-media-picker__skeleton').childElementCount).to.equal(30);
+      expectSkeletonFills(q('.td-media-picker__skeleton'), 30);
       expect(warns.some((m) => m.includes('options.columns'))).to.equal(true);
     } finally {
       console.warn = warn;

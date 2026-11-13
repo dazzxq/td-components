@@ -181,6 +181,23 @@ Mỗi mục là một item [`td-media-grid`](media-grid.md) (`select-mode="tick"
 `--td-media-picker-list-bg`, `--td-media-picker-card-radius`, `--td-media-picker-card-shadow` — xem
 [Theming](../customization/theming.md).
 
+### Thumbnail tải có nhịp — `thumbLoader` (0.111.0)
+
+CDN ảnh của các site có luật WAF đếm cả cache HIT. Lưới 60 ảnh cuộn nhanh là vượt luật, CDN chặn 10s và ảnh hiện icon
+vỡ. Từ 0.111.0 picker tải thumbnail qua [thumb loader](thumb-loader.md) (bật mặc định):
+
+- Thumbnail thẻ, ảnh bìa bộ sưu tập và ảnh xem trước của panel chi tiết in dưới dạng `<img data-td-src="…">` (không
+  `src`, không `loading="lazy"`). Ô `.td-media-picker__thumb` có `data-td-thumb-cell` và `data-id` = id asset.
+- Ảnh chỉ tải khi lại gần khung cuộn, theo nhịp chung cả trang (mọi lưới khác dùng loader trên cùng host chia nhịp).
+- **Placeholder:** khi chờ, ô hiện ánh lướt của skeleton. Tải xong thì ảnh hiện dần (150ms). Lỗi thì thử lại sau 1,5s;
+  sau 3 lần, ô hiện khung ảnh mờ ở giữa, **không bao giờ là icon vỡ**. `prefers-reduced-motion` tắt ánh lướt và hiệu ứng.
+- Nút "Thử lại" của lưới và **mở lại picker** thử lại các ô đã hỏng.
+- Khi CDN đang chặn, picker hiện một toast cảnh báo `labels.thumbGate` ("Bạn thao tác quá nhanh, chờ một chút nhé"),
+  thời gian `max(4000ms, thời gian chặn còn lại)`. Hook `onThumbGate({ until, remainingMs })` trả `false` thì không hiện.
+- Khai luật WAF: `thumbLoader: { wafBudget: { limit, windowSeconds } }` (mặc định `{ 500, 10 }`) ở `open()` hoặc
+  `configureDefaults`. Object này áp cho broker cả trang.
+- `thumbLoader: false`: markup cũ (`src` + `loading="lazy"`), không placeholder, không thử lại.
+
 ### Lưới đủ hàng — `columns: 'fixed'` (0.106.0)
 
 Mặc định (`'auto'`) lưới tự xếp theo `--td-media-picker-col-min` nên số cột đổi theo bề rộng (4, 7, 8…) và hàng cuối
@@ -425,6 +442,8 @@ TdMediaPicker.configureDefaults({
   pageSize: 30,                   // 0.110: hoặc 'auto' (+ maxPageSize)
   pagination: 'cursor',           // hoặc 'pages'
   loadMore: false,                // 0.110: true | { trigger: 'auto' | 'button', maxItems }
+  thumbLoader: { wafBudget: { limit: 2000 } }, // 0.111: luật WAF của CDN ảnh; false = tắt
+  onThumbGate: (info) => {},      // 0.111: CDN đang chặn; trả false = không hiện toast
 });
 TdMediaPicker.defaults;           // bản sao nông của object đã cấu hình
 ```
@@ -473,6 +492,8 @@ const outcome = await TdMediaPicker.open({
 | `initialCollection` | `{ id: string, label: string }` \| `null` | `null` | 0.66.0: mở **thẳng vào** bộ sưu tập này (breadcrumb + `collectionId` ngay từ request đầu). `capabilities: { collections: false }` của site thắng: khi đó `initialCollection` bị bỏ qua và phiên chạy như phiên thường. `id` ≤ 512 ký tự, `label` cắt còn 200 code point; sai hình dạng → `TypeError`; `null` = không có. **Không** lấy từ defaults. Focus vẫn ở ô tìm. Xem [Bộ sưu tập](#bộ-sưu-tập-0660) |
 | `collections` | `{ showWithoutQuery?: boolean }` | `{ showWithoutQuery: false }` | 0.66.0: `true` → dải bộ sưu tập hiện cả khi chưa gõ tìm. Không phải object → `TypeError`; `null` = bỏ qua |
 | `autoSelectFirst` | `boolean` | theo chế độ | 0.67.0 (opt-in) → bật mặc định từ 0.68.0 → **từ 0.72.0 mặc định chỉ bật cho picker chọn MỘT ảnh (`selection.mode: 'single'`), tắt cho `multiple`**: chọn sẵn asset đầu tiên chọn được của lần tải danh sách đầu — [Tự chọn ảnh đầu](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670). Giá trị đã đặt thắng ở cả hai chế độ: chỉ boolean `false` mới tắt, mọi giá trị khác có mặt (kể cả `true`) bật; `null` / vắng = mặc định theo chế độ; lấy được từ defaults; `open({ autoSelectFirst: false })` tắt riêng lần mở, `open({ autoSelectFirst: true, selection: { mode: 'multiple' } })` bật cho picker nhiều ảnh |
+| `thumbLoader` | `true` \| `false` \| object cấu hình broker | `true` | 0.111.0: thumbnail tải có nhịp qua [thumb loader](thumb-loader.md). Object (ví dụ `{ wafBudget: { limit: 2000 } }`) chuyển cho `configureThumbBudget`. `false` = markup cũ (`src` + `loading="lazy"`) — [Thumbnail tải có nhịp](#thumbnail-tải-có-nhịp--thumbloader-01110) |
+| `onThumbGate` | `({ until, remainingMs }) => boolean \| void` | — | 0.111.0: CDN đang chặn ảnh. Trả `false` thì kit không hiện toast |
 | `crop` | `{ enabled, aspectRatio?, allowFocalPoint?, mode?, shape? }` | — | 0.35.0 (`mode` / `shape`: 0.75.0): `enabled: true` + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `[0.01, 100]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
 
 - **Một picker một lúc**: gọi `open()` khi đã có picker mở → resolve ngay `{ status: 'cancelled', reason:
@@ -1124,7 +1145,7 @@ Nút "Quay lại" dùng lại nhãn `back` sẵn có. Class của nó là `.td-m
   thẻ, Enter hoặc Space để vào. Tên truy cập là `labels.collectionName`; chữ và số trong thẻ là `aria-hidden` để không đọc đôi.
 - Breadcrumb là `<nav>` có `aria-label` "Vị trí"; mục hiện tại có `aria-current="page"`.
 - Vào / ra: focus về tiêu đề vùng kết quả, số kết quả đọc qua live region (gộp với "{n} kết quả" để không bị đè).
-- Forced colors: viền thẻ và focus ring vẫn thấy. Ảnh bìa `alt=""` (trang trí), `referrerpolicy="no-referrer"`, `loading="lazy"`.
+- Forced colors: viền thẻ và focus ring vẫn thấy. Ảnh bìa `alt=""` (trang trí), `referrerpolicy="no-referrer"`, tải qua thumb loader (0.111.0).
 
 ### Ví dụ (kiểu dsuite)
 
@@ -1407,6 +1428,7 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `error.not-found` · `error.conflict` | "Không tìm thấy media." · "Media đã bị thay đổi ở nơi khác." |
 | `error.rate-limited` | "Thao tác quá nhanh. Thử lại sau giây lát." |
 | `error.validation` · `error.server` | "Dữ liệu chưa hợp lệ." · "Có lỗi xảy ra. Thử lại sau." |
+| `thumbGate` | "Bạn thao tác quá nhanh, chờ một chút nhé" (0.111.0: toast khi CDN đang chặn thumbnail) |
 
 `error.*` chỉ dùng khi adapter không có `userMessage`. Key lồng nhau (`error`, `kind`, `status`, `meta`, `urlError`) đè
 bằng `messages: { 'error.network': '…' }` theo lần mở, hoặc thay cả object con trên `TdMediaPicker.labels`. Đổi nhãn so với
@@ -1437,7 +1459,9 @@ TdMediaPicker.open({ selection: { mode: 'single' }, messages: { limit: ({ max })
   cho phép origin đó, và CDN phải trả header CORS.
 - **Tải từ URL**: trình duyệt **không** chạm vào URL người dùng nhập (chỉ gửi chuỗi cho adapter) — không cần mở CSP cho
   host lạ.
-- Mọi `<img>` của picker / field có `referrerpolicy="no-referrer"` cố định, `loading="lazy"`, `decoding="async"`. **CDN có
+- Mọi `<img>` của picker / field có `referrerpolicy="no-referrer"` cố định và `decoding="async"`. Thumbnail, ảnh bìa bộ sưu tập
+  và ảnh xem trước của picker đi qua [thumb loader](thumb-loader.md) (0.111.0, không `loading="lazy"`); với `thumbLoader: false`
+  hoặc ở field thì là `loading="lazy"`. **CDN có
   chống hotlink phải chấp nhận referer rỗng**, không thì ảnh trong picker bị chặn.
 - URL ảnh chỉ nhận `https:` (`http:` khi trang là `http:`) hoặc đường dẫn tương đối; `javascript:`, `data:`, `file:`…
   → coi như không có ảnh. Link usage qua `safeLinkUrl` (chỉ `http(s):` / tương đối).

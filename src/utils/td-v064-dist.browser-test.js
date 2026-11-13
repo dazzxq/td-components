@@ -7,7 +7,8 @@ import '../form/td-scan-input.js';
 // dist/ bytes (npm run test:browser:dist, TD_DIST=1): the barrel's export table (keepNames: every class / function keeps
 // its export name), the two lazy import() of td-modal.js still load and open a dialog, each element defined once.
 /** The barrel exports, captured from the source at 0.64.0 (Codex impl r1 #2) — dist must export exactly these.
- * v0.94.0: + TdIconPicker, registerIconSearchData (td-icon-picker). v0.95.0: + TdSelectionBar. v0.96.0: + TdPageActions, setButtonBusy, runWithButton, registerExternalOverlay. */
+ * v0.94.0: + TdIconPicker, registerIconSearchData (td-icon-picker). v0.95.0: + TdSelectionBar. v0.96.0: + TdPageActions, setButtonBusy, runWithButton, registerExternalOverlay.
+ * v0.111.0: + createThumbLoader, configureThumbBudget, getThumbBudget. */
 const EXPORTS = [
   'BREAKPOINTS', 'SHORT_MAX', 'TdActionButton', 'TdAlert', 'TdBaseElement', 'TdButton', 'TdCarousel', 'TdCheckMatrix',
   'TdCheckbox', 'TdChipInput', 'TdChoiceGroup', 'TdColorPicker', 'TdCopy', 'TdCropper', 'TdDateTime',
@@ -18,7 +19,7 @@ const EXPORTS = [
   'TdMediaPicker', 'TdMenu', 'TdModal', 'TdModalStackManager', 'TdNumberInput', 'TdOtpInput', 'TdPageActions', 'TdPagination',
   'TdPasswordMeter', 'TdProgress', 'TdRating', 'TdRepeater', 'TdScanInput', 'TdScrollTop', 'TdSelectionBar', 'TdSlider', 'TdSortable',
   'TdSteps', 'TdTable', 'TdTabs', 'TdTimeline', 'TdToast', 'TdToggle', 'TdTooltip', 'TdTree', 'TdTreeSelect',
-  'contrastRatio', 'debounce', 'fillIconSlots', 'formatFileSize', 'formatNumber', 'getAccessibleTextColor', 'hasIcon',
+  'configureThumbBudget', 'contrastRatio', 'createThumbLoader', 'debounce', 'fillIconSlots', 'formatFileSize', 'formatNumber', 'getAccessibleTextColor', 'getThumbBudget', 'hasIcon',
   'isCoarsePointer', 'isShort', 'listIcons', 'matchesBelow', 'mqBelow', 'parseColorToRgb', 'registerExternalOverlay', 'registerIconSearchData',
   'registerIcons',
   'relativeLuminance', 'runWithButton', 'setButtonBusy', 'slugify', 'tdAvatar', 'tdIcon', 'tdTooltip', 'throttle', 'trackFormDirty',
@@ -37,7 +38,7 @@ async function cancelDialog() {
 }
 
 describe('v0.64.0 dist parity — index.js', () => {
-  it('the 88 captured exports (v0.105.0 + tdAvatar); every function export keeps its name (keepNames); the 3 others keep their type', () => {
+  it('the 91 captured exports (v0.111.0 + thumb loader); every function export keeps its name (keepNames); the 3 others keep their type', () => {
     const keys = Object.keys(kit).sort();
     expect(keys).to.deep.equal(EXPORTS);
     for (const k of keys) {

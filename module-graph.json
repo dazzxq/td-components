@@ -67,7 +67,8 @@
       "src/utils/datetime.js",
       "src/utils/dom-utils.js",
       "src/utils/external-overlay.js",
-      "src/utils/form-validation.js"
+      "src/utils/form-validation.js",
+      "src/utils/thumb-loader.js"
     ],
     "src/base/sample/td-sample.js": [
       "src/base/td-base-element.js"
@@ -332,7 +333,8 @@
       "src/utils/keyboard-viewport.js",
       "src/utils/layers.js",
       "src/utils/media-picker-core.js",
-      "src/utils/media-url.js"
+      "src/utils/media-url.js",
+      "src/utils/thumb-loader.js"
     ],
     "src/feedback/td-menu.js": [
       "src/icons/td-icon.js",
@@ -774,6 +776,11 @@
     "src/utils/table-tree-model.js": [
       "src/utils/key-selection.js",
       "src/utils/tree-model.js"
+    ],
+    "src/utils/thumb-budget.js": [],
+    "src/utils/thumb-loader.js": [
+      "src/utils/media-url.js",
+      "src/utils/thumb-budget.js"
     ],
     "src/utils/timeline-model.js": [
       "src/utils/datetime.js",

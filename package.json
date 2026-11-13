@@ -1,6 +1,6 @@
 {
   "name": "@dazzxq/td-components",
-  "version": "0.110.0",
+  "version": "0.111.0",
   "description": "Shared UI Web Components library — single source of truth UI kit (token CSS + minimal surfaces)",
   "type": "module",
   "main": "index.js",
@@ -118,6 +118,7 @@
     "./form-validation": "./src/utils/form-validation.js",
     "./breakpoints": "./src/utils/breakpoints.js",
     "./external-overlay": "./src/utils/external-overlay.js",
+    "./thumb-loader": "./src/utils/thumb-loader.js",
     "./theme": "./src/theme/index.js",
     "./check-matrix": "./src/form/td-check-matrix.js",
     "./choice-group": "./src/form/td-choice-group.js",

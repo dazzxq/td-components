@@ -436,7 +436,9 @@ const syntheticInput = (page) => ({
 
 /** every animation / transition under `sel` (and the element itself) is over */
 async function settle(page, sel) {
-  await page.evaluate((s) => Promise.all([...document.querySelectorAll(s)].flatMap((el) => el.getAnimations({ subtree: true })).map((a) => a.finished.catch(() => {}))), sel);
+  await page.evaluate((s) => Promise.all([...document.querySelectorAll(s)].flatMap((el) => el.getAnimations({ subtree: true }))
+    // v0.111.0: skip looping animations (the thumbnail shimmer), their `finished` never resolves
+    .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {}))), sel);
   await frames(page, 2);
 }
 
@@ -1871,7 +1873,7 @@ async function webkitSmoke(browser) {
       await load(page);
       await page.evaluate(() => { window.__openers.picker(); });
       await page.locator('.td-media-picker[data-state="open"]').waitFor();
-      await page.evaluate(() => Promise.all(document.querySelector('.td-media-picker').getAnimations({ subtree: true }).map((a) => a.finished.catch(() => {}))));
+      await page.evaluate(() => Promise.all(document.querySelector('.td-media-picker').getAnimations({ subtree: true }).filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {})) /* v0.111.0: the shimmer loops */));
       expect(await reachable('.td-media-picker .td-modal__close'), 'picker close not reachable');
     });
     await it(tag, 'hover not sticky: button and option after a tap', async () => {

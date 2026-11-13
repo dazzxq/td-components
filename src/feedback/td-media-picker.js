@@ -108,6 +108,7 @@ import { pageUploadSlots, uploadStats, cancelAllUploads } from './media-picker-u
 import { openFilterSheet, FILTER_LABELS } from './media-picker-filters.js';
 import { openCropDialog } from './crop-dialog.js';
 import { normalizeImageResizePolicy } from '../utils/image-resize.js';
+import { createThumbLoader, configureThumbBudget, CLS as THUMB_CLS, ATTR as THUMB_ATTR } from '../utils/thumb-loader.js';
 import '../display/td-media-grid.js';
 import '../display/td-empty-state.js';
 import '../display/td-pagination.js';
@@ -284,6 +285,8 @@ export class TdMediaPicker extends HTMLElement {
     loadedOf: '{n}/{total}',
     loadedOfLabel: 'Đã tải {n} trên {total} media',
     loaded: '{n} media',
+    /** v0.111.0 (plan v0.111.0-media-picker-thumb-loader, QĐ4): the toast while the image CDN asks us to slow down */
+    thumbGate: 'Bạn thao tác quá nhanh, chờ một chút nhé',
     ...EMPTY_LABELS,
     retry: 'Thử lại',
     back: 'Quay lại',
@@ -390,7 +393,7 @@ export class TdMediaPicker extends HTMLElement {
   /**
    * Module-level defaults (decision 6): REPLACES the whole default object on every call (one call in the site
    * bootstrap). Keys: adapter, capabilities, assetFields, uploadFields, messages, context, upload, pageSize,
-   * pagination, columns (v0.106.0). An adapter without list() / get() → TypeError (previous defaults kept). v0.90.0: an invalid
+   * pagination, columns (v0.106.0), thumbLoader + onThumbGate (v0.111.0). An adapter without list() / get() → TypeError (previous defaults kept). v0.90.0: an invalid
    * `upload.imageResize` policy → TypeError too (previous defaults kept); a valid one is stored normalised.
    * @param {object} defaults
    */
@@ -531,6 +534,105 @@ export class TdMediaPicker extends HTMLElement {
     return { duration, themeRoot: this._s && this._s.root ? this._s.root : null };
   }
 
+  /**
+   * @private v0.111.0 (plan v0.111.0-media-picker-thumb-loader, QĐ2 + C12): one thumbnail loader per open over the
+   * results scroller (cards + collection covers), one over the viewport for the detail preview (it sits outside the
+   * results scroller); both are paced by the page-wide broker of the image host (thumb-budget.js). `thumbLoader: false`
+   * → none (the pre-0.111 markup: `src` + `loading=lazy`); an object → the broker config (`configureThumbBudget`).
+   */
+  _thumbSetup(s) {
+    const cfg = s.opts.thumbLoader;
+    s.thumbs = null;
+    s.thumbsDetail = null;
+    s.thumbGateShown = 0;
+    s.thumbUser = true; // the first scan of an open is a user one (reopening retries the failed ids)
+    if (cfg === false) return;
+    let budget;
+    if (plainObject(cfg)) {
+      try { budget = configureThumbBudget(cfg) || undefined; } catch { budget = undefined; }
+    }
+    const onGate = (info) => this._onThumbGate(s, info);
+    try {
+      s.thumbs = createThumbLoader({ scrollRoot: s.els.results, onGate, budget });
+      s.thumbsDetail = createThumbLoader({ onGate, budget });
+    } catch {
+      if (s.thumbs) s.thumbs.destroy();
+      s.thumbs = null;
+      s.thumbsDetail = null;
+    }
+  }
+
+  /**
+   * @private v0.111.0 (QĐ4): the broker closed its gate. One notice per gate for both loaders of this open; the
+   * `onThumbGate(info)` hook returning `false` keeps the kit's toast off.
+   * @param {object} s @param {{ until: number, remainingMs: number }} info
+   */
+  _onThumbGate(s, info) {
+    if (!this._live(s) || !info) return;
+    const until = Number(info.until) || 0;
+    if (until && until <= s.thumbGateShown) return;
+    s.thumbGateShown = until;
+    const hook = s.opts.onThumbGate;
+    if (typeof hook === 'function') {
+      let r;
+      try { r = hook({ until, remainingMs: info.remainingMs }); } catch { r = undefined; }
+      if (r === false) return;
+    }
+    const ms = Math.max(4000, Number(info.remainingMs) || 0);
+    try { TdToast.warning(this._t('thumbGate'), this._toastOptions(ms)); } catch { /* ignore */ }
+  }
+
+  /**
+   * @private v0.111.0: (re)scan the results area (cards + covers) — an already managed image is left as it is. The
+   * first page render of an open and the one after "Thử lại" are user ones (they clear the failed ids): `consume` ends
+   * that window (the page render), other scans (collection strip) only share it.
+   * @param {boolean} [consume]
+   */
+  _thumbScan(consume = false) {
+    const s = this._s;
+    if (!s || !s.thumbs) return;
+    const userInitiated = s.thumbUser === true;
+    if (consume) s.thumbUser = false;
+    s.thumbs.scan(s.els.results, { userInitiated });
+  }
+
+  /**
+   * @private v0.111.0: the `<img>` of a thumbnail cell. Without a loader: the pre-0.111 markup (`src` + `loading=lazy`).
+   * With one: `data-td-src` only (the loader sets `src` when the budget admits it) and the cell is marked; a repaint
+   * with the same picture keeps the previous element and its state (no reload, no flash).
+   * @param {HTMLElement} cell @param {string} src @param {any} loader @param {Element|null} prev @param {string} alt
+   * @returns {HTMLImageElement}
+   */
+  _thumbImg(cell, src, loader, prev, alt) {
+    if (!loader) {
+      const img = document.createElement('img');
+      img.alt = alt;
+      img.setAttribute('loading', 'lazy');
+      img.setAttribute('decoding', 'async');
+      img.setAttribute('referrerpolicy', 'no-referrer');
+      img.src = src;
+      return img;
+    }
+    cell.setAttribute('data-td-thumb-cell', '');
+    if (prev instanceof HTMLImageElement && prev.getAttribute(THUMB_ATTR.src) === src) {
+      const old = prev.closest('[data-td-thumb-cell]');
+      if (old) for (const c of Object.values(THUMB_CLS)) cell.classList.toggle(c, old.classList.contains(c));
+      prev.alt = alt;
+      return prev;
+    }
+    const img = document.createElement('img');
+    img.alt = alt;
+    img.setAttribute('decoding', 'async');
+    img.setAttribute('referrerpolicy', 'no-referrer');
+    img.setAttribute(THUMB_ATTR.src, src);
+    return img;
+  }
+
+  /** @private v0.111.0: the managed image under `el` (a card, a cover, the preview), if any */
+  _thumbPrev(el) {
+    return el ? el.querySelector(`img[${THUMB_ATTR.src}]`) : null;
+  }
+
   /** @private still the same open session */
   _live(s) {
     return this._s === s && !this._settled;
@@ -652,6 +754,7 @@ export class TdMediaPicker extends HTMLElement {
         this._initialFocus();
       },
     });
+    this._thumbSetup(s);
     // v0.106.0 `columns: 'fixed'`: observe the results area (the grid and the skeleton are its children, both fill its
     // content width); the observer ends with the picker (s.ctrl aborts in _teardown)
     if (opts.columns === 'fixed' && typeof ResizeObserver !== 'undefined') {
@@ -786,7 +889,11 @@ export class TdMediaPicker extends HTMLElement {
     this._syncSkeleton();
     if (s.collEnabled) this._buildCollections();
     const retry = makeButton(t('retry'), { size: 'sm', cls: 'td-media-picker__retry' });
-    retry.addEventListener('click', () => { if (usable(retry)) this._loadPage(s.lastHow, { autoFirst: s.autoRetry === true, ...(s.opening ? { source: 'open' } : {}) }); });
+    retry.addEventListener('click', () => {
+      if (!usable(retry)) return;
+      s.thumbUser = true; // v0.111.0 (QĐ3): the next page render retries the failed thumbnails
+      this._loadPage(s.lastHow, { autoFirst: s.autoRetry === true, ...(s.opening ? { source: 'open' } : {}) });
+    });
     e.error.appendChild(retry);
     e.retry = retry;
     if (s.lm) this._buildLoadMore();
@@ -914,6 +1021,7 @@ export class TdMediaPicker extends HTMLElement {
     if (!e.colls) return;
     e.colls.hidden = true;
     e.collHint.hidden = true;
+    if (s.thumbs) s.thumbs.release(e.collList); // v0.111.0 (C12): covers released before they leave
     e.collList.replaceChildren();
     this._syncSectionHeads();
   }
@@ -998,6 +1106,7 @@ export class TdMediaPicker extends HTMLElement {
     const s = this._s;
     const e = s.els;
     const t = (k, p) => this._t(k, p);
+    if (s.thumbs) s.thumbs.release(e.collList); // v0.111.0 (C12): covers released before the strip is rebuilt
     e.collList.replaceChildren();
     if (!cards.items.length) {
       this._hideCollections();
@@ -1017,14 +1126,14 @@ export class TdMediaPicker extends HTMLElement {
       const cover = document.createElement('span');
       cover.className = 'td-media-picker__coll-cover';
       cover.setAttribute('aria-hidden', 'true');
-      if (c.coverUrl) {
-        const img = document.createElement('img');
-        img.alt = '';
-        img.setAttribute('loading', 'lazy');
-        img.setAttribute('decoding', 'async');
-        img.setAttribute('referrerpolicy', 'no-referrer');
-        img.src = c.coverUrl;
-        cover.appendChild(img);
+      if (c.coverUrl && s.thumbs) {
+        // v0.111.0: the cover's own ::before / ::after are taken (stack layer, press tint) → an inner cell
+        const cell = document.createElement('span');
+        cell.className = 'td-media-picker__coll-thumb';
+        cell.appendChild(this._thumbImg(cell, c.coverUrl, s.thumbs, null, ''));
+        cover.appendChild(cell);
+      } else if (c.coverUrl) {
+        cover.appendChild(this._thumbImg(cover, c.coverUrl, null, null, ''));
       } else {
         const ic = document.createElement('span');
         ic.className = 'td-media-picker__coll-icon';
@@ -1052,6 +1161,7 @@ export class TdMediaPicker extends HTMLElement {
     e.collHint.hidden = !cards.truncated;
     e.colls.hidden = false;
     this._syncSectionHeads();
+    this._thumbScan(); // v0.111.0: covers through the loader once the strip shows
   }
 
   /**
@@ -1554,16 +1664,37 @@ export class TdMediaPicker extends HTMLElement {
     if (s.lm) this._renderPager(); // the count + "Tải thêm" leave with the grid
   }
 
-  /** @private v0.106.0: the skeleton card count — 30 ('auto', as before) or 2 rows of the current column count ('fixed') */
+  /** @private v0.106.0: the skeleton card count before a measure — 30 ('auto', as before) or 2 rows of the current column count ('fixed') */
   _skeletonCount() {
     const s = this._s;
     return s.opts.columns === 'fixed' ? (s.cols || FIXED_COLS_INITIAL) * 2 : SKELETON_CARDS;
   }
 
-  /** @private add / remove skeleton cards until there are exactly `_skeletonCount()` */
-  _syncSkeleton() {
+  /**
+   * @private v0.111.0 (owner): the shown skeleton fills the frame — columns × (visible rows + 1), the `pageSize: 'auto'`
+   * formula — capped at the cards the page will bring (`pageSize`, or `maxPageSize` while 'auto' is not measured yet).
+   * One layout read per load; not laid out (0) → the count stays as it is.
+   */
+  _fitSkeleton() {
+    const s = this._s;
+    const e = s.els;
+    if (e.skeleton.hidden) return;
+    if (!e.skeleton.firstElementChild) this._syncSkeleton();
+    const card = /** @type {HTMLElement|null} */ (e.skeleton.firstElementChild);
+    if (!card) return;
+    const cs = getComputedStyle(e.skeleton);
+    const cols = String(cs.gridTemplateColumns || '').trim().split(/\s+/).filter((x) => x && x !== 'none').length;
+    const rowH = card.offsetHeight + (parseFloat(cs.rowGap) || 0);
+    const rs = getComputedStyle(e.results);
+    const height = e.results.clientHeight - (parseFloat(rs.paddingTop) || 0) - (parseFloat(rs.paddingBottom) || 0);
+    if (!(cols > 0 && rowH > 0 && height > 0)) return;
+    const cap = s.autoSize ? s.opts.maxPageSize : s.pageSize;
+    this._syncSkeleton(autoPageSize({ cols, height, rowH, maxPageSize: cap }));
+  }
+
+  /** @private add / remove skeleton cards until there are exactly `want` (default `_skeletonCount()`) */
+  _syncSkeleton(want = this._skeletonCount()) {
     const sk = this._s.els.skeleton;
-    const want = this._skeletonCount();
     while (sk.childElementCount > want) sk.lastElementChild.remove();
     while (sk.childElementCount < want) {
       const card = document.createElement('div');
@@ -1610,6 +1741,7 @@ export class TdMediaPicker extends HTMLElement {
     s.root.setAttribute('data-cols', String(n));
     s.root.style.setProperty('--td-media-picker-cols', String(n));
     this._syncSkeleton();
+    this._fitSkeleton();
   }
 
   /** @private skeleton cards while a page loads */
@@ -1623,6 +1755,7 @@ export class TdMediaPicker extends HTMLElement {
     e.grid.hidden = !keep;
     e.skeleton.hidden = keep;
     if (e.itemsHead) this._syncSectionHeads();
+    this._fitSkeleton();
   }
 
   /** @private */
@@ -1644,7 +1777,10 @@ export class TdMediaPicker extends HTMLElement {
     const s = this._s;
     const grid = s.els.grid;
     if (typeof grid.clear === 'function') grid.clear();
-    for (const el of s.items.values()) el.remove();
+    for (const el of s.items.values()) {
+      if (s.thumbs) s.thumbs.release(el); // v0.111.0 (C12): cancel the old page's loads before its cards leave
+      el.remove();
+    }
     s.items.clear();
     for (const a of page.items) {
       const el = this._itemEl(a);
@@ -1674,6 +1810,7 @@ export class TdMediaPicker extends HTMLElement {
       this._announce(text);
     }
     if (s.els.itemsHead) this._syncSectionHeads();
+    this._thumbScan(true); // v0.111.0: the new page's thumbnails (the first one of an open / after "Thử lại": user scan)
     this._autoPreview(page);
   }
 
@@ -2005,6 +2142,7 @@ export class TdMediaPicker extends HTMLElement {
       added += 1;
     }
     grid.appendChild(frag);
+    this._thumbScan(); // v0.111.0 (QĐ5): appended thumbnails load only once near the viewport
     s.lmTotal = page.total;
     s.lmDry = added ? 0 : s.lmDry + 1;
     this._syncGrid();
@@ -2216,18 +2354,22 @@ export class TdMediaPicker extends HTMLElement {
     const badge = reused ? String(this._t('reusedBadge') || '') : '';
     const suffix = badge ? `, ${badge.charAt(0).toLocaleLowerCase()}${badge.slice(1)}` : '';
     open.setAttribute('aria-label', [name, meta, statusText].filter(Boolean).join(' — ') + suffix);
-    open.replaceChildren();
     const thumb = document.createElement('span');
     thumb.className = 'td-media-picker__thumb';
     thumb.setAttribute('aria-hidden', 'true');
     const src = asset.urls.thumbnail || asset.urls.preview;
-    if (src && asset.kind !== 'file') {
-      const img = document.createElement('img');
-      img.alt = '';
-      img.setAttribute('loading', 'lazy');
-      img.setAttribute('decoding', 'async');
-      img.setAttribute('referrerpolicy', 'no-referrer');
-      img.src = src;
+    const wantImg = !!src && asset.kind !== 'file';
+    // v0.111.0 (C12): the previous managed image is released before the repaint, unless the same picture is kept
+    const loader = s.thumbs || null;
+    const prev = loader ? this._thumbPrev(open) : null;
+    let img = null;
+    if (wantImg) {
+      if (loader) thumb.setAttribute('data-id', asset.id); // the loader's cell id (attempts are counted per asset)
+      img = this._thumbImg(thumb, src, loader, prev, '');
+    }
+    if (prev && prev !== img) loader.release(prev);
+    open.replaceChildren();
+    if (img) {
       thumb.appendChild(img);
     } else {
       const ic = document.createElement('span');
@@ -2268,6 +2410,7 @@ export class TdMediaPicker extends HTMLElement {
       info.appendChild(chip);
     }
     open.append(thumb, info);
+    if (img && loader && item.isConnected) loader.scan(s.els.results); // a card painted in place (asset update, drop)
   }
 
   /** @private td-badge row of an asset */
@@ -2755,8 +2898,15 @@ export class TdMediaPicker extends HTMLElement {
     const t = (k, p) => this._t(k, p);
     const box = s.els.detail;
     if (s.edit) { try { s.edit.form.destroy(); } catch { /* ignore */ } s.edit = null; }
-    box.replaceChildren();
     const asset = s.detailId ? s.cache.getAsset(s.detailId) : null;
+    // v0.111.0 (QĐ2 + C12): the preview goes through the detail loader; the previous one is released before the repaint
+    // unless the same picture is shown again (then the element and its state are kept: no reload, no flash)
+    const pl = s.thumbsDetail || null;
+    const prevImg = pl ? this._thumbPrev(box) : null;
+    const nextSrc = asset && asset.kind !== 'file' ? (asset.urls.preview || asset.urls.thumbnail || '') : '';
+    const keepImg = prevImg && nextSrc && prevImg.getAttribute(THUMB_ATTR.src) === nextSrc ? prevImg : null;
+    if (prevImg && !keepImg) pl.release(prevImg);
+    box.replaceChildren();
     box.toggleAttribute('data-loading', !!loading && !!asset);
     // review ISSUE-4 (plan QĐ 57): 720–1023 the detail column collapses while nothing is viewed (root flag; no :has())
     s.root?.toggleAttribute('data-detail-empty', !asset && !(s.detailId && loading));
@@ -2783,14 +2933,20 @@ export class TdMediaPicker extends HTMLElement {
     fig.className = 'td-media-picker__preview';
     fig.setAttribute('data-kind', asset.kind);
     const src = asset.urls.preview || asset.urls.thumbnail;
+    let previewImg = null;
     if (src && asset.kind !== 'file') {
-      const img = document.createElement('img');
-      img.alt = asset.defaultAltText || '';
-      img.setAttribute('decoding', 'async');
-      img.setAttribute('loading', 'lazy');
-      img.setAttribute('referrerpolicy', 'no-referrer');
-      img.src = src;
-      fig.appendChild(img);
+      if (pl) {
+        previewImg = this._thumbImg(fig, src, pl, keepImg, asset.defaultAltText || '');
+        fig.appendChild(previewImg);
+      } else {
+        const img = document.createElement('img');
+        img.alt = asset.defaultAltText || '';
+        img.setAttribute('decoding', 'async');
+        img.setAttribute('loading', 'lazy');
+        img.setAttribute('referrerpolicy', 'no-referrer');
+        img.src = src;
+        fig.appendChild(img);
+      }
     } else {
       const wrap = document.createElement('span');
       wrap.className = 'td-media-picker__preview-file';
@@ -2813,6 +2969,7 @@ export class TdMediaPicker extends HTMLElement {
       fig.appendChild(b);
     }
     box.appendChild(fig);
+    if (previewImg) pl.scan(box); // a user-opened picture: in view → admitted first, no dwell
     // 2. "TÊN FILE" + value (the pane heading)
     const group = document.createElement('div');
     group.className = 'td-media-picker__field-group';
@@ -3198,6 +3355,7 @@ export class TdMediaPicker extends HTMLElement {
     }
     const item = s.items.get(id);
     if (item) {
+      if (s.thumbs) s.thumbs.release(item); // v0.111.0 (C12): an in-place delete cancels the card's load first
       item.remove();
       s.items.delete(id);
     }
@@ -3523,6 +3681,10 @@ export class TdMediaPicker extends HTMLElement {
       if (s.initial) s.initial.invalidate();
       s.debounce.cancel();
       s.ctrl.abort();
+      // v0.111.0: this open's surfaces end (loads / timers / observers); the page-wide broker lives on
+      for (const l of [s.thumbs, s.thumbsDetail]) { if (l) { try { l.destroy(); } catch { /* ignore */ } } }
+      s.thumbs = null;
+      s.thumbsDetail = null;
       // v0.95.0: the slot pool is page-wide (never closed). The dialog's queue cancels in two phases (its waiters first,
       // then its running uploads): a freed slot can only start a background (grid) upload, never a dialog file.
       if (s.upload) { try { s.upload.destroy(); } catch { /* ignore */ } s.upload = null; }

@@ -35,6 +35,7 @@ export { TdModalStackManager } from './src/feedback/td-modal-stack.js';
 export { TdModal } from './src/feedback/td-modal.js';
 export { TdDrawer } from './src/feedback/td-drawer.js';
 export { registerExternalOverlay } from './src/utils/external-overlay.js';
+export { createThumbLoader, configureThumbBudget, getThumbBudget } from './src/utils/thumb-loader.js';
 export { TdMediaPicker } from './src/feedback/td-media-picker.js';
 export { TdToast } from './src/feedback/td-toast.js';
 export { TdLightbox } from './src/feedback/td-lightbox.js';

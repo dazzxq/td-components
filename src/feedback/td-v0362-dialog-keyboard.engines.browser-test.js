@@ -63,7 +63,8 @@ async function openSheet() {
 }
 
 /** the entrance transitions (sheet slide, fade) are over: geometry is final */
-const settled = (el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => {})));
+// v0.111.0: skip looping animations (the thumbnail shimmer), their `finished` never resolves
+const settled = (el) => Promise.all(el.getAnimations({ subtree: true }).filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {})));
 const inside = (r, top, bottom) => r.top >= top - 1 && r.bottom <= bottom + 1;
 
 describe('v0.36.2 dialogs above the on-screen keyboard', () => {

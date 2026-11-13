@@ -428,9 +428,11 @@ describe('v0.66.0 media picker collections — the strip (cases 2, 3, 6c, 6d, 9,
     expect(!!x2.querySelector('.td-media-picker__coll-count')).to.equal(false);
     const img = card('x3').querySelector('img');
     expect(!!img).to.equal(true);
+    // v0.111.0: the cover goes through the thumbnail loader (data-td-src → src once admitted, no loading=lazy)
+    await until(() => img.closest('[data-td-thumb-cell]')?.classList.contains('is-thumb-loaded'), 4000, 'cover loaded');
     expect(img.getAttribute('src').endsWith('/test/fixtures/1.svg')).to.equal(true);
     expect(img.getAttribute('referrerpolicy')).to.equal('no-referrer');
-    expect(img.getAttribute('loading')).to.equal('lazy');
+    expect(img.hasAttribute('loading')).to.equal(false);
     expect(img.getAttribute('alt')).to.equal('');
     await wait(50);
     expect(window.__k8xss).to.equal(undefined);

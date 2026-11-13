@@ -104,6 +104,7 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 |---|---|---|
 | [Base element](base-element.md) | `/base`, `/form-element`, `/sample` | Tự viết component mới theo cùng chuẩn (vòng đời, escape, form, lỗi) |
 | [Tiện ích](utilities.md) | `/dom-utils`, `/datetime` (hàm dom-utils cũng có trong barrel) | Hàm tiện ích dùng chung được export |
+| [Thumb loader](thumb-loader.md) | `/thumb-loader` (cũng có trong barrel) | 0.111.0: tải thumbnail có nhịp theo luật WAF của CDN, thử lại, lùi khi bị chặn, không icon vỡ |
 
 ## Import tất cả một lần
 

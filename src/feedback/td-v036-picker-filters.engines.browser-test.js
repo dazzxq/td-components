@@ -50,7 +50,8 @@ async function openReady(opts = {}, adOpts = {}) {
 /** settle: every running animation finished (sheet enter, card fades) */
 async function settle() {
   await raf();
-  await until(() => document.getAnimations().every((a) => a.playState !== 'running'), 4000, 'animations');
+  // v0.111.0: the thumbnail shimmer loops until its cell loads; only finite animations can settle
+  await until(() => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity), 4000, 'animations');
 }
 
 afterEach(async () => {
