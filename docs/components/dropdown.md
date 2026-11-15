@@ -615,6 +615,29 @@ dd.renderOption = (item, { query }) => {
   Node của mình (dựng bằng DOM API, đừng gán `innerHTML` từ dữ liệu người dùng).
 - Có `renderOption` thì chiều cao menu luôn đo thật (Node có thể cao hơn dòng chuẩn).
 
+## Select gốc có style (td-native-select), 0.116.0
+
+Cần một `<select>` **native** (không menu tự vẽ, không tìm kiếm) nhưng trông như ô chọn của kit? Thêm class
+`td-native-select`, không cần `<td-dropdown>` bọc ngoài, không cần JS:
+
+```html
+<label for="lang">Ngôn ngữ</label>
+<select id="lang" name="lang" class="td-native-select">
+  <option value="">Chọn ngôn ngữ</option>
+  <option value="vi">Tiếng Việt</option>
+  <option value="en">English</option>
+</select>
+```
+
+- Lấy đúng hộp của trigger dropdown: cao, padding, viền, bo góc, chữ, màu theo token `--td-field-*`, mũi tên vẽ bằng
+  CSS (không ảnh, không `data:` URI, CSP `img-src` không đổi).
+- Trạng thái: option `value=""` đang chọn hiện màu placeholder; hover (chỉ chuột), `:focus-visible` có vòng focus,
+  `disabled`; điện thoại cao tối thiểu `--td-touch-min`; chế độ tương phản cao (forced colors) trả lại mũi tên gốc.
+- Rộng 100% khung chứa; đặt rộng bằng CSS của site.
+- Đây là chính công thức `select` trần trước khi `td-dropdown` define (mục 9), tách sang
+  `src/styles/components/native-select.css` (đã có trong `td.css`). Markup và giao diện của `td-dropdown` không đổi.
+- Dùng được cả trong [td embed](../guides/embed.md) (bản embed không có `td-dropdown`).
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |

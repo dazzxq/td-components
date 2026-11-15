@@ -2,7 +2,7 @@
 // touch / pen only, cleared on release / cancel / moving past the slop / blur / visibilitychange.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ensurePressStates, PRESS_TARGETS, PRESS_SELECTOR } from './press.js';
+import { ensurePressStates, PRESS_TARGETS, PRESS_SELECTOR, pressTargetOf } from './press.js';
 
 /** Minimal element: closest() walks a fixed chain, attributes in a Map. */
 class El {
@@ -117,4 +117,47 @@ test('one holder at a time; blur / visibilitychange clear it', () => {
   doc.dispatchEvent(ptr('pointerdown', { target: a }));
   doc.dispatchEvent(new Event('visibilitychange'));
   assert.ok(!a.hasAttribute('data-td-pressed'));
+});
+
+// v0.116.0 (ADR 0045 QĐ3): the document-level listener sees `e.target` retargeted to the shadow host; the pressed
+// control is the first PRESS_SELECTOR match in composedPath()
+function withPath(e, path) {
+  Object.defineProperty(e, 'composedPath', { value: () => path });
+  return e;
+}
+
+test('shadow root: the pressed control comes from composedPath(), not the retargeted e.target', () => {
+  const doc = fakeDoc();
+  ensurePressStates(doc);
+  const outer = new El('outer', null, { press: true }); // a pressable ancestor of the host in the page
+  const host = new El('host', outer);
+  const btn = new El('btn', null, { press: true }); // inside the shadow root (its closest() stops at the root)
+  const icon = new El('icon', btn);
+  const shadowRoot = { name: 'shadow-root' }; // no matches()
+  const path = [icon, btn, shadowRoot, host, outer, doc, doc.defaultView];
+  doc.dispatchEvent(withPath(ptr('pointerdown', { target: host }), path));
+  assert.ok(btn.hasAttribute('data-td-pressed'));
+  assert.ok(!outer.hasAttribute('data-td-pressed'));
+  doc.dispatchEvent(withPath(ptr('pointerup', { target: host }), path));
+  assert.ok(!btn.hasAttribute('data-td-pressed'));
+});
+
+test('composedPath: a disabled first match is skipped (not replaced by an outer ancestor), like closest()', () => {
+  const doc = fakeDoc();
+  ensurePressStates(doc);
+  const outer = new El('outer', null, { press: true });
+  const off = new El('off', outer, { press: true, disabled: true });
+  doc.dispatchEvent(withPath(ptr('pointerdown', { target: off }), [off, outer, doc]));
+  assert.ok(!off.hasAttribute('data-td-pressed'));
+  assert.ok(!outer.hasAttribute('data-td-pressed'));
+});
+
+test('pressTargetOf: light-DOM path = closest(); no / empty composedPath falls back to e.target.closest()', () => {
+  const btn = new El('btn', null, { press: true });
+  const icon = new El('icon', btn);
+  assert.equal(pressTargetOf(withPath(ptr('pointerdown', { target: icon }), [icon, btn])), btn);
+  assert.equal(pressTargetOf(withPath(ptr('pointerdown', { target: icon }), [])), btn);
+  assert.equal(pressTargetOf({ target: icon }), btn);
+  assert.equal(pressTargetOf({ target: null }), null);
+  assert.equal(pressTargetOf(withPath(ptr('pointerdown', { target: new El('p') }), [new El('p')])), null);
 });

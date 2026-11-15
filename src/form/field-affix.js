@@ -1,4 +1,5 @@
 import { escapeHtml } from '../utils/escape.js';
+import { activeIn } from '../utils/root.js';
 
 /**
  * Prefix / suffix of a text field (v0.55.0, plan docs/internal/plans/v0.55.0-affix-number.md QĐ 2–5, ADR 0028) — shared by
@@ -157,10 +158,10 @@ export function slotInteractive(target, box, block) {
  * @param {() => void} render
  */
 export function renderKeepingSlotFocus(host, render) {
-  const active = host.ownerDocument.activeElement;
+  const active = activeIn(host);
   const inSlot = !!active && Object.values(host._affixWrap || {}).some((w) => w.contains(active));
   render();
-  if (inSlot && active.isConnected && host.ownerDocument.activeElement !== active) active.focus({ preventScroll: true });
+  if (inSlot && active.isConnected && activeIn(host) !== active) active.focus({ preventScroll: true });
 }
 
 /**

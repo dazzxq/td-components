@@ -164,8 +164,14 @@ for (const e of entries) {
   if (a !== b) errors.push(`${e}: exports differ (source ${a}, dist ${b})`);
 }
 
-/** Files and symbolic links under dist/ now (package-relative; links never followed). */
+/** v0.116.0 (ADR 0045 QĐ4): dist/embed/ is owned by scripts/build-embed.mjs (check:embed) — never cleaned or flagged here. */
+const EMBED_DIR = join(DIST, 'embed');
+const ownedByEmbed = (rel) => rel === 'dist/embed' || rel.startsWith('dist/embed/');
+if (existsSync(EMBED_DIR) && isLink(EMBED_DIR)) throw new Error('build-dist: dist/embed is a symbolic link — refusing to read through it');
+/** Files and symbolic links under dist/ now (package-relative; links never followed; dist/embed/ left out). */
 const distTree = existsSync(DIST) ? walk(DIST) : { files: [], links: [] };
+distTree.files = distTree.files.filter((rel) => !ownedByEmbed(rel));
+distTree.links = distTree.links.filter((rel) => !ownedByEmbed(rel));
 const onDisk = distTree.files;
 
 if (CHECK) {
@@ -233,6 +239,7 @@ if (CHECK) {
   }
   // empty directories left by removed modules
   const prune = (dir) => {
+    if (dir === EMBED_DIR) return; // build-embed.mjs owns it
     for (const name of readdirSync(dir)) {
       const p = join(dir, name);
       if (lstatSync(p).isDirectory()) prune(p);

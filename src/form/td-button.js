@@ -6,6 +6,7 @@ import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 import { sameControlStructure, contentNodes, safeDownloadName } from './button-structure.js';
 // v0.96.0 (ADR 0043): the busy state is written by the ONE shared function (also behind setButtonBusy / runWithButton).
 import { syncButtonState } from './button-busy.js';
+import { defineElement } from '../base/define.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning', 'ghost', 'plain'];
 const SIZES = ['sm', 'md', 'lg'];
@@ -507,6 +508,4 @@ export class TdButton extends TdBaseElement {
   }
 }
 
-if (!customElements.get('td-button')) {
-  customElements.define('td-button', TdButton);
-}
+defineElement('td-button', TdButton);

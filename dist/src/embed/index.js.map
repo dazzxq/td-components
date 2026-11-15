@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": ["../../../src/embed/index.js"],
+  "mappings": "AASA,MAAO,gBACP,MAAO,uBACP,MAAO,4BACP,MAAO,0BAEP,OAAS,gBAAAA,EAAc,gBAAAC,MAAoB,aAC3C,OAAS,kBAAAC,MAAsB,aAC/B,OAAS,iBAAAC,MAAqB",
+  "names": ["mountTdEmbed", "TdEmbedError", "TD_EMBED_BUILD", "registerIcons"]
+}

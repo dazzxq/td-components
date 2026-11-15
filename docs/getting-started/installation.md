@@ -21,6 +21,9 @@ Mục lục:
 
 Trước khi cài, xem [Yêu cầu hệ thống](requirements.md).
 
+Đặt vài component vào trang **không phải của bạn** (userscript, CMS bên thứ ba)? Dùng bản tự chứa
+[td embed](../guides/embed.md) (0.116.0) thay vì các bước dưới.
+
 ## 1. Tải kit về máy (npm từ GitHub)
 
 Kit **không** publish lên npm registry. Bạn cài thẳng từ repo GitHub `dazzxq/td-components`, tên package là
@@ -31,7 +34,7 @@ Kit **không** publish lên npm registry. Bạn cài thẳng từ repo GitHub `d
 npm install github:dazzxq/td-components
 
 # Khuyên dùng: ghim theo tag phiên bản
-npm install github:dazzxq/td-components#v0.115.0
+npm install github:dazzxq/td-components#v0.116.0
 ```
 
 Sau lệnh trên, `package.json` của site có dòng dạng:
@@ -39,7 +42,7 @@ Sau lệnh trên, `package.json` của site có dòng dạng:
 ```json
 {
   "dependencies": {
-    "@dazzxq/td-components": "github:dazzxq/td-components#v0.115.0"
+    "@dazzxq/td-components": "github:dazzxq/td-components#v0.116.0"
   }
 }
 ```
@@ -582,6 +585,7 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/base` | `src/base/td-base-element.js` | `TdBaseElement` (tự viết component) |
 | `@dazzxq/td-components/form-element` | `src/base/td-form-element.js` | `TdFormElement` |
 | `@dazzxq/td-components/sample` | `src/base/sample/td-sample.js` | `<td-sample>` (component mẫu) |
+| `@dazzxq/td-components/embed` | `dist/embed/td-embed.js` | `mountTdEmbed`, `TdEmbedError`, `TD_EMBED_BUILD`, `registerIcons` (0.116.0): bản tự chứa cho trang của bên thứ ba, xem [td embed](../guides/embed.md). Không dùng chung với `td.css` / import map |
 | `@dazzxq/td-components/package.json` | `package.json` | Metadata (phiên bản…), từ 0.16.0 |
 
 ## Xem thêm

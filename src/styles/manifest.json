@@ -7,6 +7,7 @@
     "glass.css",
     "components/icon.css",
     "components/field.css",
+    "components/native-select.css",
     "components/hint.css",
     "components/spinner.css",
     "components/skeleton.css",

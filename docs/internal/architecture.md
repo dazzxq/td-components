@@ -213,6 +213,17 @@ Biến runtime toàn trang (0.95.0: `--td-selection-bar-offset` trên `<html>`) 
 (selection-bar giữ bộ đếm thanh đang hiện, thanh cuối cùng ẩn thì gỡ biến), component khác chỉ đọc qua `var()`.
 Không có `style="…"` và không chèn `<style>` trong output của lib.
 
+## Lõi biết root (v0.116.0, ADR 0045)
+
+Component chạy được cả trong light DOM lẫn trong một shadow root (bản [td embed](../guides/embed.md)) mà light DOM không
+đổi hành vi, vì ở đó `getRootNode()` là Document. Luật cho code mới: đọc focus bằng `activeIn(node)` (`utils/root.js`,
+`node.getRootNode().activeElement`), không `document.activeElement` / `ownerDocument.activeElement`; tìm phần tử bị
+chạm / bấm từ `e.composedPath()` (listener cấp document thấy target bị đổi thành host), không `e.target.closest()`;
+nghe event không composed (`submit`) trên `this.getRootNode()`; event của kit phát với `composed: true`. Đăng ký thẻ
+qua `defineElement()` (`base/define.js`), không gọi thẳng `customElements.define`: module `embed/suppress.js` tắt
+auto-define để bản embed đăng ký vào scoped registry (`test/embed/embed-bundle.test.js` canh việc này). Không tạo
+custom element con bằng `document.createElement('td-…')` trong component của bộ embed.
+
 ## Render & cleanup
 
 - Render bằng `innerHTML` chuỗi template; mọi giá trị đi qua sanitizer theo ngữ cảnh ([security.md](security-model.md)).

@@ -153,7 +153,8 @@ export default {
     // v0.27.0: behaviour of the dsuite batch-1 components (td-otp-input, td-drawer, td-copy) in every engine.
     // TD_WTR_ENGINES=firefox (CI: one job per engine) narrows THIS group's browsers; default: all three.
     name: 'engines',
-    files: ['src/**/*.engines.browser-test.js', ...POINTER_FILES.map((f) => `!${f}`)],
+    // v0.116.0: + the td embed bundle on a hostile page (test/embed/, loads the BUILT dist/embed/td-embed.js)
+    files: ['src/**/*.engines.browser-test.js', 'test/embed/*.engines.browser-test.js', ...POINTER_FILES.map((f) => `!${f}`)],
     browsers: [
       playwrightLauncher({ product: 'chromium' }),
       playwrightLauncher({ product: 'firefox', launchOptions: engineLaunchOptions('firefox') }),

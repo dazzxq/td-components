@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": ["../../../src/utils/root.js"],
+  "mappings": "+EAUO,SAASA,EAASC,EAAM,CAC7B,GAAI,CAACA,EAAM,OAAO,KAClB,MAAMC,EAAO,OAAOD,EAAK,aAAgB,WAAaA,EAAK,YAAY,EAAI,KAE3E,OADcC,GAAQ,kBAAmBA,EAAOA,EAAOD,EAAK,gBAC9C,eAAiB,IACjC,CALgBE,EAAAH,EAAA",
+  "names": ["activeIn", "node", "root", "__name"]
+}

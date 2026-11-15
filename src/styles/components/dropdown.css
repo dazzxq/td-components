@@ -75,6 +75,7 @@
 	 * select is styled ONLY while the host is undefined (a defined host never restyles a select); the element-mode shell
 	 * keeps its rule unconditionally for the dropdown@1 deferral (a select focused when the module arrives stays until
 	 * blur, with the same look). Forced colours: the native arrow is back (appearance auto, no gradient).
+	 * v0.116.0 (QĐ6): the select rules live in native-select.css (same selectors + the standalone select.td-native-select).
 	 */
 	td-dropdown:not(:defined),
 	td-dropdown[data-td-ssr="dropdown@1"] {
@@ -82,70 +83,6 @@
 		font-size: var(--td-text-sm);
 		line-height: var(--td-leading-normal);
 		color: var(--td-field-fg);
-	}
-
-	/* active-exempt: native select (both selectors of the shell) — the UA draws it */
-	td-dropdown:not(:defined) > select, td-dropdown > .td-dropdown__native {
-		--_td-chev-c: var(--td-field-placeholder);
-		--_td-chev-x: calc(14px + var(--td-icon-m) / 2); /* chevron centre from the inline end = the trigger arrow's */
-		box-sizing: border-box;
-		display: block;
-		width: 100%;
-		min-width: 0;
-		height: var(--td-field-h-md);
-		padding: 8px 14px;
-		padding-inline-end: calc(14px + var(--td-icon-m) + var(--td-space-xs));
-		margin: 0;
-		font: inherit;
-		color: var(--td-field-fg);
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		cursor: pointer;
-		background-color: var(--td-field-bg);
-		background-image:
-			linear-gradient(45deg, transparent calc(50% - 0.85px), var(--_td-chev-c) calc(50% - 0.85px), var(--_td-chev-c) calc(50% + 0.85px), transparent calc(50% + 0.85px)),
-			linear-gradient(-45deg, transparent calc(50% - 0.85px), var(--_td-chev-c) calc(50% - 0.85px), var(--_td-chev-c) calc(50% + 0.85px), transparent calc(50% + 0.85px));
-		background-repeat: no-repeat;
-		background-position: right var(--_td-chev-x) center, right calc(var(--_td-chev-x) - 6px) center;
-		background-size: 6px 6px;
-		border: 1px solid var(--td-field-border);
-		border-radius: var(--td-field-radius-md);
-		outline: 2px solid transparent; /* visible in forced colours */
-		outline-offset: 2px;
-		box-shadow: none;
-		appearance: none;
-	}
-
-	/* RTL: the chevron on the inline end (own rule — a browser without :dir() drops only this one) */
-	td-dropdown:not(:defined) > select:dir(rtl),
-	td-dropdown > .td-dropdown__native:dir(rtl) {
-		background-position: left calc(var(--_td-chev-x) - 6px) center, left var(--_td-chev-x) center;
-	}
-
-	/* the empty (placeholder) option selected → the trigger's placeholder colour (own rule: no :has() → plain text) */
-	td-dropdown:not(:defined) > select:has(> option[value=""]:checked),
-	td-dropdown > .td-dropdown__native:has(> option[value=""]:checked) {
-		color: var(--td-field-placeholder);
-	}
-
-	@media (hover: hover) and (pointer: fine) {
-		td-dropdown:not(:defined) > select:hover:not(:disabled, :focus-visible),
-		td-dropdown > .td-dropdown__native:hover:not(:disabled, :focus-visible) {
-			border-color: var(--td-field-border-hover);
-		}
-	}
-
-	td-dropdown:not(:defined) > select:focus-visible,
-	td-dropdown > .td-dropdown__native:focus-visible {
-		border-color: var(--td-field-focus);
-		box-shadow: var(--td-field-focus-ring);
-	}
-
-	td-dropdown:not(:defined) > select:disabled,
-	td-dropdown > .td-dropdown__native:disabled {
-		color: var(--td-field-fg-disabled);
-		cursor: not-allowed;
-		background-color: var(--td-field-bg-disabled);
 	}
 
 	.td-dropdown {
@@ -688,17 +625,9 @@
 	}
 
 	@media (pointer: coarse) {
-		.td-dropdown__trigger,
-		td-dropdown:not(:defined) > select,
-		td-dropdown > .td-dropdown__native {
+		.td-dropdown__trigger {
 			height: auto;
 			min-height: var(--td-touch-min);
-		}
-
-		/* v0.51.1 (ADR 0019, Q1): a select ≥ 16px — iOS does not zoom on focus (the box still matches the trigger) */
-		td-dropdown:not(:defined) > select,
-		td-dropdown > .td-dropdown__native {
-			font-size: max(1rem, 1em);
 		}
 
 		.td-dropdown__search {
@@ -725,9 +654,7 @@
 
 	@media (forced-colors: active) {
 		.td-dropdown__trigger,
-		.td-dropdown__search,
-		td-dropdown:not(:defined) > select,
-		td-dropdown > .td-dropdown__native {
+		.td-dropdown__search {
 			border-color: CanvasText;
 		}
 
@@ -740,17 +667,8 @@
 			background-color: Canvas;
 		}
 
-		/* the system arrow (in system colours) instead of the gradient chevron */
-		td-dropdown:not(:defined) > select,
-		td-dropdown > .td-dropdown__native {
-			background-image: none;
-			appearance: auto;
-		}
-
 		.td-dropdown__trigger:focus-visible,
-		.td-dropdown__search:focus-visible,
-		td-dropdown:not(:defined) > select:focus-visible,
-		td-dropdown > .td-dropdown__native:focus-visible {
+		.td-dropdown__search:focus-visible {
 			outline-color: Highlight;
 		}
 

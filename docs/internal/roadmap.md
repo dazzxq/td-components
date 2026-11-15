@@ -299,7 +299,8 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` v0.114.0 lightbox album toàn màn hình (dsuite 14/11, spec dsuite `docs/plans/UI-album-lightbox-info.md` §4): `TdLightbox.open(items, { fit: 'contain' | 'fill' })` ('fill' phóng ảnh, kể cả ảnh nhỏ, tới lớn nhất trong vùng ảnh còn lại, giữ tỉ lệ, hộp ảnh = nội dung ảnh; `item.width/height` đặt khung trước khi tải), panel < 1024px `sheet: 'overlay' | 'stack'` ('stack' = ảnh trên co lại, panel dưới cuộn riêng, không che ảnh), handle `setSheet(open)` + getter `sheetOpen`. Mặc định giữ nguyên hành vi cũ
 - `done` v0.114.1 footer modal / sheet < 720 dồn về cuối (bỏ chia đều `flex: 1 1 0` của 0.36.0; owner 15/11: sheet Bộ lọc media picker lệch)
 - `done` v0.115.0 `<td-input-field type="password" revealable>` (dsuite 15/11; dcms2 login / OTP / 2FA)
-- `todo` v0.116.0 "td embed": artifact con do kit sở hữu (JS + CSS subset) + `mountTdEmbed(host)` (shadow root open, token trên wrapper nội bộ) cho panel userscript IMS4; cần ADR + Codex debate trước; chờ owner bên đó chốt custom element thật hay chỉ class CSS (15/11)
+- `done` v0.116.0 td embed (ADR 0045): `dist/embed/td-embed.js` tự chứa + `mountTdEmbed(host)` (shadow root open, scoped custom element registry, giữ tên `td-*`), lõi biết root (focus, press, submit), `select.td-native-select` công khai; consumer panel userscript IMS4 (15/11)
+- `todo` đợt 2 td embed: dropdown trong embed (Popover + anchor positioning), khi consumer cần
 
 - `done` textarea `autoresize` bằng CSS `field-sizing` (v0.13.0)
 

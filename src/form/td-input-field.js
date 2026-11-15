@@ -7,6 +7,8 @@ import {
   affixIcon, affixMarkup, detachAffixSlots, mountAffixSlots, renderKeepingSlotFocus, slotInteractive, takeAffixSlots,
   warnLateSlots,
 } from './field-affix.js';
+import { defineElement } from '../base/define.js';
+import { activeIn } from '../utils/root.js';
 
 /**
  * v0.26.0 SSR (ADR 0012) — native constraint attributes a NORMALLY rendered + bound control carries, per public type
@@ -530,7 +532,7 @@ export class TdInputField extends TdFormElement {
     if (field.getAttribute('type') === type) return;
     // QĐ 3: the type change keeps the caret / selection of a focused control
     let sel = null;
-    if (field === this.ownerDocument.activeElement) {
+    if (field === activeIn(field)) {
       try { sel = field.selectionStart == null ? null : [field.selectionStart, field.selectionEnd, field.selectionDirection || 'none']; } catch { /* no selection API */ }
     }
     field.type = type;
@@ -560,8 +562,10 @@ export class TdInputField extends TdFormElement {
     if (this._revealListening || !this.isConnected) return;
     this._revealListening = true;
     const doc = this.ownerDocument;
-    // capture: before the page's own submit handlers and before the browser reads the form / offers to save it
-    this.listen(doc, 'submit', (e) => { if (e.target === this.form) this.conceal(); }, true);
+    // capture: before the page's own submit handlers and before the browser reads the form / offers to save it.
+    // v0.116.0 (QĐ3): on this element's root (the Document in light DOM): `submit` is not composed, so a form inside
+    // a shadow root never reaches the document
+    this.listen(this.getRootNode(), 'submit', (e) => { if (e.target === this.form) this.conceal(); }, true);
     if (doc.defaultView) this.listen(doc.defaultView, 'pagehide', () => this.conceal());
   }
 
@@ -603,8 +607,11 @@ export class TdInputField extends TdFormElement {
     if (!this.hasAttribute('autofocus')) return;
     const field = this._getFieldElement();
     if (!field || this._effectiveDisabled) return;
-    const active = document.activeElement;
-    if (active && active !== document.body && active !== document.documentElement) return;
+    // v0.116.0 (QĐ3): read focus from this element's root (the shadow root in the embed); focus outside that root
+    // (root.activeElement null) falls back to the document's, so autofocus still never steals it from the page
+    const doc = this.ownerDocument;
+    const active = activeIn(this) ?? doc.activeElement;
+    if (active && active !== doc.body && active !== doc.documentElement) return;
     field.focus();
   }
 
@@ -666,7 +673,7 @@ export class TdInputField extends TdFormElement {
       // its focus baseline back (the live value is rendered); the replaced control's blur is not a user blur
       const field = this._getFieldElement();
       const keep = (TdInputField._affixAttrs.includes(name) || name === 'label-mode' || name === 'revealable')
-        && field === this.ownerDocument.activeElement;
+        && field === activeIn(field);
       // v0.115.0 (QĐ 1b): `revealable` removed / the type no longer password → hidden (one event, after the re-render);
       // back to password + revealable starts hidden
       const lost = this._revealed && !this._revealEligible();
@@ -1096,7 +1103,7 @@ export class TdInputField extends TdFormElement {
     if (rewrote && state.focused && state.selection) {
       try { control.setSelectionRange(...state.selection); } catch { /* type without a selection API */ }
     }
-    if (state.focused && control.ownerDocument.activeElement !== control) control.focus({ preventScroll: true });
+    if (state.focused && activeIn(control) !== control) control.focus({ preventScroll: true });
     // focused before define: `change` on blur compares with the value the field had when the page was served
     if (state.focused && this._valueAtFocus == null) this._valueAtFocus = control.defaultValue;
     this._userEdited = state.edited;
@@ -1166,7 +1173,7 @@ export class TdInputField extends TdFormElement {
 
   /** @protected */
   _ssrCapture(control, live) {
-    const focused = control === control.ownerDocument.activeElement;
+    const focused = control === activeIn(control);
     let selection = null;
     if (focused) {
       try {
@@ -1474,7 +1481,7 @@ export class TdInputField extends TdFormElement {
     if (maxLength && next) next = this._truncateToLimit(next, maxLength, this._limitType());
     if (TdInputField._isEditable(field)) field.textContent = next;
     else field.value = next;
-    if (document.activeElement === field) this._valueAtFocus = this._getValue(); // programmatic ≠ user change
+    if (activeIn(field) === field) this._valueAtFocus = this._getValue(); // programmatic ≠ user change
     this._updateCounter();
     this._syncForm();
   }
@@ -1525,6 +1532,4 @@ export class TdInputField extends TdFormElement {
   }
 }
 
-if (!customElements.get('td-input-field')) {
-  customElements.define('td-input-field', TdInputField);
-}
+defineElement('td-input-field', TdInputField);

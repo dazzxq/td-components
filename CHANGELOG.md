@@ -4,6 +4,26 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.116.0
+
+### Thêm
+- **td embed** (ADR 0045, [guide](docs/guides/embed.md)): `@dazzxq/td-components/embed` → `dist/embed/td-embed.js`, một
+  module ES tự chứa (CSS + icon subset bên trong, không fetch gì) cho panel chèn vào trang của bên thứ ba (userscript).
+  `mountTdEmbed(host, { theme })` mở shadow root open với scoped custom element registry riêng (giữ tên `td-button`,
+  `td-input-field`, `td-alert`, không đụng registry của trang), trả về `{ root, shadowRoot, registry, create(tag),
+  setTheme, unmount }`. Lỗi là `TdEmbedError` có `code` (`bad-host`, `unsupported`, `host-has-shadow`,
+  `already-mounted`, `bad-theme`), kiểm tra hết trước khi đụng host. CSS cô lập khỏi CSS tác giả của trang: `:root` →
+  wrapper nội bộ, `rem` theo `--td-embed-rem` (16px), custom property không khai báo bị đặt `initial`. Kèm
+  `registerIcons()`, `TD_EMBED_BUILD`. Mức sàn của embed: Chrome/Edge 146, Safari 26.4, Firefox 159 (thấp hơn thì
+  `unsupported`). Mức sàn light DOM không đổi.
+- `<select class="td-native-select">`: select gốc có style kit, dùng độc lập (lúc disabled không bị trình duyệt làm mờ, màu theo token disabled) (CSS tách sang `native-select.css`, dùng
+  chung với `td-dropdown`).
+
+### Đổi (nội bộ, light DOM giữ hành vi)
+- Component đăng ký qua `defineElement()`; bundle embed tắt auto-define toàn cục.
+- Focus đọc theo root (`getRootNode().activeElement`), trạng thái nhấn tìm control qua `composedPath()`, `submit` nghe
+  trên root node, để kit chạy đúng trong shadow root.
+
 ## 0.115.0
 
 ### Thêm

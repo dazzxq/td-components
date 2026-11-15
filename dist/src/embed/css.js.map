@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": ["../../../src/embed/css.js"],
+  "mappings": "AAEO,MAAMA,EAAY",
+  "names": ["EMBED_CSS"]
+}

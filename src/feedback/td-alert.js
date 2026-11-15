@@ -1,5 +1,6 @@
 import { TdBaseElement } from '../base/td-base-element.js';
 import { tdIcon } from '../icons/td-icon.js';
+import { defineElement } from '../base/define.js';
 
 const VARIANTS = ['info', 'success', 'warning', 'danger'];
 /** variant → registry status icon (colour is never the only cue). */
@@ -171,6 +172,4 @@ export class TdAlert extends TdBaseElement {
   }
 }
 
-if (!customElements.get('td-alert')) {
-  customElements.define('td-alert', TdAlert);
-}
+defineElement('td-alert', TdAlert);

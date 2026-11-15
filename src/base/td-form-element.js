@@ -1,4 +1,5 @@
 import { TdBaseElement } from './td-base-element.js';
+import { activeIn } from '../utils/root.js';
 
 let _autoIdCounter = 0;
 let _labelIdCounter = 0;
@@ -803,7 +804,7 @@ export class TdFormElement extends TdBaseElement {
       this._ssrState = state;
       return true;
     }
-    state.refocus = control === control.ownerDocument.activeElement;
+    state.refocus = control === activeIn(control);
     this._ssrRestore = state;
     this._ssrFreshRender = true; // review round 4: the render reads the host, never the refused DOM
     return false;
@@ -853,7 +854,7 @@ export class TdFormElement extends TdBaseElement {
    */
   _ssrClean(live) {
     this._ssrControl = null;
-    const active = this.ownerDocument.activeElement;
+    const active = activeIn(this);
     this._ssrRestore = { clean: true, refocus: !live && !!active && active !== this && this.contains(active) };
     this._ssrFreshRender = true;
     return false;

@@ -70,6 +70,7 @@
       "src/utils/form-validation.js",
       "src/utils/thumb-loader.js"
     ],
+    "src/base/define.js": [],
     "src/base/sample/td-sample.js": [
       "src/base/td-base-element.js"
     ],
@@ -85,7 +86,8 @@
       "src/icons/td-icon.js"
     ],
     "src/base/td-form-element.js": [
-      "src/base/td-base-element.js"
+      "src/base/td-base-element.js",
+      "src/utils/root.js"
     ],
     "src/base/td-v059-baseline.fixture.js": [
       "src/display/td-pagination.js",
@@ -212,6 +214,30 @@
     "src/display/td-v057-flat-snapshot.fixture.js": [
       "src/display/td-table.js"
     ],
+    "src/embed/build.js": [],
+    "src/embed/css.js": [],
+    "src/embed/index.js": [
+      "src/embed/build.js",
+      "src/embed/mount.js",
+      "src/embed/suppress.js",
+      "src/feedback/td-alert.js",
+      "src/form/td-button.js",
+      "src/form/td-input-field.js",
+      "src/icons/td-icon.js"
+    ],
+    "src/embed/mount.js": [
+      "src/embed/build.js",
+      "src/embed/css.js",
+      "src/embed/registry.js"
+    ],
+    "src/embed/registry.js": [
+      "src/feedback/td-alert.js",
+      "src/form/td-button.js",
+      "src/form/td-input-field.js"
+    ],
+    "src/embed/suppress.js": [
+      "src/base/define.js"
+    ],
     "src/feedback/crop-dialog.js": [
       "src/feedback/dialog-layer.js",
       "src/form/td-cropper.js",
@@ -277,6 +303,7 @@
       "src/utils/upload-queue.js"
     ],
     "src/feedback/td-alert.js": [
+      "src/base/define.js",
       "src/base/td-base-element.js",
       "src/icons/td-icon.js"
     ],
@@ -387,7 +414,8 @@
     ],
     "src/form/calendar-labels.js": [],
     "src/form/field-affix.js": [
-      "src/utils/escape.js"
+      "src/utils/escape.js",
+      "src/utils/root.js"
     ],
     "src/form/rich-text/rich-text-html.js": [],
     "src/form/rich-text/rich-text-policy.js": [],
@@ -402,6 +430,7 @@
       "src/utils/log-safe.js"
     ],
     "src/form/td-button.js": [
+      "src/base/define.js",
       "src/base/td-base-element.js",
       "src/form/button-busy.js",
       "src/form/button-structure.js",
@@ -521,10 +550,12 @@
       "src/utils/layers.js"
     ],
     "src/form/td-input-field.js": [
+      "src/base/define.js",
       "src/base/td-base-element.js",
       "src/base/td-form-element.js",
       "src/form/field-affix.js",
-      "src/icons/td-icon.js"
+      "src/icons/td-icon.js",
+      "src/utils/root.js"
     ],
     "src/form/td-media-field.js": [
       "src/base/td-base-element.js",
@@ -762,6 +793,7 @@
     ],
     "src/utils/rating-model.js": [],
     "src/utils/reading-progress.js": [],
+    "src/utils/root.js": [],
     "src/utils/scan-burst.js": [],
     "src/utils/scroll-lock.js": [],
     "src/utils/scroll-top-colors.js": [

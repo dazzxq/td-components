@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": ["../../../src/embed/build.js"],
+  "mappings": "+EAGO,MAAMA,EAAiB,qBAGjBC,EAAaC,EAAA,IAAMF,EAAe,WAAW,OAAO,EAAvC",
+  "names": ["TD_EMBED_BUILD", "isDevBuild", "__name"]
+}

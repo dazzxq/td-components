@@ -5,7 +5,7 @@
  * applies `:active` when the page has a `touchstart` listener, so the look must not depend on that quirk:
  * `ensurePressStates()` attaches ONE passive listener set per document (lazily — first TdBaseElement connect,
  * openDialogLayer(), lightbox open, toast container; never at import) and, for `touch` / `pen` pointers, puts
- * `data-td-pressed` on the nearest control (`closest(PRESS_SELECTOR)`) while the finger is down. It is removed on
+ * `data-td-pressed` on the nearest control (first PRESS_SELECTOR match in `composedPath()`) while the finger is down. It is removed on
  * pointerup / pointercancel / lostpointercapture of the same pointer, when that pointer moves past `dragSlop()` (it
  * became a scroll or a drag), on window blur and on visibilitychange. One element holds it at a time. No
  * preventDefault, no scroll blocking. Mouse presses keep the native `:active` only.
@@ -125,6 +125,23 @@ const DISABLED = ':disabled, [aria-disabled="true"]';
 const docs = new WeakSet();
 
 /**
+ * v0.116.0 (ADR 0045 QĐ3): the pressed control is the first element of `composedPath()` that matches PRESS_SELECTOR,
+ * so a press inside an open shadow root (the embed) finds the inner control even though the document-level listener
+ * sees `e.target` retargeted to the shadow host. In light DOM the path is the target and its ancestors, the same chain
+ * `closest()` walks. Without a usable path it falls back to `e.target.closest()`.
+ * @param {Event} e
+ * @returns {Element | null}
+ */
+export function pressTargetOf(e) {
+  const path = typeof e.composedPath === 'function' ? e.composedPath() : [];
+  for (const n of path) {
+    if (n && typeof n.matches === 'function' && n.matches(PRESS_SELECTOR)) return n;
+  }
+  const t = e.target;
+  return t && typeof t.closest === 'function' ? t.closest(PRESS_SELECTOR) : null;
+}
+
+/**
  * Attach the press listeners to `doc` once. Returns true when it attached them now.
  * @param {Document | null} [doc]
  */
@@ -142,8 +159,7 @@ export function ensurePressStates(doc = globalThis.document) {
   doc.addEventListener('pointerdown', (e) => {
     clear();
     if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
-    const t = e.target;
-    const el = t && typeof t.closest === 'function' ? t.closest(PRESS_SELECTOR) : null;
+    const el = pressTargetOf(e);
     if (!el || el.matches(DISABLED)) return;
     el.setAttribute(ATTR, '');
     held = { el, id: e.pointerId, x: e.clientX, y: e.clientY, slop: dragSlop(e.pointerType) };

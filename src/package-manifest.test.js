@@ -498,3 +498,13 @@ test('v0.111.0: ./thumb-loader export (pure module: NOT in sideEffects) resolves
   const src = await readFile(join(ROOT, 'index.js'), 'utf8');
   assert.match(src, /export \{ createThumbLoader, configureThumbBudget, getThumbBudget \} from '\.\/src\/utils\/thumb-loader\.js';/);
 });
+
+test('v0.116.0: ./embed export is the generated self-contained bundle (dist/embed/), src/embed has no subpath; side effects', async () => {
+  assert.equal(pkg.exports['./embed'], './dist/embed/td-embed.js');
+  assert.ok(!Object.values(pkg.exports).some((t) => typeof t === 'string' && t.startsWith('./src/embed/')), 'src/embed is internal');
+  assert.ok(pkg.sideEffects.includes('./src/embed/suppress.js'), 'suppress.js flips the auto-define switch on import');
+  // package self-reference resolves through the exports map (evaluating it needs a DOM: test/embed/embed-bundle.test.js)
+  assert.equal(import.meta.resolve(`${pkg.name}/embed`), new URL('../dist/embed/td-embed.js', import.meta.url).href);
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.doesNotMatch(src, /src\/embed\//, 'the root barrel never pulls the embed in');
+});

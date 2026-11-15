@@ -8,7 +8,7 @@ token `--td-*` chạm được tới nó. Toàn bộ giao diện nằm trong **m
 Triết lý: **lõi nhỏ + hook**. Site tuỳ biến bằng token CSS, attribute/property và hook (callback) — không bao giờ sửa
 code của kit.
 
-Phiên bản hiện tại: **0.115.0** (tag git `v0.115.0`) · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
+Phiên bản hiện tại: **0.116.0** (tag git `v0.116.0`) · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
 
 ---
 
@@ -72,6 +72,9 @@ Xem [danh sách đầy đủ](components/README.md). Tóm tắt:
 - [WordPress & PHP](guides/wordpress-php.md) — tích hợp vào dwp và 135.
 - [Adapter PHP](guides/php-adapter.md) — `php/td.php`: import map, `td.css`, markup render phía server (nút, ô nhập,
   dropdown, switch, checkbox, icon, ô chọn ảnh `td_media_field`).
+- [Nhúng vào trang lạ (td embed)](guides/embed.md): 0.116.0, `@dazzxq/td-components/embed` đặt `td-button`,
+  `td-input-field`, `td-alert` vào shadow root có registry riêng trên trang của bên thứ ba (userscript, CMS); trình duyệt
+  hỗ trợ, mount, giới hạn.
 
 ## Nâng cấp
 

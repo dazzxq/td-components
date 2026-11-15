@@ -1,0 +1,18 @@
+{
+  "$comment": "td embed (ADR 0045 QĐ4, plan v0.116.0): the EXPLICIT, reviewed CSS file list of dist/embed/td-embed.js (src/styles/-relative, td.css order; layers.css first) and its icon subset (+ every icons.json alias that points at one of them). Adding a file or an icon is a reviewed change: update docs/guides/embed.md and the size budget in test/embed/embed-bundle.test.js.",
+  "files": [
+    "layers.css",
+    "tokens.css",
+    "theme-dark.css",
+    "components/icon.css",
+    "components/field.css",
+    "components/native-select.css",
+    "components/hint.css",
+    "components/spinner.css",
+    "components/button.css",
+    "components/loading.css",
+    "components/form-validation.css",
+    "components/alert.css"
+  ],
+  "icons": ["info", "success", "warning", "error", "close", "eye", "eye-off"]
+}

@@ -487,7 +487,10 @@ describe('php/td.php', opts, () => {
       { fn: 'Td::importMap', args: [] },
     ], { baseUrl: '/vendor/td/0.17.0/' });
     const map = res[0].out;
-    const kit = Object.entries(pkg.exports).filter(([, t]) => typeof t === 'string' && t.endsWith('.js'));
+    // v0.116.0: ./embed (dist/embed/td-embed.js, a standalone userscript bundle) is never an import-map entry
+    const kit = Object.entries(pkg.exports).filter(([, t]) => typeof t === 'string' && t.endsWith('.js') && !t.startsWith('./dist/'));
+    assert.ok(Object.entries(pkg.exports).some(([s, t]) => s === './embed' && t === './dist/embed/td-embed.js'));
+    assert.ok(!Object.keys(map).includes(`${pkg.name}/embed`), 'no embed entry in the import map');
     const keys = Object.keys(map);
     assert.deepEqual(keys.slice(0, kit.length), kit.map(([s]) => (s === '.' ? pkg.name : `${pkg.name}/${s.slice(2)}`)), 'kit first, exports order');
     assert.deepEqual(keys.slice(kit.length), ['app', 'dompurify'], 'extra after');

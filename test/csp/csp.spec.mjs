@@ -542,6 +542,36 @@ const CLEAN = [
       window.__mount.appendChild(el);
     `,
   },
+  {
+    // v0.116.0 (ADR 0045): the BUILT embed bundle under the strict page CSP: a constructed sheet adopted by the shadow
+    // root (no <style>, no style attribute), the three elements rendered and re-themed, an alert created, unmounted.
+    name: 'td-embed',
+    module: '/dist/embed/td-embed.js',
+    exercise: `
+      const host = document.createElement('div');
+      window.__mount.appendChild(host);
+      const h = mountTdEmbed(host, { theme: 'light' });
+      h.root.innerHTML = '<td-button variant="primary" label="Lưu" icon="success"></td-button>'
+        + '<td-button label="Gửi"></td-button>'
+        + '<td-input-field label="Tên" name="t" value="abc"></td-input-field>'
+        + '<td-input-field label="Ghi chú" type="textarea" name="n"></td-input-field>'
+        + '<td-alert variant="warning" heading="Chú ý" dismissible>Nội dung</td-alert>'
+        + '<select class="td-native-select"><option>Một</option></select>';
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      if (!h.root.querySelector('td-button > .td-btn')) throw new Error('td-embed: td-button not rendered');
+      if (!h.root.querySelector('td-input-field .td-field__control')) throw new Error('td-embed: td-input-field not rendered');
+      if (!h.root.querySelector('td-alert > .td-alert')) throw new Error('td-embed: td-alert not rendered');
+      if (getComputedStyle(h.root.querySelector('.td-btn')).display === 'inline') throw new Error('td-embed: sheet not applied');
+      const busy = h.root.querySelectorAll('td-button')[1];
+      await busy.run(() => new Promise((r) => setTimeout(r, 30)));
+      const alert = h.create('td-alert');
+      alert.textContent = 'Đã lưu';
+      h.root.append(alert);
+      h.setTheme('dark');
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      h.unmount();
+    `,
+  },
 ];
 
 function fmt(result) {

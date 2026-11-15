@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": ["../../../src/embed/suppress.js"],
+  "mappings": "AAEA,OAAS,sBAAAA,MAA0B,oBAEnCA,EAAmB",
+  "names": ["suppressAutoDefine"]
+}

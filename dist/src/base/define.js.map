@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": ["../../../src/base/define.js"],
+  "mappings": "+EASA,IAAIA,EAAa,GAGV,SAASC,EAAcC,EAAMC,EAAK,CACnCH,GAAc,OAAO,eAAmB,KACvC,eAAe,IAAIE,CAAI,GAAG,eAAe,OAAOA,EAAMC,CAAG,CAChE,CAHgBC,EAAAH,EAAA,iBAMT,SAASI,GAAqB,CACnCL,EAAa,EACf,CAFgBI,EAAAC,EAAA",
+  "names": ["suppressed", "defineElement", "name", "cls", "__name", "suppressAutoDefine"]
+}

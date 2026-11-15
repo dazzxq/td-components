@@ -62,7 +62,8 @@
       "td-selection-bar": "/src/display/td-selection-bar.js",
       "td-card": "/src/icons/td-icon.js",
       "td-page-actions": "/src/display/td-page-actions.js",
-      "td-avatar": "/src/display/avatar.js"
+      "td-avatar": "/src/display/avatar.js",
+      "td-native-select": "/src/icons/td-icon.js"
     },
     "tokenNative": [
       "td-button",
@@ -125,7 +126,8 @@
       "td-selection-bar",
       "td-card",
       "td-page-actions",
-      "td-avatar"
+      "td-avatar",
+      "td-native-select"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -8903,6 +8905,18 @@
         "width",
         "height"
       ]
+    }
+  ],
+  "td-native-select": [
+    {
+      "state": "standalone",
+      "markup": "<select class=\"td-native-select\" aria-label=\"Chọn\"><option value=\"\">Chọn một</option><option value=\"a\" selected>Apple</option><option value=\"b\">Banana</option></select> <select class=\"td-native-select\" aria-label=\"Trống\"><option value=\"\" selected>Chọn một</option><option value=\"a\">Apple</option></select> <select class=\"td-native-select\" aria-label=\"Khoá\" disabled><option value=\"a\">Apple</option></select>",
+      "selectors": [
+        "select.td-native-select:not([disabled]):has(> option[value=\"a\"]:checked)",
+        "select.td-native-select:has(> option[value=\"\"]:checked)",
+        "select.td-native-select:disabled"
+      ],
+      "selectorNote": "v0.116.0 (ADR 0045 QĐ6) CSS-only: select.td-native-select without a td-dropdown parent (box + chevron + host typography): a value, the placeholder option, disabled"
     }
   ]
 }

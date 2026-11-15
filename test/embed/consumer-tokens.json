@@ -1,0 +1,40 @@
+{
+  "consumer": "btv-custom-rss-full-text (IMS4 editor panel, PANEL_CSS)",
+  "required_light_and_dark": [
+    "--td-accent",
+    "--td-accent-contrast",
+    "--td-alert-danger-bg",
+    "--td-alert-info-bg",
+    "--td-alert-success-bg",
+    "--td-alert-warning-bg",
+    "--td-color-border",
+    "--td-color-border-strong",
+    "--td-color-info",
+    "--td-color-success",
+    "--td-color-surface",
+    "--td-color-text",
+    "--td-color-text-muted",
+    "--td-color-warning",
+    "--td-field-error",
+    "--td-focus-ring",
+    "--td-font-sans",
+    "--td-radius-full",
+    "--td-radius-md",
+    "--td-space-2xs",
+    "--td-space-md",
+    "--td-space-sm",
+    "--td-space-xs",
+    "--td-text-md",
+    "--td-text-sm"
+  ],
+  "no_fallback_in_consumer": [
+    "--td-accent-contrast",
+    "--td-color-border-strong",
+    "--td-color-info",
+    "--td-radius-full",
+    "--td-space-2xs",
+    "--td-space-xs",
+    "--td-text-md",
+    "--td-text-sm"
+  ]
+}
