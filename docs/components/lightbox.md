@@ -13,7 +13,7 @@ album, thư viện media. **Không** dùng để hiện form hay hộp thoại x
 | Import | `import { TdLightbox } from '@dazzxq/td-components/lightbox'` |
 | Loại | API JS tĩnh (static class), không có tag |
 | Form-associated | không |
-| Từ phiên bản | 0.6.0 (handle `setPanel` / `addToolbarButton`, `itemEl` / `groupEl`, `attrPrefix` / `filter`: 0.15.0; vùng bấm hai bên, `filmstrip`, `thumb`, tải sẵn, màn lỗi, hiệu ứng trượt: 0.24.0) |
+| Từ phiên bản | 0.6.0 (handle `setPanel` / `addToolbarButton`, `itemEl` / `groupEl`, `attrPrefix` / `filter`: 0.15.0; vùng bấm hai bên, `filmstrip`, `thumb`, tải sẵn, màn lỗi, hiệu ứng trượt: 0.24.0; `fit: 'fill'`, `sheet: 'stack'`, `item.width` / `height`, handle `setSheet` / `sheetOpen`: 0.114.0) |
 | CSS | cần `td.css` (`src/styles/components/lightbox.css`) |
 | Quyết định kiến trúc | [ADR 0009](../internal/decisions/0009-td-lightbox-hooks.md) |
 
@@ -70,6 +70,8 @@ if (lb) {
   alt?: string,               // alt của <img> (text)
   provider?: string,          // mặc định 'html5'; tên tuỳ ý cho video hook ('youtube', 'vimeo'…)
   data?: any,                 // dữ liệu của bạn, trả lại trong ctx.item.data; nếu là Element → ctx.itemEl
+  width?: number,             // 0.114.0: cỡ gốc của ảnh (px, số dương; chuỗi số như "1200" cũng nhận) — chỉ dùng cho
+  height?: number,            //   fit: 'fill' để đặt khung đúng tỉ lệ trước khi ảnh tải xong
 }
 ```
 
@@ -78,6 +80,7 @@ if (lb) {
   trường đó (thumbnail rơi về `src` với ảnh, `poster` với video).
 - Không còn item nào xem được → `open()` trả `null`, không mở gì.
 - Item video có `src` hợp lệ → chạy video hook; hook từ chối → hiện `poster` như ảnh.
+- `width` / `height` (0.114.0) không phải số dương hữu hạn (0, âm, `NaN`, `Infinity`, `"12px"`…) → bị bỏ, không lỗi.
 
 ### 2. Mở bằng code và điều khiển qua handle
 
@@ -126,6 +129,7 @@ Cách kit đọc một item (`readItem`):
 | `alt` | `alt` của `<img>` |
 | `poster` | `data-td-lightbox-poster` |
 | `provider` | `data-td-lightbox-provider` (mặc định `html5`) |
+| `width` / `height` | `data-td-lightbox-width` / `data-td-lightbox-height` (0.114.0; cùng tiền tố với `-src`) |
 | `data` | chính phần tử item → thành `ctx.itemEl` |
 
 Chỉ mục mở ra là **vị trí của phần tử được click trong số item hợp lệ** (item có URL bị từ chối không được tính, và
@@ -205,6 +209,33 @@ const lb = TdLightbox.open(items);
 lb.setPanel((ctx) => buildExifPanel(ctx.item.data)); // bật
 lb.refreshPanel();                                   // dữ liệu đổi → render lại
 lb.setPanel(false);                                  // tắt (sheet đóng)
+```
+
+Mở / gập sheet bằng code (0.114.0): `lb.setSheet(true | false)` và `lb.sheetOpen` (getter). Không có panel → `setSheet`
+không làm gì, `sheetOpen` là `false`. Đặt được cả ở ≥ 1024px (trạng thái được giữ, chỉ thấy khác khi thu hẹp < 1024px).
+
+#### Panel nằm dưới ảnh trên điện thoại — `sheet: 'stack'` (0.114.0)
+
+Mặc định (`sheet: 'overlay'`) sheet mở ra **đè lên** ảnh. Với `sheet: 'stack'`, dưới 1024px và khi slide có panel:
+
+- Ảnh ở trên **co lại**, panel ở dưới **nằm trong dòng chảy** (không bao giờ che ảnh) và tự cuộn.
+- Gập: panel chỉ cao bằng tay nắm (`--td-lb-sheet-peek`), ảnh lấy phần còn lại. Mở: panel cao bằng nội dung, tối đa
+  `100dvh − --td-lb-stack-image-min` (mặc định `40dvh` → ảnh luôn còn ít nhất 40% chiều cao màn hình).
+- Mở / gập như overlay: tay nắm, vuốt, vuốt lên trên ảnh, hoặc `handle.setSheet()`. Mặc định khi mở lightbox: gập.
+- ≥ 1024px: panel vẫn là cột phải, `sheet` không có tác dụng. Overlay có `data-sheet-mode="stack"` khi đang ở chế độ này.
+
+#### Mẫu: album toàn màn hình + nút "Thông tin ảnh" (0.114.0)
+
+```js
+TdLightbox.open(photos.map((p) => ({ src: p.url, caption: p.title, width: p.w, height: p.h, data: p })), {
+  fit: 'fill',          // ảnh to nhất trong vùng còn lại, kể cả ảnh nhỏ
+  sheet: 'stack',       // điện thoại: panel nằm dưới ảnh
+  panel: (ctx) => buildInfoPanel(ctx.item.data),
+  toolbar: [{
+    id: 'info', label: 'Thông tin ảnh', icon: 'info', pinned: true, // pinned: giữ trên toolbar < 480px
+    onClick: (ctx) => ctx.handle.setSheet(!ctx.handle.sheetOpen),
+  }],
+});
 ```
 
 ### 6. Nút toolbar riêng
@@ -410,7 +441,28 @@ TdLightbox.bind(document, { filmstrip: 'auto' }); // bind() truyền tiếp như
   `goTo()` — thumbnail / `goTo` đi đường ngắn nhất có quay vòng), chỉ bắt đầu khi ảnh mới đã sẵn sàng. Chuyển nhanh
   liên tục → chỉ ảnh cuối trượt. `prefers-reduced-motion` → không trượt.
 
-### 11. Lắng nghe sự kiện
+### 11. Phóng ảnh kín vùng xem — `fit: 'fill'` (0.114.0)
+
+Mặc định (`fit: 'contain'`) ảnh chỉ thu nhỏ cho vừa, **không bao giờ phóng to**: ảnh 600 × 400 trên màn 1440px vẫn
+600 × 400. Với `fit: 'fill'`, mỗi ảnh (kể cả ảnh nhỏ hơn vùng xem) được phóng tới **lớn nhất** trong vùng ảnh còn lại
+(đã trừ hàng toolbar, filmstrip, thanh ‹ đếm ›, cột panel / tay nắm sheet), giữ tỉ lệ:
+
+```js
+TdLightbox.open(items, { fit: 'fill' });
+TdLightbox.bind(document, { fit: 'fill' }); // bind() chuyển option cho open()
+```
+
+- Chỉ `'fill'` (không phân biệt hoa thường) mới bật; giá trị khác = `'contain'`.
+- Chỉ áp cho **ảnh**. Slide video, iframe provider và slide lỗi giữ bố cục như `contain`.
+- Hộp `<img>` đúng bằng ảnh: bấm vào ảnh thì zoom (không đóng), bấm phần nền hai bên / trên dưới ảnh thì đóng (như
+  `closeOnBackdrop`); zoom / kéo tính theo cỡ đã phóng. Đổi cỡ cửa sổ, mở / gập sheet → ảnh tự fit lại.
+- `item.width` / `item.height` (hoặc `data-*-lightbox-width/height`) cho kit đặt khung đúng tỉ lệ **trước** khi ảnh
+  tải xong (spinner nằm giữa khung đúng cỡ). Tải xong thì cỡ thật của ảnh thắng.
+- **Ảnh độ phân giải thấp sẽ mờ** khi bị phóng. Muốn tránh thì truyền ảnh đủ lớn (ví dụ bản ≥ 2048px cho album).
+- Overlay có `data-fit="fill"` (ý định của phiên) và `data-fit-active` (đang hiện ảnh); cỡ ảnh được JS ghi qua CSSOM
+  vào `--td-lb-fit-w` / `--td-lb-fit-h` trên `<img>` (không có `style=""` trong markup — hợp CSP strict).
+
+### 12. Lắng nghe sự kiện
 
 ```js
 document.addEventListener('td-lightbox-change', (e) => {
@@ -445,6 +497,8 @@ Named export phụ: `defaultIsAllowedUrl(url)` — chính sách URL mặc địn
 | `close()` | Đóng |
 | `setPanel(panel)` | Đổi panel lúc đang mở: `false` \| `true` \| `(ctx) => Element \| null`. Bật lại → sheet bắt đầu đóng |
 | `refreshPanel()` | Chạy lại renderer panel hiện tại |
+| `setSheet(open)` | 0.114.0: mở (`true`) / gập (`false`) sheet thông tin (< 1024px; cả `overlay` lẫn `stack`). Không có panel → không làm gì |
+| `sheetOpen` (getter) | 0.114.0: sheet đang mở? `false` khi không có panel hoặc handle đã chết |
 | `refreshToolbar()` | Tính lại `visible` + `pressed` của nút toolbar riêng cho slide hiện tại (0.96.0). Không phát sự kiện |
 | `addToolbarButton(spec)` | Thêm nút (cùng `id` → **thay** nút cũ). Trả `remove()`; `remove` cũ không gỡ được nút thay thế |
 | `removeToolbarButton(id)` | Gỡ nút theo id |
@@ -482,6 +536,8 @@ Mọi tuỳ chọn đều không bắt buộc.
 | `toolbar` | `Array<spec>` | `[]` | Nút toolbar riêng |
 | `preload` | `false \| 'same-origin' \| 'all' \| { ahead?, behind?, allowCrossOrigin? }` | `'same-origin'` | Tải sẵn ảnh kề (0.24.0); `'all'` khi media ở CDN tin cậy; object (0.95.0): số ảnh mỗi phía (0..5, mặc định 1) + hook `allowCrossOrigin(url, item)` mở riêng cho CDN của bạn. Xem [mục 10](#10-tải-sẵn-lỗi-ảnh-hiệu-ứng-trượt-0240) |
 | `filmstrip` | `false \| true \| 'auto'` | `false` | Dải thumbnail dưới ảnh (0.24.0); `'auto'` = khi ≥ 8 ảnh. Xem [Filmstrip](#9-filmstrip--dải-ảnh-nhỏ-0240-tuỳ-chọn) |
+| `fit` | `'contain' \| 'fill'` | `'contain'` | 0.114.0: `'fill'` phóng ảnh (kể cả ảnh nhỏ) kín vùng ảnh còn lại, giữ tỉ lệ. Xem [mục 11](#11-phóng-ảnh-kín-vùng-xem--fit-fill-01140) |
+| `sheet` | `'overlay' \| 'stack'` | `'overlay'` | 0.114.0: < 1024px có panel — `'stack'` đặt panel dưới ảnh (không che ảnh). Xem [Panel thông tin](#5-panel-thông-tin) |
 | `closeOnBackdrop` | `boolean` | `true` | Click nền (ngoài ảnh) để đóng. Khác `TdModal` (không đóng khi click nền): trình xem ảnh không có gì để mất |
 | `isForeignLayerOpen` | `() => boolean` | xem dưới | Có lớp khác đang nằm trên lightbox không |
 | `groupEl` | `Element` | `null` | Đưa vào `ctx.groupEl` / detail khi mở bằng `open()` |
@@ -749,6 +805,8 @@ Lightbox **luôn tối** (nền là ảnh, không theo theme sáng/tối của s
 | `--td-lb-bar-h` | tính từ nút + padding | Chiều cao thanh (dùng để canh cụm trên trái) |
 | `--td-lb-bar-top` / `--td-lb-bar-side` | `14px` (có safe-area) | Khoảng cách toolbar tới mép |
 | `--td-lb-sheet-peek` | `2.25rem` | Phần lộ ra của bottom sheet khi đóng |
+| `--td-lb-stack-image-min` | `40dvh` | 0.114.0, `sheet: 'stack'`: chiều cao tối thiểu còn lại cho ảnh khi sheet mở |
+| `--td-lb-fit-w` / `--td-lb-fit-h` | (JS ghi qua CSSOM) | 0.114.0, `fit: 'fill'`: cỡ ảnh đã tính — không tự đặt |
 | `--td-lb-panel-w` | `22rem` | Độ rộng panel (desktop) |
 | `--td-lb-backdrop` | `rgb(8 8 9 / 94%)` | Nền |
 | `--td-lb-panel-bg` | `var(--td-glass-clear-solid)` (`#141416`) | Nền panel / sheet (đặc) |
@@ -793,7 +851,8 @@ overlay: ảnh `zoom-in` / `zoom-out` khi đang zoom (chuột), nền `zoom-out`
 ```html
 <div class="td-lightbox" role="dialog" aria-modal="true" tabindex="-1" aria-label="Trình xem ảnh"
      data-state="open" data-nav="side|side-compact|toolbar|rail" [data-filmstrip]
-     [data-panel] [data-zoomed] [data-dragging] [data-closing-down]>
+     [data-panel] [data-zoomed] [data-dragging] [data-closing-down]
+     [data-fit="fill"] [data-fit-active] [data-sheet-mode="stack"]>                <!-- 0.114.0 -->
   <div class="td-lightbox__backdrop"></div>
   <div class="td-lightbox__lead">
     <button class="td-lightbox__btn td-lightbox__back" hidden>…</button>        <!-- chỉ khi có panel -->

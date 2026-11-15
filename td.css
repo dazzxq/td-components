@@ -4311,6 +4311,8 @@
  *           [data-nav="side|side-compact|toolbar"] [data-filmstrip] (v0.24.0)
  *   panel [data-sheet="open"] · img [data-loading] · stage [data-slide="next|prev"] (v0.24.0)
  *   thumb [aria-current="true"] · [hidden] for binary visibility.
+ *   v0.114.0: overlay [data-fit="fill"] (session intent) + [data-fit-active] (an image slide shows → fill layout),
+ *   img --td-lb-fit-w / --td-lb-fit-h (CSSOM, whole px), overlay [data-sheet-mode="stack"] (with [data-panel]).
  * v0.24.0 (docs/internal/plans/v0.24.0-lightbox-nav.md): side strips (.td-lightbox__nav — the SAME prev / next buttons
  * moved out of the toolbar on a fine pointer), error block, optional filmstrip (second row of the column), slide.
  */
@@ -4352,6 +4354,8 @@
 		--td-lb-slide-dist: 24px;
 		--td-lb-slide-dur: 160ms;
 		--td-lb-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* v0.36.2: swipe spring back (the modal enter curve) */
+		/* v0.114.0 sheet: 'stack' — the image keeps at least this much height while the sheet is open */
+		--td-lb-stack-image-min: 40dvh;
 	}
 
 	/* Touch: 44 px hit targets (docs/internal/design/liquid-glass.md geometry rule). */
@@ -5074,6 +5078,7 @@
 		}
 
 		.td-lightbox__grab {
+			all: unset; /* v0.114.0: hidden, but no UA / host button styles either (CSP parity, combined profile) */
 			display: none;
 		}
 	}
@@ -5359,6 +5364,101 @@
 		}
 	}
 
+	/* ── v0.114.0 sheet: 'stack' (< 1024 px with a panel): the overlay becomes a column — the image column takes what is
+	   left, the panel sits IN FLOW below it (never over the image) and is its own scrollport. Closed: only the grabber
+	   (peek); open: min(content, 100dvh − --td-lb-stack-image-min). The overlay sheet's `translate` is neutralised. ── */
+	@media (max-width: 1023.98px) {
+		.td-lightbox[data-panel][data-sheet-mode="stack"] {
+			flex-direction: column;
+			align-items: stretch;
+			justify-content: flex-start;
+		}
+
+		.td-lightbox[data-panel][data-sheet-mode="stack"] .td-lightbox__col {
+			position: relative;
+			inset: auto;
+			flex: 1 1 auto;
+			width: 100%;
+			min-height: 0;
+		}
+
+		/* the stage is the clipping first row of the column (as with the filmstrip); media are bounded by it */
+		.td-lightbox[data-panel][data-sheet-mode="stack"] .td-lightbox__stage {
+			place-self: stretch;
+			width: 100%;
+			height: 100%;
+			max-width: 100%;
+			max-height: 100%;
+			overflow: hidden;
+		}
+
+		.td-lightbox[data-panel][data-sheet-mode="stack"] :is(.td-lightbox__img, .td-lightbox__video-el) {
+			max-width: 100%;
+			max-height: 100%;
+		}
+
+		.td-lightbox[data-nav="rail"][data-panel][data-sheet-mode="stack"]:not([data-filmstrip]) :is(.td-lightbox__stage, .td-lightbox__img, .td-lightbox__video-el) {
+			max-height: 100%;
+		}
+
+		/* a stretched mount gives the video a definite height to be bounded by */
+		.td-lightbox[data-panel][data-sheet-mode="stack"] .td-lightbox__video {
+			align-self: stretch;
+			max-width: 100%;
+		}
+
+		/* position: relative (not static): in flow, yet still painted above the absolute backdrop */
+		.td-lightbox[data-panel][data-sheet-mode="stack"] .td-lightbox__panel {
+			position: relative;
+			inset: auto;
+			flex: none;
+			align-self: stretch;
+			width: 100%;
+			max-height: calc(var(--td-lb-sheet-peek) + env(safe-area-inset-bottom, 0px));
+			padding-block-end: env(safe-area-inset-bottom, 0px);
+			overflow-y: hidden;
+			translate: none;
+			transition: max-height var(--td-lb-dur) var(--td-lb-ease);
+		}
+
+		.td-lightbox[data-panel][data-sheet-mode="stack"] .td-lightbox__panel[data-sheet="open"] {
+			max-height: calc(100dvh - var(--td-lb-stack-image-min));
+			overflow-y: auto;
+		}
+	}
+
+	/* ── v0.114.0 fit: 'fill' — only while an IMAGE slide shows ([data-fit-active], set by JS): the stage is stretched over
+	   the remaining image area (below the toolbar row; above the rail / filmstrip / closed sheet; left of the ≥ 1024 panel
+	   column) and the img gets the largest box of its aspect ratio inside it (--td-lb-fit-w / -h, whole px, CSSOM). The
+	   letterbox is the stage → a click there closes; the img box is exactly the picture (zoom / pan unchanged). ── */
+	.td-lightbox[data-fit="fill"][data-fit-active] .td-lightbox__stage {
+		place-self: stretch;
+		width: auto;
+		height: auto;
+		min-width: 0;
+		min-height: 0;
+		margin-block-start: calc(var(--td-lb-bar-top) + var(--td-lb-bar-h));
+		overflow: hidden;
+	}
+
+	.td-lightbox[data-fit="fill"][data-fit-active] :is(.td-lightbox__stage, .td-lightbox__img),
+	.td-lightbox[data-fit="fill"][data-fit-active][data-panel] :is(.td-lightbox__stage, .td-lightbox__img) {
+		max-width: 100%;
+		max-height: 100%;
+	}
+
+	.td-lightbox[data-fit="fill"][data-fit-active] .td-lightbox__img {
+		width: var(--td-lb-fit-w, auto);
+		height: var(--td-lb-fit-h, auto);
+	}
+
+	@media (max-width: 1023.98px) {
+		/* overlay sheet: the image area ends above the closed sheet's grabber */
+		.td-lightbox[data-fit="fill"][data-fit-active][data-panel]:not([data-sheet-mode="stack"]) .td-lightbox__col {
+			bottom: var(--td-lb-sheet-peek);
+		}
+	}
+
 	/* Safe areas (notch / home indicator). env() = 0 without viewport-fit=cover. Bar tokens: see @layer td.tokens. */
 	@supports (padding: max(0px)) {
 		.td-lightbox__lead {
@@ -5418,6 +5518,11 @@
 		.td-lightbox__stage[data-slide] {
 			opacity: 1;
 			transform: none;
+		}
+
+		/* v0.114.0: the stack sheet opens / closes at once */
+		.td-lightbox[data-panel][data-sheet-mode="stack"] .td-lightbox__panel {
+			transition: none;
 		}
 
 		/* v0.36.2: no swipe follow / slide out / spring (JS does not start them either) */

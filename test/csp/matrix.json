@@ -4318,6 +4318,40 @@
       ],
       "settle": 700,
       "selectorNote": "toolbar toggles: pressed(ctx) -> aria-pressed (on colour --td-lb-pressed); a pending onClick promise -> aria-busy + aria-disabled (dimmed 0.5)"
+    },
+    {
+      "state": "fill",
+      "setup": "TdLightbox.open(['/test/fixtures/small.svg','/test/fixtures/2.svg'], { fit: 'fill' });",
+      "selectors": [
+        ".td-lightbox[data-fit=\"fill\"][data-fit-active]",
+        ".td-lightbox[data-fit=\"fill\"][data-fit-active] .td-lightbox__stage",
+        ".td-lightbox[data-fit=\"fill\"][data-fit-active] .td-lightbox__img"
+      ],
+      "portal": [
+        ".td-lightbox[data-fit=\"fill\"][data-fit-active]",
+        ".td-lightbox[data-fit=\"fill\"][data-fit-active] .td-lightbox__stage",
+        ".td-lightbox[data-fit=\"fill\"][data-fit-active] .td-lightbox__img"
+      ],
+      "settle": 700,
+      "selectorNote": "v0.114.0 QD1: fit: 'fill' -> a 120x80 image scaled up to the image area (size via CSSOM --td-lb-fit-w / -h on the img, no style attribute)"
+    },
+    {
+      "state": "stack",
+      "setup": "TdLightbox.open([{src:'/test/fixtures/1.svg',caption:'Chú thích'},'/test/fixtures/2.svg'], { panel: true, sheet: 'stack' });",
+      "selectors": [
+        ".td-lightbox[data-panel][data-sheet-mode=\"stack\"]",
+        ".td-lightbox[data-sheet-mode=\"stack\"] .td-lightbox__col",
+        ".td-lightbox__panel",
+        ".td-lightbox__grab"
+      ],
+      "portal": [
+        ".td-lightbox[data-panel][data-sheet-mode=\"stack\"]",
+        ".td-lightbox[data-sheet-mode=\"stack\"] .td-lightbox__col",
+        ".td-lightbox__panel",
+        ".td-lightbox__grab"
+      ],
+      "settle": 700,
+      "selectorNote": "v0.114.0 QD5: sheet: 'stack' with a panel; the harness viewport is 1280x720 (>= 1024) so this pins the desktop two-column layout as unchanged (data-sheet-mode is set but its rules only act < 1024px; covered by the engines browser test)"
     }
   ],
   "td-otp-input": [

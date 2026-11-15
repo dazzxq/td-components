@@ -138,3 +138,39 @@ export const Video = {
     return btn;
   },
 };
+
+/**
+ * v0.114.0 — full-viewport album: `fit: 'fill'` (every image as large as the remaining image area allows, small ones
+ * too), an info panel, and below 1024 px `sheet: 'stack'` (the panel sits under the image, never over it). The pinned
+ * "Thông tin ảnh" toolbar button opens / closes the sheet through `handle.setSheet(!handle.sheetOpen)`.
+ */
+export const FillAlbum = {
+  render: () => {
+    const btn = document.createElement('button');
+    btn.textContent = 'Mở album (thu hẹp < 1024 px để thấy panel nằm dưới ảnh)';
+    btn.addEventListener('click', () => {
+      const album = [
+        ...IMGS.map((it, i) => ({ ...it, width: 1200, height: 800, data: { id: `photo-${i + 1}`, size: '1200 × 800' } })),
+        { src: '/lightbox/portrait.svg', caption: 'Ảnh dọc', width: 800, height: 1200, data: { id: 'portrait', size: '800 × 1200' } },
+      ];
+      TdLightbox.open(album, {
+        fit: 'fill',
+        sheet: 'stack',
+        panel: (ctx) => {
+          const box = document.createElement('div');
+          const title = document.createElement('strong');
+          title.textContent = ctx.item.caption;
+          const meta = document.createElement('p');
+          meta.textContent = `${ctx.item.data.id} · ${ctx.item.data.size} · ảnh ${ctx.index + 1} / ${ctx.count}`;
+          box.append(title, meta);
+          return box;
+        },
+        toolbar: [{
+          id: 'info', label: 'Thông tin ảnh', icon: 'info', pinned: true,
+          onClick: (ctx) => ctx.handle.setSheet(!ctx.handle.sheetOpen),
+        }],
+      });
+    });
+    return btn;
+  },
+};

@@ -10,7 +10,7 @@
  * (`src/styles/components/lightbox.css`).
  *
  * @typedef {{ type?: 'image'|'video', src: string, poster?: string, thumb?: string, caption?: string, alt?: string,
- *             provider?: string, data?: * }} TdLightboxItem
+ *             provider?: string, data?: *, width?: number, height?: number }} TdLightboxItem
  *
  * v0.24.0 (docs/internal/plans/v0.24.0-lightbox-nav.md): side navigation (the SAME prev / next buttons move between the
  * toolbar and a nav mount in the column — `data-nav="side|side-compact|toolbar"`), adjacent preload, an error state with
@@ -23,6 +23,11 @@
  * v0.96.0 (docs/internal/plans/v0.96.0-lightbox-toggle.md, K10): toolbar spec `pressed(ctx) => boolean` (the kit owns
  * `aria-pressed`, per slide), `pressedIcon` (registry name while on), `busy` (default: has `pressed`; an onClick thenable →
  * aria-busy + aria-disabled until it settles), handle.refreshToolbar(); labels `pressedOn` / `busy` ("Thêm" menu hints).
+ *
+ * v0.114.0 (docs/internal/plans/v0.114.0-lightbox-fill-sheet.md): `fit: 'fill'` (images scaled to the largest size of the
+ * remaining image area; overlay [data-fit="fill"] + [data-fit-active] while an IMAGE slide shows; size written as CSSOM
+ * custom properties --td-lb-fit-w/h on the img), `item.width/height`, `sheet: 'stack'` (< 1024 px with a panel: the panel
+ * in flow below the image, overlay [data-sheet-mode="stack"]), handle.setSheet(open) / handle.sheetOpen.
  */
 
 import { lockScroll, holdGutterColor } from '../utils/scroll-lock.js';
@@ -140,7 +145,7 @@ function allowed(url, item, isAllowedUrl) {
  * @param {Function} isAllowedUrl
  * @returns {TdLightboxItem|null}
  */
-function normalizeItem(raw, isAllowedUrl) {
+export function normalizeItem(raw, isAllowedUrl) {
   const input = typeof raw === 'string' ? { src: raw } : raw;
   if (!input || typeof input !== 'object') return null;
   const type = input.type === 'video' ? 'video' : 'image';
@@ -157,7 +162,28 @@ function normalizeItem(raw, isAllowedUrl) {
   item.poster = allowed(input.poster, input, isAllowedUrl);
   item.thumb = allowed(input.thumb, input, isAllowedUrl); // v0.24.0 filmstrip thumbnail (same policy as src)
   if (!item.src) return null; // every item needs an allowed src (video poster is only a fallback)
+  // v0.114.0 (QĐ4): optional intrinsic size → `fit: 'fill'` sizes the frame before the image has loaded
+  const w = positiveDim(input.width);
+  const hh = positiveDim(input.height);
+  if (w) item.width = w;
+  if (hh) item.height = hh;
   return item;
+}
+
+/** v0.114.0: a positive finite number (numeric strings accepted, e.g. "1200"), else 0. */
+function positiveDim(v) {
+  const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/** v0.114.0 (QĐ1): `fit` option — only 'fill' (any case, trimmed) → 'fill'; anything else → 'contain'. */
+export function normalizeFit(v) {
+  return typeof v === 'string' && v.trim().toLowerCase() === 'fill' ? 'fill' : 'contain';
+}
+
+/** v0.114.0 (QĐ5): `sheet` option — only 'stack' (any case, trimmed) → 'stack'; anything else → 'overlay'. */
+export function normalizeSheet(v) {
+  return typeof v === 'string' && v.trim().toLowerCase() === 'stack' ? 'stack' : 'overlay';
 }
 
 function mergeLabels(labels) {
@@ -720,6 +746,7 @@ function setSheet(open) {
   if (open) ui.panel.setAttribute('data-sheet', 'open');
   else ui.panel.removeAttribute('data-sheet');
   ui.grab.setAttribute('aria-expanded', open ? 'true' : 'false');
+  scheduleFit(); // v0.114.0: the stack sheet resizes the image area (no-op unless fill is active)
 }
 
 function syncPanel(ctx) {
@@ -745,11 +772,15 @@ function syncPanel(ctx) {
     resetPanelSwipe();
   }
   ui.overlay.toggleAttribute('data-panel', on);
+  // v0.114.0 (QĐ5): the ONE place that sets / removes the stack mode, together with data-panel
+  if (on && session.sheet === 'stack') ui.overlay.setAttribute('data-sheet-mode', 'stack');
+  else ui.overlay.removeAttribute('data-sheet-mode');
   ui.panel.hidden = !on;
   ui.backBtn.hidden = !on;
   ui.panelBody.replaceChildren(...(node ? [node] : []));
   ui.panel.scrollTop = 0;
   syncNavMode(); // the column width changed
+  scheduleFit(); // v0.114.0: the image area changed (no-op unless fill is active)
 }
 
 function bindPanelSwipe(panel) {
@@ -776,6 +807,65 @@ function bindPanelSwipe(panel) {
   panel.addEventListener('touchcancel', () => { y0 = null; }, { passive: true });
 }
 
+/* ------------------------------------------------------------------ v0.114.0: fit 'fill' */
+
+let fitResize = null;
+let fitRaf = 0;
+
+/** Drop the fill size and the active fill layout (every slide render, video / provider / error paths). */
+function clearFit() {
+  if (session) session.fitDims = null;
+  if (!ui) return;
+  ui.overlay.removeAttribute('data-fit-active');
+  ui.img.style.removeProperty('--td-lb-fit-w');
+  ui.img.style.removeProperty('--td-lb-fit-h');
+}
+
+/**
+ * Size the img to the largest box of the image's aspect ratio inside the stage (CSS stretches the stage over the
+ * remaining image area while [data-fit-active]); whole px, rounded down. Uses the size stored for the CURRENT slide
+ * (`session.fitDims`: its own preload, else item.width/height) — never the shared <img>, which may still hold the previous
+ * slide. Unknown size → no variables (the image is contained by the frame, max 100 %).
+ */
+function fitImage() {
+  if (!ui || !session || session.fit !== 'fill' || !ui.overlay.hasAttribute('data-fit-active')) return;
+  const d = session.fitDims;
+  const img = ui.img;
+  const W = ui.stage.clientWidth;
+  const H = ui.stage.clientHeight;
+  if (!d || !W || !H) {
+    img.style.removeProperty('--td-lb-fit-w');
+    img.style.removeProperty('--td-lb-fit-h');
+    return;
+  }
+  const s = Math.min(W / d.w, H / d.h);
+  img.style.setProperty('--td-lb-fit-w', `${Math.max(1, Math.floor(d.w * s))}px`);
+  img.style.setProperty('--td-lb-fit-h', `${Math.max(1, Math.floor(d.h * s))}px`);
+  if (zoom.scale > 1) { // the area changed while zoomed: keep the zoom, re-clamp the pan to the new base size
+    clampPan();
+    applyZoom();
+  }
+}
+
+/** Fit on the next frame, coalesced (also the ResizeObserver path: no layout read inside the observer delivery). */
+function scheduleFit() {
+  if (fitRaf || !ui || !ui.overlay.hasAttribute('data-fit-active')) return;
+  fitRaf = requestAnimationFrame(() => { fitRaf = 0; fitImage(); });
+}
+
+/** Observe the stage while the session fills; disconnect otherwise (contain session, close). */
+function syncFitWatch() {
+  const want = !!session && session.fit === 'fill' && lifecycle === 'open';
+  if (want && !fitResize && typeof ResizeObserver === 'function') {
+    fitResize = new ResizeObserver(scheduleFit);
+    fitResize.observe(ui.stage);
+  } else if (!want && fitResize) {
+    fitResize.disconnect();
+    fitResize = null;
+  }
+  if (!want && fitRaf) { cancelAnimationFrame(fitRaf); fitRaf = 0; }
+}
+
 /* ------------------------------------------------------------------ zoom */
 
 function applyZoom() {
@@ -797,7 +887,9 @@ function resetZoom() {
  * the (clipping) first row of the column.
  */
 function viewRect() {
-  if (session && session.filmstrip) return ui.stage.getBoundingClientRect();
+  // v0.114.0: fill (and the stack sheet) stretch the clipping stage over the image area too
+  if (session && (session.filmstrip || ui.overlay.hasAttribute('data-fit-active')
+    || ui.overlay.getAttribute('data-sheet-mode') === 'stack')) return ui.stage.getBoundingClientRect();
   return (ui.col.getBoundingClientRect().width ? ui.col : ui.stage).getBoundingClientRect();
 }
 
@@ -1250,10 +1342,22 @@ function showImage(src, item, token) {
   img.hidden = false;
   img.setAttribute('data-loading', '');
   spinner.hidden = true;
+  // v0.114.0 (QĐ1/QĐ2/QĐ4): the image path is the only one that turns the fill layout on; the frame is sized from
+  // item.width/height (if any) until this slide's own preload reports its intrinsic size
+  clearFit();
+  if (session.fit === 'fill') {
+    ui.overlay.setAttribute('data-fit-active', '');
+    session.fitDims = item.width && item.height ? { w: item.width, h: item.height } : null;
+    fitImage();
+  }
   const spinTimer = setTimeout(() => { if (token === renderToken) spinner.hidden = false; }, 1000);
-  const finish = (ok) => {
+  const finish = (ok, pre) => {
     clearTimeout(spinTimer);
     if (token !== renderToken) return; // slide changed meanwhile
+    if (ok && session.fit === 'fill' && pre && pre.naturalWidth > 0 && pre.naturalHeight > 0) {
+      session.fitDims = { w: pre.naturalWidth, h: pre.naturalHeight }; // the intrinsic size always wins
+      fitImage(); // before the image is revealed
+    }
     spinner.hidden = true;
     img.removeAttribute('data-loading');
     if (ok) {
@@ -1265,6 +1369,7 @@ function showImage(src, item, token) {
     }
     img.removeAttribute('src');
     img.hidden = true;
+    clearFit();              // v0.114.0: the error block is laid out as with contain
     showError();             // N3 (was: an empty frame)
     startSlide(token);
   };
@@ -1275,7 +1380,7 @@ function showImage(src, item, token) {
   if (rec && rec.state === 'loading') {
     rec.owner = 'main';
     rec.onSettle = (ok) => {
-      if (ok || !rec.speculative) { finish(ok); return; }
+      if (ok || !rec.speculative) { finish(ok, rec.image); return; }
       if (token !== renderToken) { clearTimeout(spinTimer); return; }
       loadMain(src, finish);
     };
@@ -1311,7 +1416,7 @@ function track(src, owner, speculative) {
 /** A main load (default Referer, like before v0.95.0): a new Image whose settle runs `onSettle`. */
 function loadMain(src, onSettle) {
   const rec = track(src, 'main', false);
-  rec.onSettle = onSettle;
+  rec.onSettle = (ok) => onSettle(ok, rec.image); // v0.114.0: + the Image itself (its intrinsic size)
   rec.image.src = src;
 }
 
@@ -1604,6 +1709,7 @@ function goToIndex(i) {
 
 function showVideo(item, token) {
   const { videoMount, img, spinner } = ui;
+  clearFit(); // v0.114.0: fill applies to images only
   img.hidden = true;
   img.removeAttribute('src');
   spinner.hidden = true;
@@ -1653,6 +1759,7 @@ function show(idx, dir = 0) {
   resetZoom();
   clearSlide();
   hideError();
+  clearFit(); // v0.114.0: never a size of the previous slide
   const token = ++renderToken;
   prunePreloads(); // v0.95.0: cancel in-flight requests that left the window
 
@@ -1791,6 +1898,15 @@ function makeHandle(token) {
     },
     /** Re-run the current panel renderer (its data changed). */
     refreshPanel() { if (alive()) syncPanel(ctxOf()); },
+    /** v0.114.0 (QĐ6): open / close the info sheet (< 1024 px; overlay and stack). No panel → no-op. */
+    setSheet(open) {
+      if (!alive() || ui.panel.hidden) return;
+      setSheet(!!open);
+    },
+    /** v0.114.0: true while the sheet is open (false without a panel or on a dead handle). */
+    get sheetOpen() {
+      return alive() && !ui.panel.hidden && ui.panel.getAttribute('data-sheet') === 'open';
+    },
     /** v0.96.0: re-run `visible` + `pressed` of the toolbar buttons now (their state changed outside onClick). */
     refreshToolbar() { if (alive()) syncExtras(ctxOf()); },
     /** Add a toolbar button while open (same id → replaces it). Returns remove(). */
@@ -1846,6 +1962,9 @@ function openViewer(items, options = {}) {
     // src → { src, image, state, owner, speculative, onSettle } — every Image in flight (preload + main, v0.95.0)
     preloads: new Map(),
     filmstrip: wantsFilmstrip(opts.filmstrip, list.length),
+    fit: normalizeFit(opts.fit),       // v0.114.0 (QĐ1)
+    fitDims: null,                     // v0.114.0: { w, h } of the current image slide, or null
+    sheet: normalizeSheet(opts.sheet), // v0.114.0 (QĐ5)
     handle: null,
     warned: new Set(), // v0.96.0: toolbar warnOnce keys (`id\0kind`) — per open, survives replacing a button
     groupEl: typeof Element !== 'undefined' && opts.groupEl instanceof Element ? opts.groupEl : null,
@@ -1854,6 +1973,8 @@ function openViewer(items, options = {}) {
   applyLabels(session.labels);
   mountToolbar(opts.toolbar);
   setSheet(false);
+  if (session.fit === 'fill') ui.overlay.setAttribute('data-fit', 'fill'); // v0.114.0: the session's intent
+  else ui.overlay.removeAttribute('data-fit');
 
   const many = list.length > 1;
   ui.prevBtn.hidden = !many;
@@ -1884,6 +2005,7 @@ function openViewer(items, options = {}) {
     startNavWatch();
     histPush(viewer.hist, resolveHistoryAdapter(opts.history), token);
   }
+  syncFitWatch(); // v0.114.0: after lifecycle = 'open' (a re-entrant open may switch fill ↔ contain)
 
   show(session.index);
   const openToken = token;
@@ -1925,6 +2047,7 @@ function closeViewer() {
   hideError();
   cancelPreloads();
   stopNavWatch();
+  syncFitWatch(); // v0.114.0: lifecycle is 'closed' → disconnected
   lastPointerType = '';
   lastDownTarget = null;
   document.removeEventListener('keydown', onKeydown);
@@ -1978,6 +2101,8 @@ function readItem(el, p = 'td') {
     provider: a('-provider') || 'html5',
     caption: caption.trim(),
     alt: (img && img.getAttribute('alt')) || '',
+    width: a('-width'),   // v0.114.0 (QĐ4): validated by normalizeItem
+    height: a('-height'),
     data: el,
   };
 }

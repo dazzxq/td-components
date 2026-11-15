@@ -4,6 +4,21 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.114.0
+
+dsuite 14/11 (album lightbox toàn màn hình + panel thông tin ảnh). Plan [v0.114.0](docs/internal/plans/v0.114.0-lightbox-fill-sheet.md).
+
+### Thêm
+- `TdLightbox.open(items, { fit: 'fill' })` (mặc định `'contain'`, không đổi): ảnh (cả ảnh nhỏ) phóng tới lớn nhất trong vùng
+  ảnh còn lại (trừ toolbar / filmstrip / rail / cột panel / sheet), giữ tỉ lệ; hộp ảnh = nội dung ảnh nên zoom / kéo /
+  bấm nền để đóng giữ nguyên. Chỉ áp cho slide ảnh (video / provider / lỗi như contain). Ảnh độ phân giải thấp sẽ mờ khi
+  phóng. `bind()` nhận `fit` như option.
+- `item.width` / `item.height` (và `data-*-lightbox-width/height` cho `bind()`): đặt khung trước khi ảnh tải xong ở fill.
+- `sheet: 'stack'` (mặc định `'overlay'`): dưới 1024px, có panel → panel nằm dưới ảnh trong dòng chảy, ảnh co lại, panel
+  cuộn riêng, không che ảnh; mở thì ảnh còn ít nhất `--td-lb-stack-image-min` (mặc định `40dvh`).
+- Handle `setSheet(open)` + getter `sheetOpen` (cả overlay lẫn stack), ví dụ nút toolbar "Thông tin ảnh" trên điện thoại.
+- Token `--td-lb-stack-image-min`. Story `FillAlbum`.
+
 ## 0.113.0
 
 **Chế độ chỉ chọn điểm trọng tâm: `crop.mode = 'focal'` / `crop-mode="focal"`** (dcms2 13/11, owner dcms2 bỏ cắt tay).

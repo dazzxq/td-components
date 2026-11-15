@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80" viewBox="0 0 120 80">
+  <!-- v0.114.0 td-lightbox fit: 'fill' fixture: a SMALL 3:2 image (120 × 80) — contain keeps it at 120 × 80, fill scales it up. -->
+  <rect width="120" height="80" fill="#e76f51"/><circle cx="60" cy="40" r="24" fill="#f4a261"/>
+</svg>
