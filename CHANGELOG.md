@@ -4,6 +4,13 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.114.1
+
+### Sửa
+- Modal / bottom sheet dưới 720px (không `fullViewport`): nút footer dồn về cuối như trên màn rộng thay vì chia đều bề rộng
+  (`flex: 1 1 0`, từ 0.36.0). Nút ghost không có nền và viên nút không giãn theo phần chia, nên footer kiểu "Xoá lọc" +
+  "Áp dụng" của sheet Bộ lọc media picker (và các sheet khác) trông lệch. Owner báo 15/11.
+
 ## 0.114.0
 
 dsuite 14/11 (album lightbox toàn màn hình + panel thông tin ảnh). Plan [v0.114.0](docs/internal/plans/v0.114.0-lightbox-fill-sheet.md).

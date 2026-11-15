@@ -693,7 +693,8 @@ chỉ kéo), trừ `fullViewport`. Khi modal mở, trang được khoá cuộn (
 **Chrome gọn dưới 720px (0.36.0).** Đo ở 360 / 390px, header + footer chiếm ~70 % một hộp xác nhận một câu. Giờ dưới
 720px (mọi modal, kể cả `fullViewport` và hộp thoại lồng của media picker): header `padding-block: 0.375rem`, **bỏ đường
 kẻ dưới** (viền trong suốt) → cao ≤ 56px; footer `padding-block: 0.5rem` → ≤ 64px. Modal thường (không `fullViewport`):
-nút footer **một hàng, chia đều bề rộng** (`flex: 1 1 0`, không xuống dòng — hai nút cạnh nhau mỗi nút một nửa). Với
+nút footer **một hàng** (không xuống dòng), **dồn về cuối** như trên màn rộng (0.114.1; 0.36.0–0.114.0 chia đều bề rộng
+`flex: 1 1 0`, nhưng nút ghost không có nền và viên nút không giãn theo nên trông lệch). Với
 `fullViewport` safe area vẫn cộng vào: header `calc(0.375rem + env(safe-area-inset-top))`, footer `calc(0.5rem +
 env(safe-area-inset-bottom))`. Từ 720px trở lên không đổi.
 
