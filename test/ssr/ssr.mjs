@@ -259,6 +259,15 @@ export function renderAffixFixture() {
   return renderPhp('affix-fixture.php');
 }
 
+// v0.115.0: revealable on td_field element mode (contract input-field@1, additive).
+export const REVEAL_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'reveal.fixtures.json'), 'utf8'));
+export const REVEAL_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'reveal.html');
+
+/** Render test/ssr/reveal-fixture.php (the HTML loaded by the v0.115.0 password reveal browser test). */
+export function renderRevealFixture() {
+  return renderPhp('reveal-fixture.php');
+}
+
 // v0.58.0: label_mode=floating on td_field (contract input-field@1, additive).
 export const FLOATING_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'floating.fixtures.json'), 'utf8'));
 export const FLOATING_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'floating.html');

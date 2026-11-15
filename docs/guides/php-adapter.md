@@ -522,9 +522,11 @@ tách khỏi trang (cấu trúc hoặc attribute ngoài allowlist) → render l�
 | `prefix_icon`, `suffix_icon` | 0.55.0: tên icon registry (`Td::icon`; tên lạ → ô rỗng), ở mép ngoài của bên đó, SVG inline sẵn |
 | `unit_label` | 0.55.0: chữ đơn vị đọc to (mặc định `suffix`, rồi `prefix`), in `span#{id}-unit[hidden]` và đứng **đầu** `aria-describedby` |
 | `label_mode` | 0.58.0: `'top'` (mặc định) \| `'floating'` — [nhãn nổi](../components/input-field.md#nhãn-nổi--label-modefloating-0580). Cần `label` (không có → như `top`); giá trị khác → `top`, im lặng. In control (hoặc `div.td-field__box`) **trước** `<label>`, wrapper thêm `td-field--floating` [+ `td-field--always-float` cho `date` / `month` / `datetime-local` / `time` hoặc có affix] [+ `td-field--ph-label` khi không có `placeholder`]; `placeholder` của control = `placeholder` thật, không có thì chữ nhãn (luôn ẩn bằng `td.css`). Chế độ element: host thêm `label-mode="floating"` |
+| `revealable` | 0.115.0: `true` + `type` `password` + chế độ element → host `revealable` + nút hiện / ẩn mật khẩu `button.td-field__reveal` trong `div.td-field__box` (trạng thái ẩn, icon `eye` inline, ẩn bằng `td.css` tới khi module nạp) — [Hiện / ẩn mật khẩu](../components/input-field.md#hiện--ẩn-mật-khẩu-revealable-01150). Chế độ native và type khác: bỏ qua (không JS thì nút không làm gì) |
 
 Affix (0.55.0) chỉ cho `type` `text` `search` `email` `url` `tel` `password` `number`; type khác → bỏ + một `E_USER_WARNING`
-(chỉ tên option). Không dùng option affix → markup giống từng byte 0.54. Phần tử giàu (nút hiện mật khẩu…) **không** đi
+(chỉ tên option). Không dùng option affix → markup giống từng byte 0.54. Nút hiện mật khẩu chuẩn: `revealable` (0.115.0,
+ở trên). Phần tử giàu khác (nút tự dựng…) **không** đi
 qua PHP: viết `<button slot="suffix">` trong `<td-input-field>` (JS / markup tay — [Input field](../components/input-field.md#tiền-tố--hậu-tố-chữ-icon-phần-tử-của-trang-0550)).
 
 ```php

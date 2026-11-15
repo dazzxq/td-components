@@ -945,6 +945,40 @@ async function chromiumSemantics(browser) {
       expect(st.clicks === 1 && !st.control, `slot button tap: ${JSON.stringify(st)}`);
     });
 
+    // v0.115.0 revealable (plan docs/internal/plans/v0.115.0-password-reveal.md, Tests "Gates"): the field is added next
+    // to #rsp-affix-pw at run time (the shared responsive fixture stays as it is)
+    await it(tag, 'revealable: the eye button is ≥ 44 px; a tap shows the password WITHOUT focusing the input (no virtual keyboard)', async () => {
+      await load(page);
+      await page.evaluate(async () => {
+        const el = document.createElement('td-input-field');
+        el.id = 'rsp-reveal';
+        el.setAttribute('name', 'pw-reveal');
+        el.setAttribute('type', 'password');
+        el.setAttribute('label', 'Mật khẩu');
+        el.setAttribute('revealable', '');
+        el.setAttribute('value', 'abc');
+        document.querySelector('#rsp-affix-pw').after(el);
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        document.activeElement?.blur();
+      });
+      const m = await page.evaluate(() => {
+        const r = document.querySelector('#rsp-reveal .td-field__reveal').getBoundingClientRect();
+        return { w: r.width, h: r.height };
+      });
+      expect(m.w >= 44 - 0.5 && m.h >= 44 - 0.5, `reveal hit area: ${JSON.stringify(m)}`);
+      const b = await centre(page, '#rsp-reveal .td-field__reveal');
+      await page.touchscreen.tap(b.x, b.y);
+      await page.waitForFunction(() => document.querySelector('#rsp-reveal').revealed === true, null, { timeout: 2000 }).catch(() => {});
+      const st = await page.evaluate(() => {
+        const el = document.querySelector('#rsp-reveal');
+        const btn = el.querySelector('.td-field__reveal');
+        return { revealed: el.revealed, type: el.querySelector('.td-field__control').type,
+          control: document.activeElement === el.querySelector('.td-field__control'), ta: getComputedStyle(btn).touchAction };
+      });
+      expect(st.revealed && st.type === 'text' && !st.control, `reveal tap: ${JSON.stringify(st)}`);
+      expect(st.ta === 'manipulation', `touch-action ${st.ta}`);
+    });
+
     // v0.58.0 floating labels (QĐ 6, 6b, 6c — Codex plan r1 #3, r2 #5)
     await it(tag, 'floating: field ≥ 44 px + value ≥ 16 px; a tap on the resting / raised label focuses the control; a tap on the value text hits the control', async () => {
       await load(page);

@@ -51,6 +51,9 @@ const SSR_ONLY = ['name', 'autofocus'];
  *       <input class="td-field__control" …>
  *       [<span class="td-field__affix td-field__affix--suffix td-field__affix--slot">{page nodes}</span>]   (after bind)
  *       [<span class="td-field__affix td-field__affix--suffix" aria-hidden="true" [hidden]>{suffix}[icon slot]</span>]
+ *       [<button type="button" class="td-field__reveal" aria-controls="{controlId}" aria-pressed="false|true"
+ *          aria-label="{messages.reveal|conceal}" [disabled]><span class="td-field__reveal-icon" data-td-icon="eye|eye-off"
+ *          data-td-icon-class="td-field__reveal-svg"></span></button>]   (v0.115.0: type="password" revealable)
  *       [<span id="{host}-unit" hidden>{unit-label | suffix | prefix}</span>]
  *     </div>
  *     (icon slot = <span class="td-field__affix-icon" data-td-icon="{name}" data-td-icon-class="td-field__affix-svg">)
@@ -88,6 +91,12 @@ const SSR_ONLY = ['name', 'autofocus'];
  *   text + inputmode on the same node; external `<label for="{field-id}">` move to the host; reset → the native
  *   default. Any mismatch → safe render AT ONCE + restore (value, selection, and the focus when the control had it) —
  *   no deferral (ADR 0012 §5). `contenteditable` has no SSR contract (always rendered).
+ * - v0.115.0 (plan v0.115.0-password-reveal): `type="password" revealable` → an eye button at the end of the box (the
+ *   box exists even without prefix / suffix) switches the control between `type="password"` and `type="text"` IN PLACE
+ *   (focus + caret kept; a pointer press never moves the focus; the button is a Tab stop). Session-only state (no
+ *   attribute): `revealed`, reveal() / conceal() / toggleReveal(), `td-reveal`. Back to hidden on the form's `submit`
+ *   event, form reset, `pagehide`, disconnect, disabled, and when `revealable` / the password type goes away.
+ *   NOT on `form.submit()` / an AJAX send (no `submit` event): call conceal() first. Other types ignore it.
  *
  * @element td-input-field
  * @attr {string} type - text|password|email|tel|number|url|search|date|month|datetime-local|time|textarea|contenteditable
@@ -128,8 +137,11 @@ const SSR_ONLY = ['name', 'autofocus'];
  * @attr {string} prefix / suffix - Decorative text before / after the value ("https://", "mAh", "đ"), v0.55.0
  * @attr {string} prefix-icon / suffix-icon - Decorative registry icon on the outer edge of that side, v0.55.0
  * @attr {string} unit-label - The unit as read aloud (description); default suffix, else prefix, v0.55.0
+ * @attr {boolean} revealable - type="password" only: a show / hide button at the end of the field (`revealable`
+ *   property), v0.115.0
  * @slot prefix / suffix - Page Elements (a button, <td-icon>…) next to the control; they win over that side's text / icon
  * @fires input - detail: { value } — once per user edit
+ * @fires td-reveal - detail: { revealed } — once per show / hide change (bubbles, not cancelable), v0.115.0
  * @fires change - detail: { value } — on blur, only when the value changed since focus
  */
 export class TdInputField extends TdFormElement {
@@ -143,12 +155,12 @@ export class TdInputField extends TdFormElement {
       'max-length', 'limit-type', 'min', 'max', 'step',
       'label', 'error-text',
       'field-id', 'rows', 'validate-on', 'aria-label', 'autoresize', 'minlength', 'pattern',
-      ...TdInputField._nativeAttrs, ...TdInputField._affixAttrs, 'label-mode',
+      ...TdInputField._nativeAttrs, ...TdInputField._affixAttrs, 'label-mode', 'revealable',
     ];
   }
 
   static get booleanAttributes() {
-    return [...super.booleanAttributes, 'readonly', 'autoresize'];
+    return [...super.booleanAttributes, 'readonly', 'autoresize', 'revealable'];
   }
 
   static get errorContract() { return true; }
@@ -174,6 +186,8 @@ export class TdInputField extends TdFormElement {
     dateOverflow: 'Ngày tối đa là {max}',
     unitChar: 'ký tự',
     unitWord: 'từ',
+    reveal: 'Hiện mật khẩu', // v0.115.0: the eye button's name while the password is hidden
+    conceal: 'Ẩn mật khẩu', // …and while it is shown
   };
 
   /** @private Types where the native `pattern` attribute applies. */
@@ -226,7 +240,7 @@ export class TdInputField extends TdFormElement {
 
   /** @private Attributes that change the DOM structure → full re-render. Everything else updates in place. */
   static _structural = new Set(['type', 'size', 'label', 'max-length', 'limit-type', 'rows', 'field-id', 'autoresize',
-    ...TdInputField._affixAttrs, 'label-mode']);
+    ...TdInputField._affixAttrs, 'label-mode', 'revealable']);
 
   /** @private Known public types. */
   static _types = [
@@ -243,6 +257,8 @@ export class TdInputField extends TdFormElement {
     this._valueAtFocus = null;
     /** @private The value was last changed by the user (native "dirty by user edit" — gates `tooShort`). */
     this._userEdited = false;
+    /** @private v0.115.0 (QĐ 1): the password is shown (session-only — never an attribute, never in SSR). */
+    this._revealed = false;
   }
 
   connectedCallback() {
@@ -263,14 +279,18 @@ export class TdInputField extends TdFormElement {
   /**
    * @private v0.55.0: the affix of each side + the unit read aloud, or null (no affix → the v0.54 markup). An unsupported
    * type drops it with one warning; a slot wins over its side's text / icon (one warning).
-   * @returns {{ prefix: {text: string, icon: string, slot: boolean}, suffix: {text: string, icon: string, slot: boolean}, unit: string }|null}
+   * v0.115.0: `reveal` = the eye button goes in the box (type="password" revealable — a box even without any affix).
+   * @returns {{ prefix: {text: string, icon: string, slot: boolean}, suffix: {text: string, icon: string, slot: boolean}, unit: string, reveal: boolean }|null}
    */
   _affixState() {
     const part = (side) => ({ text: this.getAttribute(side) || '', icon: affixIcon(this, side), slot: !!this._affixSlots?.[side]?.length });
     const prefix = part('prefix');
     const suffix = part('suffix');
-    if (![prefix, suffix].some((p) => p.text || p.icon || p.slot)) return null;
-    if (!TdInputField._affixTypes.includes(this._type())) {
+    // v0.115.0 (QĐ 2): a revealable password always has the box (the eye button sits in it)
+    const reveal = this._revealEligible();
+    const parts = [prefix, suffix].some((p) => p.text || p.icon || p.slot);
+    if (!parts && !reveal) return null;
+    if (parts && !TdInputField._affixTypes.includes(this._type())) {
       if (!this._affixTypeWarned) {
         this._affixTypeWarned = true;
         console.warn(`<td-input-field>: prefix / suffix (text, icon, slot) are not supported for type="${this._type()}" — ignored`);
@@ -283,7 +303,17 @@ export class TdInputField extends TdFormElement {
         console.warn(`<td-input-field>: a [slot="${side}"] child replaces ${side} / ${side}-icon (both are set)`);
       }
     }
-    return { prefix, suffix, unit: this.getAttribute('unit-label') || suffix.text || prefix.text };
+    return { prefix, suffix, unit: this.getAttribute('unit-label') || suffix.text || prefix.text, reveal };
+  }
+
+  /** @private v0.115.0 (QĐ 1b): `revealable` applies to type="password" only. @returns {boolean} */
+  _revealEligible() {
+    return this.hasAttribute('revealable') && this._type() === 'password';
+  }
+
+  /** @private v0.115.0: the eye button in the box, or null. @returns {HTMLButtonElement|null} */
+  _revealButton() {
+    return this.querySelector(':scope > .td-field > .td-field__box > button.td-field__reveal');
   }
 
   /**
@@ -383,7 +413,8 @@ export class TdInputField extends TdFormElement {
       const named = label ? ` aria-labelledby="${esc(this.id)}-label"` : '';
       control = `<div class="td-field__control" id="${esc(controlId)}" role="textbox" aria-multiline="true"${named}>${esc(value)}</div>`;
     } else {
-      const inputType = this._resolveInputType(type);
+      // v0.115.0 (QĐ 2): a structural re-render keeps the shown state
+      const inputType = this._revealed && this._revealEligible() && !this._effectiveDisabled ? 'text' : this._resolveInputType(type);
       const inputMode = TdInputField._inputModeMap[type];
       const modeAttr = inputType === 'text' && inputMode ? ` inputmode="${inputMode}"` : '';
       control = `<input type="${inputType}" class="td-field__control" id="${esc(controlId)}" value="${esc(value)}"${maxAttr}${modeAttr}>`;
@@ -394,7 +425,7 @@ export class TdInputField extends TdFormElement {
     if (aff) {
       const unit = aff.unit ? `<span id="${esc(this.id)}-unit" hidden>${esc(aff.unit)}</span>` : '';
       control = `<div class="td-field__box">${affixMarkup('prefix', aff.prefix, 'td-field')}${control}`
-        + `${affixMarkup('suffix', aff.suffix, 'td-field')}${unit}</div>`;
+        + `${affixMarkup('suffix', aff.suffix, 'td-field')}${aff.reveal ? this._revealMarkup(controlId) : ''}${unit}</div>`;
     }
 
     let counter = '';
@@ -412,6 +443,18 @@ export class TdInputField extends TdFormElement {
       + (floating ? `${control}${labelHtml}` : `${labelHtml}${control}`)
       + `<div class="td-field__footer"><div class="td-field__note" id="${esc(this.id)}-note" hidden></div>${counter}</div>`
       + '</div>';
+  }
+
+  /**
+   * @private v0.115.0 (QĐ 2, 6): the eye button (php/td.php td__reveal_button prints the same, hidden state). Its name,
+   * pressed state, icon and `disabled` are re-applied by _syncReveal() after every bind (messages overrides reach SSR).
+   * @param {string} controlId
+   */
+  _revealMarkup(controlId) {
+    const on = !!this._revealed && !this._effectiveDisabled;
+    return `<button type="button" class="td-field__reveal" aria-controls="${this.escapeHtml(controlId)}" aria-pressed="${on}"`
+      + ` aria-label="${this.escapeHtml(this._msg(on ? 'conceal' : 'reveal'))}"${this._effectiveDisabled ? ' disabled' : ''}>`
+      + `<span class="td-field__reveal-icon" data-td-icon="${on ? 'eye-off' : 'eye'}" data-td-icon-class="td-field__reveal-svg"></span></button>`;
   }
 
   afterRender() {
@@ -449,12 +492,89 @@ export class TdInputField extends TdFormElement {
     const box = field.parentElement?.classList.contains('td-field__box') ? field.parentElement : null;
     if (!box) return;
     this.listen(box, 'mousedown', (e) => {
+      // v0.115.0 (QĐ 3): a pointer press on the eye button never moves the focus (the input keeps it + its caret; an
+      // unfocused field stays unfocused — no virtual keyboard on a tap); the click still toggles
+      if (/** @type {Element} */ (e.target).closest?.('.td-field__reveal')) {
+        e.preventDefault();
+        return;
+      }
       if (e.target === field || field.disabled || slotInteractive(e.target, box, 'td-field')) return;
       e.preventDefault();
       field.focus();
     });
     fillIconSlots(box, ':scope > .td-field__affix > [data-td-icon]');
+    const reveal = this._revealButton();
+    if (reveal) this.listen(reveal, 'click', () => this.toggleReveal());
     mountAffixSlots(this, field, 'td-field');
+  }
+
+  /**
+   * @private v0.115.0 (QĐ 4b): silent sync of the eye button + the control type with the state — name (messages),
+   * pressed state, aria-controls, disabled, icon. After every bind (render, SSR adoption, re-connect) and every change.
+   */
+  _syncReveal() {
+    const btn = this._revealButton();
+    const field = this._getFieldElement();
+    if (!btn || !field) return;
+    const on = this._revealed;
+    btn.setAttribute('aria-pressed', String(on));
+    btn.setAttribute('aria-label', this._msg(on ? 'conceal' : 'reveal'));
+    if (field.id) btn.setAttribute('aria-controls', field.id);
+    btn.disabled = !!this._effectiveDisabled;
+    const slot = btn.querySelector(':scope > [data-td-icon]');
+    if (slot) {
+      slot.setAttribute('data-td-icon', on ? 'eye-off' : 'eye');
+      fillIconSlots(btn, ':scope > [data-td-icon]');
+    }
+    const type = on ? 'text' : 'password';
+    if (field.getAttribute('type') === type) return;
+    // QĐ 3: the type change keeps the caret / selection of a focused control
+    let sel = null;
+    if (field === this.ownerDocument.activeElement) {
+      try { sel = field.selectionStart == null ? null : [field.selectionStart, field.selectionEnd, field.selectionDirection || 'none']; } catch { /* no selection API */ }
+    }
+    field.type = type;
+    if (sel) {
+      // Chromium rebuilds the inner editor of the swapped type on the next style / layout pass and drops the selection
+      // set before it: flush layout first (one read, only for a focused control on a toggle)
+      void field.offsetWidth;
+      try { field.setSelectionRange(...sel); } catch { /* no selection API */ }
+    }
+  }
+
+  /**
+   * @private v0.115.0: change the state (no-op when unchanged): control type + button, then one `td-reveal`. Showing
+   * starts the auto-hide listeners (form `submit`, `pagehide`) for this connection.
+   * @param {boolean} on
+   */
+  _setRevealed(on) {
+    if (this._revealed === on) return;
+    this._revealed = on;
+    this._syncReveal();
+    if (on) this._listenReveal();
+    this.emit('td-reveal', { revealed: on });
+  }
+
+  /** @private v0.115.0 (QĐ 4): auto-hide on the owning form's `submit` event and on `pagehide`, once per connection. */
+  _listenReveal() {
+    if (this._revealListening || !this.isConnected) return;
+    this._revealListening = true;
+    const doc = this.ownerDocument;
+    // capture: before the page's own submit handlers and before the browser reads the form / offers to save it
+    this.listen(doc, 'submit', (e) => { if (e.target === this.form) this.conceal(); }, true);
+    if (doc.defaultView) this.listen(doc.defaultView, 'pagehide', () => this.conceal());
+  }
+
+  disconnectedCallback() {
+    this.conceal(); // v0.115.0 (QĐ 4): a moved / removed field comes back hidden
+    super.disconnectedCallback();
+    this._revealListening = false; // the cleanups removed them
+  }
+
+  /** v0.115.0 (QĐ 4): reset also hides the password. */
+  formResetCallback() {
+    this.conceal();
+    super.formResetCallback();
   }
 
   /** @private Forward the whitelisted native attributes (autocomplete, inputmode, …) to the control, in place. */
@@ -545,7 +665,12 @@ export class TdInputField extends TdFormElement {
       // v0.55.0 (Codex plan r1 #3): an affix change re-renders the box — a focused control gets the focus, the caret and
       // its focus baseline back (the live value is rendered); the replaced control's blur is not a user blur
       const field = this._getFieldElement();
-      const keep = (TdInputField._affixAttrs.includes(name) || name === 'label-mode') && field === this.ownerDocument.activeElement;
+      const keep = (TdInputField._affixAttrs.includes(name) || name === 'label-mode' || name === 'revealable')
+        && field === this.ownerDocument.activeElement;
+      // v0.115.0 (QĐ 1b): `revealable` removed / the type no longer password → hidden (one event, after the re-render);
+      // back to password + revealable starts hidden
+      const lost = this._revealed && !this._revealEligible();
+      if (lost) this._revealed = false;
       const atFocus = this._valueAtFocus;
       let sel = null;
       if (keep) {
@@ -565,6 +690,7 @@ export class TdInputField extends TdFormElement {
       } finally {
         this._keepingFocus = false;
       }
+      if (lost) this.emit('td-reveal', { revealed: false });
       return;
     }
     switch (name) {
@@ -664,6 +790,9 @@ export class TdInputField extends TdFormElement {
       field.disabled = disabled;
       field.readOnly = readonly;
     }
+    // v0.115.0 (QĐ 5): disabled (attribute or fieldset) → hidden + the eye button disabled; readonly may still show
+    if (disabled && this._revealed) this._setRevealed(false);
+    else this._syncReveal();
   }
 
   /** @private `aria-required` on the control + decorative asterisk in the label. */
@@ -1015,7 +1144,11 @@ export class TdInputField extends TdFormElement {
       const box = parts[i];
       if (box.localName !== 'div' || !box.classList.contains('td-field__box') || this._ssrControl?.parentElement !== box) return false;
       const kids = ssrContentNodes(box);
-      if (kids.length > 4 || kids.some((n) => n.nodeType !== 1 || (n !== this._ssrControl && n.localName !== 'span'))) return false;
+      // v0.115.0 (QĐ 8): + one trailing-side `button.td-field__reveal` for a revealable password
+      const reveal = this._revealEligible();
+      const isReveal = (n) => reveal && n.localName === 'button' && n.classList.contains('td-field__reveal');
+      if (kids.length > (reveal ? 5 : 4) || kids.filter((n) => n.nodeType === 1 && n.localName === 'button').length > (reveal ? 1 : 0)
+        || kids.some((n) => n.nodeType !== 1 || (n !== this._ssrControl && n.localName !== 'span' && !isReveal(n)))) return false;
     }
     const footer = parts[fi];
     if (footer.localName !== 'div' || !footer.classList.contains('td-field__footer')) return false;
@@ -1108,7 +1241,26 @@ export class TdInputField extends TdFormElement {
     const have = ssrContentNodes(box);
     const need = [...want.children];
     if (have.length !== need.length || have.some((n) => n.nodeType !== 1)) return false;
-    return need.every((w, i) => (w.classList.contains('td-field__control') ? this._ssrControlOk(have[i], w, first) : ssrSamePart(have[i], w)));
+    return need.every((w, i) => (w.classList.contains('td-field__control') ? this._ssrControlOk(have[i], w, first)
+      : w.classList.contains('td-field__reveal') ? this._ssrRevealOk(have[i], w) : ssrSamePart(have[i], w)));
+  }
+
+  /**
+   * @private v0.115.0 (QĐ 8): the eye button = render()'s (tag, class, type, aria-controls, aria-pressed; one icon slot
+   * compared by its attributes) — `aria-label` (messages) and `disabled` are state, re-applied by _syncReveal().
+   */
+  _ssrRevealOk(b, want) {
+    if (b.nodeType !== 1 || b.localName !== 'button' || ssrClassKey(b) !== ssrClassKey(want)) return false;
+    const state = ['aria-label', 'disabled'];
+    if (![...b.attributes].every((a) => a.name === 'class' || state.includes(a.name) || (want.hasAttribute(a.name) && want.getAttribute(a.name) === a.value))) return false;
+    if (![...want.attributes].every((a) => state.includes(a.name) || b.hasAttribute(a.name))) return false;
+    const kids = ssrContentNodes(b);
+    return kids.length === 1 && ssrSamePart(kids[0], want.firstElementChild);
+  }
+
+  /** @protected v0.115.0: the eye button was compared exactly (_ssrRevealOk) — not a second control */
+  _ssrVerifiedParts() {
+    return this._revealEligible() ? [...this.querySelectorAll(':scope > .td-field > .td-field__box > button.td-field__reveal')] : [];
   }
 
   /** @private Internal label: same attributes, the label text, then at most the required star. */
@@ -1342,6 +1494,34 @@ export class TdInputField extends TdFormElement {
   setReadOnly(bool) {
     if (bool) this.setAttribute('readonly', '');
     else this.removeAttribute('readonly');
+  }
+
+  /**
+   * v0.115.0: the password is shown right now (`revealable`, type="password", not disabled, and the user / reveal()
+   * showed it). Read-only — the state is never an attribute.
+   * @type {boolean}
+   */
+  get revealed() {
+    return !!this._revealed && this._revealEligible() && !this._effectiveDisabled;
+  }
+
+  /** v0.115.0: show the password (nothing without `revealable` + type="password", when disabled, or before render). */
+  reveal() {
+    if (!this._revealEligible() || this._effectiveDisabled || !this._revealButton()) return;
+    this._setRevealed(true);
+  }
+
+  /**
+   * v0.115.0: hide the password again. Call it before `form.submit()` / an AJAX send (no `submit` event → no auto-hide).
+   */
+  conceal() {
+    if (this._revealed) this._setRevealed(false);
+  }
+
+  /** v0.115.0: show ↔ hide (what the eye button does). */
+  toggleReveal() {
+    if (this._revealed) this.conceal();
+    else this.reveal();
   }
 }
 

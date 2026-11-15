@@ -54,6 +54,7 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-dtr-panel__preset',
   '.td-dtr-panel__tab',
   '.td-dtr__trigger',
+  '.td-field__reveal', // v0.115.0: the show / hide password button
   '.td-filter-chips__remove',
   '.td-form-summary__link',
   '.td-icon-picker-panel__cell',

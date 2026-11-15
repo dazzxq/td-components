@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.114.1/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.114.1', __DIR__ . '/public/assets/vendor/td-components/0.114.1');
+ *   require_once '/path/to/vendor/td-components/0.115.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.115.0', __DIR__ . '/public/assets/vendor/td-components/0.115.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -2007,6 +2007,9 @@ namespace {
      * data-td-ssr="input-field@1">` host + the exact markup <td-input-field> renders, with the native control keeping
      * name / value / constraints / autocomplete (works without JS; hydrated in place — no flash). `id` is then the
      * CONTROL id (`field-id`; host = {id}-host), class goes on the host; see docs/guides/php-adapter.md.
+     * v0.115.0: revealable (bool; element mode + type password only) — host `revealable` + the show / hide password
+     * button `button.td-field__reveal` in the box (hidden state, exactly what <td-input-field revealable> renders).
+     * Native mode ignores it (the button needs JS); other types too.
      */
     function td_field(string $name, string $value = '', array $o = []): string
     {
@@ -3496,14 +3499,27 @@ namespace {
     }
 
     /** @internal v0.55.0: the control inside `div.td-field__box` with the affix spans + the hidden unit (no affix: as is). */
-    function td__affix_box(?array $aff, string $control, string $unitBase): string
+    function td__affix_box(?array $aff, string $control, string $unitBase, string $reveal = ''): string
     {
         if ($aff === null) {
             return $control;
         }
         return '<div class="td-field__box">' . td__affix_span('prefix', $aff['prefix'][0], $aff['prefix'][1], 'td-field') . $control
-            . td__affix_span('suffix', $aff['suffix'][0], $aff['suffix'][1], 'td-field')
+            . td__affix_span('suffix', $aff['suffix'][0], $aff['suffix'][1], 'td-field') . $reveal // v0.115.0: after the suffix
             . ($aff['unit'] !== null ? '<span id="' . Td::e("$unitBase-unit") . '" hidden>' . Td::e($aff['unit']) . '</span>' : '') . '</div>';
+    }
+
+    /**
+     * @internal v0.115.0: the show / hide password button of `td_field(…, ['revealable' => true])` in element mode, hidden
+     * state — the markup <td-input-field revealable> renders (TdInputField.messages.reveal = 'Hiện mật khẩu'; the component
+     * re-applies the name from its messages on adoption), the eye icon inline. Hidden by td.css until the element is defined.
+     */
+    function td__reveal_button(string $controlId, bool $disabled): string
+    {
+        return '<button type="button" class="td-field__reveal" aria-controls="' . Td::e($controlId) . '" aria-pressed="false"'
+            . ' aria-label="Hiện mật khẩu"' . ($disabled ? ' disabled' : '') . '>'
+            . '<span class="td-field__reveal-icon" data-td-icon="eye" data-td-icon-class="td-field__reveal-svg">'
+            . Td::icon('eye', 'm', '', 'td-field__reveal-svg') . '</span></button>';
     }
 
     /**
@@ -6154,6 +6170,11 @@ namespace {
         }
         $rows = $textarea ? (Td::intOpt($o['rows'] ?? null, 1) ?? '3') : null;
         $aff = td__field_affix($o, $type); // v0.55.0
+        // v0.115.0: a revealable password always has the box (the eye button sits in it)
+        $reveal = !empty($o['revealable']) && $type === 'password';
+        if ($reveal && $aff === null) {
+            $aff = ['prefix' => [null, null], 'suffix' => [null, null], 'unit' => null, 'attrs' => []];
+        }
         $float = td__field_float($o, $type, $aff, $label, $placeholder); // v0.58.0
         // component-owned description ids, in the component's order: [unit], helper note, counter, error
         $desc = trim(($aff !== null && $aff['unit'] !== null ? "$hostId-unit " : '') . ($hint !== null && $error === null ? "$hostId-note " : '')
@@ -6187,7 +6208,7 @@ namespace {
         $control = $textarea
             ? '<textarea' . $own . Td::attrs($extra, $taken) . '>' . "\n" . Td::e($value) . '</textarea>'
             : '<input' . $own . Td::attrs($extra, $taken) . '>';
-        $control = td__affix_box($aff, $control, $hostId);
+        $control = td__affix_box($aff, $control, $hostId, $reveal ? td__reveal_button($cid, !empty($o['disabled'])) : '');
         $hid = Td::e($hostId);
         $labelHtml = $label !== null
             ? '<label class="td-field__label" id="' . $hid . '-label" for="' . Td::e($cid) . '">' . Td::e($label)
@@ -6220,6 +6241,7 @@ namespace {
             'required' => $required,
             'disabled' => !empty($o['disabled']),
             'readonly' => !empty($o['readonly']),
+            'revealable' => !empty($o['revealable']), // v0.115.0
             'max-length' => $max,
             'minlength' => $minlength,
         ] + $range + [

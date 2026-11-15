@@ -14,7 +14,7 @@ chữ số) → dùng [number input](number-input.md); `type="number"` ở đây
 | Import | `import '@dazzxq/td-components/input-field';` (class: `import { TdInputField } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + BEM `.td-field` từ 0.8.0, `autoresize` từ 0.13.0, hydrate SSR tại chỗ từ 0.26.0, tiền tố / hậu tố từ 0.55.0, nhãn nổi `label-mode` từ 0.58.0) |
+| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + BEM `.td-field` từ 0.8.0, `autoresize` từ 0.13.0, hydrate SSR tại chỗ từ 0.26.0, tiền tố / hậu tố từ 0.55.0, nhãn nổi `label-mode` từ 0.58.0, nút hiện / ẩn mật khẩu `revealable` từ 0.115.0) |
 
 Cần `td.css` trên trang (xem [Cài đặt](../getting-started/installation.md)).
 
@@ -274,6 +274,63 @@ bên trong (`.td-field__control`), nên trình quản lý mật khẩu và bàn 
 - `autofocus` chỉ chạy **một lần** khi field gắn vào trang lần đầu; không cướp focus nếu đã có phần tử khác (ngoài
   `<body>`) đang được focus, không focus field disabled. Thêm `autofocus` sau đó hoặc render lại không focus lần nữa.
 
+### Hiện / ẩn mật khẩu (`revealable`, 0.115.0)
+
+```html
+<form method="post" action="/login">
+  <td-input-field name="email" type="email" label="Email" autocomplete="username"></td-input-field>
+  <td-input-field name="password" type="password" label="Mật khẩu" autocomplete="current-password" revealable></td-input-field>
+  <td-button type="submit">Đăng nhập</td-button>
+</form>
+```
+
+- `revealable` (boolean; property `revealable`) đặt một nút hình mắt ở **cuối** ô. Bấm là đổi `<input>` bên trong giữa
+  `type="password"` và `type="text"` **tại chỗ** (không render lại: giá trị, focus, con trỏ giữ nguyên). Chỉ có tác dụng
+  với `type="password"`; type khác bỏ qua (không cảnh báo). Ô có nút luôn nằm trong hộp `.td-field__box` (như có affix),
+  dùng chung được với `prefix` / `suffix` (nút đứng sau hậu tố). Nhãn nổi (`label-mode="floating"`) trên ô này luôn nổi,
+  như mọi ô có hộp.
+- Nút: `aria-label` "Hiện mật khẩu" khi đang ẩn, "Ẩn mật khẩu" khi đang hiện (`TdInputField.messages.reveal` /
+  `messages.conceal`, ghi đè được cho cả trang — áp cả cho markup SSR), `aria-pressed` theo trạng thái, `aria-controls`
+  trỏ tới ô. Icon `eye` khi đang ẩn, `eye-off` khi đang hiện.
+- `autocomplete`, `name`, giá trị gửi trong form **không đổi** — trình quản lý mật khẩu vẫn chạy.
+- **Chuột / chạm:** bấm nút không lấy focus khỏi ô (đang gõ thì gõ tiếp, con trỏ giữ chỗ; ô chưa focus thì vẫn không focus —
+  không bật bàn phím ảo). **Bàn phím:** nút là một điểm dừng Tab sau ô (không có phím tắt nào khác để hiện mật khẩu);
+  Enter / Space đổi trạng thái, focus ở lại trên nút; Shift+Tab quay về ô.
+- `disabled` (hoặc `<fieldset disabled>`): nút bị tắt, mật khẩu ẩn lại. `readonly` vẫn hiện được (để đọc mật khẩu tạo
+  sẵn).
+- Trạng thái chỉ sống trong phiên, **không** có attribute (không bao giờ vào SSR hay DOM được lưu lại).
+
+```js
+const pw = document.querySelector('td-input-field[name="password"]');
+pw.revealed;        // false — chỉ đọc
+pw.reveal();        // hiện (không làm gì khi thiếu revealable, type khác password, disabled, hoặc chưa render)
+pw.conceal();       // ẩn
+pw.toggleReveal();  // đổi — việc nút làm
+pw.addEventListener('td-reveal', (e) => console.log(e.detail.revealed)); // một event mỗi lần đổi
+```
+
+**Tự ẩn lại** (trình duyệt thấy ô mật khẩu khi hỏi lưu mật khẩu):
+
+- event `submit` của form chứa ô (nút submit, Enter, `form.requestSubmit()`) — trước mọi handler `submit` của trang;
+- reset form; `pagehide` (không để mật khẩu đang hiện trong back/forward cache); ô bị gỡ khỏi trang;
+- bỏ `revealable` hoặc đổi `type` khỏi `password` (thêm lại thì bắt đầu ở trạng thái ẩn).
+
+**Không** tự ẩn khi gửi bằng `form.submit()` hay AJAX (`fetch`, không có event `submit`): gọi `field.conceal()` trước khi
+gửi, hoặc gửi qua nút submit / `form.requestSubmit()`.
+
+```js
+form.addEventListener('submit', async (e) => {     // form AJAX: event submit vẫn chạy → ô đã tự ẩn ở đây
+  e.preventDefault();
+  await fetch('/login', { method: 'POST', body: new FormData(form) });
+});
+pw.conceal(); form.submit();                         // form.submit(): tự ẩn trước
+```
+
+PHP: `td_field('password', '', ['type' => 'password', 'element' => true, 'revealable' => true, 'autocomplete' =>
+'current-password'])` in host `revealable` + nút trong hộp (hydrate tại chỗ, xem
+[hợp đồng SSR](#hợp-đồng-ssr-input-field1--hydrate-tại-chỗ-0260)). Chế độ native (không `element`, không JS) **bỏ qua**
+`revealable`: không có JS thì nút không làm gì được.
+
 ### Tiền tố / hậu tố: chữ, icon, phần tử của trang (0.55.0)
 
 ```html
@@ -281,7 +338,8 @@ bên trong (`.td-field__control`), nên trình quản lý mật khẩu và bàn 
 <td-input-field name="battery" type="number" label="Dung lượng pin" suffix="mAh" unit-label="mi-li-am-pe giờ"></td-input-field>
 <td-input-field name="q" type="search" label="Tìm sản phẩm" prefix-icon="search"></td-input-field>
 
-<!-- phần tử của trang (nút hiện mật khẩu, nút xoá, <td-icon>…) -->
+<!-- phần tử của trang (nút xoá, <td-icon>, nút tự dựng…). Nút hiện mật khẩu tự dựng như dưới vẫn chạy, nhưng bản
+     chuẩn của kit là `revealable` (xem trên) — chỉ tự dựng khi cần hành vi khác -->
 <td-input-field name="password" type="password" label="Mật khẩu" autocomplete="current-password">
   <button type="button" slot="suffix" class="pw-toggle" aria-label="Hiện mật khẩu" aria-pressed="false">👁</button>
 </td-input-field>
@@ -374,13 +432,15 @@ document.getElementById('fs').disabled = true;          // field bị disabled, 
 | `prefix` / `suffix` | string | — | Chữ trang trí trước / sau giá trị (`https://`, `mAh`, `đ`). Chỉ type `text` / `search` / `email` / `url` / `tel` / `password` / `number`. Đổi = render lại hộp (giữ focus, con trỏ). 0.55.0. |
 | `prefix-icon` / `suffix-icon` | string | — | Tên icon registry ở mép ngoài của bên đó (trang trí). 0.55.0. |
 | `unit-label` | string | `suffix`, rồi `prefix` | Đơn vị **đọc to** (mô tả), ví dụ `đồng` cho `đ`. 0.55.0. |
+| `revealable` | boolean | không | Chỉ `type="password"`: nút hiện / ẩn mật khẩu ở cuối ô ([chi tiết](#hiện--ẩn-mật-khẩu-revealable-01150)). Đổi = render lại (giữ focus, con trỏ). 0.115.0. |
 | `id` | string | tự sinh `td-td-input-field-{n}` | Nếu không đặt, kit tự gán để `<label for>` và các id con hoạt động. |
 
 ## Property & method
 
 Property phản chiếu attribute (tên camelCase): `type`, `size`, `placeholder`, `label`, `helperText`,
 `errorText`, `required`, `disabled`, `readonly` (chú ý: `readonly`, không phải `readOnly`), `maxLength`, `limitType`,
-`min`, `max`, `step`, `minlength`, `pattern`, `rows`, `autoresize`, `validateOn`, `fieldId`, `name`, `ariaLabel`.
+`min`, `max`, `step`, `minlength`, `pattern`, `rows`, `autoresize`, `validateOn`, `fieldId`, `name`, `ariaLabel`,
+`revealable` (0.115.0).
 Property chuỗi trả `''` khi không có attribute; boolean trả `true/false`. Riêng `value` **không** phản chiếu attribute: nó
 là giá trị sống (xem trên). Gán property trước khi phần tử vào trang (hoặc trước khi module được import) vẫn có tác
 dụng từ 0.16.0.
@@ -398,6 +458,8 @@ dụng từ 0.16.0.
 | `helperMessage` | `string` (chỉ đọc) | 0.54.0: chữ gợi ý đang áp (`''` = không có). |
 | `setDisabled(bool)` | `void` | Bật/tắt `disabled`. |
 | `setReadOnly(bool)` | `void` | Bật/tắt `readonly`. |
+| `revealed` | `boolean` (chỉ đọc) | 0.115.0: mật khẩu đang hiện. |
+| `reveal()` / `conceal()` / `toggleReveal()` | `void` | 0.115.0: hiện / ẩn / đổi mật khẩu (`revealable` + `type="password"`; `reveal()` không làm gì khi disabled). Gọi `conceal()` trước `form.submit()` / AJAX. |
 | `focus(options?)` | `void` | Focus control bên trong. |
 | `setCustomValidity(message)` | `void` | Như native: chuỗi khác rỗng thêm `customError` (chặn submit); `''` chỉ gỡ lỗi custom, không xoá các cờ khác như `valueMissing`. |
 | `checkValidity()` / `reportValidity()` | `boolean` | Như native. |
@@ -410,6 +472,7 @@ dụng từ 0.16.0.
 |---|---|---|---|
 | `input` | `{ value: string }` | Mỗi lần người dùng sửa nội dung (gõ, dán, xoá). Đúng **một** event mỗi lần. | có (composed) |
 | `change` | `{ value: string }` | Khi rời ô (blur), **chỉ khi** giá trị khác lúc vào ô. | có (composed) |
+| `td-reveal` | `{ revealed: boolean }` | 0.115.0: mỗi lần mật khẩu đổi hiện ↔ ẩn (nút, method, tự ẩn). Không huỷ được. | có (composed) |
 
 `input`/`change` native của control bên trong bị chặn tại host, nên bạn chỉ nhận CustomEvent ở trên. `setValue()` và
 đổi attribute `value` không phát event. Nếu đổi giá trị bằng code **trong lúc** ô đang focus, mốc so sánh cho `change`
@@ -518,6 +581,7 @@ Input field là tầng nội dung: luôn nền đặc, không bao giờ là kín
 | `.td-field__affix.td-field__affix--{prefix\|suffix}` (0.55.0) | Chữ / icon trang trí, `aria-hidden="true"`; `hidden` khi bên đó có slot. Icon: `span.td-field__affix-icon[data-td-icon]` > `svg.td-field__affix-svg`. |
 | `.td-field__affix--slot` (0.55.0) | Vỏ chứa phần tử `[slot]` của trang (không `aria-hidden`). |
 | `span#{host-id}-unit[hidden]` (0.55.0) | Chữ đơn vị cho mô tả (`unit-label` → `suffix` → `prefix`). |
+| `button.td-field__reveal[aria-pressed]` (0.115.0) | Nút hiện / ẩn mật khẩu (`revealable`), sau hậu tố, trước `#{host-id}-unit`: `span.td-field__reveal-icon[data-td-icon="eye\|eye-off"]` > `svg.td-field__reveal-svg`. |
 | `.td-field--floating` (0.58.0) | Nhãn nổi: control (hoặc `.td-field__box`) đứng **trước** `<label>`; trạng thái nổi bằng CSS (`:focus`, `:placeholder-shown`, `:autofill`). |
 | `.td-field--always-float` (0.58.0) | Nhãn luôn nổi (`date` / `month` / `datetime-local` / `time`, có affix). |
 | `.td-field--ph-label` (0.58.0) | Không có `placeholder` thật: placeholder của control = chữ nhãn, luôn ẩn. |
@@ -569,6 +633,10 @@ mà không "nháy" lúc module tải (trang đăng nhập): dùng
 có JS (submit, validate, trình quản lý mật khẩu).
 
 Khi module nạp, `td-input-field` **nhận** markup đó (`canHydrate()`):
+
+- 0.115.0: với `revealable` + `type="password"`, hộp có thêm đúng một `button.td-field__reveal` (thuộc tính như `render()`,
+  trừ `aria-label` / `disabled` là trạng thái — được đặt lại từ `messages` lúc gắn); nút này không bị tính là control thứ
+  hai. Trước khi module nạp nút bị ẩn (`visibility: hidden`, giữ chỗ — không nhảy layout).
 
 - **Điều kiện nhận:** dấu `input-field@1`; con duy nhất `.td-field` có đúng cấu trúc `render()` sinh ra với attribute
   **hiện tại** của host: class wrapper (size, textarea), nhãn nội bộ (`id`, `for`, text, dấu `*` tuỳ chọn), control
@@ -629,8 +697,10 @@ Khi module nạp, `td-input-field` **nhận** markup đó (`canHydrate()`):
   `aria-readonly`, vẫn focus được.
 - Thay đổi attribute (giá trị, placeholder, gợi ý, lỗi, disabled, readonly, required, min/max/step) cập nhật **tại
   chỗ**: không mất focus, không nhảy con trỏ. Chỉ `type`, `size`, `label`, `max-length`, `limit-type`, `rows`,
-  `field-id`, `autoresize` và (0.55.0) các attribute affix gây render lại (giá trị đang gõ được giữ; affix: cả focus +
+  `field-id`, `autoresize`, (0.55.0) các attribute affix và (0.115.0) `revealable` gây render lại (giá trị đang gõ được giữ; affix: cả focus +
   con trỏ).
+- Nút hiện / ẩn mật khẩu (0.115.0): `button` thật có tên, `aria-pressed`, `aria-controls`; một điểm dừng Tab sau ô; bấm
+  chuột / chạm không lấy focus khỏi ô (xem [Hiện / ẩn mật khẩu](#hiện--ẩn-mật-khẩu-revealable-01150)).
 - Tiền tố / hậu tố (0.55.0): trang trí cho mắt, đơn vị đọc qua mô tả (xem
   [Tiền tố / hậu tố](#tiền-tố--hậu-tố-chữ-icon-phần-tử-của-trang-0550)); phần tử `[slot]` giữ nguyên ngữ nghĩa của trang.
 - Nhãn nổi (0.58.0): nhãn vẫn là `<label for>` thật, tên / mô tả **giống hệt** kiểu thường (gate 3 trình duyệt). Trong

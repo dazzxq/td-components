@@ -27,6 +27,7 @@ const TABLE = {
   '.td-cal__nav, .td-cal__title': 'manipulation',
   // v0.61.0 time wheel: a vertical swipe scrolls it (native momentum + CSS snap); no horizontal pan, no double-tap zoom
   '.td-dtp-wheel__list': 'pan-y',
+  '.td-field__reveal': 'manipulation', // v0.115.0: the show / hide password button (no double-tap zoom on repeated taps)
   // v0.86.0 dropdown retry button ("Thử lại"): a tap target — no double-tap zoom on iOS
   '.td-dropdown__retry': 'manipulation',
   // v0.95.0 check-matrix mode=override: the 3-state cell button — fast taps cycle it, no double-tap zoom

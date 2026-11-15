@@ -303,3 +303,17 @@ export const FloatingLabel = {
     canvasElement.querySelector('td-input-field[data-sb-focus] .td-field__control')?.focus(); // the light "focused" field
   },
 };
+
+/** v0.115.0 `revealable` (type="password" only): the kit's show / hide eye — a toggle button, the input keeps focus and
+ * the caret; back to hidden on submit / reset / remove / disabled. */
+export const PasswordRevealable = {
+  args: { label: 'Mật khẩu', value: 'mat-khau-123' },
+  render: (args) => `<form class="sb-stack" id="if-reveal">
+    <td-input-field name="password" type="password" revealable autocomplete="current-password"${opt('label', args.label)}${opt('value', args.value)}></td-input-field>
+    <td-input-field name="otp" type="password" revealable label="Mã 2FA" label-mode="floating" autocomplete="one-time-code" inputmode="numeric"></td-input-field>
+    <td-input-field name="pin" type="password" revealable label="Mã PIN" size="lg" prefix-icon="lock" suffix="6 số"></td-input-field>
+    <td-input-field name="old" type="password" revealable label="Mật khẩu cũ (khoá)" value="secret" disabled></td-input-field>
+    <td-input-field name="ro" type="password" revealable label="Mật khẩu (chỉ đọc)" value="chi-doc" readonly></td-input-field>
+    <div data-td-theme="dark" class="sb-stack sb-dark"><td-input-field name="dark" type="password" revealable label="Mật khẩu (tối)" value="abc"></td-input-field></div>
+    <p class="sb-note">Bấm con mắt: chữ hiện, ô vẫn giữ focus và vị trí con trỏ. Tab tới nút, Space / Enter để bật tắt. Gửi form, reset, gỡ khỏi trang hoặc khoá ô → tự ẩn lại.</p></form>`,
+};

@@ -4,6 +4,18 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.115.0
+
+### Thêm
+- `<td-input-field type="password" revealable>`: nút con mắt ở cuối ô hiện / ẩn mật khẩu (đổi `type` của input tại
+  chỗ, giữ focus + con trỏ khi bấm bằng chuột / chạm; nút là một điểm dừng Tab). `aria-pressed`, nhãn "Hiện mật khẩu" /
+  "Ẩn mật khẩu" (`messages.reveal` / `conceal`), icon `eye` / `eye-off`. Property `revealable`, getter `revealed`,
+  `reveal()` / `conceal()` / `toggleReveal()`, sự kiện `td-reveal` (`detail.revealed`). Tự ẩn lại khi form gửi bằng sự
+  kiện `submit` (nút submit, Enter, `requestSubmit()`), reset, `pagehide`, gỡ khỏi trang, disabled, hoặc khi bỏ
+  `revealable` / đổi khỏi `type="password"`. `form.submit()` và gửi AJAX không có sự kiện `submit`: gọi `conceal()` trước.
+  PHP `td_field(…, ['revealable' => true])` (element mode, SSR được nhận nguyên). Không có `revealable` thì markup không
+  đổi. Yêu cầu của dsuite (15/11), dcms2 dùng cho đăng nhập / OTP / 2FA.
+
 ## 0.114.1
 
 ### Sửa

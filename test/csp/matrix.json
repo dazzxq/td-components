@@ -988,6 +988,60 @@
       "selectorNote": "v0.55.0 (plan v0.55.0-affix-number Gate): text-sized affix / box tracks follow the platform font metrics — grid-template-columns / height / width / margin-left excluded up front (Linux CI lesson daf820c); layout budgets are gated by test:responsive and the engines tests."
     },
     {
+      "state": "revealable",
+      "markup": "<td-input-field type=\"password\" label=\"Mật khẩu\" value=\"abc\" revealable></td-input-field>",
+      "selectors": [
+        ".td-field__box",
+        ".td-field__control",
+        ".td-field__reveal",
+        ".td-field__reveal-svg"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.115.0 (plan v0.115.0-password-reveal Gates): the eye button sits in the affix box — the same font-metric tracks as affix-slot (grid-template-columns / height / width / margin-left excluded up front, Linux CI lesson daf820c); its 44 px hit area on touch is gated by test:touch, the behaviour by the engines test."
+    },
+    {
+      "state": "revealable-shown",
+      "setup": "const f=document.createElement('td-input-field'); f.id='probe'; f.setAttribute('type','password'); f.setAttribute('label','Mật khẩu'); f.setAttribute('value','abc'); f.setAttribute('revealable',''); window.__mount.appendChild(f); f.reveal();",
+      "selectors": [
+        ".td-field__box",
+        ".td-field__control",
+        ".td-field__reveal",
+        ".td-field__reveal-svg"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.115.0 (plan v0.115.0-password-reveal Gates): the eye button sits in the affix box — the same font-metric tracks as affix-slot (grid-template-columns / height / width / margin-left excluded up front, Linux CI lesson daf820c); its 44 px hit area on touch is gated by test:touch, the behaviour by the engines test."
+    },
+    {
+      "state": "revealable-disabled",
+      "markup": "<td-input-field type=\"password\" label=\"Mật khẩu\" value=\"abc\" revealable disabled></td-input-field>",
+      "selectors": [
+        ".td-field__box",
+        ".td-field__control",
+        ".td-field__reveal",
+        ".td-field__reveal-svg"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.115.0 (plan v0.115.0-password-reveal Gates): the eye button sits in the affix box — the same font-metric tracks as affix-slot (grid-template-columns / height / width / margin-left excluded up front, Linux CI lesson daf820c); its 44 px hit area on touch is gated by test:touch, the behaviour by the engines test."
+    },
+    {
       "state": "affix-focus",
       "markup": "<td-input-field label=\"Giá\" suffix=\"đ\" value=\"12\"></td-input-field>",
       "selectors": [

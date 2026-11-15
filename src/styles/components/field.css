@@ -511,6 +511,104 @@
 		height: var(--td-field-affix-icon);
 	}
 
+	/*
+	 * v0.115.0 (plan v0.115.0-password-reveal QĐ 7) — the show / hide password button (`revealable`): a borderless,
+	 * transparent square at the end of the box, the affix colour, the box height; a Tab stop with the kit focus ring.
+	 */
+	.td-field__reveal {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		align-self: stretch;
+		inline-size: 2em;
+		padding: 0;
+		margin: 0;
+		margin-inline-end: calc(var(--td-space-2xs) * -1);
+		font: inherit;
+		line-height: 0;
+		color: var(--td-field-affix-fg);
+		cursor: pointer;
+		touch-action: manipulation;
+		background: transparent;
+		border: 0;
+		border-radius: calc(var(--_td-field-radius) - 4px);
+		outline: 2px solid transparent;
+		outline-offset: -2px;
+		box-shadow: none;
+		-webkit-tap-highlight-color: transparent;
+		transition:
+			color var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-field__reveal-icon {
+		display: inline-block;
+		line-height: 0;
+		pointer-events: none;
+	}
+
+	.td-field__reveal-svg {
+		width: var(--td-field-affix-icon);
+		height: var(--td-field-affix-icon);
+	}
+
+	/* before define (SSR markup): a button that does nothing yet is never shown — its place is kept (no shift) */
+	td-input-field:not(:defined) .td-field__reveal {
+		visibility: hidden;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-field__reveal:hover:not(:disabled) {
+			color: var(--td-field-fg);
+		}
+	}
+
+	.td-field__reveal:focus-visible {
+		outline-color: var(--td-focus);
+	}
+
+	.td-field__reveal:is(:active, [data-td-pressed]):not(:disabled) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-field__reveal:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+	}
+
+	@media (pointer: coarse) {
+		/* 44 px hit area: as wide as the touch minimum, and as tall as the whole box — the stretch covers the box's 1 px
+		   border too (a tap on that border would otherwise land on the box and focus the input) */
+		.td-field__reveal {
+			inline-size: max(2em, var(--td-touch-min));
+			margin-block: -1px;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-field__reveal {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-field__reveal {
+			color: ButtonText;
+		}
+
+		.td-field__reveal:disabled {
+			color: GrayText;
+		}
+
+		.td-field__reveal:is(:active, [data-td-pressed]):not(:disabled) {
+			outline: 2px solid Highlight;
+		}
+	}
+
 	/* before define: the page's slot nodes have not moved into the box yet — never beside the field */
 	:is(td-input-field, td-number-input):not(:defined) > :is([slot="prefix"], [slot="suffix"]) {
 		display: none;
