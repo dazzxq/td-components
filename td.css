@@ -9054,6 +9054,12 @@
 		padding-inline-end: calc(var(--_td-dtp-clear-w) + 1px);
 	}
 
+	/* v0.117.0: a clearable, non-editable picker gives the reserved width back while the clear button is hidden (a
+	   browser without :has() keeps the reservation) */
+	.td-dtp--clearable:not(.td-dtp--editable) > .td-dtp__trigger:has(+ .td-dtp__clear[hidden]) {
+		padding-inline-end: 14px;
+	}
+
 	.td-dtp__clear {
 		z-index: 1; /* above the trigger it overlaps */
 		display: inline-flex;
@@ -9222,7 +9228,14 @@
 		outline: none; /* :focus-visible below (an idle transparent outline would draw a box in forced colours) */
 	}
 
-	.td-dtp--editable:not(.td-dtp--clearable) > .td-dtp__trigger,
+	.td-dtp--editable:not(.td-dtp--clearable) > .td-dtp__trigger {
+		padding-inline-end: 14px;
+		margin-inline-end: 1px;
+		border-start-end-radius: calc(var(--td-field-radius-md) - 1px);
+		border-end-end-radius: calc(var(--td-field-radius-md) - 1px);
+	}
+
+	/* split from the rule above: a browser without :has() drops only this rule */
 	.td-dtp--editable > .td-dtp__trigger:has(+ .td-dtp__clear[hidden]) {
 		padding-inline-end: 14px;
 		margin-inline-end: 1px;
@@ -11025,11 +11038,13 @@
 	/* v0.87.0 selection-only create row: the last row, pinned to the bottom of the scrolling list (sticky, the menu's own
 	   fill underneath so rows never show through), the dropdown create ink + its hairline; the list keeps the active row
 	   clear of it (scroll-padding) */
-	.td-chip-input__options[aria-multiselectable="true"][data-create-row] {
+	.td-chip-input__options[data-create-row] {
 		scroll-padding-bottom: calc(var(--td-dropdown-option-h) + 1px); /* the create row + its hairline */
 	}
 
-	.td-chip-input__options[aria-multiselectable="true"] .td-chip-input__option--create {
+	/* v0.117.0: the same pinned row in normal mode (allow-create + create-label): only the external row, never "Thêm" */
+	.td-chip-input__options[aria-multiselectable="true"] .td-chip-input__option--create,
+	.td-chip-input__options[data-create-row] .td-chip-input__option--external {
 		position: sticky;
 		bottom: 0;
 		z-index: 1;
@@ -11039,7 +11054,8 @@
 		border-top: 1px solid var(--td-dropdown-hairline);
 	}
 
-	.td-chip-input__options[aria-multiselectable="true"] .td-chip-input__option--create[data-active] {
+	.td-chip-input__options[aria-multiselectable="true"] .td-chip-input__option--create[data-active],
+	.td-chip-input__options[data-create-row] .td-chip-input__option--external[aria-selected="true"] {
 		background-image: linear-gradient(var(--td-option-active-bg), var(--td-option-active-bg));
 	}
 
@@ -17224,6 +17240,18 @@
 		align-self: flex-start;
 	}
 
+	/* v0.117.0 (QĐ3): an image below selection.minSize — visible, its detail opens, the tick is locked + the reason */
+	.td-media-picker__size-reason {
+		font-size: var(--td-text-xs);
+		color: var(--td-color-error);
+		overflow-wrap: anywhere;
+	}
+
+	.td-media-picker__card[data-size-locked] .td-media-grid__tick {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+
 	/* skeleton (decision 14): 30 cards — thumb 3:2 + 2 lines */
 	.td-media-picker__skeleton {
 		display: grid;
@@ -20027,6 +20055,15 @@
 
 	.td-crop-dialog__footer {
 		justify-content: flex-end;
+	}
+
+	/* v0.117.0: the footer message (the media picker's minimum size / a rejected "Áp dụng"), created on first use only */
+	.td-crop-dialog__message {
+		flex: 1 1 12rem;
+		min-width: 0;
+		margin: 0;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-error);
 	}
 
 	/* < 720 px wide, or short (≤ 500 px high: phone landscape): full viewport, footer always inside + safe areas */

@@ -684,6 +684,18 @@
 		align-self: flex-start;
 	}
 
+	/* v0.117.0 (QĐ3): an image below selection.minSize — visible, its detail opens, the tick is locked + the reason */
+	.td-media-picker__size-reason {
+		font-size: var(--td-text-xs);
+		color: var(--td-color-error);
+		overflow-wrap: anywhere;
+	}
+
+	.td-media-picker__card[data-size-locked] .td-media-grid__tick {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+
 	/* skeleton (decision 14): 30 cards — thumb 3:2 + 2 lines */
 	.td-media-picker__skeleton {
 		display: grid;

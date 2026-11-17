@@ -171,6 +171,30 @@ authors.create = async (text) => {
 - Trong lúc `create` đang chạy, lần tạo khác bị bỏ qua. `setValue()`, reset form hoặc gỡ phần tử trong lúc chờ → kết
   quả bị huỷ. Người dùng gõ tiếp trong lúc chờ → mục vẫn được thêm nhưng chữ mới không bị xoá.
 
+**Dòng hành động ngoài (`create-label`, 0.117.0).** Muốn vừa cho gõ tự do (chip thường) vừa có lối "tạo bản ghi thật" ở
+server, đặt thêm `create-label` cùng `allow-create` (không cần `selection-only`):
+
+```html
+<td-chip-input name="but_danh[]" label="Bút danh" allow-create create-label='Tạo bút danh “{text}”'></td-chip-input>
+```
+
+```js
+penNames.addEventListener('create', async (e) => {
+  const row = await api.createPenName(e.detail.query);
+  penNames.addItem({ value: String(row.id), label: row.name });
+});
+```
+
+- Sau dòng `Thêm “{text}”` có thêm một dòng ghim đáy (cùng kiểu dòng `create-label` của multi-select, màu
+  `--td-dropdown-create-fg`). Nhãn là `create-label` với **mọi** `{text}` thay bằng chữ đã gõ (đã làm sạch, cắt theo
+  `max-length`); nhãn không có `{text}` dùng nguyên văn. Nhãn đặt bằng text, không bao giờ là HTML.
+- Hiện khi cùng điều kiện với dòng `Thêm`: có chữ, không trùng (không phân biệt dấu) nhãn / value của mục đã chọn hay
+  gợi ý nào, chưa đầy `max-items`, không disabled. Không hiện lúc đang tải / lỗi tìm.
+- Gõ không bao giờ làm dòng nào active. `Enter` khi chưa có dòng active vẫn như cũ (khớp đúng → chọn; không thì tạo chip
+  thường qua `create` hook). ↑ / ↓ tới được cả hai dòng.
+- Bấm / Enter trên dòng này: popup đóng, chữ gõ bị xoá, focus ở lại ô, phát **một** event `create` `{ query }`. **Không**
+  thêm chip, **không** gọi hook `create(text)`, **không** phát `change`; app tạo bản ghi rồi gọi `addItem`.
+
 ### 7. Giới hạn số mục (`max-items`)
 
 ```html
@@ -316,7 +340,8 @@ element in `<td-chip-input data-td-ssr="chip-input@1" name="…" selection-only>
 
 **Dòng tạo mới trong multi-select (0.87.0).** `selection-only` không tạo chip từ chữ gõ (`allow-create` bị bỏ qua). Muốn
 có lối "thêm mục chưa có" thì đặt `create-label`: cuối danh sách có một dòng ghim đáy (luôn thấy khi cuộn), icon `+`.
-Ô gõ rỗng → dòng ghi `create-label`; có chữ → `Thêm “{chữ}”` (`labels.create`). Bấm / Enter trên dòng đó → popup đóng,
+Ô gõ rỗng → dòng ghi `create-label`; có chữ → `Thêm “{chữ}”` (`labels.create`), hoặc, từ 0.117.0, nếu `create-label`
+chứa `{text}` thì chính `create-label` với `{text}` thay bằng chữ gõ. Bấm / Enter trên dòng đó → popup đóng,
 chữ lọc bị xoá, focus ở lại ô gõ, rồi phát event `create` với `{ query }` (chữ đã gõ, `''` nếu rỗng). Component **không**
 tự thêm gì và không phát `change`: site tự tạo bản ghi (mở form, gọi API…) rồi gán `options` + `value`.
 
@@ -332,7 +357,8 @@ roles.addEventListener('create', async (e) => {
 - Bàn phím: dòng tạo là mục cuối; ↓ đi tới, ↑ từ mục đầu vòng về nó. Home / End vẫn là phím con trỏ của ô gõ.
 - Dòng hiện cả khi lọc không ra kết quả và khi chưa có option nào; không hiện lúc đang tải / lỗi. Đầy `max-items` vẫn
   bấm được. "Chọn tất cả" không tính dòng này.
-- Không có `selection-only` → `create-label` không có tác dụng (cảnh báo console một lần; dùng `allow-create`).
+- Không có `selection-only` và cũng không có `allow-create` → `create-label` không có tác dụng (cảnh báo console một lần:
+  cần `selection-only` hoặc `allow-create`). Với `allow-create` xem [mục 6](#6-tạo-mục-mới-allow-create-create).
 
 ### 12. Trước khi JS tải — `td_multiselect` element mode (0.51.1)
 
@@ -363,7 +389,7 @@ nguyên số dòng như cũ. Chế độ native (`div.td-multiselect`) không n�
 | `value-key` | string | `value` | Key giá trị trong object mục. |
 | `label-key` | string | `label` | Key chữ hiển thị. |
 | `max-length` | number | `200` | Độ dài tối đa chữ gõ / mục tạo mới (`maxlength` của ô). |
-| `create-label` | string | — | 0.87.0 (cùng `selection-only`): dòng "tạo mới" ghim đáy danh sách → event `create` `{ query }` ([mục 11](#11-chọn-nhiều-từ-danh-sách--multi-select-0280)). |
+| `create-label` | string | — | 0.87.0 (cùng `selection-only`): dòng "tạo mới" ghim đáy danh sách → event `create` `{ query }` ([mục 11](#11-chọn-nhiều-từ-danh-sách--multi-select-0280)). 0.117.0: cũng dùng được cùng `allow-create` (dòng hành động sau dòng `Thêm`, mọi `{text}` thay bằng chữ gõ; [mục 6](#6-tạo-mục-mới-allow-create-create)). |
 | `selection-only` | boolean | `false` | 0.28.0: chỉ chọn từ `options` / `search()`, mục lật chọn, ô tick trên mỗi mục (0.36.0: ô tick chung) (mục 11). Tự bật khi nâng cấp `<select multiple>`. |
 | `select-all` | boolean | `false` | 0.28.0 (cùng `selection-only`): dòng "Chọn tất cả (N)" đầu danh sách. |
 | `close-on-select` | boolean | `false` | 0.28.0 (cùng `selection-only`): đóng popup (và xoá chữ lọc) sau mỗi lần chọn. |
@@ -404,7 +430,7 @@ Các attribute còn lại có property phản chiếu tự động (`maxItems`, 
 | Event | detail | Khi nào | bubbles? |
 |---|---|---|---|
 | `change` | `{ value, items, added? , removed? }` — `value` và `items` đều là mảng mục hiện tại; `added` là mục vừa thêm **hoặc** `removed` là mục vừa xoá. 0.28.0 dòng chọn-tất-cả: `{ value, items, addedItems }` hoặc `{ value, items, removedItems }` (mảng) | Người dùng thêm (chọn / tạo) hoặc xoá một chip (`selection-only`: mỗi lần lật chọn một mục). API code (`setValue`, `addItem`, …) và reset **không** phát. Sự kiện `change` gốc của ô `<input>` bên trong bị chặn, không lọt ra ngoài. | có |
-| `create` | `{ query }` | 0.87.0: kích hoạt dòng `create-label` (`selection-only`). `query` là chữ đã gõ (đã làm sạch, `''` nếu rỗng). Không kèm `change`. | có |
+| `create` | `{ query }` | 0.87.0: kích hoạt dòng `create-label` (`selection-only`; 0.117.0: cả `allow-create`, không thêm chip / không gọi hook `create`). `query` là chữ đã gõ (đã làm sạch, `''` nếu rỗng). Không kèm `change`. | có |
 | `search-error` | `{ query, error }` | Hàm `search` ném lỗi / reject (trừ `AbortError`, trừ phản hồi đã cũ). | có |
 
 ## Hook & tuỳ chọn

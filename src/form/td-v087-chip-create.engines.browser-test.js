@@ -164,7 +164,7 @@ describe('td-chip-input selection-only create-label (v0.87.0)', () => {
     const warns = captureWarn();
     const plain = mk('create-label="Tạo mới"');
     plain.setAttribute('create-label', 'Khác');
-    expect(warns.filter((m) => m.includes('create-label applies only with selection-only')).length).to.equal(1);
+    expect(warns.filter((m) => m.includes('create-label needs selection-only or allow-create')).length).to.equal(1);
     const el = mk();
     expect(el.createLabel).to.equal('Tạo vai trò mới');
     el.createLabel = '';

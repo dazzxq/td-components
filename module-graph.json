@@ -240,6 +240,7 @@
     ],
     "src/feedback/crop-dialog.js": [
       "src/feedback/dialog-layer.js",
+      "src/form/button-busy.js",
       "src/form/td-cropper.js",
       "src/icons/td-icon.js",
       "src/utils/crop-geometry.js",

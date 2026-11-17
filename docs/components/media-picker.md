@@ -444,6 +444,7 @@ TdMediaPicker.configureDefaults({
   loadMore: false,                // 0.110: true | { trigger: 'auto' | 'button', maxItems }
   thumbLoader: { wafBudget: { limit: 2000 } }, // 0.111: luật WAF của CDN ảnh; false = tắt
   onThumbGate: (info) => {},      // 0.111: CDN đang chặn; trả false = không hiện toast
+  beforeApply: async (selection, { signal }) => true, // 0.117: cổng kiểm trước khi "Chèn" kết thúc
 });
 TdMediaPicker.defaults;           // bản sao nông của object đã cấu hình
 ```
@@ -477,6 +478,7 @@ const outcome = await TdMediaPicker.open({
 | `selection.maxItems` | số ≥ 1 | không giới hạn (đơn = 1) | Đếm **toàn cục**, kể cả mục đã chọn ở trang / lần tìm khác |
 | `selection.initialIds` | `string[]` | `[]` | Đã chọn sẵn khi mở (gọi `get`) |
 | `selection.kinds` | `('image'\|'video'\|'file')[]` | mọi loại | Chuyển vào `MediaListRequest.kinds`; kit ẩn mục sai loại; quyết định tiêu đề mặc định |
+| `selection.minSize` | `{ width?: number, height?: number }` \| `null` | — | 0.117.0: ảnh nhỏ hơn (hoặc thiếu kích thước cần kiểm) vẫn hiện nhưng **không chọn được**. Mỗi trục là số nguyên 1–100000, cần ít nhất một trục; trục chỉ được bỏ khi vắng / `undefined` (`width: null` là sai); sai → `TypeError` lúc `open()`. Chỉ áp cho `kind === 'image'`. **Không** lấy từ defaults — [Kích thước tối thiểu](#kích-thước-tối-thiểu--selectionminsize-01170) |
 | `initialQuery` / `initialFilters` | `string` / `Record<string, FilterValue>` | `''` / `{}` | |
 | `context` | `unknown` | — | Chuyển nguyên vào mọi lời gọi adapter |
 | `locale` | `string` | `vi-VN` | Định dạng ngày (`Intl`) |
@@ -495,6 +497,7 @@ const outcome = await TdMediaPicker.open({
 | `thumbLoader` | `true` \| `false` \| object cấu hình broker | `true` | 0.111.0: thumbnail tải có nhịp qua [thumb loader](thumb-loader.md). Object (ví dụ `{ wafBudget: { limit: 2000 } }`) chuyển cho `configureThumbBudget`. `false` = markup cũ (`src` + `loading="lazy"`) — [Thumbnail tải có nhịp](#thumbnail-tải-có-nhịp--thumbloader-01110) |
 | `onThumbGate` | `({ until, remainingMs }) => boolean \| void` | — | 0.111.0: CDN đang chặn ảnh. Trả `false` thì kit không hiện toast |
 | `crop` | `{ enabled?, aspectRatio?, allowFocalPoint?, mode?, shape?, focalPoint? }` | — | 0.35.0 (`mode` / `shape`: 0.75.0; `mode: 'focal'` + `focalPoint`: 0.113.0): `enabled: true` (hoặc `mode: 'focal'`) + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `[0.01, 100]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
+| `beforeApply` | `(selection: SelectedMedia[], { signal }) => boolean \| void \| Promise<boolean \| void>` | — | 0.117.0: gọi **một lần** với đúng lựa chọn cuối (sau bước cắt) trước khi picker kết thúc; `false` / ném lỗi → picker ở lại + thông báo. Lấy được từ defaults; không phải hàm = bỏ qua — [Cổng trước khi chèn](#cổng-trước-khi-chèn--beforeapply-01170) |
 
 - **Một picker một lúc**: gọi `open()` khi đã có picker mở → resolve ngay `{ status: 'cancelled', reason:
   'programmatic' }` + cảnh báo một lần (không chồng picker).
@@ -591,6 +594,64 @@ Luồng (giống dcms2: cắt **sau khi chọn**):
 - Picker **không** cắt ảnh, không tạo file mới, không sửa host (ADR 0013 QĐ 3). App lưu toạ độ theo chỗ dùng; server cắt
   thật bằng tham số đã ký — xem [Cropper › Dùng toạ độ ở server](cropper.md#8-dùng-toạ-độ-ở-server-cắt-thật-bằng-tham-số-đã-ký).
 
+## Kích thước tối thiểu — `selection.minSize` (0.117.0)
+
+```js
+const r = await TdMediaPicker.open({
+  selection: { mode: 'single', kinds: ['image'], minSize: { width: 1200, height: 630 } }, // ảnh OG
+  crop: { enabled: true, aspectRatio: 1200 / 630 },
+});
+```
+
+- Chỉ áp cho ảnh (`kind === 'image'`); video và file không bị ảnh hưởng. Vắng / `null` = như trước (DOM cũ, không thêm gì).
+- Điều kiện chọn được, theo kiểu bước cắt:
+  - mọi kiểu (không cắt, `mode: 'focal'`, cắt tự do, khoá tỉ lệ): `asset.width` / `asset.height` phải ≥ từng trục đã cho;
+  - khoá tỉ lệ (`crop.aspectRatio`, kiểu `box` / `pan`): thêm điều kiện khung lớn nhất đúng tỉ lệ trong ảnh phải ≥ **cả hai**
+    trục (ảnh 1200 × 800 với 16:9 chỉ cho khung 1200 × 675);
+  - thiếu một kích thước cần kiểm (kể cả cạnh còn lại khi khoá tỉ lệ) → không chọn được, lý do riêng `sizeUnknown`. Kit
+    **không** đoán từ thumbnail.
+- Thẻ không đủ điều kiện **vẫn hiện**, mở chi tiết được; chỉ khoá phần chọn: tick `aria-disabled`, click / Enter ở chế độ đơn
+  mở chi tiết và đọc lý do thay vì chọn; Space, chọn dải (Shift), `autoSelectFirst` và `initialIds` bỏ qua thẻ. Lý do hiện
+  trên thẻ (`.td-media-picker__size-reason`) và là `aria-describedby` của nút mở thẻ. Thẻ mang `[data-size-locked]`.
+- Bước cắt (tự do / khoá tỉ lệ): nút "Chèn" của bước cắt bị khoá kèm lý do (`.td-crop-dialog__message`) khi vùng cắt (pixel
+  gốc) nhỏ hơn mức tối thiểu. `<td-cropper>` chưa có ràng buộc kích thước nhỏ nhất, nên kit **kiểm vùng cắt mỗi lần đổi**
+  (`crop-input` / `crop-change`) và khi bấm, chứ không chặn ngay lúc kéo / phóng.
+- Mục **đang chọn** mà bản mới (từ `adapter.get()` khi mở chi tiết, lưu, tải lại, tải lên lại) không còn đủ điều kiện → bị
+  bỏ chọn (`selection-change`), đọc lý do; đang ở bước cắt / đang chạy `beforeApply` thì bước đó đóng / bị abort. "Chèn" kiểm
+  lại lần cuối trước bước cắt và trước khi kết thúc.
+- Tải lên vẫn mở. Ảnh vừa tải lên mà nhỏ hơn mức tối thiểu vẫn nằm trong thư viện nhưng không chọn được trong picker này
+  (đọc lý do).
+- Nhãn: `sizeTooSmall` (hai trục), `sizeTooSmallWidth` / `sizeTooSmallHeight` (chỉ một trục), `sizeUnknown`.
+- **Server phải kiểm lại** kích thước ảnh **và** vùng cắt cuối khi nhận form: `minSize` chỉ là ràng buộc giao diện, giá trị
+  `width` / `height` đến từ adapter, và request có thể bị sửa.
+- `minSize` không liên quan tới `upload.maxSize` (dung lượng file tải lên), hai option độc lập.
+
+## Cổng trước khi chèn — `beforeApply` (0.117.0)
+
+```js
+TdMediaPicker.open({
+  selection: { mode: 'single', kinds: ['image'] },
+  beforeApply: async (selection, { signal }) => {
+    const res = await fetch('/api/media/check', { method: 'POST', body: JSON.stringify(selection.map((s) => s.assetId)), signal });
+    if (res.status === 409) throw { userMessage: 'Ảnh này đang bị khoá' };
+    return res.ok;           // false → "Không thể chèn mục đã chọn"
+  },
+});
+```
+
+- Gọi **một lần** với đúng `selection` mà `PickerOutcome` sẽ trả (sau bước cắt / điểm trọng tâm). Vắng = luồng cũ, không đổi.
+- Kết quả: `undefined`, `true` hay mọi giá trị khác `false` → kết thúc như thường (`confirm` + `selected`). `false` → ở lại,
+  hiện `applyRejected`. Ném lỗi / reject có `userMessage` (chuỗi) → hiện chuỗi đó (cắt 200 ký tự). Lỗi khác → `console.error`
+  + `applyFailed` (không bao giờ hiện chữ lỗi gốc). `AbortError` hoặc `signal` đã abort → im lặng.
+- Trong lúc chờ: nút "Chèn" `loading`, dialog `aria-busy="true"`; thanh công cụ, lưới, panel chi tiết và thanh lựa chọn
+  `inert` (không đổi lựa chọn, bộ lọc, tải lên, sửa chi tiết; thả file bị bỏ qua). ×, "Đóng", Escape, Back (đầu dialog) và
+  `close()` vẫn dùng được và **abort** `signal`. Chỉ một lời gọi một lúc; kết quả về muộn (hook không nghe `signal`) bị bỏ.
+- Có bước cắt: cổng chạy trên nút "Chèn" **của bước cắt**: nút busy, cropper khoá, hộp cắt `aria-busy`; `false` / lỗi → bước cắt
+  ở lại, lỗi hiện ngay trong footer bước cắt, vùng cắt giữ nguyên để thử lại; "Quay lại" / × / Escape → abort, về picker.
+- Không có bước cắt: lỗi hiện qua live region + toast của picker (như lỗi xoá / tải về).
+- Chỉ sau khi thành công mới teardown, phát `confirm` và resolve `selected`; `confirm` vẫn chỉ là thông báo (không huỷ được).
+- **Server vẫn phải kiểm lại** khi nhận form: `beforeApply` chạy ở trình duyệt, chỉ để báo sớm cho người dùng.
+
 ### Thẻ khai báo `<td-media-picker>`
 
 Khi muốn nghe event trên một element cố định (thay vì `await`):
@@ -630,7 +691,7 @@ Phát trên host (`<td-media-picker>`, hoặc host tạm của `open()`), `bubbl
 |---|---|---|
 | `selection-change` | `{ selection: SelectedMedia[], addedIds: string[], removedIds: string[] }` | Người dùng đổi lựa chọn (không phát khi áp `initialIds`, cũng không phát khi `autoSelectFirst` (0.67) chọn sẵn) |
 | `asset-change` | `{ operation: 'upload' \| 'upload-url' \| 'update' \| 'delete', asset?, id?, deduplication? }` | Tải lên xong (file / URL; `deduplication` của `UploadResult`), lưu thông tin thành công, xoá thành công (`id`) |
-| `confirm` | `{ selection }` | Bấm "Chèn" và picker kết thúc với `selected` |
+| `confirm` | `{ selection }` | Bấm "Chèn" và picker kết thúc với `selected` (0.117: có `beforeApply` thì chỉ sau khi nó cho qua) |
 | `cancel` | `{ reason }` | Picker kết thúc với `cancelled` |
 | `collection-change` | `{ collection: { id, label } \| null, reason: 'enter' \| 'initial' \| 'back' }` | 0.66.0: vào bộ sưu tập (`enter`: bấm thẻ; `initial`: mở bằng `initialCollection`, phát ngay sau khi dựng) hoặc quay ra cấp ngoài (`back`, `collection: null`). Chỉ ở phiên có bộ sưu tập |
 | `operation-error` | `{ operation: 'list' \| 'facets' \| 'get' \| 'upload' \| 'upload-url' \| 'update' \| 'delete' \| 'download' \| 'collections', code, retryable }` | Lời gọi adapter lỗi (không phát khi abort). **Không** có chữ lỗi — dùng để log / đo |
@@ -1407,6 +1468,8 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `limit` · `loadingInitial` | "Tối đa {max} mục" · "Đang tải lựa chọn…" |
 | `selected` · `selectedMax` · `clearSelection` | "Đã chọn {n}" · "Đã chọn {n}/{max}" · "Bỏ chọn tất cả" |
 | `selectFirst` · `notReady` | "Hãy chọn ít nhất một mục." · "Mục này chưa sẵn sàng để chọn." |
+| `sizeTooSmall` · `sizeTooSmallWidth` · `sizeTooSmallHeight` · `sizeUnknown` | 0.117.0 ([`selection.minSize`](#kích-thước-tối-thiểu--selectionminsize-01170)): "Ảnh phải có kích thước tối thiểu {w} × {h} px" · "Ảnh phải có chiều rộng tối thiểu {w} px" · "Ảnh phải có chiều cao tối thiểu {h} px" · "Không xác định được kích thước ảnh để kiểm tra kích thước tối thiểu" |
+| `applyRejected` · `applyFailed` | 0.117.0 ([`beforeApply`](#cổng-trước-khi-chèn--beforeapply-01170)): "Không thể chèn mục đã chọn" · "Không kiểm tra được, thử lại sau" |
 | `conflict` · `reload` · `video` | "Media đã bị thay đổi ở nơi khác." · "Tải lại" · "Video" |
 | `download` · `downloadExpired` · `copyLink` | "Tải về" · "Liên kết tải đã hết hạn" · "Copy link" |
 | `delete` · `deleteTitle` · `deleteMessage` | "Xoá" · "Xác nhận xoá" · `Bạn có chắc muốn xoá "{name}"? Hành động này không thể hoàn tác.` |
@@ -1709,7 +1772,7 @@ Picker theo bố cục và cách dùng của media picker dcms2. Bảng dưới 
 | Request cũ / debounce | Kết quả cũ thắng, không debounce | Latest-wins + abort, debounce 250ms | cố ý khác |
 | Crop | Bấm "Chèn" → modal crop (CropperJS) khi có tỉ lệ; chọn nhiều không crop | Như dcms2: bước cắt sau "Chèn" (`crop`), khung lớn nhất đúng tỉ lệ căn giữa, chọn nhiều không crop; + "Quay lại", điểm trọng tâm, bàn phím | khớp UX |
 | Kết quả crop | Canvas → JPEG → **upload file mới** | **Chỉ toạ độ** (`usage.crop` / `focalPoint`), không canvas, không file mới; server cắt bằng tham số đã ký | cố ý khác |
-| Kiểm tỉ lệ ảnh | `validateRatio` | Không — lọc ở adapter / server | cố ý khác |
+| Kiểm tỉ lệ ảnh | `validateRatio` | Kích thước tối thiểu: [`selection.minSize`](#kích-thước-tối-thiểu--selectionminsize-01170) (0.117.0; thẻ nhỏ hơn khoá chọn, tính cả khung lớn nhất đúng `crop.aspectRatio`); server vẫn kiểm lại | khác cách (chặn ở giao diện, không lọc) |
 | Giá trị form | URL | `assetId` | cố ý khác |
 | CSP | `<style>` chèn lúc chạy, `style.cssText`, z-index 100000 | CSP strict, CSSOM, tầng modal của kit | cố ý khác |
 

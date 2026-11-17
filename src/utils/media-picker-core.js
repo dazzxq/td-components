@@ -176,7 +176,7 @@ import { clampFocal } from './crop-geometry.js';
  * @property {FieldDescriptor[]} [assetFields]
  * @property {FieldDescriptor[]} [uploadFields]
  * @property {{ mode: 'single'|'multiple', maxItems?: number, initialIds?: string[],
- *   kinds?: Array<'image'|'video'|'file'> }} selection
+ *   kinds?: Array<'image'|'video'|'file'>, minSize?: { width?: number, height?: number } }} selection
  * @property {{ enabled?: boolean, aspectRatio?: number, allowFocalPoint?: boolean, mode?: 'box'|'pan'|'focal',
  *   shape?: 'rect'|'circle', focalPoint?: { x: number, y: number } }} [crop] v0.35 (`mode` / `shape`: v0.75.0 — `pan` keeps the crop frame still and moves the image, `circle` rounds it; see `<td-cropper>`;
  *   v0.113.0 `focal`: no frame, only the focal point — on without `enabled`, `usage.crop` always null; `focalPoint` = its starting point): single mode + an image ⇒
@@ -207,6 +207,10 @@ import { clampFocal } from './crop-geometry.js';
  *   gallery). A present value wins in both modes: only a boolean `false` turns it off, anything else (`true` too) turns it on;
  *   `null` / `undefined` = absent (never overriding a lower layer, falls back to the mode default); also via configureDefaults;
  *   skipped when `selection.initialIds` has entries
+ * @property {(selection: SelectedMedia[], ctx: { signal: AbortSignal }) => boolean|void|Promise<boolean|void>} [beforeApply]
+ *   v0.117.0 (QĐ4): an async gate on the final selection (after the crop step) — `false` / a throw keeps the picker open
+ *   with a message; also via configureDefaults. `selection.minSize` (v0.117.0, QĐ3, `{ width?, height? }`, open() only):
+ *   images below it (or without a needed dimension) cannot be selected
  */
 
 export const KINDS = Object.freeze(['image', 'video', 'file']);
@@ -731,6 +735,7 @@ export function resolveOptions(defaults, ...layers) {
     if (typeof id === 'string' && id && id.length <= ID_MAX && !ids.includes(id)) ids.push(id);
   }
   const kinds = Array.isArray(sel.kinds) ? [...new Set(sel.kinds.filter((k) => KINDS.includes(k)))] : [];
+  const minSize = parseMinSize(sel.minSize);
   const ps = Number(merged.pageSize);
   // v0.110.0: `'auto'` is kept as is (the picker measures it once per reset, capped by `maxPageSize`)
   const pageSize = merged.pageSize === 'auto' ? 'auto'
@@ -804,7 +809,12 @@ export function resolveOptions(defaults, ...layers) {
   const collections = { showWithoutQuery: merged.collections?.showWithoutQuery === true };
   return {
     ...merged,
-    selection: { mode, maxItems, initialIds: maxItems ? ids.slice(0, maxItems) : ids, kinds: kinds.length ? kinds : null },
+    selection: {
+      mode, maxItems, initialIds: maxItems ? ids.slice(0, maxItems) : ids, kinds: kinds.length ? kinds : null,
+      ...(minSize ? { minSize } : {}),
+    },
+    // v0.117.0 (QĐ4): a function or absent (anything else is ignored, like an absent hook)
+    beforeApply: typeof merged.beforeApply === 'function' ? merged.beforeApply : undefined,
     pageSize,
     maxPageSize,
     loadMore: normalizeLoadMore(merged.loadMore, warn),
@@ -831,6 +841,98 @@ export function resolveOptions(defaults, ...layers) {
     cropResolved,
     capabilitiesResolved: resolveCapabilities(merged.adapter, merged.capabilities),
   };
+}
+
+export const MIN_SIZE_MAX = 100000;
+
+/**
+ * v0.117.0 (QĐ3): `selection.minSize` → `{ width?, height? }` (a fresh object, only the given axes) or null when absent /
+ * null. An axis is omitted only when absent / `undefined`; each present axis (`null` included) must be an integer 1-100000 and at least one axis must be given, else a TypeError (a programming
+ * error, thrown by `open()`).
+ * @param {unknown} v @returns {{ width?: number, height?: number } | null}
+ */
+export function parseMinSize(v) {
+  if (v === undefined || v === null) return null;
+  const bad = () => new TypeError('TdMediaPicker: selection.minSize must be { width?, height? } (integers 1-100000, at least one)');
+  if (!isObj(v)) throw bad();
+  const out = {};
+  for (const k of ['width', 'height']) {
+    const n = /** @type {Record<string, unknown>} */ (v)[k];
+    if (n === undefined) continue; // only an absent / undefined axis is omitted (an explicit null is an error)
+    if (!Number.isInteger(n) || /** @type {number} */ (n) < 1 || /** @type {number} */ (n) > MIN_SIZE_MAX) throw bad();
+    out[k] = n;
+  }
+  if (out.width === undefined && out.height === undefined) throw bad();
+  return out;
+}
+
+const dim = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0);
+
+/**
+ * v0.117.0 (QĐ3): why an asset may not be selected under `minSize` — null (eligible, also every non-image and no
+ * `minSize`), `'unknown'` (an image without a dimension a given axis needs) or `'small'`: the source is below a given
+ * axis, or (a fixed-ratio crop step, `box` / `pan`) the LARGEST crop of that ratio is below either minimum.
+ * @param {{ kind?: string, width?: number, height?: number }|null|undefined} asset
+ * @param {{ width?: number, height?: number }|null|undefined} minSize
+ * @param {{ aspectRatio?: number|null, mode?: string }|null|undefined} [crop] `cropResolved`
+ * @returns {null|'small'|'unknown'}
+ */
+export function minSizeReason(asset, minSize, crop) {
+  if (!minSize || !asset || asset.kind !== 'image') return null;
+  const W = dim(asset.width);
+  const H = dim(asset.height);
+  const mw = minSize.width;
+  const mh = minSize.height;
+  const r = crop && crop.mode !== 'focal' ? crop.aspectRatio : null;
+  const ratio = typeof r === 'number' && Number.isFinite(r) && r > 0;
+  // a ratio fit needs both sides (the largest crop depends on the whole source)
+  if ((mw !== undefined || ratio) && !W) return 'unknown';
+  if ((mh !== undefined || ratio) && !H) return 'unknown';
+  if ((mw !== undefined && W < mw) || (mh !== undefined && H < mh)) return 'small';
+  if (ratio) {
+    const big = W / H > r ? { w: H * r, h: H } : { w: W, h: W / r };
+    if (!cropMeetsMin(Math.round(big.w), Math.round(big.h), minSize)) return 'small';
+  }
+  return null;
+}
+
+/**
+ * v0.117.0 (QĐ3): a crop of `w × h` natural pixels meets `minSize` (each given axis).
+ * @param {number} w @param {number} h @param {{ width?: number, height?: number }|null|undefined} minSize
+ * @returns {boolean}
+ */
+export function cropMeetsMin(w, h, minSize) {
+  if (!minSize) return true;
+  if (minSize.width !== undefined && !(w >= minSize.width)) return false;
+  if (minSize.height !== undefined && !(h >= minSize.height)) return false;
+  return true;
+}
+
+/**
+ * v0.117.0 (QĐ4): run `beforeApply(selection, { signal })` and classify how it settled — `{ ok: true }` (any non-false
+ * value), `{ ok: false, aborted: true }` (AbortError / the signal already aborted: silent), `{ ok: false, message }`
+ * (`false` → `labels.applyRejected`, a thrown / rejected `{ userMessage }` → that text, cut to 200; anything else →
+ * `console.error` + `labels.applyFailed`; the raw error text is never shown).
+ * @param {Function} hook @param {unknown} selection @param {AbortSignal} signal
+ * @param {{ rejected: string, failed: string, error?: (e: unknown) => void }} text
+ * @returns {Promise<{ ok: true } | { ok: false, aborted?: true, message?: string }>}
+ */
+export async function runBeforeApply(hook, selection, signal, text) {
+  const report = text.error || ((e) => { try { console.error(e); } catch { /* ignore */ } });
+  let v;
+  try {
+    v = await hook(selection, { signal });
+  } catch (e) {
+    if (signal.aborted || (isObj(e) && /** @type {any} */ (e).name === 'AbortError')) return { ok: false, aborted: true };
+    let um = '';
+    try { um = isObj(e) && typeof /** @type {any} */ (e).userMessage === 'string' ? cut(/** @type {any} */ (e).userMessage) : ''; } catch { /* ignore */ }
+    if (um) return { ok: false, message: um };
+    report(e);
+    return { ok: false, message: text.failed };
+  }
+  if (signal.aborted) return { ok: false, aborted: true };
+  if (v === false) return { ok: false, message: text.rejected };
+  return { ok: true };
 }
 
 /** Test hook: forget the one-time crop warnings. */
@@ -1084,10 +1186,13 @@ export class SelectionModel {
 export class InitialLoad {
   /**
    * @param {{ ids: string[], model: SelectionModel, get: (id: string, signal: AbortSignal) => Promise<MediaAsset|null>,
-   *   onApply?: (assets: MediaAsset[]) => void, onSettle?: () => void, warn?: (...a: unknown[]) => void }} o
+   *   onApply?: (assets: MediaAsset[]) => void, onSettle?: () => void, warn?: (...a: unknown[]) => void,
+   *   accept?: (asset: MediaAsset) => boolean }} o `accept` (v0.117.0, QĐ3): a loaded asset it refuses is skipped
+   *   silently (e.g. below `selection.minSize`)
    */
   constructor(o) {
     this._ids = o.ids.slice();
+    this._accept = typeof o.accept === 'function' ? o.accept : null;
     this._model = o.model;
     this._get = o.get;
     this._onApply = o.onApply || (() => {});
@@ -1116,7 +1221,7 @@ export class InitialLoad {
       if (left > 0 || !live()) return;
       this._pending = false;
       this._ctrl = null;
-      const assets = results.filter(Boolean);
+      const assets = results.filter((a) => a && (!this._accept || this._accept(a)));
       if (this._model.applyInitial(assets, rev0)) this._onApply(assets);
       this._onSettle();
     };

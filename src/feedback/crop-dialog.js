@@ -20,6 +20,7 @@
  *       <div class="td-modal__body td-crop-dialog__body"><td-cropper class="td-crop-dialog__cropper"></div>
  *       <div class="td-modal__footer td-crop-dialog__footer">button.td-btn--secondary.td-crop-dialog__cancel ·
  *         button.td-btn--primary.td-crop-dialog__confirm [disabled while loading / error]</div>
+ *         (v0.117.0: + p.td-crop-dialog__message first in the footer, created only when `minSize` / `onApply` needs it)
  *     </div>
  *   </div>
  *
@@ -31,6 +32,7 @@ import { fillIconSlots } from '../icons/td-icon.js';
 import { TdCropper } from '../form/td-cropper.js';
 import { cropChanged, focalChanged, isWholeImage, clampFocal, round4 } from '../utils/crop-geometry.js';
 import { cropRatioInRange, parseCropMode, parseCropShape } from '../utils/media-field-model.js';
+import { setButtonBusy } from '../form/button-busy.js';
 
 let warnedRatio = false;
 function warnRatioOnce() {
@@ -130,6 +132,16 @@ function boxOpt(v) {
  *   owner teardown), resolves `{ status: 'cancelled' }`
  * @param {HTMLElement|null} [opts.opener] focus restore target (default: the focused element at open)
  * @param {Element|null} [opts.themeRoot] v0.42.0 (ADR 0020): render in this element's theme scope (`[data-td-theme]`)
+ * @param {{ width?: number, height?: number }|null} [opts.minSize] v0.117.0 (QĐ3, INTERNAL — the picker's
+ *   `selection.minSize`): while the crop (natural pixels: `pixels`, else `normalized × naturalWidth / Height`, else × the
+ *   loaded image size) is below a given axis, "Áp dụng" is disabled and `minSizeMessage` is shown in the footer.
+ *   td-cropper has no minimum of its own, so this is a check on the crop as it changes, not a drag limit.
+ * @param {string} [opts.minSizeMessage]
+ * @param {(result: CropDialogResult, ctx: { signal: AbortSignal }) => Promise<{ ok: boolean, message?: string }>} [opts.onApply]
+ *   v0.117.0 (QĐ4, INTERNAL — the picker's `beforeApply`): awaited on "Áp dụng" before the dialog resolves. While it
+ *   runs: "Áp dụng" busy (`setButtonBusy`), the cropper `disabled`, the dialog `aria-busy="true"`; × / "Huỷ" / Escape /
+ *   `signal` still close (and abort its signal). `{ ok: true }` ⇒ resolves `applied`; else the dialog stays open, the
+ *   crop kept for a retry, `message` (when given) shown in the footer.
  * @returns {Promise<CropDialogResult>} rejects only when another crop dialog is open
  */
 export function openCropDialog(opts = /** @type {any} */ ({})) {
@@ -156,6 +168,12 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
   let size = { W: 0, H: 0 };
   /** @type {ReturnType<typeof openDialogLayer>|null} (td-cropper may report an error synchronously while mounting) */
   let handle = null;
+  let busy = false; // v0.117.0: an `onApply` gate is running
+  /** @type {AbortController|null} */
+  let gateCtrl = null;
+  const minSize = o.minSize && typeof o.minSize === 'object' && !focal ? o.minSize : null;
+  const onApply = typeof o.onApply === 'function' ? o.onApply : null;
+  let tooSmall = false;
   const onTop = () => !!handle && root.getAttribute('data-state') === 'open' && handle.layer.isTop();
 
   // --- shell (static markup; every dynamic value through the DOM) ---
@@ -209,6 +227,48 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
   cropper.setAttribute('src', typeof o.src === 'string' ? o.src : '');
   q('.td-crop-dialog__body').appendChild(cropper);
 
+  // v0.117.0: the footer message (min size / a rejected `onApply`), created on first use only (the default DOM is unchanged)
+  /** @type {HTMLElement|null} */
+  let msgEl = null;
+  const say = (text) => {
+    if (!text && !msgEl) return;
+    if (!msgEl) {
+      msgEl = document.createElement('p');
+      msgEl.className = 'td-crop-dialog__message';
+      msgEl.id = `${id}-message`;
+      msgEl.setAttribute('role', 'status');
+      q('.td-crop-dialog__footer').prepend(msgEl);
+    }
+    msgEl.textContent = text || '';
+    msgEl.hidden = !text;
+    if (text) confirmBtn.setAttribute('aria-describedby', msgEl.id);
+    else confirmBtn.removeAttribute('aria-describedby');
+  };
+  /** v0.117.0 (QĐ3): the crop's natural size meets `minSize` (no crop yet / no minimum ⇒ true) */
+  const meetsMin = (crop) => {
+    if (!minSize || !crop) return true;
+    const n = crop.normalized;
+    const W = nw && nh ? Number(nw) : size.W;
+    const H = nw && nh ? Number(nh) : size.H;
+    const w = crop.pixels ? crop.pixels.width : Math.round(n.width * W);
+    const h = crop.pixels ? crop.pixels.height : Math.round(n.height * H);
+    if (minSize.width !== undefined && !(w >= minSize.width)) return false;
+    if (minSize.height !== undefined && !(h >= minSize.height)) return false;
+    return true;
+  };
+  const checkMin = () => {
+    if (!minSize || done || cropper.getAttribute('data-state') !== 'ready') return;
+    const small = !meetsMin(cropper.crop);
+    if (small === tooSmall && confirmBtn.disabled === small) return;
+    tooSmall = small;
+    confirmBtn.disabled = small;
+    say(small ? str(o.minSizeMessage, '') : '');
+  };
+  if (minSize) {
+    cropper.addEventListener('crop-input', checkMin);
+    cropper.addEventListener('crop-change', checkMin);
+  }
+
   const focusBox = () => { // focal mode: the focal point (there is no box)
     const box = /** @type {HTMLElement|null} */ (cropper.querySelector(focal ? '.td-cropper__focal' : '.td-cropper__box'));
     if (box) { try { box.focus({ preventScroll: true }); } catch { /* ignore */ } }
@@ -222,6 +282,7 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
   cropper.addEventListener('image-ready', (e) => {
     size = { W: e.detail.naturalWidth, H: e.detail.naturalHeight };
     confirmBtn.disabled = false;
+    checkMin();
     if (onTop() && idle()) focusBox();
   });
   cropper.addEventListener('image-error', () => {
@@ -238,6 +299,7 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
   const finish = (result, immediate = false) => {
     if (done) return;
     done = true;
+    if (gateCtrl) { gateCtrl.abort(); gateCtrl = null; } // v0.117.0: closing during an `onApply` gate aborts it
     if (current && current.root === root) current = null;
     if (signal) signal.removeEventListener('abort', onAbort);
     if (handle) {
@@ -247,19 +309,47 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
     resolve(result);
   };
   const cancel = () => finish({ status: 'cancelled' });
+  /** v0.117.0 (QĐ4): run the `onApply` gate; only `{ ok: true }` resolves the dialog */
+  const gate = (result) => {
+    const ctrl = new AbortController();
+    gateCtrl = ctrl;
+    busy = true;
+    say('');
+    setButtonBusy(confirmBtn, true);
+    const lockCropper = !cropper.hasAttribute('disabled');
+    if (lockCropper) cropper.setAttribute('disabled', '');
+    dialog.setAttribute('aria-busy', 'true');
+    let p;
+    try { p = Promise.resolve(onApply(result, { signal: ctrl.signal })); } catch (e) { p = Promise.reject(e); }
+    p.then((v) => v, () => ({ ok: false })).then((v) => {
+      if (done || gateCtrl !== ctrl || ctrl.signal.aborted) return; // closed meanwhile / a late result
+      gateCtrl = null;
+      if (v && v.ok === true) { finish(result); return; }
+      busy = false;
+      setButtonBusy(confirmBtn, false);
+      if (lockCropper) cropper.removeAttribute('disabled');
+      dialog.removeAttribute('aria-busy');
+      say(v && typeof v.message === 'string' ? v.message : '');
+    });
+  };
   const apply = () => {
-    if (done || confirmBtn.disabled) return;
+    if (done || busy || confirmBtn.disabled) return;
     const r = cropper.getResult();
+    /** @type {CropDialogResult} */
+    let result;
     if (focal) { // QĐ2a: only a ready image is needed (focalPoint is never null then); the crop is always null
       if (!r.focalPoint) return;
-      finish({ status: 'applied', crop: null, focalPoint: r.focalPoint, changed: focalChanged(focalIn, r.focalPoint) });
-      return;
+      result = { status: 'applied', crop: null, focalPoint: r.focalPoint, changed: focalChanged(focalIn, r.focalPoint) };
+    } else {
+      if (!r.crop) return; // not ready (the button is disabled then anyway)
+      if (!meetsMin(r.crop)) { checkMin(); return; } // v0.117.0 (QĐ3): never applied below the minimum
+      const crop = isWholeImage(r.crop) ? null : r.crop;
+      const changed = cropChanged(cropIn, crop ? crop.normalized : null, size.W, size.H)
+        || focalChanged(focalIn, r.focalPoint);
+      result = { status: 'applied', crop, focalPoint: r.focalPoint, changed };
     }
-    if (!r.crop) return; // not ready (the button is disabled then anyway)
-    const crop = isWholeImage(r.crop) ? null : r.crop;
-    const changed = cropChanged(cropIn, crop ? crop.normalized : null, size.W, size.H)
-      || focalChanged(focalIn, r.focalPoint);
-    finish({ status: 'applied', crop, focalPoint: r.focalPoint, changed });
+    if (onApply) gate(result);
+    else finish(result);
   };
   const onAbort = () => finish({ status: 'cancelled' }, true);
 

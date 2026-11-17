@@ -99,7 +99,7 @@ import {
   DefaultsRegistry, resolveOptions, cancelledOutcome, buildOutcome, normalizeAsset, normalizePage, normalizeFacets,
   normalizeFields, normalizeError, canDo, buildListRequest, requestKey, LatestRequest, SelectionModel, InitialLoad,
   Debouncer, SessionCache, formatLabel, PageState, defaultTitle, normalizeDeleteResult, normalizeDownloadResult,
-  normalizeCollections, autoPageSize, PAGE_SIZE_DEFAULT,
+  normalizeCollections, autoPageSize, PAGE_SIZE_DEFAULT, minSizeReason, runBeforeApply,
 } from '../utils/media-picker-core.js';
 import { createFacetControl, FieldForm, FIELD_LABELS } from './media-picker-fields.js';
 import { openUploadDialog, UPLOAD_LABELS } from './media-picker-upload.js';
@@ -314,6 +314,14 @@ export class TdMediaPicker extends HTMLElement {
     clearSelectionChip: 'Bỏ chọn tất cả ({label})',
     selectFirst: 'Hãy chọn ít nhất một mục.',
     notReady: 'Mục này chưa sẵn sàng để chọn.',
+    /** v0.117.0 (QĐ3): `selection.minSize` — the card's reason (both axes / one axis) and an image without its size */
+    sizeTooSmall: 'Ảnh phải có kích thước tối thiểu {w} × {h} px',
+    sizeTooSmallWidth: 'Ảnh phải có chiều rộng tối thiểu {w} px',
+    sizeTooSmallHeight: 'Ảnh phải có chiều cao tối thiểu {h} px',
+    sizeUnknown: 'Không xác định được kích thước ảnh để kiểm tra kích thước tối thiểu',
+    /** v0.117.0 (QĐ4): `beforeApply` returned false / failed without a `userMessage` */
+    applyRejected: 'Không thể chèn mục đã chọn',
+    applyFailed: 'Không kiểm tra được, thử lại sau',
     conflict: 'Media đã bị thay đổi ở nơi khác.',
     reload: 'Tải lại',
     video: 'Video',
@@ -711,6 +719,10 @@ export class TdMediaPicker extends HTMLElement {
       confirm: null,
       /** @type {{ ctrl: AbortController }|null} the open crop step (v0.35 decisions 24-25) */
       crop: null,
+      /** v0.117.0 (QĐ3): `selection.minSize` (`{ width?, height? }`) or null */
+      minSize: opts.selection.minSize || null,
+      /** @type {{ ctrl: AbortController }|null} v0.117.0 (QĐ4): the `beforeApply` call running on "Chèn" (no crop step) */
+      gate: null,
       /** @type {Set<string>} object URLs of blob downloads not revoked yet */
       blobUrls: new Set(),
       assetFields: normalizeFields(opts.assetFields, { warn: (m) => warnOnce(`af:${m}`, m) }),
@@ -791,6 +803,8 @@ export class TdMediaPicker extends HTMLElement {
         },
         onSettle: () => { if (this._s === s) this._renderSelection(); },
         warn: (...a) => console.warn(...a),
+        // v0.117.0 (QĐ3): an initial id below `selection.minSize` is skipped (only passed with a minimum: same path as before)
+        ...(s.minSize ? { accept: (a) => !this._sizeReason(a) } : {}),
       });
       s.initial.start();
     }
@@ -862,7 +876,10 @@ export class TdMediaPicker extends HTMLElement {
     // only while the pane is open); the pane has no back row of its own any more
     const back = /** @type {HTMLButtonElement} */ (root.querySelector('.td-media-picker__back'));
     back.setAttribute('aria-label', t('back'));
-    back.addEventListener('click', () => this._closeDetail());
+    back.addEventListener('click', () => {
+      this._abortGate(); // v0.117.0 (QĐ4): Back stays available during a `beforeApply` call and aborts it
+      this._closeDetail();
+    });
     root.querySelector('.td-modal__backdrop').addEventListener('mousedown', (e) => e.preventDefault());
     fillIconSlots(root);
 
@@ -1490,8 +1507,10 @@ export class TdMediaPicker extends HTMLElement {
     if (existing) this._paintItem(existing, asset);
     if (s.detailId === asset.id && !this._editBusy()) this._renderDetail(); // a re-upload refreshes the open detail
     let view = false;
-    if (!this._selectable(asset)) {
-      this._announce(this._t('notReady'));
+    if (s.gate) {
+      // v0.117.0 (QĐ4): the selection is locked while `beforeApply` runs — the upload is only cached / shown
+    } else if (!this._selectable(asset)) {
+      this._announce(this._lockText(asset)); // v0.117.0 (QĐ3): an undersized upload stays, ineligible, with its reason
     } else if (s.mode === 'single') {
       this._userChange(() => s.model.replace(asset));
       view = true;
@@ -1505,6 +1524,7 @@ export class TdMediaPicker extends HTMLElement {
       this._announce(this._t('limit', { max: s.model.max }));
     }
     s.model.update(asset);
+    this._dropIneligible(asset); // v0.117.0 (QĐ3): a re-upload of a selected asset may now be below minSize
     this._renderSelection();
     // open its detail — never over a dirty form of another asset (that one is kept; the user saves or discards it)
     if (view && !this._editBusy()) this._showDetail(asset.id, { gated: false });
@@ -2316,7 +2336,46 @@ export class TdMediaPicker extends HTMLElement {
 
   /** @private */
   _selectable(asset) {
-    return !!asset && asset.status === 'ready' && this._visibleKind(asset);
+    return !!asset && asset.status === 'ready' && this._visibleKind(asset) && !this._sizeReason(asset);
+  }
+
+  /**
+   * @private v0.117.0 (QĐ3): why `selection.minSize` locks this asset — null / 'small' / 'unknown' (see `minSizeReason`;
+   * the fixed-ratio test only with a crop step that has a ratio)
+   */
+  _sizeReason(asset) {
+    const s = this._s;
+    return s && s.minSize ? minSizeReason(asset, s.minSize, s.opts.cropResolved) : null;
+  }
+
+  /** @private v0.117.0 (QĐ3): the visible / announced text of a size reason ('' for none) */
+  _sizeText(why) {
+    if (!why) return '';
+    if (why === 'unknown') return this._t('sizeUnknown');
+    const m = this._s.minSize;
+    if (m.width !== undefined && m.height !== undefined) return this._t('sizeTooSmall', { w: m.width, h: m.height });
+    return m.width !== undefined ? this._t('sizeTooSmallWidth', { w: m.width }) : this._t('sizeTooSmallHeight', { h: m.height });
+  }
+
+  /** @private what to announce when a non-selectable asset is picked: its size reason, else "not ready" */
+  _lockText(asset) {
+    return this._sizeText(asset ? this._sizeReason(asset) : null) || this._t('notReady');
+  }
+
+  /**
+   * @private v0.117.0 (QĐ3): the tick of a size-locked card is `aria-disabled` (td-media-grid resets the native
+   * `disabled` on every sync, and creates the tick in its MutationObserver microtask — a card painted before it is
+   * appended gets its tick marked one microtask after the grid's)
+   */
+  _syncTickLock(item) {
+    const apply = () => {
+      const tick = item.querySelector('.td-media-grid__tick');
+      if (!tick) return false;
+      if (item.hasAttribute('data-size-locked')) tick.setAttribute('aria-disabled', 'true');
+      else tick.removeAttribute('aria-disabled');
+      return true;
+    };
+    if (!apply()) queueMicrotask(() => queueMicrotask(apply));
   }
 
   /** @private `{size} • {DD/MM/YYYY HH:mm}` parts that exist */
@@ -2356,6 +2415,18 @@ export class TdMediaPicker extends HTMLElement {
     const badge = reused ? String(this._t('reusedBadge') || '') : '';
     const suffix = badge ? `, ${badge.charAt(0).toLocaleLowerCase()}${badge.slice(1)}` : '';
     open.setAttribute('aria-label', [name, meta, statusText].filter(Boolean).join(' — ') + suffix);
+    // v0.117.0 (QĐ3): an image below `selection.minSize` stays visible (its detail opens) but cannot be selected — the
+    // reason is on the card and is the opener's description; `data-td-media-pending` keeps it out of Shift ranges
+    const sizeWhy = this._sizeText(this._sizeReason(asset));
+    const wasLocked = item.hasAttribute('data-size-locked');
+    if (sizeWhy) {
+      item.setAttribute('data-size-locked', '');
+      item.setAttribute('data-td-media-pending', '');
+    } else if (wasLocked) {
+      item.removeAttribute('data-size-locked');
+      item.removeAttribute('data-td-media-pending');
+    }
+    if (sizeWhy || wasLocked) this._syncTickLock(item);
     const thumb = document.createElement('span');
     thumb.className = 'td-media-picker__thumb';
     thumb.setAttribute('aria-hidden', 'true');
@@ -2411,6 +2482,16 @@ export class TdMediaPicker extends HTMLElement {
       chip.textContent = this._t('reusedBadge');
       info.appendChild(chip);
     }
+    if (sizeWhy) {
+      const why = document.createElement('span');
+      why.className = 'td-media-picker__size-reason';
+      why.id = `${s.id}-size-${++uid}`;
+      why.textContent = sizeWhy;
+      info.appendChild(why);
+      open.setAttribute('aria-describedby', why.id);
+    } else if (wasLocked) {
+      open.removeAttribute('aria-describedby');
+    }
     open.append(thumb, info);
     if (img && loader && item.isConnected) loader.scan(s.els.results); // a card painted in place (asset update, drop)
   }
@@ -2446,6 +2527,8 @@ export class TdMediaPicker extends HTMLElement {
     };
     // v0.93.0: a dropped file still uploading / failed — by the drop module's records, never by an id prefix
     const pending = (id) => !!s.drop && s.drop.isPending(id);
+    // v0.117.0 (QĐ3): a card below `selection.minSize` — its tick / Ctrl / Shift / Space never reach the grid
+    const sizeLocked = (item) => !!item && item.hasAttribute('data-size-locked');
     /** a grid selection gesture on such a card never reaches td-media-grid (no commit, no anchor; Codex impl r1 #2) */
     const swallow = (ev) => {
       ev.preventDefault();
@@ -2468,7 +2551,10 @@ export class TdMediaPicker extends HTMLElement {
       if (t.closest('.td-media-grid__tick')
         || (t.closest('[data-td-media-open]') && (ev.shiftKey || ev.ctrlKey || ev.metaKey))) {
         if (pending(item.getAttribute('data-id'))) swallow(ev);
-        else preClear(item);
+        else if (sizeLocked(item)) {
+          swallow(ev);
+          this._announce(this._lockText(s.cache.getAsset(item.getAttribute('data-id'))));
+        } else preClear(item);
       }
     }, true);
     results.addEventListener('keydown', (ev) => {
@@ -2478,6 +2564,11 @@ export class TdMediaPicker extends HTMLElement {
       const item = itemOf(t);
       if (item && pending(item.getAttribute('data-id'))) {
         swallow(ev); // the grid never flips it (no page scroll either); its keyup still keeps Space from clicking
+        return;
+      }
+      if (sizeLocked(item)) { // v0.117.0 (QĐ3): Space skips it, the reason is announced
+        swallow(ev);
+        if (!ev.repeat) this._announce(this._lockText(s.cache.getAsset(item.getAttribute('data-id'))));
         return;
       }
       if (!ev.repeat) preClear(item);
@@ -2567,7 +2658,7 @@ export class TdMediaPicker extends HTMLElement {
       const types = ev.dataTransfer && ev.dataTransfer.types;
       return !!types && Array.from(types).includes('Files');
     };
-    const enabled = () => this._live(s) && !!s.sources && !!s.sources.file && !!s.handle && s.handle.layer.isTop();
+    const enabled = () => this._live(s) && !s.gate && !!s.sources && !!s.sources.file && !!s.handle && s.handle.layer.isTop();
     const setOver = (on) => {
       if (on && !e.dropHint) {
         const hint = document.createElement('div'); // created on the first drag only: older DOM / baselines unchanged
@@ -2691,7 +2782,7 @@ export class TdMediaPicker extends HTMLElement {
       this._dropEdit();
     }
     if (!this._selectable(asset)) {
-      this._announce(this._t('notReady'));
+      this._announce(this._lockText(asset)); // v0.117.0: a size-locked image says why
     } else {
       this._userChange(() => s.model.replace(asset));
     }
@@ -2728,17 +2819,17 @@ export class TdMediaPicker extends HTMLElement {
     }
     const veto = [];
     let limited = false;
-    let notReady = false;
+    let notReady = '';
     this._userChange(() => {
       for (const id of removed) s.model.remove(id);
       for (const id of added) {
         const asset = s.cache.getAsset(id);
-        if (!this._selectable(asset)) { veto.push(id); notReady = true; continue; }
+        if (!this._selectable(asset)) { veto.push(id); notReady = notReady || this._lockText(asset); continue; }
         if (!s.model.add(asset)) { veto.push(id); limited = true; }
       }
     });
     if (veto.length) grid.deselect(veto);
-    if (notReady) this._announce(this._t('notReady'));
+    if (notReady) this._announce(notReady);
     else if (limited) this._announce(this._t('limit', { max: s.model.max }));
     this._syncGrid();
   }
@@ -2866,7 +2957,7 @@ export class TdMediaPicker extends HTMLElement {
     if (item) this._paintItem(item, asset);
     if (s.model.has(asset.id)) {
       s.model.update(asset);
-      this._renderSelection();
+      if (!this._dropIneligible(asset)) this._renderSelection(); // v0.117.0 (QĐ3): a fresh snapshot may fall below minSize
     }
     if (s.detailId === asset.id && !this._editBusy()) this._renderDetail();
   }
@@ -3257,7 +3348,10 @@ export class TdMediaPicker extends HTMLElement {
           ed.notice.replaceChildren();
           const item = s.items.get(asset.id);
           if (item) this._paintItem(item, asset);
-          if (s.model.has(asset.id)) s.model.update(asset);
+          if (s.model.has(asset.id)) {
+            s.model.update(asset);
+            this._dropIneligible(asset); // v0.117.0 (QĐ3)
+          }
         });
       });
       ed.notice.appendChild(b);
@@ -3539,6 +3633,7 @@ export class TdMediaPicker extends HTMLElement {
     const s = this._s;
     // s.crop: the crop step is open over the picker — its own Quay lại / Chèn decide (no double finish, decision 24)
     if (!s || this._settled || s.confirm || s.crop) return;
+    if (s.gate && kind === 'confirm') return; // v0.117.0 (QĐ4): one `beforeApply` call at a time (a cancel still closes)
     if (kind === 'confirm' && s.model.size === 0) {
       this._announce(this._t('selectFirst'));
       return;
@@ -3552,13 +3647,105 @@ export class TdMediaPicker extends HTMLElement {
       }
     }
     if (s.crop) return; // opened while the discard confirmation was answered (cannot happen through the UI)
+    // v0.117.0 (QĐ3): the final eligibility guard — no refresh path may confirm an asset below minSize
+    if (kind === 'confirm' && this._ineligibleSelected()) {
+      for (const a of s.model.assets) this._dropIneligible(a);
+      return;
+    }
     const cropAsset = kind === 'confirm' ? this._cropTarget() : null;
     if (cropAsset) {
       this._openCrop(cropAsset);
       return;
     }
     const outcome = kind === 'confirm' ? buildOutcome(s.model) : cancelledOutcome(/** @type {any} */ (reason));
+    if (kind === 'confirm' && typeof s.opts.beforeApply === 'function') {
+      this._gateConfirm(outcome);
+      return;
+    }
     this._teardown(outcome, false);
+  }
+
+  /** @private v0.117.0 (QĐ4): the texts of a failed `beforeApply` */
+  _gateTexts() {
+    return { rejected: this._t('applyRejected'), failed: this._t('applyFailed') };
+  }
+
+  /**
+   * @private v0.117.0 (QĐ4): "Chèn" without a crop step, `beforeApply` given — the ONE call: "Chèn" loading, the dialog
+   * `aria-busy`, the toolbar / results / detail / selection bar `inert` (selection, filters, upload, detail edits
+   * locked; × / Đóng / Back / Escape / close() still work and abort it). Success → the normal teardown with THIS
+   * outcome; otherwise unlocked again + the message (live region + toast); aborted → silent.
+   */
+  _gateConfirm(outcome) {
+    const s = this._s;
+    const ctrl = new AbortController();
+    const gate = { ctrl };
+    s.gate = gate;
+    if (s.initial) s.initial.invalidate();
+    this._gateLock(true);
+    runBeforeApply(s.opts.beforeApply, outcome.selection, ctrl.signal, this._gateTexts()).then((r) => {
+      if (!this._live(s) || s.gate !== gate) return; // closed / aborted meanwhile: a late result is dropped
+      s.gate = null;
+      if (r.ok && !this._ineligibleSelected()) {
+        this._teardown(outcome, false);
+        return;
+      }
+      this._gateLock(false);
+      if (r.message) {
+        this._announce(r.message);
+        try { TdToast.error(r.message, this._toastOptions(5000)); } catch { /* ignore */ }
+      }
+    });
+  }
+
+  /** @private v0.117.0 (QĐ3): a selected asset below minSize (its current snapshot), or null (also without minSize) */
+  _ineligibleSelected() {
+    const s = this._s;
+    if (!s || !s.minSize) return null;
+    return s.model.assets.find((a) => this._sizeReason(a)) || null;
+  }
+
+  /** @private v0.117.0 (QĐ3): the crop step's asset is no longer selected / eligible → that asset, else null */
+  _cropIneligible(asset) {
+    const s = this._s;
+    if (!s || !s.minSize) return null;
+    if (!s.model.has(asset.id)) return s.cache.getAsset(asset.id) || asset;
+    return this._ineligibleSelected();
+  }
+
+  /**
+   * @private v0.117.0 (QĐ3, impl review ISSUE-3): a fresh snapshot made a SELECTED asset ineligible → deselect it (grid,
+   * footer, count, `selection-change`), abort a running `beforeApply` / close the crop step, announce the reason.
+   * No minSize / not selected / still eligible → false (nothing done).
+   */
+  _dropIneligible(asset) {
+    const s = this._s;
+    if (!s || !s.minSize || !asset || !s.model.has(asset.id) || !this._sizeReason(asset)) return false;
+    this._abortGate();
+    if (s.crop) s.crop.ctrl.abort();
+    this._userChange(() => s.model.remove(asset.id));
+    this._announce(this._lockText(asset));
+    return true;
+  }
+
+  /** @private v0.117.0 (QĐ4): abort the running `beforeApply` call (no-op when none) and unlock the picker */
+  _abortGate() {
+    const s = this._s;
+    if (!s || !s.gate) return;
+    const g = s.gate;
+    s.gate = null;
+    g.ctrl.abort();
+    if (this._live(s)) this._gateLock(false);
+  }
+
+  /** @private v0.117.0 (QĐ4): lock / unlock the picker surface around a `beforeApply` call */
+  _gateLock(on) {
+    const s = this._s;
+    const e = s.els;
+    for (const el of [e.toolbar, e.results, e.detail, e.selbar]) if (el) el.toggleAttribute('inert', on);
+    e.confirm.toggleAttribute('loading', on);
+    if (on) e.dialog.setAttribute('aria-busy', 'true');
+    else e.dialog.removeAttribute('aria-busy');
   }
 
   // --- crop step (v0.35 decisions 23-26) ---
@@ -3602,8 +3789,11 @@ export class TdMediaPicker extends HTMLElement {
     const naturalHeight = dim(asset.height);
     const known = naturalWidth !== undefined && naturalHeight !== undefined;
     const ctrl = new AbortController();
+    /** @type {{ ctrl: AbortController, outcome?: object }} `outcome`: the one `beforeApply` approved (v0.117.0) */
     const step = { ctrl };
     s.crop = step;
+    // v0.113.0 (QĐ3 / QĐ4b): the focal mode never yields a crop, whatever the dialog returns
+    const usageOf = (res) => ({ crop: focal ? null : res.crop || null, focalPoint: cfg.allowFocalPoint ? (res.focalPoint || null) : null });
     const opener = /** @type {HTMLElement|null} */ (s.els.confirm.querySelector('button')) || s.els.confirm;
     let pending;
     try {
@@ -3625,6 +3815,20 @@ export class TdMediaPicker extends HTMLElement {
         nested: true,
         signal: ctrl.signal,
         opener,
+        // v0.117.0 (QĐ3): the crop itself must meet `selection.minSize` (the dialog keeps "Áp dụng" disabled below it)
+        ...(s.minSize && !focal ? { minSize: s.minSize, minSizeMessage: this._sizeText('small') } : {}),
+        // v0.117.0 (QĐ4): `beforeApply` runs inside the crop step, on its "Áp dụng", with the exact final selection
+        ...(typeof s.opts.beforeApply === 'function' ? {
+          onApply: (res, { signal }) => {
+            const bad = this._cropIneligible(asset);
+            if (bad) return Promise.resolve({ ok: false, message: this._lockText(bad) });
+            const outcome = buildOutcome(s.model, new Map([[asset.id, usageOf(res)]]));
+            return runBeforeApply(s.opts.beforeApply, outcome.selection, signal, this._gateTexts()).then((r) => {
+              if (r.ok && s.crop === step) step.outcome = outcome;
+              return r;
+            });
+          },
+        } : {}),
       }));
     } catch (err) {
       pending = Promise.reject(err);
@@ -3633,9 +3837,15 @@ export class TdMediaPicker extends HTMLElement {
       if (!this._live(s) || s.crop !== step) return;
       s.crop = null;
       if (res && res.status === 'applied') {
-        // v0.113.0 (QĐ3 / QĐ4b): the focal mode never yields a crop, whatever the dialog returns
-        const usage = { crop: focal ? null : res.crop || null, focalPoint: cfg.allowFocalPoint ? (res.focalPoint || null) : null };
-        this._teardown(buildOutcome(s.model, new Map([[asset.id, usage]])), false);
+        const bad = this._cropIneligible(asset); // v0.117.0 (QĐ3): the final guard (a refresh during the crop step)
+        if (bad) {
+          this._announce(this._lockText(bad));
+          this._focusButton(s.els.confirm);
+          return;
+        }
+        // v0.117.0 (QĐ4): with `beforeApply`, the outcome it approved (the dialog resolves `applied` only after that)
+        const outcome = step.outcome || buildOutcome(s.model, new Map([[asset.id, usageOf(res)]]));
+        this._teardown(/** @type {any} */ (outcome), false);
         return;
       }
       this._focusButton(s.els.confirm); // Quay lại / Escape / ×: the selection is kept
@@ -3699,6 +3909,7 @@ export class TdMediaPicker extends HTMLElement {
       s.uploadSlots = null;
       if (s.filterSheet) { try { s.filterSheet.destroy(); } catch { /* ignore */ } s.filterSheet = null; }
       if (s.crop) { const c = s.crop; s.crop = null; c.ctrl.abort(); } // v0.35 decision 25: the crop step closes too
+      if (s.gate) { const g = s.gate; s.gate = null; g.ctrl.abort(); } // v0.117.0 (QĐ4): a running beforeApply is aborted
       if (s.edit) { try { s.edit.form.destroy(); } catch { /* ignore */ } s.edit = null; }
       for (const c of s.facets.values()) { try { c.destroy(); } catch { /* ignore */ } }
       for (const u of s.blobUrls) { try { URL.revokeObjectURL(u); } catch { /* ignore */ } }

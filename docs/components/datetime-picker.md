@@ -230,8 +230,9 @@ trong ô:
   `trackFormDirty` coi đó là thay đổi của người dùng. `form.reset()` đưa giá trị mặc định (và nút) trở lại.
 - Tên truy cập theo mode: "Xoá ngày" (datetime / date), "Xoá tháng", "Xoá năm" — `TdDatetimePicker.labels.clear`,
   `clearDate`, `clearMonth`, `clearYear`.
-- Nút là **anh em** của trigger (không lồng trong nút), đứng ở mép cuối ô sau icon lịch; ô luôn dành chỗ cho nút (chữ dài
-  bị cắt `…` không nhảy khi nút hiện / ẩn). Tab: trigger → nút xoá. Cảm ứng: ≥ 44 px.
+- Nút là **anh em** của trigger (không lồng trong nút), đứng ở mép cuối ô sau icon lịch; ô dành chỗ cho nút khi nút **hiện** (chữ dài
+  bị cắt `…`). Khi nút **ẩn** (chưa có giá trị, `required`, `disabled`) icon lịch về lại mép 14 px như ô thường (0.117.0; trình duyệt
+  không có `:has()` vẫn giữ chỗ dành sẵn). Tab: trigger → nút xoá. Cảm ứng: ≥ 44 px.
 - Opt-in: không đặt → giống hệt trước 0.59.0. PHP: `td_date(…, ['clearable' => true])` / `td_datetime_picker` in host
   `clearable` + cùng nút (ẩn tới khi module chạy — không có nút "chết" khi không có JS; trước / sau nâng cấp cùng hộp).
 

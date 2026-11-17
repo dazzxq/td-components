@@ -62,6 +62,7 @@ export function parseChipItems(str) {
  *         <span class="td-chip-input__option-label">{label | renderOption(item, { query })}</span>
  *         [<span class="td-chip-input__option-desc">{item.description}</span>]</div>
  *       [<div class="td-chip-input__option td-chip-input__option--create" role="option" id="{host}-opt-create">Thêm “{text}”</div>]
+ *       [<div class="td-chip-input__option td-chip-input__option--create td-chip-input__option--external" role="option" id="{host}-opt-external">…</div>]  (v0.117.0: allow-create + create-label)
  *     </div>
  *     <p class="td-chip-input__empty" [data-kind="none|loading|error"]>…</p>
  *   </div>
@@ -125,7 +126,9 @@ export function parseChipItems(str) {
  * @attr {boolean} select-all - v0.28.0 (with selection-only): "select all shown" first row
  * @attr {boolean} close-on-select - v0.28.0 (with selection-only): close the popup after each toggle
  * @attr {string} create-label - v0.87.0 (with selection-only): a pinned "add new" action row at the bottom of the list
- *   (`create` event `{ query }`; empty = off)
+ *   (`create` event `{ query }`; empty = off). v0.117.0: also with `allow-create` (normal mode): an action row after the
+ *   "Thêm" row (typed text + Enter stays a plain chip; the row only emits `create`, no chip / hook / change); every
+ *   `{text}` is replaced by the typed text (selection-only: only when the label holds `{text}`)
  * @fires change - User add/remove only: detail `{ value: items, items, added? , removed? }` (programmatic API is silent);
  *   select-all: `{ value, items, addedItems | removedItems }`
  * @fires search-error - The provider rejected: detail `{ query, error }`
@@ -425,6 +428,11 @@ export class TdChipInput extends TdFormElement {
 
   /** @private v0.87.0: the create row's label — only with selection-only ('' = no row) */
   _createRowLabel() { return this._selOnly() ? this.getAttribute('create-label') || '' : ''; }
+
+  /** @private v0.117.0: normal mode (`allow-create` + `create-label`): the external action row's label ('' = no row) */
+  _extRowLabel() {
+    return !this._selOnly() && this.hasAttribute('allow-create') ? this.getAttribute('create-label') || '' : '';
+  }
   /** @private the RENDERED listbox is the multi-select one (rows in `_rowEls`, highlight = data-active) */
   _rendSel() { return this._list()?.getAttribute('aria-multiselectable') === 'true'; }
 
@@ -646,6 +654,11 @@ export class TdChipInput extends TdFormElement {
         return;
       case 'allow-create':
         this._warnCreate(); // read when used (as before)
+        // v0.117.0: shown normal-mode create rows (Thêm / external) were built for the old value → drop them
+        if (!this._selOnly() && this._nav.some((e) => e && ('ext' in e || 'create' in e))) {
+          this._navQuery = null;
+          this.close();
+        }
         return;
       case 'create-label':
         // v0.87.0: the rows are rebuilt on the next open
@@ -744,9 +757,9 @@ export class TdChipInput extends TdFormElement {
 
   /** @private v0.28.0: `allow-create` has no effect with `selection-only` — one warning per element */
   _warnCreate() {
-    if (!this._warnedCreateLabel && !this._selOnly() && this.getAttribute('create-label')) {
+    if (!this._warnedCreateLabel && !this._selOnly() && !this.hasAttribute('allow-create') && this.getAttribute('create-label')) {
       this._warnedCreateLabel = true; // v0.87.0
-      console.warn('td-chip-input: create-label applies only with selection-only (use allow-create).', this);
+      console.warn('td-chip-input: create-label needs selection-only or allow-create.', this);
     }
     if (this._warnedCreate || !this._selOnly() || !this.hasAttribute('allow-create')) return;
     this._warnedCreate = true;
@@ -1038,6 +1051,7 @@ export class TdChipInput extends TdFormElement {
       return;
     }
     this._cancelSearch(); // abort the in-flight request + bump seq: its response can never land
+    this._dropCreateRows(); // v0.117.0: the old rows show the old query — never leave them clickable
     this._debounceTimer = window.setTimeout(() => {
       this._debounceTimer = 0;
       this._runSearch(q);
@@ -1262,6 +1276,33 @@ export class TdChipInput extends TdFormElement {
     }
   }
 
+  /** @private v0.117.0: does `text` fold-match a label / value of `items` or (no remote search) of every local option? */
+  _foldInPool(text, items) {
+    const f = fold(text);
+    const pool = this._search ? items : [...items, ...this._normList(this._options)];
+    return pool.some((i) => fold(this._lab(i)) === f || fold(this._val(i)) === f);
+  }
+
+  /**
+   * @private v0.117.0: may a normal-mode create row (Thêm / external) still run? Its text must equal the current cleaned
+   * query and the visibility conditions must still hold (a stale row from before the input changed does nothing).
+   */
+  _createRowValid(text) {
+    if (!this.hasAttribute('allow-create') || this._isDisabled() || this._isFull() || !text) return false;
+    const input = this._input();
+    if (cleanText(input ? input.value : '', this._maxLength()) !== text) return false;
+    return !this._hasFolded(text) && !this._foldInPool(text, this._lastResults || []);
+  }
+
+  /** @private v0.117.0: remove both normal-mode create rows from the shown list (a new remote query is pending) */
+  _dropCreateRows() {
+    if (this._selOnly() || !this._nav.some((e) => e && ('ext' in e || 'create' in e))) return;
+    this._nav = this._nav.filter((e) => !('ext' in e || 'create' in e));
+    this._renderOptions(this._navQuery || '');
+    this._activeIndex = -1;
+    this._syncActive(false);
+  }
+
   /** @private local suggestions: diacritic-insensitive substring of the label */
   _localFilter(q) {
     const items = this._normList(this._options);
@@ -1399,8 +1440,12 @@ export class TdChipInput extends TdFormElement {
     const nav = shown.map((item) => ({ item }));
     const text = cleanText(q, this._maxLength());
     if (this.hasAttribute('allow-create') && text && !this._hasFolded(text)) {
-      const f = fold(text);
-      if (!items.some((i) => fold(this._lab(i)) === f || fold(this._val(i)) === f)) nav.push({ create: text });
+      // v0.117.0: the fold match covers the results AND (local options) the whole option list, not only the filtered part
+      if (!this._foldInPool(text, items)) {
+        nav.push({ create: text });
+        // v0.117.0: the external action row, pinned last (same visibility as the "Thêm" row)
+        if (this._extRowLabel()) nav.push({ ext: text });
+      }
     }
     this._nav = nav;
     this._navQuery = q;
@@ -1454,7 +1499,7 @@ export class TdChipInput extends TdFormElement {
       return;
     }
     list.removeAttribute('aria-multiselectable');
-    list.removeAttribute('data-create-row');
+    list.toggleAttribute('data-create-row', this._nav.some((e) => e && 'ext' in e));
     const nodes = this._nav.map((entry, i) => {
       const el = document.createElement('div');
       el.setAttribute('role', 'option');
@@ -1476,6 +1521,18 @@ export class TdChipInput extends TdFormElement {
           d.textContent = String(desc);
           el.appendChild(d);
         }
+      } else if ('ext' in entry) {
+        // v0.117.0: the external action row (the 0.87.0 create-row markup; text through textContent, never HTML)
+        el.className = 'td-chip-input__option td-chip-input__option--create td-chip-input__option--external';
+        el.id = `${this.id}-opt-external`;
+        const icon = document.createElement('span');
+        icon.className = 'td-chip-input__create-icon';
+        icon.setAttribute('data-td-icon', 'plus');
+        icon.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.className = 'td-chip-input__option-label';
+        label.append(icon, document.createTextNode(format(this._extRowLabel(), { text: entry.ext })));
+        el.append(label);
       } else {
         el.className = 'td-chip-input__option td-chip-input__option--create';
         el.id = `${this.id}-opt-create`;
@@ -1517,7 +1574,11 @@ export class TdChipInput extends TdFormElement {
         icon.setAttribute('aria-hidden', 'true');
         const label = document.createElement('span');
         label.className = 'td-chip-input__option-label';
-        label.append(icon, document.createTextNode(entry.create ? this._t('create', { text: entry.create }) : this._createRowLabel()));
+        const cl = this._createRowLabel();
+        // v0.117.0: a create-label holding {text} is interpolated with a non-empty query (else the 0.87.0 output)
+        label.append(icon, document.createTextNode(entry.create
+          ? (cl.includes('{text}') ? format(cl, { text: entry.create }) : this._t('create', { text: entry.create }))
+          : cl));
         el.append(label);
         rows.push(el);
         group = null;
@@ -1655,7 +1716,12 @@ export class TdChipInput extends TdFormElement {
       return;
     }
     if (entry.item) this._addUser(entry.item);
-    else if ('create' in entry) this._createFrom(entry.create);
+    else if ('ext' in entry) {
+      // v0.117.0: the event only, no chip, no hook, no change
+      if (this._createRowValid(entry.ext)) this._createAction();
+    } else if ('create' in entry) {
+      if (this._createRowValid(entry.create)) this._createFrom(entry.create);
+    }
   }
 
   /**

@@ -431,11 +431,13 @@
 	/* v0.87.0 selection-only create row: the last row, pinned to the bottom of the scrolling list (sticky, the menu's own
 	   fill underneath so rows never show through), the dropdown create ink + its hairline; the list keeps the active row
 	   clear of it (scroll-padding) */
-	.td-chip-input__options[aria-multiselectable="true"][data-create-row] {
+	.td-chip-input__options[data-create-row] {
 		scroll-padding-bottom: calc(var(--td-dropdown-option-h) + 1px); /* the create row + its hairline */
 	}
 
-	.td-chip-input__options[aria-multiselectable="true"] .td-chip-input__option--create {
+	/* v0.117.0: the same pinned row in normal mode (allow-create + create-label): only the external row, never "Thêm" */
+	.td-chip-input__options[aria-multiselectable="true"] .td-chip-input__option--create,
+	.td-chip-input__options[data-create-row] .td-chip-input__option--external {
 		position: sticky;
 		bottom: 0;
 		z-index: 1;
@@ -445,7 +447,8 @@
 		border-top: 1px solid var(--td-dropdown-hairline);
 	}
 
-	.td-chip-input__options[aria-multiselectable="true"] .td-chip-input__option--create[data-active] {
+	.td-chip-input__options[aria-multiselectable="true"] .td-chip-input__option--create[data-active],
+	.td-chip-input__options[data-create-row] .td-chip-input__option--external[aria-selected="true"] {
 		background-image: linear-gradient(var(--td-option-active-bg), var(--td-option-active-bg));
 	}
 

@@ -4,6 +4,28 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.117.0
+
+### Thêm
+- `td-chip-input` `allow-create` + `create-label`: gõ tự do + Enter vẫn ra chip chữ như cũ, kèm một dòng hành động ghim
+  cuối danh sách (sau dòng "Thêm “…”"). Chọn dòng đó (click, hoặc mũi tên tới rồi Enter) chỉ phát event `create`
+  `{ query }` (cùng event 0.87.0): không thêm chip, không gọi hook `create(text)`, không phát `change`. App tạo bản ghi
+  rồi `addItem({ value, label })`. Mọi `{text}` trong `create-label` được thay bằng chữ đang gõ (cũng áp cho
+  `selection-only` khi nhãn có `{text}`). Dòng ẩn khi ô trống, chữ trùng (không phân biệt dấu / hoa thường) label hoặc
+  value của một option / chip đã chọn, hoặc ô đã đầy.
+- `TdMediaPicker` `selection.minSize: { width?, height? }` (theo từng lần `open()`): ảnh nhỏ hơn vẫn hiện, vẫn mở xem
+  chi tiết, nhưng không chọn được, có dòng lý do (`labels.sizeTooSmall`, `sizeTooSmallWidth`, `sizeTooSmallHeight`);
+  ảnh không rõ kích thước cũng bị khoá (`labels.sizeUnknown`). Bước cắt: nút Áp dụng tắt khi vùng cắt nhỏ hơn mức tối
+  thiểu. Ảnh đã chọn mà dữ liệu mới không còn đạt thì bị bỏ chọn. Server vẫn phải tự kiểm lại.
+- `TdMediaPicker` `beforeApply(selection, { signal })` (open / configureDefaults): cửa kiểm tra bất đồng bộ trước khi
+  picker trả kết quả, chạy sau bước cắt. `false` → giữ picker, hiện `labels.applyRejected`; throw `{ userMessage }` →
+  hiện câu đó; lỗi khác → `labels.applyFailed`; `AbortError` → im lặng. Trong lúc chờ nút bận, picker khoá, Đóng / Quay
+  lại huỷ `signal`; `confirm` chỉ phát khi qua cửa.
+
+### Sửa
+- `td-datetime-picker` `clearable` (không `editable`): lúc nút xoá đang ẩn, icon lịch về lề chuẩn 14px thay vì chừa chỗ
+  cho nút xoá (trình duyệt không có `:has()` giữ như cũ).
+
 ## 0.116.0
 
 ### Thêm

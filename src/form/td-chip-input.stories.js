@@ -279,3 +279,23 @@ export const MultiSelectCreate = {
       + ' show-on-focus min-chars="0"></td-chip-input>';
   },
 };
+
+/** v0.117.0: allow-create + create-label — free typing stays a chip; a pinned row emits `create` for a server record. */
+export const CreateRowWithFreeTyping = {
+  name: 'Gõ tự do + dòng tạo bản ghi',
+  render: () => {
+    const a = `ci-cr-${++seq}`;
+    withProps(a, (el) => {
+      el.options = TAGS;
+      el.addEventListener('create', (e) => {
+        const note = document.getElementById(`${a}-log`);
+        if (note) note.textContent = `create: ${JSON.stringify(e.detail)}`;
+        // The site creates the record, then adds the chip.
+        el.addItem({ value: `new-${Date.now()}`, label: e.detail.query });
+      });
+    });
+    return `<div class="sb-stack"><td-chip-input id="${a}" name="tags[]" label="Bút danh" allow-create`
+      + ' create-label="Tạo bút danh “{text}”"></td-chip-input>'
+      + `<p class="sb-note" id="${a}-log">Enter = chip thường; ↓ tới dòng "Tạo bút danh" rồi Enter = event create.</p></div>`;
+  },
+};

@@ -527,6 +527,12 @@ upload, pageSize })`: registry cấp module, mỗi lần gọi **thay toàn bộ
 `list` / `get` → `TypeError`. `TdMediaPicker.defaults` = bản sao nông. Thứ tự resolve lúc mở: tham số `open()` >
 `field.pickerOptions` > `field.adapter` > defaults; `selection` luôn từ người gọi.
 
+**Cổng trước khi chèn (0.117.0)** — `beforeApply(selection, { signal })` (ở `open()` hoặc `configureDefaults`): gọi một lần
+với lựa chọn cuối trước khi picker kết thúc; `false` → ở lại + `applyRejected`, ném `{ userMessage }` → chữ đó, lỗi khác →
+`console.error` + `applyFailed`, abort → im lặng. `selection.minSize: { width?, height? }` (chỉ ở `open()`) khoá chọn ảnh nhỏ hơn.
+Xem [media-picker.md › beforeApply](../components/media-picker.md#cổng-trước-khi-chèn--beforeapply-01170) /
+[› minSize](../components/media-picker.md#kích-thước-tối-thiểu--selectionminsize-01170). Server luôn kiểm lại.
+
 **Option theo lần mở** — `TdMediaPicker.open(options)` / `<td-media-picker>.options`: bảng đủ ở
 [media-picker.md › Mở picker](../components/media-picker.md#mở-picker--tdmediapickeropenoptions). `messages`: chuỗi hoặc
 `(params) => string` (ném / không phải chuỗi → nhãn mặc định), luôn render bằng `textContent`.

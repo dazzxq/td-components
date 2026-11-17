@@ -478,6 +478,15 @@
 		justify-content: flex-end;
 	}
 
+	/* v0.117.0: the footer message (the media picker's minimum size / a rejected "Áp dụng"), created on first use only */
+	.td-crop-dialog__message {
+		flex: 1 1 12rem;
+		min-width: 0;
+		margin: 0;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-error);
+	}
+
 	/* < 720 px wide, or short (≤ 500 px high: phone landscape): full viewport, footer always inside + safe areas */
 	@media (max-width: 719.98px), (max-height: 500px) {
 		.td-modal.td-crop-dialog {

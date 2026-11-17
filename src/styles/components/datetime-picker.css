@@ -219,6 +219,12 @@
 		padding-inline-end: calc(var(--_td-dtp-clear-w) + 1px);
 	}
 
+	/* v0.117.0: a clearable, non-editable picker gives the reserved width back while the clear button is hidden (a
+	   browser without :has() keeps the reservation) */
+	.td-dtp--clearable:not(.td-dtp--editable) > .td-dtp__trigger:has(+ .td-dtp__clear[hidden]) {
+		padding-inline-end: 14px;
+	}
+
 	.td-dtp__clear {
 		z-index: 1; /* above the trigger it overlaps */
 		display: inline-flex;
@@ -387,7 +393,14 @@
 		outline: none; /* :focus-visible below (an idle transparent outline would draw a box in forced colours) */
 	}
 
-	.td-dtp--editable:not(.td-dtp--clearable) > .td-dtp__trigger,
+	.td-dtp--editable:not(.td-dtp--clearable) > .td-dtp__trigger {
+		padding-inline-end: 14px;
+		margin-inline-end: 1px;
+		border-start-end-radius: calc(var(--td-field-radius-md) - 1px);
+		border-end-end-radius: calc(var(--td-field-radius-md) - 1px);
+	}
+
+	/* split from the rule above: a browser without :has() drops only this rule */
 	.td-dtp--editable > .td-dtp__trigger:has(+ .td-dtp__clear[hidden]) {
 		padding-inline-end: 14px;
 		margin-inline-end: 1px;
