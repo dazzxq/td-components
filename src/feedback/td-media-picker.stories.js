@@ -245,7 +245,7 @@ export const DropBulk = {
   },
 };
 
-/** v0.118.0: `cardMeta: 'relative'` + `nameLines: 2` — the name clamps to 2 lines, the meta is one line ("174 KB · 5m trước"). */
+/** v0.118.0: `cardMeta: 'relative'` + `nameLines: 2` — the name clamps to 2 lines, the meta is one line ("174 KB · 5 phút trước"). */
 export const CompactCards = {
   name: 'Thẻ gọn: cardMeta + nameLines',
   render: () => frame('mp-compact', 'Thẻ gọn'),

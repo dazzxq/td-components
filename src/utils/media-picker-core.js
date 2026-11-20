@@ -192,7 +192,7 @@ import { clampFocal } from './crop-geometry.js';
  * @property {number} [maxPageSize] v0.110.0: integer 1-100 (default 72; anything else → 72) — the cap of `pageSize: 'auto'`
  * @property {boolean|{ trigger?: 'auto'|'button', maxItems?: number }} [loadMore] v0.110.0: false (default) = each page
  *   REPLACES the grid; true = `{ trigger: 'auto' }` = the next page is APPENDED (sentinel + "Tải thêm"); see `normalizeLoadMore`
- * @property {'absolute'|'relative'|((asset: any, ctx: any) => string)} [cardMeta] v0.118.0: the grid card's meta line (default 'absolute' = `{size} • {DD/MM/YYYY HH:mm}`; 'relative' = `{short size} · {5m trước}` on one line; a function = the app's text)
+ * @property {'absolute'|'relative'|((asset: any, ctx: any) => string)} [cardMeta] v0.118.0: the grid card's meta line (default 'absolute' = `{size} • {DD/MM/YYYY HH:mm}`; 'relative' = `{short size} · {5 phút trước}` on one line; a function = the app's text)
  * @property {1|2|3} [nameLines] v0.118.0: the card name clamp (default 1 = one ellipsis line)
  * @property {'auto'|'fixed'} [columns] v0.106.0: 'auto' (default) = the auto-fill grid; 'fixed' = 8/6/4/3/2/1 columns (always a
  *   divisor of 24, so a pageSize of 24 fills every row; card min width = token `--td-media-picker-fixed-card-min`); unknown → 'auto' + a
@@ -723,12 +723,12 @@ export function shortFileSize(bytes) {
   return `${r} ${SHORT_UNITS[i]}`;
 }
 
-export const RELATIVE_UNITS_DEFAULT = Object.freeze({ s: 's', m: 'm', h: 'h', d: 'd', w: 'w', mo: 'mo', y: 'y' });
-export const RELATIVE_TEMPLATE_DEFAULT = '{n}{unit} trước';
+export const RELATIVE_UNITS_DEFAULT = Object.freeze({ s: 'giây', m: 'phút', h: 'giờ', d: 'ngày', w: 'tuần', mo: 'tháng', y: 'năm' });
+export const RELATIVE_TEMPLATE_DEFAULT = '{n} {unit} trước';
 
 /**
- * v0.118.0 (QĐ1) short relative time "5m trước": floor, units s/m/h/d/w/mo/y (1w = 7d, 1mo = 30d, 1y = 365d). A future
- * date → `0s`; a missing / invalid date → ''. `labels = { template?, units? }` (the `relativeTime` / `relativeUnits` labels).
+ * v0.118.0 (QĐ1) short relative time "5 phút trước": floor, units s/m/h/d/w/mo/y (1w = 7d, 1mo = 30d, 1y = 365d). A future
+ * date → `0 giây`; a missing / invalid date → ''. `labels = { template?, units? }` (the `relativeTime` / `relativeUnits` labels).
  * @param {unknown} date ISO string | Date | epoch ms
  * @param {number} [now]
  * @param {{ template?: string, units?: Record<string, string> }} [labels]

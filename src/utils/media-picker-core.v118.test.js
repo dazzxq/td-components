@@ -46,22 +46,22 @@ describe('relativeTime (QĐ1)', () => {
   const D = 86400;
 
   it('each unit and its boundaries (floor)', () => {
-    const cases = [[0, '0s trước'], [59, '59s trước'], [60, '1m trước'], [3599, '59m trước'], [3600, '1h trước'],
-      [D - 1, '23h trước'], [D, '1d trước'], [7 * D - 1, '6d trước'], [7 * D, '1w trước'], [30 * D - 1, '4w trước'],
-      [30 * D, '1mo trước'], [365 * D - 1, '12mo trước'], [365 * D, '1y trước'], [800 * D, '2y trước']];
+    const cases = [[0, '0 giây trước'], [59, '59 giây trước'], [60, '1 phút trước'], [3599, '59 phút trước'], [3600, '1 giờ trước'],
+      [D - 1, '23 giờ trước'], [D, '1 ngày trước'], [7 * D - 1, '6 ngày trước'], [7 * D, '1 tuần trước'], [30 * D - 1, '4 tuần trước'],
+      [30 * D, '1 tháng trước'], [365 * D - 1, '12 tháng trước'], [365 * D, '1 năm trước'], [800 * D, '2 năm trước']];
     for (const [sec, want] of cases) assert.equal(relativeTime(ago(sec), now), want, `${sec}s`);
   });
 
-  it('a future date → 0s; missing / invalid → empty', () => {
-    assert.equal(relativeTime(ago(-3600), now), '0s trước');
+  it('a future date → 0 giây; missing / invalid → empty', () => {
+    assert.equal(relativeTime(ago(-3600), now), '0 giây trước');
     for (const v of [undefined, null, '', 'nope', NaN, {}, true]) assert.equal(relativeTime(v, now), '', String(v));
   });
 
   it('accepts a Date and epoch ms; custom template and units', () => {
-    assert.equal(relativeTime(new Date(now - 300000), now), '5m trước');
-    assert.equal(relativeTime(now - 300000, now), '5m trước');
+    assert.equal(relativeTime(new Date(now - 300000), now), '5 phút trước');
+    assert.equal(relativeTime(now - 300000, now), '5 phút trước');
     assert.equal(relativeTime(ago(300), now, { template: '{n} {unit} ago', units: { m: 'min' } }), '5 min ago');
-    assert.equal(relativeTime(ago(300), now, { template: '', units: { m: '' } }), '5m trước', 'empty labels → defaults');
+    assert.equal(relativeTime(ago(300), now, { template: '', units: { m: '' } }), '5 phút trước', 'empty labels → defaults');
   });
 });
 

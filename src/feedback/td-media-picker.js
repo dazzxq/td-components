@@ -321,9 +321,9 @@ export class TdMediaPicker extends HTMLElement {
     sizeUnknown: 'Không xác định được kích thước ảnh để kiểm tra kích thước tối thiểu',
     /** v0.117.0 (QĐ4): `beforeApply` returned false / failed without a `userMessage` */
     applyRejected: 'Không thể chèn mục đã chọn',
-    /** v0.118.0 `cardMeta: 'relative'`: "{n}{unit} trước" + the unit labels (`relativeUnits.s` … `.y`) */
-    relativeTime: '{n}{unit} trước',
-    relativeUnits: { s: 's', m: 'm', h: 'h', d: 'd', w: 'w', mo: 'mo', y: 'y' },
+    /** v0.118.0 `cardMeta: 'relative'`: "{n} {unit} trước" + the unit labels (`relativeUnits.s` … `.y`) */
+    relativeTime: '{n} {unit} trước',
+    relativeUnits: { s: 'giây', m: 'phút', h: 'giờ', d: 'ngày', w: 'tuần', mo: 'tháng', y: 'năm' },
     applyFailed: 'Không kiểm tra được, thử lại sau',
     conflict: 'Media đã bị thay đổi ở nơi khác.',
     reload: 'Tải lại',
@@ -2398,7 +2398,7 @@ export class TdMediaPicker extends HTMLElement {
 
   /**
    * @private the card meta text (also the open button's accessible name part). v0.118.0 `cardMeta`: 'absolute' (default,
-   * today's text) | 'relative' (`{short size} · {5m trước}`) | a function `(asset, ctx) => string` (a bad result / throw →
+   * today's text) | 'relative' (`{short size} · {5 phút trước}`) | a function `(asset, ctx) => string` (a bad result / throw →
    * the absolute text; the throw is logged once per open).
    */
   _cardMeta(asset) {

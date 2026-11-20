@@ -186,9 +186,9 @@ Mỗi mục là một item [`td-media-grid`](media-grid.md) (`select-mode="tick"
 Thẻ hẹp thì dòng "174.32 KB • 17/11/2026 02:02" bị gập thành 2 dòng. Hai option (cả `open()` lẫn `configureDefaults()`,
 mặc định giữ nguyên từng byte):
 
-- `cardMeta: 'relative'` — `{dung lượng ngắn} · {thời gian tương đối}` trên **đúng 1 dòng** (`174 KB · 5m trước`). Dung
+- `cardMeta: 'relative'` — `{dung lượng ngắn} · {thời gian tương đối}` trên **đúng 1 dòng** (`174 KB · 5 phút trước`). Dung
   lượng ngắn: `B` / `KB` / `MB` / `GB` / `TB`, tối đa 3 chữ số có nghĩa (`12.3 KB`, `1.2 MB`). Thời gian tính từ `createdAt`
-  lúc vẽ thẻ (không tự nhảy): `s m h d w mo y` (1w = 7d, 1mo = 30d, 1y = 365d); ngày ở tương lai → `0s`; thiếu một phần thì
+  lúc vẽ thẻ (không tự nhảy): `giây phút giờ ngày tuần tháng năm` (khoá `s m h d w mo y`) (1w = 7d, 1mo = 30d, 1y = 365d); ngày ở tương lai → `0 giây`; thiếu một phần thì
   chỉ hiện phần kia. Không có tooltip; panel chi tiết vẫn hiện ngày tuyệt đối. Dòng meta là tên trợ năng của nút mở thẻ.
 - `cardMeta: (asset, ctx) => string` — chữ của app (đặt bằng `textContent`). `ctx = { formatSize, formatShortSize,
   formatDate, formatRelative, now }`. Trả về chuỗi rỗng / không phải chuỗi / ném lỗi → quay về chữ `'absolute'` (lỗi ghi
@@ -1491,7 +1491,7 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `selectFirst` · `notReady` | "Hãy chọn ít nhất một mục." · "Mục này chưa sẵn sàng để chọn." |
 | `sizeTooSmall` · `sizeTooSmallWidth` · `sizeTooSmallHeight` · `sizeUnknown` | 0.117.0 ([`selection.minSize`](#kích-thước-tối-thiểu--selectionminsize-01170)): "Ảnh phải có kích thước tối thiểu {w} × {h} px" · "Ảnh phải có chiều rộng tối thiểu {w} px" · "Ảnh phải có chiều cao tối thiểu {h} px" · "Không xác định được kích thước ảnh để kiểm tra kích thước tối thiểu" |
 | `applyRejected` · `applyFailed` | 0.117.0 ([`beforeApply`](#cổng-trước-khi-chèn--beforeapply-01170)): "Không thể chèn mục đã chọn" · "Không kiểm tra được, thử lại sau" |
-| `relativeTime` · `relativeUnits.s` / `.m` / `.h` / `.d` / `.w` / `.mo` / `.y` (0.118) | `cardMeta: 'relative'`: "{n}{unit} trước" · "s" "m" "h" "d" "w" "mo" "y" (ghi đè từng đơn vị bằng khoá phẳng `'relativeUnits.m': 'phút'` trong `messages`, hoặc đổi cả `TdMediaPicker.labels.relativeUnits`) |
+| `relativeTime` · `relativeUnits.s` / `.m` / `.h` / `.d` / `.w` / `.mo` / `.y` (0.118) | `cardMeta: 'relative'`: "{n} {unit} trước" · "giây" "phút" "giờ" "ngày" "tuần" "tháng" "năm" (ghi đè từng đơn vị bằng khoá phẳng `'relativeUnits.m': 'phút'` trong `messages`, hoặc đổi cả `TdMediaPicker.labels.relativeUnits`) |
 | `conflict` · `reload` · `video` | "Media đã bị thay đổi ở nơi khác." · "Tải lại" · "Video" |
 | `download` · `downloadExpired` · `copyLink` | "Tải về" · "Liên kết tải đã hết hạn" · "Copy link" |
 | `delete` · `deleteTitle` · `deleteMessage` | "Xoá" · "Xác nhận xoá" · `Bạn có chắc muốn xoá "{name}"? Hành động này không thể hoàn tác.` |

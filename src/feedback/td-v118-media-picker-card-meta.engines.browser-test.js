@@ -86,12 +86,12 @@ describe('td-media-picker — cardMeta (v0.118.0 QĐ1)', () => {
   it("'relative': short size · relative time, one line, no tooltip, aria-label uses it", async () => {
     await openReady({ cardMeta: 'relative' }, (db) => edit(db, 'm60', { byteSize: 174 * 1024 + 300, createdAt: MIN5() }));
     expect(pickerRoot().getAttribute('data-card-meta')).to.equal('single');
-    expect(metaEl('m60').textContent).to.equal('174 KB · 5m trước');
+    expect(metaEl('m60').textContent).to.equal('174 KB · 5 phút trước');
     const cs = getComputedStyle(metaEl('m60'));
     expect(cs.whiteSpace).to.equal('nowrap');
     expect(cs.textOverflow).to.equal('ellipsis');
     expect(metaEl('m60').hasAttribute('title')).to.equal(false);
-    expect(opener('m60').getAttribute('aria-label')).to.contain('174 KB · 5m trước');
+    expect(opener('m60').getAttribute('aria-label')).to.contain('174 KB · 5 phút trước');
   });
 
   it('byteSize 0 → only the relative time, no separator; an invalid date → only the size', async () => {
@@ -99,7 +99,7 @@ describe('td-media-picker — cardMeta (v0.118.0 QĐ1)', () => {
       edit(db, 'm60', { byteSize: 0, createdAt: MIN5() });
       edit(db, 'm59', { byteSize: 2048, createdAt: 'nope' });
     });
-    expect(metaEl('m60').textContent).to.equal('5m trước');
+    expect(metaEl('m60').textContent).to.equal('5 phút trước');
     expect(metaEl('m59').textContent).to.equal('2 KB');
   });
 
@@ -121,7 +121,7 @@ describe('td-media-picker — cardMeta (v0.118.0 QĐ1)', () => {
     try {
       TdMediaPicker.labels.relativeUnits = { ...saved, m: 'ph' };
       await openReady({ cardMeta: 'relative' }, (db) => edit(db, 'm60', { byteSize: 1024, createdAt: MIN5() }));
-      expect(metaEl('m60').textContent).to.equal('1 KB · 5ph trước');
+      expect(metaEl('m60').textContent).to.equal('1 KB · 5 ph trước');
     } finally {
       TdMediaPicker.labels.relativeUnits = saved;
     }
@@ -137,7 +137,7 @@ describe('td-media-picker — cardMeta (v0.118.0 QĐ1)', () => {
     expect(pickerRoot().getAttribute('data-card-meta')).to.equal('single');
     expect(Object.keys(ctx).sort()).to.deep.equal(['formatDate', 'formatRelative', 'formatShortSize', 'formatSize', 'now']);
     expect(ctx.formatSize(1536)).to.equal('1.5 KB');
-    expect(ctx.formatRelative(MIN5())).to.equal('5m trước');
+    expect(ctx.formatRelative(MIN5())).to.equal('5 phút trước');
     expect(ctx.formatDate('2026-11-17T02:02:00Z')).to.match(/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/);
     expect(typeof ctx.now).to.equal('number');
   });
@@ -179,7 +179,7 @@ describe('td-media-picker — cardMeta (v0.118.0 QĐ1)', () => {
   it('configureDefaults applies and open overrides', async () => {
     TdMediaPicker.configureDefaults({ cardMeta: 'relative', nameLines: 2 });
     await openReady({}, (db) => edit(db, 'm60', { byteSize: 1024, createdAt: MIN5() }));
-    expect(metaEl('m60').textContent).to.equal('1 KB · 5m trước');
+    expect(metaEl('m60').textContent).to.equal('1 KB · 5 phút trước');
     expect(pickerRoot().getAttribute('data-name-lines')).to.equal('2');
     await closeAll();
     await openReady({ cardMeta: 'absolute', nameLines: 1 });

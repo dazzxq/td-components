@@ -4,6 +4,11 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.118.1
+
+### Sửa
+- Media picker `cardMeta: 'relative'` mặc định dùng chữ tiếng Việt: "174 KB · 5 phút trước", "3 ngày trước", "2 năm trước". `relativeTime` là `'{n} {unit} trước'`, `relativeUnits` là giây / phút / giờ / ngày / tuần / tháng / năm (helper `relativeTime` trong `media-picker-core` cùng mặc định). Site vẫn ghi đè được bằng `messages` hoặc `TdMediaPicker.labels`.
+
 ## 0.118.0
 
 ### Thêm
