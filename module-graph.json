@@ -366,6 +366,7 @@
     ],
     "src/feedback/td-menu.js": [
       "src/icons/td-icon.js",
+      "src/utils/breakpoints-internal.js",
       "src/utils/check-mark.js",
       "src/utils/floating.js",
       "src/utils/layers.js",

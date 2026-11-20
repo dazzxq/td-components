@@ -1280,6 +1280,52 @@ async function chromiumSemantics(browser) {
       expect(!(await page.evaluate(() => !!document.querySelector('body > .td-menu--panel'))), 'a tap outside did not close the panel');
     });
 
+    // v0.118.0 (plan v0.118.0-menu-submenu QĐ5 / D2): a touch-first device gets the drill-down even when a flyout fits
+    await it(tag, 'menu submenu: coarse pointer at 800px wide drills down in place; Back row ≥ 44px, a tap goes back; a child tap closes all', async () => {
+      await load(page);
+      await page.setViewportSize({ width: 800, height: 844 });
+      try {
+      await page.evaluate(async () => {
+        const { TdMenu } = await import('/src/feedback/td-menu.js');
+        window.scrollTo(0, 0);
+        const b = document.createElement('button'); b.id = 'g-sub-trig'; b.textContent = 'Mở'; document.body.prepend(b);
+        window.__sub = [];
+        b.addEventListener('click', () => TdMenu.open(b, [
+          { label: 'Sửa', onSelect() {} },
+          { label: 'Chuyển sang', items: [{ label: 'Album A', onSelect: () => window.__sub.push('A') }, { label: 'Album B', onSelect() {} }] },
+        ]));
+      });
+      await (async () => { const c = await centre(page, '#g-sub-trig'); await page.touchscreen.tap(c.x, c.y); })();
+      await page.waitForSelector('body > .td-menu .td-menu__item');
+      const parent = 'body > .td-menu:not(.td-menu--sub) .td-menu__item[aria-haspopup="menu"]';
+      await (async () => { const c = await centre(page, parent); await page.touchscreen.tap(c.x, c.y); })();
+      await page.waitForSelector('body > .td-menu--sub .td-menu__back');
+      const st = await page.evaluate(() => {
+        const root = document.querySelector('body > .td-menu:not(.td-menu--sub)');
+        const sub = document.querySelector('body > .td-menu--sub');
+        const back = sub.querySelector('.td-menu__back');
+        const rr = root.getBoundingClientRect(); const sr = sub.getBoundingClientRect();
+        return { drill: root.getAttribute('data-sub'), sameLeft: Math.abs(rr.left - sr.left) < 1, sameW: Math.abs(rr.width - sr.width) < 1,
+          backH: back.getBoundingClientRect().height, backText: back.textContent.trim() };
+      });
+      expect(st.drill === 'drill' && st.sameLeft && st.sameW, `drill-down in place: ${JSON.stringify(st)}`);
+      expect(st.backH >= 44, `Back row height ${st.backH}`);
+      expect(st.backText.includes('Chuyển sang'), `Back row label: ${st.backText}`);
+      await (async () => { const c = await centre(page, 'body > .td-menu--sub .td-menu__back'); await page.touchscreen.tap(c.x, c.y); })();
+      await frames(page, 2);
+      expect(await page.evaluate(() => !document.querySelector('body > .td-menu--sub') && !!document.querySelector('body > .td-menu')), 'Back tap did not return to the root');
+      await (async () => { const c = await centre(page, parent); await page.touchscreen.tap(c.x, c.y); })();
+      await page.waitForSelector('body > .td-menu--sub .td-menu__item:not(.td-menu__back)');
+      { const c = await centre(page, 'body > .td-menu--sub .td-menu__item:not(.td-menu__back)'); await page.touchscreen.tap(c.x, c.y); }
+      await frames(page, 2);
+      const end = await page.evaluate(() => ({ open: !!document.querySelector('body > .td-menu'), log: window.__sub.join(',') }));
+      expect(!end.open && end.log === 'A', `child tap: ${JSON.stringify(end)}`);
+      } finally {
+        await page.evaluate(() => document.querySelector('#g-sub-trig')?.remove());
+        await page.setViewportSize({ width: 390, height: 844 });
+      }
+    });
+
     await it(tag, 'copy: two quick taps while the copy is pending = one state change', async () => {
       await load(page);
       await page.evaluate(() => {

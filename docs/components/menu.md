@@ -13,7 +13,7 @@ tin khi rê chuột (dùng [`TdHovercard`](hovercard.md)).
 | Import | `import { TdMenu } from '@dazzxq/td-components/menu'` |
 | Loại | API JS tĩnh (static class), không có tag |
 | Form-associated | không |
-| Từ phiên bản | 0.12.0 (registry tuỳ chọn `define` / `register` / `bindAll`: 0.14.0; mục tuỳ biến `type: 'custom'`: 0.53.0) |
+| Từ phiên bản | 0.12.0 (registry tuỳ chọn `define` / `register` / `bindAll`: 0.14.0; mục tuỳ biến `type: 'custom'`: 0.53.0; menu con `items`: 0.118.0) |
 | CSS | cần `td.css` (phần `src/styles/components/menu.css`) |
 
 Import không có side effect: không có gì chạy, không lắng nghe sự kiện nào cho tới khi bạn gọi `open`, `bind`,
@@ -358,6 +358,55 @@ nhóm, Sáng, nút radio, đã chọn". Menu **không** có hàng custom giữ �
   panel; panel đóng thì popup con đóng trước. Mở **`TdMenu` khác** từ nội dung sẽ đóng panel (một menu một lúc).
 - Nội dung lớn lên / co lại (td-tabs đổi nội dung) → panel tự đặt lại vị trí.
 
+### 8. Menu con — `items` (0.118.0)
+
+Thêm `items` vào một mục → mục đó thành **mục cha**: có mũi tên `›` ở cuối và mở một menu con. Menu con thuộc **cùng
+phiên** với menu gốc (vẫn "một menu một lúc"), không phải một `TdMenu.open()` thứ hai
+([ADR 0046](../internal/decisions/0046-menu-submenu.md)).
+
+```js
+TdMenu.bind(button, (ctx) => [
+  { label: 'Sửa', icon: 'pencil', onSelect: edit },
+  { label: 'Chuyển sang', icon: 'folder', items: albums.map((a) => ({
+    label: a.title, onSelect: () => moveTo(a.id), when: () => a.id !== ctx.albumId,
+  })) },
+  { separator: true },
+  { label: 'Xoá', danger: true, onSelect: remove },
+], { ctx: { albumId } });
+```
+
+**Chỉ một cấp.** Apple Human Interface Guidelines ([Menus](https://developer.apple.com/design/human-interface-guidelines/menus),
+[Context menus](https://developer.apple.com/design/human-interface-guidelines/context-menus)) và hướng dẫn UX của Windows
+([Menus](https://learn.microsoft.com/en-us/windows/win32/uxguide/cmd-menus)) đều khuyên giữ menu con ở một cấp: menu lồng
+sâu khó với tới bằng chuột, khó dò và khó nhớ. `items` bên trong một mục con bị bỏ qua (cảnh báo một lần, mục vẫn là mục
+thường). Cần nhiều cấp hơn (cây thư mục, danh mục nhiều tầng) → mở một hộp thoại chọn ([`TdModal`](modal.md) kèm cây
+hoặc danh sách có tìm kiếm) thay vì menu.
+
+| Quy tắc | Chi tiết |
+|---|---|
+| Mục cha | Chỉ mở menu con: `onSelect` / `onClick` / `href` / `newTab` / `download` / `type: 'checkbox' \| 'radio'` / `checked` bị bỏ qua (**một** cảnh báo). Vẫn có `icon`, `hint`, `danger`, `disabled`, `id`, `when`, `order` |
+| Mục con | Như mục gốc: `onSelect`, `href` (cùng chính sách URL), `download`, checkbox, radio (nhóm radio chỉ tính trong menu con), `disabled`, `hint`, `danger`, `when(ctx)` với cùng `ctx`. `type: 'custom'` trong menu con bị bỏ (cảnh báo) |
+| Menu con rỗng | Mọi mục con bị ẩn / không hợp lệ → **mục cha bị bỏ**, separator quanh nó tự gộp |
+| `type: 'custom'` + `items` | Vẫn là hàng custom, `items` bị bỏ (cảnh báo) |
+| Registry | Mục `define` / `register` làm mục cha được |
+| Chọn mục con | Như chọn mục gốc: đóng **cả cây** (`onClose('select')`), focus trigger, rồi gọi `onSelect(ctx)` — `ctx` giống hệt mục gốc (không có trường `parent`). Checkbox con: bật / tắt tại chỗ, cây vẫn mở |
+| Menu không có `items` | Markup, id, focus, listener giữ nguyên như 0.117.0 |
+
+**Hai kiểu hiển thị**, chọn lúc mở menu con:
+
+- **Flyout** (chuột / trackpad, màn ≥ 480px): menu con nằm sát cạnh menu gốc, phía cuối dòng (bên phải ở LTR) nếu vừa,
+  không thì phía đầu dòng, không bên nào vừa thì bên rộng hơn và kẹp vào viewport (lề 8px, có thể đè menu gốc). Mục con
+  đầu tiên thẳng hàng với mục cha; sát đáy màn thì đẩy lên. Cao tối đa `min(448px, viewport − 16px)`, dài hơn thì cuộn.
+  Rê chuột lên mục cha **dừng ~120ms** thì mở (lướt qua thì không). Đi chéo từ mục cha sang menu con qua các mục khác
+  không làm đóng nhờ **tam giác an toàn** (ân hạn 300ms). Rê sang mục khác thẳng → menu con đóng; rê ra khoảng trống →
+  menu con vẫn mở. Bấm mục cha → mở ngay và focus mục con đầu. Mục cha đang mở giữ nền đậm (`aria-expanded="true"`).
+- **Drill-down** (màn < 480px, hoặc thiết bị cảm ứng không có con trỏ mịn — kể cả iPad ngang): menu con **thay** menu gốc
+  tại chỗ (cùng vị trí, cùng bề rộng, cao tối đa như menu gốc và không đè trigger), hàng đầu là `‹ {nhãn mục cha}` để quay
+  lại (tên truy cập "Quay lại: {nhãn}", tiền tố từ `TdMenu.labels.back`). Không có logic hover.
+
+Kiểu hiển thị không đổi khi đổi cỡ cửa sổ lúc menu con đang mở (đóng mở lại để đổi). Menu con đi theo menu gốc khi cuộn /
+đổi cỡ; mục cha bị cuộn khuất trong menu gốc → chỉ menu con đóng.
+
 ## Property & method
 
 Tất cả là static trên `TdMenu`.
@@ -373,7 +422,7 @@ Tất cả là static trên `TdMenu`.
 | `TdMenu.register(name, item \| item[], { order?, group? })` | `() => void` (unregister) | Thêm mục vào menu tên `name` (trước hay sau `define` đều được) |
 | `TdMenu.has(name)` | `boolean` | Tên có danh sách base hoặc mục đăng ký |
 | `TdMenu.bindAll(root = document)` | `() => void` | Trigger khai báo `[data-td-menu="tên"]` trong `root` (event delegation — trigger thêm sau vẫn chạy). Idempotent theo root (gọi lại trả cùng unbind). Trigger đã `bind()` bị bỏ qua; trigger `disabled` / `aria-disabled="true"` không mở |
-| `TdMenu.labels` | `{ trigger: 'Tùy chọn' }` | Nhãn mặc định, ghi đè theo site: `TdMenu.labels.trigger = 'Options'` |
+| `TdMenu.labels` | `{ trigger: 'Tùy chọn', back: 'Quay lại' }` | Nhãn mặc định, ghi đè theo site: `TdMenu.labels.trigger = 'Options'`. `back` (0.118.0): tiền tố tên truy cập của hàng quay lại trong drill-down (`"Quay lại: {nhãn mục cha}"`) |
 
 Named export phụ: `safeMenuHref(href, page = location)` → chuỗi href an toàn hoặc `null` (đúng hàm kit dùng để lọc
 `href`, xem [Bảo mật](#bảo-mật)); `sanitizeDownloadName(name)` → tên file đã lọc cho `download` (0.17.0).
@@ -417,6 +466,7 @@ dùng `bind()`.
 | `id` | `string` | Xuất ra `data-item="{id}"` trên phần tử mục (để test/style) |
 | `order` | `number` | Chỉ dùng trong registry (menu đặt tên) |
 | `when` | `(ctx) => boolean` | Ẩn mục khi trả `false` |
+| `items` | `item[]` | 0.118.0: mục cha mở menu con với các mục này (một cấp; xem [mục 8](#8-menu-con--items-01180)). Chỉ nhận mảng |
 | `{ separator: true }` | — | Đường kẻ phân cách |
 
 `href` chỉ có tác dụng với `type: 'item'`. Mục link vẫn gọi `onSelect` (sau khi trình duyệt bắt đầu điều hướng, với
@@ -529,6 +579,33 @@ Menu panel (0.53.0 — khi có ít nhất một hàng `type: 'custom'`):
 Hàng không có `label`: `<div class="td-menu__custom">` (không `role`, không caption). Trigger: `aria-haspopup="dialog"` sau
 lần mở dựng được hàng custom.
 
+Menu con (0.118.0) — mục cha trong menu gốc, và menu con là một con **khác** của `<body>` (không nằm trong menu gốc):
+
+```html
+<button type="button" class="td-menu__item td-menu__item--parent" role="menuitem" tabindex="-1"
+        aria-haspopup="menu" aria-expanded="true" aria-controls="{m}-sub" aria-labelledby="{m}-label-1">
+  <span class="td-menu__label" id="{m}-label-1">Chuyển sang</span>
+  [<span class="td-menu__icon" …>…</span>]
+  <span class="td-menu__chevron" data-td-icon="next" aria-hidden="true"><svg …/></span>
+  [<span class="td-menu__hint" …>…</span>]
+</button>
+
+<div class="td-menu td-menu--sub td-glass-surface td-glass-surface--strong" id="{m}-sub" role="menu"
+     aria-labelledby="{m}-label-1" data-state="open" data-placement="end">   <!-- end | start; drill: bottom | top -->
+  <!-- chỉ drill-down: -->
+  <button type="button" class="td-menu__item td-menu__back" role="menuitem" tabindex="-1" data-td-back
+          aria-label="Quay lại: Chuyển sang">
+    <span class="td-menu__chevron" data-td-icon="prev" aria-hidden="true"><svg …/></span>
+    <span class="td-menu__label">Chuyển sang</span>
+  </button>
+  <div class="td-menu__separator" role="separator"></div>
+  <!-- mục con: markup như mục gốc, id dạng {m}-sub-label-{i} -->
+</div>
+```
+
+`aria-controls` chỉ có khi menu con đang mở. Drill-down: menu gốc có `data-sub="drill"` (ẩn bằng `visibility: hidden`,
+vẫn trong DOM).
+
 | Selector / attribute | Ý nghĩa |
 |---|---|
 | `.td-menu[data-placement="bottom\|top"]` | Phía thực tế sau khi tự lật |
@@ -540,6 +617,11 @@ lần mở dựng được hàng custom.
 | Trigger `[aria-expanded="true"]` | Menu của trigger đang mở (`.td-menu-btn` tô nền) |
 | `.td-menu--panel` | 0.53.0: menu panel (có hàng custom) |
 | `.td-menu__section` / `.td-menu__custom` / `.td-menu__custom-label` | 0.53.0: khúc mục thường / hàng custom (padding = mục, không nền, không hover) / caption (`--td-color-text-label`) |
+| `.td-menu__item--parent` / `.td-menu__chevron` | 0.118.0: mục cha / mũi tên cuối mục (màu `--td-menu-icon-fg`, lật theo chiều chữ) |
+| `.td-menu__item[aria-expanded="true"]` | 0.118.0: mục cha đang mở menu con — nền `--td-menu-item-active` (không phụ thuộc hover) |
+| `.td-menu--sub[data-placement="end\|start\|bottom\|top"]` | 0.118.0: menu con; flyout ở phía cuối / đầu dòng, drill-down dưới / trên trigger |
+| `.td-menu__back` | 0.118.0: hàng quay lại của drill-down |
+| `.td-menu[data-sub="drill"]` | 0.118.0: menu gốc đang bị menu con drill-down thay chỗ |
 
 Nút do `TdMenu.button()` tạo (site render server-side có thể in đúng markup này rồi `bind()` hoặc dùng `data-td-menu`):
 
@@ -580,6 +662,19 @@ rê chuột / được bấm.
 | Trong menu | `Escape` | Đóng, focus về trigger (phím được "tiêu thụ", không lọt xuống modal bên dưới) |
 | Trong menu | `Tab` / `Shift+Tab` | Đóng và đi tiếp: focus rơi vào phần tử **sau / trước** trigger (không quay lại trigger). Trong modal, focus trap của modal tiếp tục |
 
+Menu con (0.118.0). `←` / `→` theo chiều chữ (ở RTL đảo lại):
+
+| Ở đâu | Phím | Hành vi |
+|---|---|---|
+| Mục cha (không disabled) | `→`, `Enter`, `Space`, click | Mở menu con, focus mục con đầu (bỏ qua mục disabled) |
+| Mục thường ở menu gốc | `←` / `→` | Không làm gì |
+| Trong menu con | `↑` `↓` `Home` `End`, gõ chữ | Như menu gốc, chỉ trong menu con (type-ahead bỏ qua hàng quay lại) |
+| Trong menu con | `←`, `Escape`, hàng quay lại (drill-down) | Đóng **chỉ** menu con, focus mục cha. `Escape` lần nữa đóng menu gốc, focus trigger |
+| Trong menu con | `→` | Không làm gì (không có cấp sâu hơn) |
+| Trong menu con | `Tab` / `Shift+Tab` | Đóng cả cây và đi tiếp từ trigger (như menu gốc), kể cả khi menu gốc là menu panel |
+
+- Rê chuột mở menu con **không** đổi focus; bàn phím vẫn ở mục đang focus.
+- Trong `TdModal`: menu con không bị `inert`, `Escape` đóng từng cấp trước khi tới modal; focus không bao giờ rơi về `<body>`.
 - Menu panel (có hàng `type: 'custom'`, 0.53.0): bảng phím riêng ở [mục 7](#menu-panel-ngữ-nghĩa-và-bàn-phím) — Tab đi qua
   các điểm dừng thay vì đóng ngay, phím trong nội dung thuộc về nội dung.
 - Focus thật di chuyển giữa các mục (roving focus, `tabindex="-1"`).
@@ -622,6 +717,9 @@ Xem thêm [Hướng dẫn bảo mật](../guides/security.md).
 ## Cảm ứng
 
 - Mục menu và nút mở menu có hình nhấn (`--td-option-pressed-bg`); hover chỉ trên con trỏ mịn. Mục disabled không có hình nhấn.
+- Menu con (0.118.0): thiết bị cảm ứng không có con trỏ mịn (`pointer: coarse`, kể cả iPad ngang không trackpad) và màn
+  < 480px luôn dùng **drill-down** — chạm mục cha thì menu con thay chỗ, hàng `‹ {nhãn mục cha}` để quay lại. Không mở
+  bằng hover; chạm ngón tay trên máy lai (laptop màn cảm ứng) cũng không kích hoạt hover intent.
 
 Chuẩn chung: [Cảm ứng](../guides/touch.md).
 

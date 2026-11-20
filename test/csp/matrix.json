@@ -3655,6 +3655,72 @@
         "grid-template-columns"
       ],
       "selectorNote": "v0.53.0 (plan v0.53.0-menu-custom-item QĐ 1 / QĐ 11): the menu panel — role=dialog + role=menu sections + custom rows (a td-choice-group segmented, a static row). Text-bearing boxes size with the platform font metrics (height / width / margin-left excluded, as the v0.52 segmented state); position props excluded as the open menu."
+    },
+    {
+      "state": "submenu-open",
+      "setup": "const b=document.createElement('button'); b.type='button'; b.id='probe'; b.textContent='Thao tác'; b.style.setProperty('margin','40px'); window.__mount.appendChild(b); TdMenu.open(b,[{label:'Sửa',icon:'plus',onSelect(){}},{label:'Chuyển sang',icon:'link',id:'move',items:[{label:'Album A',onSelect(){}},{label:'Album B',hint:'12 ảnh',onSelect(){}},{separator:true},{label:'Xoá khỏi album',danger:true,onSelect(){}}]},{label:'Khoá',disabled:true,items:[{label:'Không'}]},{separator:true},{label:'Xoá',danger:true,onSelect(){}}],{align:'start'}); document.querySelector('.td-menu__item--parent[data-item=\"move\"]').click();",
+      "selectors": [
+        ".td-menu__item--parent",
+        ".td-menu__item[aria-expanded=\"true\"]",
+        ".td-menu__item--parent[aria-disabled=\"true\"]",
+        ".td-menu__chevron",
+        ".td-menu--sub",
+        ".td-menu--sub .td-menu__item",
+        ".td-menu--sub .td-menu__hint",
+        ".td-menu--sub .td-menu__item--danger"
+      ],
+      "portal": [
+        ".td-menu__item--parent",
+        ".td-menu__item[aria-expanded=\"true\"]",
+        ".td-menu__item--parent[aria-disabled=\"true\"]",
+        ".td-menu__chevron",
+        ".td-menu--sub",
+        ".td-menu--sub .td-menu__item",
+        ".td-menu--sub .td-menu__hint",
+        ".td-menu--sub .td-menu__item--danger"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "top",
+        "left",
+        "right",
+        "bottom"
+      ],
+      "selectorNote": "v0.118.0 (plan v0.118.0-menu-submenu, ADR 0046): one-level submenu. The child is a second <body> child (.td-menu--sub). Position props excluded as the open menu; the drill child copies the root width / height cap through CSSOM, so its size props are font-metric dependent and excluded."
+    },
+    {
+      "state": "submenu-drill",
+      "touch": true,
+      "setup": "const b=document.createElement('button'); b.type='button'; b.id='probe'; b.textContent='Thao tác'; b.style.setProperty('margin','40px'); window.__mount.appendChild(b); TdMenu.open(b,[{label:'Sửa',icon:'plus',onSelect(){}},{label:'Chuyển sang',icon:'link',id:'move',items:[{label:'Album A',onSelect(){}},{label:'Album B',hint:'12 ảnh',onSelect(){}},{separator:true},{label:'Xoá khỏi album',danger:true,onSelect(){}}]},{label:'Khoá',disabled:true,items:[{label:'Không'}]},{separator:true},{label:'Xoá',danger:true,onSelect(){}}],{align:'start'}); document.querySelector('.td-menu__item--parent[data-item=\"move\"]').click();",
+      "selectors": [
+        ".td-menu[data-sub=\"drill\"]",
+        ".td-menu--sub",
+        ".td-menu__back",
+        ".td-menu__back .td-menu__chevron",
+        ".td-menu__back .td-menu__label",
+        ".td-menu--sub .td-menu__item:not(.td-menu__back)"
+      ],
+      "portal": [
+        ".td-menu[data-sub=\"drill\"]",
+        ".td-menu--sub",
+        ".td-menu__back",
+        ".td-menu__back .td-menu__chevron",
+        ".td-menu__back .td-menu__label",
+        ".td-menu--sub .td-menu__item:not(.td-menu__back)"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "top",
+        "left",
+        "right",
+        "bottom",
+        "width",
+        "min-width",
+        "max-width",
+        "max-height",
+        "height"
+      ],
+      "selectorNote": "v0.118.0 (plan v0.118.0-menu-submenu, ADR 0046): one-level submenu. The child is a second <body> child (.td-menu--sub). Position props excluded as the open menu; the drill child copies the root width / height cap through CSSOM, so its size props are font-metric dependent and excluded."
     }
   ],
   "td-chip-input": [
@@ -5363,6 +5429,40 @@
         "height"
       ],
       "excludeNote": "the grid height follows the card text (font metrics differ mac vs Linux CI); column count is covered by grid-template-columns"
+    },
+    {
+      "state": "card-meta",
+      "setup": "const { createMockAdapter } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); TdMediaPicker.open({ autoSelectFirst: false, adapter: createMockAdapter({ count: 24 }), cardMeta: 'relative', nameLines: 2, pageSize: 24, selection: { mode: 'multiple' } }); await w(400);",
+      "selectors": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker .td-modal__header",
+        ".td-media-picker__body",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__content",
+        ".td-media-picker__results",
+        ".td-media-picker__grid",
+        ".td-media-picker__name",
+        ".td-media-picker__meta"
+      ],
+      "portal": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker .td-modal__header",
+        ".td-media-picker__body",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__content",
+        ".td-media-picker__results",
+        ".td-media-picker__grid",
+        ".td-media-picker__name",
+        ".td-media-picker__meta"
+      ],
+      "settle": 600,
+      "selectorNote": "v0.118.0: cardMeta 'relative' + nameLines 2 — data-card-meta=single + data-name-lines=2 on the root: the name clamps to 2 lines, the meta stays on one nowrap line",
+      "excludeProps": [
+        "height"
+      ],
+      "excludeNote": "heights follow the card text (font metrics differ mac vs Linux CI); the clamp / nowrap / ellipsis props are covered by their own properties"
     },
     {
       "state": "upload",

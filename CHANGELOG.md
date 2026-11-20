@@ -4,6 +4,20 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.118.0
+
+### Thêm
+- `TdMenu` menu con một tầng: item có `items: [...]` thành mục cha (mũi tên `›` cuối dòng, `aria-haspopup="menu"` +
+  `aria-expanded`). Máy tính: rê chuột mở sau 120ms bên cạnh mục cha (bên phải nếu đủ chỗ, không thì bên trái, mục đầu
+  thẳng hàng mục cha), có tam giác an toàn khi kéo chéo; click cũng mở. Phím: ArrowRight / Enter / Space mở và vào mục
+  con đầu, ArrowLeft / Escape về mục cha, Escape lần nữa đóng hết; focus bàn phím sang mục gốc khác thì menu con đóng.
+  Cảm ứng hoặc màn dưới 480px: danh sách con thay tại chỗ, dòng đầu "‹ {tên mục cha}" để quay lại. Chọn mục con chạy
+  handler và đóng cả cây (`'select'`), click ra ngoài đóng mọi tầng. Mục con lồng thêm `items` bị bỏ qua kèm cảnh báo
+  (một tầng theo Apple HIG / Windows UX). Nhãn mới `TdMenu.labels.back`. ADR 0046.
+- `TdMediaPicker` `cardMeta`: `'absolute'` (mặc định, như cũ) | `'relative'` (`174 KB · 5m trước`, một dòng) | hàm
+  `(asset, ctx) => string` (ctx có `formatSize`, `formatShortSize`, `formatDate`, `formatRelative`, `now`). Nhãn mới
+  `relativeTime`, `relativeUnits`. `nameLines: 1 | 2 | 3` kẹp tên file. Khung chi tiết giữ ngày tuyệt đối.
+
 ## 0.117.0
 
 ### Thêm

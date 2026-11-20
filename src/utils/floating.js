@@ -230,3 +230,80 @@ export function placeFloating(trigger, panel, opts = {}) {
   s.setProperty('top', `${top}px`);
   return { side, top, left };
 }
+
+const rectOf = (r) => (r && typeof r.getBoundingClientRect === 'function' ? r.getBoundingClientRect() : r);
+
+/**
+ * v0.118.0 (plan v0.118.0-menu-submenu QĐ 3, ADR 0046): place a submenu `panel` BESIDE its parent row `ref`:
+ * - horizontally against `opts.edge` (the root menu's rect, else `ref`), abutting it (0 gap): the inline-end side
+ *   (right in LTR, left with `dir: 'rtl'`) when it fits in the viewport box ± margin, else the inline-start side when
+ *   it fits, else the side with more room, clamped into the box (it may then overlap the root);
+ * - vertically: the panel's first row level with `ref` (`top = ref.top − padding-top of the panel`), shifted up to
+ *   fit the bottom edge, then clamped to the top edge;
+ * - `opts.list` (the scrollable part) gets `max-height: opts.listMax` first, like placeFloating.
+ * Writes only top / left / max-height (CSSOM). `opts.box` / `opts.padTop` are injectable (node tests).
+ * @param {Element|DOMRect} ref the parent row (or its rect)
+ * @param {HTMLElement} panel position: fixed element
+ * @param {{ edge?: Element|DOMRect, list?: HTMLElement|null, listMax?: number, dir?: 'ltr'|'rtl', margin?: number,
+ *           box?: { top: number, left: number, right: number, bottom: number }, padTop?: number }} [opts]
+ * @returns {{ side: 'end'|'start', top: number, left: number }}
+ */
+export function placeBeside(ref, panel, opts = {}) {
+  const r = rectOf(ref);
+  const edge = opts.edge ? rectOf(opts.edge) : r;
+  const box = opts.box || viewportBox();
+  const M = opts.margin ?? EDGE;
+  const s = panel.style;
+  const list = opts.list || null;
+  if (list) {
+    if (opts.listMax) list.style.setProperty('max-height', `${opts.listMax}px`);
+    else list.style.removeProperty('max-height');
+  }
+  const w = panel.offsetWidth;
+  const h = panel.offsetHeight;
+  const rtl = opts.dir === 'rtl';
+  const rightX = edge.right;
+  const leftX = edge.left - w;
+  const fitsRight = rightX + w <= box.right - M;
+  const fitsLeft = leftX >= box.left + M;
+  let left;
+  let side;
+  if (rtl ? fitsLeft : fitsRight) {
+    side = 'end';
+    left = rtl ? leftX : rightX;
+  } else if (rtl ? fitsRight : fitsLeft) {
+    side = 'start';
+    left = rtl ? rightX : leftX;
+  } else {
+    const rightMore = box.right - edge.right >= edge.left - box.left;
+    side = rightMore !== rtl ? 'end' : 'start';
+    left = Math.max(box.left + M, Math.min(rightMore ? rightX : leftX, box.right - M - w));
+  }
+  const padTop = typeof opts.padTop === 'number' ? opts.padTop : parseFloat(getComputedStyle(panel).paddingTop) || 0;
+  let top = r.top - padTop;
+  if (top + h > box.bottom - M) top = box.bottom - M - h;
+  top = Math.max(top, box.top + M);
+  s.setProperty('left', `${left}px`);
+  s.setProperty('top', `${top}px`);
+  return { side, top, left };
+}
+
+/**
+ * v0.118.0 (QĐ 4): whether point `p` lies in the triangle a-b-c (edges included; a degenerate triangle contains
+ * nothing). The submenu "safe triangle": the exit point + the two corners of the submenu's near edge.
+ * @param {{ x: number, y: number }} p
+ * @param {{ x: number, y: number }} a
+ * @param {{ x: number, y: number }} b
+ * @param {{ x: number, y: number }} c
+ * @returns {boolean}
+ */
+export function inTriangle(p, a, b, c) {
+  const cross = (o, u, v) => (u.x - o.x) * (v.y - o.y) - (u.y - o.y) * (v.x - o.x);
+  if (cross(a, b, c) === 0) return false;
+  const d1 = cross(a, b, p);
+  const d2 = cross(b, c, p);
+  const d3 = cross(c, a, p);
+  const neg = d1 < 0 || d2 < 0 || d3 < 0;
+  const pos = d1 > 0 || d2 > 0 || d3 > 0;
+  return !(neg && pos);
+}

@@ -99,7 +99,7 @@ import {
   DefaultsRegistry, resolveOptions, cancelledOutcome, buildOutcome, normalizeAsset, normalizePage, normalizeFacets,
   normalizeFields, normalizeError, canDo, buildListRequest, requestKey, LatestRequest, SelectionModel, InitialLoad,
   Debouncer, SessionCache, formatLabel, PageState, defaultTitle, normalizeDeleteResult, normalizeDownloadResult,
-  normalizeCollections, autoPageSize, PAGE_SIZE_DEFAULT, minSizeReason, runBeforeApply,
+  normalizeCollections, autoPageSize, PAGE_SIZE_DEFAULT, minSizeReason, runBeforeApply, shortFileSize, relativeTime,
 } from '../utils/media-picker-core.js';
 import { createFacetControl, FieldForm, FIELD_LABELS } from './media-picker-fields.js';
 import { openUploadDialog, UPLOAD_LABELS } from './media-picker-upload.js';
@@ -321,6 +321,9 @@ export class TdMediaPicker extends HTMLElement {
     sizeUnknown: 'Không xác định được kích thước ảnh để kiểm tra kích thước tối thiểu',
     /** v0.117.0 (QĐ4): `beforeApply` returned false / failed without a `userMessage` */
     applyRejected: 'Không thể chèn mục đã chọn',
+    /** v0.118.0 `cardMeta: 'relative'`: "{n}{unit} trước" + the unit labels (`relativeUnits.s` … `.y`) */
+    relativeTime: '{n}{unit} trước',
+    relativeUnits: { s: 's', m: 'm', h: 'h', d: 'd', w: 'w', mo: 'mo', y: 'y' },
     applyFailed: 'Không kiểm tra được, thử lại sau',
     conflict: 'Media đã bị thay đổi ở nơi khác.',
     reload: 'Tải lại',
@@ -836,6 +839,9 @@ export class TdMediaPicker extends HTMLElement {
     root.setAttribute('data-detail-empty', ''); // review ISSUE-4: nothing viewed yet
     if (s.opts.columns === 'fixed') root.setAttribute('data-columns', 'fixed'); // v0.106.0
     if (s.lm) root.setAttribute('data-load-more', s.lm.trigger); // v0.110.0
+    // v0.118.0: `cardMeta` 'relative' / a function → one meta line; `nameLines` 2 | 3 → the name clamp
+    if (s.opts.cardMeta !== 'absolute') root.setAttribute('data-card-meta', 'single');
+    if (s.opts.nameLines > 1) root.setAttribute('data-name-lines', String(s.opts.nameLines));
     // Static markup only (no interpolation); every dynamic value is set through the DOM below.
     root.innerHTML = '<div class="td-modal__backdrop" aria-hidden="true"></div>'
       + '<div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg td-media-picker__dialog"'
@@ -2379,8 +2385,46 @@ export class TdMediaPicker extends HTMLElement {
   }
 
   /** @private `{size} • {DD/MM/YYYY HH:mm}` parts that exist */
-  _cardMeta(asset) {
+  _absMeta(asset) {
     return [asset.byteSize ? formatFileSize(asset.byteSize) : '', this._dateTime(asset.createdAt)].filter(Boolean).join(' • ');
+  }
+
+  /** @private v0.118.0: the relative time of an ISO date through the `relativeTime` / `relativeUnits.*` labels */
+  _relTime(iso, now = Date.now()) {
+    const units = {};
+    for (const u of ['s', 'm', 'h', 'd', 'w', 'mo', 'y']) units[u] = this._t(`relativeUnits.${u}`);
+    return relativeTime(iso, now, { template: this._t('relativeTime'), units });
+  }
+
+  /**
+   * @private the card meta text (also the open button's accessible name part). v0.118.0 `cardMeta`: 'absolute' (default,
+   * today's text) | 'relative' (`{short size} · {5m trước}`) | a function `(asset, ctx) => string` (a bad result / throw →
+   * the absolute text; the throw is logged once per open).
+   */
+  _cardMeta(asset) {
+    const mode = this._s.opts.cardMeta;
+    if (mode === 'relative') {
+      return [shortFileSize(asset.byteSize), this._relTime(asset.createdAt)].filter(Boolean).join(' · ');
+    }
+    if (typeof mode === 'function') {
+      const now = Date.now();
+      try {
+        const out = mode(asset, {
+          formatSize: formatFileSize,
+          formatShortSize: shortFileSize,
+          formatDate: (iso) => this._dateTime(iso),
+          formatRelative: (iso) => this._relTime(iso, now),
+          now,
+        });
+        if (typeof out === 'string' && out) return out;
+      } catch (err) {
+        if (!this._s.cardMetaErr) {
+          this._s.cardMetaErr = true;
+          try { console.error('td-media-picker: options.cardMeta function threw — using the absolute text.', err); } catch { /* ignore */ }
+        }
+      }
+    }
+    return this._absMeta(asset);
   }
 
   /** @private one grid card (DOM API, text only) — decision 11 */

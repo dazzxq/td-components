@@ -37,6 +37,30 @@
  *   buttons with role menuitemcheckbox/menuitemradio + aria-checked; caller items are NEVER mutated — the new state
  *   arrives as onSelect(ctx) → ctx.checked (update your model to persist it across opens).
  *
+ * Submenu (v0.118.0, plan v0.118.0-menu-submenu, ADR 0046) — exactly ONE level, part of the same session:
+ *   { label, icon, iconNode, hint, danger, disabled, id, when, order, items: [ ...plain items ] } is a PARENT: a plain
+ *   menuitem with a trailing chevron that only opens its child list (onSelect / href / type / checked on it are
+ *   ignored + one console.warn). Children: the same item spec (href policy, checkbox, radio — groups scoped to the
+ *   child), filtered by when(ctx) at open; `items` on a child (depth > 1) and custom children are ignored + warned;
+ *   a parent whose children are all filtered out is omitted. Desktop (fine pointer, ≥ 480px): a flyout beside the
+ *   parent (hover intent 120ms + safe triangle, click / ArrowRight / Enter / Space open + focus the first child,
+ *   ArrowLeft / Escape close one level). Touch-first or < 480px: drill-down — the child (Back row first) replaces the
+ *   root in place. A child pick = a root pick (onSelect ctx, onClose('select')); child open / close fire nothing.
+ *   TdMenu.labels.back (default 'Quay lại'): the Back row's accessible-name prefix ("Quay lại: {parent label}").
+ *
+ * Submenu DOM (only menus with a parent; others are unchanged):
+ *   <button class="td-menu__item td-menu__item--parent" role="menuitem" aria-haspopup="menu"
+ *           aria-expanded="false|true" [aria-controls="{m}-sub"]>
+ *     <span class="td-menu__label" id="{m}-label-{i}">…</span>[icon]
+ *     <span class="td-menu__chevron" data-td-icon="next" aria-hidden="true">…</span>[hint]</button>
+ *   <div class="td-menu td-menu--sub td-glass-surface td-glass-surface--strong" id="{m}-sub" role="menu"
+ *        aria-labelledby="{m}-label-{i}" data-placement="end|start" (flyout) | "bottom|top" (drill-down)>
+ *     [drill-down: <button class="td-menu__item td-menu__back" role="menuitem" data-td-back aria-label="…">
+ *        <span class="td-menu__chevron" data-td-icon="prev">…</span><span class="td-menu__label">…</span></button>
+ *      <div class="td-menu__separator" role="separator"></div>]
+ *     …child items (buildItem with "{m}-sub" ids)…
+ *   </div>   (a second <body> child; the root gets data-sub="drill" → hidden while drilled down)
+ *
  * DOM contract (created on open, removed on close — one menu at a time; {m} = td-menu-{n}):
  *   <div class="td-menu td-glass-surface td-glass-surface--strong" id="{m}" role="menu"
  *        aria-labelledby="{trigger id}" | aria-label="{opts.label}" data-state="open"
@@ -77,14 +101,23 @@ import {
   LAYERS, register as registerLayer, restoreFocus, swallowPointerPress, bridgeTheme, tabSequence, deepActiveElement,
   composedContains, composedClosest, floatingContains, coverFloatingIn,
 } from '../utils/layers.js';
-import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
+import { placeFloating, placeBeside, inTriangle, isReferenceHidden, watchReference, viewportBox } from '../utils/floating.js';
 import { nextTypeaheadIndex } from '../utils/typeahead.js';
 import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 import { createCheckMark } from '../utils/check-mark.js';
+import { MQ_COARSE, matches, matchesBelow } from '../utils/breakpoints-internal.js';
 
 const TYPEAHEAD_MS = 500;
 const LIST_MAX = 448; // px, 28rem at 16px: the menu itself scrolls beyond this (or the room on the chosen side)
 const ALIGNS = ['start', 'center', 'end'];
+// v0.118.0 (plan v0.118.0-menu-submenu QĐ 4): hover intent + safe triangle of a flyout submenu
+const SUB_OPEN_MS = 120;
+const SUB_GRACE_MS = 300;
+const TRI_PAD = 4;
+/** Same gate as td-hovercard (local copy, QĐ 4): pointer hover logic only on a real hover-capable fine pointer. */
+const MQ_HOVER_FINE = '(hover: hover) and (pointer: fine)';
+/** QĐ 5: drill-down (in place) on a touch-first device or a viewport below sm (480px), decided when a child opens. */
+const wantsDrill = () => matches(MQ_COARSE) || matchesBelow('sm');
 
 let menuSeq = 0;
 let triggerSeq = 0;
@@ -237,7 +270,7 @@ function resolveNamed(name, ctx) {
  * @param {unknown} list
  * @returns {Array<object>} normalised entries; separators collapsed (no leading/trailing/double)
  */
-function normalise(list, isAllowedUrl) {
+function normalise(list, isAllowedUrl, ctx, depth = 0) {
   const out = [];
   if (!Array.isArray(list)) return out;
   for (const it of list) {
@@ -245,6 +278,21 @@ function normalise(list, isAllowedUrl) {
     if (it.separator) {
       if (out.length && !out[out.length - 1].separator) out.push({ separator: true });
       continue;
+    }
+    if (it.type === 'custom' && depth > 0) { // v0.118.0 QĐ 1: a submenu is always a plain role="menu"
+      console.warn('TdMenu: custom items are not supported in a submenu — row omitted');
+      continue;
+    }
+    if (it.type === 'custom' && Array.isArray(it.items)) {
+      console.warn('TdMenu: a custom item cannot open a submenu — items ignored');
+    }
+    if (it.type !== 'custom' && Array.isArray(it.items)) {
+      if (depth > 0) console.warn('TdMenu: only one submenu level — nested items ignored');
+      else {
+        const parent = normaliseParent(it, isAllowedUrl, ctx);
+        if (parent) out.push(parent);
+        continue;
+      }
     }
     if (it.type === 'custom') { // v0.53.0 (plan v0.53.0-menu-custom-item QĐ 6): render(ctx) → Element, called at open
       if (!isFn(it.render)) {
@@ -295,10 +343,53 @@ function normalise(list, isAllowedUrl) {
   return out;
 }
 
+/**
+ * v0.118.0 (plan v0.118.0-menu-submenu QĐ 1): a submenu parent — always a plain menuitem that only opens its child
+ * list. Children pass the same `when(ctx)` filter and normalise() (href policy, checkable, radio groups) one level
+ * down. Acting / link / checkable fields are ignored (one fixed warning); empty after filtering → null (row omitted).
+ */
+function normaliseParent(it, isAllowedUrl, ctx) {
+  const label = it.label == null ? '' : String(it.label);
+  if (!label) return null;
+  if (it.onSelect != null || it.onClick != null || it.href != null || it.newTab != null || it.download != null
+    || it.type === 'checkbox' || it.type === 'radio' || it.checked != null) {
+    console.warn('TdMenu: a submenu parent cannot act, link or be checked — onSelect / href / type / checked ignored');
+  }
+  const children = normalise(it.items.filter((c) => visible(c, ctx)), isAllowedUrl, ctx, 1);
+  if (!children.some((e) => !e.separator)) return null;
+  return {
+    src: it,
+    label,
+    type: 'item',
+    checked: false,
+    group: '',
+    hint: it.hint == null ? '' : String(it.hint),
+    danger: !!it.danger,
+    disabled: !!it.disabled,
+    onSelect: null,
+    href: null,
+    newTab: false,
+    icon: typeof it.icon === 'string' ? it.icon : '',
+    iconNode: typeof SVGElement !== 'undefined' && it.iconNode instanceof SVGElement ? it.iconNode : null,
+    id: it.id == null ? '' : String(it.id),
+    download: null,
+    parent: true,
+    children,
+  };
+}
+
 function el(tag, cls) {
   const n = document.createElement(tag);
   if (cls) n.className = cls;
   return n;
+}
+
+/** v0.118.0 QĐ 2 / QĐ 9: the submenu chevron (`next` on a parent, `prev` on the drill-down Back row). */
+function chevronEl(icon) {
+  const c = el('span', 'td-menu__chevron');
+  c.setAttribute('data-td-icon', icon);
+  c.setAttribute('aria-hidden', 'true');
+  return c;
 }
 
 function separatorEl() {
@@ -385,7 +476,8 @@ function buildPanel(entries, menuId) {
 /** One plain / checkable / link item (markup unchanged since v0.36). */
 function buildItem(e, i, menuId) {
   const link = !!e.href && !e.disabled;
-  const node = el(link ? 'a' : 'button', `td-menu__item${e.danger ? ' td-menu__item--danger' : ''}`);
+  const node = el(link ? 'a' : 'button',
+    `td-menu__item${e.danger ? ' td-menu__item--danger' : ''}${e.parent ? ' td-menu__item--parent' : ''}`);
   if (link) {
     node.setAttribute('href', e.href);
     if (e.newTab) {
@@ -401,9 +493,14 @@ function buildItem(e, i, menuId) {
   if (e.type !== 'item') node.setAttribute('aria-checked', String(e.checked));
   if (e.disabled) node.setAttribute('aria-disabled', 'true');
   if (e.id) node.setAttribute('data-item', e.id);
+  if (e.parent) { // v0.118.0 QĐ 2: a submenu parent (aria-controls only while its child is open)
+    node.setAttribute('aria-haspopup', 'menu');
+    node.setAttribute('aria-expanded', 'false');
+  }
 
   const label = el('span', 'td-menu__label');
   label.textContent = e.label;
+  if (e.parent) label.id = `${menuId}-label-${i}`; // the child menu is aria-labelledby it
   node.appendChild(label);
 
   if (e.icon && hasIcon(e.icon)) {
@@ -433,6 +530,7 @@ function buildItem(e, i, menuId) {
     check.setAttribute('aria-hidden', 'true');
     node.appendChild(check);
   }
+  if (e.parent) node.appendChild(chevronEl('next'));
   if (e.hint) {
     // Name = label only; the hint is the description (not a duplicated name, not a `title`).
     label.id = `${menuId}-label-${i}`;
@@ -476,7 +574,10 @@ function closeSession(s, reason) {
   const { anchor, menu } = s;
   // v0.53.0: focus inside a custom row's shadow tree / a popup opened from a custom row counts as "in the menu"
   const hadFocus = menu.contains(document.activeElement)
+    || (!!s.sub && s.sub.menu.contains(document.activeElement)) // v0.118.0 QĐ 2: the child counts as "in the menu"
     || (s.panel && (composedContains(menu, deepActiveElement()) || floatingContains(menu, deepActiveElement())));
+  closeSub(s, false); // v0.118.0: the child goes first (its layer released, removed; no focus move)
+  stopHover(s);
   clearTimeout(s.typeTimer);
   if (s.raf) cancelAnimationFrame(s.raf);
   document.removeEventListener('pointerdown', s.onPointerDown, true);
@@ -529,12 +630,16 @@ function releaseSession(s) {
     e.ac = null;
   }
   for (const k of ['menu', 'rows', 'items', 'customs', 'ctx', 'layer', 'ro', 'unwatch', 'unbridge', 'onPointerDown',
-    'onScroll', 'onResize', 'onClose', 'anchor']) s[k] = null;
+    'onScroll', 'onResize', 'onClose', 'anchor', 'sub', 'hover', 'themeRoot']) s[k] = null;
 }
+
+const listMaxNow = () => Math.max(0, Math.min(window.innerHeight - 16, LIST_MAX));
+/** v0.118.0: the child's cap follows the visual viewport (pinch zoom / on-screen keyboard), the box placeBeside uses */
+const subListMax = () => { const v = viewportBox(); return Math.max(0, Math.min(v.bottom - v.top - 16, LIST_MAX)); };
 
 function place(s) {
   const { anchor, menu } = s;
-  const listMax = Math.max(0, Math.min(window.innerHeight - 16, LIST_MAX));
+  const listMax = listMaxNow();
   const { side } = placeFloating(anchor, menu, { width: 'auto', align: s.align, side: s.side, list: menu, listMax });
   menu.setAttribute('data-placement', side);
 }
@@ -546,24 +651,340 @@ function reposition(s) {
     return;
   }
   place(s);
+  if (s.sub) repositionSub(s);
 }
 
-function activate(s, idx) {
-  const rec = s.items[idx];
+/**
+ * One rAF for scroll / content resize. `full`: the whole tree (reposition); else only the child (a scroll inside the
+ * root, v0.118.0 QĐ 3). A pending full pass absorbs a child-only one.
+ */
+function scheduleReposition(s, full) {
+  if (full) s.rafFull = true;
+  if (s.raf) return;
+  s.raf = requestAnimationFrame(() => {
+    s.raf = 0;
+    const all = s.rafFull;
+    s.rafFull = false;
+    if (all) reposition(s);
+    else if (!s.closed && s.sub) repositionSub(s);
+  });
+}
+
+/* ---- v0.118.0 submenu (plan v0.118.0-menu-submenu, ADR 0046): one child level, part of the same session ---- */
+
+/** QĐ 3: a flyout child beside its parent row (placeBeside); QĐ 5: a drill-down child takes the root's geometry. */
+function placeSub(s) {
+  const sub = s.sub;
+  if (sub.mode === 'drill') {
+    placeDrill(s);
+    return;
+  }
+  const dir = getComputedStyle(s.menu).direction === 'rtl' ? 'rtl' : 'ltr';
+  const { side } = placeBeside(sub.parent.node, sub.menu, { edge: s.menu, list: sub.menu, listMax: subListMax(), dir });
+  sub.menu.setAttribute('data-placement', side);
+}
+
+/**
+ * QĐ 5 (R2 + R4, the ONE drill-down geometry rule): no side selection — the root panel's resolved left / top, its
+ * exact width and its height cap; the child scrolls inside. A root placed above the trigger keeps its bottom edge
+ * (the child grows upward), so a child taller than the root never covers the trigger; the cap also never exceeds the
+ * room on the root's side.
+ */
+function placeDrill(s) {
+  const { menu: root } = s;
+  const sub = s.sub.menu;
+  const r = root.getBoundingClientRect();
+  const st = sub.style;
+  const w = `${root.offsetWidth}px`;
+  st.setProperty('width', w);
+  st.setProperty('min-width', w);
+  st.setProperty('max-width', w);
+  st.setProperty('left', `${r.left}px`);
+  const capCss = parseFloat(getComputedStyle(root).maxHeight);
+  const cap = Number.isFinite(capCss) ? capCss : listMaxNow();
+  const vh = window.innerHeight;
+  const up = root.getAttribute('data-placement') === 'top';
+  const room = up ? r.bottom - 8 : vh - 8 - r.top;
+  st.setProperty('max-height', `${Math.max(0, Math.min(cap, room))}px`);
+  const top = up ? r.bottom - sub.offsetHeight : r.top;
+  st.setProperty('top', `${top}px`);
+  sub.setAttribute('data-placement', up ? 'top' : 'bottom');
+}
+
+/** QĐ 3: reposition the child; a flyout whose parent row is clipped by the root's scroll box closes alone. */
+function repositionSub(s) {
+  const sub = s.sub;
+  if (!sub) return;
+  if (sub.mode === 'flyout' && isReferenceHidden(sub.parent.node.getBoundingClientRect(), sub.parent.node)) {
+    closeSub(s, 'nearest');
+    return;
+  }
+  placeSub(s);
+}
+
+/** The root row nearest the (clipped) parent whose centre is inside the root's scroll box (QĐ 3), else the parent. */
+function nearestVisibleRow(s, parent) {
+  const box = s.menu.getBoundingClientRect();
+  const i0 = s.items.indexOf(parent);
+  let best = null;
+  let dist = Infinity;
+  s.items.forEach((rec, i) => {
+    const r = rec.node.getBoundingClientRect();
+    const cy = r.top + r.height / 2;
+    if (cy < box.top || cy > box.bottom || Math.abs(i - i0) >= dist) return;
+    best = rec;
+    dist = Math.abs(i - i0);
+  });
+  return best || parent;
+}
+
+/** Focus the first enabled child (all disabled → the first child), never the Back row (QĐ 5). */
+function focusFirstChild(sub) {
+  const kids = sub.items.filter((r) => !r.entry.back);
+  const pick = kids.find((r) => !r.entry.disabled) || kids[0];
+  if (pick) focusEl(pick.node);
+}
+
+/** QĐ 5: the drill-down Back row — `‹` + the parent's label (D1), named "{labels.back}: {parent label}". */
+function backRow(parentLabel) {
+  const node = el('button', 'td-menu__item td-menu__back');
+  node.setAttribute('type', 'button');
+  node.setAttribute('role', 'menuitem');
+  node.setAttribute('tabindex', '-1');
+  node.setAttribute('data-td-back', '');
+  const prefix = String(TdMenu.labels.back || 'Quay lại');
+  node.setAttribute('aria-label', `${prefix}: ${parentLabel}`);
+  node.appendChild(chevronEl('prev'));
+  const label = el('span', 'td-menu__label');
+  label.textContent = parentLabel;
+  node.appendChild(label);
+  fillIconSlots(node);
+  return { node, entry: { back: true, label: parentLabel, type: 'item', disabled: false, id: '' } };
+}
+
+/**
+ * Open the child of the root row `parentRec` (QĐ 2 / QĐ 3 / QĐ 5). The same parent again → only the focus move.
+ * @param {object} s session
+ * @param {{ node: HTMLElement, entry: object }} parentRec
+ * @param {boolean} focus focus the first enabled child (click / keys); drill-down always does
+ */
+function openSub(s, parentRec, focus) {
+  if (s.closed || !parentRec || !parentRec.entry.parent || parentRec.entry.disabled) return;
+  clearIntent(s);
+  if (s.sub && s.sub.parent === parentRec) {
+    if (focus) focusFirstChild(s.sub);
+    return;
+  }
+  if (s.sub) closeSub(s, 'parent');
+  endGrace(s);
+  const mode = wantsDrill() ? 'drill' : 'flyout';
+  const subId = `${s.menu.id}-sub`;
+  const built = build(parentRec.entry.children, subId);
+  const menu = built.menu;
+  menu.classList.add('td-menu--sub');
+  const labelEl = parentRec.node.querySelector(':scope > .td-menu__label');
+  if (labelEl && labelEl.id) menu.setAttribute('aria-labelledby', labelEl.id);
+  const items = built.items;
+  const rows = built.rows;
+  if (mode === 'drill') {
+    const back = backRow(parentRec.entry.label);
+    menu.insertBefore(separatorEl(), menu.firstChild);
+    menu.insertBefore(back.node, menu.firstChild);
+    items.unshift(back);
+    rows.unshift({ rec: back });
+  }
+  const sub = {
+    parent: parentRec, entries: parentRec.entry.children, menu, items, rows, panel: false, mode,
+    typeBuffer: '', typeTimer: 0, layer: null, ac: new AbortController(), unbridge: null,
+  };
+  s.sub = sub;
+  const { signal } = sub.ac;
+  // native parity: keyboard focus moving to another root row closes the flyout (macOS / Windows), focus stays put
+  if (mode === 'flyout') {
+    s.menu.addEventListener('focusin', (e) => {
+      if (s.sub !== sub || sub.parent.node.contains(/** @type {Node} */ (e.target))) return;
+      closeSub(s, false);
+    }, { signal });
+  }
+  // R1: the child's own click / keydown boundary, removed when it closes (the same level-aware handlers as the root)
+  menu.addEventListener('keydown', (e) => onMenuKeydown(s, sub, e), { signal });
+  menu.addEventListener('click', (e) => onMenuClick(s, sub, e), { signal });
+  menu.addEventListener('pointerenter', (e) => {
+    if (e.pointerType === 'touch') return;
+    endGrace(s);
+    clearIntent(s);
+    if (s.hover) s.hover.row = null;
+  }, { signal });
+  sub.unbridge = bridgeTheme(menu, s.themeRoot || s.anchor);
+  document.body.appendChild(menu);
+  parentRec.node.setAttribute('aria-expanded', 'true');
+  parentRec.node.setAttribute('aria-controls', subId);
+  // keyboard 'none': the root stays the only keyboard boundary (Escape / Tab levels are handled in its handlers);
+  // registered so a lower modal's inert lease exempts it and floatingContains / coverFloatingIn see it
+  sub.layer = registerLayer({
+    layer: LAYERS.popover,
+    element: menu,
+    keyboard: 'none',
+    anchor: s.anchor,
+    onCovered: () => closeSession(s, 'covered'),
+  });
+  placeSub(s);
+  if (mode === 'drill') {
+    focusFirstChild(sub); // focus moves into the child BEFORE the root hides (never stranded on <body>)
+    s.menu.setAttribute('data-sub', 'drill');
+  } else if (focus) {
+    focusFirstChild(sub);
+  }
+}
+
+/**
+ * Close the open child (no-op without one). `focus`: false (the tree is closing) | 'parent' (the parent row, when
+ * focus was in the child — QĐ 6) | 'force' (the parent row always: Escape / ArrowLeft / Back) | 'nearest' (the
+ * parent was clipped: the nearest visible root row, when focus was in the child).
+ */
+function closeSub(s, focus) {
+  const sub = s.sub;
+  if (!sub) return;
+  s.sub = null;
+  const hadFocus = sub.menu.contains(document.activeElement);
+  clearTimeout(sub.typeTimer);
+  clearIntent(s);
+  endGrace(s);
+  sub.ac.abort();
+  if (sub.layer) sub.layer.release();
+  const p = sub.parent.node;
+  p.setAttribute('aria-expanded', 'false');
+  p.removeAttribute('aria-controls');
+  if (sub.mode === 'drill' && s.menu) s.menu.removeAttribute('data-sub'); // the root shows again, where it was
+  if (focus === 'force' || (hadFocus && (focus === 'parent' || focus === 'nearest'))) {
+    focusEl(focus === 'nearest' ? nearestVisibleRow(s, sub.parent).node : p);
+  }
+  sub.menu.remove();
+  if (sub.unbridge) sub.unbridge();
+  sub.parent = null;
+  sub.items = null;
+  sub.rows = null;
+  sub.entries = null;
+}
+
+/* ---- QĐ 4: hover intent + safe triangle (flyout only; fine hover pointer; never on touch) ---- */
+
+function clearIntent(s) {
+  if (s.hover && s.hover.intent) {
+    clearTimeout(s.hover.intent);
+    s.hover.intent = 0;
+  }
+}
+
+function endGrace(s) {
+  const h = s.hover;
+  if (!h || !h.grace) return;
+  clearTimeout(h.grace.timer);
+  document.removeEventListener('pointermove', h.grace.onDocMove);
+  h.grace = null;
+}
+
+function stopHover(s) {
+  clearIntent(s);
+  endGrace(s);
+}
+
+const hoverOk = (s, e) => e.pointerType !== 'touch' && !!s.hover && s.hover.fine;
+
+/** Steps 2 + 4: the row under the pointer changed (or the grace ended over it). */
+function hoverRow(s, rec) {
+  clearIntent(s);
+  if (s.closed) return;
+  if (s.sub && s.sub.parent === rec) return;
+  if (!s.sub && !(rec && rec.entry.parent && !rec.entry.disabled)) return;
+  s.hover.intent = setTimeout(() => {
+    s.hover.intent = 0;
+    if (s.closed) return;
+    if (rec && rec.entry.parent && !rec.entry.disabled) {
+      if (s.sub && s.sub.mode === 'drill') return;
+      if (wantsDrill()) return; // no hover logic in drill-down mode
+      openSub(s, rec, false);
+    } else if (s.sub && s.sub.mode === 'flyout') {
+      closeSub(s, 'parent');
+    }
+  }, SUB_OPEN_MS);
+}
+
+/** Step 5: the triangle = the exit point (TRI_PAD back toward the parent) + the child's near-edge corners. */
+function startGrace(s, p) {
+  const r = s.sub.menu.getBoundingClientRect();
+  const toRight = r.left + r.width / 2 > p.x;
+  const nearX = toRight ? r.left : r.right;
+  const tri = [
+    { x: p.x + (toRight ? -TRI_PAD : TRI_PAD), y: p.y },
+    { x: nearX, y: r.top - TRI_PAD },
+    { x: nearX, y: r.bottom + TRI_PAD },
+  ];
+  if (!inTriangle(p, tri[0], tri[1], tri[2])) return false;
+  const h = s.hover;
+  const grace = { tri, timer: 0, onDocMove: null };
+  grace.onDocMove = (e) => { // only while a grace is active (touch.md rule 15: passive, no preventDefault)
+    if (!s.hover || s.hover.grace !== grace || e.pointerType === 'touch') return;
+    if (s.menu && e.target instanceof Node && s.menu.contains(e.target)) return; // the root's own listener
+    if (!inTriangle({ x: e.clientX, y: e.clientY }, tri[0], tri[1], tri[2])) endGrace(s); // empty space: child stays
+  };
+  grace.timer = setTimeout(() => {
+    if (!s.hover || s.hover.grace !== grace) return;
+    endGrace(s);
+    if (s.hover.inRoot) hoverRow(s, s.hover.row); // step 3: re-run for the row under the pointer
+  }, SUB_GRACE_MS);
+  h.grace = grace;
+  document.addEventListener('pointermove', grace.onDocMove, { passive: true });
+  return true;
+}
+
+function onRootPointerMove(s, e) {
+  if (s.closed || !hoverOk(s, e)) return;
+  const h = s.hover;
+  h.inRoot = true;
+  const i = indexOfNode(s, /** @type {Node} */ (e.target));
+  const rec = i >= 0 ? s.items[i] : null;
+  const p = { x: e.clientX, y: e.clientY };
+  const prev = h.row;
+  h.row = rec;
+  if (h.grace) {
+    const [a, b, c] = h.grace.tri;
+    if (inTriangle(p, a, b, c)) return; // step 3: wait — the grace timer re-runs for the row under the pointer
+    endGrace(s);
+    hoverRow(s, rec);
+    return;
+  }
+  if (rec === prev) return;
+  // step 5: leaving the open parent row toward its child starts a grace
+  if (s.sub && s.sub.mode === 'flyout' && prev && prev === s.sub.parent && rec !== prev && startGrace(s, p)) return;
+  hoverRow(s, rec);
+}
+
+function onRootPointerLeave(s, e) {
+  if (s.closed || !hoverOk(s, e)) return;
+  s.hover.inRoot = false;
+  s.hover.row = null;
+  clearIntent(s); // step 6: the child stays open
+}
+
+function activate(s, L, idx) {
+  const rec = L.items[idx];
   if (!rec) return;
   const { entry, node } = rec;
   if (entry.disabled) return;
+  if (entry.back) { closeSub(s, 'force'); return; } // QĐ 5: Back → the root, focus on the parent
+  if (entry.parent) { openSub(s, rec, true); return; } // QĐ 7: a parent never closes the tree
   const ctx = { ...s.ctx, item: entry.src, anchor: s.anchor, checked: entry.checked };
   if (entry.type === 'checkbox') {
     entry.checked = !entry.checked; // session state only — caller items are never mutated (they may be frozen)
     node.setAttribute('aria-checked', String(entry.checked));
     ctx.checked = entry.checked;
-    ctx.setDisabled = (id, disabled, hint) => setItemDisabled(s, id, disabled, hint); // v0.39.0 (menu stays open)
+    ctx.setDisabled = (id, disabled, hint) => setItemDisabled(s, L, id, disabled, hint); // v0.39.0 (menu stays open)
     safeCall(entry.onSelect, ctx);
     return;
   }
   if (entry.type === 'radio') {
-    for (const r of s.items) {
+    for (const r of L.items) {
       if (r.entry.type !== 'radio' || r.entry.group !== entry.group) continue;
       const on = r === rec;
       r.entry.checked = on;
@@ -580,12 +1001,14 @@ function activate(s, idx) {
  * open — `aria-disabled` + the session entry (inert like any disabled item). `hint` (optional): a string replaces the
  * item's hint (TEXT; '' removes it), anything else leaves it. Unknown id / closed menu → nothing.
  */
-function setItemDisabled(s, id, disabled, hint) {
-  if (s.closed || id == null) return;
-  const rec = s.items.find((r) => r.entry.id !== '' && r.entry.id === String(id));
+function setItemDisabled(s, L, id, disabled, hint) {
+  if (s.closed || id == null || !L.items) return;
+  const rec = L.items.find((r) => r.entry.id !== '' && r.entry.id === String(id));
   if (!rec) return;
   const { entry, node } = rec;
   entry.disabled = !!disabled;
+  // v0.118.0: disabling the parent of the open child closes that child (focus back on the parent if it was inside)
+  if (entry.disabled && s.sub && s.sub.parent === rec) closeSub(s, 'parent');
   if (entry.disabled) node.setAttribute('aria-disabled', 'true');
   else node.removeAttribute('aria-disabled');
   if (typeof hint !== 'string') return;
@@ -597,7 +1020,7 @@ function setItemDisabled(s, id, disabled, hint) {
     return;
   }
   const label = node.querySelector(':scope > .td-menu__label');
-  const base = `${s.menu.id}-x${s.items.indexOf(rec)}`;
+  const base = `${L.menu.id}-x${L.items.indexOf(rec)}`;
   if (label && !label.id) label.id = `${base}-label`;
   if (!el) {
     el = document.createElement('span');
@@ -649,14 +1072,35 @@ function focusRow(s, i, dir, last) {
   return false;
 }
 
-function onMenuKeydown(s, e) {
+/**
+ * Keys of one level (v0.118.0 QĐ 6): `L` is the root session itself or its open child (`s.sub`) — each has its own
+ * rows / items / type-ahead buffer. Root behaviour is unchanged; ArrowRight / ArrowLeft only act on a parent row (root)
+ * or inside the child (inline-start closes it). Logical keys: mirrored when the root menu is RTL.
+ */
+function onMenuKeydown(s, L, e) {
   if (s.closed || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
-  const n = s.rows.length;
-  const cur = rowIndexOf(s, deepActiveElement());
+  const isSub = L !== s;
+  if (isSub && s.sub !== L) return;
+  const n = L.rows.length;
+  const cur = rowIndexOf(L, deepActiveElement());
   // v0.53.0 QĐ 4: inside a custom row every key belongs to the content (↑ / ↓ are taken in the capture phase,
   // onPanelKeyCapture; Escape / Tab by the layer registry)
-  if (cur >= 0 && !s.rows[cur].rec) return;
-  const go = (i, dir, last = false) => { e.preventDefault(); focusRow(s, i, dir, last); };
+  if (cur >= 0 && !L.rows[cur].rec) return;
+  const go = (i, dir, last = false) => { e.preventDefault(); focusRow(L, i, dir, last); };
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    const rtl = getComputedStyle(s.menu).direction === 'rtl';
+    const toEnd = (e.key === 'ArrowRight') !== rtl;
+    if (isSub) {
+      if (!toEnd) { e.preventDefault(); closeSub(s, 'force'); }
+      return; // inline-end in the child: nothing (one level)
+    }
+    const rec = cur >= 0 ? L.rows[cur].rec : null;
+    if (toEnd && rec && rec.entry.parent) {
+      e.preventDefault();
+      if (!rec.entry.disabled) openSub(s, rec, true);
+    }
+    return;
+  }
   switch (e.key) {
     case 'ArrowDown': go(cur < 0 ? 0 : cur + 1, 1); return;
     case 'ArrowUp': go(cur < 0 ? n - 1 : cur - 1, -1, true); return;
@@ -665,26 +1109,27 @@ function onMenuKeydown(s, e) {
     case 'Enter':
     case ' ': {
       if (cur < 0) return;
-      const idx = s.items.indexOf(s.rows[cur].rec);
-      const rec = s.items[idx];
+      const idx = L.items.indexOf(L.rows[cur].rec);
+      const rec = L.items[idx];
       if (rec.node.localName === 'a') {
         if (e.key === ' ') { e.preventDefault(); rec.node.click(); } // Enter follows the link natively
         return;
       }
       e.preventDefault(); // no synthetic click: activation happens once, here
-      activate(s, idx);
+      activate(s, L, idx);
       return;
     }
     default: break;
   }
   if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && e.key !== ' ') {
     e.preventDefault();
-    s.typeBuffer += e.key;
-    clearTimeout(s.typeTimer);
-    s.typeTimer = setTimeout(() => { s.typeBuffer = ''; }, TYPEAHEAD_MS);
-    // custom rows are never matched (null label — utils/typeahead.js)
-    const i = nextTypeaheadIndex(s.rows.map((r) => (r.rec ? r.rec.entry.label : null)), cur, s.typeBuffer);
-    if (i >= 0) focusEl(s.rows[i].rec.node);
+    L.typeBuffer += e.key;
+    clearTimeout(L.typeTimer);
+    L.typeTimer = setTimeout(() => { L.typeBuffer = ''; }, TYPEAHEAD_MS);
+    // custom rows and the Back row are never matched (null label — utils/typeahead.js)
+    const labels = L.rows.map((r) => (r.rec && !r.rec.entry.back ? r.rec.entry.label : null));
+    const i = nextTypeaheadIndex(labels, cur, L.typeBuffer);
+    if (i >= 0) focusEl(L.rows[i].rec.node);
   }
 }
 
@@ -824,11 +1269,11 @@ function collapse(entries) {
   return out;
 }
 
-function onMenuClick(s, e) {
-  if (s.closed) return;
-  const i = indexOfNode(s, /** @type {Node} */ (e.target));
+function onMenuClick(s, L, e) {
+  if (s.closed || (L !== s && s.sub !== L)) return;
+  const i = indexOfNode(L, /** @type {Node} */ (e.target));
   if (i < 0) return;
-  const rec = s.items[i];
+  const rec = L.items[i];
   if (rec.entry.disabled) { e.preventDefault(); return; }
   if (rec.node.localName === 'a') {
     // Native navigation proceeds (an <a> navigates even once detached); close right after the activation.
@@ -840,7 +1285,7 @@ function onMenuClick(s, e) {
     }, 0);
     return;
   }
-  activate(s, i);
+  activate(s, L, i);
 }
 
 function ensureId(anchor) {
@@ -880,7 +1325,7 @@ function releaseTrigger(t, owner) {
 
 export class TdMenu {
   /** Default labels (Vietnamese); override per site: `TdMenu.labels.trigger = 'Options'`. */
-  static labels = { trigger: 'Tùy chọn' };
+  static labels = { trigger: 'Tùy chọn', back: 'Quay lại' }; // v0.118.0: `back` = drill-down Back row name prefix
 
   /**
    * Open a menu at `anchor`. Toggles: the same anchor already open → closes it and returns null. Opening closes any
@@ -917,7 +1362,7 @@ export class TdMenu {
       list = callItems(list, ctx);
       if (list == null) return null;
     }
-    let entries = normalise(Array.isArray(list) ? list.filter((it) => visible(it, ctx)) : list, o.isAllowedUrl);
+    let entries = normalise(Array.isArray(list) ? list.filter((it) => visible(it, ctx)) : list, o.isAllowedUrl, ctx);
     if (!entries.some((e) => !e.separator)) return null;
 
     // v0.53.0 QĐ 7 / QĐ 8: custom rows render now (fresh Element each open); dropped rows abort their signal at once
@@ -963,11 +1408,15 @@ export class TdMenu {
       typeTimer: 0,
       raf: 0,
       layer: null,
+      sub: null, // v0.118.0: the open child level (one at a time) — see openSub()
+      hover: null,
+      themeRoot: (typeof Element !== 'undefined' && o.themeRoot instanceof Element) ? o.themeRoot : null,
     };
     sRef = s;
     s.onPointerDown = (e) => {
       const path = typeof e.composedPath === 'function' ? e.composedPath() : [e.target];
       if (path.includes(menu) || path.includes(anchor)) return; // the trigger's own click toggles
+      if (s.sub && path.includes(s.sub.menu)) return; // v0.118.0 QĐ 7: a press in the child is inside
       // v0.53.0 QĐ 9: a press in a popup opened from a custom row (td-dropdown list…) is inside the panel
       if (panel && floatingContains(menu, /** @type {Node} */ (path[0]))) return;
       // default (D5): close, the press continues. 'swallow' (internal): a MOUSE press that is not on another popup trigger
@@ -985,13 +1434,22 @@ export class TdMenu {
       if (swallow && usableAnchor(anchor)) focusEl(anchor);
     };
     s.onScroll = (e) => {
-      if (e.target instanceof Node && menu.contains(e.target)) return; // scrolling a long menu never closes it
-      if (s.raf) return;
-      s.raf = requestAnimationFrame(() => { s.raf = 0; reposition(s); });
+      const t = e.target instanceof Node ? e.target : null;
+      if (t && s.sub && s.sub.menu.contains(t)) return; // v0.118.0: scrolling the child is ignored like the root
+      const inRoot = !!t && menu.contains(t);
+      if (inRoot && !s.sub) return; // scrolling a long menu never closes it
+      // v0.118.0 QĐ 3: a scroll inside the root only repositions the child (same rAF as a page scroll)
+      scheduleReposition(s, !inRoot);
     };
     s.onResize = () => reposition(s);
-    menu.addEventListener('keydown', (e) => onMenuKeydown(s, e));
-    menu.addEventListener('click', (e) => onMenuClick(s, e));
+    menu.addEventListener('keydown', (e) => onMenuKeydown(s, s, e));
+    menu.addEventListener('click', (e) => onMenuClick(s, s, e));
+    if (entries.some((e) => e.parent)) {
+      // v0.118.0 QĐ 4: hover intent — only menus with a submenu parent get these listeners
+      s.hover = { fine: matches(MQ_HOVER_FINE), row: null, inRoot: false, intent: 0, grace: null };
+      menu.addEventListener('pointermove', (e) => onRootPointerMove(s, e), { passive: true });
+      menu.addEventListener('pointerleave', (e) => onRootPointerLeave(s, e));
+    }
     if (panel) {
       menu.addEventListener('keydown', (e) => onPanelKeyCapture(s, e), true);
       menu.addEventListener('click', (e) => onPanelClick(s, e));
@@ -1013,10 +1471,20 @@ export class TdMenu {
       layer: LAYERS.popover,
       element: menu,
       keyboard: 'boundary',
-      onEscape: () => { closeSession(s, 'escape'); return true; },
+      // v0.118.0 QĐ 6: Escape closes one level per press (an open child first, focus on its parent)
+      onEscape: () => {
+        if (s.sub) closeSub(s, 'force');
+        else closeSession(s, 'escape');
+        return true;
+      },
       // D4: close; the trigger (re-focused) is where the native Tab / a lower focus trap continues from.
       // v0.53.0 panel: Tab walks the stops, D4 only past the edges (onPanelTab)
       onTab: (e) => {
+        // v0.118.0 R3: Tab from the child closes the whole tree (the panel walk applies only to the root panel)
+        if (s.sub && s.sub.menu.contains(document.activeElement)) {
+          closeSession(s, 'tab');
+          return 'pass';
+        }
         if (panel) return onPanelTab(s, e);
         closeSession(s, 'tab');
         return 'pass';
@@ -1032,8 +1500,7 @@ export class TdMenu {
     if (panel && typeof ResizeObserver !== 'undefined') {
       // v0.53.0 QĐ 11: content that grows / shrinks (td-tabs switching panels) re-places the panel (one rAF)
       s.ro = new ResizeObserver(() => {
-        if (s.closed || s.raf) return;
-        s.raf = requestAnimationFrame(() => { s.raf = 0; reposition(s); });
+        if (!s.closed) scheduleReposition(s, true);
       });
       for (const r of rows) if (!r.rec) s.ro.observe(r.row);
     }

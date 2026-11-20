@@ -218,6 +218,37 @@ export const AccountMenu = {
   },
 };
 
+/**
+ * v0.118.0 (ADR 0046): a submenu — `items` on an item opens a side menu, ONE level only. Hover (fine pointer) opens
+ * after a short pause with a safe triangle toward the child; click / → / Enter opens and focuses the first child;
+ * ← / Esc goes back one level. Below 480 px or on a touch device the child replaces the root (drill-down) with a
+ * "‹ Quay lại" row on top.
+ */
+export const Submenu = {
+  name: 'Menu con',
+  render: () => `<div class="sb-stack"><button type="button" class="td-menu-btn" id="mn-sub">
+    <span class="td-menu-btn__label">Thao tác với ảnh</span></button>
+    <p class="sb-note" id="mn-sub-out">Rê chuột lên "Chuyển sang" hoặc nhấn →. Thu hẹp khung dưới 480 px để xem kiểu
+    thay thế (drill-down) dùng trên điện thoại.</p></div>`,
+  play: ({ canvasElement }) => {
+    const pick = (text) => () => say(canvasElement, 'mn-sub-out', text);
+    const albums = Array.from({ length: 24 }, (_, i) => ({
+      label: `Album ${String(i + 1).padStart(2, '0')}`, onSelect: pick(`Đã chuyển sang Album ${i + 1}.`),
+    }));
+    TdMenu.bind(out(canvasElement, 'mn-sub'), () => [
+      { label: 'Sửa', icon: 'pencil', onSelect: pick('Sửa ảnh.') },
+      { label: 'Chuyển sang', icon: 'folder', items: albums },
+      { label: 'Sao chép vào', icon: 'copy', items: [
+        { label: 'Album gần đây', onSelect: pick('Đã sao chép vào album gần đây.') },
+        { label: 'Album mới…', onSelect: pick('Tạo album mới (giả lập).') },
+      ] },
+      { label: 'Gắn nhãn', disabled: true, hint: 'Chỉ quản trị viên', items: [{ label: 'Không dùng' }] },
+      { separator: true },
+      { label: 'Xoá', icon: 'trash', danger: true, onSelect: pick('Đã xoá (giả lập).') },
+    ], { align: 'start' });
+  },
+};
+
 /** v0.53.0: a small form in a custom row, cloned from a <template> (no HTML strings); Lưu closes via ctx.close(). */
 export const QuickForm = {
   name: 'Form nhỏ trong menu',

@@ -192,6 +192,8 @@ import { clampFocal } from './crop-geometry.js';
  * @property {number} [maxPageSize] v0.110.0: integer 1-100 (default 72; anything else → 72) — the cap of `pageSize: 'auto'`
  * @property {boolean|{ trigger?: 'auto'|'button', maxItems?: number }} [loadMore] v0.110.0: false (default) = each page
  *   REPLACES the grid; true = `{ trigger: 'auto' }` = the next page is APPENDED (sentinel + "Tải thêm"); see `normalizeLoadMore`
+ * @property {'absolute'|'relative'|((asset: any, ctx: any) => string)} [cardMeta] v0.118.0: the grid card's meta line (default 'absolute' = `{size} • {DD/MM/YYYY HH:mm}`; 'relative' = `{short size} · {5m trước}` on one line; a function = the app's text)
+ * @property {1|2|3} [nameLines] v0.118.0: the card name clamp (default 1 = one ellipsis line)
  * @property {'auto'|'fixed'} [columns] v0.106.0: 'auto' (default) = the auto-fill grid; 'fixed' = 8/6/4/3/2/1 columns (always a
  *   divisor of 24, so a pageSize of 24 fills every row; card min width = token `--td-media-picker-fixed-card-min`); unknown → 'auto' + a
  *   warning; also via configureDefaults
@@ -639,6 +641,8 @@ const CROP_RATIO_MAX = 100;
 let warnedCropRatio = false;
 let warnedCropMultiple = false;
 let warnedLoadMore = false;
+let warnedCardMeta = false;
+let warnedNameLines = false;
 
 /**
  * v0.110.0 (plan v0.110.0-media-picker-load-more QĐ1): the `loadMore` option → `null` (off: each page replaces the grid)
@@ -662,6 +666,92 @@ export function normalizeLoadMore(v, warn = console.warn) {
     try { warn("td-media-picker: options.loadMore must be a boolean or { trigger: 'auto'|'button', maxItems? } — load more is off."); } catch { /* ignore */ }
   }
   return null;
+}
+
+/**
+ * v0.118.0 (plan v0.118.0-media-picker-card-meta QĐ1): the `cardMeta` option → `'absolute'` (today's text) | `'relative'` |
+ * the app's function. Absent / null / 'absolute' → 'absolute'; any other value → ONE warning per module + 'absolute'.
+ * @param {unknown} v @param {(...a: unknown[]) => void} [warn]
+ * @returns {'absolute'|'relative'|((asset: unknown, ctx: unknown) => unknown)}
+ */
+export function normalizeCardMeta(v, warn = console.warn) {
+  if (v === undefined || v === null || v === 'absolute') return 'absolute';
+  if (v === 'relative' || typeof v === 'function') return /** @type {'relative'|Function} */ (v);
+  if (!warnedCardMeta) {
+    warnedCardMeta = true;
+    try { warn("td-media-picker: options.cardMeta must be 'absolute' | 'relative' | a function — using 'absolute'."); } catch { /* ignore */ }
+  }
+  return 'absolute';
+}
+
+/**
+ * v0.118.0 (QĐ2): the `nameLines` option → an integer 1-3 (absent / null → 1). Anything else → ONE warning per module + 1.
+ * @param {unknown} v @param {(...a: unknown[]) => void} [warn]
+ * @returns {1|2|3}
+ */
+export function normalizeNameLines(v, warn = console.warn) {
+  if (v === undefined || v === null) return 1;
+  if (Number.isInteger(v) && /** @type {number} */ (v) >= 1 && /** @type {number} */ (v) <= 3) return /** @type {1|2|3} */ (v);
+  if (!warnedNameLines) {
+    warnedNameLines = true;
+    try { warn('td-media-picker: options.nameLines must be an integer 1-3 — using 1.'); } catch { /* ignore */ }
+  }
+  return 1;
+}
+
+const SHORT_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'];
+
+/**
+ * v0.118.0 (QĐ1) short file size: units B/KB/MB/GB/TB (1024 steps), at most 3 significant digits (`174 KB`, `12.3 KB`,
+ * `1.2 MB`, `9.99 KB`); a value that rounds up to 1024 carries to the next unit. Absent / 0 / invalid → ''.
+ * @param {unknown} bytes
+ * @returns {string}
+ */
+export function shortFileSize(bytes) {
+  const n = Number(bytes);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  let i = 0;
+  let v = n;
+  while (v >= 1024 && i < SHORT_UNITS.length - 1) { v /= 1024; i++; }
+  const round = (x, idx) => {
+    if (idx === 0 || x >= 100) return Math.round(x);
+    return parseFloat(x.toFixed(x >= 10 ? 1 : 2));
+  };
+  let r = round(v, i);
+  if (r >= 1024 && i < SHORT_UNITS.length - 1) { i++; r = round(r / 1024, i); }
+  if (r === 0) return '';
+  return `${r} ${SHORT_UNITS[i]}`;
+}
+
+export const RELATIVE_UNITS_DEFAULT = Object.freeze({ s: 's', m: 'm', h: 'h', d: 'd', w: 'w', mo: 'mo', y: 'y' });
+export const RELATIVE_TEMPLATE_DEFAULT = '{n}{unit} trước';
+
+/**
+ * v0.118.0 (QĐ1) short relative time "5m trước": floor, units s/m/h/d/w/mo/y (1w = 7d, 1mo = 30d, 1y = 365d). A future
+ * date → `0s`; a missing / invalid date → ''. `labels = { template?, units? }` (the `relativeTime` / `relativeUnits` labels).
+ * @param {unknown} date ISO string | Date | epoch ms
+ * @param {number} [now]
+ * @param {{ template?: string, units?: Record<string, string> }} [labels]
+ * @returns {string}
+ */
+export function relativeTime(date, now = Date.now(), labels = {}) {
+  if (date === undefined || date === null || date === '' || typeof date === 'boolean') return '';
+  const t = date instanceof Date ? date.getTime() : typeof date === 'number' ? date : typeof date === 'string' ? new Date(date).getTime() : NaN;
+  if (!Number.isFinite(t) || !Number.isFinite(now)) return '';
+  const sec = Math.max(0, Math.floor((now - t) / 1000));
+  const day = 86400;
+  let n; let u;
+  if (sec < 60) { n = sec; u = 's'; }
+  else if (sec < 3600) { n = Math.floor(sec / 60); u = 'm'; }
+  else if (sec < day) { n = Math.floor(sec / 3600); u = 'h'; }
+  else if (sec < 7 * day) { n = Math.floor(sec / day); u = 'd'; }
+  else if (sec < 30 * day) { n = Math.floor(sec / (7 * day)); u = 'w'; }
+  else if (sec < 365 * day) { n = Math.floor(sec / (30 * day)); u = 'mo'; }
+  else { n = Math.floor(sec / (365 * day)); u = 'y'; }
+  const units = labels && labels.units ? labels.units : {};
+  const unit = typeof units[u] === 'string' && units[u] ? units[u] : RELATIVE_UNITS_DEFAULT[u];
+  const tpl = labels && typeof labels.template === 'string' && labels.template ? labels.template : RELATIVE_TEMPLATE_DEFAULT;
+  return tpl.replace(/\{n\}/g, String(n)).replace(/\{unit\}/g, unit);
 }
 
 /**
@@ -818,6 +908,9 @@ export function resolveOptions(defaults, ...layers) {
     pageSize,
     maxPageSize,
     loadMore: normalizeLoadMore(merged.loadMore, warn),
+    // v0.118.0 (QĐ1 / QĐ2)
+    cardMeta: normalizeCardMeta(merged.cardMeta, warn),
+    nameLines: normalizeNameLines(merged.nameLines, warn),
     pagination,
     columns,
     upload: {
@@ -936,7 +1029,7 @@ export async function runBeforeApply(hook, selection, signal, text) {
 }
 
 /** Test hook: forget the one-time crop warnings. */
-export function _resetCoreWarnings() { warnedCropRatio = false; warnedCropMultiple = false; warnedLoadMore = false; }
+export function _resetCoreWarnings() { warnedCropRatio = false; warnedCropMultiple = false; warnedLoadMore = false; warnedCardMeta = false; warnedNameLines = false; }
 
 /**
  * Module-level defaults (decision 6 — `TdMediaPicker.configureDefaults()`): each configure REPLACES the whole object

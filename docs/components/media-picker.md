@@ -181,6 +181,25 @@ Mỗi mục là một item [`td-media-grid`](media-grid.md) (`select-mode="tick"
 `--td-media-picker-list-bg`, `--td-media-picker-card-radius`, `--td-media-picker-card-shadow` — xem
 [Theming](../customization/theming.md).
 
+### Thẻ gọn — `cardMeta` + `nameLines` (0.118.0)
+
+Thẻ hẹp thì dòng "174.32 KB • 17/11/2026 02:02" bị gập thành 2 dòng. Hai option (cả `open()` lẫn `configureDefaults()`,
+mặc định giữ nguyên từng byte):
+
+- `cardMeta: 'relative'` — `{dung lượng ngắn} · {thời gian tương đối}` trên **đúng 1 dòng** (`174 KB · 5m trước`). Dung
+  lượng ngắn: `B` / `KB` / `MB` / `GB` / `TB`, tối đa 3 chữ số có nghĩa (`12.3 KB`, `1.2 MB`). Thời gian tính từ `createdAt`
+  lúc vẽ thẻ (không tự nhảy): `s m h d w mo y` (1w = 7d, 1mo = 30d, 1y = 365d); ngày ở tương lai → `0s`; thiếu một phần thì
+  chỉ hiện phần kia. Không có tooltip; panel chi tiết vẫn hiện ngày tuyệt đối. Dòng meta là tên trợ năng của nút mở thẻ.
+- `cardMeta: (asset, ctx) => string` — chữ của app (đặt bằng `textContent`). `ctx = { formatSize, formatShortSize,
+  formatDate, formatRelative, now }`. Trả về chuỗi rỗng / không phải chuỗi / ném lỗi → quay về chữ `'absolute'` (lỗi ghi
+  `console.error` một lần mỗi lần mở). Cũng là một dòng.
+- `nameLines: 2` (hoặc `3`) — tên thẻ gập tối đa N dòng rồi cắt bằng `…` (`data-name-lines` trên gốc, CSS thuần).
+
+```js
+// card meta ngắn gọn
+TdMediaPicker.configureDefaults({ cardMeta: 'relative', nameLines: 2 });
+```
+
 ### Thumbnail tải có nhịp — `thumbLoader` (0.111.0)
 
 CDN ảnh của các site có luật WAF đếm cả cache HIT. Lưới 60 ảnh cuộn nhanh là vượt luật, CDN chặn 10s và ảnh hiện icon
@@ -490,6 +509,8 @@ const outcome = await TdMediaPicker.open({
 | `loadMore` | `false` \| `true` \| `{ trigger?: 'auto' \| 'button', maxItems?: 60–2000 }` | `false` | 0.110.0: trang sau **nối thêm** vào lưới thay vì thay trang — [Tải thêm](#tải-thêm--loadmore-01100). `true` = `{ trigger: 'auto', maxItems: 600 }`. Giá trị lạ → tắt + một cảnh báo |
 | `pagination` | `'cursor'` \| `'pages'` | `'cursor'` | 0.33 — [Phân trang](#phân-trang--hai-chế-độ) |
 | `columns` | `'auto'` \| `'fixed'` | `'auto'` | 0.106.0 — [Lưới đủ hàng](#lưới-đủ-hàng--columns-fixed-01060). Giá trị lạ → `'auto'` + một cảnh báo |
+| `cardMeta` | `'absolute'` \| `'relative'` \| `(asset, ctx) => string` | `'absolute'` | 0.118.0: dòng meta của thẻ — [Thẻ gọn](#thẻ-gọn--cardmeta--namelines-01180). Giá trị lạ → `'absolute'` + một cảnh báo |
+| `nameLines` | `1` \| `2` \| `3` | `1` | 0.118.0: tên thẻ tối đa N dòng (mặc định 1 dòng + dấu …). Giá trị lạ → `1` + một cảnh báo |
 | `upload` | `{ accept?, maxSize?, multiple? = true, acceptLabel?, imageResize? }` | — | Chuyển cho `td-dropzone` ([dropzone](dropzone.md)). `acceptLabel` (0.33) chỉ là **chữ** trên badge / mô tả tab URL, không phải bộ lọc; thiếu thì suy từ `accept`. `imageResize` (0.90.0): policy tối ưu ảnh trước khi upload — xem [Tối ưu ảnh trước khi upload](#tối-ưu-ảnh-trước-khi-upload--uploadimageresize-0900). **Object `upload` của `open()` thay nguyên object `upload` của defaults** (không merge từng key) |
 | `initialCollection` | `{ id: string, label: string }` \| `null` | `null` | 0.66.0: mở **thẳng vào** bộ sưu tập này (breadcrumb + `collectionId` ngay từ request đầu). `capabilities: { collections: false }` của site thắng: khi đó `initialCollection` bị bỏ qua và phiên chạy như phiên thường. `id` ≤ 512 ký tự, `label` cắt còn 200 code point; sai hình dạng → `TypeError`; `null` = không có. **Không** lấy từ defaults. Focus vẫn ở ô tìm. Xem [Bộ sưu tập](#bộ-sưu-tập-0660) |
 | `collections` | `{ showWithoutQuery?: boolean }` | `{ showWithoutQuery: false }` | 0.66.0: `true` → dải bộ sưu tập hiện cả khi chưa gõ tìm. Không phải object → `TypeError`; `null` = bỏ qua |
@@ -1470,6 +1491,7 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `selectFirst` · `notReady` | "Hãy chọn ít nhất một mục." · "Mục này chưa sẵn sàng để chọn." |
 | `sizeTooSmall` · `sizeTooSmallWidth` · `sizeTooSmallHeight` · `sizeUnknown` | 0.117.0 ([`selection.minSize`](#kích-thước-tối-thiểu--selectionminsize-01170)): "Ảnh phải có kích thước tối thiểu {w} × {h} px" · "Ảnh phải có chiều rộng tối thiểu {w} px" · "Ảnh phải có chiều cao tối thiểu {h} px" · "Không xác định được kích thước ảnh để kiểm tra kích thước tối thiểu" |
 | `applyRejected` · `applyFailed` | 0.117.0 ([`beforeApply`](#cổng-trước-khi-chèn--beforeapply-01170)): "Không thể chèn mục đã chọn" · "Không kiểm tra được, thử lại sau" |
+| `relativeTime` · `relativeUnits.s` / `.m` / `.h` / `.d` / `.w` / `.mo` / `.y` (0.118) | `cardMeta: 'relative'`: "{n}{unit} trước" · "s" "m" "h" "d" "w" "mo" "y" (ghi đè từng đơn vị bằng khoá phẳng `'relativeUnits.m': 'phút'` trong `messages`, hoặc đổi cả `TdMediaPicker.labels.relativeUnits`) |
 | `conflict` · `reload` · `video` | "Media đã bị thay đổi ở nơi khác." · "Tải lại" · "Video" |
 | `download` · `downloadExpired` · `copyLink` | "Tải về" · "Liên kết tải đã hết hạn" · "Copy link" |
 | `delete` · `deleteTitle` · `deleteMessage` | "Xoá" · "Xác nhận xoá" · `Bạn có chắc muốn xoá "{name}"? Hành động này không thể hoàn tác.` |

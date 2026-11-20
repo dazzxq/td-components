@@ -221,6 +221,56 @@
 		background: var(--td-menu-separator);
 	}
 
+	/* ---- v0.118.0 submenu (plan v0.118.0-menu-submenu QĐ 9, ADR 0046): parent row chevron, expanded parent (state:
+	   outside the hover gate), the child panel (same .td-menu recipe, fade only), drill-down. No new token. ---- */
+	.td-menu__chevron {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		color: var(--td-menu-icon-fg);
+	}
+
+	.td-menu__chevron svg {
+		width: 16px;
+		height: 16px;
+	}
+
+	.td-menu__label + .td-menu__chevron {
+		margin-inline-start: auto;
+	}
+
+	.td-menu__chevron:dir(rtl) svg {
+		transform: scaleX(-1);
+	}
+
+	.td-menu__item--danger .td-menu__chevron {
+		color: currentcolor;
+	}
+
+	.td-menu__item[aria-expanded="true"] {
+		background: var(--td-menu-item-active);
+	}
+
+	.td-menu--sub {
+		transform-origin: top left;
+	}
+
+	.td-menu--sub[data-placement="start"] {
+		transform-origin: top right;
+	}
+
+	.td-menu--sub:dir(rtl) {
+		transform-origin: top right;
+	}
+
+	.td-menu--sub[data-placement="start"]:dir(rtl) {
+		transform-origin: top left;
+	}
+
+	.td-menu[data-sub="drill"] {
+		visibility: hidden;
+	}
+
 	/* ---- v0.53.0 menu panel (plan v0.53.0-menu-custom-item QĐ 1 / QĐ 11, ADR 0026): role="dialog" hosting role="menu"
 	   sections + custom rows. The row inherits the surface; the caller's content brings its own controls (no hover, no
 	   pressed fill, no min-height on the row). No new token. ---- */
@@ -348,6 +398,10 @@
 
 		.td-menu__check {
 			color: CanvasText;
+		}
+
+		.td-menu__item[aria-expanded="true"]:not(:focus-visible) {
+			outline: 1px solid CanvasText;
 		}
 
 		.td-menu__separator {
