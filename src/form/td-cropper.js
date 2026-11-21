@@ -22,6 +22,11 @@
  * kept and still returned), a zoom slider (`<td-slider class="td-cropper__zoom">`, created only in pan, between − and +)
  * and square integer pixels for a 1:1 crop. `shape="circle"` rounds the frame (display only — the output stays the
  * bounding square) while the mode is pan and the ratio in force is 1:1. Unknown values = the default, silently.
+ * v0.119.0 (plan docs/internal/plans/v0.119.0-crop-output.md QĐ2) — `focal-optional` / `focalOptional` (box mode + focal tool; ignored in
+ * focal mode): no point is a real state — a dimmed centre marker (`.td-cropper__focal--unset`) while `focalPoint` stays null, the first
+ * focal key starts from the centre, and "Dùng giữa ảnh" (`labels.focalClear`, `.td-cropper__focal-clear`, `focal-change` source
+ * `clear`) replaces the on/off toggle. "Đặt lại" goes back to the initial focal (null stays null).
+ *
  * v0.113.0 (plan docs/internal/plans/v0.113.0-focal-only-mode.md QĐ1) — `mode="focal"`: a focal point only, no crop. The
  * image is contain-fitted and stands still (as in box); host `data-mode="focal"`; CSS hides the box (+ handles, grid,
  * dim), the ratio group, the zoom buttons and the focal toggle — "Đặt lại" stays and goes back to the focal value the
@@ -86,7 +91,7 @@ import './td-slider.js'; // v0.73.0: the zoom slider of pan mode (created only t
 /** @typedef {import('../utils/crop-geometry.js').Rect} Rect */
 
 const OBSERVED = ['src', 'alt', 'natural-width', 'natural-height', 'aspect-ratio', 'crop', 'focal-point', 'focal', 'disabled',
-  'mode', 'shape'];
+  'mode', 'shape', 'focal-optional'];
 const VARS = ['--_tdc-img-x', '--_tdc-img-y', '--_tdc-img-w', '--_tdc-img-h', '--_tdc-box-x', '--_tdc-box-y',
   '--_tdc-box-w', '--_tdc-box-h', '--_tdc-focal-x', '--_tdc-focal-y'];
 /** Corner handles in Tab order (decision 15): top-left → top-right → bottom-right → bottom-left. */
@@ -144,6 +149,8 @@ const SHELL = '<div class="td-cropper__toolbar" role="group">'
   + '<span class="td-btn__icon" data-td-icon="zoom-in" aria-hidden="true"></span><span class="td-cropper__tool-text"></span></button>'
   + '<button type="button" class="td-btn td-btn--secondary td-btn--sm td-cropper__tool td-cropper__focal-toggle" aria-pressed="false" hidden>'
   + '<span class="td-btn__icon" data-td-icon="crosshair" aria-hidden="true"></span><span class="td-cropper__tool-text"></span></button>'
+  + '<button type="button" class="td-btn td-btn--secondary td-btn--sm td-cropper__tool td-cropper__focal-clear" hidden>'
+  + '<span class="td-cropper__tool-text"></span></button>'
   + '<button type="button" class="td-btn td-btn--secondary td-btn--sm td-cropper__tool td-cropper__reset">'
   + '<span class="td-btn__icon" data-td-icon="rotate-ccw" aria-hidden="true"></span><span class="td-cropper__tool-text"></span></button>'
   + '</div></div>'
@@ -175,6 +182,7 @@ export class TdCropper extends TdBaseElement {
     zoomIn: 'Phóng to',
     zoomOut: 'Thu nhỏ',
     focal: 'Điểm trọng tâm',
+    focalClear: 'Dùng giữa ảnh', // v0.119.0 focal-optional: clears the point (back to "unset")
     reset: 'Đặt lại',
     box: 'Vùng cắt',
     boxRole: 'khung cắt',
@@ -373,6 +381,10 @@ export class TdCropper extends TdBaseElement {
       case 'focal-point':
         this._syncFocalUi();
         break;
+      case 'focal-optional':
+        this._renderVars();
+        this._syncFocalUi();
+        break;
       case 'disabled':
         if (newVal !== null && this._g) this._finish(false);
         if (newVal !== null) { this._endZoom(false); this._dropWheel(); }
@@ -416,6 +428,15 @@ export class TdCropper extends TdBaseElement {
     this._syncDesc();
   }
 
+  /**
+   * v0.119.0: `focal-optional` — in box mode with the focal tool on, "no point" is a real state: a dimmed centre marker
+   * stands in for it, the keyboard starts from the centre, and "Dùng giữa ảnh" replaces the on/off toggle. Ignored in focal mode.
+   * @type {boolean}
+   */
+  get focalOptional() { return this.hasAttribute('focal-optional'); }
+
+  set focalOptional(v) { this.toggleAttribute('focal-optional', !!v); }
+
   /** Ratio presets of this element (`{ label, ratio: number | null }[]`); `null` / invalid ⇒ `TdCropper.presets`. */
   get presets() { return this._presets().map((p) => ({ ...p })); }
 
@@ -451,6 +472,7 @@ export class TdCropper extends TdBaseElement {
       zoomOut: $('.td-cropper__zoom-out'),
       zoomIn: $('.td-cropper__zoom-in'),
       focalBtn: $('.td-cropper__focal-toggle'),
+      focalClear: $('.td-cropper__focal-clear'),
       reset: $('.td-cropper__reset'),
       stage: $('.td-cropper__stage'),
       area: $('.td-cropper__area'),
@@ -642,6 +664,9 @@ export class TdCropper extends TdBaseElement {
     this._focalAuto = true;
   }
 
+  /** @private v0.119.0: focal-optional is in force (box mode, focal tool on) */
+  _focalOpt() { return this.hasAttribute('focal-optional') && !this._focalMode() && this._focalTool(); }
+
   /** @private pan has no focal-point tool (the frame is the subject); an existing focal value is kept as it is */
   _focalTool() { return this._focalMode() || (this.hasAttribute('focal-point') && !this._pan()); }
 
@@ -776,9 +801,10 @@ export class TdCropper extends TdBaseElement {
     set('--_tdc-box-h', d.h);
     // pan / focal: no handles to hide
     this.toggleAttribute('data-small-box', !pan && !this._focalMode() && (d.w < SMALL_BOX || d.h < SMALL_BOX));
-    if (this._focal) {
-      set('--_tdc-focal-x', this._focal.x * f.w);
-      set('--_tdc-focal-y', this._focal.y * f.h);
+    const fp = this._focal || (this._focalOpt() ? CENTRE : null); // focal-optional: the unset marker sits in the centre
+    if (fp) {
+      set('--_tdc-focal-x', fp.x * f.w);
+      set('--_tdc-focal-y', fp.y * f.h);
     } else {
       this.style.removeProperty('--_tdc-focal-x');
       this.style.removeProperty('--_tdc-focal-y');
@@ -802,7 +828,7 @@ export class TdCropper extends TdBaseElement {
     e.stage.setAttribute('aria-label', alt ? fmt(L.stage, { alt }) : L.stageNoAlt);
     e.toolbar.setAttribute('aria-label', L.tools);
     e.ratios.setAttribute('aria-label', L.ratios);
-    for (const [btn, text] of [[e.zoomOut, L.zoomOut], [e.zoomIn, L.zoomIn], [e.focalBtn, L.focal], [e.reset, L.reset]]) {
+    for (const [btn, text] of [[e.zoomOut, L.zoomOut], [e.zoomIn, L.zoomIn], [e.focalBtn, L.focal], [e.focalClear, L.focalClear], [e.reset, L.reset]]) {
       btn.querySelector('.td-cropper__tool-text').textContent = text;
       btn.setAttribute('aria-label', text);
     }
@@ -1026,7 +1052,7 @@ export class TdCropper extends TdBaseElement {
     if (!this._els) return;
     const e = this._els;
     const on = this._interactive();
-    for (const b of [e.zoomOut, e.zoomIn, e.focalBtn, e.reset]) b.disabled = !on;
+    for (const b of [e.zoomOut, e.zoomIn, e.focalBtn, e.focalClear, e.reset]) b.disabled = !on;
     const ti = on ? 0 : -1;
     const focal = this._focalMode(); // v0.113.0: no box, no handles (hidden by CSS too) — the focal point only
     e.box.tabIndex = focal ? -1 : ti;
@@ -1043,10 +1069,13 @@ export class TdCropper extends TdBaseElement {
   _syncFocalUi() {
     if (!this._els) return;
     const tool = this._focalTool();
-    const { focalBtn, focal } = this._els;
-    focalBtn.hidden = !tool;
+    const { focalBtn, focalClear, focal } = this._els;
+    const opt = this._focalOpt();
+    focalBtn.hidden = !tool || opt;
     focalBtn.setAttribute('aria-pressed', this._focal ? 'true' : 'false');
-    focal.hidden = !(tool && this._focal && this._ready());
+    focalClear.hidden = !(opt && this._focal);
+    focal.hidden = !(tool && (this._focal || opt) && this._ready());
+    focal.classList.toggle('td-cropper__focal--unset', opt && !this._focal);
     this._syncDesc();
   }
 
@@ -1149,6 +1178,17 @@ export class TdCropper extends TdBaseElement {
     this._setFocal(clampFocal({ x: (r.x + r.w / 2) / this._W, y: (r.y + r.h / 2) / this._H }), 'button');
   }
 
+  /** @private v0.119.0 "Dùng giữa ảnh": the point goes back to unset; focus moves on so it is never lost to <body> */
+  _clearFocal() {
+    const { toolbar, focalClear, box, focal } = this._els;
+    const live = (b) => !b.hidden && !b.disabled && b !== focalClear;
+    const all = /** @type {HTMLElement[]} */ ([...toolbar.querySelectorAll('button')]).filter(live);
+    const next = all.find((b) => !!(focalClear.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)) || all[0];
+    this._setFocal(null, 'clear');
+    const to = next || (box.tabIndex >= 0 ? box : focal);
+    try { to.focus({ preventScroll: true }); } catch { /* ignore */ }
+  }
+
   /** @private @param {number} i @param {boolean} user */
   _selectPreset(i, user) {
     const list = this._choices();
@@ -1205,6 +1245,7 @@ export class TdCropper extends TdBaseElement {
     else if (b === this._els.zoomOut) this._zoom(1 / ZOOM_STEP, 'button');
     else if (b === this._els.zoomIn) this._zoom(ZOOM_STEP, 'button');
     else if (b === this._els.focalBtn) this._toggleFocal();
+    else if (b === this._els.focalClear) this._clearFocal();
     else if (b === this._els.reset) this._reset(true);
   }
 
@@ -1251,9 +1292,10 @@ export class TdCropper extends TdBaseElement {
     const r = /** @type {Rect} */ (this._rect);
     if (t === focal) {
       e.preventDefault();
-      if (!this._focal) return;
+      if (!this._focal && !this._focalOpt()) return;
       const s = big ? 0.1 : 0.01;
-      this._setFocal(clampFocal({ x: this._focal.x + ux * s, y: this._focal.y + uy * s }), 'keyboard');
+      const cur = this._focal || CENTRE; // focal-optional: the first key starts from the centre
+      this._setFocal(clampFocal({ x: cur.x + ux * s, y: cur.y + uy * s }), 'keyboard');
       return;
     }
     if (this._pan()) {
@@ -1350,7 +1392,7 @@ export class TdCropper extends TdBaseElement {
       }
     }
     else if (h && box.contains(h)) kind = 'resize';
-    else if (t && !focal.hidden && focal.contains(t)) kind = 'focal';
+    else if (t && !focal.hidden && this._focal && focal.contains(t)) kind = 'focal'; // (an unset marker is not a drag handle)
     else if (t && box.contains(t)) kind = 'move';
     else if (this._focalTool() && this._onImage(e.clientX, e.clientY)) kind = 'tap'; // review R1 #6: never the letterbox / padding
     else return; // drawing a new box outside the box is a non-goal

@@ -397,6 +397,8 @@ interface MediaPickerAdapter {
     o: { context?: unknown; signal: AbortSignal }): Promise<MediaAsset>;
   delete?(id: string, o: { context?: unknown; signal: AbortSignal }): Promise<DeleteResult>;
   download?(id: string, o: { rendition: 'original'; context?: unknown; signal: AbortSignal }): Promise<DownloadResult>;
+  createCropDerivative?(o: { sourceAssetId: string; crop: { normalized: { x: number; y: number; width: number; height: number } };
+    focalPoint: { x: number; y: number } | null; signal: AbortSignal }): Promise<MediaAsset>;   // 0.119 — crop.output 'new-asset'
 }
 ```
 
@@ -443,6 +445,7 @@ xoá cache facet; đóng picker xoá hết. Không localStorage, không cache li
 | `update` | Bấm "Lưu" / Enter trong ô một dòng / Ctrl/⌘+Enter — không bao giờ tự lưu | Đóng picker (sau khi đồng ý bỏ thay đổi) |
 | `delete` | Bấm "Xoá" trong hộp xác nhận (chạy trong lúc hộp còn mở, nút busy) | Đóng picker |
 | `download` | Bấm "Tải về" | Bấm lại / mục khác; đóng picker |
+| `createCropDerivative` (0.119) | `crop.output: 'new-asset'`: bấm "Chèn" của bước cắt (mỗi lần thử lại là một lời gọi mới) | Escape / × / "Quay lại" của bước cắt; đóng picker |
 
 `initialIds` áp **một lần**, theo thứ tự gốc, khi lời gọi cuối cùng xong; id nào lỗi bị bỏ (cảnh báo). Trong lúc chờ,
 footer hiện "Đang tải lựa chọn…" nhưng vẫn chọn / xác nhận được; xác nhận trước khi xong → kết quả theo lựa chọn hiện tại.
@@ -517,7 +520,7 @@ const outcome = await TdMediaPicker.open({
 | `autoSelectFirst` | `boolean` | theo chế độ | 0.67.0 (opt-in) → bật mặc định từ 0.68.0 → **từ 0.72.0 mặc định chỉ bật cho picker chọn MỘT ảnh (`selection.mode: 'single'`), tắt cho `multiple`**: chọn sẵn asset đầu tiên chọn được của lần tải danh sách đầu — [Tự chọn ảnh đầu](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670). Giá trị đã đặt thắng ở cả hai chế độ: chỉ boolean `false` mới tắt, mọi giá trị khác có mặt (kể cả `true`) bật; `null` / vắng = mặc định theo chế độ; lấy được từ defaults; `open({ autoSelectFirst: false })` tắt riêng lần mở, `open({ autoSelectFirst: true, selection: { mode: 'multiple' } })` bật cho picker nhiều ảnh |
 | `thumbLoader` | `true` \| `false` \| object cấu hình broker | `true` | 0.111.0: thumbnail tải có nhịp qua [thumb loader](thumb-loader.md). Object (ví dụ `{ wafBudget: { limit: 2000 } }`) chuyển cho `configureThumbBudget`. `false` = markup cũ (`src` + `loading="lazy"`) — [Thumbnail tải có nhịp](#thumbnail-tải-có-nhịp--thumbloader-01110) |
 | `onThumbGate` | `({ until, remainingMs }) => boolean \| void` | — | 0.111.0: CDN đang chặn ảnh. Trả `false` thì kit không hiện toast |
-| `crop` | `{ enabled?, aspectRatio?, allowFocalPoint?, mode?, shape?, focalPoint? }` | — | 0.35.0 (`mode` / `shape`: 0.75.0; `mode: 'focal'` + `focalPoint`: 0.113.0): `enabled: true` (hoặc `mode: 'focal'`) + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `[0.01, 100]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
+| `crop` | `{ enabled?, aspectRatio?, allowFocalPoint?, mode?, shape?, focalPoint?, initial?, focalPointOptional?, presets?, ratioLabel?, output? }` | — | 0.35.0 (`mode` / `shape`: 0.75.0; `mode: 'focal'` + `focalPoint`: 0.113.0; `initial` / `focalPointOptional` / `presets` / `ratioLabel` / `output`: 0.119.0): `enabled: true` (hoặc `mode: 'focal'`) + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `[0.01, 100]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
 | `beforeApply` | `(selection: SelectedMedia[], { signal }) => boolean \| void \| Promise<boolean \| void>` | — | 0.117.0: gọi **một lần** với đúng lựa chọn cuối (sau bước cắt) trước khi picker kết thúc; `false` / ném lỗi → picker ở lại + thông báo. Lấy được từ defaults; không phải hàm = bỏ qua — [Cổng trước khi chèn](#cổng-trước-khi-chèn--beforeapply-01170) |
 
 - **Một picker một lúc**: gọi `open()` khi đã có picker mở → resolve ngay `{ status: 'cancelled', reason:
@@ -539,6 +542,7 @@ interface SelectedMedia {
     altText: string;              // = asset.defaultAltText ?? ''
     crop: CropValue | null;       // 0.35: chỉ từ bước cắt; null = không cắt / toàn ảnh / không bật crop
     focalPoint: { x: number; y: number } | null;   // 0.35: chỉ khi crop.allowFocalPoint
+    derivedFromAssetId?: string;  // 0.119: chỉ khi crop.output 'new-asset' — id ảnh nguồn (assetId = ảnh đã cắt)
   };
 }
 
@@ -604,6 +608,36 @@ Luồng (giống dcms2: cắt **sau khi chọn**):
     crop: { mode: 'focal', focalPoint: saved ?? undefined } });
   if (r.status === 'selected') save({ id: r.selection[0].assetId, focal: r.selection[0].usage.focalPoint }); // crop luôn null
   ```
+- **`crop.initial` (0.119.0) — mở lại crop đã lưu**: `{ normalized: { x, y, width, height } }` hoặc hộp trơn `{ x, y, width, height }`
+  (0..1, `width` / `height` > 0, nằm trong ảnh); sai → bỏ qua + cảnh báo **một lần**. Chỉ áp khi ảnh vào bước cắt **chính là**
+  ảnh chọn sẵn duy nhất (`selection.initialIds` có đúng một id, trùng id đó) — chọn ảnh khác thì khung mặc định. Kiểu `box` /
+  `pan` (focal bỏ qua). Cùng luật, `crop.focalPoint` ở kiểu `box` / `pan` (cần `allowFocalPoint: true`) là điểm trọng tâm bắt đầu
+  của ảnh đó. Áp dụng mà không sửa gì → kết quả giống hệt toạ độ đã lưu.
+
+  ```js
+  TdMediaPicker.open({ selection: { mode: 'single', kinds: ['image'], initialIds: [saved.id] },
+    crop: { enabled: true, aspectRatio: 3 / 2, allowFocalPoint: true, initial: saved.crop, focalPoint: saved.focal } });
+  ```
+- **`crop.focalPointOptional` (0.119.0)**: `true` + `allowFocalPoint` (kiểu `box` / `pan`) ⇒ cropper được đặt `focal-optional`:
+  điểm trọng tâm được để trống (`usage.focalPoint = null`). Vắng / focal mode → như cũ.
+- **`crop.presets` / `crop.ratioLabel` (0.119.0) — theo lần mở**: `presets` = `[{ label, ratio }]` như
+  [`TdCropper.presets`](cropper.md) (nhãn trim ≤ 40; `ratio` null = tự do hoặc số trong `(0, 10000]`; mục sai bị bỏ; rỗng → preset
+  toàn cục), chỉ cho lần mở này, không sửa `TdCropper.presets`. `ratioLabel` (trim, ≤ 40) thay hậu tố tiêu đề khi khoá tỉ lệ:
+  `aspectRatio: 14, ratioLabel: 'Banner 14:1'` → "Cắt ảnh · Banner 14:1" (vắng → "Cắt ảnh · 14:1").
+- **`crop.output: 'new-asset'` (0.119.0) — site cắt thành ảnh mới**: mặc định `'metadata'` (như cũ: chỉ trả toạ độ). `'new-asset'`
+  cần `adapter.createCropDerivative` (thiếu → cảnh báo một lần, dùng `'metadata'`; `mode: 'focal'` → cảnh báo một lần, `'metadata'`).
+  Bấm "Chèn" của bước cắt:
+  1. nút busy, cropper khoá, footer hiện `cropDerivativeBusy` ("Đang tạo ảnh đã cắt…");
+  2. kit gọi `createCropDerivative({ sourceAssetId, crop: { normalized }, focalPoint, signal })` — toàn ảnh vẫn gửi
+     `{ x: 0, y: 0, width: 1, height: 1 }`; `focalPoint` là `{ x, y }` hoặc null;
+  3. có `beforeApply` → chạy **sau** đó, trên lựa chọn đã thay bằng ảnh mới, cùng `signal`;
+  4. thành công → asset mới (chuẩn hoá như asset của `list`) thay ảnh nguồn **tại cùng vị trí** (id trùng một mục khác → giữ
+     một mục), `usage = { altText, crop: null, focalPoint: null, derivedFromAssetId: <id nguồn> }`.
+
+  Reject / ném lỗi / trả không phải asset hợp lệ → bước cắt ở lại với khung + điểm trọng tâm, footer hiện `err.userMessage` (chuỗi; `err.message` thô không bao giờ hiện)
+  hoặc `cropDerivativeError`; "Chèn" lần nữa gọi lại adapter (server nên idempotent). Escape / × → abort `signal`, kết quả về
+  muộn bị bỏ. **Giao dịch**: chỉ khi cả cổng (ảnh mới rồi `beforeApply`) cho qua kit mới cache asset và thay lựa chọn —
+  `beforeApply` từ chối thì lựa chọn vẫn là ảnh nguồn. `selection.minSize` vẫn kiểm theo pixel của khung cắt.
 - `selection.mode = 'multiple'` + `crop` → cảnh báo console **một lần**, bỏ crop (như dcms2: chọn nhiều không crop).
 - `aspectRatio` không phải số hữu hạn trong `[0.01, 100]` (gồm hai đầu) → bị từ chối + cảnh báo một lần, cắt **tự do**. Muốn nhập `"16:9"` thì tự đổi
   sang `16 / 9` (field làm việc này từ thuộc tính `crop-ratio`).
@@ -612,7 +646,7 @@ Luồng (giống dcms2: cắt **sau khi chọn**):
   có crop khác nhau ở OG, thẻ, bìa) — một lối vào duy nhất.
 - `crop` đặt được qua `configureDefaults` như mọi key khác, nhưng [media field](media-field.md) **luôn** tự đặt `crop`
   ở tham số `open()` (ưu tiên cao nhất): field không `croppable` mở picker với `crop: { enabled: false }`.
-- Picker **không** cắt ảnh, không tạo file mới, không sửa host (ADR 0013 QĐ 3). App lưu toạ độ theo chỗ dùng; server cắt
+- Picker **không** cắt ảnh, không tự tạo file mới (với `output: 'new-asset'` thì **server** cắt qua adapter), không sửa host (ADR 0013 QĐ 3). App lưu toạ độ theo chỗ dùng; server cắt
   thật bằng tham số đã ký — xem [Cropper › Dùng toạ độ ở server](cropper.md#8-dùng-toạ-độ-ở-server-cắt-thật-bằng-tham-số-đã-ký).
 
 ## Kích thước tối thiểu — `selection.minSize` (0.117.0)
@@ -1465,6 +1499,7 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `close` · `cancel` · `confirm` · `confirmCount` | "Đóng" · "Đóng" · "Chèn" · "Chèn ({n})" |
 | `cropTitle` · `cropBack` · `cropConfirm` · `cropUnavailable` (0.35) | "Cắt ảnh" · "Quay lại" · "Chèn" · "Không mở được ảnh để cắt." (nhãn bên trong vùng cắt: [`TdCropper.labels`](cropper.md#nhãn--tdcropperlabels)) |
 | `focalTitle` (0.113) | "Chọn điểm trọng tâm" — tiêu đề bước với `crop.mode: 'focal'` |
+| `cropDerivativeBusy` · `cropDerivativeError` (0.119) | "Đang tạo ảnh đã cắt…" · "Không tạo được ảnh đã cắt. Thử lại." — bước cắt với `crop.output: 'new-asset'` |
 | `search` · `searchPlaceholder` | "Tìm media" (nhãn ẩn) · "Tìm kiếm media…" |
 | `upload` · `results` · `grid` | "Tải lên" · "Kết quả" · "Media" |
 | `filters` · `filtersActive` · `filtersTitle` (0.36) | "Bộ lọc" · "Bộ lọc, {n} đang áp dụng" · "Bộ lọc" |

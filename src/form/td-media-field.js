@@ -5,7 +5,10 @@ import { ssrMarker } from '../base/td-base-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { TdMediaPicker, onDefaultsChange } from '../feedback/td-media-picker.js';
 import { openCropDialog } from '../feedback/crop-dialog.js';
-import { isAdapter, normalizeAsset, normalizeError, LatestRequest } from '../utils/media-picker-core.js';
+import {
+  isAdapter, normalizeAsset, normalizeError, LatestRequest, cleanCropPresets, cropDerivativePayload, runCropDerivative,
+  runBeforeApply,
+} from '../utils/media-picker-core.js';
 import { safeMediaUrl } from '../utils/media-url.js';
 import { PreviewThumbs } from '../utils/preview-thumbs.js';
 import {
@@ -119,6 +122,12 @@ const fill = (t, params) => String(t ?? '').replace(/\{(\w+)\}/g, (m, k) => (k i
  * @attr {string} crop-shape - v0.75.0 (usage only): `circle` (round frame; only with `crop-mode="pan"` and a 1:1 crop) | `rect` (default)
  * @attr {boolean} focal-point - v0.35 (usage only): submit `name[focal]` (+ edited in the crop dialog when croppable)
  * @attr {string} focal - v0.35: JSON v1 `{"v":1,"x","y"}` (kept as is)
+ * @attr {boolean} focal-optional - v0.119.0 (box / pan with `focal-point`): the focal point may stay unset (null) in the crop dialog
+ * @attr {string} crop-presets - v0.119.0: JSON `[{ "label": "…", "ratio": number|null }]` — the crop dialog's ratio presets
+ *   (both paths; invalid JSON → ignored + one warning; invalid entries dropped; empty → the global `TdCropper.presets`)
+ * @attr {string} crop-ratio-label - v0.119.0: the dialog title suffix of a locked ratio ("Cắt ảnh · {label}")
+ * @attr {string} crop-output - v0.119.0: `metadata` (default) | `new-asset` — the site cuts the crop through
+ *   `adapter.createCropDerivative()` and the value becomes the derived asset (no adapter / method, or focal mode → one warning, metadata)
  * @attr {boolean} hide-label - v0.79.0: the label is visually hidden (still the accessible name)
  * @attr {boolean} hide-hints - v0.79.0: hides the empty prompt and the ratio text
  * @attr {boolean} hide-alt - v0.79.2 (usage): hides the alt editor only (CSS); name[alt] / usage.altText still carry the alt
@@ -151,15 +160,19 @@ export class TdMediaField extends TdFormElement {
     focalEdit: 'Điểm trọng tâm',
     /** v0.113.0: the dialog title with `crop-mode="focal"` (same key as the gallery / picker) */
     focalTitle: 'Chọn điểm trọng tâm',
+    /** v0.119.0 (QĐ4): `crop-output="new-asset"` — "Cắt ảnh" status while the site cuts the image / its failure */
+    cropDerivativeBusy: 'Đang tạo ảnh đã cắt…',
+    cropDerivativeError: 'Không tạo được ảnh đã cắt. Thử lại.',
   };
 
   static get observedAttributes() {
     return [...super.observedAttributes, 'value', 'label', 'aspect-ratio', 'preview-fit', 'accept-kind', 'usage',
       'preview-src', 'preview-alt', 'kind', 'alt', 'crop', 'prompt', 'error-text',
-      'croppable', 'crop-ratio', 'crop-mode', 'crop-shape', 'focal-point', 'focal', 'preview-shape'];
+      'croppable', 'crop-ratio', 'crop-mode', 'crop-shape', 'focal-point', 'focal', 'preview-shape',
+      'focal-optional', 'crop-presets', 'crop-ratio-label', 'crop-output'];
   }
 
-  static get booleanAttributes() { return [...super.booleanAttributes, 'usage', 'croppable', 'focal-point']; }
+  static get booleanAttributes() { return [...super.booleanAttributes, 'usage', 'croppable', 'focal-point', 'focal-optional']; }
 
   static get errorContract() { return true; }
 
@@ -403,6 +416,53 @@ export class TdMediaField extends TdFormElement {
     // review R1 #5: the frame's aspect-ratio is valid up to 10000:1, the crop ratio only in [0.01, 100]
     this._warnOnce('crop-ratio-frame', 'td-media-field: aspect-ratio is outside the crop ratio range [0.01, 100] — the crop is free.');
     return null;
+  }
+
+  /** @private v0.119.0 (QĐ2): `focal-optional` (box / pan with the focal tool only) */
+  _focalOptional() { return this.hasAttribute('focal-optional') && this.hasAttribute('focal-point') && !this._focalMode(); }
+
+  /** @private v0.119.0 (QĐ3): `crop-presets` → a cleaned list (null when absent / empty / invalid — invalid JSON warns once) */
+  _cropPresets() {
+    const raw = this.getAttribute('crop-presets');
+    if (raw == null || !raw.trim()) return null;
+    let v;
+    try { v = JSON.parse(raw); } catch { v = undefined; }
+    if (!Array.isArray(v)) {
+      this._warnOnce('crop-presets', 'td-media-field: crop-presets must be a JSON array of { label, ratio } — ignored.');
+      return null;
+    }
+    const list = cleanCropPresets(v);
+    return list.length ? list : null;
+  }
+
+  /** @private v0.119.0 (QĐ3): `crop-ratio-label` (trimmed, ≤ 40) or '' */
+  _cropRatioLabel() { return (this.getAttribute('crop-ratio-label') || '').trim().slice(0, 40); }
+
+  /** @private v0.119.0 (QĐ4): `crop-output="new-asset"` (trimmed, case-insensitive); focal mode → one warning, false */
+  _derivedOutput() {
+    if ((this.getAttribute('crop-output') || '').trim().toLowerCase() !== 'new-asset') return false;
+    if (!this._focalMode()) return true;
+    this._warnOnce('crop-output-focal', "td-media-field: crop-output=\"new-asset\" needs a box / pan crop — focal mode keeps metadata.");
+    return false;
+  }
+
+  /** @private v0.119.0: the per-call crop options shared by both paths (only the set ones) */
+  _cropExtras() {
+    const presets = this._cropPresets();
+    const ratioLabel = this._cropRatioLabel();
+    return {
+      ...(this._focalOptional() ? { focalPointOptional: true } : {}),
+      ...(presets ? { presets } : {}),
+      ...(ratioLabel ? { ratioLabel } : {}),
+    };
+  }
+
+  /** @private v0.119.0 (QĐ1): `{ initial?, focalPoint? }` of the current value for the picker (box / pan) */
+  _storedCrop() {
+    if (!this._value) return {};
+    const crop = this._cropRaw ? parseCrop(this._cropRaw)?.crop ?? null : null;
+    const focal = this._focalOn() && this._focalRaw ? parseFocal(this._focalRaw)?.focal ?? null : null;
+    return { ...(crop ? { initial: { normalized: { ...crop } } } : {}), ...(focal ? { focalPoint: { ...focal } } : {}) };
   }
 
   /** @private v0.113.0: the current focal point (`{ x, y }` copy) or null */
@@ -970,6 +1030,10 @@ export class TdMediaField extends TdFormElement {
         return;
       case 'crop-ratio':
       case 'crop-shape':
+      case 'focal-optional': // v0.119.0
+      case 'crop-presets':
+      case 'crop-ratio-label':
+      case 'crop-output':
         return; // read when the picker / crop dialog opens
       case 'preview-fit':
         return; // CSS only
@@ -984,8 +1048,11 @@ export class TdMediaField extends TdFormElement {
   // --- Behaviour ---
 
   /** @private */
-  _emit(type) {
-    this.emit(type, { value: this._value, selection: this.selection });
+  _emit(type, derivedFrom = '') {
+    const selection = this.selection;
+    // v0.119.0 (QĐ4): provenance lives only in this event detail, never as field state
+    if (derivedFrom && selection[0]) selection[0].usage.derivedFromAssetId = derivedFrom;
+    this.emit(type, { value: this._value, selection });
   }
 
   /** @private decision 26: one picker at a time, result applied only while the field is still on the page */
@@ -1012,8 +1079,13 @@ export class TdMediaField extends TdFormElement {
             // v0.75.0: only a non-default value is passed (absent attributes ⇒ the exact 0.74 `crop` object)
             ...(parseCropMode(this.getAttribute('crop-mode')) === 'pan' ? { mode: 'pan' } : {}),
             ...(parseCropShape(this.getAttribute('crop-shape')) === 'circle' ? { shape: 'circle' } : {}),
+            // v0.119.0 (QĐ1): the stored crop / focal of the current value (the picker seeds only that asset)
+            ...this._storedCrop(),
+            ...this._cropExtras(), // v0.119.0 (QĐ2 / QĐ3)
+            ...(this._derivedOutput() ? { output: 'new-asset' } : {}), // v0.119.0 (QĐ4)
           },
     };
+    if (this._croppable() && this._focalMode()) this._derivedOutput(); // v0.119.0: focal + new-asset → its one warning
     const label = this.getAttribute('label');
     if (label) opts.title = label;
     opts.themeRoot = this; // v0.42.0 (ADR 0020): the picker follows the field's theme scope
@@ -1103,10 +1175,13 @@ export class TdMediaField extends TdFormElement {
       this._emit('change');
       return;
     }
-    const altText = typeof sel.usage?.altText === 'string' ? sel.usage.altText : (asset?.defaultAltText ?? '');
+    // v0.119.0 (QĐ4): a crop derivative of the CURRENT value keeps the alt being edited
+    const derivedFrom = typeof sel.usage?.derivedFromAssetId === 'string' ? sel.usage.derivedFromAssetId : '';
+    const altText = derivedFrom && derivedFrom === this._value ? this._alt
+      : typeof sel.usage?.altText === 'string' ? sel.usage.altText : (asset?.defaultAltText ?? '');
     this._applyLive({ id: sel.assetId, ...preview, alt: cap(altText), cropRaw, focalRaw, asset, assetProv: prov, previewProv: prov });
-    this._emit('input');
-    this._emit('change');
+    this._emit('input', derivedFrom);
+    this._emit('change', derivedFrom);
     if (trigger && (!trigger.isConnected || trigger.closest('[hidden]')) && this.contains(this.ownerDocument.activeElement) === false) {
       this._part('open')?.focus({ preventScroll: true });
     }
@@ -1174,10 +1249,15 @@ export class TdMediaField extends TdFormElement {
         this._setCropStatus(this._label('cropError'));
         return null;
       }
-      const p = this._previewOf(asset); // the fresh asset is the field's too (preview, name)
+      // v0.119.0 review: in new-asset mode the fetched source stays local to the crop (nothing is installed until the
+      // derivative is approved); otherwise the fresh asset is the field's too (preview, name), as before
+      // (only when a derivative will really run: new-asset + box / pan + the adapter has createCropDerivative)
+      if (!(this._derivedOutput() && typeof /** @type {any} */ (adapter).createCropDerivative === 'function')) {
+      const p = this._previewOf(asset);
       Object.assign(this, { _previewSrc: p.src, _previewAlt: p.previewAlt, _kind: p.kind, _asset: asset,
         _assetProv: { adapter, context, gen: srcGen }, _previewProv: { adapter, context, gen: srcGen } });
       this._update();
+      }
       if (asset.kind !== 'image') return null;
     }
     const src = safeSrc(asset.urls?.preview);
@@ -1220,6 +1300,34 @@ export class TdMediaField extends TdFormElement {
     const focalOn = this._focalOn();
     const focalMode = this._focalMode();
     const opener = this._part('crop') || btn;
+    // v0.119.0 (QĐ4): `crop-output="new-asset"` — the site cuts it (the field's adapter resolution); else metadata
+    const sourceId = this._value;
+    const prov = this._prov();
+    let adapter = null;
+    if (this._derivedOutput()) {
+      const a = this._resolveAdapter();
+      if (a && typeof /** @type {any} */ (a).createCropDerivative === 'function') adapter = a;
+      else this._warnOnce('crop-output', "td-media-field: crop-output=\"new-asset\" needs adapter.createCropDerivative() — using metadata.");
+    }
+    /** @type {import('../utils/media-picker-core.js').MediaAsset|null} the derivative the whole gate approved */
+    let derived = null;
+    const onApply = (res, { signal }) => {
+      const normalize = (raw) => normalizeAsset(raw, { safeUrl: (u) => safeMediaUrl(u) });
+      return runCropDerivative(adapter, cropDerivativePayload(sourceId, res, signal),
+        { normalize, error: this._label('cropDerivativeError') }).then((d) => {
+        if (!d.ok) return d;
+        if (signal.aborted) return { ok: false, aborted: true };
+        const hookRaw = this._pickerOptions?.beforeApply ?? TdMediaPicker.defaults?.beforeApply;
+        const hook = typeof hookRaw === 'function' ? hookRaw : null;
+        const selection = [{ assetId: d.asset.id, asset: d.asset,
+          usage: { altText: this._alt, crop: null, focalPoint: null, derivedFromAssetId: sourceId } }];
+        const approve = () => { derived = d.asset; return { ok: true }; };
+        if (!hook) return approve();
+        const L = TdMediaPicker.labels;
+        return runBeforeApply(hook, selection, signal, { rejected: String(L.applyRejected), failed: String(L.applyFailed) })
+          .then((r) => (r.ok ? approve() : r));
+      });
+    };
     const common = { ...source, themeRoot: this /* v0.42.0 (ADR 0020) */, alt: this._alt || this._previewAlt, nested: false, signal: ctrl.signal, opener };
     let dialogOpts;
     if (focalMode) {
@@ -1240,6 +1348,8 @@ export class TdMediaField extends TdFormElement {
         focalPoint: focal ? { ...focal } : null,
         allowFocalPoint: focalOn,
         title: this._label('crop'), // the dialog appends " · {ratio}" itself when the ratio is locked
+        ...this._cropExtras(), // v0.119.0 (QĐ2 / QĐ3)
+        ...(adapter ? { onApply, busyMessage: this._label('cropDerivativeBusy') } : {}), // v0.119.0 (QĐ4)
       };
     }
     let res;
@@ -1250,6 +1360,17 @@ export class TdMediaField extends TdFormElement {
       return;
     }
     if (!release() || !this.isConnected) return;
+    if (derived) {
+      // v0.119.0 (QĐ4): commit ONCE — the derived asset is the value, the crop / focal usage cleared, one input + change
+      if (!res || res.status !== 'applied' || this._value !== sourceId || !this._provMatches(prov)) return;
+      const asset = derived;
+      this._applyLive({ id: asset.id, ...this._previewOf(asset), alt: this._alt, cropRaw: null, focalRaw: null, asset,
+        assetProv: prov, previewProv: prov });
+      this._emit('input', sourceId);
+      this._emit('change', sourceId);
+      this._part('crop')?.focus({ preventScroll: true });
+      return;
+    }
     if (!res || res.status !== 'applied' || !res.changed) return;
     // v0.113.0 (QĐ4b): a focal-mode result never sets the crop (the stored one stays, unused)
     const cropRaw = focalMode ? this._cropRaw : res.crop ? serializeCrop(res.crop.normalized) : null;

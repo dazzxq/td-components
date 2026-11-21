@@ -243,6 +243,19 @@ vẫn di chuyển khung.
 Toạ độ chuẩn hoá theo **toàn ảnh gốc**, độc lập với crop, **được phép nằm ngoài khung**: server dùng nó khi tự cắt một tỉ
 lệ khác (ảnh vuông cho thẻ, ảnh dọc cho mobile) mà vẫn giữ chủ thể.
 
+### 4a. Điểm trọng tâm tuỳ chọn — `focal-optional` (0.119.0)
+
+Dùng khi "chưa chọn điểm" có nghĩa riêng (server tự cắt giữa ảnh). Chỉ có tác dụng ở `box` khi có `focal-point`; `mode="focal"`
+bỏ qua thuộc tính. Gán lúc chạy được (`el.focalOptional = true`).
+
+- **Chưa có điểm** ⇒ điểm hiển thị mờ ở giữa ảnh (class `td-cropper__focal--unset`) nhưng `focalPoint` vẫn `null`,
+  `getResult().focalPoint` là `null` cho tới khi người dùng đặt điểm. Chạm / bấm lên ảnh đặt điểm như thường.
+- **Bàn phím**: điểm là một điểm dừng Tab; phím mũi tên đầu tiên đặt điểm ở giữa `{0.5, 0.5}` rồi đi một bước (1 %, Shift 10 %),
+  phát đúng một `focal-change { source: 'keyboard' }` mỗi lần bấm. Không có thuộc tính này, phím trên điểm chưa đặt vẫn không làm gì.
+- **Nút bật / tắt điểm không hiện.** Thay vào đó là nút "Dùng giữa ảnh" (`labels.focalClear`), chỉ hiện khi đã có điểm: bấm
+  ⇒ `focalPoint = null`, phát `focal-change { focalPoint: null, source: 'clear' }`, focus chuyển sang nút kế tiếp của thanh công cụ.
+- **"Đặt lại"** về điểm ban đầu (giá trị lúc dựng hoặc lúc gán từ ngoài); ban đầu `null` ⇒ về `null`.
+
 ### 5. Nguồn ảnh: phải là ảnh nguyên, không cắt sẵn
 
 `src` phải là **toàn bộ ảnh gốc** (bất kỳ cỡ: bản preview 1600px là đủ) — không phải thumbnail đã cắt vuông / cắt theo
@@ -353,6 +366,9 @@ TdCropper.openDialog(opts: {
   crop?: CropBox | null;           // normalized hiện tại (null ⇒ khung mặc định)
   focalPoint?: FocalPoint;         // điểm hiện tại
   allowFocalPoint?: boolean;       // bật công cụ điểm trọng tâm
+  focalPointOptional?: boolean;    // 0.119.0: true + allowFocalPoint (box / pan) ⇒ <td-cropper focal-optional> (điểm được để trống)
+  presets?: { label: string; ratio: number | null }[];   // 0.119.0: preset tỉ lệ CHO LẦN MỞ NÀY (không sửa TdCropper.presets; box / pan)
+  ratioLabel?: string;             // 0.119.0: hậu tố tiêu đề khi khoá tỉ lệ (" · Banner 14:1"); rỗng / thiếu ⇒ như cũ
   title?: string;                  // mặc định "Cắt ảnh"; khoá tỉ lệ ⇒ tự thêm " · 16:9" (nhãn preset nếu khớp)
   confirmLabel?: string;           // mặc định "Áp dụng"
   cancelLabel?: string;            // mặc định "Huỷ"
@@ -409,6 +425,7 @@ còn.
 | `aspect-ratio` | `W/H` \| `W:H` \| số | — | Có ⇒ **khoá** tỉ lệ, ẩn bộ chọn preset; tỉ lệ `w / h` phải trong **[0.01, 100]** (gồm hai đầu); ngoài khoảng → bị từ chối + **một** cảnh báo (không lặp lại giá trị), cắt tự do |
 | `crop` | JSON v1 `{"v":1,"x","y","width","height"}` | — | Khung ban đầu (chuẩn hoá). Sai định dạng → khung mặc định |
 | `focal-point` | boolean | — | Bật công cụ điểm trọng tâm |
+| `focal-optional` (0.119.0) | boolean | — | "Chưa chọn điểm" là một trạng thái thật (mục 4a). Chỉ có tác dụng ở `box` + `focal-point`; `mode="focal"` bỏ qua |
 | `focal` | JSON v1 `{"v":1,"x","y"}` | — | Điểm trọng tâm ban đầu |
 | `disabled` | boolean | — | Không tương tác, không event |
 | `mode` | `box` \| `pan` \| `focal` | `box` | 0.73.0. `pan` = khung cố định, kéo / phóng **ảnh** ([mục trên](#hai-kiểu-thao-tác--mode-0730)); 0.113.0 `focal` = chỉ điểm trọng tâm, không khung ([mục trên](#chỉ-chọn-điểm-trọng-tâm--modefocal-01130)); giá trị lạ = `box`, im lặng |
@@ -420,6 +437,7 @@ còn.
 |---|---|---|
 | `crop` | get `CropValue \| null` · set `{ normalized: CropBox } \| CropBox \| null` | `null` khi chưa `ready`. Gán `null` = khung mặc định. Im lặng |
 | `focalPoint` | `{ x, y } \| null` | Im lặng |
+| `focalOptional` (0.119.0) | `boolean` | Phản chiếu thuộc tính `focal-optional` |
 | `presets` | `{ label: string, ratio: number \| null }[]` | Mặc định `TdCropper.presets` |
 | `reset()` | `() => void` | Về khung / điểm ban đầu, im lặng |
 | `getResult()` | `() => { crop: CropValue \| null, focalPoint }` | Kết quả hiện tại (không đổi toàn ảnh thành `null`) |
@@ -435,7 +453,7 @@ Phát trên host, `bubbles`. Không phát khi gán bằng code.
 |---|---|---|
 | `crop-input` | `{ crop, source }` | Trong lúc kéo / pinch (gộp theo khung hình) |
 | `crop-change` | `{ crop, source }` | Kết thúc cử chỉ có thay đổi; mỗi bước phím / nút / lăn chuột; đổi preset; "Đặt lại" |
-| `focal-change` | `{ focalPoint, source }` | Bật / tắt / đặt / kéo điểm trọng tâm |
+| `focal-change` | `{ focalPoint, source }` | Bật / tắt / đặt / kéo điểm trọng tâm; `source: 'clear'` = nút "Dùng giữa ảnh" (`focal-optional`, `focalPoint: null`) |
 | `image-ready` | `{ naturalWidth, naturalHeight, pixelsKnown }` | Ảnh decode xong, kích thước hợp lệ |
 | `image-error` | `{ kind: 'src' \| 'load' \| 'size' \| 'ratio' }` | Xem [mục 5](#5-nguồn-ảnh-phải-là-ảnh-nguyên-không-cắt-sẵn) |
 
@@ -451,6 +469,7 @@ preset nằm ở `TdCropper.presets` (`label`), không ở đây.
 | `stage` · `stageNoAlt` | "Cắt ảnh: {alt}" · "Cắt ảnh" (tên vùng cắt) |
 | `tools` · `ratios` | "Công cụ cắt ảnh" · "Tỉ lệ khung" |
 | `zoomIn` · `zoomOut` · `focal` · `reset` | "Phóng to" · "Thu nhỏ" · "Điểm trọng tâm" · "Đặt lại" |
+| `focalClear` (0.119.0) | "Dùng giữa ảnh": nút của `focal-optional`, thay nút bật / tắt điểm |
 | `box` · `boxRole` · `handleRole` | "Vùng cắt" · "khung cắt" · "tay nắm" |
 | `nw` · `ne` · `se` · `sw` | "Góc trên trái" · "Góc trên phải" · "Góc dưới phải" · "Góc dưới trái" |
 | `focalPoint` | "Điểm trọng tâm" (tên của điểm) |

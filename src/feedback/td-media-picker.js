@@ -100,6 +100,7 @@ import {
   normalizeFields, normalizeError, canDo, buildListRequest, requestKey, LatestRequest, SelectionModel, InitialLoad,
   Debouncer, SessionCache, formatLabel, PageState, defaultTitle, normalizeDeleteResult, normalizeDownloadResult,
   normalizeCollections, autoPageSize, PAGE_SIZE_DEFAULT, minSizeReason, runBeforeApply, shortFileSize, relativeTime,
+  cropDerivativePayload, runCropDerivative, swapAssets,
 } from '../utils/media-picker-core.js';
 import { createFacetControl, FieldForm, FIELD_LABELS } from './media-picker-fields.js';
 import { openUploadDialog, UPLOAD_LABELS } from './media-picker-upload.js';
@@ -268,6 +269,9 @@ export class TdMediaPicker extends HTMLElement {
     cropBack: 'Quay lại',
     cropConfirm: 'Chèn',
     cropUnavailable: 'Không mở được ảnh để cắt.',
+    /** v0.119.0 (QĐ4): `crop.output: 'new-asset'` — the crop step's status while the site cuts the image / its failure */
+    cropDerivativeBusy: 'Đang tạo ảnh đã cắt…',
+    cropDerivativeError: 'Không tạo được ảnh đã cắt. Thử lại.',
     search: 'Tìm media',
     searchPlaceholder: 'Tìm kiếm media…',
     upload: 'Tải lên',
@@ -3816,6 +3820,10 @@ export class TdMediaPicker extends HTMLElement {
    * `usage.crop` (whole image → null, already by the dialog) + `usage.focalPoint` (only with `allowFocalPoint`).
    * v0.113.0: `cropResolved.mode === 'focal'` → the dialog in focal mode from `cropResolved.focalPoint`, title `focalTitle`;
    * the outcome is `{ crop: null, focalPoint }`.
+   * v0.119.0: `crop.initial` / the box-mode `crop.focalPoint` seed the dialog only while `asset` is the single
+   * preselected asset of this open (QĐ1); `presets` / `ratioLabel` / `focalPointOptional` pass through (QĐ2 / QĐ3);
+   * `output: 'new-asset'` (QĐ4) runs `adapter.createCropDerivative` inside the dialog's apply gate, then `beforeApply`
+   * on the provisional swapped selection; only a fully approved gate caches the derived asset and swaps it in.
    * @param {import('../utils/media-picker-core.js').MediaAsset} asset
    */
   _openCrop(asset) {
@@ -3833,11 +3841,51 @@ export class TdMediaPicker extends HTMLElement {
     const naturalHeight = dim(asset.height);
     const known = naturalWidth !== undefined && naturalHeight !== undefined;
     const ctrl = new AbortController();
-    /** @type {{ ctrl: AbortController, outcome?: object }} `outcome`: the one `beforeApply` approved (v0.117.0) */
+    /**
+     * @type {{ ctrl: AbortController, outcome?: object, derived?: object }} `outcome`: the one `beforeApply` approved
+     * (v0.117.0); `derived`: v0.119.0 the approved derivative (cached + swapped in only after the gate succeeded)
+     */
     const step = { ctrl };
     s.crop = step;
     // v0.113.0 (QĐ3 / QĐ4b): the focal mode never yields a crop, whatever the dialog returns
     const usageOf = (res) => ({ crop: focal ? null : res.crop || null, focalPoint: cfg.allowFocalPoint ? (res.focalPoint || null) : null });
+    // v0.119.0 (QĐ1): the stored crop / focal belong to the single preselected asset of this open only
+    const pre = s.opts.selection.initialIds;
+    const own = pre.length === 1 && pre[0] === asset.id;
+    const startFocal = focal ? (cfg.focalPoint ? { ...cfg.focalPoint } : null) // v0.113.0 QĐ3b: unchanged
+      : own && cfg.allowFocalPoint && cfg.focalPoint ? { ...cfg.focalPoint } : null;
+    // v0.119.0 (QĐ4): resolveOptions keeps `output` only with a box / pan step and the adapter method
+    const derive = !focal && cfg.output === 'new-asset';
+    const hook = typeof s.opts.beforeApply === 'function' ? s.opts.beforeApply : null;
+    /** v0.119.0 (QĐ4): the gate — derivative (provisional) → `beforeApply` on the swapped selection → ok */
+    const onApply = (res, { signal }) => {
+      const bad = this._cropIneligible(asset);
+      if (bad) return Promise.resolve({ ok: false, message: this._lockText(bad) });
+      if (!derive) {
+        const outcome = buildOutcome(s.model, new Map([[asset.id, usageOf(res)]]));
+        return runBeforeApply(hook, outcome.selection, signal, this._gateTexts()).then((r) => {
+          if (r.ok && s.crop === step) step.outcome = outcome;
+          return r;
+        });
+      }
+      const normalize = (raw) => normalizeAsset(raw, { safeUrl: safeMediaUrl, metadataKeys: s.metaKeys });
+      return runCropDerivative(s.opts.adapter, cropDerivativePayload(asset.id, res, signal),
+        { normalize, error: this._t('cropDerivativeError') }).then((d) => {
+        if (!d.ok) return d;
+        if (signal.aborted || s.crop !== step) return { ok: false, aborted: true };
+        const derived = d.asset;
+        // provisional: the live selection / cache stay on the source until the whole gate succeeds
+        const outcome = buildOutcome({ assets: swapAssets(s.model.assets, asset.id, derived) }, new Map([[derived.id, {
+          crop: null, focalPoint: null, derivedFromAssetId: asset.id,
+        }]]));
+        const approve = () => {
+          if (s.crop === step) { step.outcome = outcome; step.derived = derived; }
+          return { ok: true };
+        };
+        if (!hook) return approve();
+        return runBeforeApply(hook, outcome.selection, signal, this._gateTexts()).then((r) => (r.ok ? approve() : r));
+      });
+    };
     const opener = /** @type {HTMLElement|null} */ (s.els.confirm.querySelector('button')) || s.els.confirm;
     let pending;
     try {
@@ -3850,9 +3898,13 @@ export class TdMediaPicker extends HTMLElement {
         aspectRatio: cfg.aspectRatio,
         mode: cfg.mode, // v0.75.0: resolved ('box' | 'pan'); v0.113.0 'focal' (no frame, only the focal point)
         shape: cfg.shape,
-        crop: null,
-        focalPoint: focal ? (cfg.focalPoint ? { ...cfg.focalPoint } : null) : null, // v0.113.0 QĐ3b: the starting point
+        crop: own && cfg.initial && !focal ? { ...cfg.initial } : null, // v0.119.0 (QĐ1): the stored crop, same asset only
+        focalPoint: startFocal,
         allowFocalPoint: cfg.allowFocalPoint,
+        // v0.119.0 (QĐ2 / QĐ3): only a set value reaches the dialog
+        ...(cfg.focalPointOptional && !focal ? { focalPointOptional: true } : {}),
+        ...(cfg.presets && !focal ? { presets: cfg.presets.map((p) => ({ ...p })) } : {}),
+        ...(cfg.ratioLabel && !focal ? { ratioLabel: cfg.ratioLabel } : {}),
         title: this._t(focal ? 'focalTitle' : 'cropTitle'),
         confirmLabel: this._t('cropConfirm'),
         cancelLabel: this._t('cropBack'),
@@ -3861,18 +3913,10 @@ export class TdMediaPicker extends HTMLElement {
         opener,
         // v0.117.0 (QĐ3): the crop itself must meet `selection.minSize` (the dialog keeps "Áp dụng" disabled below it)
         ...(s.minSize && !focal ? { minSize: s.minSize, minSizeMessage: this._sizeText('small') } : {}),
-        // v0.117.0 (QĐ4): `beforeApply` runs inside the crop step, on its "Áp dụng", with the exact final selection
-        ...(typeof s.opts.beforeApply === 'function' ? {
-          onApply: (res, { signal }) => {
-            const bad = this._cropIneligible(asset);
-            if (bad) return Promise.resolve({ ok: false, message: this._lockText(bad) });
-            const outcome = buildOutcome(s.model, new Map([[asset.id, usageOf(res)]]));
-            return runBeforeApply(s.opts.beforeApply, outcome.selection, signal, this._gateTexts()).then((r) => {
-              if (r.ok && s.crop === step) step.outcome = outcome;
-              return r;
-            });
-          },
-        } : {}),
+        // v0.117.0 (QĐ4): `beforeApply` runs inside the crop step, on its "Áp dụng", with the exact final selection;
+        // v0.119.0 (QĐ4): so does the derivative of `crop.output: 'new-asset'` (before `beforeApply`)
+        ...(hook || derive ? { onApply } : {}),
+        ...(derive ? { busyMessage: this._t('cropDerivativeBusy') } : {}),
       }));
     } catch (err) {
       pending = Promise.reject(err);
@@ -3886,6 +3930,11 @@ export class TdMediaPicker extends HTMLElement {
           this._announce(this._lockText(bad));
           this._focusButton(s.els.confirm);
           return;
+        }
+        // v0.119.0 (QĐ4): the gate succeeded — NOW cache the derived asset and commit the swap
+        if (step.derived) {
+          s.cache.putAsset(step.derived);
+          s.model.swap(asset.id, step.derived);
         }
         // v0.117.0 (QĐ4): with `beforeApply`, the outcome it approved (the dialog resolves `applied` only after that)
         const outcome = step.outcome || buildOutcome(s.model, new Map([[asset.id, usageOf(res)]]));

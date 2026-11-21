@@ -325,6 +325,10 @@ Gửi form: `og[id]=a_9f2c`, `og[alt]=…`, `og[crop]={"v":1,…}`, `og[focal]={
 | `crop-ratio` | Tỉ lệ khung cắt: `W/H` \| `W:H` \| số \| `free`; tỉ lệ phải trong **[0.01, 100]**. **Vắng** (hoặc sai / ngoài khoảng: một cảnh báo) → theo `aspect-ratio` của khung (khung ngoài [0.01, 100] → tự do + cảnh báo); vắng cả hai → tự do (như dcms2 tách tỉ lệ cắt khỏi tỉ lệ hiển thị) |
 | `focal-point` | Bật điểm trọng tâm: công cụ trong hộp cắt (khi `croppable`) + mục thứ tư `name[focal]` |
 | `focal` | Điểm trọng tâm mặc định, JSON v1 `{"v":1,"x","y"}` (0..1). Sai → `null` |
+| `focal-optional` | 0.119.0: kèm `focal-point` (kiểu `box` / `pan`): điểm trọng tâm được để trống trong hộp cắt (`name[focal]` = `null`). Bỏ qua ở `crop-mode="focal"` |
+| `crop-presets` | 0.119.0: JSON `[{"label":"Banner","ratio":14},{"label":"Tự do","ratio":null}]` — nút tỉ lệ của hộp cắt **cho field này** (cả nút "Cắt ảnh" lẫn bước cắt của picker). Mục sai bị bỏ; JSON sai / không phải mảng → bỏ qua + cảnh báo một lần; rỗng → `TdCropper.presets` |
+| `crop-ratio-label` | 0.119.0: hậu tố tiêu đề khi khoá tỉ lệ: `crop-ratio="14/1" crop-ratio-label="Banner 14:1"` → "Cắt ảnh · Banner 14:1" (trim, ≤ 40) |
+| `crop-output` | 0.119.0: `metadata` (mặc định, như cũ) \| `new-asset` — site cắt thành ảnh mới qua `adapter.createCropDerivative` ([dưới](#cắt-thành-ảnh-mới--crop-outputnew-asset-01190)) |
 
 - Cả bốn chỉ có tác dụng ở **chế độ `usage`** (dạng reference không có mục crop): thiếu `usage` → cảnh báo console một
   lần, bỏ qua (fail closed).
@@ -336,6 +340,27 @@ Gửi form: `og[id]=a_9f2c`, `og[alt]=…`, `og[crop]={"v":1,…}`, `og[focal]={
   giữ **nguyên chuỗi crop / focal gốc đúng từng byte** (không làm tròn lại dữ liệu server), không event.
 - **Chọn ảnh qua picker** khi `croppable` → "Chèn" mở bước cắt (picker option `crop`), kết quả áp ngay vào field.
 - Khung phủ toàn ảnh → `crop = null` ("dùng nguyên ảnh").
+- **Mở lại crop đã lưu (0.119.0)**: chọn qua picker khi field đã có `value` + `crop` / `focal` → bước cắt của picker mở từ crop /
+  focal đó (picker `crop.initial` / `crop.focalPoint`), chỉ với **chính ảnh đó**; chọn ảnh khác → khung mặc định. "Chèn" không sửa gì →
+  giữ đúng byte, không event.
+
+#### Cắt thành ảnh mới — `crop-output="new-asset"` (0.119.0)
+
+```html
+<td-media-field name="og" usage croppable crop-ratio="1.91" crop-output="new-asset"></td-media-field>
+```
+
+Cần adapter có `createCropDerivative` ([media picker › Cắt ảnh](media-picker.md#cắt-ảnh--option-crop-0350)); không có adapter /
+hàm, hoặc `crop-mode="focal"` → cảnh báo một lần, dùng `metadata`. Server cắt ảnh, trả **asset mới**; field:
+
+- **Picker**: kết quả là ảnh mới → `value` = id mới, `name[crop]` / `name[focal]` = `null`, `input` + `change`. Alt đang sửa
+  được giữ khi ảnh nguồn là `value` hiện tại.
+- **Nút "Cắt ảnh"**: "Áp dụng" → nút busy, footer `cropDerivativeBusy`; rồi `beforeApply` (của `pickerOptions` / defaults, nếu có)
+  trên lựa chọn mới. Thành công → commit **một lần**: `value` = id mới, ảnh xem trước của asset mới, crop / focal = `null`, đúng
+  một cặp `input` + `change`. Lỗi → hộp ở lại, footer `err.userMessage` (không bao giờ hiện `err.message` thô) hoặc `cropDerivativeError`, "Áp dụng" lần nữa gọi lại;
+  Huỷ / Escape (abort) / `beforeApply` từ chối → value, ảnh xem trước, crop / focal giữ nguyên.
+- `detail.selection[0].usage.derivedFromAssetId` (id ảnh nguồn) **chỉ** có trong `input` / `change` của lần cắt đó — không phải
+  state của field (`field.selection` không có).
 
 #### Nguồn ảnh cho hộp cắt
 
@@ -367,6 +392,7 @@ phát event, nên `detail.selection` luôn là state mới.
 | Picker → **cùng** ảnh, `croppable` | làm mới ảnh xem trước **và** áp crop mới | áp focal mới | `input` + `change` **chỉ khi** crop hoặc focal đổi (so số, sai số 1e-6; bằng → giữ chuỗi gốc) |
 | Picker → cùng ảnh, không `croppable` | giữ (như 0.34) | giữ | không |
 | Hộp cắt "Áp dụng" có thay đổi | crop mới / `null` (toàn ảnh) | focal mới / `null` | `input` + `change` |
+| 0.119 `crop-output="new-asset"`: picker / hộp cắt thành công (value = id ảnh mới) | `null` | `null` | `input` + `change` (kèm `derivedFromAssetId`) |
 | Hộp cắt "Huỷ" / không đổi gì | giữ đúng byte | giữ đúng byte | không |
 | X ("Gỡ") | `null` | `null` | `input` + `change` |
 | `.value = id` (code) | `null` | `null` | không |
@@ -493,6 +519,10 @@ X / cắt là nút tròn nằm trong góc khung). Khung ảnh không bao giờ r
 | `crop-shape` | `rect` \| `circle` | `rect` | 0.75.0: hình khung của hộp cắt; tròn chỉ khi `pan` + tỉ lệ 1:1 |
 | `focal-point` | boolean | — | 0.35: điểm trọng tâm + mục `name[focal]` (cần `usage`) |
 | `focal` | JSON v1 `{"v":1,"x","y"}` | — | 0.35: focal mặc định; sai → `null` |
+| `focal-optional` | boolean | — | 0.119.0: điểm trọng tâm được để trống (kèm `focal-point`, kiểu `box` / `pan`) |
+| `crop-presets` | JSON `[{label, ratio}]` | `TdCropper.presets` | 0.119.0: nút tỉ lệ của hộp cắt cho field này |
+| `crop-ratio-label` | string | tỉ lệ ("14:1") | 0.119.0: hậu tố tiêu đề hộp cắt khi khoá tỉ lệ |
+| `crop-output` | `metadata` \| `new-asset` | `metadata` | 0.119.0: `new-asset` = site cắt thành ảnh mới (`adapter.createCropDerivative`) |
 | `prompt` | string | theo `accept-kind` | Chữ trong khung rỗng. 0.79.1: chỉ hiện khi đặt attribute (không rỗng); không đặt thì khung rỗng chỉ có icon như dcms2 (span vẫn có trong DOM, `display: none`) |
 | `helper-text` / `error-text` | string | — | Ghi chú / lỗi. 0.54.0: có lỗi thì ghi chú ẩn (và rời khỏi mô tả); đổi `helper-text` không render lại; `setHelper()` / `helperMessage`; nội dung giàu: `<td-hint>` con — [Hint](hint.md) |
 | `hide-label` | boolean | — | 0.79.0: nhãn ẩn khỏi mắt, vẫn là tên trợ năng ([mục 10](#10-ẩn-nhãn-và-gợi-ý--hide-label-hide-hints-0790)) |
@@ -535,6 +565,7 @@ phát event.
 | `cropError` | "Không tải được ảnh để cắt." (0.35; khi `adapter.get` lỗi không có `userMessage` / không có URL ảnh an toàn) |
 | `focalEdit` | "Điểm trọng tâm" (0.113; nút chọn điểm với `crop-mode="focal"`) |
 | `focalTitle` | "Chọn điểm trọng tâm" (0.113; tiêu đề hộp chọn điểm với `crop-mode="focal"`) |
+| `cropDerivativeBusy` · `cropDerivativeError` | "Đang tạo ảnh đã cắt…" · "Không tạo được ảnh đã cắt. Thử lại." (0.119; nút "Cắt ảnh" với `crop-output="new-asset"`; bước cắt của picker dùng nhãn cùng tên của `TdMediaPicker.labels`) |
 | `alt` | "Mô tả ảnh (alt)" |
 | `empty` | "Chưa chọn" (đọc cho trình đọc màn hình) |
 | `selected` | "Đã chọn: {name}" |

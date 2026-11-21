@@ -290,7 +290,7 @@ const CASES = [
   },
   {
     tag: 'td-cropper', props: () => ({ presets: [{ label: 'Vuông', ratio: 1 }], crop: { normalized: { x: 0, y: 0, width: 0.5, height: 0.5 } },
-      focalPoint: { x: 0.4, y: 0.6 } }),
+      focalPoint: { x: 0.4, y: 0.6 }, focalOptional: true }),
     skip: ['crop'], // the getter needs a loaded image
   },
   { tag: 'td-datetime-range', attrs: { label: 'Khoảng' }, props: () => ({ presets: [{ label: 'Một ngày', days: 1 }] }) },

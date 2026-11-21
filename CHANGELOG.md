@@ -4,6 +4,14 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.119.0
+
+### Thêm
+- Crop mở lại khung đã lưu: `TdMediaPicker.open({ crop: { initial } })` nhận `{normalized}` hoặc `{x, y, width, height}` (0..1); `crop.focalPoint` giờ cũng gieo điểm trọng tâm ở chế độ box / pan (cần `allowFocalPoint`). Chỉ áp cho đúng ảnh được chọn sẵn; chọn ảnh khác thì khung về mặc định. `td-media-field` chuyển `crop` / `focal` của nó sang picker; mở lại mà không đổi thì không phát sự kiện.
+- Điểm trọng tâm tuỳ chọn: `crop.focalPointOptional`, option dialog `focalPointOptional`, attribute `focal-optional` trên `td-cropper` và `td-media-field` (box / pan + công cụ trọng tâm; chế độ focal bỏ qua). Chưa đặt thì hiện dấu mờ ở giữa, `focalPoint` vẫn là null; phím trọng tâm đầu tiên bắt đầu từ giữa; nút "Dùng giữa ảnh" (`TdCropper.labels.focalClear`) thay nút bật / tắt, phát `focal-change {focalPoint: null, source: 'clear'}`; "Đặt lại" trả về giá trị ban đầu.
+- Tỉ lệ theo từng lần mở: `crop.presets: [{label, ratio}]` + `crop.ratioLabel` (cũng là option dialog), attribute field `crop-presets` (JSON) và `crop-ratio-label`. Tỉ lệ khoá cực đoan (14:1, 28:2, 64:9, 9:16) chạy đúng.
+- `crop.output: 'new-asset'` (attribute field `crop-output`): "Áp dụng" gọi `adapter.createCropDerivative({ sourceAssetId, crop: { normalized }, focalPoint, signal })` trong cổng áp dụng (bận, Esc / × huỷ signal, lỗi giữ hộp và cho thử lại với `err.userMessage` hoặc `cropDerivativeError`). Ảnh mới chỉ thay ảnh gốc khi cả bước tạo lẫn `beforeApply` đều qua; `usage = { altText, crop: null, focalPoint: null, derivedFromAssetId }`. Thiếu method hoặc chế độ focal → cảnh báo một lần, dùng `'metadata'`. Nhãn mới `cropDerivativeBusy`, `cropDerivativeError`.
+
 ## 0.118.1
 
 ### Sửa

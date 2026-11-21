@@ -150,6 +150,10 @@ import { clampFocal } from './crop-geometry.js';
  *   checks usage + permission; the kit never does (decision 24)
  * @property {(id: string, o: { rendition: 'original', context?: unknown, signal: AbortSignal })
  *   => Promise<DownloadResult>} [download] decision 25 (a blob is only ever downloaded, never opened)
+ * @property {(o: { sourceAssetId: string, crop: { normalized: { x: number, y: number, width: number, height: number } },
+ *   focalPoint: { x: number, y: number } | null, signal: AbortSignal }) => Promise<MediaAsset>} [createCropDerivative]
+ *   v0.119.0 (QĐ4): `crop.output: 'new-asset'` — the SITE cuts the crop server-side and returns the new asset (normalised
+ *   like a list asset); a whole-image box arrives as `{ x: 0, y: 0, width: 1, height: 1 }`. Not a capability flag.
  * @property {(request: MediaCollectionsRequest) => Promise<{ items: CollectionCard[], truncated?: boolean }>} [collections]
  *   v0.66.0 (K8): the collection cards matching `query` / `filters` (≤ 20, `normalizeCollections`); the method's
  *   presence turns the `collections` capability on. `upload` / `uploadFromUrl` / `facets` then also get `collectionId`.
@@ -162,6 +166,8 @@ import { clampFocal } from './crop-geometry.js';
  * @property {{ normalized: { x: number, y: number, width: number, height: number },
  *   pixels?: { x: number, y: number, width: number, height: number }, aspectRatio?: number } | null} [crop]
  * @property {{ x: number, y: number } | null} [focalPoint]
+ * @property {string} [derivedFromAssetId] v0.119.0 (QĐ4): with `crop.output: 'new-asset'` only — the asset this server-made
+ *   crop derivative was cut from (absent for 'metadata')
  */
 /** @typedef {{ assetId: string, asset: MediaAsset, usage: UsageDraft }} SelectedMedia */
 /**
@@ -178,7 +184,12 @@ import { clampFocal } from './crop-geometry.js';
  * @property {{ mode: 'single'|'multiple', maxItems?: number, initialIds?: string[],
  *   kinds?: Array<'image'|'video'|'file'>, minSize?: { width?: number, height?: number } }} selection
  * @property {{ enabled?: boolean, aspectRatio?: number, allowFocalPoint?: boolean, mode?: 'box'|'pan'|'focal',
- *   shape?: 'rect'|'circle', focalPoint?: { x: number, y: number } }} [crop] v0.35 (`mode` / `shape`: v0.75.0 — `pan` keeps the crop frame still and moves the image, `circle` rounds it; see `<td-cropper>`;
+ *   shape?: 'rect'|'circle', focalPoint?: { x: number, y: number },
+ *   initial?: { normalized: { x: number, y: number, width: number, height: number } } | { x: number, y: number, width: number, height: number } | null,
+ *   focalPointOptional?: boolean, presets?: Array<{ label: string, ratio: number|null }>, ratioLabel?: string,
+ *   output?: 'metadata'|'new-asset' }} [crop] v0.119.0: `initial` (the stored crop, reopened; only for the single preselected
+ *   asset), `focalPoint` also seeds box / pan (with `allowFocalPoint`, same asset only), `focalPointOptional`, `presets` /
+ *   `ratioLabel` per call, `output: 'new-asset'` (→ `adapter.createCropDerivative`). v0.35 (`mode` / `shape`: v0.75.0 — `pan` keeps the crop frame still and moves the image, `circle` rounds it; see `<td-cropper>`;
  *   v0.113.0 `focal`: no frame, only the focal point — on without `enabled`, `usage.crop` always null; `focalPoint` = its starting point): single mode + an image ⇒
  *   "Chèn" opens the crop step (`td-cropper`); `usage.crop` / `focalPoint` are then filled (`resolveOptions` → `cropResolved`)
  * @property {string} [initialQuery]
@@ -643,6 +654,8 @@ let warnedCropMultiple = false;
 let warnedLoadMore = false;
 let warnedCardMeta = false;
 let warnedNameLines = false;
+let warnedCropInitial = false;
+let warnedCropOutput = false;
 
 /**
  * v0.110.0 (plan v0.110.0-media-picker-load-more QĐ1): the `loadMore` option → `null` (off: each page replaces the grid)
@@ -788,7 +801,9 @@ export function autoPageSize({ cols, height, rowH, maxPageSize = MAX_PAGE_SIZE_D
  * @param {object|null|undefined} defaults
  * @param {...(object|null|undefined)} layers last argument may be `{ warn }` only when it is the sole key
  * @returns {OpenMediaPickerOptions & { cropResolved: { aspectRatio: number|null, allowFocalPoint: boolean, mode: 'box'|'pan'|'focal', shape: 'rect'|'circle',
- *     focalPoint?: { x: number, y: number } | null } | null,
+ *     focalPoint?: { x: number, y: number } | null, initial?: { x: number, y: number, width: number, height: number },
+ *     focalPointOptional?: true, presets?: Array<{ label: string, ratio: number|null }>, ratioLabel?: string,
+ *     output?: 'new-asset' } | null,
  *   capabilitiesResolved: MediaCapabilities, initialCollection: { id: string, label: string } | null,
  *   collections: { showWithoutQuery: boolean }, autoSelectFirst: boolean }}
  */
@@ -849,6 +864,11 @@ export function resolveOptions(defaults, ...layers) {
         aspectRatio: null, allowFocalPoint: true, mode: 'focal', shape: 'rect',
         focalPoint: clampFocal(isObj(merged.crop.focalPoint) ? merged.crop.focalPoint : null),
       };
+      // v0.119.0 (QĐ4): no rect to cut in focal mode → 'metadata' (one warning)
+      if (merged.crop.output === 'new-asset' && !warnedCropOutput) {
+        warnedCropOutput = true;
+        try { warn("td-media-picker: crop.output 'new-asset' needs a box / pan crop — focal mode keeps 'metadata'."); } catch { /* ignore */ }
+      }
     } else {
       const ar = merged.crop.aspectRatio;
       let aspectRatio = null;
@@ -864,6 +884,8 @@ export function resolveOptions(defaults, ...layers) {
         allowFocalPoint: merged.crop.allowFocalPoint === true,
         mode: cropMode,
         shape: cropWord(merged.crop.shape, 'circle') ? 'circle' : 'rect',
+        // v0.119.0: each new key only when set (absent ⇒ the exact v0.118 object)
+        ...resolveCropExtras(merged.crop, merged.adapter, warn),
       };
     }
   }
@@ -934,6 +956,136 @@ export function resolveOptions(defaults, ...layers) {
     cropResolved,
     capabilitiesResolved: resolveCapabilities(merged.adapter, merged.capabilities),
   };
+}
+
+/**
+ * v0.119.0 (QĐ1): a stored crop → `{ x, y, width, height }` (normalised 0..1, a fresh object) or null. Accepts a
+ * CropValue (`{ normalized }`) or the plain box; each value finite, `width` / `height` > 0, the box inside [0, 1]
+ * (± 1e-6).
+ * @param {unknown} v @returns {{ x: number, y: number, width: number, height: number } | null}
+ */
+export function parseCropInitial(v) {
+  if (!isObj(v)) return null;
+  const n = isObj(/** @type {any} */ (v).normalized) ? /** @type {any} */ (v).normalized : v;
+  const b = { x: n.x, y: n.y, width: n.width, height: n.height };
+  const f = (x) => typeof x === 'number' && Number.isFinite(x);
+  const E = 1e-6;
+  if (![b.x, b.y, b.width, b.height].every(f) || !(b.width > 0) || !(b.height > 0)) return null;
+  if (b.x < -E || b.y < -E || b.x + b.width > 1 + E || b.y + b.height > 1 + E) return null;
+  return b;
+}
+
+/**
+ * v0.119.0 (QĐ3): ratio presets, validated like the global `TdCropper.presets` (td-cropper `cleanPresets`): entries
+ * without a text `label` (trimmed, ≤ 40) or with a bad `ratio` (a number in (0, 10000], or null = free) are dropped,
+ * the order kept. Not an array → [].
+ * @param {unknown} list @returns {Array<{ label: string, ratio: number|null }>}
+ */
+export function cleanCropPresets(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const p of list) {
+    if (!isObj(p) || typeof p.label !== 'string') continue;
+    const label = p.label.trim().slice(0, 40);
+    const r = p.ratio;
+    const ratio = r == null ? null : (typeof r === 'number' && Number.isFinite(r) && r > 0 && r <= 10000 ? r : undefined);
+    if (label && ratio !== undefined) out.push({ label, ratio });
+  }
+  return out;
+}
+
+/**
+ * v0.119.0: the new box / pan keys of `cropResolved`, each only when set — `initial` (QĐ1, invalid → absent + one
+ * warning), `focalPoint` (QĐ1: also seeds box / pan; `clampFocal`, invalid → absent silently), `focalPointOptional`
+ * (QĐ2, only `true`), `presets` (QĐ3, cleaned, empty → absent = the global default), `ratioLabel` (QĐ3, trimmed text
+ * ≤ 40), `output: 'new-asset'` (QĐ4; the adapter has no `createCropDerivative` → absent = 'metadata' + one warning).
+ * @param {Record<string, any>} crop @param {unknown} adapter @param {(...a: unknown[]) => void} warn
+ */
+function resolveCropExtras(crop, adapter, warn) {
+  const out = {};
+  if (crop.initial !== undefined && crop.initial !== null) {
+    const b = parseCropInitial(crop.initial);
+    if (b) out.initial = b;
+    else if (!warnedCropInitial) {
+      warnedCropInitial = true;
+      try { warn('td-media-picker: crop.initial must be { normalized: { x, y, width, height } } (0..1) — ignored.'); } catch { /* ignore */ }
+    }
+  }
+  // the box / pan seed exists only with the focal tool (`allowFocalPoint`)
+  const fp = crop.allowFocalPoint === true ? clampFocal(isObj(crop.focalPoint) ? crop.focalPoint : null) : null;
+  if (fp) out.focalPoint = fp;
+  if (crop.focalPointOptional === true) out.focalPointOptional = true;
+  const presets = cleanCropPresets(crop.presets);
+  if (presets.length) out.presets = presets;
+  if (typeof crop.ratioLabel === 'string' && crop.ratioLabel.trim()) out.ratioLabel = crop.ratioLabel.trim().slice(0, 40);
+  if (crop.output === 'new-asset') {
+    if (isObj(adapter) && typeof /** @type {any} */ (adapter).createCropDerivative === 'function') out.output = 'new-asset';
+    else if (!warnedCropOutput) {
+      warnedCropOutput = true;
+      try { warn("td-media-picker: crop.output 'new-asset' needs adapter.createCropDerivative() — using 'metadata'."); } catch { /* ignore */ }
+    }
+  }
+  return out;
+}
+
+/**
+ * v0.119.0 (QĐ4): the `createCropDerivative` payload of a crop dialog result — `crop` always `{ normalized }` (a
+ * whole-image result, `crop: null`, → `{ x: 0, y: 0, width: 1, height: 1 }`), `focalPoint` `{ x, y }` or null.
+ * @param {string} sourceAssetId
+ * @param {{ crop?: { normalized: object } | null, focalPoint?: { x: number, y: number } | null }} res
+ * @param {AbortSignal} signal
+ */
+export function cropDerivativePayload(sourceAssetId, res, signal) {
+  const n = res && res.crop && isObj(res.crop.normalized) ? /** @type {any} */ (res.crop.normalized) : null;
+  const fp = res && isObj(res.focalPoint) ? res.focalPoint : null;
+  return {
+    sourceAssetId,
+    crop: { normalized: n ? { x: n.x, y: n.y, width: n.width, height: n.height } : { x: 0, y: 0, width: 1, height: 1 } },
+    focalPoint: fp ? { x: fp.x, y: fp.y } : null,
+    signal,
+  };
+}
+
+/**
+ * v0.119.0 (QĐ4): call `adapter.createCropDerivative` and classify how it settled — `{ ok: true, asset }` (normalised
+ * like a list asset by `text.normalize`), `{ ok: false, aborted: true }` (the signal aborted / an AbortError: silent),
+ * or `{ ok: false, message }` (a rejection / throw → its `userMessage` when it is a non-empty string (cut to 200),
+ * else `text.error` — the kit's rule: raw host `message` text is never shown; a non-object result or one without a
+ * valid `id` → `text.error`).
+ * @param {MediaPickerAdapter} adapter
+ * @param {ReturnType<typeof cropDerivativePayload>} payload
+ * @param {{ normalize: (raw: unknown) => MediaAsset|null, error: string }} text
+ * @returns {Promise<{ ok: true, asset: MediaAsset } | { ok: false, aborted?: true, message?: string }>}
+ */
+export async function runCropDerivative(adapter, payload, text) {
+  const signal = payload.signal;
+  let raw;
+  try {
+    raw = await /** @type {any} */ (adapter).createCropDerivative(payload);
+  } catch (e) {
+    if (signal.aborted || (isObj(e) && /** @type {any} */ (e).name === 'AbortError')) return { ok: false, aborted: true };
+    let m = '';
+    try { m = isObj(e) && typeof /** @type {any} */ (e).userMessage === 'string' ? cut(/** @type {any} */ (e).userMessage.trim()) : ''; } catch { /* ignore */ }
+    return { ok: false, message: m || text.error };
+  }
+  if (signal.aborted) return { ok: false, aborted: true };
+  let asset = null;
+  try { asset = text.normalize(raw); } catch { asset = null; }
+  return asset ? { ok: true, asset } : { ok: false, message: text.error };
+}
+
+/**
+ * v0.119.0 (QĐ4): `assets` with the one whose id is `sourceId` replaced by `derived` at the same position; an entry
+ * that already has `derived.id` elsewhere is dropped (one entry, at the source position). A fresh array.
+ * @param {MediaAsset[]} assets @param {string} sourceId @param {MediaAsset} derived @returns {MediaAsset[]}
+ */
+export function swapAssets(assets, sourceId, derived) {
+  const out = [];
+  for (const a of assets) {
+    if (a.id === sourceId) out.push(derived);
+    else if (a.id !== derived.id) out.push(a);
+  }
+  return out;
 }
 
 export const MIN_SIZE_MAX = 100000;
@@ -1029,7 +1181,10 @@ export async function runBeforeApply(hook, selection, signal, text) {
 }
 
 /** Test hook: forget the one-time crop warnings. */
-export function _resetCoreWarnings() { warnedCropRatio = false; warnedCropMultiple = false; warnedLoadMore = false; warnedCardMeta = false; warnedNameLines = false; }
+export function _resetCoreWarnings() {
+  warnedCropRatio = false; warnedCropMultiple = false; warnedLoadMore = false; warnedCardMeta = false; warnedNameLines = false;
+  warnedCropInitial = false; warnedCropOutput = false;
+}
 
 /**
  * Module-level defaults (decision 6 — `TdMediaPicker.configureDefaults()`): each configure REPLACES the whole object
@@ -1229,6 +1384,15 @@ export class SelectionModel {
     this._map.clear();
     this._bump();
     return true;
+  }
+
+  /**
+   * v0.119.0 (QĐ4): the selected `sourceId` becomes `asset` at the same position (`swapAssets`: a duplicate of
+   * `asset.id` is dropped). Programmatic (no revision change). @param {string} sourceId @param {MediaAsset} asset
+   */
+  swap(sourceId, asset) {
+    if (!asset || !this._map.has(sourceId)) return;
+    this._map = new Map(swapAssets(this.assets, sourceId, asset).map((a) => [a.id, a]));
   }
 
   /** Swap the snapshot of a selected asset (no revision change). @param {MediaAsset} asset */
@@ -1444,9 +1608,10 @@ export class ScalarTokens {
 /**
  * `{ status: 'selected', selection }` in selection order; usage v0.32 = `{ altText: defaultAltText ?? '', crop: null,
  * focalPoint: null }`. v0.35 (decision 25): `usageById` (a Map id → `{ crop?, focalPoint? }`, from the crop step) fills
- * `crop` / `focalPoint` of that asset (missing ⇒ null).
- * @param {SelectionModel} model
- * @param {Map<string, { crop?: UsageDraft['crop'], focalPoint?: UsageDraft['focalPoint'] }>} [usageById]
+ * `crop` / `focalPoint` of that asset (missing ⇒ null). v0.119.0 (QĐ4): a `derivedFromAssetId` string there is copied into
+ * the usage (absent otherwise — the 'metadata' shape is unchanged).
+ * @param {SelectionModel|{ assets: MediaAsset[] }} model
+ * @param {Map<string, { crop?: UsageDraft['crop'], focalPoint?: UsageDraft['focalPoint'], derivedFromAssetId?: string }>} [usageById]
  * @returns {PickerOutcome}
  */
 export function buildOutcome(model, usageById) {
@@ -1461,6 +1626,7 @@ export function buildOutcome(model, usageById) {
           altText: typeof asset.defaultAltText === 'string' ? asset.defaultAltText : '',
           crop: u?.crop ?? null,
           focalPoint: u?.focalPoint ?? null,
+          ...(typeof u?.derivedFromAssetId === 'string' && u.derivedFromAssetId ? { derivedFromAssetId: u.derivedFromAssetId } : {}),
         },
       };
     }),

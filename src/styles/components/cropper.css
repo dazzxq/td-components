@@ -296,6 +296,12 @@
 		transform: translate(var(--_tdc-focal-x, 0px), var(--_tdc-focal-y, 0px));
 	}
 
+	/* v0.119.0 focal-optional: no point set — the centre marker is dimmed and a tap on it goes through to the image */
+	.td-cropper__focal--unset {
+		cursor: default;
+		opacity: 0.55;
+	}
+
 	.td-cropper__focal::before {
 		position: absolute;
 		top: 50%;

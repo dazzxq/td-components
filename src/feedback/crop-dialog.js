@@ -123,6 +123,12 @@ function boxOpt(v) {
  * @param {{x:number,y:number,width:number,height:number}|null} [opts.crop=null] normalised start crop
  * @param {{x:number,y:number}|null} [opts.focalPoint=null]
  * @param {boolean} [opts.allowFocalPoint=false] show the focal-point tool
+ * @param {boolean} [opts.focalPointOptional=false] v0.119.0 (QĐ2): with `allowFocalPoint` in box / pan ⇒ the cropper's
+ *   `focal-optional` attribute (a null focal point stays null until the user places one); ignored in focal mode
+ * @param {Array<{ label: string, ratio: number|null }>} [opts.presets] v0.119.0 (QĐ3): the cropper's `presets` for this
+ *   dialog (validated by td-cropper: invalid entries dropped, empty ⇒ `TdCropper.presets`); ignored in focal mode
+ * @param {string} [opts.ratioLabel] v0.119.0 (QĐ3): the title suffix of a locked ratio (default: `ratioLabel(r)`)
+ * @param {string} [opts.busyMessage] v0.119.0 (QĐ4, INTERNAL): footer status text while the `onApply` gate runs
  * @param {string} [opts.title] default `TdCropper.labels.dialogTitle` ('Cắt ảnh')
  * @param {string} [opts.confirmLabel] default 'Áp dụng'
  * @param {string} [opts.cancelLabel] default 'Huỷ'
@@ -196,7 +202,8 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
   const title = q('.td-modal__title');
   title.id = `${id}-title`;
   const head = str(o.title, focal ? L.focalTitle : L.dialogTitle);
-  title.textContent = lock ? `${head} · ${ratioLabel(lock)}` : head;
+  // v0.119.0 (QĐ3): a per-call `ratioLabel` replaces the computed suffix
+  title.textContent = lock ? `${head} · ${typeof o.ratioLabel === 'string' && o.ratioLabel.trim() ? o.ratioLabel.trim() : ratioLabel(lock)}` : head;
   dialog.setAttribute('aria-labelledby', title.id);
   const x = q('.td-modal__close');
   x.setAttribute('aria-label', str(o.cancelLabel, L.dialogCancel));
@@ -222,6 +229,10 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
   }
   if (typeof o.alt === 'string' && o.alt) cropper.setAttribute('alt', o.alt);
   if (o.allowFocalPoint && !focal) cropper.setAttribute('focal-point', ''); // focal: the tool is always on
+  // v0.119.0 (QĐ2): an optional focal point (box / pan with the tool only)
+  if (o.focalPointOptional === true && o.allowFocalPoint && !focal) cropper.setAttribute('focal-optional', '');
+  // v0.119.0 (QĐ3): per-call presets (td-cropper validates them; set before `crop`, which is read against the list)
+  if (Array.isArray(o.presets) && !focal) cropper.presets = o.presets;
   cropper.crop = cropIn;
   cropper.focalPoint = focalIn;
   cropper.setAttribute('src', typeof o.src === 'string' ? o.src : '');
@@ -314,7 +325,7 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
     const ctrl = new AbortController();
     gateCtrl = ctrl;
     busy = true;
-    say('');
+    say(typeof o.busyMessage === 'string' ? o.busyMessage : ''); // v0.119.0 (QĐ4): e.g. "Đang tạo ảnh đã cắt…"
     setButtonBusy(confirmBtn, true);
     const lockCropper = !cropper.hasAttribute('disabled');
     if (lockCropper) cropper.setAttribute('disabled', '');
