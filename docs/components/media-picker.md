@@ -520,7 +520,7 @@ const outcome = await TdMediaPicker.open({
 | `autoSelectFirst` | `boolean` | theo chế độ | 0.67.0 (opt-in) → bật mặc định từ 0.68.0 → **từ 0.72.0 mặc định chỉ bật cho picker chọn MỘT ảnh (`selection.mode: 'single'`), tắt cho `multiple`**: chọn sẵn asset đầu tiên chọn được của lần tải danh sách đầu — [Tự chọn ảnh đầu](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670). Giá trị đã đặt thắng ở cả hai chế độ: chỉ boolean `false` mới tắt, mọi giá trị khác có mặt (kể cả `true`) bật; `null` / vắng = mặc định theo chế độ; lấy được từ defaults; `open({ autoSelectFirst: false })` tắt riêng lần mở, `open({ autoSelectFirst: true, selection: { mode: 'multiple' } })` bật cho picker nhiều ảnh |
 | `thumbLoader` | `true` \| `false` \| object cấu hình broker | `true` | 0.111.0: thumbnail tải có nhịp qua [thumb loader](thumb-loader.md). Object (ví dụ `{ wafBudget: { limit: 2000 } }`) chuyển cho `configureThumbBudget`. `false` = markup cũ (`src` + `loading="lazy"`) — [Thumbnail tải có nhịp](#thumbnail-tải-có-nhịp--thumbloader-01110) |
 | `onThumbGate` | `({ until, remainingMs }) => boolean \| void` | — | 0.111.0: CDN đang chặn ảnh. Trả `false` thì kit không hiện toast |
-| `crop` | `{ enabled?, aspectRatio?, allowFocalPoint?, mode?, shape?, focalPoint?, initial?, focalPointOptional?, presets?, ratioLabel?, output? }` | — | 0.35.0 (`mode` / `shape`: 0.75.0; `mode: 'focal'` + `focalPoint`: 0.113.0; `initial` / `focalPointOptional` / `presets` / `ratioLabel` / `output`: 0.119.0): `enabled: true` (hoặc `mode: 'focal'`) + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `[0.01, 100]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
+| `crop` | `{ enabled?, aspectRatio?, allowFocalPoint?, mode?, shape?, focalPoint?, initial?, focalPointOptional?, presets?, ratioLabel?, output? }` | — | 0.35.0 (`mode` / `shape`: 0.75.0; `mode: 'focal'` + `focalPoint`: 0.113.0; `initial` / `focalPointOptional` / `presets` / `ratioLabel` / `output`: 0.119.0; `focalPointOptional` ở `mode: 'focal'`: 0.120.0): `enabled: true` (hoặc `mode: 'focal'`) + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `[0.01, 100]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
 | `beforeApply` | `(selection: SelectedMedia[], { signal }) => boolean \| void \| Promise<boolean \| void>` | — | 0.117.0: gọi **một lần** với đúng lựa chọn cuối (sau bước cắt) trước khi picker kết thúc; `false` / ném lỗi → picker ở lại + thông báo. Lấy được từ defaults; không phải hàm = bỏ qua — [Cổng trước khi chèn](#cổng-trước-khi-chèn--beforeapply-01170) |
 
 - **Một picker một lúc**: gọi `open()` khi đã có picker mở → resolve ngay `{ status: 'cancelled', reason:
@@ -618,8 +618,10 @@ Luồng (giống dcms2: cắt **sau khi chọn**):
   TdMediaPicker.open({ selection: { mode: 'single', kinds: ['image'], initialIds: [saved.id] },
     crop: { enabled: true, aspectRatio: 3 / 2, allowFocalPoint: true, initial: saved.crop, focalPoint: saved.focal } });
   ```
-- **`crop.focalPointOptional` (0.119.0)**: `true` + `allowFocalPoint` (kiểu `box` / `pan`) ⇒ cropper được đặt `focal-optional`:
-  điểm trọng tâm được để trống (`usage.focalPoint = null`). Vắng / focal mode → như cũ.
+- **`crop.focalPointOptional` (0.119.0)**: `true` + `allowFocalPoint` (kiểu `box` / `pan`), hoặc (0.120.0) `mode: 'focal'`
+  (không cần `allowFocalPoint`) ⇒ cropper được đặt `focal-optional`: điểm trọng tâm được để trống (`usage.focalPoint = null`).
+  Ở `mode: 'focal'` không tự đặt điểm giữa ảnh, `usage.crop` luôn `null`; `crop.focalPoint` đặt sẵn vẫn được đặt trước.
+  Vắng → như cũ (focal mode luôn có điểm).
 - **`crop.presets` / `crop.ratioLabel` (0.119.0) — theo lần mở**: `presets` = `[{ label, ratio }]` như
   [`TdCropper.presets`](cropper.md) (nhãn trim ≤ 40; `ratio` null = tự do hoặc số trong `(0, 10000]`; mục sai bị bỏ; rỗng → preset
   toàn cục), chỉ cho lần mở này, không sửa `TdCropper.presets`. `ratioLabel` (trim, ≤ 40) thay hậu tố tiêu đề khi khoá tỉ lệ:

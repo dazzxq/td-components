@@ -863,6 +863,8 @@ export function resolveOptions(defaults, ...layers) {
       cropResolved = {
         aspectRatio: null, allowFocalPoint: true, mode: 'focal', shape: 'rect',
         focalPoint: clampFocal(isObj(merged.crop.focalPoint) ? merged.crop.focalPoint : null),
+        // v0.120.0 (QĐ7a): the point may stay unset in focal mode too (only `true`; absent ⇒ the exact v0.119 object)
+        ...(merged.crop.focalPointOptional === true ? { focalPointOptional: true } : {}),
       };
       // v0.119.0 (QĐ4): no rect to cut in focal mode → 'metadata' (one warning)
       if (merged.crop.output === 'new-asset' && !warnedCropOutput) {

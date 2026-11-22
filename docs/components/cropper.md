@@ -245,8 +245,14 @@ lệ khác (ảnh vuông cho thẻ, ảnh dọc cho mobile) mà vẫn giữ ch�
 
 ### 4a. Điểm trọng tâm tuỳ chọn — `focal-optional` (0.119.0)
 
-Dùng khi "chưa chọn điểm" có nghĩa riêng (server tự cắt giữa ảnh). Chỉ có tác dụng ở `box` khi có `focal-point`; `mode="focal"`
-bỏ qua thuộc tính. Gán lúc chạy được (`el.focalOptional = true`).
+Dùng khi "chưa chọn điểm" có nghĩa riêng (server tự cắt giữa ảnh). Có tác dụng ở `box` khi có `focal-point` và ở `mode="focal"` (0.120.0).
+Gán lúc chạy được (`el.focalOptional = true`).
+
+> **`mode="focal"` + `focal-optional` (0.120.0)**: không tự đặt điểm giữa ảnh; `focalPoint` / `getResult().focalPoint` là
+> `null` tới khi người dùng đặt điểm; `crop` luôn `null`. Thanh công cụ có thêm "Dùng giữa ảnh" (chỉ khi đang có điểm) cạnh
+> "Đặt lại"; "Đặt lại" về điểm ban đầu (`null` thì về `null`). Bật / tắt thuộc tính lúc chạy: bật bỏ điểm giữa ảnh tự đặt
+> (im lặng, không sự kiện), tắt đặt lại điểm giữa ảnh; điểm do người dùng đặt hoặc gán sẵn không bao giờ bị đổi. Không có
+> thuộc tính: `mode="focal"` y như cũ (luôn có điểm, tự đặt giữa ảnh).
 
 - **Chưa có điểm** ⇒ điểm hiển thị mờ ở giữa ảnh (class `td-cropper__focal--unset`) nhưng `focalPoint` vẫn `null`,
   `getResult().focalPoint` là `null` cho tới khi người dùng đặt điểm. Chạm / bấm lên ảnh đặt điểm như thường.
@@ -366,7 +372,7 @@ TdCropper.openDialog(opts: {
   crop?: CropBox | null;           // normalized hiện tại (null ⇒ khung mặc định)
   focalPoint?: FocalPoint;         // điểm hiện tại
   allowFocalPoint?: boolean;       // bật công cụ điểm trọng tâm
-  focalPointOptional?: boolean;    // 0.119.0: true + allowFocalPoint (box / pan) ⇒ <td-cropper focal-optional> (điểm được để trống)
+  focalPointOptional?: boolean;    // 0.119.0: true + allowFocalPoint (box / pan) ⇒ <td-cropper focal-optional> (điểm được để trống); 0.120.0: mode 'focal' cũng nhận, không cần allowFocalPoint
   presets?: { label: string; ratio: number | null }[];   // 0.119.0: preset tỉ lệ CHO LẦN MỞ NÀY (không sửa TdCropper.presets; box / pan)
   ratioLabel?: string;             // 0.119.0: hậu tố tiêu đề khi khoá tỉ lệ (" · Banner 14:1"); rỗng / thiếu ⇒ như cũ
   title?: string;                  // mặc định "Cắt ảnh"; khoá tỉ lệ ⇒ tự thêm " · 16:9" (nhãn preset nếu khớp)
@@ -425,7 +431,7 @@ còn.
 | `aspect-ratio` | `W/H` \| `W:H` \| số | — | Có ⇒ **khoá** tỉ lệ, ẩn bộ chọn preset; tỉ lệ `w / h` phải trong **[0.01, 100]** (gồm hai đầu); ngoài khoảng → bị từ chối + **một** cảnh báo (không lặp lại giá trị), cắt tự do |
 | `crop` | JSON v1 `{"v":1,"x","y","width","height"}` | — | Khung ban đầu (chuẩn hoá). Sai định dạng → khung mặc định |
 | `focal-point` | boolean | — | Bật công cụ điểm trọng tâm |
-| `focal-optional` (0.119.0) | boolean | — | "Chưa chọn điểm" là một trạng thái thật (mục 4a). Chỉ có tác dụng ở `box` + `focal-point`; `mode="focal"` bỏ qua |
+| `focal-optional` (0.119.0) | boolean | — | "Chưa chọn điểm" là một trạng thái thật (mục 4a). Có tác dụng ở `box` + `focal-point` và ở `mode="focal"` (0.120.0: không tự đặt điểm giữa ảnh) |
 | `focal` | JSON v1 `{"v":1,"x","y"}` | — | Điểm trọng tâm ban đầu |
 | `disabled` | boolean | — | Không tương tác, không event |
 | `mode` | `box` \| `pan` \| `focal` | `box` | 0.73.0. `pan` = khung cố định, kéo / phóng **ảnh** ([mục trên](#hai-kiểu-thao-tác--mode-0730)); 0.113.0 `focal` = chỉ điểm trọng tâm, không khung ([mục trên](#chỉ-chọn-điểm-trọng-tâm--modefocal-01130)); giá trị lạ = `box`, im lặng |

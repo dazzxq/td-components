@@ -22,8 +22,8 @@
  * kept and still returned), a zoom slider (`<td-slider class="td-cropper__zoom">`, created only in pan, between − and +)
  * and square integer pixels for a 1:1 crop. `shape="circle"` rounds the frame (display only — the output stays the
  * bounding square) while the mode is pan and the ratio in force is 1:1. Unknown values = the default, silently.
- * v0.119.0 (plan docs/internal/plans/v0.119.0-crop-output.md QĐ2) — `focal-optional` / `focalOptional` (box mode + focal tool; ignored in
- * focal mode): no point is a real state — a dimmed centre marker (`.td-cropper__focal--unset`) while `focalPoint` stays null, the first
+ * v0.119.0 (plan docs/internal/plans/v0.119.0-crop-output.md QĐ2) — `focal-optional` / `focalOptional` (box mode + focal tool; v0.120.0: focal mode too, no auto-centre,
+ * see docs/internal/plans/v0.120.0-focal-mode-optional.md): no point is a real state — a dimmed centre marker (`.td-cropper__focal--unset`) while `focalPoint` stays null, the first
  * focal key starts from the centre, and "Dùng giữa ảnh" (`labels.focalClear`, `.td-cropper__focal-clear`, `focal-change` source
  * `clear`) replaces the on/off toggle. "Đặt lại" goes back to the initial focal (null stays null).
  *
@@ -382,6 +382,11 @@ export class TdCropper extends TdBaseElement {
         this._syncFocalUi();
         break;
       case 'focal-optional':
+        if (this._focalMode()) { // v0.120.0 (QĐ8): runtime toggle — only the silent auto-centre follows the flag
+          if (this.hasAttribute('focal-optional')) {
+            if (this._focalAuto) { this._focal = null; this._focalAuto = false; }
+          } else this._autoFocal();
+        }
         this._renderVars();
         this._syncFocalUi();
         break;
@@ -430,7 +435,7 @@ export class TdCropper extends TdBaseElement {
 
   /**
    * v0.119.0: `focal-optional` — in box mode with the focal tool on, "no point" is a real state: a dimmed centre marker
-   * stands in for it, the keyboard starts from the centre, and "Dùng giữa ảnh" replaces the on/off toggle. Ignored in focal mode.
+   * stands in for it, the keyboard starts from the centre, and "Dùng giữa ảnh" replaces the on/off toggle. v0.120.0: also in focal mode (no auto-centre; clear allowed next to Reset).
    * @type {boolean}
    */
   get focalOptional() { return this.hasAttribute('focal-optional'); }
@@ -659,13 +664,13 @@ export class TdCropper extends TdBaseElement {
    * when the mode changes to box / pan, so a value nobody gave never leaves focal mode)
    */
   _autoFocal() {
-    if (this._focal || !this._focalMode() || !this._rect || !(this._W > 0)) return;
+    if (this._focal || !this._focalMode() || this._focalOpt() || !this._rect || !(this._W > 0)) return; // v0.120.0: focal-optional ⇒ no auto-centre
     this._focal = { ...CENTRE };
     this._focalAuto = true;
   }
 
-  /** @private v0.119.0: focal-optional is in force (box mode, focal tool on) */
-  _focalOpt() { return this.hasAttribute('focal-optional') && !this._focalMode() && this._focalTool(); }
+  /** @private v0.119.0: focal-optional is in force (box mode with the focal tool on; v0.120.0: focal mode too) */
+  _focalOpt() { return this.hasAttribute('focal-optional') && this._focalTool(); }
 
   /** @private pan has no focal-point tool (the frame is the subject); an existing focal value is kept as it is */
   _focalTool() { return this._focalMode() || (this.hasAttribute('focal-point') && !this._pan()); }
@@ -1240,7 +1245,7 @@ export class TdCropper extends TdBaseElement {
   _onToolClick(e) {
     const b = e.target instanceof Element ? e.target.closest('button') : null;
     if (!b || b.disabled || !this._interactive()) return;
-    if (this._focalMode() && b !== this._els.reset) return; // v0.113.0: "Đặt lại" is the only tool (the rest is hidden)
+    if (this._focalMode() && b !== this._els.reset && !(b === this._els.focalClear && this._focalOpt())) return; // v0.113.0: "Đặt lại" is the only tool (v0.120.0: + clear with focal-optional)
     if (b.classList.contains('td-cropper__ratio')) this._selectPreset(Number(b.getAttribute('data-index')), true);
     else if (b === this._els.zoomOut) this._zoom(1 / ZOOM_STEP, 'button');
     else if (b === this._els.zoomIn) this._zoom(ZOOM_STEP, 'button');

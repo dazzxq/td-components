@@ -4,6 +4,11 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.120.0
+
+### Thêm
+- `focal-optional` / `focalPointOptional` giờ dùng được ở chế độ focal (`crop-mode="focal"`, `mode="focal"`): không tự đặt điểm giữa, điểm trọng tâm có thể để trống (null, dấu giữa mờ), đặt bằng chuột / chạm hoặc phím, "Dùng giữa ảnh" xoá điểm (`focal-change` source `'clear'`, giữ focus), "Đặt lại" về giá trị ban đầu; kết quả luôn `crop: null`. Field `crop-mode="focal"` + `focal-optional` không cần `focal-point`. Bật / tắt cờ lúc chạy chỉ đổi điểm giữa tự đặt, không đụng điểm người dùng hoặc site đặt. Không có cờ: chế độ focal giữ nguyên như cũ (dcms2 K1).
+
 ## 0.119.0
 
 ### Thêm

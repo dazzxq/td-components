@@ -65,10 +65,9 @@ describe('v0.119.0 cropResolved: initial (QĐ1)', () => {
 });
 
 describe('v0.119.0 cropResolved: focalPointOptional (QĐ2), presets / ratioLabel (QĐ3)', () => {
-  it('focalPointOptional: only true adds the key; focal mode ignores it', () => {
+  it('focalPointOptional: only true adds the key (focal mode: see the v120 test)', () => {
     assert.equal(run({ enabled: true, allowFocalPoint: true, focalPointOptional: true }).c.focalPointOptional, true);
     for (const v of [false, 'true', 1, null]) assert.equal('focalPointOptional' in run({ enabled: true, focalPointOptional: v }).c, false);
-    assert.equal('focalPointOptional' in run({ mode: 'focal', focalPointOptional: true }).c, false);
   });
 
   it('presets: validated like TdCropper.presets (invalid dropped, order kept, empty → absent = the global default)', () => {

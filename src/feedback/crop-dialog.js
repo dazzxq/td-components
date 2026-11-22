@@ -123,8 +123,8 @@ function boxOpt(v) {
  * @param {{x:number,y:number,width:number,height:number}|null} [opts.crop=null] normalised start crop
  * @param {{x:number,y:number}|null} [opts.focalPoint=null]
  * @param {boolean} [opts.allowFocalPoint=false] show the focal-point tool
- * @param {boolean} [opts.focalPointOptional=false] v0.119.0 (QĐ2): with `allowFocalPoint` in box / pan ⇒ the cropper's
- *   `focal-optional` attribute (a null focal point stays null until the user places one); ignored in focal mode
+ * @param {boolean} [opts.focalPointOptional=false] v0.119.0 (QĐ2): with `allowFocalPoint` in box / pan (v0.120.0: focal mode too, no
+ *   `allowFocalPoint` needed) ⇒ the cropper's `focal-optional` attribute (a null focal point stays null until the user places one)
  * @param {Array<{ label: string, ratio: number|null }>} [opts.presets] v0.119.0 (QĐ3): the cropper's `presets` for this
  *   dialog (validated by td-cropper: invalid entries dropped, empty ⇒ `TdCropper.presets`); ignored in focal mode
  * @param {string} [opts.ratioLabel] v0.119.0 (QĐ3): the title suffix of a locked ratio (default: `ratioLabel(r)`)
@@ -229,8 +229,8 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
   }
   if (typeof o.alt === 'string' && o.alt) cropper.setAttribute('alt', o.alt);
   if (o.allowFocalPoint && !focal) cropper.setAttribute('focal-point', ''); // focal: the tool is always on
-  // v0.119.0 (QĐ2): an optional focal point (box / pan with the tool only)
-  if (o.focalPointOptional === true && o.allowFocalPoint && !focal) cropper.setAttribute('focal-optional', '');
+  // v0.119.0 (QĐ2): an optional focal point (box / pan with the tool); v0.120.0: focal mode too (the tool is always on)
+  if (o.focalPointOptional === true && (focal || o.allowFocalPoint)) cropper.setAttribute('focal-optional', '');
   // v0.119.0 (QĐ3): per-call presets (td-cropper validates them; set before `crop`, which is read against the list)
   if (Array.isArray(o.presets) && !focal) cropper.presets = o.presets;
   cropper.crop = cropIn;
@@ -348,8 +348,8 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
     const r = cropper.getResult();
     /** @type {CropDialogResult} */
     let result;
-    if (focal) { // QĐ2a: only a ready image is needed (focalPoint is never null then); the crop is always null
-      if (!r.focalPoint) return;
+    if (focal) { // QĐ2a: only a ready image is needed (focalPoint is never null then, unless v0.120.0 focal-optional); the crop is always null
+      if (!r.focalPoint && o.focalPointOptional !== true) return;
       result = { status: 'applied', crop: null, focalPoint: r.focalPoint, changed: focalChanged(focalIn, r.focalPoint) };
     } else {
       if (!r.crop) return; // not ready (the button is disabled then anyway)

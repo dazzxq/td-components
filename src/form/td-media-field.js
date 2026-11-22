@@ -122,7 +122,7 @@ const fill = (t, params) => String(t ?? '').replace(/\{(\w+)\}/g, (m, k) => (k i
  * @attr {string} crop-shape - v0.75.0 (usage only): `circle` (round frame; only with `crop-mode="pan"` and a 1:1 crop) | `rect` (default)
  * @attr {boolean} focal-point - v0.35 (usage only): submit `name[focal]` (+ edited in the crop dialog when croppable)
  * @attr {string} focal - v0.35: JSON v1 `{"v":1,"x","y"}` (kept as is)
- * @attr {boolean} focal-optional - v0.119.0 (box / pan with `focal-point`): the focal point may stay unset (null) in the crop dialog
+ * @attr {boolean} focal-optional - v0.119.0 (box / pan with `focal-point`; v0.120.0: `crop-mode="focal"` too, no `focal-point` needed): the focal point may stay unset (null) in the crop dialog
  * @attr {string} crop-presets - v0.119.0: JSON `[{ "label": "…", "ratio": number|null }]` — the crop dialog's ratio presets
  *   (both paths; invalid JSON → ignored + one warning; invalid entries dropped; empty → the global `TdCropper.presets`)
  * @attr {string} crop-ratio-label - v0.119.0: the dialog title suffix of a locked ratio ("Cắt ảnh · {label}")
@@ -418,8 +418,8 @@ export class TdMediaField extends TdFormElement {
     return null;
   }
 
-  /** @private v0.119.0 (QĐ2): `focal-optional` (box / pan with the focal tool only) */
-  _focalOptional() { return this.hasAttribute('focal-optional') && this.hasAttribute('focal-point') && !this._focalMode(); }
+  /** @private v0.119.0 (QĐ2): `focal-optional` (box / pan with the focal tool); v0.120.0 (QĐ4): focal mode needs no `focal-point` */
+  _focalOptional() { return this.hasAttribute('focal-optional') && (this._focalMode() || this.hasAttribute('focal-point')); }
 
   /** @private v0.119.0 (QĐ3): `crop-presets` → a cleaned list (null when absent / empty / invalid — invalid JSON warns once) */
   _cropPresets() {
@@ -1073,7 +1073,8 @@ export class TdMediaField extends TdFormElement {
       crop: !this._croppable() ? { enabled: false }
         : this._focalMode()
           // v0.113.0 (QĐ4a / QĐ3b): the focal step, starting from the field's current focal point
-          ? { enabled: true, mode: 'focal', allowFocalPoint: true, ...(this._focalPoint() ? { focalPoint: this._focalPoint() } : {}) }
+          ? { enabled: true, mode: 'focal', allowFocalPoint: true, ...(this._focalPoint() ? { focalPoint: this._focalPoint() } : {}),
+            ...(this._focalOptional() ? { focalPointOptional: true } : {}) } // v0.120.0 (QĐ7c)
           : {
             enabled: true, aspectRatio: this._cropRatio(), allowFocalPoint: this._focalOn(),
             // v0.75.0: only a non-default value is passed (absent attributes ⇒ the exact 0.74 `crop` object)
@@ -1335,6 +1336,7 @@ export class TdMediaField extends TdFormElement {
       dialogOpts = {
         ...common, mode: 'focal', aspectRatio: null, shape: 'rect', crop: null, focalPoint: this._focalPoint(),
         allowFocalPoint: true, title: this._label('focalTitle'),
+        ...(this._focalOptional() ? { focalPointOptional: true } : {}), // v0.120.0 (QĐ7d)
       };
     } else {
       const crop = this._cropRaw ? parseCrop(this._cropRaw)?.crop ?? null : null;

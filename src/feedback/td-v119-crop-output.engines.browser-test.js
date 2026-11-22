@@ -203,7 +203,7 @@ describe('v0.119.0 QĐ1 — crop.initial round-trip', () => {
 });
 
 describe('v0.119.0 QĐ2 — focal-optional pass-through', () => {
-  it('(2) picker / field set focal-optional on the cropper; a null focal round-trips as null; focal mode ignores it', async () => {
+  it('(2) picker / field set focal-optional on the cropper; a null focal round-trips as null; focal mode too since v0.120.0', async () => {
     let r = await openReady({ crop: { enabled: true, allowFocalPoint: true, focalPointOptional: true } });
     await select('m60');
     await cropOpen();
@@ -213,7 +213,7 @@ describe('v0.119.0 QĐ2 — focal-optional pass-through', () => {
     const out = await r.promise;
     expect(out.selection[0].usage.focalPoint).to.equal(null);
     await closeAll();
-    // without allowFocalPoint / in focal mode: no attribute
+    // without allowFocalPoint: no attribute
     r = await openReady({ crop: { enabled: true, focalPointOptional: true } });
     await select('m60');
     await cropOpen();
@@ -223,7 +223,7 @@ describe('v0.119.0 QĐ2 — focal-optional pass-through', () => {
     await select('m60');
     await cropOpen();
     expect(cropper().getAttribute('mode')).to.equal('focal');
-    expect(cropper().hasAttribute('focal-optional')).to.equal(false);
+    expect(cropper().hasAttribute('focal-optional')).to.equal(true); // v0.120.0 (QĐ2 / QĐ7)
     await closeAll();
     // the field: both paths
     const ad = createMockAdapter();

@@ -3902,7 +3902,7 @@ export class TdMediaPicker extends HTMLElement {
         focalPoint: startFocal,
         allowFocalPoint: cfg.allowFocalPoint,
         // v0.119.0 (QĐ2 / QĐ3): only a set value reaches the dialog
-        ...(cfg.focalPointOptional && !focal ? { focalPointOptional: true } : {}),
+        ...(cfg.focalPointOptional ? { focalPointOptional: true } : {}), // v0.120.0 (QĐ7b): focal mode too
         ...(cfg.presets && !focal ? { presets: cfg.presets.map((p) => ({ ...p })) } : {}),
         ...(cfg.ratioLabel && !focal ? { ratioLabel: cfg.ratioLabel } : {}),
         title: this._t(focal ? 'focalTitle' : 'cropTitle'),

@@ -4,7 +4,7 @@ import './td-cropper.js';
 
 // v0.119.0 (plan docs/internal/plans/v0.119.0-crop-output.md QĐ2) — <td-cropper focal-optional>: a dimmed centre marker
 // while no point is set (focalPoint stays null), keyboard from unset, "Dùng giữa ảnh" clear, reset to the initial value,
-// focal mode ignoring the flag, and the unchanged toggle without it. Pointer input is synthetic (PointerEvent on the
+// (focal mode: see the v120 file), and the unchanged toggle without it. Pointer input is synthetic (PointerEvent on the
 // stage), so the file runs in the shared engines group. Every wait is a real signal (image-ready, frames).
 // DOM nodes are compared as booleans (chai hangs on DOM diffs).
 const link = document.createElement('link');
@@ -163,10 +163,10 @@ describe('<td-cropper focal-optional> (v0.119.0)', () => {
     expect($(b.el, '.td-cropper__focal').classList.contains('td-cropper__focal--unset')).to.equal(true);
   });
 
-  it('focal mode ignores the flag (centre point, no unset class)', async () => {
+  it('focal mode honours the flag since v0.120.0 (no centre point, unset class; details in the v120 file)', async () => {
     const { el } = await mount({ mode: 'focal' });
-    expect(el.focalPoint).to.deep.equal({ x: 0.5, y: 0.5 });
-    expect($(el, '.td-cropper__focal').classList.contains('td-cropper__focal--unset')).to.equal(false);
+    expect(el.focalPoint).to.equal(null);
+    expect($(el, '.td-cropper__focal').classList.contains('td-cropper__focal--unset')).to.equal(true);
     expect(shown($(el, '.td-cropper__focal-clear'))).to.equal(false);
   });
 
