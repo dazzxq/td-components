@@ -4,6 +4,11 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.121.0
+
+### Thêm
+- `td-dropdown` chọn nơi gắn menu: attribute `portal="local"` (menu vào shadow root chứa dropdown; không ở trong shadow root thì vẫn `<body>`) và property `portalRoot` (Element hoặc ShadowRoot đang gắn vào trang, ưu tiên hơn attribute; giá trị khác thì cảnh báo một lần rồi bỏ qua). Click / chạm ngoài, bàn phím, focus chạy được cả với closed shadow root; host và menu có thể ở hai root khác nhau. Vị trí bù cho tổ tiên có transform / scale (cả animation scale của modal); theme theo scope. Đây là cô lập DOM, không phải ranh giới bảo mật: cần cô lập thật thì chạy trong isolated world. Helper chung `src/utils/portal.js` (`resolvePortalRoot`) để các popup khác dùng sau. Không có attribute / property: như cũ (afamily-prj).
+
 ## 0.120.0
 
 ### Thêm

@@ -270,6 +270,16 @@ const CASES = [
       expect(!!el._search()).to.equal(true);
     },
   },
+  // v0.121.0: portalRoot (the node the menu is appended to), assigned before the upgrade
+  {
+    tag: 'td-dropdown', attrs: { 'aria-label': 'Cổng' },
+    props: () => ({ portalRoot: document.body }),
+    check(el) {
+      expect(el.portalRoot === document.body).to.equal(true);
+      expect(Object.prototype.hasOwnProperty.call(el, 'portalRoot')).to.equal(false);
+      expect(!!el._menuElement && el._menuElement.parentNode === document.body).to.equal(true);
+    },
+  },
   {
     tag: 'td-chip-input', attrs: { 'aria-label': 'Vai trò', 'selection-only': '' },
     props: () => ({ createLabel: 'Tạo mới' }),

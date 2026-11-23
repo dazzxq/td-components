@@ -1,12 +1,14 @@
 import { fold, nextTypeaheadIndex } from '../utils/typeahead.js';
 import { ValueTitleWatcher, displayedValueText } from '../utils/value-title.js';
 import { isCoarsePointer } from '../utils/breakpoints.js';
-import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
-import { LAYERS, register as registerLayer, bridgeTheme } from '../utils/layers.js';
+import { placeFloating, isReferenceHidden, watchReference, viewportBox } from '../utils/floating.js';
+import { LAYERS, register as registerLayer, bridgeTheme, composedContains } from '../utils/layers.js';
 import { TdFormElement } from '../base/td-form-element.js';
 import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 import { safeMediaUrl } from '../utils/media-url.js';
 import { fontFamilyOf } from '../utils/font-family.js';
+import { resolvePortalRoot } from '../utils/portal.js';
+import { activeIn } from '../utils/root.js';
 
 const CLEAR = '__CLEAR__';
 const OPTION_PX = 40; // --td-dropdown-option-h: `max-height` = visible options × 40 px
@@ -18,12 +20,15 @@ function rowPx(list, fallback) {
 }
 /** v0.86.0: more option rows than this in the scroller → `data-many` (CSS `content-visibility: auto` per row) */
 const MANY_ROWS = 200;
+/** v0.121.0 (QĐ4): placeFloating's defaults (gap to the trigger, viewport margin), used by the in-block placement */
+const MENU_GAP = 8;
+const MENU_MARGIN = 8;
 const TYPEAHEAD_MS = 500;
 // v0.82.0: the colourless dot; the colour is set only through circle.setAttribute('fill') (see _applySwatchFills)
 const SWATCH_SVG = '<svg class="td-dropdown__swatch" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><circle cx="6" cy="6" r="6"/></svg>';
 /** Properties that may be set on the element before it upgrades (they would shadow the class accessors). */
 const UPGRADE_PROPS = ['mode', 'search', 'keepOpen', 'triggerMeta', 'options', 'groups', 'onChange', 'onSelect',
-  'onCreate', 'createLabel', 'onPick', 'load', 'renderOption']; // v0.85.0: `mode` first, so a pre-upgrade action mode is in force before the <select> read
+  'onCreate', 'createLabel', 'onPick', 'load', 'renderOption', 'portalRoot']; // v0.85.0: `mode` first, so a pre-upgrade action mode is in force before the <select> read
 /** v0.108.0 `search`: "Đang tìm…" only for slow responses (no flash on fast ones) — as td-chip-input */
 const SEARCH_LOADING_MS = 400;
 /** v0.84.0: tones of the icon tile / status dot (anything else → neutral). */
@@ -257,7 +262,7 @@ export class TdDropdown extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'placeholder', 'searchable', 'allow-clear', 'max-height', 'value-key',
       'label-key', 'value', 'label', 'error-text', 'aria-label', 'create-label', 'search-fields', 'trigger-icon',
-      'mode', 'trigger-meta']; // v0.85.0: `keep-open` is read at pick time, not observed
+      'mode', 'trigger-meta', 'portal']; // v0.85.0: `keep-open` is read at pick time, not observed; v0.121.0: `portal`
   }
 
   static get errorContract() { return true; }
@@ -366,8 +371,38 @@ export class TdDropdown extends TdFormElement {
     this._searchState = '';
 
     this._boundPointerOutside = (e) => {
+      // v0.121.0 (QĐ3, R1): with the host and / or the menu in a ShadowRoot (portal options), presses inside such a
+      // root's host are decided by the listeners below (capture at document runs BEFORE capture at a root, so this one
+      // must not depend on them)
+      if (this._inRelevantHost(e)) return;
       const t = e.target;
       if (!this.contains(t) && this._menuElement && !this._menuElement.contains(t)) this.close();
+    };
+    /** @private v0.121.0 (QĐ3): the pointerdown events a relevant root's capture listener classified */
+    this._seenByRoot = new WeakSet();
+    /** @private v0.121.0 (R1): the ShadowRoots holding the host / the menu while open with portal options; [] otherwise */
+    this._roots = [];
+    /** @private v0.121.0: capture pointerdown on each relevant ShadowRoot: inside the host / the menu keeps it open */
+    this._boundRootPointer = (e) => {
+      this._seenByRoot.add(e);
+      const path = e.composedPath();
+      if (path.includes(this) || (this._menuElement && path.includes(this._menuElement))) return;
+      this.close();
+    };
+    /**
+     * @private v0.121.0: BUBBLE pointerdown on document (after every listener inside the roots): a press inside a
+     * relevant root's host that no relevant root saw is on a host's own box → close. A press already in flight when the
+     * menu opened is not judged.
+     */
+    this._boundHostBoxPointer = (e) => {
+      if (!this._roots.length || !this._hostBoxArmed || this._seenByRoot.has(e)) return;
+      if (this._inRelevantHost(e)) this.close();
+    };
+    /** @private v0.121.0 (R1): transitionend / animationend inside a relevant root on an ancestor of the trigger */
+    this._boundRootMotionEnd = (e) => {
+      const trigger = this._trigger();
+      const t = e.target;
+      if (trigger && t instanceof Node && t !== trigger && composedContains(t, trigger)) this._updatePosition();
     };
     this._boundOnScroll = () => {
       if (this._scrollRafId) return;
@@ -708,7 +743,7 @@ export class TdDropdown extends TdFormElement {
     }
     const hadBox = !!this._search();
     const wantBox = this._hasSearchBox();
-    const focusIn = menu.contains(document.activeElement);
+    const focusIn = menu.contains(activeIn(menu)); // v0.121.0: the menu's root (a ShadowRoot with portal)
     if (hadBox !== wantBox) {
       // the search box appears / disappears → rebuild the menu structure (an open menu stays open)
       this._renderMenuContent();
@@ -1091,14 +1126,15 @@ export class TdDropdown extends TdFormElement {
       this._cleanups.push(() => { this._fontsBound = false; });
     }
     this._applyValueFont(); // v0.97.0: the first render / hydrate prints the value span without the font
-    // Persistent body portal (fixed positioning escapes overflow/transform clipping).
+    // Persistent body portal (fixed positioning escapes overflow/transform clipping); v0.121.0: or the root that
+    // `portalRoot` / `portal="local"` resolves to (src/utils/portal.js).
     if (!this._menuElement) {
       const menu = document.createElement('div');
       menu.className = 'td-dropdown__menu td-glass-surface td-glass-surface--strong';
       menu.hidden = true;
       menu.setAttribute('data-state', 'closed');
       this._bindMenuEvents(menu);
-      document.body.appendChild(menu);
+      resolvePortalRoot(this).appendChild(menu);
       this._menuElement = menu;
       this._cleanups.push(() => {
         menu.remove();
@@ -1183,11 +1219,37 @@ export class TdDropdown extends TdFormElement {
       case 'trigger-meta':
         this._updateTriggerMeta(); // v0.85.0: in place (focus kept)
         return;
+      case 'portal':
+        this._movePortal(); // v0.121.0: same menu node, new root (an open menu closes first)
+        return;
       default:
         // label, searchable, allow-clear, max-height, value-key, label-key, mode (v0.85.0) → structure changes.
         if (this._isOpen) this.close();
         this._doRender();
     }
+  }
+
+  /**
+   * v0.121.0 (plan v0.121.0-portal-root QĐ2): the node the menu is appended to — a connected Element or ShadowRoot;
+   * wins over `portal="local"`. null (default) → the attribute, else document.body. An invalid value is ignored with one
+   * warning. Changing it while connected moves the same menu node (an open menu closes first).
+   * @type {Element|ShadowRoot|null}
+   */
+  get portalRoot() { return this._portalRoot ?? null; }
+
+  set portalRoot(v) {
+    this._portalRoot = v ?? null;
+    this._movePortal();
+  }
+
+  /** @private v0.121.0: put the existing menu in the root resolved now (no-op before the first render / when unchanged) */
+  _movePortal() {
+    const menu = this._menuElement;
+    if (!menu || !this.isConnected) return;
+    const root = resolvePortalRoot(this);
+    if (menu.parentNode === root) return;
+    if (this._isOpen) this.close();
+    root.appendChild(menu);
   }
 
   /** @protected <fieldset disabled> toggles in place (no re-render → focus kept). */
@@ -1833,7 +1895,7 @@ export class TdDropdown extends TdFormElement {
   _syncActiveDescendant(activeEl = this._list()?.querySelector('[data-active]')) {
     const trigger = this._trigger();
     const search = this._search();
-    const owner = search && document.activeElement === search ? search : trigger;
+    const owner = search && activeIn(search) === search ? search : trigger; // v0.121.0: root-aware
     for (const el of [trigger, search]) {
       if (!el) continue;
       if (el === owner && activeEl && this._isOpen) el.setAttribute('aria-activedescendant', activeEl.id);
@@ -1904,7 +1966,7 @@ export class TdDropdown extends TdFormElement {
     } else {
       const trigger = this._trigger();
       this.close();
-      if (trigger && document.activeElement !== trigger) trigger.focus({ preventScroll: true });
+      if (trigger && activeIn(trigger) !== trigger) trigger.focus({ preventScroll: true });
     }
     if (this._onPick) safeCall(this._onPick, item, 'onPick');
     this.emit('pick', { value: item[this._getValueKey()], item });
@@ -1952,7 +2014,7 @@ export class TdDropdown extends TdFormElement {
     const query = search ? String(search.value).trim() : '';
     const trigger = this._trigger();
     this.close();
-    if (trigger && document.activeElement !== trigger) trigger.focus({ preventScroll: true });
+    if (trigger && activeIn(trigger) !== trigger) trigger.focus({ preventScroll: true });
     if (this._onCreate) safeCall(this._onCreate, query, 'onCreate');
     this.emit('create', { query });
   }
@@ -2144,10 +2206,10 @@ export class TdDropdown extends TdFormElement {
   _onLayerTab(e) {
     const menu = this._menuElement;
     const trigger = this._trigger();
-    if (menu && menu.contains(document.activeElement)) {
+    if (menu && menu.contains(activeIn(menu))) { // v0.121.0: root-aware (portal in a ShadowRoot)
       e.preventDefault();
       this.close(); // hands focus back to the trigger
-      if (trigger && document.activeElement !== trigger) trigger.focus({ preventScroll: true });
+      if (trigger && activeIn(trigger) !== trigger) trigger.focus({ preventScroll: true });
       return 'handled';
     }
     this.close();
@@ -2347,7 +2409,7 @@ export class TdDropdown extends TdFormElement {
     this._clearTypeahead();
 
     // Never leave focus stranded inside a hidden menu: hand it back to the trigger.
-    const menuHadFocus = !!(menu && menu.contains(document.activeElement));
+    const menuHadFocus = !!(menu && menu.contains(activeIn(menu))); // v0.121.0: root-aware
     if (menu) {
       menu.hidden = true;
       menu.setAttribute('data-state', 'closed');
@@ -2391,8 +2453,46 @@ export class TdDropdown extends TdFormElement {
     }
   }
 
+  /**
+   * @private v0.121.0 (QĐ3, R1): the ShadowRoots that hold the host and / or the menu (deduped) — only with portal
+   * options (`portalRoot` set, or `portal="local"`); without them the pre-0.121 path is kept ([]).
+   * @returns {ShadowRoot[]}
+   */
+  _relevantRoots() {
+    const menu = this._menuElement;
+    const opted = this._portalRoot != null || this.getAttribute('portal') === 'local';
+    if (!menu || !opted || typeof ShadowRoot === 'undefined') return [];
+    const out = [];
+    for (const n of [this, menu]) {
+      const r = n.getRootNode();
+      if (r instanceof ShadowRoot && !out.includes(r)) out.push(r);
+    }
+    return out;
+  }
+
+  /** @private v0.121.0: the event's composed path passes through the host of a relevant root */
+  _inRelevantHost(e) {
+    if (!this._roots.length) return false;
+    const path = e.composedPath();
+    return this._roots.some((r) => path.includes(r.host));
+  }
+
   _addGlobalListeners() {
     document.addEventListener('pointerdown', this._boundPointerOutside, true);
+    // v0.121.0 (QĐ3, R1): host / menu in ShadowRoots (portal options) → order-safe outside press on every such root
+    this._roots = this._relevantRoots();
+    for (const R of this._roots) {
+      R.addEventListener('pointerdown', this._boundRootPointer, true);
+      R.addEventListener('scroll', this._boundOnScroll, true); // scroll is not composed: not seen by window
+      // transitions / animations inside a root are not seen by watchReference (document listeners, retargeted)
+      R.addEventListener('transitionend', this._boundRootMotionEnd, true);
+      R.addEventListener('animationend', this._boundRootMotionEnd, true);
+    }
+    if (this._roots.length) {
+      document.addEventListener('pointerdown', this._boundHostBoxPointer);
+      this._hostBoxArmed = false; // the press that is opening the menu (if any) is still being dispatched
+      this._hostBoxArmT = window.setTimeout(() => { this._hostBoxArmT = null; this._hostBoxArmed = true; }, 0);
+    }
     window.addEventListener('resize', this._boundOnResize);
     window.addEventListener('scroll', this._boundOnScroll, true);
     // v0.21.1: trigger hidden without a scroll (tab switch), removed, or moved by an entry transition
@@ -2403,6 +2503,19 @@ export class TdDropdown extends TdFormElement {
 
   _removeGlobalListeners() {
     document.removeEventListener('pointerdown', this._boundPointerOutside, true);
+    for (const R of this._roots) {
+      R.removeEventListener('pointerdown', this._boundRootPointer, true);
+      R.removeEventListener('scroll', this._boundOnScroll, true);
+      R.removeEventListener('transitionend', this._boundRootMotionEnd, true);
+      R.removeEventListener('animationend', this._boundRootMotionEnd, true);
+    }
+    if (this._roots.length) document.removeEventListener('pointerdown', this._boundHostBoxPointer);
+    this._roots = [];
+    if (this._hostBoxArmT) {
+      window.clearTimeout(this._hostBoxArmT);
+      this._hostBoxArmT = null;
+    }
+    this._hostBoxArmed = false;
     window.removeEventListener('resize', this._boundOnResize);
     window.removeEventListener('scroll', this._boundOnScroll, true);
     if (this._unwatchRef) {
@@ -2439,6 +2552,9 @@ export class TdDropdown extends TdFormElement {
     const menu = this._menuElement;
     if (!menu) return;
     const scroller = this._scroller();
+    // v0.121.0 (QĐ4): outside <body> the fixed menu's containing block may be a transformed ancestor of the host →
+    // measure its origin + scale once per placement (body portal: no extra measurement)
+    const cb = menu.parentNode !== menu.ownerDocument.body ? this._containingBlock(menu) : null;
     // a flat list: one rendered row is the unit (44 px under a coarse pointer, 40 px otherwise); 40 before the first paint
     let listMax = this._getMaxHeight() * rowPx(scroller, OPTION_PX);
     let scrollTop = null;
@@ -2454,13 +2570,63 @@ export class TdDropdown extends TdFormElement {
         ? rows[n - 1].getBoundingClientRect().bottom - scroller.getBoundingClientRect().top
         : 0;
     }
-    const { side } = placeFloating(rect, menu, {
-      width: 'match',
-      list: scroller,
-      listMax,
-    });
+    const side = cb
+      ? this._placeInBlock(rect, menu, scroller, listMax, cb)
+      : placeFloating(rect, menu, { width: 'match', list: scroller, listMax }).side;
     if (scrollTop != null) scroller.scrollTop = scrollTop;
     menu.setAttribute('data-placement', side);
+  }
+
+  /**
+   * @private v0.121.0 (QĐ4): origin + scale of the menu's containing block in viewport px: `left / top: 0` written via
+   * CSSOM, then the menu's rect gives the origin and rect / offset size the scale (1 when unmeasurable).
+   * @param {HTMLElement} menu
+   * @returns {{ ox: number, oy: number, sx: number, sy: number }}
+   */
+  _containingBlock(menu) {
+    menu.style.setProperty('left', '0px');
+    menu.style.setProperty('top', '0px');
+    const r = menu.getBoundingClientRect();
+    const ratio = (a, b) => (b > 0 && a > 0 ? a / b : 1);
+    return { ox: r.left, oy: r.top, sx: ratio(r.width, menu.offsetWidth), sy: ratio(r.height, menu.offsetHeight) };
+  }
+
+  /**
+   * @private v0.121.0 (QĐ4, R1): placeFloating's rules (width = trigger, viewport-capped; below preferred, flip to the
+   * side with room; cap the SCROLLER, not `top`) with every decision in VIEWPORT px: sizes are written in CSS px already
+   * divided by the scale (width / sx, scroller max-height / sy), the menu is measured with getBoundingClientRect (fit,
+   * top), and only the final left / top are converted: (x − ox) / sx, (y − oy) / sy. Rotation / skew: not supported.
+   * @param {DOMRect} rect trigger rect (viewport px)
+   * @param {HTMLElement} menu
+   * @param {HTMLElement|null} scroller
+   * @param {number} listMax scroller cap in viewport px (0 = natural height)
+   * @param {{ ox: number, oy: number, sx: number, sy: number }} cb
+   * @returns {'top'|'bottom'}
+   */
+  _placeInBlock(rect, menu, scroller, listMax, cb) {
+    const box = viewportBox();
+    const vw = box.right - box.left;
+    const s = menu.style;
+    const width = Math.min(rect.width, vw);
+    for (const p of ['width', 'min-width', 'max-width']) s.setProperty(p, `${width / cb.sx}px`);
+    if (scroller) {
+      if (listMax) scroller.style.setProperty('max-height', `${listMax / cb.sy}px`);
+      else scroller.style.removeProperty('max-height');
+    }
+    const naturalH = menu.getBoundingClientRect().height;
+    const chromeH = scroller ? naturalH - scroller.getBoundingClientRect().height : 0;
+    const margin = vw - width >= 2 * MENU_MARGIN ? MENU_MARGIN : 0;
+    const left = Math.max(box.left + margin, Math.min(rect.left, box.right - width - margin));
+    const below = box.bottom - rect.bottom - MENU_GAP - MENU_MARGIN;
+    const above = rect.top - box.top - MENU_GAP - MENU_MARGIN;
+    const side = naturalH <= below || below >= above ? 'bottom' : 'top';
+    const space = Math.max(0, side === 'bottom' ? below : above);
+    if (naturalH > space && scroller) scroller.style.setProperty('max-height', `${Math.max(0, space - chromeH) / cb.sy}px`);
+    const h = menu.getBoundingClientRect().height;
+    const top = side === 'bottom' ? rect.bottom + MENU_GAP : rect.top - MENU_GAP - h;
+    s.setProperty('left', `${(left - cb.ox) / cb.sx}px`);
+    s.setProperty('top', `${(top - cb.oy) / cb.sy}px`);
+    return side;
   }
 
   /** @private */

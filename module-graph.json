@@ -525,6 +525,8 @@
       "src/utils/font-family.js",
       "src/utils/layers.js",
       "src/utils/media-url.js",
+      "src/utils/portal.js",
+      "src/utils/root.js",
       "src/utils/typeahead.js",
       "src/utils/value-title.js"
     ],
@@ -783,6 +785,7 @@
       "src/utils/number-format.js"
     ],
     "src/utils/page-info.js": [],
+    "src/utils/portal.js": [],
     "src/utils/preload-window.js": [],
     "src/utils/press.js": [
       "src/utils/gesture.js"

@@ -299,6 +299,7 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` v0.114.0 lightbox album toàn màn hình (dsuite 14/11, spec dsuite `docs/plans/UI-album-lightbox-info.md` §4): `TdLightbox.open(items, { fit: 'contain' | 'fill' })` ('fill' phóng ảnh, kể cả ảnh nhỏ, tới lớn nhất trong vùng ảnh còn lại, giữ tỉ lệ, hộp ảnh = nội dung ảnh; `item.width/height` đặt khung trước khi tải), panel < 1024px `sheet: 'overlay' | 'stack'` ('stack' = ảnh trên co lại, panel dưới cuộn riêng, không che ảnh), handle `setSheet(open)` + getter `sheetOpen`. Mặc định giữ nguyên hành vi cũ
 - `done` v0.114.1 footer modal / sheet < 720 dồn về cuối (bỏ chia đều `flex: 1 1 0` của 0.36.0; owner 15/11: sheet Bộ lọc media picker lệch)
 - `done` v0.115.0 `<td-input-field type="password" revealable>` (dsuite 15/11; dcms2 login / OTP / 2FA)
+- `done` v0.121.0 afamily-prj (23/11): `td-dropdown` `portal="local"` / `portalRoot` (menu trong shadow root)
 - `done` v0.120.0 dcms2 K1 (22/11): `focal-optional` ở chế độ focal (điểm trọng tâm tuỳ chọn, không khung crop)
 - `done` v0.119.0 dcms2 (21/11): crop mở lại khung đã lưu, trọng tâm tuỳ chọn, tỉ lệ theo lần mở, crop ra ảnh mới qua adapter
 - `done` v0.118.1 dsuite (20/11): media picker thời gian tương đối mặc định bằng chữ tiếng Việt

@@ -615,6 +615,64 @@ dd.renderOption = (item, { query }) => {
   Node của mình (dựng bằng DOM API, đừng gán `innerHTML` từ dữ liệu người dùng).
 - Có `renderOption` thì chiều cao menu luôn đo thật (Node có thể cao hơn dòng chuẩn).
 
+### 14. Menu trong shadow root (`portal="local"` / `portalRoot`, 0.121.0)
+
+Mặc định menu là con của `document.body` (thoát `overflow` / `transform` của khung chứa). Khi dropdown nằm trong một
+**shadow root** (ví dụ UI của userscript trong shadow root closed trên trang lạ), menu ở `<body>` là chỗ script của
+trang chạm được (giả `input` vào ô tìm, `.click()` option). Bật tuỳ chọn để menu nằm ngay trong shadow root đó:
+
+> **Đây là đóng gói DOM, không phải biện pháp bảo mật.** `portal="local"` giữ menu khỏi các truy vấn ở cấp document
+> (`document.querySelector…`) và khỏi script chỉ duyệt light DOM. Nó **không** cô lập được script của trang khi trang và
+> userscript chạy chung một JS realm: trang có thể bọc `Element.prototype.attachShadow` trước khi userscript chạy để giữ
+> lại cả root closed, hoặc vá prototype của kit. Cần cô lập thật thì chạy trong một **isolated world**: content script
+> của extension, hoặc sandbox của trình quản lý userscript (ví dụ một `@grant` khác `none`).
+
+```js
+const shell = document.createElement('div');
+document.body.append(shell);
+const root = shell.attachShadow({ mode: 'closed' }); // giữ tham chiếu `root` ở phía mình
+const css = document.createElement('link');
+css.rel = 'stylesheet';
+css.href = TD_CSS_URL;   // kit KHÔNG tự chèn stylesheet: tự nạp td.css vào shadow root
+root.append(css);
+
+const dd = document.createElement('td-dropdown');
+dd.setAttribute('aria-label', 'Chuyên mục');
+dd.setAttribute('portal', 'local');   // menu = con của `root`, không phải của <body>
+dd.options = [{ value: 'a', label: 'Thời sự' }, { value: 'b', label: 'Thể thao' }];
+root.append(dd);
+```
+
+- Thứ tự chọn chỗ đặt menu: property `portalRoot` (một **Element hoặc ShadowRoot đang trong DOM**) → `portal="local"`
+  khi host nằm trong một ShadowRoot → `document.body`. Giá trị `portalRoot` không hợp lệ (Text, Document, node đã
+  tách khỏi DOM…) bị bỏ qua kèm **một** `console.warn`, rồi xét tiếp attribute. `portal` mang giá trị khác, hoặc
+  `portal="local"` khi host ở light DOM → `<body>` như cũ.
+- Đổi `portal` / `portalRoot` khi đang gắn DOM: menu đang mở thì đóng, rồi **chính node menu đó** chuyển sang chỗ mới.
+  Chuyển host sang chỗ khác (disconnect + connect) → menu dựng lại ở chỗ được chọn lúc đó.
+- Click / chạm ngoài, focus, bàn phím (mũi tên, Enter, Esc, Tab), tìm kiếm chạy y như ở `<body>`, cả với root closed.
+- Vị trí: menu vẫn `position: fixed`; nếu host (hoặc tổ tiên của nó) có `transform` (dịch, **thu phóng** như hiệu ứng
+  mở của modal), menu tự bù để nằm đúng dưới trigger.
+- Theme: menu theo `data-td-theme` của tổ tiên host (ngoài shadow root, qua kế thừa) và của phần tử bên trong root.
+
+**Giới hạn:**
+- Kit không chèn stylesheet nào: phải tự nạp `td.css` trong shadow root. Token khai trên `:root` không khớp bên trong
+  shadow root; trang lạ thì dùng bản embed ([ADR 0045](../internal/decisions/0045-td-embed.md), token đặt trên
+  `.td-embed-root`), hoặc trang đã nạp `td.css` ở document để token kế thừa vào.
+- Mới áp cho `td-dropdown`. Các popup khác (td-tree-select, td-chip-input, td-datetime-picker, td-color-picker,
+  td-icon-picker, td-menu, tooltip, hovercard) và overlay như `TdModal.open()` vẫn portal ra `<body>`: menu trong shadow
+  root **không** nổi lên trên một overlay nằm ở `<body>`. Modal của bạn cần nằm cùng shadow root (khi đó menu ở trên nó).
+- inert-lock chỉ đụng con của `<body>`; một overlay chặn ở `<body>` làm host inert thì menu cũng inert (đúng ý).
+- Bù vị trí chỉ cho dịch + thu phóng; **xoay / skew** không hỗ trợ.
+- Chạm vào chính hộp của shadow host (padding của nó, ngoài mọi phần tử con) đóng menu nhờ listener pha bubble ở
+  `document`; nếu app gọi `stopPropagation()` cho `pointerdown` trong root thì riêng loại chạm này không đóng menu.
+- Host và menu có thể ở hai root khác nhau (host trong root A, `portalRoot` là root B hoặc một phần tử light DOM):
+  click / chạm ngoài và bấm lại trigger để đóng vẫn đúng.
+- Cuộn, transition / animation của tổ tiên **bên trong** root được theo dõi (menu đặt lại).
+- Root lồng nhau (một shadow root nằm trong shadow root khác, ví dụ `portalRoot` là root B bên trong root A) **không**
+  hỗ trợ: chỉ một tầng root cho host và một tầng cho menu.
+- Transition / animation của tổ tiên **ngoài** root (phần tử chứa shadow host) không được theo dõi: menu đặt lại ở lần
+  cuộn / resize kế tiếp.
+
 ## Select gốc có style (td-native-select), 0.116.0
 
 Cần một `<select>` **native** (không menu tự vẽ, không tìm kiếm) nhưng trông như ô chọn của kit? Thêm class
@@ -656,6 +714,7 @@ Cần một `<select>` **native** (không menu tự vẽ, không tìm kiếm) nh
 | `keep-open` | cờ | tắt | **0.85.0** Chỉ ở `mode="action"`: chọn xong menu vẫn mở. `"false"` / `"0"` / `"off"` = tắt. Đọc lúc chọn, đổi không render lại. |
 | `min-chars` | number | `1` | **0.108.0** Chỉ khi có `search`: số ký tự (đã trim) tối thiểu để gọi server. Số nguyên ≥ 0; giá trị lạ → `1`. `0` = mở menu là tìm chữ rỗng. Đọc lúc dùng ([mục 12b](#12b-tìm-phía-server-search-01080)). |
 | `search-delay` | number | `250` | **0.108.0** Chỉ khi có `search`: debounce (ms, ≥ 0; giá trị lạ → `250`). Đọc lúc dùng. |
+| `portal` | `"local"` | — | **0.121.0** Host nằm trong ShadowRoot → menu là con của root đó thay vì `<body>` ([mục 14](#14-menu-trong-shadow-root-portallocal--portalroot-01210)). Đổi tại chỗ (menu đang mở thì đóng). |
 | `trigger-meta` | string | — | **0.85.0** Chữ phụ mờ ở cuối trigger (ví dụ `4/10`), vào `aria-describedby` của trigger. Cả hai chế độ. Đổi tại chỗ. |
 | `value-key` | string | `value` | Key trong object option dùng làm giá trị. |
 | `label-key` | string | `label` | Key trong object option dùng làm chữ hiển thị. |
@@ -680,6 +739,7 @@ Cần một `<select>` **native** (không menu tự vẽ, không tìm kiếm) nh
 | `onCreate` | `(query) => void` \| `null` | Callback khi kích hoạt dòng "Thêm mới" (0.22.0); nhận `query` (chuỗi). Chạy trước event `create`; ném lỗi → ghi `console.error`, event vẫn phát. |
 | `createLabel` | `string` (get/set) | Phản chiếu attribute `create-label` (`''` = tắt). |
 | `load` | `() => Promise<Array>` \| `null` | **0.86.0** Hàm nạp danh sách bất đồng bộ ([mục 12](#12-nạp-danh-sách-bất-đồng-bộ-load-0860)). Tự gọi một lần ở lần mở đầu. Gán lại (kể cả `null`) → bỏ lần nạp đang chờ; menu đang mở thì nạp ngay. Gán trước khi define vẫn nhận. |
+| `portalRoot` | `Element \| ShadowRoot \| null` | **0.121.0** Node nhận menu, thắng `portal` ([mục 14](#14-menu-trong-shadow-root-portallocal--portalroot-01210)). Phải đang trong DOM; sai → một cảnh báo, bỏ qua. Đổi → menu đang mở thì đóng, cùng node chuyển chỗ. Gán trước khi define vẫn nhận. |
 | `search` | `(query, { signal }) => Promise<Array>` \| `null` | **0.108.0** Tìm phía server ([mục 12b](#12b-tìm-phía-server-search-01080)). Gán lại (kể cả `null`) → huỷ lần tìm đang chờ / đang chạy, về danh sách gốc; ô tìm hiện / ẩn theo. Khác hàm → `null`. Gán trước khi define vẫn nhận. |
 | `reload()` | `() => Promise<boolean>` | **0.86.0** Gọi `load` ngay (menu mở hay đóng). `true` = đã gán options; `false` = không có `load`, lỗi, hoặc bị lần nạp mới hơn thay. Không bao giờ reject. |
 | `onPick` | `(item) => void` \| `null` | **0.85.0** Callback khi chọn một option ở `mode="action"`. Chạy trước event `pick`; ném lỗi thì ghi `console.error`, event vẫn phát. Gán trước khi define vẫn nhận. |
@@ -797,7 +857,7 @@ popup nhỏ (`.td-glass-surface--strong`: nền 94 % + `blur(12px)` + viền m�
 #city { --td-field-radius-md: 6px; }
 ```
 
-Menu được portal ra `<body>`, nên biến đặt trên host **không** chảy vào menu. Muốn đổi menu cho riêng một dropdown,
+Menu được portal ra `<body>` (trừ khi dùng `portal` / `portalRoot`, [mục 14](#14-menu-trong-shadow-root-portallocal--portalroot-01210)), nên biến đặt trên host **không** chảy vào menu. Muốn đổi menu cho riêng một dropdown,
 nhắm theo id menu: `#city-menu { --td-dropdown-option-selected: #fef3c7; }`.
 
 Xem thêm: [Theming](../customization/theming.md), [Styling](../customization/styling.md).
@@ -1005,7 +1065,7 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
   nếu cần biết, so `getValue()` trước và sau.
 - **Tìm kiếm trong menu không phân biệt hoa thường và dấu** ("ha noi" khớp "Hà Nội", "da" khớp "Đà Nẵng"), giống
   type-ahead trên trigger.
-- **Menu nằm ở `<body>`**, không nằm trong host: selector kiểu `#city .td-dropdown__option` sẽ không khớp; dùng
+- **Menu nằm ở `<body>`** (hoặc chỗ `portal` / `portalRoot` chọn, 0.121.0), không nằm trong host: selector kiểu `#city .td-dropdown__option` sẽ không khớp; dùng
   `#city-menu .td-dropdown__option`.
 - Không có sự kiện `open`/`close`; theo dõi `data-state` hoặc `aria-expanded` nếu cần.
 - **`image` dùng ảnh thu nhỏ (0.95.0).** Ảnh vẽ 32px; đưa ảnh gốc nhiều MB làm menu tải chậm. Dùng bản thumbnail (vd
