@@ -167,6 +167,12 @@ const CASES = [
     },
   },
   { tag: 'td-input-field', attrs: { label: 'Tên' }, props: () => ({ value: 'xin chào' }) },
+  // v0.122.0: callback properties (prototype accessors from utils/safe-call.js defineCallbackProps)
+  { tag: 'td-input-field', attrs: { label: 'Gọi' }, props: () => ({ onInput: fn(), onChange: fn() }) },
+  { tag: 'td-slider', attrs: { 'aria-label': 'Gọi' }, props: () => ({ onInput: fn(), onChange: fn() }) },
+  { tag: 'td-toggle', attrs: { label: 'Gọi' }, props: () => ({ onChange: fn() }) },
+  { tag: 'td-checkbox', attrs: { label: 'Gọi' }, props: () => ({ onChange: fn() }) },
+  { tag: 'td-choice-group', attrs: { label: 'Gọi' }, props: () => ({ onChange: fn() }) },
   { tag: 'td-number-input', attrs: { label: 'Số' }, props: () => ({ value: '12' }) },
   // v0.58.0: labelMode (attribute-backed accessor of `label-mode`) assigned before the upgrade → floating render
   {

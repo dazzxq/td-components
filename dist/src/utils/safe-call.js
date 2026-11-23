@@ -1,0 +1,2 @@
+var l=Object.defineProperty;var r=(t,e)=>l(t,"name",{value:e,configurable:!0});function n(t,e,o){try{t(e)}catch(c){console.error(`${o} threw`,c)}}r(n,"safeCall");function f(t,e){for(const o of e)Object.defineProperty(t.prototype,o,{get(){return this._callbacks?.[o]??null},set(c){(this._callbacks||={})[o]=typeof c=="function"?c:null},configurable:!0})}r(f,"defineCallbackProps");function i(t,e,o){const c=t._callbacks?.[e];c&&n(c,o,`${t.localName}: ${e}`)}r(i,"fireCallback");export{f as defineCallbackProps,i as fireCallback,n as safeCall};
+//# sourceMappingURL=safe-call.js.map

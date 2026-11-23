@@ -29,6 +29,8 @@ import { TdCheckableElement } from '../base/td-checkable-element.js';
  *   setting `checked` from code keeps it (the app owns it, e.g. "select all"). Never submitted; form reset keeps it.
  * @attr {string} label-position - start | end (default: end) — v0.59.1: `start` puts the label before the box (CSS only,
  *   same DOM). Property `labelPosition`.
+ * @property {Function|null} onChange - v0.122.0: called with `checked` right BEFORE `change`; a throw is logged, the
+ *   event still fires. Default null.
  * @fires change - detail: { checked: boolean } (exactly one per user toggle)
  */
 export class TdCheckbox extends TdCheckableElement {

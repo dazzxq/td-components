@@ -99,6 +99,7 @@ s.addEventListener('change', (e) => {
 - `input` phát liên tục khi kéo; `change` phát khi thả. Với bàn phím, mỗi lần nhấn phím phát cả `input` và `change`.
 - Mỗi event native tạo đúng **một** CustomEvent cùng tên; `input`/`change` native bị chặn tại host.
 - Khi người dùng kéo, attribute `value` của host được cập nhật theo.
+- 0.122.0: `s.onInput = (v) => …` / `s.onChange = (v) => …` được gọi ngay **trước** `input` / `change` (cùng giá trị, number); script khác của trang không chặn được. Xem [Callback gọi trước event](../guides/security.md#callback-gọi-trước-event-trang-chặn-event-của-kit).
 
 ### Trong form
 

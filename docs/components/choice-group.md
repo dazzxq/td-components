@@ -362,6 +362,8 @@ gửi form.
 `option` là bản sao đông cứng (không bao giờ là object nội bộ). `input` / `change` native của radio **dừng ở host**. Gán
 `value` / `setValue()` / `options` / `form.reset()` không phát event.
 
+- 0.122.0: `g.onChange = (value) => …` được gọi một lần ngay **trước** cặp `input` + `change` do người dùng chọn; script khác của trang không chặn được. Xem [Callback gọi trước event](../guides/security.md#callback-gọi-trước-event-trang-chặn-event-của-kit).
+
 ## Tuỳ biến giao diện
 
 | Token | Mặc định | Tác dụng |

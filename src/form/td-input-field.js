@@ -9,6 +9,7 @@ import {
 } from './field-affix.js';
 import { defineElement } from '../base/define.js';
 import { activeIn } from '../utils/root.js';
+import { defineCallbackProps, fireCallback } from '../utils/safe-call.js';
 
 /**
  * v0.26.0 SSR (ADR 0012) — native constraint attributes a NORMALLY rendered + bound control carries, per public type
@@ -142,6 +143,9 @@ const SSR_ONLY = ['name', 'autofocus'];
  * @attr {boolean} revealable - type="password" only: a show / hide button at the end of the field (`revealable`
  *   property), v0.115.0
  * @slot prefix / suffix - Page Elements (a button, <td-icon>…) next to the control; they win over that side's text / icon
+ * @property {Function|null} onInput - v0.122.0: called with the value right BEFORE the user `input` event (a document
+ *   capture listener cannot stop it); a throw is logged, the event still fires. Default null. Every type.
+ * @property {Function|null} onChange - v0.122.0: same, right BEFORE `change` (blur after an edit).
  * @fires input - detail: { value } — once per user edit
  * @fires td-reveal - detail: { revealed } — once per show / hide change (bubbles, not cancelable), v0.115.0
  * @fires change - detail: { value } — on blur, only when the value changed since focus
@@ -626,7 +630,9 @@ export class TdInputField extends TdFormElement {
     this._updateCounter();
     this._syncForm();
     if (this.getAttribute('validate-on') === 'input') this._showInlineValidity();
-    this.emit('input', { value: this.getValue() });
+    const value = this.getValue();
+    fireCallback(this, 'onInput', value);
+    this.emit('input', { value });
   }
 
   /** @private */
@@ -642,7 +648,10 @@ export class TdInputField extends TdFormElement {
     const value = this.getValue();
     const changed = this._valueAtFocus !== null && value !== this._valueAtFocus;
     this._valueAtFocus = null;
-    if (changed) this.emit('change', { value });
+    if (changed) {
+      fireCallback(this, 'onChange', value);
+      this.emit('change', { value });
+    }
   }
 
   /**
@@ -1531,5 +1540,7 @@ export class TdInputField extends TdFormElement {
     else this.reveal();
   }
 }
+
+defineCallbackProps(TdInputField, ['onInput', 'onChange']);
 
 defineElement('td-input-field', TdInputField);

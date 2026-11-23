@@ -1,5 +1,6 @@
 import { TdCheckableElement } from '../base/td-checkable-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
+import { fireCallback } from '../utils/safe-call.js';
 
 /** v0.52.0: code-point cap of status-text / locked-reason (= php Td::TOGGLE_TEXT_MAX; longer is cut). */
 const TEXT_MAX = 200;
@@ -73,6 +74,8 @@ const EXTRAS = new Set(['tone', 'status-text', 'locked', 'locked-reason', 'on-te
  * @attr {string} off-text - visible state text while OFF (v0.54.0)
  * @attr {string} label-position - start | end (default: end) — v0.59.1: `start` puts the label before the switch (CSS
  *   only, same DOM; with on / off text the order is label — switch — state text). Property `labelPosition`.
+ * @property {Function|null} onChange - v0.122.0: called with `checked` (the requested state when `controlled`) right
+ *   BEFORE `change` (a document capture listener cannot stop it); a throw is logged, the event still fires. Default null.
  * @fires change - detail: { checked: boolean } — the requested state (exactly one per user action)
  * @fires commit-error - detail: { checked: boolean, error } — a `commit()` failed and the switch reverted
  */
@@ -404,7 +407,9 @@ export class TdToggle extends TdCheckableElement {
     }
     if (!this.hasAttribute('controlled') || this._effectiveDisabled) return false;
     e.preventDefault(); // native checkbox reverts; no change event follows
-    this.emit('change', { checked: !this.hasAttribute('checked') });
+    const requested = !this.hasAttribute('checked');
+    fireCallback(this, 'onChange', requested);
+    this.emit('change', { checked: requested });
     // The canceled activation reverts input.checked AFTER dispatch — a handler that accepted the change
     // synchronously (el.checked = e.detail.checked) would otherwise leave the input out of sync.
     setTimeout(() => {

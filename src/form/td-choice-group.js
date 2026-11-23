@@ -1,5 +1,6 @@
 import { TdFormElement, ssrClassKey, ssrContentNodes, ssrSameAttrs, ssrIsErrorNote } from '../base/td-form-element.js';
 import { ssrMarker } from '../base/td-base-element.js';
+import { defineCallbackProps, fireCallback } from '../utils/safe-call.js';
 import { safeColor } from '../utils/css-safe.js';
 import { safeMediaUrl } from '../utils/media-url.js';
 import { normalizeOptions, sameValueList, CHOICE_LIMITS } from '../utils/choice-options.js';
@@ -99,6 +100,8 @@ let _groupCounter = 0;
  * @attr {boolean} stretch - segmented only (v0.53.1): the rail fills its container
  * @attr {boolean} required / disabled
  * @attr {string} helper-text / error-text / aria-label
+ * @property {Function|null} onChange - v0.122.0: called with the picked value right BEFORE the user `input` /
+ *   `change` pair (a document capture listener cannot stop it); a throw is logged, the events still fire. Default null.
  * @fires input - detail: { value, option } (user)
  * @fires change - detail: { value, option } (user, right after `input`)
  */
@@ -635,6 +638,7 @@ export class TdChoiceGroup extends TdFormElement {
     this._syncForm();
     if (this.errorMessage && this.errorMessage === this._msg('valueMissing')) this.clearError();
     const detail = () => ({ value: o.value, option: TdChoiceGroup._publicOption(o) });
+    fireCallback(this, 'onChange', o.value);
     this.emit('input', detail());
     this.emit('change', detail());
   }
@@ -1127,6 +1131,8 @@ export class TdChoiceGroup extends TdFormElement {
     console.warn(msg);
   }
 }
+
+defineCallbackProps(TdChoiceGroup, ['onChange']);
 
 if (!customElements.get('td-choice-group')) {
   customElements.define('td-choice-group', TdChoiceGroup);

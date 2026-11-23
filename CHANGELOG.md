@@ -4,6 +4,11 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.122.0
+
+### Thêm
+- Property callback gọi đồng bộ ngay **trước** event của kit, nên capture listener ở `document` của script khác trên trang không chặn được việc app nhận giá trị: `td-slider` `onInput` / `onChange` (number), `td-choice-group` `onChange` (một lần trước cặp `input` + `change`), `td-input-field` `onInput` / `onChange` (mọi `type`), `td-toggle` / `td-checkbox` `onChange(checked)` (`controlled`: trạng thái được yêu cầu). Mặc định `null`; không phải function → `null`; callback ném lỗi → `console.error`, event vẫn phát; thay đổi bằng code không gọi. Event không đổi. Helper chung `src/utils/safe-call.js` (td-dropdown dùng chung). Giới hạn (event gốc của trình duyệt vẫn chặn được, script cùng realm vá được kit): [docs/guides/security.md](docs/guides/security.md#callback-gọi-trước-event-trang-chặn-event-của-kit) (afamily-prj).
+
 ## 0.121.0
 
 ### Thêm

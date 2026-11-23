@@ -4,6 +4,7 @@ import {
 } from './td-form-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { ssrMarker } from './td-base-element.js';
+import { defineCallbackProps, fireCallback } from '../utils/safe-call.js';
 
 /** v0.26.0: attributes of the server-rendered input that exist only for the no-JS form (removed on hydrate). */
 const SSR_ONLY = ['name', 'value', 'checked', 'required'];
@@ -142,6 +143,7 @@ export class TdCheckableElement extends TdFormElement {
   _onUserToggle(checked) {
     if (checked) this.setAttribute('checked', '');
     else this.removeAttribute('checked');
+    fireCallback(this, 'onChange', checked);
     this.emit('change', { checked });
   }
 
@@ -366,3 +368,6 @@ export class TdCheckableElement extends TdFormElement {
     this._syncForm();
   }
 }
+
+/** v0.122.0: `onChange(checked)` before the user `change` (td-toggle, td-checkbox). */
+defineCallbackProps(TdCheckableElement, ['onChange']);

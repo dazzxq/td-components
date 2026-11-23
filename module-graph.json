@@ -83,7 +83,8 @@
     "src/base/td-checkable-element.js": [
       "src/base/td-base-element.js",
       "src/base/td-form-element.js",
-      "src/icons/td-icon.js"
+      "src/icons/td-icon.js",
+      "src/utils/safe-call.js"
     ],
     "src/base/td-form-element.js": [
       "src/base/td-base-element.js",
@@ -464,6 +465,7 @@
       "src/utils/choice-options.js",
       "src/utils/css-safe.js",
       "src/utils/media-url.js",
+      "src/utils/safe-call.js",
       "src/utils/segmented-layout.js"
     ],
     "src/form/td-color-picker.js": [
@@ -527,6 +529,7 @@
       "src/utils/media-url.js",
       "src/utils/portal.js",
       "src/utils/root.js",
+      "src/utils/safe-call.js",
       "src/utils/typeahead.js",
       "src/utils/value-title.js"
     ],
@@ -559,7 +562,8 @@
       "src/base/td-form-element.js",
       "src/form/field-affix.js",
       "src/icons/td-icon.js",
-      "src/utils/root.js"
+      "src/utils/root.js",
+      "src/utils/safe-call.js"
     ],
     "src/form/td-media-field.js": [
       "src/base/td-base-element.js",
@@ -626,11 +630,13 @@
       "src/utils/scan-burst.js"
     ],
     "src/form/td-slider.js": [
-      "src/base/td-form-element.js"
+      "src/base/td-form-element.js",
+      "src/utils/safe-call.js"
     ],
     "src/form/td-toggle.js": [
       "src/base/td-checkable-element.js",
-      "src/icons/td-icon.js"
+      "src/icons/td-icon.js",
+      "src/utils/safe-call.js"
     ],
     "src/form/td-tree-select.js": [
       "src/base/td-form-element.js",
@@ -799,6 +805,7 @@
     "src/utils/rating-model.js": [],
     "src/utils/reading-progress.js": [],
     "src/utils/root.js": [],
+    "src/utils/safe-call.js": [],
     "src/utils/scan-burst.js": [],
     "src/utils/scroll-lock.js": [],
     "src/utils/scroll-top-colors.js": [

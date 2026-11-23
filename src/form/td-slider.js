@@ -1,4 +1,5 @@
 import { TdFormElement } from '../base/td-form-element.js';
+import { defineCallbackProps, fireCallback } from '../utils/safe-call.js';
 
 /** Max number of step marks rendered (D12): more would flood the DOM and overlap. */
 const MAX_MARKS = 50;
@@ -43,6 +44,9 @@ function decimalsOf(n) {
  * @attr {boolean} show-step-marks - One mark + label per step (only when ≤ 50 steps)
  * @attr {string} error-text - Error message (error contract)
  * @attr {boolean} disabled - Disable the slider (also via ancestor <fieldset disabled>)
+ * @property {Function|null} onInput - v0.122.0: called with the value (number) right BEFORE `input` (a document
+ *   capture listener cannot stop it); a throw is logged, the event still fires. Default null.
+ * @property {Function|null} onChange - v0.122.0: same, right BEFORE `change`.
  * @fires input - While the value changes (drag / key), detail: { value: number }
  * @fires change - When the value is committed (release / key), detail: { value: number }
  */
@@ -202,6 +206,7 @@ export class TdSlider extends TdFormElement {
     ev.stopPropagation();
     const value = parseFloat(this._input.value);
     this.setAttribute('value', String(value)); // in place (attributeChangedCallback) + form value
+    fireCallback(this, kind === 'input' ? 'onInput' : 'onChange', value);
     this.emit(kind, { value });
   }
 
@@ -345,6 +350,8 @@ export class TdSlider extends TdFormElement {
     else this.removeAttribute('disabled');
   }
 }
+
+defineCallbackProps(TdSlider, ['onInput', 'onChange']);
 
 if (!customElements.get('td-slider')) {
   customElements.define('td-slider', TdSlider);

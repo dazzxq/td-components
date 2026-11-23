@@ -478,6 +478,8 @@ dụng từ 0.16.0.
 đổi attribute `value` không phát event. Nếu đổi giá trị bằng code **trong lúc** ô đang focus, mốc so sánh cho `change`
 cũng được cập nhật (thay đổi bằng code không bị tính là người dùng sửa).
 
+- 0.122.0: `f.onInput = (value) => …` / `f.onChange = (value) => …` được gọi ngay **trước** `input` / `change` (mọi `type`); script khác của trang không chặn được. Xem [Callback gọi trước event](../guides/security.md#callback-gọi-trước-event-trang-chặn-event-của-kit).
+
 ## Tuỳ biến giao diện
 
 | Token | Mặc định (sáng) | Tác dụng |

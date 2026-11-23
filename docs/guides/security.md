@@ -20,6 +20,7 @@ Tài liệu nội bộ cho người viết component: [security-model](../intern
 - [td-diff: che dữ liệu ở server](#td-diff-che-dữ-liệu-ở-server)
 - [Chính sách URL](#chính-sách-url)
 - [Những thứ kit tin tưởng (trust assumptions)](#những-thứ-kit-tin-tưởng-trust-assumptions)
+- [Callback gọi trước event (trang chặn event của kit)](#callback-gọi-trước-event-trang-chặn-event-của-kit)
 - [CSS injection](#css-injection)
 - [Escaping ở phía server (PHP)](#escaping-ở-phía-server-php)
 - [Trusted Types](#trusted-types)
@@ -283,6 +284,37 @@ Và những thứ **không phải cơ chế phân quyền**:
   `inert` và nhận bàn phím trong khi modal mở — selector quá rộng (`'div'`) mở lại cả trang phía sau modal. Đây là UX,
   không phải ranh giới quyền: thao tác "bị khoá" sau modal vẫn phải được server kiểm tra. Kit không đổi giao diện / không
   `inert` ngược UI ngoài; lỗi selector / hàm ném lỗi chỉ in một thông báo cố định (không in nội dung của site).
+
+## Callback gọi trước event (trang chặn event của kit)
+
+Event của kit (`change`, `input`…) là `CustomEvent` `bubbles + composed`. Script khác trên trang gắn capture listener ở
+`document` sẽ thấy event TRƯỚC listener của app trên host (kể cả host nằm trong closed shadow root) và có thể gọi
+`stopImmediatePropagation()`: UI hiện giá trị mới nhưng app không nhận. Trường hợp này xảy ra khi UI của bạn chạy trên
+trang của bên thứ ba (userscript, extension, widget nhúng).
+
+Từ 0.122.0 các control giá trị có **property callback** được kit gọi trực tiếp, ngay trước khi phát event, nên không
+chặn được theo cách trên. Mặc định `null`; gán thứ không phải function → `null`; callback ném lỗi → `console.error`,
+event vẫn phát; thay đổi bằng code (setter, `setValue`, reset) không gọi (giống event).
+
+| Component | Property | Giá trị |
+|---|---|---|
+| [td-dropdown](../components/dropdown.md) | `onSelect(item)`, `onChange(value)` | có từ trước |
+| [td-tabs](../components/tabs.md) | `onChange(tabId)` | có từ trước |
+| [td-slider](../components/slider.md) | `onInput(value)`, `onChange(value)` | number |
+| [td-choice-group](../components/choice-group.md) | `onChange(value)` | trước cặp `input` + `change` |
+| [td-input-field](../components/input-field.md) | `onInput(value)`, `onChange(value)` | mọi `type` |
+| [td-toggle](../components/toggle.md), [td-checkbox](../components/checkbox.md) | `onChange(checked)` | `controlled`: trạng thái được yêu cầu |
+
+```js
+field.onChange = (value) => state.title = value;   // thay cho addEventListener('change', …) khi trang không tin được
+```
+
+**Giới hạn.** Callback chỉ vá việc chặn event *của kit*. Kit biết người dùng thao tác qua event gốc của trình duyệt
+(`input`, `click`, `pointer*`, `key*`, `focus` / `blur`, đều `composed`), và các event này cũng đi qua capture ở
+`document` trước. Trang chặn chúng thì kit không thấy thao tác: không event, không callback. Trong cùng document không
+có cách chặn điều này. Nếu cần chắc chắn, đọc giá trị lúc lưu / submit (`el.value`, `el.checked`, `FormData`) thay vì
+chỉ dựa vào chuỗi event. Script cùng realm với trang còn có thể vá cả prototype của kit: cần cô lập thật thì chạy trong
+isolated world (xem giới hạn của `portal="local"` ở [td-dropdown](../components/dropdown.md)).
 
 ## CSS injection
 

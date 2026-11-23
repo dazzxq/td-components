@@ -9,6 +9,10 @@ import { safeMediaUrl } from '../utils/media-url.js';
 import { fontFamilyOf } from '../utils/font-family.js';
 import { resolvePortalRoot } from '../utils/portal.js';
 import { activeIn } from '../utils/root.js';
+import { safeCall as safeCallRaw } from '../utils/safe-call.js';
+
+/** @private */
+const safeCall = (fn, arg, what) => safeCallRaw(fn, arg, `td-dropdown: ${what}`);
 
 const CLEAR = '__CLEAR__';
 const OPTION_PX = 40; // --td-dropdown-option-h: `max-height` = visible options × 40 px
@@ -75,14 +79,6 @@ function keywordsOf(v) {
   return v.filter((k) => typeof k === 'string' || (typeof k === 'number' && Number.isFinite(k))).join(' ');
 }
 
-/** @private Run a site callback; a throw is logged and never breaks the component flow. */
-function safeCall(fn, arg, what) {
-  try {
-    fn(arg);
-  } catch (err) {
-    console.error(`td-dropdown: ${what} threw`, err);
-  }
-}
 
 
 /**

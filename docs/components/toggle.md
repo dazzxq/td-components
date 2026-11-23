@@ -415,6 +415,8 @@ gán giá trị khác thì gỡ attribute (về mặc định).
 
 `change`/`input` native của input bên trong bị chặn tại host.
 
+- 0.122.0: `t.onChange = (checked) => …` được gọi ngay **trước** `change` (`controlled`: trạng thái được yêu cầu); script khác của trang không chặn được. Xem [Callback gọi trước event](../guides/security.md#callback-gọi-trước-event-trang-chặn-event-của-kit).
+
 ## Tuỳ biến giao diện
 
 | Token | Mặc định (sáng) | Tác dụng |
