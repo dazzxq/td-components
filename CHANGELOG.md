@@ -4,6 +4,11 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.123.0
+
+### Thêm
+- `td-table` ghim cột cuối khi bảng cuộn ngang: cột khai `sticky: 'end'` (chỉ có tác dụng ở phần tử cuối của `columns`; `'start'`, giá trị khác hoặc cột không cuối bị bỏ qua + một cảnh báo). Ô tiêu đề + ô thân dính ở mép cuối khung cuộn, nền đặc (token mới `--td-table-sticky-col-bg`, phủ đúng màu dòng zebra / hover / focus / dòng chọn), ô tiêu đề luôn `--td-table-head-sticky-bg`. Đường ngăn + bóng nhẹ chỉ khi còn nội dung bị che (`data-sticky-covered` trên `.td-table`). Có `max-height`: ô góc nằm trên cả tiêu đề dính lẫn cột ghim. Ô đang focus không bị cột ghim che (`scroll-padding-inline-end` + chỉnh cuộn khi focus). Chế độ thẻ không ghim. Không khai: markup như cũ. Không có helper PHP cho td-table nên không có gì để in phía server (dsuite K-TABLE-1).
+
 ## 0.122.0
 
 ### Thêm

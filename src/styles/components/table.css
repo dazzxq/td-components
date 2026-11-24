@@ -65,6 +65,7 @@
 		--td-table-head-bg: var(--td-color-surface-muted);
 		--td-table-head-fg: var(--td-color-text-muted);
 		--td-table-head-sticky-bg: var(--td-color-surface-muted); /* opaque on purpose (D14) */
+		--td-table-sticky-col-bg: var(--td-table-bg); /* v0.123.0: opaque fill of the pinned (sticky: 'end') column's body cells */
 		--td-table-sort-icon: var(--td-color-text-subtle); /* ≥ 3:1 on the header fill, light and dark */
 		--td-table-row-border: var(--td-color-border);
 		--td-table-row-hover: var(--td-color-hover);
@@ -282,6 +283,64 @@
 		background: var(--td-table-head-sticky-bg);
 	}
 
+	/*
+	 * v0.123.0 (plan v0.123.0-table-sticky-column): pinned LAST column (column option `sticky: 'end'`). th / td / skeleton
+	 * cell of that column carry .td-table__sticky-end, the root .td-table--sticky-end. The body cell paints, bottom to top:
+	 * --td-table-sticky-col-bg, the row's tint (zebra / hover / selected, --_td-table-tint set on the tr by the row rules
+	 * below) and the second tint (hover over selected, --_td-table-tint-2) — the same colour as a normal cell of that row.
+	 * The header cell is always the opaque --td-table-head-sticky-bg. The divider + the soft shadow show only while content
+	 * hides behind the column (root [data-sticky-covered], set by td-table.js). Card mode resets all of it (card block).
+	 */
+	.td-table--sticky-end .td-table__sticky-end {
+		position: sticky;
+		inset-inline-end: 0;
+		z-index: 1;
+		border-inline-start: 1px solid var(--_td-table-sticky-line, transparent);
+	}
+
+	.td-table--sticky-end td.td-table__sticky-end {
+		background:
+			linear-gradient(var(--_td-table-tint-2, transparent) 0 0),
+			linear-gradient(var(--_td-table-tint, transparent) 0 0),
+			var(--td-table-sticky-col-bg);
+	}
+
+	.td-table--sticky-end th.td-table__sticky-end {
+		background: var(--td-table-head-sticky-bg);
+	}
+
+	/* sticky header + pinned column: every header cell above the pinned body cells, the corner above both */
+	.td-table--sticky-end.td-table--scroll-y .td-table__th {
+		z-index: 2;
+	}
+
+	.td-table--sticky-end.td-table--scroll-y th.td-table__sticky-end {
+		z-index: 3;
+	}
+
+	.td-table--sticky-end .td-table__scroll {
+		scroll-padding-inline-end: var(--td-table-sticky-end-w, 0px); /* a focused cell is not left under the pinned column */
+	}
+
+	.td-table[data-sticky-covered] {
+		--_td-table-sticky-line: var(--td-table-border);
+		--_td-table-sticky-shadow: var(--td-table-edge-shadow);
+	}
+
+	.td-table__sticky-end::after {
+		position: absolute;
+		inset-block: 0;
+		inset-inline-end: 100%;
+		inline-size: 0.75rem;
+		pointer-events: none;
+		content: "";
+		background: linear-gradient(to left, var(--_td-table-sticky-shadow, transparent), transparent);
+	}
+
+	.td-table__sticky-end:dir(rtl)::after {
+		background: linear-gradient(to right, var(--_td-table-sticky-shadow, transparent), transparent);
+	}
+
 	/* Sort button (D12) */
 	.td-table__sort {
 		display: inline-flex;
@@ -340,20 +399,25 @@
 	/* Rows */
 	.td-table--zebra .td-table__row:nth-child(even) {
 		background: var(--td-table-zebra);
+		--_td-table-tint: var(--td-table-zebra); /* v0.123.0: what the pinned cell repaints opaquely (see sticky-end) */
 	}
 
 	.td-table .td-table__row:not(.td-table__row--skeleton):focus-within {
 		background: var(--td-table-row-hover);
+		--_td-table-tint: var(--td-table-row-hover);
 	}
 
 	@media (hover: hover) and (pointer: fine) {
 		/* active-exempt: table rows are not activatable (cells / buttons inside are) */
 		.td-table .td-table__row:not(.td-table__row--skeleton):hover {
 			background: var(--td-table-row-hover);
+			--_td-table-tint: var(--td-table-row-hover);
 		}
 	}
 
 	.td-table__row {
+		--_td-table-tint: transparent; /* v0.123.0: reset (a nested table must not inherit the outer row's tint) */
+		--_td-table-tint-2: transparent;
 		transition: background var(--td-dur-fast) var(--td-ease);
 	}
 
@@ -419,10 +483,13 @@
 	/* Selected row (after zebra + hover: the higher specificity keeps the tint while hovered / focused) */
 	.td-table .td-table__row[data-selected]:not(.td-table__row--skeleton) {
 		background: var(--td-table-row-selected);
+		--_td-table-tint: var(--td-table-row-selected);
 	}
 
 	.td-table .td-table__row[data-selected]:not(.td-table__row--skeleton):focus-within {
 		background: linear-gradient(var(--td-table-row-hover) 0 0) var(--td-table-row-selected);
+		--_td-table-tint: var(--td-table-row-selected);
+		--_td-table-tint-2: var(--td-table-row-hover);
 	}
 
 	@media (hover: hover) and (pointer: fine) {
@@ -433,6 +500,8 @@
 
 		.td-table .td-table__row[data-selected]:not(.td-table__row--skeleton):hover {
 			background: linear-gradient(var(--td-table-row-hover) 0 0) var(--td-table-row-selected);
+			--_td-table-tint: var(--td-table-row-selected);
+			--_td-table-tint-2: var(--td-table-row-hover);
 		}
 	}
 
@@ -703,6 +772,22 @@
 		overflow-wrap: anywhere;
 		white-space: normal;
 		border: 0;
+	}
+
+	/* v0.123.0: no pinned column in card mode (the cell is a plain field of the card); the header cell (visually hidden /
+	   a sort chip) keeps the card rules above — it only loses the pinned fill */
+	:where(td-table[layout="cards"]) .td-table .td-table__row > td.td-table__sticky-end {
+		position: static;
+		background: none;
+		border-inline-start: 0;
+	}
+
+	:where(td-table[layout="cards"]) .td-table .td-table__th.td-table__sticky-end {
+		background: transparent;
+	}
+
+	:where(td-table[layout="cards"]) .td-table .td-table__sticky-end::after {
+		display: none;
 	}
 
 	:where(td-table[layout="cards"]) .td-table__row > [data-card="lead"] {
@@ -1008,6 +1093,12 @@
 
 		.td-table--scroll-y .td-table__th {
 			background: Canvas;
+		}
+
+		/* v0.123.0: the pinned column's divider in a system colour, no shadow */
+		.td-table[data-sticky-covered] {
+			--_td-table-sticky-line: CanvasText;
+			--_td-table-sticky-shadow: transparent;
 		}
 
 		.td-table__sort-icon,

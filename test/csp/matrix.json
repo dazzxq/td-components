@@ -2430,6 +2430,25 @@
       "selectorNote": "v0.57.0: text-sized cells / rows size with the platform font metrics (Linux CI ≠ macOS, lesson of v0.54 daf820c) — grid-template-columns / height / width / margin-left / line-height excluded up front; the tree indent (padding-inline-start, from tokens) stays in the snapshot; the card indent (margin) is gated by test:responsive."
     },
     {
+      "state": "sticky-end",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('layout','table'); t.setAttribute('max-height','160px'); window.__mount.appendChild(t); t.columns=[{key:'a',label:'Tên',minWidth:'420px'},{key:'b',label:'Vai trò',minWidth:'420px'},{key:'c',label:'Email',minWidth:'420px'},{key:'ops',label:'Thao tác',minWidth:'120px',sticky:'end',actions:[{id:'edit',label:'Sửa'}]}]; t.data=Array.from({length:5},(_, i)=>({a:'Dòng '+i,b:'Admin',c:'u'+i+'@x.vn'}));",
+      "selectors": [
+        ".td-table",
+        ".td-table__scroll",
+        ".td-table__head .td-table__sticky-end",
+        ".td-table__row[data-row-idx=\"0\"] .td-table__sticky-end",
+        ".td-table__row[data-row-idx=\"1\"] .td-table__sticky-end"
+      ],
+      "excludeProps": [
+        "grid-template-columns",
+        "height",
+        "width",
+        "margin-left",
+        "line-height"
+      ],
+      "selectorNote": "v0.123.0: pinned last column (sticky: 'end') with max-height (corner z-index 3). Text-sized cells size with the platform font metrics (Linux CI ≠ macOS) — height / width / line-height excluded up front; the pinned fill, position, z-index, border and tint stay in the snapshot."
+    },
+    {
       "state": "single-page",
       "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('hide-single-page',''); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên'},{key:'age',label:'Tuổi'}]; t.data=[{name:'An',age:30},{name:'Bình',age:25}]; ",
       "selectors": [

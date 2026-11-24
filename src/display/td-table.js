@@ -13,6 +13,7 @@ import './td-empty-state.js';
 /** `cellPaddingClass` vocabulary (dcms, Tailwind names) → `td-table__cell--px-{n}`. Lookup keys only (D15). */
 const CELL_PADDING = { 'px-0': 0, 'px-1': 1, 'px-2': 2, 'px-3': 3, 'px-4': 4, 'px-5': 5, 'px-6': 6 };
 const ALIGN = ['left', 'center', 'right', 'justify'];
+const STICKY_END_CLS = ' td-table__sticky-end'; // v0.123.0: the pinned last column's th / td / skeleton cell
 const OFF = new Set(['false', '0', 'off']);
 /** `actions[].variant` whitelist → `td-btn--{variant}` (anything else → secondary). */
 const ACTION_VARIANTS = new Set(['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'ghost']);
@@ -145,7 +146,7 @@ function safeMaxHeight(value) {
  *
  * @property {Array<Object>} columns - Column definitions: `{ key, label, sortable?, width?, widthType?:
  *   'fixed'|'flexible', minWidth?, maxWidth?, align?: 'left'|'center'|'right'|'justify', ellipsis?, nowrap?,
- *   card?: 'lead'|'primary'|'secondary'|'meta'|'actions'|false, actions?, render? }`.
+ *   card?: 'lead'|'primary'|'secondary'|'meta'|'actions'|false, actions?, render?, sticky?: 'end' }`.
  *   `width` is applied ONLY with `widthType: 'fixed'` (width = min = max); the default `'flexible'` ignores it and
  *   uses `minWidth`/`maxWidth` (width `auto`). `table-layout: fixed` only when EVERY column is fixed (v0.34.0).
  *   `nowrap` (default true for `align: 'right'`) keeps the value on one line. `card` = role on a card (default:
@@ -159,6 +160,8 @@ function safeMaxHeight(value) {
  *   `label` and plain values are always escaped; `width`/`minWidth`/`maxWidth` pass `safeCssDimension`, `align` a
  *   whitelist, all applied via CSSOM. Columns are resolved by INDEX (keys may repeat, be numeric or missing).
  *   `ellipsis: true` → one line, truncated at `maxWidth` or `--td-table-ellipsis-max` (18rem), full text in `title`.
+ *   `sticky: 'end'` (v0.123.0) pins the column to the inline-end edge of the horizontal scroll frame; only valid on the LAST
+ *   column ('start', other values and a non-last column are ignored with one warning each). Off → markup unchanged.
  *   `render(row, rowIdxInPage)` — TRUSTED HATCH: return a Node (preferred, appended), a string (**trusted HTML**,
  *   developer markup only, injected with innerHTML — escape any end-user data inside it yourself; its CSP
  *   compliance is the consumer's responsibility) or anything else (text); it is appended after the cell's card label. A render column sorts by `row[key]`.
@@ -303,6 +306,8 @@ export class TdTable extends TdBaseElement {
     this._currentPage = 1;
     this._cellPadding = null;
     this._warned = new Set();
+    this._stickyCi = -1; // v0.123.0: index of the pinned (sticky: 'end') column, -1 = off
+    this._stickyW = -1; // last --td-table-sticky-end-w written on the current scroll frame (px)
     this._ro = null;
     this._refocusPagination = null;
     // v0.37.0 row selection
@@ -647,6 +652,29 @@ export class TdTable extends TdBaseElement {
     this._hidden = new Set(hidden);
   }
 
+  /**
+   * @private v0.123.0 (QĐ 1): index of the pinned column, -1 = off. Only `sticky: 'end'` on the LAST column counts; `'start'`,
+   * any other value and a non-last column are ignored with one warning per kind.
+   */
+  _computeSticky() {
+    const cols = this._columns;
+    let ci = -1;
+    cols.forEach((col, i) => {
+      const v = col && typeof col === 'object' ? col.sticky : undefined;
+      if (v == null || v === false) return;
+      if (v === 'end') {
+        if (i === cols.length - 1) ci = i;
+        else this._warnOnce("td-table: `sticky: 'end'` only applies to the LAST column — ignored on the others.");
+      } else if (v === 'start') {
+        this._warnOnce("td-table: `sticky: 'start'` is not supported yet — ignored.");
+      } else {
+        this._warnOnce("td-table: invalid column `sticky` value — only 'end' is supported; ignored.");
+      }
+    });
+    this._stickyCi = ci;
+    return ci;
+  }
+
   /** @private ` hidden` for the cells of column `ci` (render strings). */
   _hiddenAttr(ci) { return this._hidden.has(ci) ? ' hidden' : ''; }
 
@@ -663,6 +691,7 @@ export class TdTable extends TdBaseElement {
     const empty = this._tbody.querySelector(':scope > .td-table__empty-row > .td-table__empty');
     if (empty) empty.setAttribute('colspan', String(this._emptySpan()));
     for (const td of this._tbody.querySelectorAll(':scope > .td-table__row--tree-status > td')) td.setAttribute('colspan', String(this._emptySpan()));
+    this._syncSticky();
   }
 
   _emptySpan() {
@@ -812,12 +841,14 @@ export class TdTable extends TdBaseElement {
 
   render() {
     this._computeHidden();
+    const sticky = this._computeSticky();
     const title = this._getTitle();
     const h = `h${this._getHeadingLevel()}`;
     const tree = this._treeOn();
     const mods = (this._isZebra() ? ' td-table--zebra' : '')
       + (this._isFixedLayout() ? ' td-table--fixed' : '')
       + (this._getMaxHeight() ? ' td-table--scroll-y' : '')
+      + (sticky >= 0 ? ' td-table--sticky-end' : '')
       + (tree ? ' td-table--tree' : '');
     const pad = this._cellPadClass();
     const esc = (v) => this.escapeHtml(v);
@@ -830,7 +861,7 @@ export class TdTable extends TdBaseElement {
         ? `<button type="button" class="td-table__sort" data-sort-col="${ci}"><span class="td-table__sort-label">${label}</span>`
           + '<span class="td-table__sort-icon" aria-hidden="true"></span></button>'
         : label;
-      return `<th class="td-table__th${c.sortable ? ' td-table__th--sortable' : ''}${pad}" role="columnheader" scope="col" data-col="${ci}" data-col-key="${key}"`
+      return `<th class="td-table__th${c.sortable ? ' td-table__th--sortable' : ''}${pad}${ci === sticky ? STICKY_END_CLS : ''}" role="columnheader" scope="col" data-col="${ci}" data-col-key="${key}"`
         + ` data-card="${roles[ci]}"${this._hiddenAttr(ci)}>${inner}</th>`;
     }).join('');
     const titleHtml = title ? `<${h} class="td-table__title" id="${esc(this._titleId)}">${esc(title)}</${h}>` : '';
@@ -900,6 +931,13 @@ export class TdTable extends TdBaseElement {
     this._update();
     this._syncForm();
     this._observeOverflow();
+    // v0.123.0: only a table with a pinned column listens (scroll → divider + shadow; focusin → keep the focus clear of it)
+    this._stickyW = -1;
+    if (this._stickyCi >= 0) {
+      this._scroll.addEventListener('scroll', () => this._syncSticky(), { passive: true });
+      this._scroll.addEventListener('focusin', (e) => this._onStickyFocusin(e));
+      this._syncSticky();
+    }
   }
 
   // --- In-place update (D11) ---
@@ -1141,7 +1179,7 @@ export class TdTable extends TdBaseElement {
       const treeCell = ci === P.treeCi;
       const cls = `td-table__cell${c.ellipsis && !actions ? ' td-table__cell--ellipsis' : ''}`
         + `${this._isNowrap(c) ? ' td-table__cell--nowrap' : ''}${actions ? ' td-table__cell--actions' : ''}`
-        + `${treeCell ? ' td-table__cell--tree' : ''}${pad}`;
+        + `${treeCell ? ' td-table__cell--tree' : ''}${pad}${ci === this._stickyCi ? STICKY_END_CLS : ''}`;
       const attrs = `class="${cls}" role="${P.cellRole}" data-col="${ci}" data-col-key="${esc(String(c.key ?? ''))}"`
         + ` data-card="${roles[ci]}"${this._hiddenAttr(ci)}`;
       // v0.57.0 (QĐ 8, QĐ 14): the toggle (or a same-width spacer) leads the tree cell, outside .td-table__truncate
@@ -1589,7 +1627,7 @@ export class TdTable extends TdBaseElement {
   _skeletonHtml() {
     const pad = this._cellPadClass();
     const roles = this._cardRoles();
-    const cells = this._columns.map((c, ci) => `<td class="td-table__cell${pad}" role="cell" data-col="${ci}"`
+    const cells = this._columns.map((c, ci) => `<td class="td-table__cell${pad}${ci === this._stickyCi ? STICKY_END_CLS : ''}" role="cell" data-col="${ci}"`
       + ` data-card="${roles[ci]}"${this._hiddenAttr(ci)}><span class="td-table__skeleton"></span></td>`).join('')
       || `<td class="td-table__cell${pad}" role="cell" data-card="primary"><span class="td-table__skeleton"></span></td>`;
     const selCell = this._selOn ? '<td class="td-table__cell td-table__cell--select td-table__card-select" role="cell" data-card="select"></td>' : '';
@@ -1842,6 +1880,55 @@ export class TdTable extends TdBaseElement {
     } else {
       for (const a of ['tabindex', 'role', 'aria-label', 'aria-labelledby']) s.removeAttribute(a);
     }
+    this._syncSticky();
+  }
+
+  /** @private The pinned column's header cell (null when off / not rendered). */
+  _stickyTh() {
+    if (this._stickyCi < 0 || !this._table) return null;
+    return this._table.querySelector(`:scope > thead > tr > [data-col="${this._stickyCi}"]`);
+  }
+
+  /**
+   * @private v0.123.0 (QĐ 4, 6): ONE place for the pinned column's measured state — `--td-table-sticky-end-w` on the scroll
+   * frame (CSSOM, scroll-padding) and root `[data-sticky-covered]` (content still hides behind the column; LTR geometry, no
+   * RTL branch). Writes only on change; a hidden pinned column → 0 and no attribute. Does nothing when the feature is off.
+   */
+  _syncSticky() {
+    const s = this._scroll;
+    if (!s || this._stickyCi < 0 || !this._root) return;
+    const th = this._stickyTh();
+    const hidden = !th || th.hidden;
+    const w = hidden ? 0 : th.offsetWidth || 0;
+    if (w !== this._stickyW) {
+      this._stickyW = w;
+      s.style.setProperty('--td-table-sticky-end-w', `${w}px`);
+    }
+    const covered = !hidden && s.scrollWidth - s.clientWidth - s.scrollLeft > 1;
+    if (covered !== this._root.hasAttribute('data-sticky-covered')) {
+      if (covered) this._root.setAttribute('data-sticky-covered', '');
+      else this._root.removeAttribute('data-sticky-covered');
+    }
+  }
+
+  /**
+   * @private v0.123.0 (QĐ 6): deterministic fallback for engines that do not honour `scroll-padding` on focus. After the
+   * browser's own focus scroll, a target (not in the pinned column) whose inline-end edge runs under the pinned header cell
+   * is scrolled back by exactly the overlap (never past its own inline-start edge). LTR geometry only.
+   */
+  _onStickyFocusin(e) {
+    const t = e.target;
+    const s = this._scroll;
+    const th = this._stickyTh();
+    if (!s || !th || th.hidden || !(t instanceof Element) || t === s || !this._table.contains(t)) return;
+    const cell = t.closest('[data-col]');
+    if (!cell || cell.getAttribute('data-col') === String(this._stickyCi)) return;
+    const tr = t.getBoundingClientRect();
+    const pin = th.getBoundingClientRect();
+    const frame = s.getBoundingClientRect();
+    if (tr.left >= pin.left || tr.right <= pin.left + 0.5 || tr.right <= frame.left) return;
+    const shift = Math.min(tr.right - pin.left, Math.max(0, tr.left - frame.left));
+    if (shift > 0) s.scrollLeft += shift;
   }
 
   // --- Column styles (CSSOM) ---
@@ -1881,6 +1968,7 @@ export class TdTable extends TdBaseElement {
       const s = styles[Number(cell.getAttribute('data-col'))];
       if (s && Object.keys(s).length) applyStyles(cell, s);
     }
+    this._syncSticky(); // v0.123.0 (QĐ 4): column widths may have changed the pinned column's width
   }
 
   // --- Public API ---

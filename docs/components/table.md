@@ -187,6 +187,41 @@ table.columns = [
 khung thẻ, hàng tiêu đề dính trên cùng với nền đặc. Giá trị được kiểm bằng `CSS.supports('max-height', v)`, dài tối đa
 200 ký tự, cấm `url(`, `var(`, `image-set(`, `;`, `{`, `}`. Giá trị bị từ chối → không sticky + một cảnh báo console.
 
+#### Ghim cột cuối (`sticky: 'end'`) — từ 0.123.0
+
+Bảng nhiều cột phải cuộn ngang thì cột "Thao tác" cuối bị đẩy ra khỏi tầm nhìn. Đặt `sticky: 'end'` trên **cột cuối cùng**
+của `columns` để ô tiêu đề + các ô thân của cột đó dính ở mép cuối (bên phải, trong giao diện LTR) của khung cuộn ngang:
+
+```js
+table.columns = [
+  { key: 'name', label: 'Tên', minWidth: '16rem' },
+  { key: 'email', label: 'Email', minWidth: '18rem' },
+  // … nhiều cột …
+  { key: 'ops', label: 'Thao tác', actions: [{ id: 'edit', label: 'Sửa' }], sticky: 'end' },
+];
+```
+
+- **Chỉ cột cuối.** `sticky: 'end'` trên cột không phải cột cuối, `'start'` (chưa hỗ trợ) hay giá trị khác → bỏ qua và
+  một cảnh báo console cho mỗi loại. Không hỗ trợ nhiều cột ghim. Cột ghim bị ẩn (`hidden` / menu cột) thì không có gì
+  được ghim; cột đứng trước nó **không** được ghim thay.
+- **Nền đặc.** Ô thân dùng token `--td-table-sticky-col-bg` (mặc định `var(--td-table-bg)`) và phủ thêm đúng màu của
+  dòng (zebra, hover / focus-within, dòng được chọn, chọn + hover) nên nhìn giống hệt ô thường cùng dòng. Ô tiêu đề luôn
+  dùng `--td-table-head-sticky-bg`, có hay không `max-height`.
+- **Đường ngăn + bóng chỉ khi có nội dung bị che.** Khi phía sau cột ghim còn nội dung chưa cuộn tới, `.td-table` có
+  attribute `data-sticky-covered`: cột ghim hiện đường ngăn `--td-table-border` + bóng mềm (`--td-table-edge-shadow`) ở mép
+  bên kia. Cuộn tới hết thì attribute biến mất. Site đọc được attribute này (ví dụ để đổi nền).
+- **Focus không bị che.** Khung cuộn có `scroll-padding-inline-end` bằng bề rộng cột ghim; thêm một bước dự phòng bằng JS
+  để ô đang focus (Tab) luôn nằm hẳn bên trái cột ghim, mọi trình duyệt. Chỉ tính cho LTR.
+- **Cùng tiêu đề dính (`max-height`).** Thứ tự chồng: ô góc (tiêu đề × cột ghim) trên tiêu đề khác, tiêu đề trên ô thân ghim.
+- **Chế độ card không ghim.** Ở dạng card (`layout="cards"` hoặc tự chuyển khi chỗ đặt hẹp) cột cuối chỉ là một trường
+  của card; `layout="table"` giữ ghim ở mọi khổ.
+- **Không bật thì không đổi gì:** không class, không attribute, không listener mới.
+- **Giới hạn:** chỉ `'end'`, một cột; không có helper PHP (`<td-table>` dựng bằng JS từ property `columns`).
+
+Cấu trúc khi bật: `.td-table--sticky-end` trên `.td-table`; class `td-table__sticky-end` trên `th`, `td` và ô skeleton của cột
+cuối; `data-sticky-covered` trên `.td-table` khi còn nội dung bị che; biến CSSOM `--td-table-sticky-end-w` (bề rộng cột
+ghim, px) trên `.td-table__scroll` — chỉ để dùng nội bộ, đừng ghi đè.
+
 ### 6. Đang tải và rỗng
 
 ```js
@@ -947,6 +982,7 @@ Các attribute `title`, `heading-level`, `zebra`, `max-height`, `selectable`, `r
 | `render` | `(row, rowIdxInPage, ctx?) => Node \| string \| any` | — | Ô tuỳ biến (xem cách dùng số 3). Nội dung được **nối sau** nhãn card của ô. 0.57.0, bảng cây: tham số 3 `ctx = { level, parentKey, hasChildren, expanded }` (lúc vẽ dòng đó); ở bảng cây dùng `row`, đừng dựa vào `rowIdxInPage` (vị trí đổi khi mở / đóng nhánh phía trên). |
 | `hideable` | boolean | `true` (`false` cho cột `primary` và cột `actions`) | Cho phép ẩn cột (menu "Cột", `hiddenColumns`). Cần `key` duy nhất khác rỗng. Từ 0.39.0. |
 | `hidden` | boolean | `false` | Ẩn lúc đầu (và khi "Khôi phục mặc định" / `hiddenColumns = null`). Từ 0.39.0. |
+| `sticky` | `'end'` | — | Ghim cột vào mép cuối khung cuộn ngang. Chỉ có hiệu lực trên cột **cuối cùng**; `'start'`, giá trị khác hoặc cột không cuối bị bỏ qua + một cảnh báo. Xem mục "Ghim cột cuối" trong cách dùng số 5. Từ 0.123.0. |
 
 "CSS dimension" = số kèm đơn vị tuỳ chọn trong `px`, `em`, `rem`, `%`, `vh`, `vw`, `ch`, `fr` (ví dụ `120px`, `20%`,
 `12rem`). Giá trị khác (có `calc()`, `;`…) bị bỏ qua. Mọi style cột được áp bằng CSSOM, không có `style="…"`.
@@ -1065,6 +1101,7 @@ Token (khai báo trong `@layer td.tokens`, override bằng CSS không layer củ
 | `--td-table-head-bg` | `var(--td-color-surface-muted)` | Nền hàng tiêu đề |
 | `--td-table-head-fg` | `var(--td-color-text-muted)` | Chữ tiêu đề cột |
 | `--td-table-head-sticky-bg` | `var(--td-color-surface-muted)` | Nền tiêu đề khi sticky (cố ý đặc) |
+| `--td-table-sticky-col-bg` | `var(--td-table-bg)` | Nền đặc của ô thân cột ghim (`sticky: 'end'`, 0.123.0); phủ thêm màu zebra / hover / chọn của dòng |
 | `--td-table-sort-icon` | `var(--td-color-text-subtle)` | Màu icon sort khi cột chưa sort |
 | `--td-table-row-border` | `var(--td-color-border)` | Đường kẻ giữa các hàng |
 | `--td-table-row-hover` | `var(--td-color-hover)` | Nền hàng khi hover / focus-within |
@@ -1125,7 +1162,7 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
 
 ```html
 <td-table [layout="auto|table|cards"] [card-below="sm|md|lg"]>
-  <div class="td-table td-table--zebra [td-table--fixed] [td-table--scroll-y]" data-state="ready|loading|empty">
+  <div class="td-table td-table--zebra [td-table--fixed] [td-table--scroll-y] [td-table--sticky-end]" data-state="ready|loading|empty">
     <div class="td-table__header" [hidden]>
       <h3 class="td-table__title" id="{host-id}-title">…</h3>
       <!-- 0.39.0, chỉ khi column-menu: nút mở TdMenu (mục checkbox mỗi cột ẩn được + "Khôi phục mặc định") -->

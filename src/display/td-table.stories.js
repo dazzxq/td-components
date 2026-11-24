@@ -111,6 +111,26 @@ export const StickyHeader = {
   },
 };
 
+export const StickyEndColumn = {
+  render: () => `<div>
+      <td-table title="Ghim cột cuối" layout="table" max-height="320px" per-page="30"></td-table>
+      <p class="sb-note">Cột "Thao tác" có sticky: 'end' → dính mép phải khi cuộn ngang; đường ngăn + bóng chỉ hiện khi còn nội dung bị che.</p>
+    </div>`,
+  play: async ({ canvasElement }) => {
+    const el = canvasElement.querySelector('td-table');
+    el.columns = [
+      { key: 'id', label: 'ID', width: '80px', widthType: 'fixed' },
+      { key: 'name', label: 'Tên', minWidth: '14rem' },
+      { key: 'email', label: 'Email', minWidth: '16rem' },
+      { key: 'role', label: 'Vai trò', minWidth: '12rem' },
+      { key: 'note', label: 'Ghi chú', minWidth: '16rem', render: (row) => `Ghi chú của ${row.name}` },
+      { key: 'active', label: 'Trạng thái', minWidth: '10rem', render: statusCell },
+      { key: 'ops', label: 'Thao tác', sticky: 'end', actions: [{ id: 'edit', label: 'Sửa' }, { id: 'del', label: 'Xoá', variant: 'danger' }] },
+    ];
+    el.data = sampleData;
+  },
+};
+
 export const EllipsisAndWidths = {
   render: () => `<div>
       <td-table title="Cắt chữ dài"></td-table>
