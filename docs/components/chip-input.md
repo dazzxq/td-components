@@ -246,7 +246,7 @@ Các thao tác này **không** phát `change` và **không** thông báo cho tr�
 
 ### 10. Gán property trước khi component được định nghĩa
 
-Có thể gán `options`, `search`, `create`, `renderOption`, `renderChip`, `messages`, `value` lên phần tử **trước** khi
+Có thể gán `options`, `search`, `create`, `renderOption`, `renderChip`, `messages`, `value`, `createLabel` lên phần tử **trước** khi
 import module (ví dụ script không phải module chạy trước). Khi phần tử nâng cấp, các giá trị này được áp lại qua setter.
 
 ### 11. Chọn nhiều từ danh sách — multi-select (0.28.0)
@@ -423,7 +423,7 @@ focus.
 | `focus()` | | Focus ô nhập. |
 
 Các attribute còn lại có property phản chiếu tự động (`maxItems`, `minChars`, `searchDelay`, `allowCreate`,
-`showOnFocus`, `valueKey`, `labelKey`, `maxLength`, `placeholder`, `label`, `name`, `disabled`, `required`, `errorText`).
+`showOnFocus`, `valueKey`, `labelKey`, `maxLength`, `placeholder`, `label`, `name`, `disabled`, `required`, `errorText`, `selectionOnly`, `selectAll`, `closeOnSelect`) và `createLabel` (chuỗi; `''` = gỡ attribute `create-label`).
 
 ## Event
 
@@ -549,6 +549,11 @@ Popup nằm ở `<body>`: nhắm riêng bằng id `#{host}-menu`.
     </div>
     <div class="td-chip-input__option td-chip-input__option--create" role="option" id="{host}-opt-create"
          aria-selected="false">Thêm “vue”</div>
+    <!-- 0.117.0, allow-create + create-label: dòng hành động ngoài, sau dòng Thêm -->
+    <div class="td-chip-input__option td-chip-input__option--create td-chip-input__option--external" role="option"
+         id="{host}-opt-external" aria-selected="false">
+      <span class="td-chip-input__option-label"><span class="td-chip-input__create-icon" data-td-icon="plus" aria-hidden="true"></span>Tạo bút danh “vue”</span>
+    </div>
   </div>
   <p class="td-chip-input__empty" [data-kind="none|loading|error"]>…</p>
 </div>
@@ -562,6 +567,9 @@ Popup nằm ở `<body>`: nhắm riêng bằng id `#{host}-menu`.
 | `.td-chip-input__menu` | `[hidden]`, `data-state`, `data-placement` |
 | `.td-chip-input__option` | `aria-selected="true"` = option **đang active** (không phải "đã chọn" — mục đã chọn không hiện trong gợi ý) |
 | `.td-chip-input__empty` | `data-kind="none|loading|error"` |
+| `.td-chip-input__options[data-create-row]` | Có dòng create / ngoài ghim đáy trong danh sách (đệm cuộn của danh sách; không dùng `:has()`) |
+| `svg.td-chip-input__swatch` | 0.82.0: chấm màu (`<svg viewBox="0 0 12 12" aria-hidden>`, `fill` qua `safeColor`) đứng trước nhãn chip / option khi mục có `swatch` và **không** đặt `renderChip` / `renderOption` |
+| `span.td-chip-input__create-icon` | Icon `+` (`data-td-icon="plus"`) trong dòng create / ngoài, nằm trong `.td-chip-input__option-label` |
 
 **0.28.0 — chế độ `selection-only`** (listbox `aria-multiselectable="true"`; id vẫn từ chỉ số, không bao giờ từ dữ liệu):
 
@@ -581,6 +589,10 @@ Popup nằm ở `<body>`: nhắm riêng bằng id `#{host}-menu`.
   <div class="td-chip-input__group" role="group" aria-labelledby="{host}-grp-0">
     <div class="td-chip-input__group-label" role="presentation" id="{host}-grp-0">Cộng tác</div>
     <div class="td-chip-input__option" role="option" …>…</div>
+  </div>
+  <!-- 0.87.0, create-label: dòng create ghim đáy (không có ô tick) -->
+  <div class="td-chip-input__option td-chip-input__option--create" role="option" id="{host}-opt-create" aria-selected="false">
+    <span class="td-chip-input__option-label"><span class="td-chip-input__create-icon" data-td-icon="plus" aria-hidden="true"></span>Tạo vai trò mới</span>
   </div>
 </div>
 ```

@@ -2013,15 +2013,13 @@ host `disabled`).
 
 - **Không JS**: form gửi `name=value` của radio đang chọn (chưa chọn → không có mục), trình duyệt kiểm `required` (mọi lựa
   chọn `disabled` → hợp lệ), mũi tên / Space / Tab chạy. Dòng "lựa chọn hiện tại" của swatch là chữ tĩnh lúc in.
-- **Có JS** (nạp module `choice-group`): component đọc lại lựa chọn từ markup qua **cùng cổng** với property `options` (màu,
-  URL ảnh kiểm lại), so với `render()`, rồi nhận **tại chỗ**: ElementInternals trước, rồi trên cùng node radio đổi `name`
-  sang nhóm riêng + `form=""` + `autocomplete="off"`, gỡ `required` — FormData còn **đúng một** mục (của host). Lựa chọn
-  người dùng đổi trước khi module tải được giữ; focus giữ. Markup lệch → render an toàn, giữ lựa chọn + focus.
+- **Có JS** (nạp module `choice-group`): component nhận markup tại chỗ, FormData còn đúng một mục (của host), lựa chọn và
+  focus được giữ; markup lệch thì render an toàn. Các bước đầy đủ: [Choice group › Hợp đồng SSR `choice-group@1`](../components/choice-group.md#hợp-đồng-ssr-choice-group1).
 
 | Option | Ý nghĩa |
 |---|---|
 | `$name` | tên field. `''` → radio dùng tên nhóm riêng `{id}-group` + `form=""` (bàn phím vẫn là một nhóm, không bao giờ được gửi) |
-| `$options` | danh sách `['value' => string\|int\|float, 'label' => string, 'hint'?, 'swatch'?, 'image'?, 'disabled'?, 'unavailable'?, 'unavailable_label'?]`. Sai (không phải mảng, `value` không chuẩn — xem dưới —, `label` không phải chuỗi hoặc rỗng sau khi bỏ khoảng trắng theo ECMAScript (`Td::JS_WS`: cả NBSP, U+2000–U+200A, U+3000, U+FEFF…), `value` trùng) → **bỏ** lựa chọn; `hint` / `unavailable_label` sai kiểu → bỏ khoá đó. `disabled` / `unavailable` chỉ nhận `true`. **Giới hạn** `Td::CHOICE_LIMITS` (= JS `CHOICE_LIMITS`): đọc tối đa 400 phần tử, in tối đa 100 lựa chọn; `label` / `hint` cắt ở 200 code point, `unavailable_label` ở 100; `value` > 200, `swatch` > 128, `image` > 8192 → từ chối. `value` chuẩn (`td__choice_value`): `int` / `float` hữu hạn → chuỗi như `String()` của JS (`5` → `"5"`, `1.5` → `"1.5"`; `INF` / `NAN` bị từ chối), chuỗi hợp lệ UTF-8, 1–200 code point, không ký tự điều khiển (kể cả `\r` `\n` `\t`), không trim |
+| `$options` | danh sách `['value' => string\|int\|float, 'label' => string, 'hint'?, 'swatch'?, 'image'?, 'disabled'?, 'unavailable'?, 'unavailable_label'?]`. Sai (không phải mảng, `value` không chuẩn — xem dưới —, `label` không phải chuỗi hoặc rỗng sau khi bỏ khoảng trắng theo ECMAScript (`Td::JS_WS`: cả NBSP, U+2000–U+200A, U+3000, U+FEFF…), `value` trùng) → **bỏ** lựa chọn; `hint` / `unavailable_label` sai kiểu → bỏ khoá đó. `disabled` / `unavailable` chỉ nhận `true`. **Giới hạn** `Td::CHOICE_LIMITS` (= JS `CHOICE_LIMITS`): con số đầy đủ ở [Choice group › Giới hạn](../components/choice-group.md#1-lựa-chọn-options); vượt thì cắt hoặc từ chối lựa chọn đó. `value` chuẩn (`td__choice_value`): `int` / `float` hữu hạn → chuỗi như `String()` của JS (`5` → `"5"`, `1.5` → `"1.5"`; `INF` / `NAN` bị từ chối), chuỗi hợp lệ UTF-8, 1–200 code point, không ký tự điều khiển (kể cả `\r` `\n` `\t`), không trim |
 | `swatch` | qua `Td::safeColor()` → thuộc tính `fill` của SVG (không phải inline style). Sai → không màu (ô trung tính) |
 | `image` | qua `td__media_url()`: `https:` hoặc không scheme (tương đối, `/…`, `//…`). **`http:` bị từ chối** trừ khi site gọi `Td::allowHttpLinks(true)` (site chạy HTTP); trang thực tế HTTPS mà vẫn bật cờ → JS khi nhận markup từ chối ảnh đó → vẽ lại không ảnh. `data:` / `javascript:` / `blob:` / > 8 KiB → từ chối |
 | `$value` | lựa chọn được chọn (`string` / `int`); không có trong `$options` → không chọn gì (ghi vào cảnh báo gộp) |
@@ -2035,7 +2033,7 @@ host `disabled`).
 | `helper_text`, `error_text` | ghi chú / lỗi dưới nhóm (`aria-describedby` / `aria-invalid` trên radiogroup) |
 | `id` | id của **host** (radio: `{id}-o0`, `{id}-o1`…; mặc định `td-{name}-{n}`, phần `{name}` bị cắt để cả id ≤ 100 ký tự — giữ tiền tố `td-` và hậu tố số duy nhất) |
 | `class` | class thêm trên host |
-| **Giới hạn nhóm** | `Td::CHOICE_LIMITS` (= JS `CHOICE_LIMITS`, code point): `$name` 200, `id` 100, `class` (sau khi lọc token) 256, `label` / `aria_label` 200, `helper_text` 1000, `error_text` 1000; chuỗi không hợp lệ UTF-8 cũng tính là vượt. `class` được chặn **trước** khi lọc token (chuỗi ≤ 1024 byte; mảng ≤ 64 phần tử, tổng ≤ 1024 byte). Vượt bất kỳ → **không in gì** (`''`) + **một** `E_USER_WARNING` cố định `td_choice_group: {n} group field(s) over the limits — nothing rendered` (chỉ số đếm) — kit không bao giờ in markup mà component sẽ từ chối khi nhận (preflight SSR chấp nhận đúng tới các giới hạn này) |
+| **Giới hạn nhóm** | `Td::CHOICE_LIMITS` (= JS `CHOICE_LIMITS`; con số ở [Choice group › Giới hạn](../components/choice-group.md#1-lựa-chọn-options)); chuỗi không hợp lệ UTF-8 cũng tính là vượt. `class` được chặn **trước** khi lọc token (chuỗi ≤ 1024 byte; mảng ≤ 64 phần tử, tổng ≤ 1024 byte). Vượt bất kỳ → **không in gì** (`''`) + **một** `E_USER_WARNING` cố định `td_choice_group: {n} group field(s) over the limits — nothing rendered` (chỉ số đếm) — kit không bao giờ in markup mà component sẽ từ chối khi nhận (preflight SSR chấp nhận đúng tới các giới hạn này) |
 
 Ghi chú "Hết hàng" mặc định = `Td::CHOICE_LABELS['unavailable']` (= `TdChoiceGroup.messages.unavailable`) — là **trạng thái**:
 site đổi chữ phía JS thì component tự áp lại khi nhận markup (không bị coi là lệch). Ghi chú riêng (`unavailable_label`) mang

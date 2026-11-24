@@ -385,27 +385,15 @@ Placeholder của trigger đổi bằng attribute `placeholder`.
 
 `import '@dazzxq/td-components/chip-input';` · Trang: [chip-input.md](../components/chip-input.md)
 
-Có thể gán các property này **trước** khi element được nâng cấp (upgrade); chúng được áp lại qua setter.
+| Property | Việc |
+|---|---|
+| `search(query, { signal })` | Gợi ý từ server: [chip-input.md › mục 4](../components/chip-input.md#4-gợi-ý-từ-server-search). |
+| `create(text)` | Tạo mục mới, trả item hoặc `null` để từ chối: [chip-input.md › mục 6](../components/chip-input.md#6-tạo-mục-mới-allow-create-create). |
+| `renderOption(item, { query })` / `renderChip(item)` | Vẽ lại gợi ý / chip: [chip-input.md › mục 8](../components/chip-input.md#8-tuỳ-biến-nội-dung-option--chip-renderoption-renderchip). |
+| `options` | Gợi ý tĩnh (lọc tại chỗ) khi không có `search`. |
+| `messages` | Nhãn riêng một instance, ghi đè `TdChipInput.labels`. |
 
-| Property | Chữ ký | Trả về | Khi nào gọi | Lỗi thì sao |
-|---|---|---|---|---|
-| `search` | `(query, { signal }) => Array \| Promise<Array>` | Mảng chuỗi / số / object `{ value, label, description? }` | Sau debounce `search-delay` (250 ms) khi gõ đủ `min-chars`, hoặc query rỗng với `show-on-focus` | Ném / reject → popup báo lỗi (`labels.error`), event `search-error` `{ query, error }`. `AbortError` hoặc phản hồi cũ bị bỏ im lặng |
-| `create` | `(text) => item \| null \| Promise<item \| null>` | Item mới; `null` = từ chối (có thể tự gọi `setError`) | Enter / chọn dòng "Thêm …" khi có `allow-create` | Ném / reject → `console.error`, coi như `null`. Không có `create` → item `{ value: text, label: text }` |
-| `renderOption` | `(item, { query }) => Node \| string` | Node, hoặc chuỗi hiển thị dạng **text** | Mỗi lần vẽ danh sách gợi ý | Ném lỗi / trả `null` / `''` → `console.error` (khi ném) và dùng label |
-| `renderChip` | `(item) => Node \| string` | Như trên | Mỗi lần vẽ chip | Như trên |
-| `options` | `Array` | — | Gợi ý tĩnh (lọc tại chỗ, không phân biệt dấu) khi không có `search` | — |
-| `messages` | `object` (một phần của `labels`) | — | Nhãn **riêng** instance này, ghi đè `TdChipInput.labels` | — |
-
-`TdChipInput.labels` (toàn trang; `{…}` được điền giá trị):
-
-| Khoá | Mặc định | Khoá | Mặc định |
-|---|---|---|---|
-| `remove` | `Xóa {label}` | `results` | `{n} gợi ý` |
-| `create` | `Thêm “{text}”` | `noResults` | `Không có gợi ý` |
-| `chips` | `Đã chọn` | `loading` | `Đang tìm…` |
-| `added` | `Đã thêm {label}` | `error` | `Không tải được gợi ý` |
-| `removed` | `Đã xóa {label}` | `max` | `Đã đạt tối đa {max} mục` |
-| `duplicate` | `Đã có {label}` | `required` | `Vui lòng thêm ít nhất một mục` |
+Các property trên gán được **trước** khi element nâng cấp ([mục 10](../components/chip-input.md#10-gán-property-trước-khi-component-được-định-nghĩa)). `TdChipInput.labels` (toàn trang): đủ khoá, chữ mặc định và chỗ dùng ghi ở [chip-input.md › Hook & tuỳ chọn](../components/chip-input.md#hook--tuỳ-chọn).
 
 (Tên property là `messages`, không phải `labels`, vì `labels` của form control là danh sách `<label>` gắn với nó.)
 
