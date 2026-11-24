@@ -62,7 +62,7 @@ Không có `panel` thì td-tabs chỉ là thanh chọn; bạn tự đổi nội 
 ```
 
 Thẻ đang chọn được xác định theo thứ tự: thẻ hiện tại (nếu còn tồn tại) → attribute `active-tab` (nếu khớp một `id`)
-→ thẻ đầu tiên.
+→ thẻ đầu tiên **chưa khoá** (xem thẻ dự phòng ở mục thẻ khoá).
 
 ### 3. Đổi thẻ bằng code
 
@@ -502,7 +502,7 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - **Thẻ nằm trong phần tử đang ẩn** (`display: none`, tab ẩn, modal chưa mở): viên thuốc và bề rộng thẻ chưa đo được;
   `ResizeObserver` đo lại khi phần tử hiện ra.
 - **Đổi chữ nhãn trực tiếp trong DOM** (không qua `tabs`) không được đo lại — luôn gán lại `tabs`.
-- Nếu gán `tabs` không chứa thẻ đang chọn, td-tabs chọn lại theo `active-tab` hoặc thẻ đầu **mà không phát event**.
+- Nếu gán `tabs` không chứa thẻ đang chọn, td-tabs chọn lại theo `active-tab` (thẻ chưa khoá) hoặc thẻ đầu tiên chưa khoá **mà không phát event**; tất cả đều khoá thì không thẻ nào được chọn.
 - Host có id trùng giữa hai td-tabs sẽ làm id thẻ trùng; để td-tabs tự sinh id hoặc đặt id khác nhau.
 
 ## Xem thêm

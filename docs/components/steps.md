@@ -54,6 +54,8 @@ Key mặc định của bước = **vị trí tính từ 1** (`"1"`, `"2"`…), 
   wizard hơn 20 bước là vấn đề thiết kế).
 - Đọc lại `el.steps` → bản đã chuẩn hoá (bản sao): `{ key, label, description, disabled, state?, href? }`.
 - Gán `steps` trước khi phần tử được define vẫn được (thắng markup SSR).
+- **Không có bước nào** (`steps` rỗng hoặc mọi bước bị bỏ): host tự đặt `hidden`. Có bước trở lại thì gỡ `hidden` đó,
+  nhưng chỉ khi chính component đặt; `hidden` do site tự đặt giữ nguyên.
 
 ### 2. Trạng thái — một luật ưu tiên duy nhất
 
@@ -168,6 +170,7 @@ echo td_steps([
 - **Luôn** in phần tử `<td-steps data-td-ssr="steps@1">` + đúng cây component: trang **không JS** hiện đủ trạng thái, bước
   có `href` là link chạy ngay. Bước bấm được mà không có `href` in thành `span[data-td-js-step]` (trông như bước thường,
   không có nút chết); nạp module → đúng phần tử đó thành `<button>`.
+- Không có bước → host `hidden` (như phía JS, xem [Dữ liệu](#1-dữ-liệu-steps)).
 - Tuỳ chọn: `current`, `complete`, `orientation` (`vertical`), `narrow` (`vertical`), `navigation` (`back` | `all`),
   `label`, `id`, `class`, `attrs` (allowlist + `aria-*` / `data-*`; tên của component và `data-td-*` bị chặn).
 - Cùng luật chuẩn hoá + luật trạng thái với JS (test parity). `href`: chỉ **tương đối** (PHP không biết origin).

@@ -161,7 +161,7 @@ Event chính theo component:
 | `td-chip-input` | `change` (chỉ khi người dùng thêm/xoá) | `{ value, items, added? , removed? }`, thao tác nhiều chip: `addedItems` / `removedItems` ([chi tiết](../components/chip-input.md)) |
 | `td-chip-input` | `search-error` | `{ query, error }` |
 | `td-datetime-picker` | `change` (khi người dùng ghi giá trị: chọn ô ngày / tháng / năm, nút "Chọn" ở chế độ `datetime`, xoá, nhập tay) | `{ value, dbValue }` ([chi tiết](../components/datetime-picker.md)) |
-| `td-tabs` | `tab-change` | `{ tabId }` |
+| `td-tabs` | `tab-change`, `tab-click`, `tab-blocked` | `{ tabId }`, ... (đầy đủ: [tabs](../components/tabs.md#event)) |
 | `td-pagination` | `page-change` | `{ page }` |
 | `td-table` | `sort-change`, `page-change`, `row-action`, `select-change`, `select-limit`, `request-change`, `columns-change`, `expanded-change`, `load-error` | `{ key, direction }`, `{ page }`, ... (đầy đủ: [table](../components/table.md#event)) |
 | `TdLightbox` | `td-lightbox-open`, `td-lightbox-change`, `td-lightbox-close` (phát trên `document`, không bubble) | `{ index, count, token, item, itemEl, groupEl }` |

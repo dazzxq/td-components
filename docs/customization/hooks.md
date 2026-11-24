@@ -380,6 +380,8 @@ field gọi `adapter.get` lười. Event `input` / `change` (`{ value, selection
 `TdMediaField.labels` (bảng đủ ở [media-field.md › Nhãn](../components/media-field.md#nhãn--tdmediafieldlabels)). PHP
 `td_media_field()` in nhãn mặc định — đổi nhãn → field render lại an toàn lúc nâng cấp.
 
+**Thumbnail tải có nhịp (0.111.0)** — option `onThumbGate({ until, remainingMs })` của picker (trả `false` thì kit không hiện toast): [media-picker.md](../components/media-picker.md#thumbnail-tải-có-nhịp--thumbloader-01110); `createThumbLoader({ onGate })` và các hook `cellOf` / `idOf` của loader dùng riêng: [thumb-loader.md › API](../components/thumb-loader.md#createthumbloaderopts).
+
 **Cắt ảnh (0.35.0)** — option `crop` của `open()` / `configureDefaults` bật bước cắt sau "Chèn"; cú pháp đầy đủ (`mode`, `shape`, `initial`, `presets`, `output`, nhãn) ở [media-picker.md › Cắt ảnh](../components/media-picker.md#cắt-ảnh--option-crop-0350). `TdCropper` (`presets`, `labels`, `openDialog(opts)`): [cropper.md](../components/cropper.md). Nhãn cắt của field: [media-field.md › Nhãn](../components/media-field.md#nhãn--tdmediafieldlabels).
 
 ---
@@ -474,10 +476,10 @@ Danh mục (một dòng một hook); bảng option đầy đủ (`rules`, `messa
 
 | Property | Chữ ký | Khi nào gọi | Lỗi thì sao |
 |---|---|---|---|
-| `tabs` | `Array<{ id, label, icon?, panel? }>` | — | Mục thiếu `id` bị bỏ |
+| `tabs` | `Array<{ id, label, … }>`: đủ khoá ở [tabs.md › Property & method](../components/tabs.md) | — | Mục thiếu `id` bị bỏ |
 | `onChange` | `(tabId) => void` | Người dùng (hoặc `setActiveTab`) đổi tab, **trước** event `tab-change` | Bắt lỗi: `console.error`, `tab-change` vẫn phát |
 
-Tên tablist mặc định `Các thẻ`; đổi bằng attribute `aria-label` / `aria-labelledby`.
+Tên tablist (`aria-label` / `aria-labelledby`): xem [tabs.md › Attribute](../components/tabs.md).
 
 ---
 

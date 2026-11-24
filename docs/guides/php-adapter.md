@@ -1741,20 +1741,8 @@ giới hạn như `td_datetime_range`.
 `td_steps($steps, $opts)` **luôn** in phần tử [Steps](../components/steps.md) đầy đủ (hợp đồng `steps@1`). Không có bước →
 host `hidden`.
 
-- **Bước**: `label` (bắt buộc), `description`, `key` (mặc định vị trí từ 1), `state` (`done` | `current` | `error` |
-  `upcoming`), `href`, `disabled`. Cùng chuẩn hoá với component (120 / 300 / 100 ký tự, ký tự điều khiển bị bỏ, key trùng
-  → `-2`, tối đa 20 bước) và **cùng luật trạng thái** (bảng `STATE_CASES`, test parity); xung đột (`current` không khớp,
-  `state: 'current'` thừa…) → **một** `E_USER_WARNING` liệt kê mã.
-- **Không JS**: đủ trạng thái (✓ / ! / số, chữ ẩn cho trình đọc màn hình); bước bấm được có `href` (chỉ URL **tương đối**)
-  là link; không `href` → in như bước thường (`data-td-js-step`), nạp module thì thành nút phát `step-select`.
-
-| Option | Ý nghĩa |
-|---|---|
-| `current`, `complete` | bước hiện tại (key) / mọi bước xong |
-| `orientation`, `narrow` | `vertical` |
-| `navigation` | `back` \| `all` (mặc định không bấm được) |
-| `label` | tên nhóm (mặc định "Tiến trình") |
-| `id`, `class`, `attrs` | trên host; `attrs`: allowlist + `aria-*` / `data-*`, tên của component và `data-td-*` bị bỏ |
+Khoá bước, giới hạn ký tự, luật trạng thái (một `E_USER_WARNING` khi xung đột), bảng option và hành vi không JS: xem
+[steps.md › PHP](../components/steps.md#php--td_steps) (khoá bước ở [Dữ liệu](../components/steps.md#1-dữ-liệu-steps)).
 
 ## td_timeline (0.45.0)
 

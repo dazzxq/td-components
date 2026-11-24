@@ -14,7 +14,7 @@ vỡ hàng loạt. Thuộc tính `loading="lazy"` không giúp được, vì tr�
 |---|---|
 | Import | `import { createThumbLoader, configureThumbBudget, getThumbBudget } from '@dazzxq/td-components/thumb-loader'` (cũng có trong barrel) |
 | Loại | API JS (không phải element) |
-| CSS | Kit chỉ tô ô của media picker. Site tự viết CSS cho lưới của mình (xem [CSS](#css)) |
+| CSS | Kit ship CSS chung (`thumb.css`, trong `td.css`) cho mọi lưới có class gốc `td-thumbs-js`; ô phải tự có `position: relative` (xem [CSS](#css)) |
 | Từ phiên bản | 0.111.0 |
 
 [Media picker](media-picker.md#thumbnail-tải-có-nhịp--thumbloader-01110) dùng sẵn loader này, site không cần làm gì.
@@ -64,19 +64,17 @@ Root được `scan` nhận class `td-thumbs-js`. Mỗi ô mang **nhiều nhất
 
 ### CSS
 
-Kit không ship CSS cho lưới của site. Mẫu tối thiểu (giống media picker):
+Kit ship sẵn CSS chung trong `td.css` (`src/styles/components/thumb.css`), dùng cho media picker, media field, media gallery
+và **mọi lưới của site** có class gốc `td-thumbs-js` cùng ô `[data-td-thumb-cell]`: ảnh mờ dần hiện ra khi tải xong
+(`opacity` + `transition`), ô đang chờ có shimmer (token skeleton `--td-skeleton-shine`, `--td-skeleton-dur`, chỉ dùng
+`::before`), ô hỏng hiện khung ảnh mờ (`::after`), `prefers-reduced-motion` tắt chuyển động. Ảnh vẫn nằm trong layout
+(`opacity`, không `display: none`).
+
+Việc duy nhất của site: ô phải có `position: relative` (shimmer và khung hỏng định vị tuyệt đối trong ô), ví dụ:
 
 ```css
-.td-thumbs-js [data-td-thumb-cell] { position: relative; overflow: hidden; background: var(--td-color-surface-muted); }
-.td-thumbs-js [data-td-thumb-cell] img[data-td-src] { transition: opacity 150ms ease-out; }
-.td-thumbs-js [data-td-thumb-cell]:not(.is-thumb-loaded) img[data-td-src] { opacity: 0; }
-@media (prefers-reduced-motion: reduce) {
-  .td-thumbs-js [data-td-thumb-cell] img[data-td-src] { transition: none; }
-}
+.album [data-td-thumb-cell] { position: relative; overflow: hidden; background: var(--td-color-surface-muted); }
 ```
-
-Shimmer khi chờ và icon khung ảnh mờ khi hỏng: xem `src/styles/components/media-picker.css` (khối v0.111.0). Hai thứ đó
-dùng token skeleton (`--td-skeleton-shine`, `--td-skeleton-dur`) và chỉ dùng `::before` / `::after`.
 
 ## API
 
@@ -88,7 +86,7 @@ dùng token skeleton (`--td-skeleton-shine`, `--td-skeleton-dur`) và chỉ dùn
 | `budget` | broker của host ảnh | Một broker (kết quả `configureThumbBudget({ budgetKey })`) hoặc một `budgetKey` |
 | `onGate({ until, remainingMs })` | — | Gọi khi broker đóng cổng (CDN đang chặn). Dùng để báo người dùng |
 | `cellSelector` | `[data-td-thumb-cell]` | |
-| `cellOf(img)` / `idOf(img, cell, url)` | — | Ghi đè cách tìm ô / id |
+| `cellOf(img)` / `idOf(img, cell)` | — | Ghi đè cách tìm ô / id |
 
 Các option môi trường (`win`, `doc`, `IO`, `MO`, `now`, `timers`) chỉ dành cho test.
 
@@ -97,7 +95,7 @@ Các option môi trường (`win`, `doc`, `IO`, `MO`, `now`, `timers`) chỉ dà
 | `scan(root, { userInitiated })` | Tìm mọi `img[data-td-src]` / `img[data-td-managed-img]` trong `root` và theo dõi chúng. Gọi lại sau mỗi lần thêm ảnh. `userInitiated: true` (nút "Thử lại", mở lại lưới) xoá sổ lỗi của các ô trong `root`, ô hỏng được thử lại từ đầu |
 | `release(root)` | Huỷ theo dõi và huỷ lượt đang tải của ảnh trong `root` (nhận cả một `img`). **Gọi trước khi gỡ hoặc thay** DOM, nếu không ảnh cũ vẫn giữ chỗ cho tới khi loader tự phát hiện |
 | `observe(root)` | Tuỳ chọn. MutationObserver theo dõi `childList` của `root`: tự scan phần thêm, release phần gỡ. Dùng khi site dựng lại lưới bằng `innerHTML` và không muốn tự gọi |
-| `swap(img, url, { priority })` | Đổi ảnh bằng JS (đổi màu sản phẩm): giữ ảnh cũ tới khi ảnh mới tải xong. `priority: 'user'` cho click / chọn dứt khoát, `'hover'` cho rê chuột (chờ 120ms mới tải), bỏ trống là thường. Ảnh chưa từng tải xong thì chỉ đổi URL của ô |
+| `swap(img, url, { priority })` | Đổi ảnh bằng JS (đổi màu sản phẩm): giữ ảnh cũ tới khi ảnh mới tải xong. `priority: 'user'` cho click / chọn dứt khoát, `'hover'` cho rê chuột (chờ 120ms mới tải), bỏ trống là thường. Ảnh chưa từng tải xong thì chỉ đổi URL của ô. Trả `false` khi URL bị từ chối (không an toàn, hoặc đã dùng hết số lần thử: không đổi gì), còn lại trả `true` |
 | `pause()` / `resume()` | Tạm dừng / chạy lại hàng đợi của loader này |
 | `destroy()` | Gỡ hết. Broker của trang vẫn sống |
 | `stats()` | `{ queued, inflight, loaded, failed, gateUntil, rootMargin, scrollDir, fast }`, để debug |
