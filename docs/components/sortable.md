@@ -101,12 +101,12 @@ sách do kit tự đo (không có attribute `orientation`).
 
 ### 4. Kéo bằng chuột / cảm ứng / bút
 
-Nhấn tay nắm và di quá 4px → bắt đầu kéo: mục đi theo con trỏ, các mục khác dịch chỗ xem trước, khung nét đứt chỉ ô đích.
+Nhấn tay nắm và di quá ngưỡng (4 px chuột, 8 px bút, 10 px ngón tay; xem [Cảm ứng](#cảm-ứng)) → bắt đầu kéo: mục đi theo con trỏ, các mục khác dịch chỗ xem trước, khung nét đứt chỉ ô đích.
 **DOM không đổi trong lúc kéo**; thả → một lần di chuyển + `order-change` (`source: 'pointer'`). Ô đích = ô chứa con
 trỏ (ngoài mọi ô → ô gần nhất). Gần mép (48px) của vùng cuộn gần nhất thì tự cuộn. Huỷ (không đổi gì): Escape, mất
 pointer, trang bị ẩn, modal / loading mở đè, app sửa danh sách giữa chừng.
 
-Nhấn rồi thả không di (< 4px) = click = nhấc (như Space).
+Nhấn rồi thả không di (dưới ngưỡng trên) = click = nhấc (như Space).
 
 ### 5. Chạm để chuyển (không cần kéo — WCAG 2.2 SC 2.5.7)
 

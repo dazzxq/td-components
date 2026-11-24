@@ -35,6 +35,7 @@ Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đối
   - [Hợp đồng lỗi của mọi form control](#hợp-đồng-lỗi-của-mọi-form-control)
   - [TdFormValidation](#tdformvalidation)
   - [td-table](#td-table)
+  - [td-slider](#td-slider)
   - [td-tabs](#td-tabs)
   - [td-empty-state](#td-empty-state)
   - [td-dropzone](#td-dropzone)
@@ -411,8 +412,7 @@ hoặc `setError`. Chi tiết: [../guides/forms.md](../guides/forms.md).
 
 `TdInputField.messages` (`@dazzxq/td-components/input-field`): thông báo validation, đơn vị bộ đếm và tên nút hiện / ẩn mật khẩu; bảng đủ khoá + mặc định ở [input-field.md › Validation](../components/input-field.md#validation) và [Hiện / ẩn mật khẩu](../components/input-field.md#hiện--ẩn-mật-khẩu-revealable-01150).
 
-`TdSlider.messages` (`{min}` `{max}` `{step}`): `rangeUnderflow` = `Giá trị tối thiểu là {min}.`, `rangeOverflow` =
-`Giá trị tối đa là {max}.`, `stepMismatch` = `Giá trị phải là bội số của {step}.`
+`TdSlider.messages` (`{min}` `{max}` `{step}`): ba thông báo `rangeUnderflow` / `rangeOverflow` / `stepMismatch`; bảng điều kiện + chuỗi mặc định ở [slider.md › Trong form](../components/slider.md#trong-form).
 
 `TdCheckbox.messages.valueMissing` = `Vui lòng chọn ô này.`; `TdToggle.messages.valueMissing` =
 `Vui lòng bật tùy chọn này.`
@@ -455,6 +455,16 @@ Danh mục (một dòng một hook); bảng option đầy đủ (`rules`, `messa
 | `paginationTop` / `paginationBottom` | `Phân trang (trên)` / `Phân trang (dưới)` |
 | `itemLabel` | `mục` |
 | `emptyTitle` / `emptyText` | `Không có dữ liệu` / `Chưa có dữ liệu để hiển thị.` (attribute `empty-title` / `empty-text` thắng) |
+
+---
+
+## td-slider
+
+`import '@dazzxq/td-components/slider';` · Trang: [slider.md](../components/slider.md)
+
+| Property | Chữ ký | Khi nào gọi |
+|---|---|---|
+| `onInput` / `onChange` | `(value: number) => void` (0.122.0) | Ngay **trước** event `input` / `change` cùng tên; chi tiết ở [slider.md](../components/slider.md#đọc-ghi-giá-trị-và-nghe-sự-kiện) |
 
 ---
 
@@ -513,7 +523,7 @@ Chữ toàn trang đổi qua `TdPagination.labels`: [pagination.md › TdPaginat
 
 ## Component không có hook JS
 
-td-button, td-input-field, td-checkbox, td-toggle, td-slider: tuỳ biến bằng attribute, token và event
+td-button, td-input-field, td-checkbox, td-toggle: tuỳ biến bằng attribute, token và event
 (`click`, `input`, `change`, `page-change`). Các control form có [hợp đồng lỗi](#hợp-đồng-lỗi-của-mọi-form-control)
 và object tĩnh `messages` cho thông báo validation.
 

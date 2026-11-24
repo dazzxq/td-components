@@ -586,11 +586,7 @@ Server **vẫn phải** kiểm giá trị lựa chọn thuộc tập hợp lệ 
 
 ## 6p. `td-selection-bar` (v0.95.0)
 
-- **Nhãn chỉ là chữ**: `label`, nhãn đếm (`labels.count` với `{n}`), chữ nút hành động → `textContent` / `setAttribute`; không lối
-  HTML. Nút hành động là node của chính trang (DOM tin cậy của dev): kit chỉ thêm class / `aria-label` / icon từ registry
-  (`data-td-action-icon` là **tên**, tên lạ → không icon), không đọc / ghi `innerHTML` của chúng.
-- **Id là dữ liệu từ DOM, không phải quyền**: `selectedIds` / `detail.ids` đọc từ `data-id` của các mục lưới — markup sửa được
-  → server **phải** kiểm quyền từng id trước mọi thao tác hàng loạt (xoá, gắn thẻ, chuyển album) và coi danh sách là input không tin cậy.
+- Nhãn là chữ (không lối HTML) và `detail.ids` đến từ DOM nên server phải kiểm quyền từng id: luật đầy đủ ở [selection-bar.md › Bảo mật](../components/selection-bar.md#bảo-mật).
 - Biến runtime `--td-selection-bar-offset` chỉ đặt qua CSSOM trên `<html>` (một writer), giá trị là số px đã đo — không chuỗi từ site.
 
 ## 6q. Ảnh option `td-dropdown` (v0.95.0)

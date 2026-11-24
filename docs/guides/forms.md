@@ -202,9 +202,7 @@ Vài điểm khác thẻ native cần biết:
   [TdFormValidation](#tdformvalidation-từ-đầu-đến-cuối) hoặc `setCustomValidity()`.
 - **Thông báo mặc định dịch được** (0.16.0): `TdInputField.messages`, `TdCheckbox.messages`, `TdToggle.messages`,
   `TdSlider.messages` — xem [Dịch nhãn](../customization/extending.md#dịch-nhãn-sang-ngôn-ngữ-khác).
-- **`td-slider` validate giá trị của host** (attribute `value`), không phải `<input type="range">` bên trong (vốn tự
-  kẹp giá trị), nên `value="150" max="100"` báo `rangeOverflow` thay vì âm thầm gửi `100`. Không có `value` thì giá
-  trị là `min` (0.16.0; trước đó là `0`, nên `min="10"` báo `rangeUnderflow` giả).
+- **`td-slider` validate giá trị của host** (attribute `value`), không phải `<input type="range">` bên trong: luật và ví dụ ở [slider.md › Trong form](../components/slider.md#trong-form).
 - Control **readonly** hoặc **disabled** không tham gia validation (`willValidate === false`), như native.
 - Không có `TdFormValidation.attach()` và form không có `novalidate`, trình duyệt hiện **bong bóng lỗi native** gắn vào
   control bên trong (thông báo tiếng Việt của td).
