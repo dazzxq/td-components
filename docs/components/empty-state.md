@@ -109,14 +109,9 @@ component **nhận markup tại chỗ** — không thay con, không nháy, khôn
 ]) ?>
 ```
 
-- Hydrate chỉ khi cấu trúc khớp `render()` cho đúng attribute hiện tại và mọi node chỉ mang thuộc tính trong allowlist
-  (`on*`, `style`, `data-td-*` lạ, phần tử / chữ thừa, icon / cấp heading / chữ lệch → **render lại** như thường; không
-  có state nên không mất gì). Icon được tạo lại từ registry JS (cùng hộp). Icon không có / tên lạ → `inbox` ở cả PHP lẫn JS.
-- **Nút hành động của server được giữ** (cùng node) tới khi trang gán property `actions` — lúc đó thay bằng nút JS như
-  mục 1. Đổi attribute cấu trúc (`size`, `title`…) sau đó vẫn giữ chúng. Mỗi nút server ở **một trong hai** trạng thái
-  hợp lệ: `<td-button data-td-ssr="button@1">` chưa hydrate (chỉ nạp module `empty-state` — `td-button` chưa định
-  nghĩa; link vẫn bấm được) hoặc `<td-button>` đã hydrate (nạp gốc package: `td-button` được định nghĩa trước).
-- Dấu `data-td-ssr` bị gỡ sau khi đọc. Viết `<td-empty-state>` bằng tay (không dấu) → render như trước.
+- Component nhận markup tại chỗ (không thay con, không nháy); nút hành động của server được giữ cho tới khi trang gán
+  property `actions` (lúc đó thay bằng nút JS như mục 1). Markup bị sửa → render lại như thường. Hợp đồng hydrate đầy đủ
+  (điều kiện nhận, hai trạng thái `td-button`, dấu `data-td-ssr`): [`td_empty()`](../guides/php-adapter.md#td_empty-0260).
 
 ## Responsive (0.34.0)
 
@@ -196,7 +191,7 @@ Với `iconNode` hoặc SVG chuỗi hợp lệ, phần tử svg nằm thẳng tr
 chuẩn cho server render là khối ở trên (có thể render khối `.td-empty-state` độc lập, chỉ cần `td.css`). Icon: in slot
 `<span data-td-icon="inbox" data-td-icon-size="40"></span>` rồi gọi `fillIconSlots(root)`, hoặc in svg đầy đủ như
 trên (geometry từ `icons.json`). `td_icon()` của [adapter PHP](../guides/php-adapter.md) chỉ có cỡ `s`/`m`/`l`, không in
-được cỡ 40px. Empty state không có helper PHP; fixture `test/contracts/empty-state.html` trong repo kit chỉ dùng cho test
+được cỡ 40px — server render dùng [`td_empty()`](../guides/php-adapter.md#td_empty-0260) (mục 6), nó in sẵn cả cây. Fixture `test/contracts/empty-state.html` trong repo kit chỉ dùng cho test
 (không nằm trong gói npm).
 
 ## Bàn phím & trợ năng

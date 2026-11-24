@@ -18,8 +18,8 @@ Mọi import đều theo dạng `@dazzxq/td-components/<tên>` (xem [Cài đặt
 nạp `td.css` một lần cho cả trang.
 
 **Render phía server (SSR) từ PHP:** dùng [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói —
-`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_card`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field`, `td_media_gallery`, `td_scan_input`, `td_filter_chips`, `td_datetime_range`, `td_datetime_picker` / `td_date`, `td_check_matrix`, `td_rating`, `td_carousel`, `td_hint` in đúng markup của component
-(control native, chạy không cần JS). Component không có helper PHP (menu, table, tabs, pagination, empty-state, trigger
+`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_card`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field`, `td_media_gallery`, `td_scan_input`, `td_filter_chips`, `td_datetime_range`, `td_datetime_picker` / `td_date`, `td_check_matrix`, `td_rating`, `td_carousel`, `td_hint`, `td_empty` in đúng markup của component
+(control native, chạy không cần JS). Component không có helper PHP (menu, table, tabs, pagination, trigger
 lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
 
 ## Form

@@ -49,7 +49,7 @@ Kit **không** dựng thanh lọc, không đọc / ghi URL: chip chỉ hiện + 
 | `label` | string \| number | `key` | Nhãn in đậm trước dấu ":". |
 | `id` | string \| number | `key` | Danh tính chip (bỏ đúng chip). Trùng → thêm hậu tố `-2`, `-3`… + một cảnh báo. |
 | `removable` | boolean | `true` | `false` → chip không có × (bộ lọc bắt buộc, ví dụ "Kho: HN"). |
-| `href` | string | — | × là **link** tới URL **không còn** bộ lọc này (server tính). Chỉ **cùng origin** với trang: đường dẫn tương đối, `?query`, `#hash` (hoặc URL tuyệt đối cùng origin — chỉ JS); không `//host`, không `\`, không scheme khác `http(s)://`; khác (origin khác, `javascript:`, `data:`, `mailto:`…) → bỏ qua (× là nút). Không có tuỳ chọn cho link sang origin khác. |
+| `href` | string | — | × là **link** tới URL **không còn** bộ lọc này (server tính). Chỉ link **cùng origin** được nhận; khác → bỏ qua (× là nút). Chính sách đầy đủ: [Bảo mật](#bảo-mật). |
 
 - Mọi chuỗi là **chữ** (gán `textContent` — không có HTML), ký tự điều khiển bị bỏ, cắt ở 200 ký tự (`key` / `id` /
   `label`) / 500 (`value`). Item sai kiểu (object, boolean, mảng…) bị bỏ + một cảnh báo.

@@ -1596,14 +1596,12 @@ foreach ((array) ($_GET['tag'] ?? []) as $t) {               // nhiều giá tr�
   nút chết). Tương tự "Xoá tất cả" với `clear_href`.
 - **Nạp `@dazzxq/td-components/filter-chips`**: nhận markup **tại chỗ** (cùng node); × là link vẫn phát `filter-remove`
   (huỷ được) rồi để trình duyệt mở link.
-- **Item**: `key`, `value` (bắt buộc), `label` (mặc định `key`), `id` (mặc định `key`; trùng → hậu tố `-2`, `-3`…),
-  `removable` (mặc định `true`), `href`. `key` / `value` / `label` / `id` là chuỗi hoặc số; **mảng `value` bị từ chối** (một
-  item mỗi giá trị) — item sai kiểu bị bỏ (một `E_USER_WARNING` cho cả lần gọi). Số kiểu float in như `String(n)` của JS. Ký tự điều khiển bị bỏ; cắt 200 / 500 / 200 / 200 ký tự
-  (`key` / `value` / `label` / `id`) — **giống hệt** component (test parity PHP ↔ JS).
-- **Chính sách URL** (`href`, `clear_href`): `Td::safeUrl()` rồi **chỉ URL tương đối** (`?…`, `#…`, `/đường-dẫn`,
-  `đường-dẫn`) — không scheme (kể cả `https:`), không `//host`, không `\`: link "bỏ lọc" không bao giờ rời site (PHP không
-  biết origin của trang; JS nhận thêm URL tuyệt đối **cùng origin**). Bị từ chối → × là nút chỉ-JS.
-- Tối đa **200** item và **800** mục được xét (phần thừa bỏ + **một** `E_USER_WARNING`); item sai kiểu cũng chỉ **một** cảnh báo mỗi lần gọi.
+- **Item**: cùng bảng khoá, mặc định, giới hạn cắt và trần 200 chip / 800 mục như component — xem
+  [Filter chips › Item](../components/filter-chips.md#1-item); PHP **giống hệt** (test parity PHP ↔ JS). Item sai kiểu hoặc
+  vượt trần → bỏ + **một** `E_USER_WARNING` mỗi lần gọi.
+- **Chính sách URL** (`href`, `clear_href`): `Td::safeUrl()` rồi **chỉ URL tương đối** (PHP không biết origin của trang; JS nhận
+  thêm URL tuyệt đối cùng origin). Bị từ chối → × là nút chỉ-JS. Luật đầy đủ:
+  [Filter chips › Bảo mật](../components/filter-chips.md#bảo-mật).
 
 | Option | Ý nghĩa |
 |---|---|
@@ -1613,24 +1611,8 @@ foreach ((array) ($_GET['tag'] ?? []) as $t) {               // nhiều giá tr�
 | `id`, `class` | trên host |
 | `attrs` | trên **host** (allowlist + `aria-*` / `data-*`). Giữ chỗ — bị bỏ: `id` `class` `label` `clear-href` `empty-focus` `hidden` + mọi `data-td-*` |
 
-```html
-<!-- td_filter_chips([['key' => 'status', 'label' => 'Trạng thái', 'value' => 'Đang bán', 'href' => '?q=ip']]) -->
-<td-filter-chips data-td-ssr="filter-chips@1">
-  <div class="td-filter-chips" role="group" aria-label="Bộ lọc đang áp dụng">
-    <ul class="td-filter-chips__list" role="list">
-      <li class="td-filter-chips__item" data-id="status" data-key="status" data-removable="true">
-        <span class="td-filter-chips__label">Trạng thái</span><span class="td-filter-chips__sep" aria-hidden="true">: </span><span class="td-filter-chips__value">Đang bán</span>
-        <a class="td-filter-chips__remove" href="?q=ip" aria-label="Bỏ lọc Trạng thái: Đang bán">
-          <span class="td-filter-chips__icon" data-td-icon="close" data-td-icon-size="14" aria-hidden="true"><svg class="td-icon …" data-icon="close" …>…</svg></span></a>
-      </li>
-    </ul>
-  </div>
-  <p class="td-sr-only" role="status"></p>
-</td-filter-chips>
-```
-
-(Thực tế in liền một dòng.) Markup bị sửa (thuộc tính lạ, `aria-label` không khớp, `href` không an toàn…) → component
-**không nhận**: render rỗng + một cảnh báo; app gán `items` từ JS thì `items` thắng.
+Cây DOM và hợp đồng SSR `filter-chips@1` (markup bị sửa → component không nhận, `items` gán từ JS thắng):
+[Filter chips › Cấu trúc DOM](../components/filter-chips.md#cấu-trúc-dom--class).
 
 ## td_datetime_range (0.40.0)
 

@@ -405,7 +405,7 @@ dz.addEventListener('files-change', (e) => {
 | `--td-dropzone-border-active` | `var(--td-accent)` | Viền khi rê / kéo qua |
 | `--td-dropzone-radius` | `var(--td-radius-lg)` | Bo góc vùng chọn |
 | `--td-dropzone-pad` | `var(--td-space-lg) var(--td-space-md)` | Đệm vùng chọn |
-| `--td-dropzone-icon` / `--td-dropzone-hint` | `var(--td-color-text-muted)` | Màu icon / chữ gợi ý, kích thước |
+| `--td-dropzone-icon` / `--td-dropzone-hint` | `var(--td-color-text-muted)` | Màu icon / chữ gợi ý (chỉ màu; cỡ chữ theo `--td-text-xs` / `--td-text-sm`) |
 | `--td-dropzone-item-bg` / `--td-dropzone-item-radius` | `var(--td-color-surface-muted)` / `var(--td-radius-md)` | Dòng file |
 | `--td-dropzone-thumb` | `40px` | Cỡ thumbnail |
 | `--td-dropzone-reject` | `var(--td-color-error)` | Màu dòng file bị loại |
@@ -484,9 +484,8 @@ Danh sách được dựng bằng DOM API (`textContent`, `setAttribute`) — kh
 
 - Tên file (do người dùng đặt, ví dụ `<img src=x onerror=…>.png`) chỉ hiện dưới dạng **text** — kể cả ở dòng bị loại
   và `aria-label` nút xoá.
-- Lý do lỗi upload (`message` của giá trị reject) cũng chỉ hiện dạng **text**, tối đa 200 ký tự; chỉ nhận chuỗi, mọi
-  kiểu khác → nhãn chung. Người dùng thấy nguyên văn chuỗi đó, nên **chỉ chuyển thông báo đã soạn cho người dùng** từ
-  server (không stack trace, đường dẫn, câu SQL, mã nội bộ).
+- Lý do lỗi upload (`message` của giá trị reject) cũng chỉ hiện dạng **text**; người dùng thấy nguyên văn nên chỉ
+  chuyển thông báo đã soạn từ server. Luật đầy đủ: [mục 4](#4-upload-ngay-hook-upload).
 - **Lọc phía client là gợi ý.** Server phải kiểm lại loại file theo nội dung, kích thước, số lượng, quyền; lưu với
   tên do server sinh, ngoài web root. Chi tiết: [Bảo mật › td-dropzone](../guides/security.md#td-dropzone-upload-file).
 - Kit không đọc nội dung file; object URL chỉ khi bật `preview` (ảnh), luôn được thu hồi. Ngoại lệ: khi bật `imageResize` (0.90.0) kit đọc byte của ảnh để tối ưu — cục bộ trong trình duyệt, không gửi đi đâu, không cần `img-src blob:`, không `<img>` / `Worker`. Tối ưu phía client **không thay** kiểm tra phía server (server thấy file đã bị người dùng sửa được).

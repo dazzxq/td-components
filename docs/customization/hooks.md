@@ -665,8 +665,8 @@ Tên tablist mặc định `Các thẻ`; đổi bằng attribute `aria-label` / 
 
 | Property | Chữ ký / kiểu | Khi nào gọi | Lỗi thì sao |
 |---|---|---|---|
-| `upload` | `(file, { onProgress, signal }) => Promise` \| `null` | Mỗi file được thêm (sau khi lọc) | Reject / throw → dòng file đỏ: hiện `err.message` nếu là chuỗi không rỗng (text, cắt 200 ký tự), không thì `labels.uploadError`. Abort (xoá file / reset form) → không hiện lỗi |
-| `onProgress` (tham số) | `(percent 0–100)` hoặc `(loaded, total)` | Hook gọi khi có tiến độ | Giá trị không hợp lệ (NaN, `total` ≤ 0) bị bỏ qua. **Chưa gọi lần nào** → dòng ở trạng thái chờ: thanh indeterminate + `labels.uploadWaiting` ("Đang chờ…") |
+| `upload` | `(file, { onProgress, signal }) => Promise` \| `null` | Mỗi file được thêm (sau khi lọc) | Reject / throw → dòng file đỏ kèm lý do (hoặc `labels.uploadError`); abort → không hiện lỗi. Luật đầy đủ ở trang component |
+| `onProgress` (tham số) | `(percent 0–100)` hoặc `(loaded, total)` | Hook gọi khi có tiến độ | Giá trị không hợp lệ bị bỏ qua; chưa gọi lần nào → trạng thái chờ (chi tiết ở trang component) |
 | `signal` (tham số) | `AbortSignal` | Abort khi xoá file / reset form | Hook nên huỷ request; kết quả trễ bị bỏ qua |
 
 Chuỗi `message` người dùng đọc nguyên văn → chỉ reject bằng thông báo **an toàn cho người dùng** (xem

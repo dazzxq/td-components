@@ -677,7 +677,7 @@ document.querySelector('#filters').addEventListener('input', () => {
 - **Lựa chọn dòng (0.37) không bị đụng** khi lọc / đổi trang (đúng quy tắc mục 10) — muốn bỏ chọn khi đổi bộ lọc:
   gọi `table.clearSelection()` trong handler `request-change` khi `reason === 'filters'`.
 - Chip bộ lọc: `<td-filter-chips>` phát `filter-remove` / `filter-clear` → cập nhật form → `table.setFilters()` (xem
-  [filter-chips.md](filter-chips.md#nối-với-bảng)).
+  [filter-chips.md](filter-chips.md#3-nối-với-bảng)).
 
 ### 12. Ẩn / hiện cột (`column-menu`, `hiddenColumns`) — từ 0.39.0
 
