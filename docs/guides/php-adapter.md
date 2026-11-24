@@ -971,15 +971,15 @@ Markup (rút gọn):
 <?= td_otp_input('code', ['aria_label' => 'Mã gồm 6 số', 'error' => $errors['code'] ?? '']) ?>
 ```
 
-`td_otp_input($name, $opts)` in ô nhập mã một lần 6 chữ số của [OTP input](../components/otp-input.md) (hợp đồng
+`td_otp_input($name, $opts)` in ô nhập mã một lần (mặc định 6 chữ số; `length` 1–10, `charset`, `case`) của [OTP input](../components/otp-input.md) (hợp đồng
 `otp-input@1`). Helper **không bao giờ** tự submit form (markup không có JS); `complete` / gọi API là việc của JS trang.
 
 - **Mặc định (native)**: `div.td-otp` > [nhãn] + `div.td-otp__box` > `input.td-otp__input` (`type="text"`,
-  `inputmode="numeric"`, `autocomplete="one-time-code"`, `maxlength="6"`, `pattern="[0-9]{6}"`, `name`, `value`,
+  `inputmode="numeric"`, `autocomplete="one-time-code"`, `maxlength="6"`, `pattern="[0-9]{6}"` (mặc định; đổi theo `length` / `charset`), `name`, `value`,
   `required`…) [+ dòng lỗi]. Chạy đủ khi không có JS: bàn phím số, tự điền SMS, validate native. `td.css` vẽ nó đúng
   hộp của bản có JS.
 - **Chế độ element** (`'element' => true` hoặc `Td::configure(…, ['ssr_elements' => true])`; `'element' => false` giữ
-  native): host `<td-otp-input data-td-ssr="otp-input@1">` + cùng input + `span.td-otp__cells` (6 ô `aria-hidden`).
+  native): host `<td-otp-input data-td-ssr="otp-input@1">` + cùng input + `span.td-otp__cells` (N ô `aria-hidden`, mặc định 6).
   Chưa có JS: ô ẩn, input là ô nhìn thấy; nạp `@dazzxq/td-components/otp-input` thì component nhận **tại chỗ** (giữ
   node input, mã đã gõ, vùng chọn, focus), dựng ElementInternals rồi gỡ `name` / `value` / `required` / `maxlength` /
   `pattern` khỏi input (FormData đúng một mục). Markup bị sửa → render an toàn ngay, trả lại mã + focus.
@@ -988,7 +988,10 @@ Markup (rút gọn):
 |---|---|
 | `$name` | tên field (rỗng → không có `name`) |
 | `label` | nhãn `label.td-otp__label[for={id input}]` (element: thêm attribute `label` trên host) |
-| `value` | giá trị mặc định, **chuẩn hoá như component**: chữ số full-width (`１２３`) và Ả Rập – Ấn (`١٢٣`, `۱۲۳`) → ASCII, ký tự khác bị bỏ, tối đa 6 số (`'12-34 56'` → `123456`). Rỗng sau chuẩn hoá → không in |
+| `length` | 0.36.0: độ dài mã, số nguyên 1–10 (mặc định 6; sai → 6 + `E_USER_WARNING`). Đổi `maxlength` / `pattern` và số ô |
+| `charset` | 0.36.0: `numeric` (mặc định) \| `alphanumeric` \| `alpha` — đổi `pattern` (`[0-9]{N}` · `[A-Za-z0-9]{N}` · `[A-Za-z]{N}`), `inputmode`; luật chi tiết: [otp-input.md](../components/otp-input.md) |
+| `case` | 0.36.0: `upper` (mặc định) \| `lower` \| `preserve` (chỉ bộ có chữ) |
+| `value` | giá trị mặc định, **chuẩn hoá như component** (cùng luật, xem [otp-input.md](../components/otp-input.md)): chữ số full-width / Ả Rập – Ấn → ASCII, ký tự khác bị bỏ, tối đa `length` ký tự (mặc định: `'12-34 56'` → `123456`). Rỗng sau chuẩn hoá → không in |
 | `required`, `disabled`, `readonly` | native trên input (element: cả trên host) |
 | `autofocus` | `true` → `autofocus` trên input |
 | `error` | lỗi từ server: `span.td-field-error` + `aria-invalid` + `aria-errormessage` + `aria-describedby` trên input (element: thêm `error-text` trên host) |
@@ -1238,10 +1241,8 @@ Không có helper cho `<td-tree>` dạng cây luôn hiện (cây quyền là tra
 - **Chế độ element** (`'element' => true` hoặc `Td::configure(…, ['ssr_elements' => true])`; `'element' => false` giữ
   native): host `<td-number-input data-td-ssr="number-input@1">` (+ attribute của component) + đúng cây trên với giá trị
   **chuẩn** (không in sẵn `12.990.000`: không-JS submit chuỗi đó thì `(int) "12.990.000"` = 12). Nạp
-  `@dazzxq/td-components/number-input` thì component nhận **tại chỗ**: cùng node input (giá trị người dùng đã gõ, focus),
-  đổi `type` → `text`, dựng ElementInternals rồi gỡ `name` / `value` / `min` / `max` / `step` / `required`, định dạng hiển
-  thị (`12.990.000`). Con trỏ không được khôi phục (có thể về cuối ô — ca hiếm: đang gõ đúng lúc module tải). Markup bị
-  sửa → render an toàn ngay, giữ giá trị + focus.
+  `@dazzxq/td-components/number-input` thì component nhận **tại chỗ** (giữ node input, giá trị đã gõ, focus), trình tự và
+  giới hạn: [number-input › hợp đồng SSR](../components/number-input.md#hợp-đồng-ssr-number-input1--hydrate-tại-chỗ).
 
 | Option | Ý nghĩa |
 |---|---|
@@ -1255,7 +1256,7 @@ Không có helper cho `<td-tree>` dạng cây luôn hiện (cây quyền là tra
 | `prefix`, `suffix` | đơn vị trang trí trong hộp (`$`, `₫`, `%`), `aria-hidden` |
 | `prefix_icon`, `suffix_icon` | 0.55.0: icon registry **trong** span affix của bên đó (mép ngoài), SVG inline sẵn; host `prefix-icon` / `suffix-icon` |
 | `unit_label` | chữ đọc cho đơn vị (ví dụ `đồng`); mặc định = `suffix` / `prefix`. In trong `span#{base}-unit[hidden]`, nối vào `aria-describedby` |
-| `label`, `hint`, `error`, `placeholder` | như `td_field` (nhãn có `*` khi `required`; `error` → `span.td-field-error` + `aria-invalid`) |
+| `label`, `helper_text` (bí danh `hint`), `error`, `placeholder` | như `td_field` (nhãn có `*` khi `required`; `error` → `span.td-field-error` + `aria-invalid`) |
 | `required`, `disabled`, `readonly` | native trên input (element: cả trên host) |
 | `clamp` | element: attribute `clamp` trên host (kẹp vào khoảng khi rời ô — chỉ có JS) |
 | `size` | `sm` \| `md` (mặc định) \| `lg` |

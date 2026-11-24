@@ -677,8 +677,7 @@ Những thứ kit **cố ý không làm** và site phải làm, nếu không th�
 **Ghi chú v0.36.0** (plan [v0.36.0-polish](plans/v0.36.0-polish.md)):
 
 - **`td-otp-input` chuẩn hoá input** khi gõ, dán, kéo thả, autofill (`otpNormalize` trong `src/utils/otp.js`; PHP
-  `td__otp_value` cùng luật, bảng parity): chữ số → ASCII (full-width, Ả Rập), chữ → NFKC từng ký tự rồi chỉ nhận
-  `[A-Za-z]` (theo `charset` / `case`), mọi ký tự khác bị bỏ; không chuẩn hoá giữa composition IME. Đây là **UX**: server
+  `td__otp_value` cùng luật, bảng parity): luật chi tiết ở [otp-input.md](../components/otp-input.md). Đây là **UX**: server
   vẫn chuẩn hoá + so mã (hoa / thường theo quy ước của server — `pattern` native nhận cả chữ thường), giới hạn số lần
   thử, hết hạn mã.
 - **`td-copy for=` đọc field của kit**: `for` trỏ tới phần tử `td-*` có property `value` kiểu chuỗi (`td-input-field`,

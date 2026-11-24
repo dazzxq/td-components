@@ -246,8 +246,10 @@ thường). Chuẩn hoá chữ full-width ở PHP dùng `Normalizer` (ext intl);
 
 ```php
 <?= td_otp_input('steam', ['label' => 'Mã Steam Guard', 'length' => 5, 'charset' => 'alphanumeric', 'element' => true]) ?>
-``` `'element' => true` (hoặc `Td::configure(…, ['ssr_elements'
-=> true])`) in host `<td-otp-input data-td-ssr="otp-input@1">` + input + 6 ô — module nạp thì nhận **tại chỗ**. Chi tiết
+```
+
+Với `'element' => true` (hoặc `Td::configure(…, ['ssr_elements'
+=> true])`) helper in host `<td-otp-input data-td-ssr="otp-input@1">` + input + 6 ô — module nạp thì nhận **tại chỗ**. Chi tiết
 option và id: [Adapter PHP › td_otp_input](../guides/php-adapter.md#td_otp_input-0270).
 
 ## Attribute

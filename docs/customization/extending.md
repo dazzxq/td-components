@@ -309,7 +309,7 @@ ghi đè. Cách làm chuẩn: một module `i18n-<ngôn ngữ>.js` nạp **một
 |---|---|---|---|
 | `options.labels` (theo từng lần gọi) | `@dazzxq/td-components/lightbox` | `dialog prev next close back fullscreen download info more loadError retry pressedOn busy` (chuỗi), `counter(i, n)` và `thumb(n)` (hàm); mặc định và chỗ dùng: [lightbox.md › Nhãn](../components/lightbox.md#nhãn-labels) | Mỗi `TdLightbox.open()` / `bind()` — không có object tĩnh |
 | `TdHovercard.labels` | `@dazzxq/td-components/hovercard` | `loading error dialog` | Mỗi lần mở thẻ |
-| `TdMenu.labels` | `@dazzxq/td-components/menu` | `trigger` | Khi tạo `TdMenu.button()` |
+| `TdMenu.labels` | `@dazzxq/td-components/menu` | `trigger back` (`back` từ 0.118.0) | `trigger`: khi tạo `TdMenu.button()`; `back`: mỗi lần mở menu con (drill-down) |
 | `TdModal.labels` | `@dazzxq/td-components/modal` | `close confirm cancel ok confirmTitle confirmMessage successTitle errorTitle infoTitle` (5 khoá cuối từ 0.16.0) | Khi tạo dialog |
 | `TdToast.labels` | `@dazzxq/td-components/toast` | `close` (0.16.0), `types` (0.21.0: object `success error warning info` — tiền tố loại cho trình đọc màn hình) | Khi tạo mỗi toast |
 | `TdLoading.labels` | `@dazzxq/td-components/loading` | `loading` (0.16.0) | Mỗi `show()` / `wrap()` không truyền `message` |

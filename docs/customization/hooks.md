@@ -120,62 +120,9 @@ Danh mục (một dòng một hook); bảng option của `TdHovercard.bind(trigg
 
 `import { TdMenu } from '@dazzxq/td-components/menu';` · Trang: [menu.md](../components/menu.md)
 
-### Option của `TdMenu.open(anchor, items, opts)` (dùng chung cho `bind()` và `button()`)
-
-`items` là: tên menu đã đăng ký (chuỗi), mảng item, hoặc hàm `(ctx) => item[]` (gọi mỗi lần mở).
-
-| Option | Kiểu | Mặc định | Ý nghĩa / Lỗi thì sao |
-|---|---|---|---|
-| `align` | `'start' \| 'center' \| 'end'` | `'end'` | Căn menu theo anchor |
-| `side` | `'bottom' \| 'top'` | `'bottom'` | Phía ưu tiên (tự lật nếu không đủ chỗ) |
-| `label` | `string` | — | `aria-label` của menu; không có → `aria-labelledby` = id của anchor |
-| `focus` | `'first' \| 'last'` | `'first'` | Mục được focus khi mở |
-| `onClose` | `(reason) => void` | — | `reason` ∈ `'select' \| 'escape' \| 'tab' \| 'outside' \| 'hidden' \| 'api' \| 'covered'` (`ctx.close()` của mục custom = `'select'`). Ném lỗi → `console.error` |
-| `ctx` | `object` | — | Dữ liệu thêm cho `ctx` (khoá dành riêng `anchor`, `name`, `item`, `checked`, `__proto__`… bị bỏ) |
-| `isAllowedUrl` | `(url) => boolean` | — | Chính sách `href` của menu này (0.17.0): **thay** bộ lọc mặc định `safeMenuHref`. `false` / ném lỗi → mục disabled + `console.warn`. `javascript:` luôn bị chặn |
-
-`open()` trả `{ element, close(), isOpen }` hoặc `null` (anchor đang mở → đóng nó; tên chưa đăng ký → `console.warn`;
-không còn mục hiển thị nào; builder ném lỗi → `console.error`).
-
-`ctx` = `{ ...opts.ctx, ...data-td-menu-* của anchor (camelCase, giá trị chuỗi), anchor, name }`. `name` = tên menu
-đã đăng ký (hoặc `''` khi truyền mảng / hàm).
-
-### Trường của một item
-
-| Trường | Kiểu | Ghi chú |
-|---|---|---|
-| `label` | `string` | Bắt buộc (item không có label bị bỏ). Hiển thị dạng **text** |
-| `onSelect` (bí danh `onClick`) | `(ctx) => void \| Promise` | `ctx = { ...ctx menu, item, anchor, checked }`. Gọi **sau** khi menu đóng (item / radio) hoặc tại chỗ (checkbox). Ném / reject → `console.error`; Promise không được await |
-| `href` | `string` | Chỉ http(s) hoặc tương đối (hoặc theo option `isAllowedUrl`). URL khác (`mailto:`, `javascript:`…) → item bị vô hiệu + `console.warn` |
-| `newTab` | `boolean` | Mở tab mới (`rel="noopener noreferrer"`) |
-| `download` | `true \| string` | Chỉ với `href` được chấp nhận: `<a download>`; chuỗi = tên file (lọc `/ \ : * ? " < > \|` + ký tự điều khiển, tối đa 200 ký tự) |
-| `icon` | `string` | Tên icon registry |
-| `iconNode` | `SVGElement` | SVG tin cậy (clone) |
-| `hint` | `string` | Chữ phụ bên phải (text) |
-| `danger` | `boolean` | Kiểu nguy hiểm |
-| `disabled` | `boolean` | Focus được nhưng không kích hoạt |
-| `type` | `'item' \| 'radio' \| 'checkbox' \| 'custom'` | `checked` mà không có `type` → radio (tương thích dwp). `'custom'` (0.53.0): hàng nội dung tuỳ biến, xem dưới |
-| `render` | `(ctx) => Element \| null` | Chỉ `type: 'custom'` (0.53.0): `ctx = { ...ctx menu, item, close(), signal }`, gọi **mỗi lần mở**. Phải trả **Element mới chưa gắn vào trang**; `null` → không có hàng. Chuỗi (HTML) / kiểu khác / element đang gắn / ném lỗi → bỏ hàng + `console.warn` cố định, `signal` abort. `signal` abort khi menu đóng (mọi lý do) — gắn listener với `{ signal }`. Menu có hàng custom là **menu panel** (`role="dialog"`) — [menu.md mục 7](../components/menu.md#7-mục-tuỳ-biến--type-custom-0530) |
-| `checked` | `boolean` | Trạng thái ban đầu. Kit **không** sửa object của bạn; trạng thái mới nằm ở `ctx.checked` |
-| `group` | `string` | Nhóm radio |
-| `id` | `string` | Ghi ra `data-item` |
-| `when` | `(ctx) => boolean` | `false` → ẩn. Ném lỗi → ẩn + `console.warn` |
-| `order` | `number` | Chỉ với menu đăng ký: thứ tự sắp xếp |
-| `separator` | `true` | Đường phân cách (tự gộp đầu / cuối / đôi) |
-
-### Registry (plugin thêm mục mà không sửa lõi)
-
-| Hàm | Chữ ký | Trả về | Ghi chú |
-|---|---|---|---|
-| `TdMenu.define(name, items)` | `items`: mảng hoặc `(ctx) => item[]` | `undefine()` | Danh sách gốc; gọi lại thì **thay**. Item gốc có `order` mặc định = chỉ số × 10 |
-| `TdMenu.register(name, item \| item[], { order, group })` | | `unregister()` | Gọi trước hay sau `define` đều được. `order` mặc định 1000 (cuối). `group` khác nhau → tự chèn separator |
-| `TdMenu.has(name)` | | `boolean` | |
-| `TdMenu.bindAll(root = document)` | | `unbind()` | Kích hoạt `[data-td-menu="name"]` (delegation, idempotent theo root) |
-| `TdMenu.bind(trigger, items, opts)` | | `unbind()` | Nối một trigger của bạn |
-| `TdMenu.button({ icon, label, ariaLabel, items \| getItems, …opts })` | | `HTMLButtonElement` | Tạo nút `.td-menu-btn` đã bind (icon mặc định `more`) |
-| `TdMenu.labels` | `{ trigger: 'Tùy chọn' }` | | `aria-label` của `TdMenu.button()` không có nhãn |
-
-Hàm tiện ích export kèm: `safeMenuHref(href) → string | null` (bộ lọc URL của menu).
+- `TdMenu.open(anchor, items, opts)` (dùng chung cho `bind()` / `button()`): bảng option (`align`, `side`, `label`, `focus`, `onClose(reason)`, `ctx`, `isAllowedUrl`, `themeRoot`) và giá trị trả về: [Tuỳ chọn của open()](../components/menu.md#tuỳ-chọn-của-open--bind--button).
+- Trường của một item (`label`, `onSelect`, `href`, `type`, `render`, `items`…): [Định dạng item](../components/menu.md#định-dạng-item).
+- Registry (`TdMenu.define`, `register`, `has`, `bindAll`, `bind`, `button`, `close`, `isOpen`, `labels`, `safeMenuHref`): [Property & method](../components/menu.md#property--method).
 
 ---
 

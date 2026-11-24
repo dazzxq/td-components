@@ -276,7 +276,7 @@ Chữ `prefix` / `suffix` có từ 0.30. Từ 0.55.0 thêm **icon** và **phần
 | `prefix-icon` / `suffix-icon` | string | — | 0.55.0: tên icon registry trong span affix (mép ngoài), trang trí. Đổi = vẽ lại (giữ giá trị, focus, con trỏ). |
 | `unit-label` | string | `suffix` / `prefix` | Chữ trình đọc màn hình đọc cho đơn vị (vd. `đồng`), qua `aria-describedby`. |
 | `clamp` | boolean | — | Kẹp vào `[min, max]` khi rời ô + thông báo. |
-| `inputmode` | string | tự suy | Ghi đè bàn phím ảo. Mặc định: `numeric` (không lẻ, không âm) / `decimal` (có lẻ) / `text` (cho phép âm — bàn phím số iOS không có dấu trừ). |
+| `inputmode` | string | tự suy | Ghi đè bàn phím ảo; chỉ nhận `none` · `text` · `decimal` · `numeric` · `tel` · `search` · `email` · `url` (giá trị khác bị bỏ, dùng giá trị suy ra). Mặc định: `numeric` (không lẻ, không âm) / `decimal` (có lẻ) / `text` (cho phép âm — bàn phím số iOS không có dấu trừ). |
 | `enterkeyhint` | string | — | 0.36.2: nhãn phím Enter của bàn phím ảo — `enter` · `done` · `go` · `next` · `previous` · `search` · `send` (giá trị khác bị bỏ); chuyển xuống ô tại chỗ, không render lại. SSR: áp sau khi nhận markup. |
 | `validate-on` | `blur` \| `change` \| `input` | — | Tự hiện thông báo ràng buộc thành lỗi. |
 | `aria-label` | string | — | Tên truy cập khi không có `label`. |
