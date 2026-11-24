@@ -907,10 +907,7 @@ srcset; không src dùng được → ô giữ chỗ), `eager`, `placeholder_ico
 Icon `aria-hidden` (chỉ trang trí — nghĩa nằm ở nhãn), cao `1em` theo cỡ chữ badge, màu theo chữ (`currentColor`;
 gate tương phản đo icon ≥ 3.2:1 trên nền mọi variant).
 
-`td_alert($message, $opts)` — **một hợp đồng SSR duy nhất** ([Alert](../components/alert.md)): luôn in host
-`<td-alert>` chứa sẵn khối `div.td-alert` đầy đủ. `td.css` tạo dáng ngay (flash hiện được khi chưa có / không có JS);
-nạp `@dazzxq/td-components/alert` thì phần tử **nâng cấp tại chỗ** (giữ nguyên chữ) và gắn nút đóng nếu `dismissible`.
-Không JS thì không có nút đóng.
+`td_alert($message, $opts)` — in host `<td-alert>` chứa sẵn markup đầy đủ, nâng cấp tại chỗ khi nạp JS; hợp đồng SSR, markup DOM và việc không JS thì không có nút đóng: xem [Alert](../components/alert.md).
 
 | Option | Ý nghĩa |
 |---|---|
@@ -920,15 +917,6 @@ Không JS thì không có nút đóng.
 | `id`, `class`, `attrs` | trên host `<td-alert>` |
 
 `$message` là **chữ** (escape). Cần link trong thông báo thì viết `<td-alert>` bằng tay với markup của trang.
-
-```html
-<td-alert variant="success" dismissible heading="Thành công">
-  <div class="td-alert td-alert--success" role="status">
-    <span class="td-alert__icon" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="success" …>…</svg></span>
-    <div class="td-alert__body"><p class="td-alert__heading">Thành công</p><div class="td-alert__message">Đã lưu thay đổi.</div></div>
-  </div>
-</td-alert>
-```
 
 ## td_empty (0.26.0)
 

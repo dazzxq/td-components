@@ -84,8 +84,7 @@ viết, là phần tử con cuối của nội dung) hiện cạnh nhau; khi ale
 ```
 
 `td_alert()` luôn escape nội dung nên không chèn được nút — cần nút thì viết markup tay như trên (HTML của trang). Cần
-bề rộng từ cha (`display: block` — mặc định). Không có container query (Chrome / Edge 102–104): dự phòng theo viewport
-< 480px.
+bề rộng từ cha (`display: block` — mặc định). Hàng nút xếp dọc nhờ container query (`@container td-alert (width < 480px)`); trình duyệt không hỗ trợ container query (Chrome / Edge 102–104) không có dự phòng theo viewport, hàng nút giữ dạng hàng ngang.
 
 ## Attribute
 

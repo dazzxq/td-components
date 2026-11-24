@@ -1,3 +1,5 @@
+[Tài liệu](../README.md) › [Components](README.md) › Avatar
+
 # Avatar `.td-avatar` (0.105.0)
 
 Ảnh đại diện tròn, **thuần CSS** (không custom element, không JS bắt buộc). Có ảnh thì là `<img>`, chưa có ảnh thì là ô
