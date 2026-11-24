@@ -269,6 +269,9 @@ Một số tên quen thuộc (tên Lucide / Font Awesome) được nhận như *
 | `tag` / `trademark` (0.56.0) | `brand` |
 | `package` (0.56.0) | `product` |
 | `banknote` (0.59.0) | `price` |
+| `command` (0.101.0) | `key-command` |
+| `option` (0.101.0) | `key-option` |
+| `arrow-big-up` (0.101.0) | `key-shift` |
 
 - SVG vẽ ra giống hệt icon đích, và `data-icon` là **tên core** (`tdIcon('x')` → `data-icon="close"`).
 - Alias chỉ áp khi tên đó **không** phải icon core và chưa được site đăng ký: site `registerIcons({ pen: … })` thì
@@ -336,6 +339,7 @@ const ok = tdIcon('success', { class: 'my-icon--ok' }); // thêm class của sit
 | `name` | string | — | Tên icon. Không tồn tại → thẻ rỗng + cảnh báo console. |
 | `size` | `s` \| `m` \| `l` \| số nguyên | `m` | Chuỗi toàn chữ số (`"24"`) được hiểu là px. |
 | `label` | string | — | Có → icon mang nghĩa (`role="img"`). |
+| `variant` | `outline` \| `filled` | `outline` | Kiểu nét hoặc tô đặc; giá trị khác = nét. Xem [mục tô đặc](#icon-tô-đặc-01040). |
 
 Đổi attribute → vẽ lại. Nếu server đã render sẵn `svg.td-icon[data-icon]` đúng tên bên trong thẻ, lần gắn
 đầu tiên **giữ nguyên** SVG đó (không vẽ trùng). `<td-icon>` có `display: inline-flex; line-height: 0`, không ảnh hưởng bố
@@ -350,12 +354,12 @@ icon="search"`, thanh công cụ của lightbox, mục của menu… Icon bạn 
 
 | Hàm | Chữ ký | Mô tả |
 |---|---|---|
-| `tdIcon` | `(name: string, opts?: { size?: 's'\|'m'\|'l'\|number, label?: string, class?: string }) => SVGSVGElement \| null` | Dựng phần tử SVG bằng `createElementNS`. Tên không tồn tại → `null` + `console.warn('tdIcon: unknown icon "…"')`. Mỗi lần gọi trả về một node **mới**. |
+| `tdIcon` | `(name: string, opts?: { size?: 's'\|'m'\|'l'\|number, label?: string, class?: string, variant?: 'outline'\|'filled' }) => SVGSVGElement \| null` | Dựng phần tử SVG bằng `createElementNS`. Tên không tồn tại → `null` + `console.warn('tdIcon: unknown icon "…"')`. Mỗi lần gọi trả về một node **mới**. |
 | `registerIcons` | `(defs: Record<string, IconDef>) => void` | Đăng ký icon của site. Ném lỗi nếu có mục không hợp lệ (xem dưới). |
 | `hasIcon` | `(name: string) => boolean` | Tên đã có trong registry chưa (tính cả alias từ 0.18.0). |
 | `resolveIconName` | `(name: string) => string \| null` | Tên đã đăng ký → chính nó; alias → tên core đích; không có → `null`. (0.18.0) |
 | `listIcons` | `() => string[]` | Mọi tên hiện có (core + đã đăng ký), theo thứ tự thêm. Không gồm alias. |
-| `fillIconSlots` | `(root: ParentNode) => void` | Tìm mọi `[data-td-icon="tên"]` trong `root` và thay nội dung bằng icon (tuỳ chọn `data-td-icon-size`, `data-td-icon-class`). Dùng khi bạn render HTML chuỗi (xem [base-element](base-element.md)). Gọi lại nhiều lần vẫn đúng. |
+| `fillIconSlots` | `(root: ParentNode, selector?: string) => void` | Tìm mọi phần tử khớp `selector` (mặc định `[data-td-icon]`, tên icon ở `data-td-icon="tên"`) trong `root` và thay nội dung bằng icon (tuỳ chọn `data-td-icon-size`, `data-td-icon-class`, `data-td-icon-variant`). Dùng khi bạn render HTML chuỗi (xem [base-element](base-element.md)). Gọi lại nhiều lần vẫn đúng. |
 | `svgStringToDefinition` | `(str: string) => IconDef \| null` | Chuyển chuỗi SVG thành định nghĩa đã kiểm tra, hoặc `null`. Dùng cho dữ liệu cũ (ví dụ `icon` của `td-empty-state` là chuỗi SVG). |
 | `renderIconDefinition` | `(def: IconDef, opts?: { size?, class? }) => SVGSVGElement \| null` | Vẽ một định nghĩa mà không đăng ký (`data-icon="custom"`). Định nghĩa được kiểm tra lại, không hợp lệ → `null`. |
 

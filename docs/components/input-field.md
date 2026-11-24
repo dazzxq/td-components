@@ -440,7 +440,7 @@ document.getElementById('fs').disabled = true;          // field bị disabled, 
 Property phản chiếu attribute (tên camelCase): `type`, `size`, `placeholder`, `label`, `helperText`,
 `errorText`, `required`, `disabled`, `readonly` (chú ý: `readonly`, không phải `readOnly`), `maxLength`, `limitType`,
 `min`, `max`, `step`, `minlength`, `pattern`, `rows`, `autoresize`, `validateOn`, `fieldId`, `name`, `ariaLabel`,
-`revealable` (0.115.0).
+`revealable` (0.115.0), `labelMode` (0.58.0), `autocomplete`, `inputmode`, `enterkeyhint`, `autocapitalize`, `spellcheck` (0.17.0), `prefix`, `suffix`, `prefixIcon`, `suffixIcon`, `unitLabel` (0.55.0).
 Property chuỗi trả `''` khi không có attribute; boolean trả `true/false`. Riêng `value` **không** phản chiếu attribute: nó
 là giá trị sống (xem trên). Gán property trước khi phần tử vào trang (hoặc trước khi module được import) vẫn có tác
 dụng từ 0.16.0.

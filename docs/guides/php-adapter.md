@@ -519,7 +519,7 @@ tách khỏi trang (cấu trúc hoặc attribute ngoài allowlist) → render l�
 | `prefix`, `suffix` | 0.55.0: chữ trang trí trước / sau giá trị (`https://`, `mAh`, `đ`) — escape. Control vào `div.td-field__box`, wrapper thêm `td-field--affix`, mỗi bên một `span.td-field__affix--{prefix\|suffix}[aria-hidden]` |
 | `prefix_icon`, `suffix_icon` | 0.55.0: tên icon registry (`Td::icon`; tên lạ → ô rỗng), ở mép ngoài của bên đó, SVG inline sẵn |
 | `unit_label` | 0.55.0: chữ đơn vị đọc to (mặc định `suffix`, rồi `prefix`), in `span#{id}-unit[hidden]` và đứng **đầu** `aria-describedby` |
-| `label_mode` | 0.58.0: `'top'` (mặc định) \| `'floating'` — [nhãn nổi](../components/input-field.md#nhãn-nổi--label-modefloating-0580). Cần `label` (không có → như `top`); giá trị khác → `top`, im lặng. In control (hoặc `div.td-field__box`) **trước** `<label>`, wrapper thêm `td-field--floating` [+ `td-field--always-float` cho `date` / `month` / `datetime-local` / `time` hoặc có affix] [+ `td-field--ph-label` khi không có `placeholder`]; `placeholder` của control = `placeholder` thật, không có thì chữ nhãn (luôn ẩn bằng `td.css`). Chế độ element: host thêm `label-mode="floating"` |
+| `label_mode` | 0.58.0: `'top'` (mặc định) \| `'floating'` — [nhãn nổi](../components/input-field.md#nhãn-nổi--label-modefloating-0580). Cần `label` (không có → như `top`); giá trị khác → `top`, im lặng. Cấu trúc DOM (thứ tự control / label, các class `td-field--floating` / `--always-float` / `--ph-label` và điều kiện của từng class) và luật `placeholder`: [input-field.md › Cấu trúc DOM & class](../components/input-field.md#cấu-trúc-dom--class), [Nhãn nổi](../components/input-field.md#nhãn-nổi--label-modefloating-0580). Chế độ element: host thêm `label-mode="floating"` |
 | `revealable` | 0.115.0: `true` + `type` `password` + chế độ element → host `revealable` + nút hiện / ẩn mật khẩu `button.td-field__reveal` trong `div.td-field__box` (trạng thái ẩn, icon `eye` inline, ẩn bằng `td.css` tới khi module nạp) — [Hiện / ẩn mật khẩu](../components/input-field.md#hiện--ẩn-mật-khẩu-revealable-01150). Chế độ native và type khác: bỏ qua (không JS thì nút không làm gì) |
 
 Affix (0.55.0) chỉ cho `type` `text` `search` `email` `url` `tel` `password` `number`; type khác → bỏ + một `E_USER_WARNING`
@@ -1880,18 +1880,8 @@ host.
 ]) ?>
 ```
 
-- Option: `label`, `aria_label`, `value`, `placeholder`, `suggestions`, `icons`, `required`, `disabled`, `readonly`,
-  `allow_clear` (`false` = không nút xoá), `helper_text` (hoặc `hint`), `error`, `class` (trên host), `id` (id host; nút
-  ô = `{id}-trigger`).
-- `value`: alias → tên canonical; tên đúng định dạng nhưng PHP **chưa** đăng ký (icon site chỉ có bên JS) → giữ nguyên +
-  một `E_USER_WARNING`; sai định dạng / không phải chuỗi → in rỗng + warning.
-- `suggestions` / `icons` (mảng hoặc chuỗi cách nhau bởi khoảng trắng / dấu phẩy): chuỗi dài hơn 2048 byte bị bỏ; chỉ
-  2000 mục đầu được xem; tên không đăng ký / sai định dạng bị bỏ + một warning; khử trùng; `suggestions` tối đa 24.
-  Danh sách chuẩn hoá được in thành attribute `suggestions` / `icons` trên host.
-- Cần `label` hoặc `aria_label` (không có → warning); chỉ `aria_label` thì in span ẩn `{host}-name` làm tên truy cập.
-- Mặc định chữ trên ô là tên canonical: `td_icon_picker()` (và `Td::icon()`) không đọc dữ liệu tìm kiếm. Ngoại lệ duy nhất:
-  `trigger_text => 'label'` (0.96.1) đọc `Td::iconSearchData()` để in nhãn (khi không truyền `value_label`), xem dưới.
-- Hằng: `Td::SSR_ICON_PICKER` (`icon-picker@1`), `Td::ICON_PICKER_LABELS` (`placeholder` / `clear`, = `TdIconPicker.labels`).
+- Option, luật `value` / `suggestions` / `icons` (kể cả giới hạn danh sách), `label` / `aria_label` và chữ trên ô (`trigger_text`): ghi đầy đủ ở [icon-picker › Không JS (SSR)](../components/icon-picker.md#không-js-ssr) và [Tuỳ chọn thêm (0.96.1)](../components/icon-picker.md#tuỳ-chọn-thêm-0961). Mặc định chữ trên ô là tên canonical, không đọc dữ liệu tìm kiếm; chỉ `trigger_text => 'label'` (0.96.1) mới đọc `Td::iconSearchData()`.
+- Hằng: `Td::SSR_ICON_PICKER` (`icon-picker@1`), `Td::ICON_PICKER_LABELS` (`placeholder` / `clear` / `none`, = `TdIconPicker.labels`).
 
 **`td_icon_value(mixed $v): ?string` — gọi khi nhận POST, trước khi kiểm / lưu** (client bất kỳ POST được chuỗi tuỳ ý;
 picker không phải ranh giới an toàn):

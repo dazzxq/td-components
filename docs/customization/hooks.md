@@ -525,20 +525,7 @@ td-input-field, td-slider, td-checkbox, td-toggle nằm trong object tĩnh `mess
 đổi cho cả trang bằng `Object.assign(TdInputField.messages, { … })`. Theo từng field: `messages` của TdFormValidation
 hoặc `setError`. Chi tiết: [../guides/forms.md](../guides/forms.md).
 
-`TdInputField.messages` (`@dazzxq/td-components/input-field`):
-
-| Khoá | Mặc định |
-|---|---|
-| `valueMissing` | `Trường này là bắt buộc` |
-| `tooLong` | `Vượt quá giới hạn {maxLength} {unit}` |
-| `tooShort` | `Tối thiểu {minLength} ký tự` |
-| `patternMismatch` | `Giá trị không đúng định dạng` |
-| `badInput` | `Giá trị không hợp lệ` (cũng dùng cho `number` sai cú pháp) |
-| `typeMismatchEmail`, `typeMismatchUrl` | `Email không hợp lệ`, `URL không hợp lệ` |
-| `rangeUnderflow`, `rangeOverflow` | `Giá trị tối thiểu là {min}`, `Giá trị tối đa là {max}` |
-| `stepMismatch` | `Giá trị không đúng bước nhảy` |
-| `dateInvalid`, `dateUnderflow`, `dateOverflow` | `Ngày không hợp lệ`, `Ngày tối thiểu là {min}`, `Ngày tối đa là {max}` |
-| `unitChar`, `unitWord` | `ký tự`, `từ` — `{unit}` của `tooLong` và chữ của bộ đếm |
+`TdInputField.messages` (`@dazzxq/td-components/input-field`): thông báo validation, đơn vị bộ đếm và tên nút hiện / ẩn mật khẩu; bảng đủ khoá + mặc định ở [input-field.md › Validation](../components/input-field.md#validation) và [Hiện / ẩn mật khẩu](../components/input-field.md#hiện--ẩn-mật-khẩu-revealable-01150).
 
 `TdSlider.messages` (`{min}` `{max}` `{step}`): `rangeUnderflow` = `Giá trị tối thiểu là {min}.`, `rangeOverflow` =
 `Giá trị tối đa là {max}.`, `stepMismatch` = `Giá trị phải là bội số của {step}.`

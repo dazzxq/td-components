@@ -778,8 +778,7 @@ trang người dùng [icon-picker.md](../components/icon-picker.md#bảo-mật-v
   ký tự điều khiển, 1–12 từ khoá mỗi ngôn ngữ không trùng sau fold, khoá lạ / kiểu sai → lỗi. Tên metadata không được là
   icon core (kit sở hữu) hoặc đã có. Đăng ký **cả lô hoặc không gì**. Dữ liệu tải qua hook: mục sai bị bỏ + một cảnh
   báo (không phản chiếu nội dung).
-- **Công việc có giới hạn:** tối đa 2000 mục mỗi lần gọi / mỗi dữ liệu tải; query ≤ 64 ký tự, ≤ 8 từ; `suggestions` ≤ 24
-  tên, `icons` ≤ 2000 mục được xem; chuỗi danh sách tên > 2048 byte bị bỏ trước khi tách. JS và PHP cùng giới hạn.
+- **Công việc có giới hạn:** mỗi lần gọi / mỗi dữ liệu tải, query, `suggestions`, `icons` và chuỗi danh sách tên đều bị chặn ở một ngưỡng cố định, JS và PHP cùng giới hạn; các con số: [icon-picker › Gợi ý và giới hạn tập icon](../components/icon-picker.md#gợi-ý-suggestions-và-giới-hạn-tập-icon-icons) và [Tìm kiếm](../components/icon-picker.md#tìm-kiếm-và-dữ-liệu-tìm-kiếm).
 - **Không HTML mới:** nhãn / từ khoá / tên vào DOM bằng `textContent` / `setAttribute('aria-label')`; hình icon chỉ qua
   `tdIcon()` (allowlist registry). Test XSS: nhãn site `<img onerror>` hiện nguyên văn.
 - **Server là ranh giới tin cậy:** giá trị form chỉ là tên icon; picker chặn ở client nhưng client bất kỳ POST được
@@ -791,7 +790,7 @@ trang người dùng [icon-picker.md](../components/icon-picker.md#bảo-mật-v
 
 **Ghi chú v0.96.1 — `td-icon-picker` nhóm / nhãn / none / nạp lười** (plan [v0.96.0-icon-picker](plans/v0.96.0-icon-picker.md)):
 
-- `groups` là dữ liệu site → `validateIconGroups()` (`src/icons/icon-search-schema.js`, PHP không nhận groups): ≤ 50 nhóm, `key` `^[a-z][a-z0-9-]{0,31}$` không trùng, `label` theo luật chuỗi tìm kiếm, tổng ≤ 2000 tên; kiểm `length` trước khi duyệt (mảng thưa / khổng lồ không bị duyệt); sai → bỏ cả danh sách + một cảnh báo.
+- `groups` là dữ liệu site → `validateIconGroups()` (`src/icons/icon-search-schema.js`, PHP không nhận groups); sai → bỏ cả danh sách + một cảnh báo. Giới hạn (số nhóm, luật `key`, tổng tên): [icon-picker › Nhóm và hàng lọc](../components/icon-picker.md#nhóm-và-hàng-lọc-groups).
 - Nhãn nhóm, `value-label`, "Không icon" vào DOM bằng `textContent`; id heading lấy từ bộ đếm, không từ `key`. PHP: `value_label` và nhãn tìm kiếm qua `Td::e()`; `value_label` sai bị bỏ.
 - `none_value` / `none-value` giá trị là **từ cho phép thêm**, không phải icon: khớp regex `/D`, không trùng icon đã đăng ký; phía server vẫn BẮT BUỘC `td_icon_value($v, ['none_value' => …])` (không option → từ đó là tên lạ → `null`).
 - Nạp lười chạy qua hook `loadSearchData` do site sở hữu (cùng origin, `script-src 'self'`); kit không thêm đường nạp mới, không `blob:` / `data:`, không `style=""`.

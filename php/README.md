@@ -24,9 +24,10 @@ echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
   exists, else the outline; `Td::icon()` takes it as the 5th argument); site icons via `Td::registerIcons()`; aliases from the
   `aliases` object of `src/icons/icons.json`.
 - v0.94.0 `td_icon_picker` always prints `<td-icon-picker data-td-ssr="icon-picker@1">` (the tree the component builds +
-  a hidden input carrying name / value until the upgrade; trigger text = the CANONICAL icon name, search metadata is
-  never read); options `label`, `aria_label`, `value`, `placeholder`, `suggestions` (max 24), `icons`, `required`,
-  `disabled`, `readonly`, `allow_clear`, `helper_text`, `error`, `class`, `id`. **`td_icon_value($_POST[…])` normalises
+  a hidden input carrying name / value until the upgrade; trigger text = the CANONICAL icon name by default; v0.96.1
+  `trigger_text => 'label'` shows the VI label instead: `value_label`, else the search metadata label); options `label`, `aria_label`, `value`, `placeholder`, `suggestions` (max 24), `icons`, `required`,
+  `disabled`, `readonly`, `allow_clear`, `helper_text`, `error`, `class`, `id`, and v0.96.1 `trigger_text`, `value_label`,
+  `none_option`, `none_value` (see [icon-picker](../docs/components/icon-picker.md)). **`td_icon_value($_POST[…])` normalises
   the POSTed value** (registered name or alias → canonical, `''` → `''`, anything else → `null`, answer 422) — always
   call it. `Td::iconName()`, `Td::iconSearchData()` (kit + site search metadata, read lazily, only when you call it) and
   `Td::registerIconSearchData()` are the explicit server API. Site icon names: prefix `site-` (the kit now has 241

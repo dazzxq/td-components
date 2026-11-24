@@ -193,7 +193,7 @@ vùng](../customization/theming.md#theme-theo-vùng)).
 - **Chọn:** bấm / Enter / Space trên ô → đặt giá trị, phát `input` + `change` (nếu khác), đóng, focus về ô. Chọn lại icon
   đang chọn → chỉ đóng. **Nút xoá** (×) → giá trị `''`.
 - **Đóng:** Escape (focus về ô, không đổi giá trị), bấm ra ngoài, cuộn làm ô khuất, host `disabled` / `readonly` / bị
-  gỡ. Tab / Shift+Tab xoay vòng trong popup: ô tìm → lưới Gợi ý → lưới chính → "Thử lại".
+  gỡ. Tab / Shift+Tab xoay vòng qua mọi phần tử focus được trong popup, theo thứ tự DOM: ô tìm, lưới Gợi ý, lưới chính và, khi có, ô "Không icon" (`none-option`), hàng lọc nhóm (từ 2 nhóm) và "Thử lại".
 - **Tên icon:** rê chuột hoặc focus một ô → dòng chú thích dưới lưới hiện "{nhãn} · {tên}" (ví dụ "Thùng rác ·
   trash"); rời ra → về icon đang chọn. Không có tooltip trên từng ô. Cảm ứng không có rê: chạm hoặc focus ô để xem
   dòng đó trước khi chọn.
@@ -331,7 +331,7 @@ Option: `label`, `aria_label`, `value`, `placeholder`, `suggestions` (mảng ho�
 chuỗi tên), `required`, `disabled`, `readonly`, `allow_clear` (`false` = không nút xoá), `helper_text` (hoặc `hint`),
 `error`, `class` (trên host), `id` (id của host; ô = `{id}-trigger`), và từ 0.96.1 (opt-in, xem [Tuỳ chọn thêm](#tuỳ-chọn-thêm-0961)) `trigger_text` (`'label'`), `value_label`, `none_option`, `none_value`. Tên lạ trong `suggestions` / `icons` bị bỏ + một
 `E_USER_WARNING`; `value` là alias → in tên canonical; tên đúng định dạng nhưng PHP chưa đăng ký → giữ nguyên + một
-warning; sai định dạng → in rỗng + warning. Cần `label` hoặc `aria_label`, không có → warning. Chữ trên ô là **tên
+warning; sai định dạng → in rỗng + warning. Cần `label` hoặc `aria_label`, không có → warning; chỉ `aria_label` thì in span ẩn `{host}-name` làm tên truy cập. Chữ trên ô là **tên
 canonical** — `td_icon_picker()` và `Td::icon()` **không** đọc dữ liệu tìm kiếm, trừ khi bật `trigger_text => 'label'` (khi đó chữ là `value_label`, hoặc nhãn trong `Td::iconSearchData()`, hoặc tên). Chi tiết:
 [PHP adapter](../guides/php-adapter.md#td_icon_picker-và-td_icon_value-0940).
 
@@ -353,7 +353,7 @@ riêng cho RTL.
 `.td-icon-picker` (+ `__label`, `__box`, `__trigger`, `__glyph`, `__text`, `__chevron`, `__clear`) và popup
 `.td-icon-picker-panel` (+ `__search`, `__input`, `__body`, `__group`, `__heading`, `__grid`, `__row`, `__cell`,
 `__empty`, `__footer`, `__caption`, `__status`, `__retry`). Trạng thái là thuộc tính, không phải class: ô
-`:disabled` / `[aria-expanded]` / `[aria-invalid="true"]`, chữ `[data-state="value|empty|unknown"]`, nút xoá `[hidden]`,
+`:disabled` / `[aria-expanded]` / `[aria-invalid="true"]`, chữ `[data-state="value|empty|none|unknown"]`, nút xoá `[hidden]`,
 popup `[data-state]` / `[data-placement]`, ô lưới `[aria-selected]`.
 
 ## Bảo mật và CSP
