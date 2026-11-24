@@ -1477,28 +1477,22 @@ Không in endpoint, quyền hay asset serialize.
 | Option | Ý nghĩa |
 |---|---|
 | `label`, `helper_text`, `error_text`, `prompt` | nhãn (có `*` khi `required`), ghi chú, lỗi (`aria-invalid` trên nút Thêm), chữ khung rỗng — đều là text |
-| `required`, `min`, `max` | `max` 1…100 (lớn hơn → 100, sai → bỏ; vắng = 100); `min` kẹp ≤ `max`. Không JS thì trình duyệt không kiểm được (hidden input): **kiểm ở server** |
+| `required`, `min`, `max` | như attribute ([Attribute](../components/media-gallery.md#attribute)): `max` ≤ 100, `min` kẹp ≤ `max`. Không JS thì trình duyệt không kiểm được (hidden input): **kiểm ở server** |
 | `disabled` | mọi nút, ô alt và hidden input `disabled` (không gửi gì) |
 | `usage` | dạng `name[i][id\|alt\|crop]` + ô alt |
 | `caption` (0.51) | `true` / `'line'` (ô một dòng) / `'multiline'` (textarea) → `name[i][caption]` sau `[alt]`; giá trị khác → `'line'` + một `E_USER_WARNING`; không có `usage` → bỏ + warning. Tắt → không gửi khoá (server **giữ** chú thích; `''` = null). Line in bản đã gộp xuống dòng thành dấu cách, `items` giữ chữ gốc |
-| `alt_maxlength`, `caption_maxlength` (0.51) | giới hạn mềm: `int` hoặc chuỗi đúng `^[1-9][0-9]{0,6}$`, trong 1…500 / 1…1000 (không dùng `Td::intOpt`: `'255 '`, `'2.5e2'`, `true`, `255.0` đều sai) → sai / thiếu `usage` / thiếu `caption` = tắt + một warning (không in giá trị). In bộ đếm `{count}/{max}` từ 80 % + dòng lỗi + `aria-invalid` khi vượt — **không cắt**, form no-JS vẫn gửi đủ chữ (server 422) |
-| `croppable`, `crop_ratio`, `focal_point` | cần `usage` (thiếu → bỏ + một `E_USER_WARNING`); `crop_ratio` như field (`free`, `W/H`… trong [0.01, 100]) |
+| `alt_maxlength`, `caption_maxlength` (0.51) | như attribute `alt-maxlength` / `caption-maxlength` ([§6c](../components/media-gallery.md#attribute)): `int` hoặc chuỗi số thuần (không dùng `Td::intOpt`); giá trị sai / thiếu `usage` / thiếu `caption` = tắt + một `E_USER_WARNING` (không in giá trị). Giới hạn mềm, không cắt |
+| `croppable`, `crop_ratio`, `focal_point` | như attribute; cần `usage` (thiếu → bỏ + một `E_USER_WARNING`) |
 | `crop_mode`, `crop_shape` (0.75.0) | như field: chỉ `pan` / `focal` (0.113.0: `[i][crop]` luôn `null`, `[i][focal]` tự in) / `circle` được in (`crop-mode` / `crop-shape`), giá trị khác im lặng không in; cần `usage` |
 | `cover` | badge "Ảnh bìa" trên ô đầu |
 | `aspect_ratio`, `preview_fit`, `accept_kind` | tỉ lệ ô (mặc định 1:1), `cover`/`contain`, loại nhận (chữ "ảnh" / "video" / "file") |
 | `id`, `class`, `attrs` | host id (id con suy ra từ nó), class thêm, `attrs` theo allowlist (tên của component + `data-td-*` bị chặn) |
 
-**Fail closed / vượt `max`** (không bao giờ thành "xoá hết"):
+**Fail closed / vượt `max`** (không bao giờ thành "xoá hết"): điều kiện lỗi và các trần cứng ở [trang component](../components/media-gallery.md#bảo-mật) và [security-model §6e](../internal/security-model.md). Riêng PHP:
 
-- `$items` không phải list, > 100 item, item không phải mảng, id thiếu / rỗng / không phải string-int / dài quá 512 /
-  trùng (sau khi đổi int → chuỗi), JSON `items` > 256 KiB, hoặc `name` kết thúc `[]` → in trạng thái lỗi "Không đọc được
-  danh sách ảnh", **không có input nào**, attribute `items="[null]"` (JS cũng fail closed) + **một** `E_USER_WARNING`
-  chỉ nêu lý do và số lượng — không bao giờ in giá trị.
-- Nhiều item hơn `max` (≤ 100) → in đủ ô nhưng **không control nào có `name`** + một `E_USER_WARNING` với hai con số. Server
-  thấy "không có key" → giữ nguyên.
-- Trường lẻ hỏng thì cắt / bỏ im lặng: alt > 500 / `name` > 512 (cắt theo code point), crop / focal sai → `null`, `src`
-  không an toàn / UTF-8 hỏng / > 8192 byte → không có ảnh (item giữ), `name` / `alt` UTF-8 hỏng → rỗng, `kind` lạ → `image`.
-  Mọi chuỗi bị giới hạn **trước** khi mã hoá JSON; không bao giờ ném `JsonException`.
+- Fail closed → in trạng thái lỗi "Không đọc được danh sách ảnh", **không có input nào**, `items="[null]"` + **một** `E_USER_WARNING` chỉ nêu lý do và số lượng — không bao giờ in giá trị.
+- Nhiều item hơn `max` → in đủ ô nhưng **không control nào có `name`** + một `E_USER_WARNING` với hai con số. Server thấy "không có key" → giữ nguyên.
+- Trường lẻ hỏng thì cắt / bỏ im lặng; mọi chuỗi bị giới hạn **trước** khi mã hoá JSON; không bao giờ ném `JsonException`.
 
 Ví dụ rút gọn (icon SVG lược bớt; nguyên văn ở `test/ssr/fixtures/media-gallery.html`, case `usage`):
 

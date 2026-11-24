@@ -188,7 +188,7 @@ Ghi chú trong footer chia hàng với bộ đếm ký tự: chữ to hơn chỉ
 ```html
 <!-- ghi chú chữ của control (control mới; input-field / number-input / choice-group: trong .td-field__footer) -->
 <div class="td-field__note" id="{host-id}-note" [hidden]>…</div>
-<!-- media-field / media-gallery giữ DOM cũ (contract @1) -->
+<!-- media-field / media-gallery giữ DOM riêng (contract `@2`, xem [media-field](media-field.md) / [media-gallery](media-gallery.md)) -->
 <span class="td-media-field__help" id="{id}-help" [hidden]>…</span>
 <!-- gợi ý giàu -->
 <td-hint [for="…"] id="…" [data-td-suppressed]>…nội dung của trang…</td-hint>

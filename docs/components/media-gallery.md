@@ -235,7 +235,6 @@ Dùng chung bộ điều khiển với [`td-sortable`](sortable.md):
   Space / Enter thả, Escape huỷ.
 - `change` (`reason: 'reorder'`) phát **đúng một lần khi thả**, không phát khi đang nhấc. FormData đi theo thứ tự mới
   ngay lập tức.
-- Chỉ **tay nắm** có `touch-action: none`; thân ô (ảnh) cuộn trang bình thường trên điện thoại.
 - Công cụ (tay nắm, X, hàng nút) chỉ hiện khi rê chuột / focus / đang mở với chuột (`(hover: hover) and (pointer: fine)`,
   `opacity`, vẫn Tab tới được); trên cảm ứng luôn hiện.
 
@@ -476,7 +475,7 @@ Tiếng Việt, ghi đè được theo site (`TdMediaGallery.labels.add.image = 
 PHP (`Td::MEDIA_GALLERY_LABELS`) được render lại an toàn (không nhận tại chỗ). Khoá: `prompt.{kind}`, `add.{kind}`,
 `kinds.{kind}`, `countMax` (vắng `max` → 100), `full`, `over`, `item`, `coverSuffix`, `cover`, `handle`, `remove`, `crop`, `alt`,
 `altPlaceholder`, `noPreview`, `video`, `broken`, `sortHelp`, `added`, `skipped`, `tooMany`, `removed`, `required`,
-`min`, `max`, `cropTitle`, `cropError`; 0.51: `caption`, `captionPlaceholder`, `counter`, `altTooLong`, `captionTooLong`
+`min`, `max`, `cropTitle`, `cropError`; 0.113.0: `focalEdit` ("Điểm trọng tâm {name}", cũng có trong `Td::MEDIA_GALLERY_LABELS`), `focalTitle` (chỉ JS); 0.51: `caption`, `captionPlaceholder`, `counter`, `altTooLong`, `captionTooLong`
 (cũng có trong `Td::MEDIA_GALLERY_LABELS`), `tooLongItem`, `limitLeft`, `limitOver` (chỉ JS); 0.81: `edit` ("Mô tả {name}"), `makeCover` ("Đặt {name} làm ảnh bìa") — cũng có trong `Td::MEDIA_GALLERY_LABELS` — và `madeCover` (chỉ JS). Thông báo khi nhấc / di chuyển / thả dùng `TdSortable.labels`.
 
 ## Tuỳ biến giao diện

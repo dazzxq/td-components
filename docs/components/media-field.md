@@ -18,7 +18,7 @@ nhiều ảnh có thứ tự (gallery sản phẩm, ảnh bài viết) → [Medi
 | Import | `import '@dazzxq/td-components/media-field'` (class: `import { TdMediaField } from '@dazzxq/td-components'`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.32.0 (cần `td.css`; cần một adapter — xem [media picker](media-picker.md#cấu-hình-mặc-định--configuredefaults)); 0.35.0 cắt ảnh (`croppable`, `crop-ratio`, `focal-point`, `focal`); 0.79.0 giao diện placeholder (bỏ nút Đổi / Gỡ, X góc, `hide-label`, `hide-hints`, DOM `media-field@2`) |
+| Từ phiên bản | 0.32.0 (cần `td.css`; cần một adapter — xem [media picker](media-picker.md#cấu-hình-mặc-định--configuredefaults)); 0.35.0 cắt ảnh (`croppable`, `crop-ratio`, `focal-point`, `focal`); 0.79.0 giao diện placeholder (bỏ nút Đổi / Gỡ, X góc, `hide-label`, `hide-hints`, DOM `media-field@2`); 0.79.2 `hide-alt` |
 
 ## Ví dụ nhanh
 
@@ -295,7 +295,7 @@ tiết: [Adapter PHP › td_media_field](../guides/php-adapter.md#td_media_field
 
 Cắt ảnh từ PHP (0.35.0): `croppable`, `crop_ratio`, `focal_point`, `focal` — xem [mục 9](#9-cắt-ảnh--croppable-0350).
 
-Tuỳ chọn PHP `hide_label` / `hide_hints` (bool) in attribute `hide-label` / `hide-hints` ([mục 10](#10-ẩn-nhãn-và-gợi-ý--hide-label-hide-hints-0790)).
+Tuỳ chọn PHP `hide_label` / `hide_hints` / `hide_alt` (bool) in attribute `hide-label` / `hide-hints` / `hide-alt` ([mục 10](#10-ẩn-nhãn-và-gợi-ý--hide-label-hide-hints-0790)).
 HTML cũ còn cache với marker `media-field@1` (cây có `__actions` / `__replace`) bị cổng SSR từ chối → field **render lại an toàn** (giữ value / alt đang gõ / focus).
 
 PHP in nhãn **tiếng Việt mặc định** (`Td::MEDIA_FIELD_LABELS`). Site đổi `TdMediaField.labels` (ví dụ tiếng Anh) → chữ
@@ -330,7 +330,7 @@ Gửi form: `og[id]=a_9f2c`, `og[alt]=…`, `og[crop]={"v":1,…}`, `og[focal]={
 | `crop-ratio-label` | 0.119.0: hậu tố tiêu đề khi khoá tỉ lệ: `crop-ratio="14/1" crop-ratio-label="Banner 14:1"` → "Cắt ảnh · Banner 14:1" (trim, ≤ 40) |
 | `crop-output` | 0.119.0: `metadata` (mặc định, như cũ) \| `new-asset` — site cắt thành ảnh mới qua `adapter.createCropDerivative` ([dưới](#cắt-thành-ảnh-mới--crop-outputnew-asset-01190)) |
 
-- Cả bốn chỉ có tác dụng ở **chế độ `usage`** (dạng reference không có mục crop): thiếu `usage` → cảnh báo console một
+- Sáu thuộc tính cắt ảnh (`croppable`, `crop-ratio`, `crop-mode`, `crop-shape`, `focal-point`, `focal`) chỉ có tác dụng ở **chế độ `usage`** (dạng reference không có mục crop): thiếu `usage` → cảnh báo console một
   lần, bỏ qua (fail closed).
 - `focal-point` **không** kèm `croppable` → chỉ round-trip giá trị server in ra (như crop ở 0.32), không có UI sửa focal.
 - **Nút "Cắt ảnh"** (`.td-media-field__crop-btn`, nút icon tròn trong `.td-media-field__tools`, đứng **trước** X, `aria-haspopup="dialog"`, tên trợ năng "Cắt ảnh {nhãn}") hiện khi: `croppable`
@@ -639,7 +639,7 @@ nhấn có trạng thái `data-td-pressed` (nền đậm hơn). Field `disabled`
 - `img alt=""` vì trạng thái đã được đọc qua `{id}-state` ("Đã chọn: iphone-17.jpg").
 - Hợp đồng SSR `media-field@2` (0.79.0; `@1` từ 0.32–0.78 — HTML cache cũ bị từ chối rồi render an toàn) ([ADR 0012](../internal/decisions/0012-ssr-hydration.md)): markup giống hệt + hidden input
   `.td-media-field__value` (`name` / `name[id]`), `name="…[alt]"` trên ô alt, hidden `.td-media-field__crop` (+ 0.35:
-  hidden `.td-media-field__focal` `name[focal]` khi `focal_point`, nút icon `.td-media-field__crop-btn` trong `__tools` khi `croppable`). Attribute `hide-label` / `hide-hints` do PHP in qua `hide_label` / `hide_hints`. Nhận tại
+  hidden `.td-media-field__focal` `name[focal]` khi `focal_point`, nút icon `.td-media-field__crop-btn` trong `__tools` khi `croppable`). Attribute `hide-label` / `hide-hints` / `hide-alt` do PHP in qua `hide_label` / `hide_hints` / `hide_alt`. Nhận tại
   chỗ khi cấu trúc, thuộc tính (allowlist), URL / tỉ lệ / crop đều hợp lệ; lệch → render an toàn, giữ value / alt đang gõ /
   focus. Di chuyển field đã nâng cấp sang chỗ khác → giữ nguyên node; markup bị sửa khi đang tách → render an toàn + khôi
   phục state.

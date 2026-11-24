@@ -358,7 +358,8 @@ Method lập trình **không** phát event (giống `setValue`) trừ khi truy�
 
 | Token | Mặc định | Tác dụng |
 |---|---|---|
-| `--td-media-grid-cols` | `repeat(auto-fill, minmax(160px, 1fr))` | `grid-template-columns` của lưới |
+| `--td-media-grid-col-min` | `160px` | Bề rộng tối thiểu một cột của `--td-media-grid-cols` mặc định |
+| `--td-media-grid-cols` | `repeat(auto-fill, minmax(min(var(--td-media-grid-col-min), calc(50% - var(--td-media-grid-gap) / 2)), 1fr))` | `grid-template-columns` của lưới; cột không rộng quá nửa lưới nên điện thoại luôn ≥ 2 ô / hàng |
 | `--td-media-grid-gap` | `var(--td-space-xs)` | Khoảng cách ô |
 | `--td-media-grid-radius` | `var(--td-radius-md)` | Bo góc ô / ảnh |
 | `--td-media-grid-tick-size` | `24px` | Cỡ ô tick (vùng bấm ≥ 44px trên cảm ứng); picker đặt `20px` |

@@ -41,7 +41,7 @@ bên trong **không mang `name`** nên không bao giờ bị gửi trùng ([ADR 
 | `<td-dropdown>` | có | có | gửi value của option đã chọn |
 | `<td-chip-input>` | có | có | gửi **nhiều** entry cùng `name` |
 | `<td-datetime-picker>` | có | có | định dạng gửi chọn bằng `form-value-format` |
-| `<td-media-gallery>` | có | có | (0.43.0) danh sách ảnh: `name[]=id` hoặc `name[i][id\|alt\|crop\|focal]`; rỗng → một `name=`; hỏng / vượt `max` → **không gửi gì** ([Media gallery](../components/media-gallery.md#1-hai-dạng-gửi-form-api-công-khai-adr-0021)) |
+| `<td-media-gallery>` | có | có | (0.43.0) danh sách ảnh: `name[]=id` hoặc `name[i][…]`; rỗng → một `name=`; hỏng / vượt `max` → **không gửi gì**; hình dạng đầy đủ (kể cả `[caption]`) ở trang gốc ([Media gallery](../components/media-gallery.md#1-hai-dạng-gửi-form-api-công-khai-adr-0021)) |
 | `<td-check-matrix>` | có | — | (0.47.0) gửi **đủ tập nhóm theo cột** + marker cột + sentinel `_v` — xem [Check matrix](../components/check-matrix.md#formdata-hợp-đồng-công-khai) |
 | `<td-number-input>` | có | có | xem [Number input](../components/number-input.md) |
 | `<td-otp-input>` | có | có | xem [OTP input](../components/otp-input.md) |
