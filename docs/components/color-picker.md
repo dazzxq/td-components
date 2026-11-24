@@ -178,6 +178,7 @@ popup cuộn bình thường. Ô / nút ≥ 44px trên màn hình cảm ứng.
 | | |
 |---|---|
 | `value` | đọc / ghi, **im lặng** (không phát sự kiện); không hợp lệ → `badInput` như khi gõ. Khi đang có chữ lỗi, `value` trả về đúng chữ đó |
+| `custom` / `eyedropper` | đọc: `boolean` (`false` khi attribute là `"false"`); ghi `false` / `'false'` → đặt attribute `"false"`, giá trị khác → gỡ attribute |
 | `presets` | đọc: danh sách đã chuẩn hoá `[{ value, label }]`; ghi: mảng (thắng thuộc tính) |
 | `getValue()` / `setValue(v)` | như `value` |
 | `open()` / `close()` | mở / đóng popup bằng code |
@@ -232,11 +233,11 @@ bị sửa (thêm `formaction`, ô `type=color`, input thứ hai…) → render 
 
 Option: `label`, `aria_label`, `value`, `presets` (mảng hoặc chuỗi mã), `required`, `disabled`, `readonly`, `custom`
 (`false` = chỉ preset), `contrast`, `eyedropper` (`false` = ẩn), `placeholder`, `error`, `attrs` (lên ô chữ, allowlist;
-các tên component sở hữu + `data-td-*` bị giữ chỗ), `class`, `id` (id của **ô chữ**; element: host = `{id}-host`),
+các tên component sở hữu + `data-td-*` bị giữ chỗ: `type` `class` `id` `inputmode` `autocomplete` `autocapitalize` `autocorrect` `spellcheck` `maxlength` `minlength` `placeholder` `name` `value` `pattern` `title` `required` `disabled` `readonly` `autofocus` `aria-label` `aria-labelledby` `aria-invalid` `aria-errormessage` `aria-describedby`), `class`, `id` (id của **ô chữ**; element: host = `{id}-host`),
 `element`. `value` / `presets` qua `td_color_value()`: giá trị không hợp lệ dài ≤ 64 ký tự được **giữ nguyên** (escape) +
 một `E_USER_WARNING` (component báo `badInput`, không mất dữ liệu server); dài hơn 64 (hoặc không phải chuỗi) thì
 **không in** (ô rỗng) + một warning; preset lỗi bị bỏ + một warning. PHP chỉ nhận preset
-dạng `#rgb` / `#rrggbb`. Chi tiết: [PHP adapter](../guides/php-adapter.md#td_color_picker-và-td_color_value-0480).
+dạng `#rgb` / `#rrggbb`; tối đa 48 preset, chỉ 192 mục đầu được xem, chuỗi `presets` > 12 288 byte bị bỏ cả chuỗi. Chi tiết: [PHP adapter](../guides/php-adapter.md#td_color_picker-và-td_color_value-0480).
 
 ## Tuỳ biến
 

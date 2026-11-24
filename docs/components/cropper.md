@@ -380,6 +380,7 @@ TdCropper.openDialog(opts: {
   cancelLabel?: string;            // mặc định "Huỷ"
   signal?: AbortSignal;            // abort ⇒ gỡ hộp ngay (không hiệu ứng thoát), resolve cancelled
   opener?: HTMLElement;            // nhận lại focus khi đóng
+  themeRoot?: Element;             // 0.42.0: hộp thoại theo theme của vùng [data-td-theme] chứa phần tử này
 }): Promise<
   | { status: 'applied'; crop: CropValue | null; focalPoint: FocalPoint; changed: boolean }
   | { status: 'cancelled' }
@@ -409,8 +410,8 @@ TdCropper.openDialog(opts: {
 
 Host là **container** (`container: td-cropper / inline-size`, `display: block`) — cần bề rộng do cha quyết định (xem
 [Responsive](../concepts/responsive.md)). Khi cropper **hẹp hơn 480px**: toolbar xuống hai hàng (nhóm tỉ lệ một hàng
-riêng, cuộn ngang nếu thiếu chỗ), nút − / + chỉ còn icon (nhãn vẫn ở `aria-label`). Không có container query (Chrome /
-Edge 102–104): dự phòng theo viewport < 480px.
+riêng, cuộn ngang nếu thiếu chỗ), nút − / + chỉ còn icon (nhãn vẫn ở `aria-label`). Trình duyệt không có container query (Chrome /
+Edge 102–104): **không có** dự phòng theo viewport — toolbar giữ bố cục rộng.
 
 Kiểu `pan` (0.73.0): khung = vùng cắt trừ khoảng đệm `--td-cropper-pan-inset` (24px mỗi cạnh), tự tính lại theo cỡ vùng
 cắt và theo tỉ lệ; đổi cỡ vùng cắt không đổi kết quả. Thanh trượt zoom nằm cùng hàng với nút − / +, co lại theo toolbar
@@ -463,7 +464,7 @@ Phát trên host, `bubbles`. Không phát khi gán bằng code.
 | `image-ready` | `{ naturalWidth, naturalHeight, pixelsKnown }` | Ảnh decode xong, kích thước hợp lệ |
 | `image-error` | `{ kind: 'src' \| 'load' \| 'size' \| 'ratio' }` | Xem [mục 5](#5-nguồn-ảnh-phải-là-ảnh-nguyên-không-cắt-sẵn) |
 
-`source`: `'pointer'` · `'pinch'` · `'wheel'` · `'keyboard'` · `'button'` · `'preset'` · `'reset'`.
+`source`: `'pointer'` · `'pinch'` · `'wheel'` · `'keyboard'` · `'button'` · `'preset'` · `'reset'` · `'clear'` (chỉ `focal-change`).
 
 ## Nhãn — `TdCropper.labels`
 
@@ -494,18 +495,20 @@ preset nằm ở `TdCropper.presets` (`label`), không ở đây.
 | Token | Mặc định | Tác dụng |
 |---|---|---|
 | `--td-cropper-h` | `min(60vh, 32rem)` | Chiều cao vùng cắt (inline; trong hộp thoại vùng cắt lấp phần còn lại) |
+| `--td-cropper-bg` | `--td-color-surface-muted` | Nền letterbox quanh ảnh |
 | `--td-cropper-dim` | `rgb(0 0 0 / 55%)` | Vùng mờ ngoài khung |
 | `--td-cropper-line` | trắng | Viền trong 1px của khung |
 | `--td-cropper-line-contrast` | đen 60 % | Viền ngoài 1px — khung thấy được trên cả ảnh trắng lẫn ảnh đen |
 | `--td-cropper-focus` | trắng | Vòng focus bàn phím trên ảnh (khung / góc / điểm trọng tâm) — không dùng màu accent của kit vì đo được ~1.1:1 trên ảnh sáng đã làm mờ |
 | `--td-cropper-focus-halo` | đen 75 % | Quầng tối dưới vòng focus của góc / điểm trọng tâm (vòng hai tông: luôn có một tông tương phản với ảnh) |
+| `--td-cropper-grid` | trắng 60 % | Lưới 1/3 khi đang kéo |
 | `--td-cropper-handle` | trắng | Nền tay nắm góc / cạnh (viền tối) |
 | `--td-cropper-pan-inset` | `24px` | 0.73.0, chỉ `mode="pan"`: khoảng đệm tối thiểu từ mép vùng cắt tới khung cố định |
 
 Bề mặt theo [minimal surfaces](../internal/design/liquid-glass.md): không shadow trang trí, không blur; lưới 1/3 chỉ
 hiện khi đang kéo (`data-dragging`). Gate tương phản đo viền khung / tay nắm / điểm ≥ 3:1 trên ảnh trắng, ảnh đen và
 vùng mờ — đè token thì site tự kiểm. `prefers-contrast: more` / `forced-colors`: `Highlight` / `CanvasText`, không vùng
-mờ bán trong suốt. Không có animation (reduced motion không cần nhánh riêng).
+mờ bán trong suốt. Chỉ có một chuyển động: nút tỉ lệ (`.td-cropper__ratio`) đổi nền / màu chữ ngắn; `prefers-reduced-motion: reduce` tắt chuyển đó (và trạng thái nhấn bỏ thời lượng). Khung / tay nắm / điểm trọng tâm không có animation.
 
 Giá trị vị trí / kích thước từng instance do JS đặt bằng CSSOM (`--_tdc-*` trên host, gỡ khi element rời trang) — **private**,
 đừng đè.
@@ -516,7 +519,7 @@ Light DOM do element dựng (không có helper PHP):
 
 ```html
 <td-cropper data-state="loading|ready|error" [data-error="src|load|size|ratio"] [data-locked] [data-dragging] [data-small-box]
-            [data-mode="pan"] [data-shape="circle"]>
+            [data-mode="pan|focal"] [data-shape="circle"]>
   <div class="td-cropper__toolbar" role="group">
     <div class="td-cropper__ratios" role="radiogroup"><button class="td-cropper__ratio" role="radio">…</button>…</div>
     <div class="td-cropper__tools">
@@ -524,6 +527,7 @@ Light DOM do element dựng (không có helper PHP):
       <td-slider class="td-cropper__zoom" size="sm" min="0" max="100"></td-slider> <!-- chỉ khi data-mode="pan" -->
       <button class="td-btn … td-cropper__tool td-cropper__zoom-in">…</button>
       <button class="td-btn … td-cropper__tool td-cropper__focal-toggle" aria-pressed="false" hidden>…</button>
+      <button class="td-btn … td-cropper__tool td-cropper__focal-clear" hidden>…</button> <!-- nút "Dùng giữa ảnh" của focal-optional -->
       <button class="td-btn … td-cropper__tool td-cropper__reset">…</button>
     </div>
   </div>

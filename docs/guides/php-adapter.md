@@ -1032,12 +1032,8 @@ Native mode in đúng khối `div.td-otp` trên (không có `span.td-otp__cells`
 ```
 
 `td_copy($value, $opts)` **luôn** in phần tử [Copy](../components/copy.md) đầy đủ (hợp đồng `copy@1`; option `element`
-/ `ssr_elements` không đổi gì): host `<td-copy data-td-ssr="copy@1">` + nguồn `<code class="td-copy__source">{value}</code>`
-+ nút icon `button.td-copy` (SVG `copy` có sẵn) + live region `span.td-copy__status`. `$value` là **chữ** (escape).
-
-- **Không JS**: `<code>` hiện (người dùng tự bôi đen, `user-select: all`), nút và live region ẩn — không có nút chết.
-- **Nạp `@dazzxq/td-components/copy`**: `<code>` ẩn, nút hiện; component nhận markup **tại chỗ** (cùng node nút). Markup
-  không khớp → render lại, mã trong `<code>` (đã chụp lúc gắn) vẫn được copy.
+/ `ssr_elements` không đổi gì). `$value` là **chữ** (escape). Cấu trúc host, hành vi không JS và khi nạp module:
+[Hợp đồng SSR `copy@1`](../components/copy.md#hợp-đồng-ssr-copy1) và [Render phía server](../components/copy.md#7-render-phía-server-php).
 
 | Option | Ý nghĩa |
 |---|---|
@@ -1901,38 +1897,15 @@ nhóm); `$value`: `['owner' => ['dashboard.view', …]]`. Luật khoá, trần c
 
 ## td_color_picker và td_color_value (0.48.0)
 
-`td_color_picker($name, $opts)` in ô của [Color picker](../components/color-picker.md) (hợp đồng `color-picker@1`).
+`td_color_picker($name, $opts)` in ô của [Color picker](../components/color-picker.md) (hợp đồng `color-picker@1`): mặc định
+**native** (`div.td-color` + ô chữ `#RRGGBB`, chạy không JS), `'element' => true` / `ssr_elements` → host
+`<td-color-picker data-td-ssr="color-picker@1">` nhận **tại chỗ** khi nạp module. Option, luật `value` / `presets`
+(giữ / bỏ giá trị lỗi, giới hạn 48 / 192 / 12 288) và `attrs` giữ chỗ: xem
+[Không JS (SSR)](../components/color-picker.md#không-js-ssr) và [Phía server](../components/color-picker.md#phía-server-bắt-buộc).
 
-- **Native (mặc định):** `div.td-color` > [`label`] + `div.td-color__box` > `span.td-color__swatch` (ô xám) +
-  `input.td-color__input[type=text]` với `name` / `value` / `pattern="#[0-9a-fA-F]{6}"` / `title` gợi ý. Không có JS vẫn
-  submit được, nhưng **chỉ** nhận `#RRGGBB` (hoa hoặc thường).
-- **Element** (`'element' => true` hoặc `ssr_elements`): host `<td-color-picker data-td-ssr="color-picker@1" name value
-  label placeholder presets custom contrast eyedropper required disabled readonly error-text aria-label>` + cùng cây. Có
-  JS: nhận **tại chỗ** qua cổng chung của form; ô chữ mất `name` / `value` / `required` / `pattern` / `title` (host gửi,
-  parse rộng hơn).
-- Option: `label`, `aria_label`, `value`, `presets` (mảng hoặc chuỗi mã), `required`, `disabled`, `readonly`, `custom`
-  (`false`), `contrast`, `eyedropper` (`false`), `placeholder` (mặc định `#000000`), `error`, `attrs` (lên ô chữ;
-  giữ chỗ: `type` `class` `id` `inputmode` `autocomplete` `autocapitalize` `autocorrect` `spellcheck` `maxlength`
-  `minlength` `placeholder` `name` `value` `pattern` `title` `required` `disabled` `readonly` `autofocus` `aria-label`
-  `aria-labelledby` `aria-invalid` `aria-errormessage` `aria-describedby` + `data-td-*`), `class`, `id` (id **ô chữ**;
-  element: host `{id}-host`), `element`.
-- `value` / `presets` qua `td_color_value()`: `#rgb` / `#rrggbb` (có hoặc không `#`) → `#rrggbb` chữ thường; giá trị
-  không hợp lệ ≤ 64 ký tự được **giữ** (escape) + một `E_USER_WARNING`, dài hơn → **không in** + warning; preset lỗi bị
-  bỏ + một warning; tối đa 48 preset, chỉ 192 mục đầu được xem, chuỗi `presets` > 12 288 byte bị bỏ cả chuỗi.
-
-**`td_color_value(mixed $v): ?string` — gọi khi nhận POST, trước khi kiểm / lưu** (bản không-JS gửi đúng chữ người dùng
-gõ, client bất kỳ POST được chuỗi tuỳ ý):
-
-```php
-$v = td_color_value($_POST['brand_color'] ?? null);
-if ($v === null) { http_response_code(422); exit; }   // lưu $v: khớp ^#[0-9a-f]{6}$ hoặc ''
-```
-
-| Vào | Ra |
-|---|---|
-| `'#AABBCC'`, `'aabbcc'`, `' #AbC '`, `'abc'` | `'#aabbcc'` |
-| `''`, `null`, chỉ khoảng trắng | `''` |
-| `'#abcd'`, `'#aabbccdd'`, `'rgb(0,0,0)'`, `'red'`, `'#ggg'`, mảng, số, chuỗi > 64 ký tự | `null` |
+`td_color_value(mixed $v): ?string` — **gọi khi nhận POST, trước khi kiểm / lưu**: `#rgb` / `#rrggbb` → `#rrggbb` chữ thường,
+rỗng → `''`, còn lại → `null` (trả 422). Bảng vào / ra + mã mẫu (PHP thuần, Laravel):
+[Phía server](../components/color-picker.md#phía-server-bắt-buộc).
 
 ## td_icon_picker và td_icon_value (0.94.0)
 
