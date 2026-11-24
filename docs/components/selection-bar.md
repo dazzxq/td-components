@@ -119,11 +119,9 @@ Khi **thanh** rộng dưới 36rem, nút có icon chỉ còn icon (chữ vẫn l
 **Gấp theo số nút — `fold="count"` (0.96.0, opt-in).** Mặc định `fold="width"` giữ y hệt 0.95.0. Với `count`, thanh
 theo chính sách gấp dùng chung với [`<td-page-actions>`](page-actions.md):
 
-- hiện **2** nút thường đầu tiên (thứ tự DOM, bỏ `hidden` / `data-td-in-menu`), rồi "…", rồi nút `primary` ở cuối;
-- phần còn lại + mọi `data-td-in-menu` vào "…" (kể cả khi chỉ còn 1 mục);
-- thanh hẹp dưới **480px** → chỉ còn primary + "…" (ngưỡng cố định, có độ trễ chống nhấp nháy);
-- 2 nút đã hiện mà vẫn không vừa → gấp tiếp từ cuối vào "…"; **primary không bao giờ gấp**;
-- không có primary → chỉ 2 nút + "…".
+- luật gấp (số nút hiện, ngưỡng hẹp, thứ tự gấp, primary không bao giờ gấp) ghi đầy đủ ở
+  [Page actions › Luật gấp](page-actions.md#2-luật-gấp);
+- khác `page-actions`: nút `primary` ở cuối khay; không có primary → chỉ 2 nút + "…".
 - (0.96.2) thanh hẹp mà × + số đếm + "…" + primary vẫn không vừa → chữ của số đếm rời màn hình (còn **số**,
   ví dụ "Đã chọn 12" → "12"; trình đọc màn hình vẫn đọc đủ câu), thiếu nữa thì nhãn primary bị cắt "…". Không bao
   giờ có nút đè lên số đếm.

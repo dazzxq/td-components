@@ -508,14 +508,23 @@ phần định dạng của dòng gợi ý đổi bằng attribute `accept-label
 
 ---
 
+## td-pagination
+
+`import '@dazzxq/td-components/pagination';` · Trang: [pagination.md](../components/pagination.md#6-chữ-thông-tin-riêng-cho-một-thanh-formatinfo--từ-0572)
+
+| Property | Chữ ký / kiểu | Khi nào gọi | Lỗi thì sao |
+|---|---|---|---|
+| `formatInfo` | `(ctx) => string` \| `null` | Mỗi lần dựng dòng thông tin | Không phải chuỗi / ném lỗi → chữ mặc định + một cảnh báo console; kết quả luôn là text (chi tiết ở trang component) |
+
+Chữ toàn trang đổi qua `TdPagination.labels`: [pagination.md › TdPagination.labels](../components/pagination.md#tdpaginationlabels).
+
+---
+
 ## Component không có hook JS
 
-td-button, td-input-field, td-checkbox, td-toggle, td-slider, td-pagination: tuỳ biến bằng attribute, token và event
+td-button, td-input-field, td-checkbox, td-toggle, td-slider: tuỳ biến bằng attribute, token và event
 (`click`, `input`, `change`, `page-change`). Các control form có [hợp đồng lỗi](#hợp-đồng-lỗi-của-mọi-form-control)
 và object tĩnh `messages` cho thông báo validation.
-Chữ của td-pagination đổi qua `TdPagination.labels` (toàn trang): `prev` (`Trang trước`), `next` (`Trang sau`),
-`page` (`Trang {n}`), `info` (`Hiển thị {from}-{to} / {total} {item}`), `item` (`mục`); attribute `item-label` thắng
-`labels.item`, tên landmark đổi bằng `aria-label`.
 
 ## Icon
 

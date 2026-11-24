@@ -56,7 +56,7 @@ Kết quả (rộng): `Nhập` · `Sắp xếp` · "…" (Xuất CSV, Xoá album
 | Attribute trên nút | Tác dụng |
 |---|---|
 | `data-td-tone="primary"` | Nút chính. `<td-button variant="primary">` / class `td-btn--primary` cũng được tính. Chỉ một; có nhiều thì nút đầu (DOM) thắng, các nút sau thành nút phụ (cảnh báo một lần). |
-| `data-td-tone="danger"` | Đánh dấu nút nguy hiểm (chỉ là thông tin; kiểu dáng do class nút của site). |
+| `data-td-tone="danger"` | Đánh dấu nút nguy hiểm: khi nút gấp vào "…" thì mục menu được tô kiểu nguy hiểm (`variant="danger"` / `.td-btn--danger` cũng được tính). Kiểu dáng của chính nút ngoài hàng do class nút của site. |
 | `data-td-in-menu` | Luôn nằm trong "…". |
 | `data-td-menu="tên"` | Nút mở [menu](menu.md) `TdMenu.define('tên', …)` neo vào **nút được bấm** (nút gốc, bản sao mirror, hay mục trong "…"). `ctx` gồm `data-td-menu-*` của nút gốc. |
 | `hidden` | Không hiện, không vào "…". |
@@ -172,10 +172,8 @@ Gỡ host khỏi trang: kit gỡ "…", `data-td-overflow`, bản sao mirror; n�
 
 ## Bảo mật
 
-- Bản sao mirror **không** dùng `cloneNode`: dựng lại theo allowlist (class, `aria-label`, `aria-disabled`, `title`;
-  link thêm `target` / `rel` / `download`, `_blank` luôn có `noopener`; `href` qua bộ lọc URL của nút). Bỏ `id`,
-  `data-*`, `style`, handler, `<script>` / `<img>` / form control…; SVG chỉ giữ thẻ / attribute của bộ icon. Mọi chữ là
-  text.
+- Bản sao mirror **không** dùng `cloneNode`: kit dựng lại nút theo allowlist, click bản sao = `click()` nút gốc.
+  Allowlist attribute, thẻ bị bỏ, SVG, chữ: [mô hình bảo mật §6t](../internal/security-model.md#6t-td-page-actions-mirror--td_page_actions-v0960).
 - Không attribute `style`: chỉ CSSOM `setProperty` cho `--td-*` → chạy dưới CSP strict.
 - PHP: chữ escape, `href` qua `Td::safeUrl` (hỏng → in `<button>` + warning), `data-td-*` trong `attrs` của site bị
   bỏ. Chi tiết: [mô hình bảo mật](../internal/security-model.md).
@@ -190,7 +188,7 @@ Nút + "…" (cả bản sao mirror) ≥ 44px trên màn chạm; hình nhấn c�
 - **Luôn chỉ thấy nút chính + "…"** — hàng cha (phần tử cha trực tiếp của host) hẹp dưới 480px, hoặc host không nằm
   trong hàng flex: đặt host cạnh h1 trong một hàng `display: flex`.
 - **Nút không vào "…"** — nó không phải con trực tiếp, hoặc không phải nút (§1).
-- **Mirror trống** — `mirror` trỏ id không tồn tại / không hợp lệ (xem cảnh báo console).
+- **Mirror trống** — `mirror` trỏ id không tồn tại (im lặng, không cảnh báo) hoặc phần tử không hợp lệ (chính host, nằm trong host, chứa host: có cảnh báo console một lần).
 
 ## Xem thêm
 

@@ -2047,15 +2047,7 @@ In `<td-hint for="{for}" id="{for}-hint">`. Options (`id`, `class`, `attrs`), lu
 
 ## td_page_actions (0.96.0)
 
-```php
-echo td_page_actions([
-  ['label' => 'Nhập', 'href' => '/photos/import'],
-  ['label' => 'Sắp xếp', 'menu' => 'photos-sort'],
-  ['label' => 'Xuất CSV', 'in_menu' => true, 'attrs' => ['data-export' => 'csv']],
-  ['label' => 'Xoá album', 'tone' => 'danger'],
-  $canUpload ? ['label' => 'Tải ảnh lên', 'primary' => true, 'icon' => 'upload'] : null,
-], ['label' => 'Thao tác trang', 'mirror' => 'sticky-actions']);
-```
+Ví dụ gọi đầy đủ: [Page actions › PHP](../components/page-actions.md#4-php--td_page_actions).
 
 `<td-page-actions data-td-ssr="page-actions@1" label mirror role="group" aria-label>` (hằng `Td::SSR_PAGE_ACTIONS`);
 nút chính in **cuối** (đúng thứ tự cả khi không JS). Mỗi nút in bằng `td_button()` / `td_link()`.

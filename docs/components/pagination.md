@@ -290,7 +290,7 @@ chỉ `active-color` mới tự tính màu chữ.
 - Nút trước/sau dùng `aria-disabled` thay vì `disabled` để không mất focus khi tới đầu/cuối.
 - Dòng thông tin là `aria-live="polite"` (trừ khi `quiet`) → trình đọc màn hình đọc "Hiển thị 11-20 / 240 mục".
 - 0.59.0 `hide-single-page`: khi phần nút bị ẩn lúc đang có focus, focus chuyển sang dòng thông tin (không mất focus).
-- Nút ≥ 32 px (con trỏ chuột), ≥ `--td-touch-min` trên cảm ứng. Trang hiện tại mặc định ≥ 4.5:1 ở cả sáng và tối.
+- Kích thước nút: token `--td-pagination-item-size` (xem [Tuỳ biến giao diện](#tuỳ-biến-giao-diện)). Trang hiện tại mặc định ≥ 4.5:1 ở cả sáng và tối.
 - Forced colors: trang hiện tại dùng `Highlight`/`HighlightText`.
 
 ## Bảo mật
@@ -300,7 +300,7 @@ DOM bị chặn bởi `max-pages ≤ 25`, nên giá trị lớn từ API/CMS kh�
 
 ## Cảm ứng
 
-- Nút trang và nút trước / sau có hình nhấn; hover chỉ trên con trỏ mịn. Vùng chạm ≥ 44 px trên con trỏ thô.
+- Nút trang và nút trước / sau có hình nhấn; hover chỉ trên con trỏ mịn. Vùng chạm theo `--td-touch-min` trên con trỏ thô.
 
 Chuẩn chung: [Cảm ứng](../guides/touch.md).
 
