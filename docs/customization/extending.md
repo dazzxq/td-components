@@ -464,14 +464,14 @@ tự bàn phím, `inert` và focus luôn đúng dù bạn mở menu trên lightb
 | Lớp (thấp → cao) | Component |
 |---|---|
 | 350 | TdLightbox |
-| 400 | TdModal (và picker của td-datetime-picker, vốn là một TdModal) |
-| 450 | TdMenu, TdHovercard, menu của td-dropdown, popup của td-chip-input |
+| 400 | TdModal (kể cả bottom sheet < 720px của td-datetime-picker; popover ≥ 720px nằm ở lớp 450) |
+| 450 | TdMenu, TdHovercard, menu của td-dropdown, popup của td-chip-input, popover của td-datetime-picker (≥ 720px) |
 | 480 | TdLoading |
 | 500 | TdToast (nút đóng vẫn nằm trong vòng Tab của modal) |
 | 510 | Tooltip |
 
 Lớp cao hơn nhận Escape / Tab trước; modal và loading làm `inert` mọi thứ bên dưới. Bên trong kit cũng tự kết hợp:
-td-table dùng td-pagination + td-empty-state, td-datetime-picker mở TdModal.
+td-table dùng td-pagination + td-empty-state, td-datetime-picker dưới 720px mở TdModal làm bottom sheet.
 
 ### Modal chứa form + validation + loading nút
 

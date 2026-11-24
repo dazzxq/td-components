@@ -155,6 +155,9 @@ khoá không quan trọng), mảng giá trị đơn so như **tập** (mảng c�
 | `list` mỗi bên | 200 phần tử được đọc / giữ (độ dài gốc vẫn tính cho "+{n} phần tử"); chữ phần tử tính vào trần 300 000 | "+{n} phần tử" |
 | Việc chung của một diff (phần tử mảng được đọc, bước so sánh, item) | 100 000 | mảng sau đó hiện "Mảng {n} phần tử" + "không so sánh được", ghi chú "Dữ liệu quá lớn…" |
 | Khoá dùng làm định danh | 1 000 ký tự | hai hàng riêng + ghi chú (không ghép) |
+| `fields` (snapshot) | 200 `FieldDef` | bỏ phần dư + một cảnh báo |
+| `unit` | 20 ký tự | cắt |
+| Độ sâu JSON view | 32 cấp | cắt thành `…` |
 
 ## Attribute
 
@@ -275,6 +278,8 @@ Giá trị dài: bản xem trước + `<details class="td-diff__more">`. Mảng:
   hỏng khác nhau không bao giờ "không đổi"); khoá hỏng không bao giờ được ghép (mỗi bên một hàng). `FieldDef` có đoạn hỏng bị bỏ.
 - Options: `fields` (snapshot), `view`, `unchanged`, `json`, `label`, `labels`, `id`, `class`, `attrs` (allowlist; `on*`,
   `style`, `data-td-*` và tên của component bị chặn). Lỗi dữ liệu → **một** `E_USER_WARNING` mỗi lần gọi (chỉ mã, không giá trị).
+- `null` = rỗng (sự kiện tạo / xoá). Object khác (`DateTime`, model…) không nhận ở mức gốc (`TypeError` qua kiểu tham số), lồng bên trong → `[không hỗ trợ]`: tự `json_encode` trước. Số thực in như `String(n)` của JavaScript, không phụ thuộc `precision` / `serialize_precision`.
+- `Td::diffModel($input, ['json' => …, 'labels' => …])` trả model (hàng, `counts`, ghi chú) — ví dụ để in "3 trường đổi" trong danh sách sự kiện.
 - Xem [PHP adapter](../guides/php-adapter.md#td_diff--td_diff_snapshots-0460).
 
 ## Lưu ý & lỗi thường gặp

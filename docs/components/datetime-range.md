@@ -133,10 +133,7 @@ gõ (Từ – Đến) + nút lịch**; hộp thoại y như trên. **Opt-in** �
   `inputmode="none"`, chạm = mở hộp thoại như 0.62, không bàn phím ảo.
 - **Gõ phím** như picker đơn ([bảng](datetime-picker.md#11-gõ-tay-editable-0630)): chỉ chữ số — `20031994` (hoặc `20/3/1994`,
   phím `/` điền số 0) → `20/03/1994`; `datetime` thêm giờ `0830` (thiếu giờ → lỗi "Vui lòng nhập đầy đủ…"); năm luôn 4 chữ số.
-  **Dán** một ngày đọc được (`20.3.1994`, ISO `1994-03-20`…) → định dạng hiển thị.
-- **Chỉ chữ số + mặt nạ khi gõ (0.63.1)** trên cả hai ô, như picker đơn ([mục 11](datetime-picker.md#11-gõ-tay-editable-0630)):
-  gõ `01031994` → ô hiện `01/03/1994` ngay lúc gõ; ký tự khác bị chặn, `/` điền số 0 (`1/3/1994` → `01/03/1994`); dán ngày đọc được →
-  định dạng hiển thị.
+  **Dán** một ngày đọc được (`20.3.1994`, ISO `1994-03-20`…) → định dạng hiển thị. Từ 0.63.1 mặt nạ áp ngay lúc gõ trên cả hai ô, ký tự khác bị chặn (chi tiết: [mục 11](datetime-picker.md#11-gõ-tay-editable-0630)).
 - **Mỗi ô chốt bên của nó** — `Enter` (không chặn: form submit ngầm thấy giá trị mới), rời ô, trước khi hộp thoại mở; chữ không
   đổi → không làm gì. Bên đó được ghi như bảng của picker (rỗng → xoá; hợp lệ → dạng chuẩn; ngoài `min` / `max` → ghi, không
   kẹp; không đọc được / ngày không có → chữ thô, `badInput`).
@@ -166,9 +163,7 @@ gõ (Từ – Đến) + nút lịch**; hộp thoại y như trên. **Opt-in** �
 - Nhãn mới (đổi được): `TdDatetimeRange.labels.openCalendar` 'Mở lịch' (tên nút), `startInput` / `endInput` 'Từ ngày' / 'Đến
   ngày' (tên ẩn của hai ô; `datetime`: `startInputDatetime` / `endInputDatetime` 'Từ' / 'Đến'), `sidePlaceholder` 'dd/mm/yyyy'
   / `sidePlaceholderDatetime` 'dd/mm/yyyy - hh:mm' (placeholder từng ô; attribute `placeholder` của host không dùng ở chế độ này).
-- **PHP**: `td_datetime_range('chup', $from, $to, ['editable' => true])` chỉ in attribute `editable` trên host; markup SSR (hai
-  ô native + trigger) không đổi — element không nhận markup đó (khác cấu trúc) mà render an toàn, **giữ giá trị native** người
-  dùng đã sửa trước khi JS chạy.
+- **PHP**: option `editable` chỉ in attribute lên host, giữ giá trị native — xem [PHP adapter › td_datetime_range](../guides/php-adapter.md#td_datetime_range-0400).
 - **Bề rộng hai ô (0.63.3)**: mỗi ô rộng đúng bằng chữ nó hiện (placeholder khi trống, một ngày đầy đủ khi có giá trị), chỗ
   thừa dồn về trước nút lịch — dòng đọc liền `26/07/2026 – 26/07/2026`, dấu "–" cách đều hai ngày ở mọi bề rộng. Ô hẹp hơn chữ
   (`datetime` trong ô hẹp) thì hai ô co đều, chữ cắt bằng "…" như trước. Bề rộng do hai `span.td-dtr__sizer` ẩn (`aria-hidden`)
@@ -217,7 +212,7 @@ el.presets = [TdDatetimeRange.presets[0], TdDatetimeRange.presets[1]];
 | `start`, `end` | — | Giá trị: định dạng hiển thị (`dd/mm/yyyy`, `dd/mm/yyyy - hh:mm`) hoặc ISO (`yyyy-mm-dd`, `yyyy-mm-ddThh:mm`) |
 | `mode` | `date` | `date` \| `datetime` (`month` / `year` → `date` + cảnh báo) |
 | `label` | — | Nhãn hiện (đặt tên cho trigger); không có → `aria-label` của host → `<label for>` ngoài |
-| `placeholder` | `dd/mm/yyyy – dd/mm/yyyy` | Chữ khi cả hai mốc trống |
+| `placeholder` | `date`: `dd/mm/yyyy – dd/mm/yyyy`; `datetime`: `dd/mm/yyyy hh:mm – dd/mm/yyyy hh:mm` | Chữ khi cả hai mốc trống |
 | `min`, `max` | — | Áp cho **cả hai** mốc, cùng định dạng / nghĩa với picker đơn (`max` chỉ ngày = 23:59) |
 | `max-days` | — | Khoảng dài nhất (ngày lịch, tính cả hai đầu) |
 | `minute-step` | `1` | Bước bánh xe phút (`datetime`) |
@@ -317,16 +312,7 @@ Kiểm tra trong trình duyệt **không phải lớp bảo mật**: server luô
 <?= td_datetime_range('hl', $contract->starts_on, $contract->ends_on, ['label' => 'Hiệu lực', 'required' => true, 'allow_open_end' => true]) ?>
 ```
 
-0.59.0 `allow_open_end`: host `allow-open-end`, ô native "Đến" không bao giờ `required`, chỉ có Từ → trigger "{Từ} – Không hạn".
-0.63.0 `editable`: host `editable` (gõ tay — [Gõ tay](#gõ-tay-editable-0630)); markup SSR không đổi, element render an toàn
-(giữ giá trị native).
-
-**Không JS:** hai `<input type="date">` (hoặc `datetime-local`) native tên `{name}[start]` / `{name}[end]`, nhãn "Từ" /
-"Đến", `min` / `max`, `required` **theo từng mốc** (`'start'` → chỉ input Từ…) — form chạy được, trình duyệt kiểm `required`
-đúng từng mốc. **Có JS:** element nhận markup **tại chỗ**: giá trị người dùng đã sửa trong ô native được giữ, FormData còn
-đúng một cặp (của host), ô native bị gỡ, focus đang ở ô native chuyển sang trigger. Markup bị sửa (input thừa, `formaction`,
-`required` lệch mốc…) → render an toàn, chỉ giữ giá trị sống khi mỗi mốc có **đúng một** ô. Chi tiết tuỳ chọn:
-[PHP adapter › td_datetime_range](../guides/php-adapter.md#td_datetime_range-0400).
+0.59.0 `allow_open_end` / 0.63.0 `editable`: option và hành vi SSR ghi đủ ở [PHP adapter › td_datetime_range](../guides/php-adapter.md#td_datetime_range-0400). Hợp đồng `datetime-range@1` (không JS: hai ô native; có JS: nhận markup tại chỗ, giữ giá trị đã sửa, gỡ ô native; markup lệch → render an toàn) cũng ở đó.
 
 **Trước khi JS tải (0.51.1, [ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)):** khi trình duyệt chạy JS
 (`@media (scripting: enabled)`), hai ô native nằm trong **một hộp field giống trigger đóng** (viền, bo góc, cao, padding,

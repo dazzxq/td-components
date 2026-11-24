@@ -425,6 +425,7 @@ Không có method `open()` công khai. Muốn mở bằng code, bấm nút trigg
 | `confirm` | `Chọn` | Nút xác nhận (datetime) |
 | `prevMonth` / `nextMonth` / `prevYear` / `nextYear` / `prevYears` / `nextYears` | `Tháng trước` / `Tháng sau` / `Năm trước` / `Năm sau` / `12 năm trước` / `12 năm sau` | Tên nút ‹ › theo khung (0.60.0) |
 | `pickMonth` / `pickYear` | `chọn tháng` / `chọn năm` | Đuôi tên nút tháng / năm trên đầu lịch ("Tháng 6, chọn tháng") |
+| `timeBack` / `timeHeading` / `timeFor` | `Chọn lại ngày` / `{weekday}, {day}/{month}/{year}` / `Chọn giờ cho {date}` | Màn giờ của datetime (0.61.0): nút quay lại màn ngày, tiêu đề màn giờ, tên vùng giờ |
 | `weekdaysShort` / `weekdaysLong` | `['T2', … 'CN']` / `['Thứ Hai', … 'Chủ Nhật']` | **Mảng 7 chuỗi**, bắt đầu Thứ Hai (sai dạng → mặc định + một cảnh báo) |
 | `monthName` / `heading` / `headingMonths` / `headingYears` | `Tháng {n}` / `Tháng {month} năm {year}` / `Năm {year}` / `{from} – {to}` | Nút tháng, vùng đọc `aria-live` theo khung |
 | `dayLabel` / `yearLabel` / `todaySuffix` | `{weekday}, {day} tháng {month} năm {year}` / `Năm {year}` / `hôm nay` | Tên truy cập từng ô |
@@ -480,7 +481,6 @@ nguyên văn.
 | `--td-dtp-band-border` | `var(--td-control-border-hover)` | Viền dải chọn |
 | `--td-dtp-option-fg` | `var(--td-color-text-muted)` | Màu chữ dòng chưa chọn |
 | `--td-dtp-option-selected-fg` | `var(--td-color-text)` | Màu chữ dòng đang chọn |
-| `--td-dtp-preview-bg` | `var(--td-color-hover)` | Nền dòng xem trước |
 
 Lịch (0.60.0) — token ở `:root` / `[data-td-theme]`, trỏ tới token theme có sẵn (không thêm token màu theme):
 
@@ -521,7 +521,7 @@ theo phía rộng hơn; vùng lưới + bánh xe (`.td-dtp-pop__scroll`) **co l�
 và có thể che ô. Popover luôn nằm trọn trong khung nhìn (gate: 720 / 844 / 1280 × cao 400 / 480 / 600, ô neo đầu / giữa /
 cuối, chuột và cảm ứng, cả khi nằm trên một TdModal).
 
-**Bottom sheet < 720px:** cùng cây DOM trong TdModal, không có chân modal (hàng nút ở thân sheet, dính đáy). Bánh xe 3 dòng.
+**Bottom sheet < 720px:** cùng cây DOM trong TdModal, hàng nút ở chân sheet (`TdModal.show({ footer })`, không cuộn — 0.61.0). Bánh xe 3 dòng.
 Ô ngày cao `--td-cal-cell` (44px trên cảm ứng) và **vừa 7 cột từ 320px**: lề ngang của sheet co từ 24px xuống tối thiểu 4px
 (`clamp`) để ô rộng ≥ 44px. Chiều cao đo ở 360–393px rộng, ô 44px: sheet chỉ-ngày ≈ 521px (61–67 % của 780–852px), sheet
 ngày-giờ ≈ 665px (78–85 %, trần của modal là 90 %). (0.36.0: sheet cũ ≈ 47–49 %.)

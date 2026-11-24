@@ -1645,7 +1645,7 @@ foreach ((array) ($_GET['tag'] ?? []) as $t) {               // nhiều giá tr�
 
 ```
 <td-datetime-range data-td-ssr="datetime-range@1" id name mode [start end start-name end-name label placeholder min max
-                   max-days minute-step form-value-format required disabled error-text] [attrs…]>
+                   max-days minute-step form-value-format required disabled helper-text error-text allow-open-end editable] [attrs…]>
   <div class="td-dtr" data-state="closed">
     [<span class="td-field__label td-dtr__label" id="{id}-label">nhãn[ *]</span>]
     <div class="td-dtr__natives" role="group" [aria-labelledby]>
@@ -1828,36 +1828,9 @@ markup **cuối cùng** — giống hệt `render()` của component cho cùng d
 - **Không JS**: bảng hiện ngay; "n trường không đổi", "Xem đầy đủ", "Xem JSON" là `<details>` native. **Nạp
   `@dazzxq/td-components/diff`**: nhận tại chỗ (không render lại, không đọc dữ liệu ngược từ DOM — `counts` là `null` tới khi
   JS gán dữ liệu); gán `items` / `before` / `after` sau đó → render lại.
-- **Item** (`td_diff`): mảng hoặc `stdClass` với `key` (chuỗi / số, bắt buộc), `label`, `before`, `after`, `kind`, `masked`,
-  `type`, `options`, `decimals`, `unit` — cùng nghĩa với JS ([diff.md § 2](../components/diff.md#2-item-items)). `masked =>
-  true`: `before` / `after` là **chuỗi** (server đã che: `***678`) → in nguyên văn; khác → `[ĐÃ ẨN]`.
-- **Snapshot** (`td_diff_snapshots`), mỗi bên:
-
-  | Đầu vào | Hiểu là |
-  |---|---|
-  | `string` (**khuyên dùng**) | JSON, giải mã giữ object là object (`{"0": …}`, `{}`). Lớn hơn 2 MB / JSON sai / sâu hơn 64 cấp → ghi chú, **không** hàng, không ném lỗi, không in chuỗi gốc |
-  | `stdClass` | object (khoá luôn là chuỗi, thứ tự khoá như JavaScript) |
-  | `array` | quy tắc **hẹp**: `array_is_list()` → mảng, còn lại → object (khoá số thành chuỗi). Mảng kết hợp có khoá đúng `0..n-1` bị hiểu là mảng; `[]` không phân biệt `{}` (cả hai rỗng). Cần chính xác → truyền chuỗi JSON / `stdClass` |
-  | `null` | rỗng (sự kiện tạo / xoá) |
-  | object khác (`DateTime`, model…) | không nhận ở mức gốc (`TypeError` qua kiểu tham số); lồng bên trong → `[không hỗ trợ]` — tự `json_encode` trước |
-
-- **Số**: cùng luật với JS — số nguyên vượt ±(2⁵³ − 1) → `[số quá lớn]`, `1e309` → `[không hỗ trợ]`, số thực in như
-  `String(n)` của JavaScript, không phụ thuộc `precision` / `serialize_precision`. ID / tiền có thể vượt 2⁵³ − 1 → gửi chuỗi.
-- **Không che gì**: server bỏ / che bí mật trước khi gọi. Lỗi dữ liệu (item không có `key`, `kind` lạ, `fields` sai) → **một**
-  `E_USER_WARNING` mỗi lần gọi (chỉ mã lỗi, không giá trị).
-- `Td::diffModel($input, ['json' => …, 'labels' => …])` trả model (hàng, `counts`, ghi chú) — ví dụ để in "3 trường đổi"
-  trong danh sách sự kiện.
-
-| Option | Ý nghĩa |
-|---|---|
-| `fields` | (`td_diff_snapshots`) `FieldDef`: `['path' => 'status' \| ['lines', 0, 'qty'], 'label', 'type', 'options', 'decimals', 'unit', 'masked']` |
-| `view` | `auto` / `table` / `inline` (giá trị khác: bỏ qua) |
-| `unchanged` | `collapse` / `show` / `hide` |
-| `json` | `true` → khối "Xem JSON" |
-| `label` | tên trợ năng của bảng |
-| `labels` | ghi đè chữ (`Td::DIFF_LABELS`, cùng khoá `TdDiff.labels`) — site đổi chữ JS thì đổi cả ở đây để markup khớp |
-| `id`, `class` | trên host |
-| `attrs` | trên **host** (allowlist + `aria-*` / `data-*`). Giữ chỗ — bị bỏ: `id` `class` `view` `unchanged` `json` `label` + mọi `data-td-*` |
+- Item (khoá `key`, `label`, `before`, `after`, `kind`, `masked`, `type`, `options`, `decimals`, `unit`), `masked`, kiểu snapshot nhận được (chuỗi JSON khuyên dùng, `stdClass`, `array` theo `array_is_list()`, `null`), luật số lớn, giới hạn 2 MB / 64 cấp và `Td::diffModel`: ghi đủ ở [diff.md › PHP](../components/diff.md#php-không-cần-js) và [mục 2](../components/diff.md#2-item-items) / [5](../components/diff.md#5-trường-bị-che-masked) / [7](../components/diff.md#7-giới-hạn).
+- **Không che gì**: server bỏ / che bí mật trước khi gọi. Lỗi dữ liệu → **một** `E_USER_WARNING` mỗi lần gọi (chỉ mã lỗi, không giá trị).
+- Options: `fields` (chỉ `td_diff_snapshots`), `view`, `unchanged`, `json`, `label`, `labels` (`Td::DIFF_LABELS` — site đổi chữ JS thì đổi cả ở đây để markup khớp), `id`, `class`, `attrs` (host, allowlist): mô tả từng option ở [diff.md › PHP](../components/diff.md#php-không-cần-js).
 ## td_check_matrix (0.47.0)
 
 ```php

@@ -525,34 +525,7 @@ field gọi `adapter.get` lười. Event `input` / `change` (`{ value, selection
 
 `import '@dazzxq/td-components/datetime-picker';` · Trang: [datetime-picker.md](../components/datetime-picker.md)
 
-Không có callback; nghe event `change` (`detail = { value, dbValue }`). Hai object cấu hình tĩnh:
-
-`TdDatetimePicker.labels`:
-
-| Khoá | Mặc định | Dùng ở |
-|---|---|---|
-| `title` | `Chọn ngày giờ` | Tiêu đề dialog |
-| `placeholder` | `dd/mm/yyyy - hh:mm` | Khi không có attribute `placeholder` |
-| `date`, `time` | `Ngày`, `Giờ` | Tiêu đề nhóm ngày / giờ |
-| `day`, `month`, `year` | `Ngày`, `Tháng`, `Năm` | Nhãn ba ô ngày |
-| `hour`, `minute` | `Giờ`, `Phút` | Tên hai bánh xe |
-| `close`, `now`, `confirm` | `Đóng`, `Bây giờ`, `Chọn` | Ba nút footer |
-
-`TdDatetimePicker.messages` (`{min}` / `{max}` được điền):
-
-| Khoá | Mặc định |
-|---|---|
-| `required` | `Vui lòng chọn ngày giờ` |
-| `format` | `Định dạng ngày giờ không hợp lệ` |
-| `incomplete` | `Vui lòng nhập đầy đủ ngày, tháng, năm` |
-| `day` | `Ngày phải từ 1 đến 31` |
-| `month` | `Tháng phải từ 1 đến 12` |
-| `year` | `Năm phải từ {min} đến {max}` |
-| `hour` | `Giờ phải từ 0 đến 23` |
-| `minute` | `Phút phải từ 0 đến 59` |
-| `date` | `Ngày không hợp lệ` |
-| `min` | `Không được trước {min}` |
-| `max` | `Không được sau {max}` |
+Không có callback; nghe event `change` (`detail = { value, dbValue }`). Hai object cấu hình tĩnh `TdDatetimePicker.labels` (chữ giao diện, kể cả nhãn lịch) và `TdDatetimePicker.messages` (thông báo kiểm tra, `{min}` / `{max}` được điền): bảng đủ key + mặc định ở [datetime-picker.md › Hook & tuỳ chọn](../components/datetime-picker.md#hook--tuỳ-chọn).
 
 ---
 
