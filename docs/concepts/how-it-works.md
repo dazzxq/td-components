@@ -222,11 +222,11 @@ Mỗi loại lớp nổi có một tầng, trùng với token `z-index` trong `t
 | Tầng | Token | Giá trị | Ai dùng | Loại |
 |---|---|---|---|---|
 | dropdown | `--td-z-dropdown` | 100 | Dự phòng — không component nào dùng (menu dropdown dùng tầng popover) | |
-| sticky | `--td-z-sticky` | 200 | `<td-scroll-top>` (nút cố định góc màn hình, không vào registry lớp nổi); bảng token đầy đủ: [Tuỳ biến giao diện](../customization/theming.md#z-index) | |
+| sticky | `--td-z-sticky` | 200 | `<td-scroll-top>`, `<td-selection-bar>` (cố định trên màn hình, không vào registry lớp nổi); bảng token đầy đủ: [Tuỳ biến giao diện](../customization/theming.md#z-index) | |
 | overlay | `--td-z-overlay` | 300 | Dự phòng — không component nào dùng | |
 | lightbox | `--td-z-lightbox` | 350 | `TdLightbox` | chặn (blocking) |
 | modal | `--td-z-modal` | 400 | `TdModal` (mọi dialog) | chặn |
-| popover | `--td-z-popover` | 450 | menu của `td-dropdown`, gợi ý `td-chip-input`, `TdMenu`, `TdHovercard` | nổi (floating) |
+| popover | `--td-z-popover` | 450 | menu của `td-dropdown`, gợi ý `td-chip-input`, popup `td-tree-select` / `td-color-picker` / `td-icon-picker`, popover lịch, `TdMenu`, `TdHovercard` | nổi (floating) |
 | loading | `--td-z-loading` | 480 | `TdLoading` (overlay toàn trang) | chặn |
 | toast | `--td-z-toast` | 500 | `TdToast` | nổi, không nhận bàn phím |
 | tooltip | `--td-z-tooltip` | 510 | tooltip | nổi |

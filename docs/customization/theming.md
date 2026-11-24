@@ -114,19 +114,9 @@ specificity hay thứ tự file. Vì `td.css` đặt mọi thứ trong layer, b�
 
 Thứ tự `<link>` không quan trọng với cách này: `site.css` nạp trước hay sau `td.css` đều thắng.
 
-Nếu site của bạn **bắt buộc** dùng `@layer` (ví dụ Tailwind v4 hay một design system có layer riêng), hãy nhớ: với
-khai báo bình thường, **layer khai báo sau thắng layer khai báo trước**, và thứ tự được chốt ở lần đầu trình duyệt gặp
-tên layer. Nếu layer của site được khai báo trước `td.css`, CSS của td sẽ thắng CSS của bạn. Cách chắc chắn: đặt câu
-khai báo thứ tự ở đầu file CSS đầu tiên của trang (nạp **trước** `td.css`):
-
-```css
-/* file CSS đầu tiên của trang */
-@layer td, site;            /* td (gồm td.tokens / td.component / td.utilities) đứng trước → layer "site" thắng */
-
-@layer site {
-  :root { --td-accent: #b3261e; }
-}
-```
+Nếu site của bạn **bắt buộc** dùng `@layer` (ví dụ Tailwind v4 hay một design system có layer riêng): layer khai báo sau thắng
+layer khai báo trước, nên phải khai báo `@layer td, site;` ở file CSS nạp sớm nhất. Công thức đầy đủ + ví dụ code ở
+[styling.md](styling.md#nếu-site-dùng-layer).
 
 Chi tiết về layer và cách override class: [styling.md](styling.md#thứ-tự-cascade-layer).
 
@@ -266,11 +256,11 @@ Thang xám **không** đổi trong dark; dark đổi các token ngữ nghĩa bê
 | Token | Mặc định | Lớp |
 |---|---|---|
 | `--td-z-dropdown` | `100` | **Dự trữ**: không component nào dùng (menu của td-dropdown dùng `--td-z-popover`); giữ vì là token public |
-| `--td-z-sticky` | `200` | `<td-scroll-top>` (qua `--td-scroll-top-z`); site cũng có thể dùng cho header dính của mình |
+| `--td-z-sticky` | `200` | `<td-scroll-top>` (qua `--td-scroll-top-z`), `<td-selection-bar>` (qua `--td-selection-bar-z`); site cũng có thể dùng cho header dính của mình |
 | `--td-z-overlay` | `300` | **Dự trữ**, dành cho site |
 | `--td-z-lightbox` | `350` | TdLightbox (dưới modal: confirm/menu mở được trên lightbox) |
 | `--td-z-modal` | `400` | TdModal (kể cả bottom sheet < 720px của td-datetime-picker) |
-| `--td-z-popover` | `450` | TdMenu, TdHovercard, menu của td-dropdown, popup gợi ý của td-chip-input, popover của td-datetime-picker (≥ 720px) |
+| `--td-z-popover` | `450` | TdMenu, TdHovercard, menu của td-dropdown, popup gợi ý của td-chip-input, popup của td-tree-select / td-color-picker / td-icon-picker, lịch (calendar), popover của td-datetime-picker (≥ 720px) |
 | `--td-z-loading` | `480` | overlay loading chặn thao tác |
 | `--td-z-toast` | `500` | toast |
 | `--td-z-tooltip` | `510` | tooltip |
@@ -415,8 +405,8 @@ disabled không có shadow.
 | `--td-btn-primary-fg` | `#fff` | `#18181b` |
 | `--td-btn-primary-hover` | `#3f3f46` | `#d4d4d8` |
 | `--td-btn-primary-border` | `transparent` | |
-| `--td-btn-secondary-bg` | `var(--td-gray-100)` | `#2c2c30` |
-| `--td-btn-secondary-fg` | `var(--td-gray-900)` | `#f5f5f7` |
+| `--td-btn-secondary-bg` | `var(--td-color-fill)` | `#2c2c30` |
+| `--td-btn-secondary-fg` | `var(--td-color-text)` | `#f5f5f7` |
 | `--td-btn-secondary-border` | `rgb(0 0 0 / 12%)` | `rgb(255 255 255 / 12%)` |
 | `--td-btn-secondary-hover` | `var(--td-gray-200)` | `#3a3a3e` |
 | `--td-btn-{success,danger,info,warning}-bg` | `var(--td-solid-{v}-bg)` (0.36.0) | như light |
@@ -427,7 +417,7 @@ disabled không có shadow.
 | `--td-btn-disabled-fg` | `#a1a1aa` | `#6b6b73` |
 | `--td-btn-disabled-border` | `#e4e4e7` | `rgb(255 255 255 / 6%)` |
 | `--td-btn-lift` | `0 1px 3px rgb(0 0 0 / 10%), 0 4px 10px -2px rgb(0 0 0 / 12%)` (0.21.0) | `0 1px 3px rgb(0 0 0 / 20%), 0 4px 10px -2px rgb(0 0 0 / 24%)` |
-| `--td-btn-ghost-fg` | `var(--td-accent)` (#2563eb) | theo `--td-accent` dark (#3b82f6) |
+| `--td-btn-ghost-fg` | `var(--td-accent)` (#2563eb) | theo `--td-accent` dark (#4b8df8) |
 | `--td-btn-ghost-hover-bg` | `var(--td-color-hover)` (`rgb(0 0 0 / 5%)`) | theo `--td-color-hover` dark (`rgb(255 255 255 / 6%)`) |
 
 Ghi chú:
@@ -945,14 +935,9 @@ Giá trị khác `"off"` không có tác dụng.
 Bạn không cần viết gì. Các fallback nằm trong `glass.css` và `tokens.css`, được áp **với `!important` trong layer đầu
 tiên**, nên override token của site (kể cả có `!important`) **không thể** phá chúng.
 
-| Điều kiện | Bề mặt / nút trở thành |
-|---|---|
-| Trình duyệt không hỗ trợ `backdrop-filter` | Nền đặc `--td-glass-solid` (tránh chữ đè thẳng lên nội dung phía sau) |
-| `prefers-reduced-transparency: reduce` (hiện chỉ Chromium) | Nền đặc, không blur |
-| `html[data-td-glass="off"]` | Như dòng trên |
-| `prefers-contrast: more` | Nền `--td-color-surface`, chữ `--td-color-text`, viền `currentcolor`, không blur, không shadow (cả nút); thanh lightbox thành đen + viền trắng |
-| `forced-colors: active` (Windows High Contrast) | Màu hệ thống `Canvas` / `CanvasText` / `ButtonFace` / `ButtonText`, không shadow, không filter |
-| `prefers-reduced-motion: reduce` | Chuyển động chỉ còn crossfade 120ms, không nhún; sheet modal / toast không trượt |
+Bảng đủ các điều kiện (không hỗ trợ `backdrop-filter`, `prefers-reduced-transparency`, `data-td-glass="off"`,
+`prefers-contrast: more`, `forced-colors`, `prefers-reduced-motion`) và cơ chế `--_td-*` nằm ở
+[accessibility.md](../guides/accessibility.md#media-query-trợ-năng).
 
 Vì fallback dùng `--td-glass-solid` (0.41.0: = `--td-color-surface-raised`), nếu site đổi nền bề mặt (`--td-glass-bg` /
 `-bg-strong`) sang tông giấy riêng thì **nhớ đổi cả** `--td-color-surface-raised` (hoặc `--td-glass-solid`) cho khớp.
@@ -1102,7 +1087,7 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | Component | Tiền tố token | Khai báo ở | Trang |
 |---|---|---|---|
 | td-button | `--td-btn-*` (bảng trên), `--td-btn-bg` / `--td-btn-fg` (per-instance, do JS đặt) | `:root` | [button.md](../components/button.md) |
-| td-input-field (và nhãn/ghi chú của mọi field) | `--td-field-*`; 0.55.0: `--td-field-note-size` (cỡ chữ **mọi** gợi ý — `helper-text`, `<td-hint>`, chữ trợ giúp media; `var(--td-text-xs)`, cảm ứng `var(--td-text-sm)`; đặt không layer để thắng cả nhánh cảm ứng); 0.57.1: `--td-field-error-size` (cỡ chữ **mọi** dòng lỗi `.td-field-error`; không khai báo sẵn → theo `--td-field-note-size`, kể cả khi site đặt nó trong một vùng), `--td-field-affix-fg` (chữ / icon tiền tố / hậu tố, `var(--td-color-text-muted)`), `--td-field-affix-gap` (`var(--td-space-2xs)`), `--td-field-affix-icon` (`1.125em`); 0.58.0 nhãn nổi: `--td-field-float-h-sm` / `-md` / `-lg` (`48px` / `56px` / `64px`), `--td-field-float-scale` (`0.857`), `--td-field-float-label` (`var(--td-field-placeholder)`), `--td-field-float-label-focus` (`var(--td-accent)` — alias token hợp đồng, palette `td-theme` không cần dòng mới) | `:root` (màu: `:root, [data-td-theme]`) | [input-field.md](../components/input-field.md), [hint.md](../components/hint.md#tuỳ-biến-giao-diện) |
+| td-input-field (và nhãn/ghi chú của mọi field) | `--td-field-*` (gồm cỡ chữ gợi ý / lỗi `-note-size` / `-error-size`, tiền tố / hậu tố `-affix-*`, nhãn nổi `-float-*`) | `:root` (màu: `:root, [data-td-theme]`) | [input-field.md](../components/input-field.md#tuỳ-biến-giao-diện), [hint.md](../components/hint.md#tuỳ-biến-giao-diện) |
 | td-checkbox | `--td-checkbox-radius`, `--td-checkbox-box` | `:root` (`--sm` / `--lg` đặt lại `-box` trên phần tử) | [checkbox.md](../components/checkbox.md) |
 | td-toggle | `--td-switch-w`, `--td-switch-h`, `--td-switch-thumb-d` | `:root` (`--sm` / `--lg` đặt lại trên phần tử); `--td-switch-pad` dẫn xuất, tính trên `.td-switch` | [toggle.md](../components/toggle.md) |
 | td-slider | `--td-slider-*` | `:root` (riêng `--td-slider-h` / `--td-slider-thumb` trên phần tử) | [slider.md](../components/slider.md) |
@@ -1113,7 +1098,7 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | td-tree-select | dùng `--td-field-*` (ô) + `--td-dropdown-search-*` (ô tìm) + `--td-tree-*` (cây) | `:root` | [tree-select.md](../components/tree-select.md) |
 | td-number-input | dùng `--td-field-*` (hộp = dáng ô nhập, 0.55.0: cùng một luật hộp với input-field có affix) + `--td-number-affix-fg` (chữ / icon tiền tố / hậu tố; 0.55.0: mặc định `var(--td-field-affix-fg)`), `--td-number-affix-gap` (0.55.0: mặc định `var(--td-field-affix-gap)`) (0.30.0) — cùng giá trị như trước; site đặt token cũ vẫn thắng | `:root` | [number-input.md](../components/number-input.md) |
 | td-number-input `stepper` | `--td-number-step-size` (bề rộng nút − / +, `2.5rem`, ≥ 44px trên cảm ứng), `--td-number-step-fg` (icon, `var(--td-control-fg)`), `--td-number-stepper-w` (bề rộng host, `9rem`) (0.49.0) | `:root` (màu: `:root, [data-td-theme]`) | [number-input.md](../components/number-input.md#8-stepper) |
-| td-choice-group | `--td-choice-gap`, `--td-choice-h` (`2.5rem`, 44px cảm ứng), `--td-choice-radius`, `--td-choice-swatch-size` (`2rem`); màu: `--td-choice-bg` / `-border` / `-border-hover` (= token control), `--td-choice-selected` (vòng 2px, 0.80.0: `var(--td-accent)` — theo accent của site), `--td-choice-selected-bg` (nền lựa chọn đã chọn, pha 10% accent), `--td-choice-selected-fg` (`var(--td-control-fg)`), `--td-choice-mark-fg` (dấu tick góc, `var(--td-accent-contrast, #fff)`; bảng đủ + cách giữ dáng mực cũ ở trang component), `--td-choice-hint-fg` (`var(--td-color-text-muted)`), `--td-choice-swatch-edge` (`var(--td-color-border-strong)`) (0.49.0); segmented (0.52.0): `--td-choice-seg-bg` (`var(--td-color-hover)`), `-pill` (`var(--td-control-bg)`), `-ring` (`var(--td-color-text-muted)`, ≥ 3:1 với rãnh + viên), `-fg` / `-fg-selected`, `-h` (`2.5rem`; sm 2 / lg 3), `-pad`, `-radius`; hình học ô (0.53.1): `-gap` (`2px`), `-px`, `-font`, `-icon`, `-icon-gap` (md = 0.52; sm / lg đặt lại trên biến thể) — chỉ đọc token hợp đồng theme, không thêm `THEME_TOKENS` | `:root` (màu: `:root, [data-td-theme]`) | [choice-group.md](../components/choice-group.md) |
+| td-choice-group | `--td-choice-*` (ô, màu chọn, swatch) và `--td-choice-seg-*` (segmented); bảng đủ + mặc định ở trang component | `:root` (màu: `:root, [data-td-theme]`) | [choice-group.md](../components/choice-group.md) |
 | td-repeater | `--td-repeater-gap` (khoảng cách trong dòng + đệm dòng, `var(--td-space-sm)`), `--td-repeater-btn-size` (`2rem`, ≥ 44px trên cảm ứng), `--td-repeater-btn-fg` / `-fg-hover` / `-bg-hover` / `-disabled-fg`, `--td-repeater-divider` (0.30.0) | `:root` | [repeater.md](../components/repeater.md) |
 | td-media-field | `--td-media-field-*`: bề rộng host / khung, cạnh ô vuông, bo góc khung, nút X / cắt, vòng icon khung rỗng (bảng đủ ở trang component) | `:root` (hoặc trên từng host) | [media-field.md](../components/media-field.md) |
 | td-cropper | `--td-cropper-h` (chiều cao vùng cắt inline, `min(60vh, 32rem)`), `--td-cropper-dim` (vùng mờ ngoài khung, `rgb(0 0 0 / 55%)`), `--td-cropper-line` (viền trong của khung, trắng), `--td-cropper-line-contrast` (viền ngoài, đen 60 % — khung thấy được trên ảnh trắng lẫn đen), `--td-cropper-handle` (nền tay nắm), `--td-cropper-focus` / `--td-cropper-focus-halo` (vòng focus hai tông trên ảnh: trắng + quầng đen 75 %) (0.35.0), `--td-cropper-pan-inset` (khoảng đệm tối thiểu từ mép vùng cắt tới khung cố định của `mode="pan"`, `24px`) (0.73.0). Mặc định qua gate `test:contrast` ≥ 3:1 trên ảnh trắng / đen / vùng mờ; ghi đè thì site tự kiểm. `--_tdc-*` (vị trí do JS đặt) là private | `:root` (hoặc trên từng `td-cropper`) | [cropper.md](../components/cropper.md) |
@@ -1123,9 +1108,9 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | td-color-picker | `--td-color-picker-width` (độ rộng popup, `17.5rem`), `--td-color-picker-area-height` (vùng 2 chiều, `10rem`; 7rem khi màn hình thấp), `--td-color-picker-swatch` (ô màu trong ô nhập, `1.5rem`) — `:root`; màu: `--td-color-swatch-border` (viền ô màu / preset, `var(--td-control-border-strong)`, ≥ 3:1 với nền ô) và `--td-color-checker` (ô cờ "chưa có màu", `var(--td-color-border)`) — dẫn từ hợp đồng theme, theo vùng (0.48.0). Ô nhập dùng `--td-field-*`, popup `--td-glass-*`. Chữ / icon / mép ô màu qua gate `test:contrast` | `:root` (hoặc trên từng `td-color-picker`) | [color-picker.md](../components/color-picker.md) |
 | td-media-picker | viền trạng thái card (0.33.0): `--td-media-picker-card-viewing` (đang xem, mặc định `var(--td-accent)`), `--td-media-picker-card-hover` (mặc định `var(--td-media-picker-card-viewing)`), `--td-media-picker-card-checked` (đã chọn, mặc định `var(--td-color-success)`; thắng đang xem). Cả ba mặc định qua gate `test:contrast` ≥ 3:1 trên surface; ghi đè thì site tự kiểm. Vỏ dùng `--td-modal-*`, lưới dùng `--td-media-grid-*` | `:root` | [media-picker.md](../components/media-picker.md) |
 | td-media-grid | `--td-media-grid-*` — cũ: `-cols`, `-gap`, `-radius`, `-tick-*`. Mới (0.33.0): `--td-media-grid-fit` (`object-fit` của ảnh trong ô, `cover` / `contain`), `--td-media-grid-ratio` (tỉ lệ khung ô, mặc định `auto` = cao theo ảnh), `--td-media-grid-selected-ring` (vòng inset của ô đã chọn), `--td-media-grid-selected-scale` (mặc định **`1`**, trước 0.88), `--td-media-grid-tick-inline` (góc tick: `start` \| `end`); với `layout="justified"`: `--td-media-grid-row-ratio` / `-md` / `-sm` (Σ tỉ lệ đích mỗi dòng theo bề rộng **lưới** — 0.34.0: ≥ 1024px `5.5`, 720–1023px `4`, < 720px `2.5`), `--td-media-grid-fallback-ar` (tỉ lệ tạm khi chưa biết kích thước ảnh, `1.5`). Ảnh trong ô do grid đặt kích thước bằng CSSOM inline `!important`: đổi bằng token, **không** đặt CSS lên `img` | `:root` (hoặc trên từng `td-media-grid`) | [media-grid.md](../components/media-grid.md) |
-| td-selection-bar (0.95.0) | `--td-selection-bar-bg` / `-fg` / `-border` / `-shadow` / `-radius` (bề mặt đặc), `-gap` / `-pad-block` / `-pad-inline`, `-position` (`sticky`), `-z`, `-enter` (thời lượng hiện), nút nguy hiểm `--td-selection-bar-danger-fg` / `-danger-hover-bg` / `-danger-pressed-bg`. Biến runtime `--td-selection-bar-offset` do kit ghi qua CSSOM trên `<html>` (không phải token để site đặt). Kiểu kính `surface="glass"` (0.96.0): `--td-selection-bar-glass-bg` (mặc định `--td-glass-bg-strong`), `-glass-action-fg` (chữ nút thường, mặc định `--td-btn-ghost-hover-fg`), `-glass-radius` (`--td-glass-radius`), `-glass-gap` (khoảng cách tới đáy màn, `12px`, `16px` từ màn rộng) | `:root` (màu: `:root, [data-td-theme]`) | [selection-bar.md](../components/selection-bar.md) |
+| td-selection-bar (0.95.0) | `--td-selection-bar-*` (bề mặt đặc, khoảng cách, `-position`, `-z`, nút nguy hiểm) và `--td-selection-bar-glass-*` (kiểu `surface="glass"`); bảng đủ + mặc định ở trang component | `:root` (màu: `:root, [data-td-theme]`) | [selection-bar.md](../components/selection-bar.md) |
 | td-page-actions (0.96.0) | `--td-page-actions-gap` (khoảng giữa các nút, `--td-space-xs`), `--td-page-actions-justify` (căn hàng nút, `flex-end`) | `:root` | [page-actions.md](../components/page-actions.md) |
-| td-card (0.95.0, thuần CSS) | `--td-card-bg` / `-border` / `-shadow` / `-radius` / `-hover-bg` / `-hover-border` (biến thể `--surface`), `--td-card-media-bg` / `-media-border` / `-ratio` / `-fit`, `--td-card-placeholder-fg` / `-placeholder-icon`, `--td-card-title-fg` / `-title-size` / `-title-weight` / `-title-lines`, `--td-card-meta-fg` / `-meta-size`, `--td-card-body-pad`, `--td-card-badge-inset`, lưới `--td-card-grid-min` / `-grid-gap`. `--td-card-shadow` một giá trị cho cả hai theme | `:root` (màu: `:root, [data-td-theme]`) | [card.md](../components/card.md) |
+| td-card (0.95.0, thuần CSS) | `--td-card-*` (bề mặt, media, tiêu đề, meta, lưới `-grid-*`); bảng đủ + mặc định ở trang component | `:root` (màu: `:root, [data-td-theme]`) | [card.md](../components/card.md) |
 | TdFormValidation (summary) | `--td-form-summary-*` | `:root` | [form-validation.md](../components/form-validation.md) |
 | TdModal | `--td-modal-*` | `:root` (per-instance `--td-modal-w` / `-h` / `-body-pad` / `-body-overflow` do JS đặt) | [modal.md](../components/modal.md) |
 | TdToast | `--td-toast-*` | `:root` | [toast.md](../components/toast.md) |
@@ -1139,7 +1124,7 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | td-filter-chips | `--td-filter-chip-*` — `-bg`, `-fg`, `-label-fg`, `-border`, `-radius`, `-h` (`28px`), `-gap`, `-max` (bề rộng tối đa của giá trị, `16rem`), `-remove-fg` (icon ×, ≥ 4.7:1 trên nền chip), `-remove-hover` (0.39.0). Mặc định qua gate `test:contrast`; ghi đè thì site tự kiểm | `:root` | [filter-chips.md](../components/filter-chips.md) |
 | td-steps | Hình học `--td-steps-marker` (`28px`), `--td-steps-line` (`2px`), `--td-steps-gap`; màu `--td-steps-{done,current,upcoming,error}-{bg,fg,border}`, `--td-steps-connector`, `--td-steps-connector-done` (0.45.0) — mặc định là `var()` của hợp đồng theme (accent, surface, viền control, cặp lỗi của alert): dark / palette sinh / theme theo vùng không cần thêm gì | hình học `:root`; màu `:root, [data-td-theme]` | [steps.md](../components/steps.md) |
 | td-timeline | Hình học `--td-timeline-marker` (`28px`), `--td-timeline-line` (`2px`), `--td-timeline-gap`; màu `--td-timeline-marker-{bg,fg,border}`, `--td-timeline-connector`, `--td-timeline-day-fg` (0.45.0); tông dùng `--td-alert-{v}-{bg,border,icon}` | hình học `:root`; màu `:root, [data-td-theme]` | [timeline.md](../components/timeline.md) |
-| td-diff | `--td-diff-*` — `-added-bg` / `-removed-bg` (nền ô "Sau" / "Trước": light `#eef6f1` / `#fbf2f2`, dark `#1d3026` / `#362628` — token phụ thuộc sáng / tối, **palette `td-theme` tự tính** cho nền của site: chữ / nhãn / chữ muted ≥ 4.7 trên chúng), `-added-fg` / `-removed-fg` / `-changed-fg` (chữ "Thêm" / "Xoá" / "Đổi" = màu ngữ nghĩa), `-muted-fg`, `-border`, `-head-bg`, `-label-w` (`30%`), `-json-max-h` (`24rem`), `-font-mono` (0.46.0). Mặc định qua gate `test:contrast` + `test:page-contrast`; ghi đè thì site tự kiểm | `:root` (màu: `:root, [data-td-theme]`) | [diff.md](../components/diff.md) |
+| td-diff | `--td-diff-*` (nền ô "Sau" / "Trước" phụ thuộc sáng / tối, chữ, viền, `-label-w`, `-json-max-h`, `-font-mono`); palette `td-theme` tự tính nền cho site; bảng đủ + mặc định ở trang component | `:root` (màu: `:root, [data-td-theme]`) | [diff.md](../components/diff.md) |
 | td-rating (0.50.0) | `--td-rating-*` — `-fill` (`--td-solid-warning-bg`), `-stroke` (`--td-color-warning`, viền sao tô ≥ 3.2), `-empty` (`--td-color-border-strong`, trang trí), `-value-fg`, `-count-fg`, `-size`, `-gap` | màu: `:root, [data-td-theme]` (alias token hợp đồng — palette `td-theme` tự đúng); hình học: `:root` | [rating.md](../components/rating.md#token-css) |
 | td-carousel (0.50.0) | `--td-carousel-*` — `-per-view[-sm\|-md\|-lg\|-xl]` (không đặt mặc định), `-slide-size`, `-peek`, `-gap`, `-gutter`, `-btn-size` (36 / coarse 44), `-dot-size`, `-dot` / `-dot-active` (`--td-color-text-subtle` / `--td-color-text`); nút dùng `--td-btn-secondary-*` | màu: `:root, [data-td-theme]`; hình học: `:root` | [carousel.md](../components/carousel.md#token-css) |
 | td-tabs | `--td-tabs-*` | `:root` | [tabs.md](../components/tabs.md) |

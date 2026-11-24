@@ -85,8 +85,8 @@ Class của kit theo quy ước BEM của kit 135: `.td-{block}__{element}--{mod
 
 Cấu trúc DOM + class của từng component là **markup contract**: ghi trong mục "Cấu trúc DOM & class" của trang
 component. Markup render phía server chính thức là [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói
-(`td_button`, `td_link`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`); component không có helper PHP
-thì dùng markup ghi ngay trong trang của nó. Trong repo kit, contract được khoá bằng test: fixture `test/contracts/*.html`
+(danh sách helper `td_*` ở mục lục của trang đó); component chưa có helper PHP thì dùng markup ghi ngay trong trang
+của nó. Trong repo kit, contract được khoá bằng test: fixture `test/contracts/*.html`
 (bản HTML component render ra, so với component thật trong `td-contracts.browser-test.js`) — fixture chỉ để test, không
 nằm trong gói npm và icon trong đó viết tắt, đừng copy từ đó. Vì vậy:
 

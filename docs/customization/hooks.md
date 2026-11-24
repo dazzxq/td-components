@@ -39,6 +39,7 @@ Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đối
   - [td-tabs](#td-tabs)
   - [td-empty-state](#td-empty-state)
   - [td-dropzone](#td-dropzone)
+  - [td-pagination](#td-pagination)
   - [td-timeline](#td-timeline)
   - [Component không có hook JS](#component-không-có-hook-js)
   - [Icon](#icon)
@@ -188,14 +189,13 @@ Hook áp cho **mọi** lớp chặn, không có option riêng trên từng compo
 | API / cấu hình | Chữ ký | Ghi chú |
 |---|---|---|
 | `TdToast.show(message, type = 'info', options = 4000)` | `type` ∈ `success error warning info` (khác → info); `options` = số ms hoặc `{ duration?, placement?, themeRoot? }` (0.36.0 / 0.42.0, chi tiết ở [toast.md](../components/toast.md#property--method)) | `message` luôn là **text**. `duration` ms; `0` = dính (đóng bằng click vào toast, nút Đóng — ẩn, hiện khi Tab tới — hoặc `handle.close()`). `message` rỗng → không hiện. Trả handle `{ close() }` (0.16.0; mọi hàm dưới cũng vậy) |
-| `handle.close()` | | (0.16.0) Đóng **yêu cầu**: còn trong hàng đợi 50 ms → bỏ; chờ lượt 80 ms → huỷ; đã hiện → đóng như nút Đóng. Gọi lại → no-op |
-| `TdToast.clear()` | | (0.16.0) Xoá hàng đợi, huỷ lượt chờ, đóng mọi toast đang hiện |
-| `TdToast.labels` | `{ close: 'Đóng', types: { success: 'Thành công:', error: 'Lỗi:', warning: 'Cảnh báo:', info: 'Thông tin:' } }` | Đọc khi tạo mỗi toast. `close` (0.16.0): `aria-label` của nút Đóng (ẩn bằng mắt, hiện khi focus bàn phím). `types` (0.21.0): tiền tố loại **chỉ cho trình đọc màn hình** (toast không còn icon); gán cả object hoặc từng khoá (`TdToast.labels.types.info = 'Info:'`), loại không khai báo → mặc định tiếng Việt, `''` = bỏ tiền tố loại đó |
+| `handle.close()` · `TdToast.clear()` (0.16.0) | | Đóng một toast / xoá hàng đợi và đóng mọi toast: [toast.md › Property & method](../components/toast.md#property--method) |
+| `TdToast.labels` | `{ close, types }` | Nhãn nút Đóng + tiền tố loại cho trình đọc màn hình; khoá + mặc định: [toast.md › Đổi nhãn](../components/toast.md#đổi-nhãn-nút-đóng--tiền-tố-loại-cho-trình-đọc-màn-hình) |
 | `TdToast.success(msg, options = 4000)` | | `options` như `show` |
 | `TdToast.error(msg, options = 5000)` | | Lỗi có `role="alert"` |
 | `TdToast.warning(msg, options = 4000)` / `.info(msg, options = 4000)` | | |
 | `TdToast.configure({ placement })` / `TdToast.PLACEMENTS` | `placement` ∈ `PLACEMENTS` (6 vị trí) hoặc `null` | (0.36.0) Vị trí toàn cục; chi tiết ở [toast.md](../components/toast.md#property--method) |
-| `TdToast.MAX_VISIBLE` | `5` | Vượt quá → toast cũ nhất bị đẩy ra (FIFO) |
+| `TdToast.MAX_VISIBLE` | | Số toast hiện tối đa, vượt thì đẩy cái cũ nhất ra: [toast.md](../components/toast.md#property--method) |
 
 Không có callback đóng và không có action button.
 Vị trí qua `configure({ placement })` hoặc token `--td-toast-*`; màu là màu đặc theo loại (0.36.0) qua `--td-toast-{type}-bg/-fg/-border`, không
@@ -296,11 +296,8 @@ Chữ mặc định của `TdTree.labels` / `TdTreeSelect.labels`: [tree.md › 
 `import '@dazzxq/td-components/number-input';` · Trang: [number-input.md](../components/number-input.md) (0.30.0)
 
 Không có property hook: dấu phân cách / số lẻ / đơn vị là attribute (kit không đọc cài đặt tiền tệ của site), giá trị là
-chuỗi chuẩn qua event `input` / `change` (`detail.value`). `TdNumberInput.messages`: `valueMissing` `Trường này là bắt buộc`
-· `badInput` `Giá trị không hợp lệ` · `rangeUnderflow` `Giá trị tối thiểu là {min}` · `rangeOverflow` `Giá trị tối đa là
-{max}` · `stepMismatch` `Giá trị phải theo bước {step}` · `tooManyDecimals` `Tối đa {decimals} chữ số thập phân` ·
-`pasteRejected` `Không dán được: giá trị không hợp lệ` · `clamped` `Đã chỉnh về {value}` (`{min}` / `{max}` / `{value}`
-đã định dạng kèm đơn vị).
+chuỗi chuẩn qua event `input` / `change` (`detail.value`). Thông báo (`TdNumberInput.messages`, gồm `decrease` / `increase` của
+stepper): khoá + mặc định ở [number-input.md › Property & method](../components/number-input.md#property--method).
 
 ---
 
@@ -319,10 +316,9 @@ Chữ ký + hành vi: [repeater.md](../components/repeater.md#property--method).
 
 `import '@dazzxq/td-components/sortable';` · Trang: [sortable.md](../components/sortable.md) (0.31.0)
 
-Không có property hook: điểm móc là **event** `order-change` (`{ order, previous, id, from, to, source }`, chỉ khi thả và
-thứ tự đổi) — app lưu `order` lên server, lỗi thì `setOrder(previous)` (không phát event). `TdSortable.labels` (dùng
-chung với repeater `sortable`): `handle` `Sắp xếp {name}` · `item` `Mục {n}` · `help` · `lifted` · `moved` · `dropped` ·
-`cancelled` · `first` · `last` (mặc định ở [trang component](../components/sortable.md#property--method)).
+Không có property hook: điểm móc là **event** `order-change` (chỉ khi thả và thứ tự đổi) — app lưu `order` lên server, lỗi thì
+`setOrder(previous)` (không phát event). `TdSortable.labels` (dùng chung với repeater `sortable`) và `detail`:
+[sortable.md › Property & method](../components/sortable.md#property--method).
 
 ---
 
@@ -330,10 +326,7 @@ chung với repeater `sortable`): `handle` `Sắp xếp {name}` · `item` `Mục
 
 `import '@dazzxq/td-components/masked-value';` · Trang: [masked-value.md](../components/masked-value.md) (0.31.0)
 
-| Hook | Kiểu | Mô tả |
-|---|---|---|
-| `el.reveal` | `({ element, signal }) => Promise<string \| null>` | Lấy giá trị thật (app lo quyền / 2FA / audit). Chuỗi → hiện; `null` → im lặng; reject → `reveal-error { kind: 'rejected' }`. Chỉ nhận hàm; gán trước khi define vẫn được nhận. |
-| `TdMaskedValue.reveal` | như trên (static) | Dùng khi phần tử không có property — trang PHP gán một lần, đọc `element.dataset.id`. |
+Hook: `el.reveal` / `TdMaskedValue.reveal` (hàm async lấy giá trị thật; app lo quyền / 2FA / audit; chỉ nhận hàm, gán trước khi define vẫn được nhận) — chữ ký, giá trị trả `null` / reject và bản static cho trang PHP: [masked-value.md › Property & method](../components/masked-value.md#property--method).
 
 Event không bao giờ mang giá trị (`revealed`, `remasked`, `reveal-error`): bảng event ở [masked-value.md › Event](../components/masked-value.md#event); `TdMaskedValue.labels` (7 nhãn) và mặc định: [Property & method](../components/masked-value.md#property--method).
 
@@ -344,19 +337,7 @@ Event không bao giờ mang giá trị (`revealed`, `remasked`, `reveal-error`):
 `import { TdMediaPicker } from '@dazzxq/td-components/media-picker';` · Trang: [media-picker.md](../components/media-picker.md)
 (0.32.0) · ranh giới kit / app: [ADR 0013](../internal/decisions/0013-media-picker-boundary.md)
 
-Điểm tuỳ biến chính là **adapter** — object callback do site viết (kit không bao giờ nhận URL endpoint):
-
-| Hook | Chữ ký | Khi nào gọi | Lỗi thì sao |
-|---|---|---|---|
-| `adapter.list` (bắt buộc) | `(MediaListRequest) => Promise<MediaPage>` | Mở, tìm (debounce 250ms, Enter = ngay), đổi facet, "Tải thêm", "Thử lại", sau upload / update | Reject → khối lỗi `role="alert"` + "Thử lại"; chỉ hiện `userMessage` (hoặc `labels.error.{code}`), không bao giờ `message`. Trả sai hình dạng → lỗi `server` |
-| `adapter.get` (bắt buộc) | `(id, { context, signal }) => Promise<MediaAsset>` | `initialIds` lúc mở; mở chi tiết; "Tải lại" sau `conflict`; media field `.value =` không có preview | `initialIds` lỗi → id đó bị bỏ (cảnh báo); chi tiết lỗi → giữ bản chụp từ lưới, event `operation-error` |
-| `adapter.facets` | `({ query, filters, context, signal }) => Promise<FacetDescriptor[]>` | Mở; cùng nhịp `list` khi đổi query / filter; sau upload / update | Lỗi → giữ bộ lọc đang có / không có bộ lọc (lưới vẫn chạy), event `operation-error` |
-| `adapter.upload` | `(file, { fields, context, signal, onProgress }) => Promise<UploadResult>` | Mỗi file thả vào khu "Tải lên"; `fields` chụp lúc file bắt đầu | Dòng file đỏ với `userMessage` / `labels.uploadError`; `fieldErrors` → lỗi trên ô `uploadFields`. Abort (xoá dòng, đóng) → im lặng |
-| `adapter.update` | `(id, { fields, version }, { context, signal }) => Promise<MediaAsset>` | Bấm "Lưu" / Ctrl+Enter trong form sửa — không bao giờ tự lưu | `validation` → `fieldErrors` lên control; `conflict` → nút "Tải lại" |
-| `adapter.delete` | `(id, { context, signal }) => Promise<DeleteResult>` | Nút "Xoá" sau hộp xác nhận (cần `capabilities.delete`) | Lỗi → toast `userMessage`; `blocked` → cảnh báo trong panel chi tiết ([media-picker.md › Xoá](../components/media-picker.md#xoá)) |
-| `adapter.download` | `(id, { rendition: 'original', context, signal }) => Promise<DownloadResult>` | Nút "Tải về" (cần `capabilities.downloadOriginal`) | Lỗi → toast ([media-picker.md › Tải về bản gốc](../components/media-picker.md#tải-về-bản-gốc)) |
-| `adapter.uploadFromUrl` · `adapter.collections` · `adapter.createCropDerivative` | chữ ký: [media-picker.md › Hợp đồng adapter](../components/media-picker.md#hợp-đồng-adapter) | Tải từ URL · dải bộ sưu tập ([0.66.0](../components/media-picker.md#bộ-sưu-tập-0660)) · tạo ảnh đã cắt (`crop.output: 'new-asset'`) | Như `upload` / `list`: chỉ hiện `userMessage` |
-| `FieldDescriptor.loadOptions` / `createOption` / `visibleWhen` | xem trang component | Mở form / gõ tìm option / bấm "Thêm mới" / mỗi lần giá trị form đổi | `visibleWhen` ném → field hiện + một cảnh báo |
+Điểm tuỳ biến chính là **adapter** (kit không bao giờ nhận URL endpoint): `list` + `get` bắt buộc; `facets`, `upload`, `update`, `delete`, `download`, `uploadFromUrl`, `collections`, `createCropDerivative` tuỳ chọn; thêm `FieldDescriptor.loadOptions` / `createOption` / `visibleWhen`. Chữ ký, khi nào gọi, lỗi thì sao: [media-picker.md › Hợp đồng adapter](../components/media-picker.md#hợp-đồng-adapter).
 
 Mọi `signal` bị abort khi request bị thay (latest-wins) hoặc picker đóng; kết quả về muộn bị bỏ kể cả khi adapter phớt lờ
 `signal`. Abort không bao giờ hiện lỗi.
@@ -395,8 +376,8 @@ Không có callback; nghe event `change` (`detail = { value, dbValue }`). Hai ob
 
 ## Hợp đồng lỗi của mọi form control
 
-td-input-field, td-dropdown, td-chip-input, td-datetime-picker, td-slider, td-checkbox, td-toggle (lớp
-`TdFormElement` có `errorContract`) có chung API hiển thị lỗi — đây là "hook" mà TdFormValidation và code của bạn dùng:
+Mọi form control của kit (td-input-field, td-dropdown, td-chip-input, td-datetime-picker, td-slider, td-checkbox, td-toggle, td-number-input,
+td-choice-group, td-tree, td-dropzone, … — lớp nào bật `static get errorContract()`, xem [base-element.md](../components/base-element.md#error-contract-lỗi-hiển-thị--a11y)) có chung API hiển thị lỗi — đây là "hook" mà TdFormValidation và code của bạn dùng:
 
 | Thành viên | Ghi chú |
 |---|---|
@@ -434,27 +415,11 @@ Danh mục (một dòng một hook); bảng option đầy đủ (`rules`, `messa
 
 `import '@dazzxq/td-components/table';` · Trang: [table.md](../components/table.md)
 
-| Property / option | Chữ ký | Khi nào gọi | Lỗi thì sao |
-|---|---|---|---|
-| `columns[].render` | `(row, rowIdxInPage, ctx?) => Node \| string \| any` | Mỗi lần vẽ hàng | Node → append; **chuỗi → HTML tin cậy (`innerHTML`)**; khác → text. Ném lỗi → ô đó trống + `console.error`, các ô khác vẫn vẽ |
-| `onSort` | `({ key, direction }) => void` (`direction`: `'asc' \| 'desc' \| null`) | Sau event `sort-change`, **chỉ ở `server-mode`** | Bắt lỗi: `console.error` |
-| `onPageChange` | `(page) => void` | Khi đổi trang, **chỉ ở `server-mode`** | Bắt lỗi: `console.error` (hai thanh phân trang vẫn đồng bộ) |
-| `update({ columns, data, page, onSort, onPageChange, rowKey, rowSelectable, selectedKeys, expandedKeys, loadChildren })` | | Gộp nhiều thay đổi một lần | Mảng không hợp lệ bị bỏ qua |
-| `onRowAction` · `onSelectChange` · `formatPageInfo` · `rowKey` · `rowSelectable` · `loadChildren` · `canDrop` | chữ ký + hành vi: [table.md › Hook & tuỳ chọn](../components/table.md#hook--tuỳ-chọn) | Thao tác dòng, chọn dòng, chữ phân trang, khoá dòng, bảng cây | Hook ném lỗi → `console.error`, bảng giữ trạng thái đúng |
-| event `request-change` (0.39.0) | `{ state, reason, requestId }` | Mỗi lần người dùng đổi trang / sort, và `setFilters()` — **mọi** chế độ; với `controlled` bảng chờ `setState()` | — (event) |
-| `setState({ page, perPage, sort, filters, data, totalItems, requestId })` (0.39.0) | `=> boolean` | App áp state (phản hồi server, khôi phục URL), im lặng | `requestId` cũ → bỏ qua (`false`); sort key lạ → bỏ sort + cảnh báo |
-| event `columns-change` (0.39.0) | `{ hidden, reason }` | Người dùng bật / tắt cột trong menu "Cột" — app lưu, gán lại `hiddenColumns` lần sau | — (event) |
+Hook: `columns[].render`, `onSort`, `onPageChange`, `update({…})`, `onRowAction`, `onSelectChange`, `formatPageInfo`, `rowKey`, `rowSelectable`, `loadChildren`, `canDrop`; event `request-change` / `columns-change`; `setState()` (app áp state từ server / URL). Chữ ký, khi nào gọi, lỗi thì sao: [table.md › Hook & tuỳ chọn](../components/table.md#hook--tuỳ-chọn) và mục Bộ lọc ngoài + URL của trang đó.
 
 Ở chế độ client, sắp xếp / phân trang làm tại chỗ; muốn biết người dùng sắp xếp gì, nghe event `sort-change`.
 
 `TdTable.labels`: toàn bộ khoá và giá trị mặc định ở [table.md › `TdTable.labels`](../components/table.md#tdtablelabels); ví dụ đổi nhãn: [Mở rộng kit](extending.md).
-
----|---|
-| `table` | `Bảng dữ liệu` |
-| `loading` | `Đang tải dữ liệu…` |
-| `paginationTop` / `paginationBottom` | `Phân trang (trên)` / `Phân trang (dưới)` |
-| `itemLabel` | `mục` |
-| `emptyTitle` / `emptyText` | `Không có dữ liệu` / `Chưa có dữ liệu để hiển thị.` (attribute `empty-title` / `empty-text` thắng) |
 
 ---
 
@@ -534,10 +499,11 @@ Chữ toàn trang đổi qua `TdPagination.labels`: [pagination.md › TdPaginat
 
 ## Component không có hook JS
 
-td-button: tuỳ biến bằng attribute, token và event (`click`). td-input-field, td-checkbox, td-toggle chỉ có callback
-`onInput` / `onChange` (0.122.0; input-field: cả hai, checkbox / toggle: `onChange`) gọi ngay **trước** event cùng tên —
-xem mục **Event** của [input-field.md](../components/input-field.md), [checkbox.md](../components/checkbox.md),
-[toggle.md](../components/toggle.md). Các control form có [hợp đồng lỗi](#hợp-đồng-lỗi-của-mọi-form-control)
+td-button: tuỳ biến bằng attribute, token và event (`click`). Callback `onInput` / `onChange` (0.122.0) gọi ngay **trước** event
+cùng tên: td-input-field (cả hai), td-checkbox / td-toggle / td-choice-group (`onChange`) — xem mục **Event** / **Property &
+method** của [input-field.md](../components/input-field.md), [checkbox.md](../components/checkbox.md),
+[toggle.md](../components/toggle.md), [choice-group.md](../components/choice-group.md#property--method); td-media-grid có
+`onSelectChange` (gọi trước `select-change`): [media-grid.md](../components/media-grid.md#property--method). Các control form có [hợp đồng lỗi](#hợp-đồng-lỗi-của-mọi-form-control)
 và object tĩnh `messages` cho thông báo validation.
 
 ## Icon
@@ -767,34 +733,10 @@ Callback được bọc lỗi (ném → `console.error`, bảng không vỡ); l�
 
 ### 8. Nhãn tiếng Anh cho một site
 
-Nhãn mặc định là tiếng Việt. Một module `i18n-en.js` nạp **một lần**, trước khi component đầu tiên render:
+Nhãn mặc định là tiếng Việt. Công thức module `i18n-en.js` (nạp **một lần**, trước khi component đầu tiên render, bằng `Object.assign`)
+nằm ở [extending.md › Dịch nhãn](extending.md#dịch-nhãn-sang-ngôn-ngữ-khác), kèm danh sách các object nhãn thường gặp (và những chữ
+**không** dịch được).
 
-```js
-import { TdMenu } from '@dazzxq/td-components/menu';
-import { TdModal } from '@dazzxq/td-components/modal';
-import { TdHovercard } from '@dazzxq/td-components/hovercard';
-import { TdTable } from '@dazzxq/td-components/table';
-import { TdDropdown } from '@dazzxq/td-components/dropdown';
-import { TdPagination } from '@dazzxq/td-components/pagination';
-import { TdEmptyState } from '@dazzxq/td-components/empty-state';
-
-Object.assign(TdMenu.labels, { trigger: 'Options' });
-Object.assign(TdModal.labels, { close: 'Close', confirm: 'Confirm', cancel: 'Cancel', ok: 'OK',
-  confirmTitle: 'Confirm', confirmMessage: 'Are you sure?', successTitle: 'Success', errorTitle: 'Error',
-  infoTitle: 'Information' });
-Object.assign(TdHovercard.labels, { loading: 'Loading…', error: 'Could not load content.', dialog: 'More info' });
-Object.assign(TdTable.labels, { table: 'Data table', loading: 'Loading data…', itemLabel: 'items',
-  paginationTop: 'Pagination (top)', paginationBottom: 'Pagination (bottom)',
-  emptyTitle: 'No data', emptyText: 'Nothing to show yet.' });
-Object.assign(TdDropdown.labels, { search: 'Search', none: 'None', noResults: 'No results',
-  required: 'Please choose an option' });
-Object.assign(TdPagination.labels, { prev: 'Previous page', next: 'Next page', page: 'Page {n}',
-  info: 'Showing {from}-{to} of {total} {item}', item: 'items' });
-TdEmptyState.labels.action = 'Do it';
-```
-
-Danh sách đầy đủ mọi object nhãn (và những chữ **không** dịch được) ở
-[extending.md › Dịch nhãn](extending.md#dịch-nhãn-sang-ngôn-ngữ-khác).
 
 ## Xem thêm
 

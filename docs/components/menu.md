@@ -321,8 +321,7 @@ TdMenu.bind(profileCard, () => [
       g.options = THEMES;                         // không đặt aria-label: hàng đã mang tên "Giao diện"
       g.addEventListener('change', (e) => {
         const v = e.detail.value;                 // 'auto' | 'light' | 'dark'
-        document.documentElement.setAttribute('data-td-theme', v);
-        document.cookie = `td_theme=${v}; path=/; max-age=31536000; SameSite=Lax`;
+        // đặt data-td-theme + cookie td_theme: xem theming.md#không-chớp-trắng-no-fouc
       }, { signal });                             // tự gỡ khi menu đóng
       return g;
     },

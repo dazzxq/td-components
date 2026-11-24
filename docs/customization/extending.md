@@ -8,7 +8,7 @@ rộng kit **từ phía site** — không sửa lõi. Trang này hướng dẫn 
 1. [Tự viết component](#tự-viết-component) trên nền `TdBaseElement` / `TdFormElement`.
 2. [Đăng ký icon](#đăng-ký-icon) riêng của site vào registry dùng chung.
 3. [Dùng registry menu cho plugin](#registry-menu-cho-plugin).
-4. [Dịch nhãn sang ngôn ngữ khác](#dịch-nhãn-sang-ngôn-ngữ-khác) (mọi object nhãn, và những chữ chưa dịch được).
+4. [Dịch nhãn sang ngôn ngữ khác](#dịch-nhãn-sang-ngôn-ngữ-khác) (các object nhãn thường gặp, và những chữ chưa dịch được).
 5. [Kết hợp component](#kết-hợp-component) với nhau.
 
 ## Tự viết component
@@ -310,23 +310,25 @@ ghi đè. Cách làm chuẩn: một module `i18n-<ngôn ngữ>.js` nạp **một
 | `options.labels` (theo từng lần gọi) | `@dazzxq/td-components/lightbox` | `dialog prev next close back fullscreen download info more loadError retry pressedOn busy` (chuỗi), `counter(i, n)` và `thumb(n)` (hàm); mặc định và chỗ dùng: [lightbox.md › Nhãn](../components/lightbox.md#nhãn-labels) | Mỗi `TdLightbox.open()` / `bind()` — không có object tĩnh |
 | `TdHovercard.labels` | `@dazzxq/td-components/hovercard` | `loading error dialog` | Mỗi lần mở thẻ |
 | `TdMenu.labels` | `@dazzxq/td-components/menu` | `trigger back` (`back` từ 0.118.0) | `trigger`: khi tạo `TdMenu.button()`; `back`: mỗi lần mở menu con (drill-down) |
-| `TdModal.labels` | `@dazzxq/td-components/modal` | `close confirm cancel ok confirmTitle confirmMessage successTitle errorTitle infoTitle` (5 khoá cuối từ 0.16.0) | Khi tạo dialog |
+| `TdModal.labels` | `@dazzxq/td-components/modal` | toàn bộ khoá (nút, tiêu đề dialog Promise, type-to-confirm): [modal.md › Nhãn](../components/modal.md#nhãn-i18n) | Khi tạo dialog |
 | `TdToast.labels` | `@dazzxq/td-components/toast` | `close` (0.16.0), `types` (0.21.0: object `success error warning info` — tiền tố loại cho trình đọc màn hình) | Khi tạo mỗi toast |
 | `TdLoading.labels` | `@dazzxq/td-components/loading` | `loading` (0.16.0) | Mỗi `show()` / `wrap()` không truyền `message` |
-| `TdDatetimePicker.labels` | `@dazzxq/td-components/datetime-picker` | `title placeholder date day month year time hour minute close now confirm` | Khi render / mở picker |
-| `TdDatetimePicker.messages` | như trên | `required format incomplete day month year hour minute date min max` (`{min}` `{max}`) | Khi kiểm tra giá trị |
-| `TdInputField.messages` | `@dazzxq/td-components/input-field` | `valueMissing tooLong tooShort patternMismatch badInput typeMismatchEmail typeMismatchUrl rangeUnderflow rangeOverflow stepMismatch dateInvalid dateUnderflow dateOverflow unitChar unitWord` (`{min}` `{max}` `{minLength}` `{maxLength}` `{unit}`) | Khi tính validity / bộ đếm (0.16.0) |
+| `TdDatetimePicker.labels` | `@dazzxq/td-components/datetime-picker` | toàn bộ khoá, gồm biến thể theo mode (`{key}Date` / `Month` / `Year`) và nhãn lịch: [datetime-picker.md › Hook & tuỳ chọn](../components/datetime-picker.md#hook--tuỳ-chọn) | Khi render / mở picker |
+| `TdDatetimePicker.messages` | như trên | toàn bộ khoá, gồm biến thể theo mode (`required` / `format` / `incomplete` + `Date` / `Month` / `Year`), `{min}` `{max}` | Khi kiểm tra giá trị |
+| `TdInputField.messages` | `@dazzxq/td-components/input-field` | `valueMissing tooLong tooShort patternMismatch badInput typeMismatchEmail typeMismatchUrl rangeUnderflow rangeOverflow stepMismatch dateInvalid dateUnderflow dateOverflow unitChar unitWord reveal conceal` (`{min}` `{max}` `{minLength}` `{maxLength}` `{unit}`) | Khi tính validity / bộ đếm (0.16.0) |
 | `TdSlider.messages` | `@dazzxq/td-components/slider` | `rangeUnderflow rangeOverflow stepMismatch` (`{min}` `{max}` `{step}`) | Khi tính validity (0.16.0) |
-| `TdCheckbox.messages` / `TdToggle.messages` | `@dazzxq/td-components/checkbox` / `…/toggle` | `valueMissing` | Khi tính validity (0.16.0) |
+| `TdCheckbox.messages` | `@dazzxq/td-components/checkbox` | `valueMissing` | Khi tính validity (0.16.0) |
+| `TdToggle.messages` | `@dazzxq/td-components/toggle` | `valueMissing statusSuccess statusWarning locked` (0.52.0: mô tả trạng thái / khoá) | Khi tính validity / dựng mô tả: [toggle.md](../components/toggle.md) |
 | `TdChipInput.labels` | `@dazzxq/td-components/chip-input` | `remove create chips added removed duplicate results noResults loading error max required selectAll deselectAll addedMany removedMany` (`{label}` `{text}` `{n}` `{max}`) | Mỗi lần dùng; `el.messages` ghi đè cho một instance |
 | `TdTable.labels` | `@dazzxq/td-components/table` | toàn bộ khoá (nhãn chọn dòng, cột, cây…): [table.md › `TdTable.labels`](../components/table.md#tdtablelabels) | Khi render (cấu trúc) / cập nhật |
-| `TdDropdown.labels` | `@dazzxq/td-components/dropdown` | `search none noResults required` | Khi render menu / danh sách / kiểm tra `required` |
-| `TdPagination.labels` | `@dazzxq/td-components/pagination` | `prev next page info item` (`{n}`; `{from}` `{to}` `{total}` `{item}`) | Mỗi lần render (`item-label` thắng `item`) |
+| `TdDropdown.labels` | `@dazzxq/td-components/dropdown` | toàn bộ khoá (tìm kiếm, tạo mới, đếm kết quả, tải…): [dropdown.md › `TdDropdown.labels`](../components/dropdown.md#tddropdownlabels) | Khi render menu / danh sách / kiểm tra `required` |
+| `TdPagination.labels` | `@dazzxq/td-components/pagination` | `prev next page info item status` (`{n}`; `{from}` `{to}` `{total}` `{item}`; `{current}` `{total}`): [pagination.md](../components/pagination.md#tdpaginationlabels) | Mỗi lần render (`item-label` thắng `item`) |
 | `TdEmptyState.labels` | `@dazzxq/td-components/empty-state` | `action` | Khi dựng nút hành động thiếu `label` |
 | `TdFormValidation.labels` | `@dazzxq/td-components/form-validation` | `summaryTitle` | Khi hiện summary |
 | `TdFormValidation.messages` | như trên | `ruleError valueMissing typeMismatch typeMismatchEmail typeMismatchUrl badInput patternMismatch tooShort tooLong rangeUnderflow rangeOverflow stepMismatch` (`{min}` `{max}` `{minLength}` `{maxLength}` `{step}`) | Khi validate (control **native**) |
 
-Giá trị mặc định từng khoá: [hooks.md](hooks.md) (mục của từng component).
+Giá trị mặc định từng khoá nằm ở trang của component (cột "Khoá" dẫn link khi danh sách dài). Bảng này chỉ liệt kê các object
+nhãn thường gặp; component khác có `static labels` / `messages` thì khoá được ghi ở mục Nhãn / Hook của trang đó.
 
 ### Chữ đổi được qua attribute / option (không có object nhãn)
 
@@ -387,11 +389,13 @@ Object.assign(TdHovercard.labels, { loading: 'Loading…', error: 'Could not loa
 Object.assign(TdMenu.labels, { trigger: 'Options' });
 Object.assign(TdModal.labels, { close: 'Close', confirm: 'Confirm', cancel: 'Cancel', ok: 'OK',
   confirmTitle: 'Confirm', confirmMessage: 'Are you sure?', successTitle: 'Success', errorTitle: 'Error',
-  infoTitle: 'Information' });
+  infoTitle: 'Information', typeToConfirmLabel: 'Type {phrase} to confirm',
+  typeToConfirmMismatch: 'Not matching — type {phrase} exactly', typeToConfirmMatched: 'Matches, you can confirm' });
 TdToast.labels.close = 'Close';
 TdToast.labels.types = { success: 'Success:', error: 'Error:', warning: 'Warning:', info: 'Info:' };
 TdLoading.labels.loading = 'Loading...';
 
+// Ví dụ rút gọn: còn các khoá theo mode (titleDate…, requiredDate…) và nhãn lịch, xem datetime-picker.md
 Object.assign(TdDatetimePicker.labels, {
   title: 'Pick date and time', date: 'Date', day: 'Day', month: 'Month', year: 'Year',
   time: 'Time', hour: 'Hour', minute: 'Minute', close: 'Close', now: 'Now', confirm: 'Select',
@@ -416,6 +420,7 @@ Object.assign(TdInputField.messages, {
   typeMismatchEmail: 'Invalid email address', typeMismatchUrl: 'Invalid URL', rangeUnderflow: 'Minimum is {min}',
   rangeOverflow: 'Maximum is {max}', stepMismatch: 'Invalid step', dateInvalid: 'Invalid date',
   dateUnderflow: 'Earliest date is {min}', dateOverflow: 'Latest date is {max}', unitChar: 'characters', unitWord: 'words',
+  reveal: 'Show password', conceal: 'Hide password',
 });
 Object.assign(TdSlider.messages, {
   rangeUnderflow: 'Minimum is {min}.', rangeOverflow: 'Maximum is {max}.', stepMismatch: 'Must be a multiple of {step}.',
@@ -463,14 +468,8 @@ Lưu ý:
 Component được thiết kế để lồng nhau: mỗi lớp nổi đăng ký vào **một** registry lớp chung (`utils/layers.js`) nên thứ
 tự bàn phím, `inert` và focus luôn đúng dù bạn mở menu trên lightbox hay dropdown trong modal.
 
-| Lớp (thấp → cao) | Component |
-|---|---|
-| 350 | TdLightbox |
-| 400 | TdModal (kể cả bottom sheet < 720px của td-datetime-picker; popover ≥ 720px nằm ở lớp 450) |
-| 450 | TdMenu, TdHovercard, menu của td-dropdown, popup của td-chip-input, popover của td-datetime-picker (≥ 720px) |
-| 480 | TdLoading |
-| 500 | TdToast (nút đóng vẫn nằm trong vòng Tab của modal) |
-| 510 | Tooltip |
+Thứ tự lớp (lightbox 350 < modal 400 < popover 450 < loading 480 < toast 500 < tooltip 510) và token `--td-z-*`:
+[Cách hoạt động › Thứ tự lớp](../concepts/how-it-works.md#thứ-tự-lớp).
 
 Lớp cao hơn nhận Escape / Tab trước; modal và loading làm `inert` mọi thứ bên dưới. Bên trong kit cũng tự kết hợp:
 td-table dùng td-pagination + td-empty-state, td-datetime-picker dưới 720px mở TdModal làm bottom sheet.
@@ -576,6 +575,6 @@ có trạng thái (input, dropdown) ở chỗ **không** bị render lại, ho�
 - [base-element.md](../components/base-element.md): tài liệu đầy đủ `TdBaseElement`, `TdFormElement`, `td-sample`.
 - [icons.md](../components/icons.md): `tdIcon`, `<td-icon>`, danh sách icon core.
 - [menu.md](../components/menu.md): TdMenu đầy đủ.
-- [hooks.md](hooks.md): danh mục hook và giá trị mặc định của mọi nhãn.
+- [hooks.md](hooks.md): danh mục hook (nhãn mặc định ở trang từng component).
 - [../concepts/how-it-works.md](../concepts/how-it-works.md): light DOM, lifecycle, lớp nổi, i18n nhãn.
 - [../guides/security.md](../guides/security.md): escaping theo ngữ cảnh khi tự viết component.

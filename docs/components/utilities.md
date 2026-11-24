@@ -26,6 +26,9 @@ changes khi đổi):
 | `./icon-element` | định nghĩa `<td-icon>` | [Icons](icons.md) |
 | `./icons.json` | dữ liệu icon (cho PHP / SSR) | [Icons](icons.md#markup-hợp-đồng-ssr) |
 | `./form-validation` | `TdFormValidation` | [Form validation](form-validation.md) |
+| `./breakpoints` | `BREAKPOINTS`, `SHORT_MAX`, `mqBelow`, `matchesBelow`, `isCoarsePointer`, `isShort` | [Responsive](../concepts/responsive.md) |
+| `./external-overlay` | `registerExternalOverlay` (khai báo UI ngoài kit mở chồng lên modal / drawer) | [Modal](modal.md) |
+| `./theme` | bộ sinh palette tuỳ biến (`toCss`, `toJson`, `PRESETS`, `THEME_TOKENS`, `contrast`…), cùng lõi với CLI `td-theme` | [Theming](../customization/theming.md#palette-tuỳ-biến-td-theme-0420) |
 | `./thumb-loader` | `createThumbLoader`, `configureThumbBudget`, `getThumbBudget` (+ hằng `THUMB`, `CLS`, `ATTR`, `ROOT_CLASS`) | [Thumb loader](thumb-loader.md) |
 | `./base`, `./form-element`, `./sample` | `TdBaseElement` (có `escapeHtml()`, `safeColor()`), `TdFormElement`, `<td-sample>` | [Base element](base-element.md) |
 
@@ -39,6 +42,10 @@ Entry gốc `@dazzxq/td-components` (`index.js`) re-export **đích danh** (khô
 | `./icons` | `tdIcon`, `registerIcons`, `hasIcon`, `listIcons`, `fillIconSlots` |
 | `./dom-utils` | `slugify`, `formatFileSize`, `formatNumber`, `debounce`, `throttle`, `parseColorToRgb`, `relativeLuminance`, `contrastRatio`, `getAccessibleTextColor` |
 | `./datetime` | `TdDateTime` (từ trước 0.17.0) |
+| `./form-validation` | `TdFormValidation`, `trackFormDirty` |
+| `./breakpoints` | `BREAKPOINTS`, `SHORT_MAX`, `mqBelow`, `matchesBelow`, `isCoarsePointer`, `isShort` |
+| `./external-overlay` | `registerExternalOverlay` |
+| `./thumb-loader` | `createThumbLoader`, `configureThumbBudget`, `getThumbBudget` |
 
 ```js
 import { tdIcon, fillIconSlots, slugify, debounce, TdDateTime } from '@dazzxq/td-components';

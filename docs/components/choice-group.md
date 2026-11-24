@@ -260,20 +260,11 @@ minRail = Σ minᵢ + khung,   minᵢ = max(44 px khi cảm ứng / 0 khi chuộ
 #### Công thức: chuyển theme (Tự động / Sáng / Tối)
 
 Kit không có component theme riêng ([Theming › Light / dark / auto](../customization/theming.md#light--dark--auto)) — ghép
-`segmented` với `data-td-theme` + cookie:
+`segmented` với `data-td-theme` + cookie. Phần gốc (whitelist cookie phía PHP, `<meta name="color-scheme">`,
+`theme-boot.js`, ghi cookie) nằm ở [Không chớp trắng](../customization/theming.md#không-chớp-trắng-no-fouc); ở đây chỉ
+ghép công tắc:
 
 ```php
-<?php
-$theme = $_COOKIE['td_theme'] ?? 'auto';
-if (!in_array($theme, ['light', 'dark', 'auto'], true)) $theme = 'auto'; // whitelist, không in chuỗi thô
-?>
-<html lang="vi" data-td-theme="<?= $theme ?>">
-<head>
-  <meta name="color-scheme" content="<?= ['light' => 'light', 'dark' => 'dark', 'auto' => 'light dark'][$theme] ?>">
-  <script src="/assets/theme-boot.js"></script>  <!-- đồng bộ, KHÔNG module: đặt attribute trước lần vẽ đầu -->
-  <link rel="stylesheet" href="/assets/td.css">
-</head>
-…
 <?= td_choice_group('', [
   ['value' => 'auto', 'label' => 'Tự động', 'icon' => 'monitor'],
   ['value' => 'light', 'label' => 'Sáng', 'icon' => 'sun'],
@@ -282,12 +273,9 @@ if (!in_array($theme, ['light', 'dark', 'auto'], true)) $theme = 'auto'; // whit
 ```
 
 ```js
-// module của trang — chỉ chạy khi người dùng đổi (lần vẽ đầu đã đúng nhờ attribute PHP + theme-boot.js)
 import '@dazzxq/td-components/choice-group';
 document.getElementById('theme-switch').addEventListener('change', (e) => {
-  const v = e.detail.value; // 'auto' | 'light' | 'dark'
-  document.documentElement.setAttribute('data-td-theme', v);
-  document.cookie = `td_theme=${v}; path=/; max-age=31536000; SameSite=Lax`;
+  const v = e.detail.value; // 'auto' | 'light' | 'dark' → đặt data-td-theme + cookie td_theme như trang Theming
 });
 ```
 
