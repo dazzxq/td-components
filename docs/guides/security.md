@@ -126,10 +126,7 @@ TdModal.show({ title: 'Xác nhận', body });
 - URL phải là `http(s)` **cùng origin** với trang; khác origin → từ chối + `console.warn`. Fetch dùng
   `mode: 'same-origin'` (redirect sang origin khác cũng thất bại), `credentials: 'same-origin'`.
 - Chỉ nhận `application/json` dạng `{ "html": "…" }` hoặc `text/html`; loại khác / HTTP lỗi → trạng thái lỗi.
-- Body > 256 KB hoặc request > 10 giây → lỗi. Một request tại một thời điểm, huỷ khi card đóng/đổi.
-- Cache trong bộ nhớ: LRU 50 mục, khoá là URL tuyệt đối bỏ `#hash`; chỉ cache kết quả thành công; response có
-  `Cache-Control: no-store` **không bao giờ** được cache; fetch dùng `cache: 'no-store'` (bỏ qua HTTP cache của trình
-  duyệt, nên cache của component là lớp cache duy nhất).
+- Giới hạn kích thước, thời gian, đồng thời và luật cache (LRU, `no-store`, `clearCache()`): xem bảng ở [hovercard](../components/hovercard.md).
 
 ### 1. Bật sanitize khi fragment có nội dung do người dùng tạo
 

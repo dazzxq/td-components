@@ -516,22 +516,19 @@ Event không bao giờ mang giá trị: `revealed { duration }`, `remasked { rea
 | `adapter.facets` | `({ query, filters, context, signal }) => Promise<FacetDescriptor[]>` | Mở; cùng nhịp `list` khi đổi query / filter; sau upload / update | Lỗi → giữ bộ lọc đang có / không có bộ lọc (lưới vẫn chạy), event `operation-error` |
 | `adapter.upload` | `(file, { fields, context, signal, onProgress }) => Promise<UploadResult>` | Mỗi file thả vào khu "Tải lên"; `fields` chụp lúc file bắt đầu | Dòng file đỏ với `userMessage` / `labels.uploadError`; `fieldErrors` → lỗi trên ô `uploadFields`. Abort (xoá dòng, đóng) → im lặng |
 | `adapter.update` | `(id, { fields, version }, { context, signal }) => Promise<MediaAsset>` | Bấm "Lưu" / Ctrl+Enter trong form sửa — không bao giờ tự lưu | `validation` → `fieldErrors` lên control; `conflict` → nút "Tải lại" |
-| `adapter.delete` / `adapter.download` | typedef có sẵn | **0.32.1** mới gọi | — |
+| `adapter.delete` | `(id, { context, signal }) => Promise<DeleteResult>` | Nút "Xoá" sau hộp xác nhận (cần `capabilities.delete`) | Lỗi → toast `userMessage`; `blocked` → cảnh báo trong panel chi tiết ([media-picker.md › Xoá](../components/media-picker.md#xoá)) |
+| `adapter.download` | `(id, { rendition: 'original', context, signal }) => Promise<DownloadResult>` | Nút "Tải về" (cần `capabilities.downloadOriginal`) | Lỗi → toast ([media-picker.md › Tải về bản gốc](../components/media-picker.md#tải-về-bản-gốc)) |
+| `adapter.uploadFromUrl` · `adapter.collections` · `adapter.createCropDerivative` | chữ ký: [media-picker.md › Hợp đồng adapter](../components/media-picker.md#hợp-đồng-adapter) | Tải từ URL · dải bộ sưu tập ([0.66.0](../components/media-picker.md#bộ-sưu-tập-0660)) · tạo ảnh đã cắt (`crop.output: 'new-asset'`) | Như `upload` / `list`: chỉ hiện `userMessage` |
 | `FieldDescriptor.loadOptions` / `createOption` / `visibleWhen` | xem trang component | Mở form / gõ tìm option / bấm "Thêm mới" / mỗi lần giá trị form đổi | `visibleWhen` ném → field hiện + một cảnh báo |
 
 Mọi `signal` bị abort khi request bị thay (latest-wins) hoặc picker đóng; kết quả về muộn bị bỏ kể cả khi adapter phớt lờ
 `signal`. Abort không bao giờ hiện lỗi.
 
-**Cấu hình tĩnh** — `TdMediaPicker.configureDefaults({ adapter, capabilities, assetFields, uploadFields, messages, context,
-upload, pageSize })`: registry cấp module, mỗi lần gọi **thay toàn bộ** (gọi một lần trong bootstrap); adapter thiếu
+**Cấu hình tĩnh** — `TdMediaPicker.configureDefaults({ adapter, capabilities, … })`: danh sách khoá đầy đủ ở [media-picker.md › Cấu hình mặc định](../components/media-picker.md#cấu-hình-mặc-định--configuredefaults): registry cấp module, mỗi lần gọi **thay toàn bộ** (gọi một lần trong bootstrap); adapter thiếu
 `list` / `get` → `TypeError`. `TdMediaPicker.defaults` = bản sao nông. Thứ tự resolve lúc mở: tham số `open()` >
 `field.pickerOptions` > `field.adapter` > defaults; `selection` luôn từ người gọi.
 
-**Cổng trước khi chèn (0.117.0)** — `beforeApply(selection, { signal })` (ở `open()` hoặc `configureDefaults`): gọi một lần
-với lựa chọn cuối trước khi picker kết thúc; `false` → ở lại + `applyRejected`, ném `{ userMessage }` → chữ đó, lỗi khác →
-`console.error` + `applyFailed`, abort → im lặng. `selection.minSize: { width?, height? }` (chỉ ở `open()`) khoá chọn ảnh nhỏ hơn.
-Xem [media-picker.md › beforeApply](../components/media-picker.md#cổng-trước-khi-chèn--beforeapply-01170) /
-[› minSize](../components/media-picker.md#kích-thước-tối-thiểu--selectionminsize-01170). Server luôn kiểm lại.
+**Cổng trước khi chèn (0.117.0)** — `beforeApply(selection, { signal })` và `selection.minSize`: hành vi từng nhánh (`false`, ném `{ userMessage }`, lỗi khác, abort) ở [media-picker.md › beforeApply](../components/media-picker.md#cổng-trước-khi-chèn--beforeapply-01170) / [› minSize](../components/media-picker.md#kích-thước-tối-thiểu--selectionminsize-01170). Server luôn kiểm lại.
 
 **Option theo lần mở** — `TdMediaPicker.open(options)` / `<td-media-picker>.options`: bảng đủ ở
 [media-picker.md › Mở picker](../components/media-picker.md#mở-picker--tdmediapickeropenoptions). `messages`: chuỗi hoặc
@@ -545,12 +542,7 @@ field gọi `adapter.get` lười. Event `input` / `change` (`{ value, selection
 `TdMediaField.labels` (bảng đủ ở [media-field.md › Nhãn](../components/media-field.md#nhãn--tdmediafieldlabels)). PHP
 `td_media_field()` in nhãn mặc định — đổi nhãn → field render lại an toàn lúc nâng cấp.
 
-**Cắt ảnh (0.35.0)** — option `crop: { enabled, aspectRatio?, allowFocalPoint?, mode?, shape? }` (0.75.0: `mode: 'pan'` khung cố định kéo / phóng ảnh; 0.113.0: `mode: 'focal'` chỉ chọn điểm trọng tâm, không cần `enabled`, `shape: 'circle'` khung tròn khi `pan` + tỉ lệ 1:1; field: `crop-mode` / `crop-shape`; hộp thoại `TdCropper.openDialog({ mode, shape })`) của `open()` / `configureDefaults` bật
-bước cắt sau "Chèn" ([media-picker.md › Cắt ảnh](../components/media-picker.md#cắt-ảnh--option-crop-0350)); field
-`croppable` luôn tự đặt `crop` ở `open()` (không `croppable` → `{ enabled: false }`). `TdCropper` ([cropper.md](../components/cropper.md)):
-`TdCropper.presets` (preset toàn site, `{ label, ratio: number | null }[]`), `TdCropper.labels`, `TdCropper.openDialog(opts)`
-(Promise `applied` / `cancelled`, không reject). Nhãn picker thêm `cropTitle` "Cắt ảnh" · `cropBack` "Quay lại" ·
-`cropConfirm` "Chèn" · `cropUnavailable` · `focalTitle` "Chọn điểm trọng tâm" (0.113.0, `crop: { mode: 'focal' }`: chỉ chọn điểm trọng tâm, `usage.crop` luôn `null`; field / gallery `crop-mode="focal"` thêm `focalEdit` "Điểm trọng tâm" + `focalTitle`); nhãn cắt của field: xem [media-field.md › Nhãn](../components/media-field.md#nhãn--tdmediafieldlabels).
+**Cắt ảnh (0.35.0)** — option `crop` của `open()` / `configureDefaults` bật bước cắt sau "Chèn"; cú pháp đầy đủ (`mode`, `shape`, `initial`, `presets`, `output`, nhãn) ở [media-picker.md › Cắt ảnh](../components/media-picker.md#cắt-ảnh--option-crop-0350). `TdCropper` (`presets`, `labels`, `openDialog(opts)`): [cropper.md](../components/cropper.md). Nhãn cắt của field: [media-field.md › Nhãn](../components/media-field.md#nhãn--tdmediafieldlabels).
 
 ---
 
@@ -672,20 +664,20 @@ trừ khi có `messages` theo từng lần gọi. `patternMismatch` ưu tiên `t
 
 | Property / option | Chữ ký | Khi nào gọi | Lỗi thì sao |
 |---|---|---|---|
-| `columns[].render` | `(row, rowIdxInPage) => Node \| string \| any` | Mỗi lần vẽ hàng | Node → append; **chuỗi → HTML tin cậy (`innerHTML`)**; khác → text. Ném lỗi → ô đó trống + `console.error`, các ô khác vẫn vẽ |
+| `columns[].render` | `(row, rowIdxInPage, ctx?) => Node \| string \| any` | Mỗi lần vẽ hàng | Node → append; **chuỗi → HTML tin cậy (`innerHTML`)**; khác → text. Ném lỗi → ô đó trống + `console.error`, các ô khác vẫn vẽ |
 | `onSort` | `({ key, direction }) => void` (`direction`: `'asc' \| 'desc' \| null`) | Sau event `sort-change`, **chỉ ở `server-mode`** | Bắt lỗi: `console.error` |
 | `onPageChange` | `(page) => void` | Khi đổi trang, **chỉ ở `server-mode`** | Bắt lỗi: `console.error` (hai thanh phân trang vẫn đồng bộ) |
-| `update({ columns, data, page, onSort, onPageChange })` | | Gộp nhiều thay đổi một lần | Mảng không hợp lệ bị bỏ qua |
+| `update({ columns, data, page, onSort, onPageChange, rowKey, rowSelectable, selectedKeys, expandedKeys, loadChildren })` | | Gộp nhiều thay đổi một lần | Mảng không hợp lệ bị bỏ qua |
+| `onRowAction` · `onSelectChange` · `formatPageInfo` · `rowKey` · `rowSelectable` · `loadChildren` · `canDrop` | chữ ký + hành vi: [table.md › Hook & tuỳ chọn](../components/table.md#hook--tuỳ-chọn) | Thao tác dòng, chọn dòng, chữ phân trang, khoá dòng, bảng cây | Hook ném lỗi → `console.error`, bảng giữ trạng thái đúng |
 | event `request-change` (0.39.0) | `{ state, reason, requestId }` | Mỗi lần người dùng đổi trang / sort, và `setFilters()` — **mọi** chế độ; với `controlled` bảng chờ `setState()` | — (event) |
 | `setState({ page, perPage, sort, filters, data, totalItems, requestId })` (0.39.0) | `=> boolean` | App áp state (phản hồi server, khôi phục URL), im lặng | `requestId` cũ → bỏ qua (`false`); sort key lạ → bỏ sort + cảnh báo |
 | event `columns-change` (0.39.0) | `{ hidden, reason }` | Người dùng bật / tắt cột trong menu "Cột" — app lưu, gán lại `hiddenColumns` lần sau | — (event) |
 
 Ở chế độ client, sắp xếp / phân trang làm tại chỗ; muốn biết người dùng sắp xếp gì, nghe event `sort-change`.
 
-`TdTable.labels`:
+`TdTable.labels`: toàn bộ khoá và giá trị mặc định ở [table.md › `TdTable.labels`](../components/table.md#tdtablelabels); ví dụ đổi nhãn: [Mở rộng kit](extending.md).
 
-| Khoá | Mặc định |
-|---|---|
+---|---|
 | `table` | `Bảng dữ liệu` |
 | `loading` | `Đang tải dữ liệu…` |
 | `paginationTop` / `paginationBottom` | `Phân trang (trên)` / `Phân trang (dưới)` |
@@ -972,8 +964,7 @@ table.update({
 load();
 ```
 
-Callback không được bọc lỗi: lỗi trong `load()` là Promise reject (không phá bảng), nhưng code đồng bộ ném lỗi trong
-`onSort` sẽ lan ra.
+Callback được bọc lỗi (ném → `console.error`, bảng không vỡ); lỗi trong `load()` là Promise reject, không phá bảng.
 
 ### 8. Nhãn tiếng Anh cho một site
 

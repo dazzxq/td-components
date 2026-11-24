@@ -164,8 +164,8 @@ nút thường:
 
 - `type` chỉ nhận `submit | reset | button`; giá trị khác → `button`. **Mặc định là `button`** (khác `<button>`
   native, vốn mặc định `submit`). Quên `type="submit"` là lý do phổ biến nhất khiến "bấm không gửi".
-- Nút phải nằm **bên trong** `<form>`: `td-button` không hỗ trợ attribute `form="id"`, `name`/`value` của nút submit
-  cũng không có.
+- Nút phải nằm **bên trong** `<form>`: `td-button` không hỗ trợ attribute `form="id"` (không được chuyển vào nút thật).
+  `name` / `value` thì được chuyển vào `<button>` bên trong (từ 0.18.0), nên submitter mang `name=value` như nút native.
 - `loading` (hoặc `setLoading(true)`): nút giữ focus, có `aria-busy="true"` + `aria-disabled="true"`, **mọi click bị
   nuốt** (kể cả implicit submit bằng Enter trong ô input, vì trình duyệt "click" nút submit mặc định).
 - `disabled`: `<button>` bên trong bị disabled native. Nút nằm trong `<fieldset disabled>` cũng tự bị disabled (vì
@@ -179,8 +179,8 @@ Mỗi control td tự đặt `validity` qua ElementInternals, nên `form.checkVa
 | Thẻ | Ràng buộc | Cờ validity | Thông báo mặc định |
 |---|---|---|---|
 | `td-input-field` | `required` | `valueMissing` | "Trường này là bắt buộc" |
-| | `max-length` (+ `limit-type="char|word"`) | `tooLong` | "Vượt quá giới hạn {n} ký tự/từ" |
-| | `minlength` (chỉ sau khi người dùng sửa) | `tooShort` | "Tối thiểu {n} ký tự" |
+| | `max-length` (+ `limit-type="char|word"`) | `tooLong` | "Vượt quá giới hạn {maxLength} {unit}" |
+| | `minlength` (chỉ sau khi người dùng sửa) | `tooShort` | "Tối thiểu {minLength} ký tự" |
 | | `pattern` | `patternMismatch` | "Giá trị không đúng định dạng" |
 | | `type="email"` / `"url"` | `typeMismatch` | "Email không hợp lệ" / "URL không hợp lệ" |
 | | `type="number"` (sai cú pháp) | `badInput` | "Giá trị không hợp lệ" |

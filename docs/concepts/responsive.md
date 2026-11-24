@@ -76,7 +76,7 @@ khi bàn phím ảo đang mở (`visualViewport`).
 | Modal thường / datetime | bottom sheet | bottom sheet | hộp giữa | bánh xe datetime 3 dòng |
 | Media picker (luôn phủ kín màn hình) | toolbar 2 hàng, chi tiết là pane trượt | như < 480 | toolbar 1 hàng, lưới + cột chi tiết | chrome gọn, ≥ 1 hàng card |
 | Hộp cắt ảnh (`TdCropper.openDialog`, bước cắt của picker, 0.35) | toàn màn hình | toàn màn hình | hộp lớn giữa | header / footer gọn, vùng cắt ≥ 200px, footer trong màn hình |
-| Drawer | toàn màn hình | rộng tối đa `100% − 3rem` | theo `size` | — |
+| Drawer | rộng tối đa `100% − 3rem` | rộng tối đa `100% − 3rem` | theo `size` | — |
 | Toast | một cột rộng hết (trừ lề) | góc phải như cũ | góc phải | chỉ 2 toast mới nhất hiện |
 | Lightbox | panel là sheet dưới | sheet | sheet; ≥ 1024 panel bên phải | — |
 | Datetime picker | — | — | — | bánh xe 3 dòng |

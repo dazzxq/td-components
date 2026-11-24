@@ -329,7 +329,7 @@ ghi đè. Cách làm chuẩn: một module `i18n-<ngôn ngữ>.js` nạp **một
 | `TdSlider.messages` | `@dazzxq/td-components/slider` | `rangeUnderflow rangeOverflow stepMismatch` (`{min}` `{max}` `{step}`) | Khi tính validity (0.16.0) |
 | `TdCheckbox.messages` / `TdToggle.messages` | `@dazzxq/td-components/checkbox` / `…/toggle` | `valueMissing` | Khi tính validity (0.16.0) |
 | `TdChipInput.labels` | `@dazzxq/td-components/chip-input` | `remove create chips added removed duplicate results noResults loading error max required` (`{label}` `{text}` `{n}` `{max}`) | Mỗi lần dùng; `el.messages` ghi đè cho một instance |
-| `TdTable.labels` | `@dazzxq/td-components/table` | `table loading paginationTop paginationBottom itemLabel emptyTitle emptyText` | Khi render (cấu trúc) / cập nhật |
+| `TdTable.labels` | `@dazzxq/td-components/table` | toàn bộ khoá (nhãn chọn dòng, cột, cây…): [table.md › `TdTable.labels`](../components/table.md#tdtablelabels) | Khi render (cấu trúc) / cập nhật |
 | `TdDropdown.labels` | `@dazzxq/td-components/dropdown` | `search none noResults required` | Khi render menu / danh sách / kiểm tra `required` |
 | `TdPagination.labels` | `@dazzxq/td-components/pagination` | `prev next page info item` (`{n}`; `{from}` `{to}` `{total}` `{item}`) | Mỗi lần render (`item-label` thắng `item`) |
 | `TdEmptyState.labels` | `@dazzxq/td-components/empty-state` | `action` | Khi dựng nút hành động thiếu `label` |

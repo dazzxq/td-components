@@ -163,7 +163,7 @@ Event chính theo component:
 | `td-datetime-picker` | `change` (khi người dùng ghi giá trị: chọn ô ngày / tháng / năm, nút "Chọn" ở chế độ `datetime`, xoá, nhập tay) | `{ value, dbValue }` ([chi tiết](../components/datetime-picker.md)) |
 | `td-tabs` | `tab-change` | `{ tabId }` |
 | `td-pagination` | `page-change` | `{ page }` |
-| `td-table` | `sort-change`, `page-change` | `{ key, direction }`, `{ page }` |
+| `td-table` | `sort-change`, `page-change`, `row-action`, `select-change`, `select-limit`, `request-change`, `columns-change`, `expanded-change`, `load-error` | `{ key, direction }`, `{ page }`, ... (đầy đủ: [table](../components/table.md#event)) |
 | `TdLightbox` | `td-lightbox-open`, `td-lightbox-change`, `td-lightbox-close` (phát trên `document`, không bubble) | `{ index, count, token, item, itemEl, groupEl }` |
 
 Các lớp tĩnh (modal, toast, menu…) dùng **Promise và callback** thay cho event, ví dụ
@@ -221,7 +221,7 @@ Mỗi loại lớp nổi có một tầng, trùng với token `z-index` trong `t
 | Tầng | Token | Giá trị | Ai dùng | Loại |
 |---|---|---|---|---|
 | dropdown | `--td-z-dropdown` | 100 | Dự phòng — không component nào dùng (menu dropdown dùng tầng popover) | |
-| sticky | `--td-z-sticky` | 200 | `<td-scroll-top>` (nút cố định góc màn hình, không vào registry lớp nổi) | |
+| sticky | `--td-z-sticky` | 200 | `<td-scroll-top>` (nút cố định góc màn hình, không vào registry lớp nổi); bảng token đầy đủ: [Tuỳ biến giao diện](../customization/theming.md#z-index) | |
 | overlay | `--td-z-overlay` | 300 | Dự phòng — không component nào dùng | |
 | lightbox | `--td-z-lightbox` | 350 | `TdLightbox` | chặn (blocking) |
 | modal | `--td-z-modal` | 400 | `TdModal` (mọi dialog) | chặn |
@@ -335,7 +335,7 @@ riêng**. Muốn đổi chữ có ba đường:
    TdDatetimePicker.labels.confirm = 'OK';
    ```
 
-   Có ở: `TdModal`, `TdToast`, `TdLoading`, `TdDropdown`, `TdPagination`, `TdEmptyState`, `TdDatetimePicker`
+   Có ở: `TdModal`, `TdDrawer`, `TdToast`, `TdLoading`, `TdDropdown`, `TdPagination`, `TdEmptyState`, `TdDatetimePicker`
    (`labels`, `messages`), `TdChipInput` (`labels`, cộng property `messages` theo từng thẻ), `TdFormValidation`
    (`labels`, `messages`), `TdTable`, `TdMenu`, `TdHovercard`; thông báo validation: `TdInputField.messages`,
    `TdSlider.messages`, `TdCheckbox.messages`, `TdToggle.messages` (0.16.0).

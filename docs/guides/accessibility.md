@@ -46,10 +46,10 @@ Trang này chia làm ba phần:
 
 | Component | Phím |
 |---|---|
-| `td-dropdown` (APG select-only combobox) | Trigger đóng: ↓/↑/Enter/Space mở, Home/End mở ở option đầu/cuối, gõ chữ = type-ahead. Đang mở: ↑/↓ (vòng), Home/End (chỉ trên trigger), PageUp/PageDown, Enter chọn (cả từ ô tìm), Alt+↑ chọn, Space trên trigger chọn/đóng, **Escape đóng + focus trigger**, Tab từ ô tìm về trigger, Tab trên trigger đóng và đi tiếp |
+| `td-dropdown` (APG select-only combobox) | Trigger đóng: ↓/↑/Enter/Space mở, gõ chữ = type-ahead; đang mở: ↑/↓, Enter chọn, **Escape đóng + focus trigger**. Bảng phím đầy đủ: [dropdown](../components/dropdown.md) |
 | `td-chip-input` (APG combobox, list autocomplete) | Một tab stop (ô nhập). ↓ mở + di chuyển, Alt+↓ mở không di chuyển, ↑ di chuyển, Enter chọn option / khớp chính xác / tạo mới (`allow-create`), Escape đóng popup (popup đã đóng: xoá chữ), Backspace hoặc ← ở đầu ô → nút xoá của chip cuối. Trên nút xoá chip: ←/→/Home/End di chuyển, Delete/Backspace/Enter/Space xoá, → qua chip cuối hoặc Escape về ô nhập |
-| `td-datetime-picker` (APG date picker dialog, 0.60.0) | Trigger: Enter/Space/↓/Alt+↓ mở (không bao giờ submit form), bấm lại khi đang mở thì đóng. Trong lịch: lưới ngày `<table role="grid">` là **một** tab stop; ←→ ±1 ngày, ↑↓ ±1 tuần, Home/End Thứ Hai/Chủ Nhật, PageUp/PageDown ±1 tháng, Shift+PageUp/PageDown ±1 năm, Enter/Space chọn; lưới tháng ±1/±3, lưới năm ±1/±3/±12/±120; vùng `aria-live=polite` đọc tháng/năm một lần; mỗi wheel giờ/phút là một tab stop (↑/↓ ±1, PageUp/PageDown ±6 giờ / ±15 phút, Home/End). `date`/`month`/`year` chọn là ghi; `datetime` (0.61.0) là **hai màn**: bấm ngày → màn giờ (focus bánh xe giờ, vùng `role=status` đọc "Chọn giờ cho 15/10/2026"; nút "‹" `aria-label="Chọn lại ngày"` hoặc Backspace về màn ngày), "Chọn" (chỉ ở màn giờ) xác nhận. **Escape đóng cả lịch ở mọi khung / màn và huỷ bản nháp**; focus về trigger |
-| `td-datetime-range` (0.61.0) | Cùng lưới APG; MỘT lưới cho cả hai mốc: ô đầu/cuối `aria-selected` + hậu tố "ngày bắt đầu" / "ngày kết thúc", ô giữa "trong khoảng" (lưới `aria-multiselectable`); ô vượt `max-days` mờ nhưng bấm được, nhãn "quá N ngày — bấm để bắt đầu khoảng mới"; vùng `role=status` đọc lựa chọn Từ / Đến và khoảng; công tắc "Từ \| Đến" `aria-pressed`; lỗi → focus vào **tab** của mốc có lỗi (`aria-describedby` tới dòng lỗi). `datetime`: hai màn mỗi mốc như picker; "Tiếp: Đến" sang ngày của Đến |
+| `td-datetime-picker` (APG date picker dialog) | Trigger: Enter/Space/↓/Alt+↓ mở (không bao giờ submit form). Lưới ngày `<table role="grid">` là **một** tab stop, mũi tên di chuyển theo ngày/tuần, PageUp/PageDown theo tháng, **Escape đóng cả lịch và huỷ bản nháp**, focus về trigger. Bảng phím đầy đủ (lưới tháng/năm, bánh xe giờ/phút, màn giờ của `datetime`): [datetime-picker](../components/datetime-picker.md) |
+| `td-datetime-range` | Cùng lưới APG với datetime-picker; MỘT lưới cho cả hai mốc, trạng thái ô đầu/cuối/trong khoảng đọc qua `aria-selected` + hậu tố; lỗi → focus vào tab của mốc có lỗi. Chi tiết: [datetime-range](../components/datetime-range.md) |
 
 Trong mọi popup trên, option **không bao giờ nhận focus thật**; control đang focus mang `aria-activedescendant`.
 
@@ -159,11 +159,7 @@ Gate cũng kiểm tra `opacity: 1` trên phần tử và tổ tiên (không cho 
 Theo yêu cầu của owner (v0.14.1, v0.14.2), viền **lúc nghỉ** và **lúc hover** của input-field, textarea, dropdown,
 datetime-picker, chip-input, checkbox, toggle dùng tông xám nhạt kiểu Apple:
 
-| Token | Giá trị sáng | Tương phản trên nền trắng | Dùng cho |
-|---|---|---|---|
-| `--td-control-border-soft` | `#d1d1d6` | ~1.5:1 | viền lúc nghỉ |
-| `--td-control-border-hover` | `#aeaeb2` | ~2.2:1 | viền khi hover, viền option đang active |
-| `--td-control-border-strong` | `var(--td-gray-500)` = `#8a8a93` | ~3.4:1 | mức đạt chuẩn |
+Ba token `--td-control-border-soft` (~1.5:1 trên nền trắng, viền lúc nghỉ), `--td-control-border-hover` (~2.2:1, viền hover / option active) và `--td-control-border-strong` (~3.4:1, mức đạt chuẩn): giá trị sáng / tối đầy đủ ở bảng token trong [Tuỳ biến giao diện](../customization/theming.md#viền-control-mềm-và-override-chuẩn-wcag-nghiêm-ngặt).
 
 WCAG 1.4.11 yêu cầu ranh giới của control ≥ 3:1 khi đó là thứ duy nhất nhận ra control. Kit bù bằng: vòng focus rõ
 (`--td-focus-ring`), nhãn hiển thị, nền control. Nếu site của bạn cần chuẩn nghiêm ngặt (cơ quan nhà nước, hợp đồng

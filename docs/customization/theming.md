@@ -266,7 +266,7 @@ Thang xám **không** đổi trong dark; dark đổi các token ngữ nghĩa bê
 | Token | Mặc định | Lớp |
 |---|---|---|
 | `--td-z-dropdown` | `100` | **Dự trữ**: không component nào dùng (menu của td-dropdown dùng `--td-z-popover`); giữ vì là token public |
-| `--td-z-sticky` | `200` | **Dự trữ**, dành cho site (header dính của site) |
+| `--td-z-sticky` | `200` | `<td-scroll-top>` (qua `--td-scroll-top-z`); site cũng có thể dùng cho header dính của mình |
 | `--td-z-overlay` | `300` | **Dự trữ**, dành cho site |
 | `--td-z-lightbox` | `350` | TdLightbox (dưới modal: confirm/menu mở được trên lightbox) |
 | `--td-z-modal` | `400` | TdModal (kể cả picker của td-datetime-picker) |

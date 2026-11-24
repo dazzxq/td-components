@@ -55,7 +55,7 @@ document.querySelector('#insert-image').addEventListener('click', async () => {
 |---|---|
 | Dialog full viewport, focus, Escape theo tầng, khoá cuộn, hộp xác nhận "bỏ thay đổi" / "xoá" | Endpoint, envelope JSON, map DTO → `MediaAsset` |
 | Ô tìm (debounce 250ms), facet gọn, phân trang (cursor hoặc số trang); request cũ không bao giờ thắng | Auth, CSRF, 2FA / xác thực lại, **quyền**, audit, rate limit |
-| Trạng thái đang tải (30 card skeleton) / rỗng / lỗi / "Thử lại" | Chuẩn hoá lỗi thành `MediaAdapterError` (chữ an toàn cho người dùng) |
+| Trạng thái đang tải (skeleton, số thẻ khớp khung lưới; 30 khi chưa đo được) / rỗng / lỗi / "Thử lại" | Chuẩn hoá lỗi thành `MediaAdapterError` (chữ an toàn cho người dùng) |
 | Lưới card + panel chi tiết, chọn đơn / nhiều + `maxItems` | Album, brand, tag, bản quyền… (đưa vào qua facet + descriptor; muốn album là **cấp điều hướng** có thẻ + breadcrumb thì cài [`collections`](#bộ-sưu-tập-0660)) |
 | Dialog tải lên: tiến độ, huỷ, "dùng lại ảnh cũ"; ô URL (kiểm cú pháp cho **tiện**, không phải bảo mật) | Kiểm file thật (magic byte, re-encode, dung lượng), dedup SHA-256, **chặn SSRF** khi tải từ URL |
 | Nút Xoá + hộp xác nhận + hiển thị danh sách "đang được dùng" do server trả | **Kiểm usage + quyền trước khi xoá** — kit không bao giờ tự kiểm |
@@ -178,8 +178,8 @@ Mỗi mục là một item [`td-media-grid`](media-grid.md) (`select-mode="tick"
 `td-checkbox`, màu `--td-checkbox-color`; `--td-media-picker-card-checked` chỉ còn tô **viền card**. Ở chế độ nhiều, thumb của mục đã chọn mờ `--td-media-picker-checked-opacity` (0.7). Cả ba màu viền
 được `test:contrast` kiểm ≥ 3:1 trên nền card — đổi token thì giữ ngưỡng đó. `forced-colors`: viền `Highlight` /
 `CanvasText`. Token khác: `--td-media-picker-detail-w` (25rem), `--td-media-picker-col-min`, `--td-media-picker-gap`,
-`--td-media-picker-list-bg`, `--td-media-picker-card-radius`, `--td-media-picker-card-shadow` — xem
-[Theming](../customization/theming.md).
+`--td-media-picker-list-bg`, `--td-media-picker-card-radius`, `--td-media-picker-card-shadow` — khai báo trong `src/styles/components/media-picker.css`
+(trang [Tuỳ biến giao diện](../customization/theming.md) chỉ liệt kê ba màu viền card).
 
 ### Thẻ gọn — `cardMeta` + `nameLines` (0.118.0)
 
@@ -269,7 +269,7 @@ Căn phải: "Đóng" (secondary) và "Chèn" / "Chèn ({n})" (primary, disabled
 nhiều**, một **chip "{n} đã chọn ×"** (0.36.0; "{n}/{max} đã chọn" khi có `maxItems`): vừa là số đếm (cho thấy lựa chọn trải
 qua nhiều trang — dcms2 không có), vừa là nút "Bỏ chọn tất cả" (tên đọc "Bỏ chọn tất cả ({n} đã chọn)", cập nhật mỗi lần
 chọn / bỏ). Không chọn gì → không có chip. Footer luôn **một hàng**. Nhãn: `selectedChip`, `selectedChipMax`,
-`clearSelectionChip` (`selected` / `selectedMax` cũ không còn dùng).
+`clearSelectionChip` (`selected` / `selectedMax` là nhãn cũ trước 0.36.0, footer không dùng nữa).
 
 ### Chuyển động mở / đóng (0.62.0)
 
@@ -526,7 +526,7 @@ const outcome = await TdMediaPicker.open({
 - **Một picker một lúc**: gọi `open()` khi đã có picker mở → resolve ngay `{ status: 'cancelled', reason:
   'programmatic' }` + cảnh báo một lần (không chồng picker).
 - `TdMediaPicker.open()` tạo host tạm trên `<body>` và gỡ sau khi đóng.
-- **Picker chọn một ảnh mặc định mở ra chọn sẵn asset đầu tiên chọn được** của lần tải đầu ([`autoSelectFirst`](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670); từ 0.68.0, trước đó 0.67 là opt-in, trước nữa không tự chọn gì). **Picker `multiple` thì không** (từ 0.72.0). Các trường hợp không chọn sẵn: `selection.initialIds` có phần tử, site đặt `autoSelectFirst: false`, hoặc picker là `multiple` mà không đặt `autoSelectFirst: true`; khi đó lựa chọn rỗng và "Chèn" disabled, và từ 720px panel chi tiết vẫn **xem trước** asset đầu mà không chọn.
+- **Chọn sẵn asset đầu**: picker chọn một ảnh mặc định chọn sẵn asset đầu tiên chọn được của lần tải đầu, picker `multiple` thì không; điều kiện và ngoại lệ đầy đủ ở [`autoSelectFirst`](#tự-chọn-ảnh-đầu-khi-mở--autoselectfirst-0670).
 
 ### Kết quả — `PickerOutcome`
 
@@ -889,7 +889,7 @@ TdMediaPicker.open({ adapter, autoSelectFirst: false });                        
 Picker **chọn sẵn asset đầu tiên chọn được** của danh sách lúc mở: "Chèn" bật ngay và khung chi tiết (≥ 720px) xem trước đúng
 asset đó. **Mặc định theo chế độ (0.72.0): bật với picker chọn một ảnh, tắt với picker `multiple`** (album, [`td-media-gallery`](media-gallery.md)): mở picker
 nhiều ảnh ra thì chưa chọn gì, "Chèn" tắt, và từ 720px panel chi tiết chỉ xem trước ảnh đầu. Tính theo `selection.mode`, không theo `maxItems`
-(picker `multiple` còn một chỗ trống vẫn là `multiple`).
+(picker `multiple` còn một chỗ trống vẫn là `multiple`). Có `selection.initialIds` (không rỗng) thì không chọn sẵn gì thêm.
 
 Lịch sử: 0.36.0 (QĐ 69) cố ý không tự chọn, để một cú bấm "Chèn" vội ở ô logo, banner, SEO… không chèn nhầm ảnh mới nhất;
 0.67.0 thêm option này ở dạng opt-in; owner kit đảo lại ở **0.68.0**: bật mặc định, cả `multiple`; **0.72.0** (owner: picker nhiều ảnh thì không)
@@ -1524,7 +1524,8 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `save` · `saved` | "Lưu" · "Đã lưu thay đổi" |
 | `discardTitle` · `discardMessage` · `discard` · `keepEditing` | "Bỏ thay đổi?" · "Các thay đổi chưa lưu hoặc file đang tải lên sẽ bị huỷ." · "Bỏ thay đổi" · "Tiếp tục sửa" |
 | `limit` · `loadingInitial` | "Tối đa {max} mục" · "Đang tải lựa chọn…" |
-| `selected` · `selectedMax` · `clearSelection` | "Đã chọn {n}" · "Đã chọn {n}/{max}" · "Bỏ chọn tất cả" |
+| `selected` · `selectedMax` · `clearSelection` | "Đã chọn {n}" · "Đã chọn {n}/{max}" · "Bỏ chọn tất cả" (nhãn cũ, footer không dùng từ 0.36.0) |
+| `selectedChip` · `selectedChipMax` · `clearSelectionChip` (0.36) | "{n} đã chọn" · "{n}/{max} đã chọn" · "Bỏ chọn tất cả ({label})" (chip footer chế độ nhiều: nhãn hiển thị + tên truy cập) |
 | `selectFirst` · `notReady` | "Hãy chọn ít nhất một mục." · "Mục này chưa sẵn sàng để chọn." |
 | `sizeTooSmall` · `sizeTooSmallWidth` · `sizeTooSmallHeight` · `sizeUnknown` | 0.117.0 ([`selection.minSize`](#kích-thước-tối-thiểu--selectionminsize-01170)): "Ảnh phải có kích thước tối thiểu {w} × {h} px" · "Ảnh phải có chiều rộng tối thiểu {w} px" · "Ảnh phải có chiều cao tối thiểu {h} px" · "Không xác định được kích thước ảnh để kiểm tra kích thước tối thiểu" |
 | `applyRejected` · `applyFailed` | 0.117.0 ([`beforeApply`](#cổng-trước-khi-chèn--beforeapply-01170)): "Không thể chèn mục đã chọn" · "Không kiểm tra được, thử lại sau" |
@@ -1769,7 +1770,7 @@ Ghi nhớ khi viết adapter:
       </div>
     </div>
     <div class="td-modal__footer td-media-picker__footer">
-      <div class="td-media-picker__selbar">.td-media-picker__selcount · .td-media-picker__clear</div>
+      <div class="td-media-picker__selbar">chip "{n} đã chọn ×" (nút bỏ chọn tất cả, chỉ ở chế độ nhiều)</div>
       <div class="td-media-picker__actions">.td-media-picker__cancel · .td-media-picker__confirm</div>
     </div>
   </div>
@@ -1806,7 +1807,7 @@ Picker theo bố cục và cách dùng của media picker dcms2. Bảng dưới 
 | Kích thước | Full viewport (`100vh`) | Full viewport (`100dvh` + safe area) | khớp (sửa lỗi thanh địa chỉ iOS) |
 | Tiêu đề | Theo loại | Theo `selection.kinds` | khớp |
 | Toolbar | Upload · tìm · facet · phân trang, một hàng | Như dcms2, toàn component kit | khớp |
-| Toolbar < 720px | Tràn ngang | Xuống 2 hàng | sửa lỗi |
+| Toolbar < 720px | Tràn ngang | Một hàng: [Tải lên (icon)] [ô tìm] [Bộ lọc (icon + badge)], phân trang xuống dưới lưới | sửa lỗi |
 | Facet | Dropdown / toggle gọn, không nhãn | Như dcms2 + `aria-label` | khớp |
 | Phân trang | Số trang + "Hiển thị a-b / total" | `pages` y như vậy; `cursor` là ‹ › + cùng dòng chữ | khớp (thêm chế độ cursor cho dsuite) |
 | Card | 3:2 contain, tên, "cỡ • ngày", viền 2px, bo 12px | Như dcms2 | khớp |
