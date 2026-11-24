@@ -477,9 +477,9 @@ Server **vẫn phải** kiểm giá trị lựa chọn thuộc tập hợp lệ 
 - **Chữ chỉ là text**: nhãn (`TdRating.labels`, `TdCarousel.labels`, `label` của carousel) đi qua `textContent` /
   `setAttribute` (JS) và `Td::e` (PHP); template `{value}` / `{n}`… thay **một lượt** (giá trị không bao giờ được mở rộng
   lại). Không có option `labels` ở PHP (R13). Không có hatch HTML mới phía JS.
-- **Số được kiểm theo dạng trước khi dùng**: `value` của rating chỉ nhận số thập phân thường (`/^\d+(\.\d+)?$/`, ≤ 16 ký tự)
-  hoặc số hữu hạn; `max` 1–10; `count` chữ số ≤ 15; carousel `per_view` 1–6, `dots` / `step` enum. Sai → mặc định / không
-  có đánh giá (+ cảnh báo), không bao giờ chèn chuỗi thô vào attribute / CSS.
+- **Số được kiểm theo dạng trước khi dùng**: `value`, `max`, `count` của rating chỉ nhận đúng dạng số (luật + khoảng:
+  [rating.md#attribute](../components/rating.md#attribute)); carousel `per_view` / `dots` / `step` cũng kiểm theo dạng.
+  Sai → mặc định / không có đánh giá (+ cảnh báo), không bao giờ chèn chuỗi thô vào attribute / CSS.
 - **CSP**: tô sao chính xác và khung carousel chỉ dùng CSSOM (`style.setProperty('--_td-rating-fill', …)`); PHP không in
   `style="…"` (bậc `data-fill` 10 % do `td.css`). Probe hướng cuộn RTL dựng phần tử ẩn bằng CSSOM. CSP states
   `td-rating.*`, `td-carousel.*`: 0 violation.
@@ -490,11 +490,11 @@ Server **vẫn phải** kiểm giá trị lựa chọn thuộc tập hợp lệ 
   (identity + focus), node bị sửa lúc tách bị thay; slide không bao giờ bị chạm. Vòng 2: viewport được kiểm **ở mọi
   nhánh** (kể cả khi thiếu track), và chỉ chứa đúng track — phần tử khác trong viewport thành **slide** (nội dung của site,
   như con lạc của host; kit không lọc nội dung slide), không bao giờ là một phần của khung.
-- **Cổng SSR**: `rating@1` nhận tại chỗ chỉ khi con của host **bằng đúng** cây JS tự dựng (`isEqualNode`, kể cả nhãn); lệch
-  (thẻ lạ, `onclick`, nhãn khác) → render lại từ attribute. `carousel@1` không bao giờ render lại slide; phần **khung** lệch
+- **Cổng SSR**: `rating@1` nhận tại chỗ chỉ khi markup khớp, lệch thì render lại từ attribute
+  ([rating.md](../components/rating.md#php--td_rating)). `carousel@1` không bao giờ render lại slide; phần **khung** lệch
   (nút là `<a href="javascript:…">`, phần tử thừa trong thanh điều khiển) bị thay bằng phần của kit / bỏ đi.
-- **`attrs` của PHP**: allowlist + `aria-*` / `data-*`; tên kit sở hữu (`value`, `max`, `role`, `aria-label`, `data-td-*`…) bị
-  chặn (`td__reserve`).
+- **`attrs` của PHP**: allowlist, tên kit sở hữu bị chặn (`td__reserve`); luật đầy đủ ở
+  [rating.md](../components/rating.md#php--td_rating).
 - Test: `test/php/td-ssr-rating.test.js`, `test/php/td-ssr-carousel.test.js` (escape `<script>`, `attrs` độc hại, option
   `labels` bị bỏ qua), `src/display/td-v050-rating.engines.browser-test.js` / `td-v050-carousel.engines.browser-test.js`
   (markup bị sửa không chạy được `onclick` / link `javascript:`).

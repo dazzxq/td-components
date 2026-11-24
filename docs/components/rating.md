@@ -37,7 +37,7 @@ không bấm được, không focus, không event (chế độ chọn sao để 
 | `value` | số thập phân (`4.5`), tuỳ chọn | Điểm trung bình. Kẹp `[0, max]`. **Thiếu / rỗng / không phải số thập phân thường** (`4,5`, `1e3`, `-1`, `4.5abc`) → **chưa có đánh giá**. `value="0"` là 0 sao thật — khi sản phẩm chưa có đánh giá, **bỏ** attribute (PHP: truyền `null`). |
 | `max` | số nguyên 1–10, mặc định `5` | Số sao. Ngoài khoảng → 5 + một cảnh báo console. |
 | `precision` | `half` (mặc định) \| `exact` | Chỉ ảnh hưởng **hình sao**: `half` làm tròn tới nửa sao gần nhất (nửa làm tròn lên: 4,25 → 4,5; 4,74 → 4,5; 4,75 → 5); `exact` tô đúng tỉ lệ. Nhãn đọc luôn là giá trị thật (xem dưới). |
-| `count` | số nguyên ≥ 0, tuỳ chọn | Số lượt đánh giá → "(1.234 đánh giá)" (phân cách nghìn bằng dấu chấm). Bỏ qua khi chưa có đánh giá. |
+| `count` | số nguyên ≥ 0, tối đa 15 chữ số, tuỳ chọn | Số lượt đánh giá → "(1.234 đánh giá)" (phân cách nghìn bằng dấu chấm). Từ 16 chữ số trở lên → coi như không có `count`. Bỏ qua khi chưa có đánh giá. |
 | `show-value` | boolean | Hiện "4,5" trước sao (chữ thường, ẩn với trình đọc màn hình vì nhãn đã có số). |
 | `size` | `s` \| `m` (mặc định) \| `l` | Cỡ sao = `--td-icon-s` / `-m` / `-l` (16 / 20 / 24 px mặc định). |
 

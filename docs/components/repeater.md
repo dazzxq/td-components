@@ -284,9 +284,9 @@ Tham số cuối là bộ đọc / ghi mặc định (gọi để giữ phần c
 ## Responsive (0.34.0)
 
 Host `<td-repeater>` là **container** (`container: td-repeater / inline-size`). Khi repeater **hẹp hơn 480px** (điện thoại,
-hoặc cột hẹp của trang desktop) cụm công cụ của mỗi dòng (kéo / ↑ / ↓ / ×) thành **một hàng riêng, căn cuối, dưới các
-field** — field có cả bề rộng dòng. Áp cho dòng flex mặc định lẫn dòng `display: grid` của site (cụm công cụ chiếm mọi
-cột → tự xuống hàng mới); luật site đặt chỗ cụm công cụ tường minh (CSS không layer) vẫn thắng. ≥ 480px: như trước.
+hoặc cột hẹp của trang desktop) cụm công cụ của mỗi dòng (kéo / ↑ / ↓ / ×) căn cuối, dưới các field — field có cả bề rộng
+dòng. Từ 0.36.0, trong dòng flex cụm này **dùng chung dòng cuối** với field ngắn đứng trước (vd. số lượng) khi vừa, chỉ
+xuống hàng riêng khi không vừa. Dòng `display: grid` của site: cụm công cụ chiếm mọi cột → tự xuống hàng mới; luật site đặt chỗ cụm công cụ tường minh (CSS không layer) vẫn thắng. ≥ 480px: như trước.
 
 - **Cần bề rộng từ cha** (`display: block` trong luồng thường — mặc định; trong flex: `flex: 1 1 auto; min-inline-size: 0`).
   Trong khung co theo nội dung (`inline-block`, `float`, flex item `flex: 0 1 auto`) host sụp về 0.
@@ -390,7 +390,7 @@ Không có animation.
 ```
 
 - Dòng app tự đặt `aria-labelledby` (vd. trỏ vào tiêu đề câu hỏi) → kit giữ, không thêm `aria-label`.
-- Icon nút: registry `up` / `down` / `close` / `plus` (ghi đè bằng `registerIcons`).
+- Icon nút: registry `up` / `down` / `close` / `plus`, và `grip` cho tay nắm khi `sortable` (ghi đè bằng `registerIcons`).
 - Id nhãn sinh từ bộ đếm, không phải API.
 
 ## Bàn phím & trợ năng

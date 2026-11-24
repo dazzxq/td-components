@@ -308,19 +308,10 @@ chuỗi chuẩn qua event `input` / `change` (`detail.value`). `TdNumberInput.me
 
 `import '@dazzxq/td-components/repeater';` · Trang: [repeater.md](../components/repeater.md) (0.30.0)
 
-Không có property hook: điểm móc là **event**. `rows-change` (`{ reason, source, rows, row?, index?, from?, to? }`) phát
-**đồng bộ** sau mọi thay đổi cấu trúc (người dùng và API) — nơi duy nhất app đặt lại `name` cho field trong dòng (kit
-không bao giờ đặt; [công thức](../components/repeater.md#2-đặt-tên-field--công-thức-của-app)). `before-remove`
-(`{ row, index }`, hủy được) cho phép hỏi xác nhận rồi gọi `removeRow(row)`.
-
-`TdRepeater.labels`: `add` `Thêm dòng` · `row` `Dòng {n}` · `remove` `Xoá dòng {n}` · `moveUp` `Chuyển dòng {n} lên` ·
-`moveDown` `Chuyển dòng {n} xuống` · `added` `Đã thêm dòng {n}. Có {count} dòng.` · `removed` `Đã xoá dòng {n}. Còn
-{count} dòng.` · `moved` `Đã chuyển tới vị trí {n} trên {count}.` (0.31.0, trước đó `{n} / {count}`) · `full` `Tối đa
-{max} dòng.` · `atMin` `Cần ít nhất {min} dòng.`
-
-0.31.0 `sortable` (opt-in): kéo / nhấc dùng chung bộ điều khiển với [td-sortable](#td-sortable) — mỗi bước bàn phím, mỗi
-lần thả và huỷ bằng Escape phát một `rows-change` `reason: 'move'` `source: 'user'`; văn bản của tay nắm và thông báo lấy
-từ `TdSortable.labels`.
+Hook: property `readRow` / `writeRow` (đọc / ghi một dòng, 0.56.0), static `TdRepeater.lockField(el, mode)` (site khoá
+field kit không khoá được), event `rows-change` (đồng bộ, nơi duy nhất app đặt lại `name`) và `before-remove` (hủy được).
+Chữ ký + hành vi: [repeater.md](../components/repeater.md#property--method). Chữ `TdRepeater.labels` (10 key):
+[repeater.md](../components/repeater.md#property--method).
 
 ---
 
