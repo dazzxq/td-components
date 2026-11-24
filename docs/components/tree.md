@@ -57,7 +57,6 @@ Mỗi nút: `{ value, label, children?, hasChildren?, disabled?, description?, e
 | `disabled` | **khoá** nút **và cả nhánh** của nó (mục 4) |
 | `description` | dòng phụ nhỏ cạnh nhãn (text), đọc qua `aria-describedby` |
 | `expanded` | mở sẵn (chỉ nút đã có `children`) |
-| `helper-text` | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage`. |
 
 Kit không đổi tên trường (`value-key` / `label-key` không có): dữ liệu khác hình dạng thì app tự map trước khi gán.
 `getNode(value)` trả về **chính object** của app.
@@ -161,7 +160,7 @@ nâng cấp; `value` gán sớm thắng attribute `value`.
 
 ## Giới hạn kích thước
 
-≤ 5.000 nút trong `data` (vượt → một cảnh báo gợi ý `loadChildren`, vẫn chạy), ≤ 1.000 hàng **đang hiện** cùng lúc, sâu
+≤ 5.000 nút trong `data` (vượt → một cảnh báo gợi ý `loadChildren`, vẫn chạy), sâu
 ≤ 16 cấp (sâu hơn bị bỏ + cảnh báo). Chỉ nhánh đang mở có trong DOM (thu gọn = gỡ `group`); mở / đóng / check chỉ cập
 nhật phần bị ảnh hưởng. Không có virtualization — cây lớn hơn hãy tải nhánh theo nhu cầu.
 
@@ -178,6 +177,7 @@ nhật phần bị ảnh hưởng. Không có virtualization — cây lớn hơn
 | `disabled` | tắt | khoá cả cây (cũng theo `<fieldset disabled>`) |
 | `required` | tắt | phải có ít nhất một giá trị (`valueMissing`) |
 | `error-text` | — | lỗi hiển thị (`aria-invalid` trên cây + ghi chú) |
+| `helper-text` | — | **0.54.0** Gợi ý dưới control (chữ, 1–2 câu): ẩn và rời khỏi mô tả khi có lỗi. Nội dung giàu (link, `<code>`): `<td-hint>` con — xem [Hint](hint.md). Property `helperText`, `setHelper(msg)`, `helperMessage` |
 | `aria-label` | — | tên khi không có `label` (chép lên `ul[role=tree]`) |
 
 ## Property & method
@@ -194,7 +194,7 @@ nhật phần bị ảnh hưởng. Không có virtualization — cây lớn hơn
 | `focus()` | focus tab stop của cây |
 | `setError(msg)` / `clearError()` / `checkValidity()` / `reportValidity()` | contract form chung |
 
-Văn bản: `TdTree.labels` (`search`, `empty`, `noResults`, `loading`, `loadError`, `results` — `{n}`, `required`).
+Văn bản: `TdTree.labels` — `search` `Tìm trong cây` · `empty` `Không có mục nào` · `noResults` `Không tìm thấy kết quả` · `loading` `Đang tải…` · `loadError` `Không tải được nhánh này` · `results` `{n} kết quả` · `required` `Vui lòng chọn ít nhất một mục`.
 
 ## Event
 

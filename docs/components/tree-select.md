@@ -151,7 +151,7 @@ el.open(); el.close(); el.toggle();
 | `setError()` / `clearError()` / `checkValidity()` / `reportValidity()` / `focus()` | contract form chung |
 
 Văn bản: `TdTreeSelect.labels` (`search`, `tree` — tên dự phòng khi không có nhãn, `clear`, `selectedCount` — `+{n}`,
-`required`); văn bản của cây trong popup: `TdTree.labels`.
+`required`) — mặc định: `search` `Tìm kiếm` · `tree` `Chọn mục` · `clear` `Xoá lựa chọn` · `selectedCount` `+{n}` · `required` `Vui lòng chọn một mục`; văn bản của cây trong popup: `TdTree.labels`.
 
 ## Event
 
@@ -187,7 +187,7 @@ và sau nâng cấp cùng **tập** giá trị, với hai ngoại lệ đã bi�
 ```html
 <td-tree-select id="{h}">
   <div class="td-tree-select" data-state="closed|open" [data-multiple]>
-    <label class="td-field__label" id="{h}-label" for="{h}-input">Danh mục cha</label>
+    <label class="td-field__label" id="{h}-label" for="{h}-input">Danh mục cha</label>  <!-- for: {h}-input (một + searchable); {h}-trigger khi searchable="false" hoặc multiple -->
     <div class="td-tree-select__control" [data-disabled]>
       <!-- một + searchable -->
       <input type="text" class="td-tree-select__input" id="{h}-input" role="combobox" aria-haspopup="tree"
@@ -223,10 +223,11 @@ chạy focus ảo (`data-active`).
 | Phím | Hành động |
 |---|---|
 | ↓ / ↑ | đóng → mở; mở → nút kế / trước |
-| Home / End | nút: đầu / cuối; ô nhập: phím con trỏ |
+| Home / End | nút: đầu / cuối; ô nhập: phím con trỏ. Đang đóng trên nút (`searchable="false"`): Home / End hoặc gõ ký tự in được sẽ mở popup rồi chuyển phím cho cây (type-ahead) |
 | ← / → / `*` | nút: luôn là phím cây; ô nhập: **chỉ khi ô rỗng** (có chữ → di con trỏ). `*` chỉ mở anh em đã tải (không tải nhánh lazy) |
 | Enter | chọn nút đang trỏ + đóng, focus ở lại combobox |
 | Space | nút: chọn + đóng (đang đóng → mở; click kích hoạt sinh ra từ phím bị chặn, không mở lại); ô nhập: gõ dấu cách |
+| Alt + ↑ | đang mở: chọn nút đang trỏ rồi đóng (như Enter) |
 | Escape | đóng, focus ở combobox |
 | Tab | đóng, đi tiếp |
 

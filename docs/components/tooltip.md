@@ -184,7 +184,7 @@ Tooltip không phát event nào.
 
 **Hiện khi:**
 
-- con trỏ đi vào trigger — với **mọi loại con trỏ**: chuột, bút, cả chạm (touch);
+- con trỏ đi vào trigger — chuột, bút (ngón tay **không** làm hiện: xem [Cảm ứng](#cảm-ứng));
 - trigger nhận focus — **bất kỳ** kiểu focus nào (Tab, click, `element.focus()` bằng code).
 
 **Ẩn khi:**
@@ -203,8 +203,7 @@ Tooltip không phát event nào.
 
 - Khi trigger đang có **focus bàn phím** (`:focus-visible`), chuột lướt qua rồi rời đi **không** làm ẩn, và thao tác cuộn
   (ví dụ trình duyệt tự cuộn trigger vào tầm nhìn) chỉ **định vị lại** thay vì ẩn.
-- Nhấc ngón tay không bị coi là "rời đi": tooltip hiện do chạm sẽ ở lại tới khi focus rời, chạm chỗ khác, cuộn hoặc
-  Escape. Cú chạm vẫn là một cú click bình thường với trigger (nút vẫn chạy hành động).
+- Cú chạm không làm tooltip hiện (xem [Cảm ứng](#cảm-ứng)) và vẫn là một cú click bình thường với trigger (nút vẫn chạy hành động).
 - Focus bằng chuột (không phải `:focus-visible`) không giữ tooltip khi con trỏ đã rời trigger.
 
 **Trên các lớp khác:** tooltip ở `--td-z-tooltip` (510), trên cả toast, loading và modal. Tooltip bên trong modal hoạt
