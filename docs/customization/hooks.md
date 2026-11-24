@@ -160,33 +160,11 @@ Event (trên `document`, không bubble qua cây vì dispatch thẳng lên `docum
 
 `import { TdHovercard } from '@dazzxq/td-components/hovercard';` · Trang: [hovercard.md](../components/hovercard.md)
 
-### Option của `TdHovercard.bind(trigger, opts) → unbind`
+Danh mục (một dòng một hook); bảng option của `TdHovercard.bind(trigger, opts)`, thứ tự nguồn nội dung, hành vi khi lỗi và giới hạn nằm ở [hovercard.md › Tuỳ chọn của bind()](../components/hovercard.md#tuỳ-chọn-của-bind).
 
-Nguồn nội dung, cái đầu tiên có giá trị thắng: `content` → `template` → `url` → `data-td-hovercard-template` của
-trigger → `data-td-hovercard` của trigger.
-
-| Option | Chữ ký / kiểu | Trả về | Khi nào gọi | Lỗi thì sao |
-|---|---|---|---|---|
-| `content` | `(trigger) => Node \| string \| null \| Promise<…>` | Node (được **chuyển** vào thẻ — trả node mới hoặc bản clone), chuỗi (HTML tin cậy), `null` / `''` = không hiện | Mỗi lần mở | Ném / reject → trạng thái lỗi (`labels.error`). Kiểu khác Node/chuỗi → trạng thái lỗi. Promise đang chờ → trạng thái loading |
-| `template` | `HTMLTemplateElement \| string` (id, chấp nhận `#` đầu) | — | Mỗi lần mở (nội dung được clone) | Không tìm thấy / không phải `<template>` → `console.warn`, không mở |
-| `url` | `string` | — | Mỗi lần mở (có cache) | Không phải http(s) cùng origin → `console.warn`, không mở. Non-2xx, sai content-type, > 256 KB, > 10 s → trạng thái lỗi (không cache lỗi) |
-| `cache` | `boolean` (mặc định `true`) | — | — | `false` = luôn tải lại với trigger này |
-| `label` | `string` | — | — | Tên truy cập của thẻ; mặc định lấy `data-td-hovercard-label` → `aria-label` → text trigger → `labels.dialog` |
-
-Phản hồi URL hợp lệ: `application/json` dạng `{ "html": "…" }` hoặc fragment `text/html`.
-
-### Cấu hình tĩnh
-
-| Thành viên | Kiểu | Ý nghĩa | Lỗi thì sao |
-|---|---|---|---|
-| `TdHovercard.sanitize` | `null` \| `(html: string) => string \| Node \| TrustedHTML` | Áp cho **mọi chuỗi** (kết quả `content` là chuỗi và mọi fragment URL) trước khi vào `innerHTML`. `null` (mặc định) = chuỗi được tin | Ném lỗi → trạng thái lỗi |
-| `TdHovercard.labels` | `{ loading: 'Đang tải…', error: 'Không tải được nội dung.', dialog: 'Thông tin thêm' }` | Nhãn toàn trang | — |
-| `TdHovercard.clearCache()` | hàm | Xoá cache fragment, huỷ request đang chạy, đóng thẻ đang mở. **Gọi khi đăng nhập / đăng xuất / đổi quyền** | — |
-| `TdHovercard.bindAll(root = document) → unbind` | hàm | Kích hoạt trigger khai báo trong `root` (idempotent theo root) | — |
-| `TdHovercard.close()` | hàm | Đóng thẻ | — |
-
-Dưới Trusted Types enforcement, một chuỗi thường sẽ bị trình duyệt từ chối → trạng thái lỗi; hãy để `sanitize` trả
-`TrustedHTML`.
+- `content(trigger)`, `template`, `url`, `cache`, `label`: option của `bind()`.
+- `TdHovercard.sanitize`: lọc HTML — [Hook & tuỳ chọn](../components/hovercard.md#tdhovercardsanitize--lọc-html).
+- `TdHovercard.labels`, `clearCache()`, `bindAll()`, `close()`: [Property & method](../components/hovercard.md#property--method); Trusted Types: [hovercard.md](../components/hovercard.md#trusted-types).
 
 ---
 
@@ -577,32 +555,7 @@ lại kế tiếp — nên nạp bản dịch trước khi component render.
 
 `import { TdFormValidation } from '@dazzxq/td-components/form-validation';` · Trang: [form-validation.md](../components/form-validation.md)
 
-### Option
-
-| Option | Dùng ở | Chữ ký / kiểu | Ghi chú / Lỗi thì sao |
-|---|---|---|---|
-| `rules` | `validate`, `attach` | `{ [name]: (value, control, root) => string }` | Trả thông điệp lỗi hoặc `''`. Được đẩy vào `setCustomValidity`. **Ném lỗi → field bị coi là không hợp lệ** với `messages.ruleError` (fail closed) + `console.warn` |
-| `messages` | `validate`, `attach` | `{ [name]: string \| { valueMissing?, typeMismatch?, … } }` | Thông điệp riêng từng field (áp cho cả control td lẫn native) |
-| `summary` | `validate`, `apply`, `attach` | `true \| false \| 'auto'` | `'auto'`: hiện khi ≥ 2 lỗi hoặc có lỗi không map được |
-| `summaryTarget` | như trên | `HTMLElement \| null` | Chỗ gắn summary (append, không xoá nội dung cũ) |
-| `focus` | như trên | `boolean` (mặc định `true`) | Focus control lỗi đầu tiên theo thứ tự DOM |
-| `fieldMap` | `apply` | `{ [key]: id \| Element }` | Map khoá lỗi server → control (id tìm **trong** root) |
-| `live` | `attach` | `boolean` (mặc định `true`) | Sau lần submit lỗi đầu, kiểm tra lại khi người dùng sửa |
-| `onValid` | `attach` | `(event, form) => void` | Có → submit **luôn** bị `preventDefault`, gọi `onValid` khi hợp lệ (SPA / modal). Ném lỗi đồng bộ → bắt + `console.error` (0.16.0); Promise reject thì bạn tự xử lý |
-
-`attach(form)` ném `TypeError` nếu `form` không phải `<form>`. `validate()` ném lỗi bên trong `attach` → submit bị chặn
-(fail closed) + `console.error`. Form `reset` → như `clear(form)` + tắt kiểm tra lại khi sửa tới lần submit lỗi kế tiếp
-(0.16.0).
-
-### Cấu hình tĩnh
-
-| Thành viên | Mặc định |
-|---|---|
-| `TdFormValidation.labels.summaryTitle` | `Vui lòng kiểm tra lại các trường sau:` |
-| `TdFormValidation.messages` | `ruleError`, `valueMissing`, `typeMismatch`, `typeMismatchEmail`, `typeMismatchUrl`, `badInput`, `patternMismatch`, `tooShort` (`Tối thiểu {minLength} ký tự`), `tooLong` (`Tối đa {maxLength} ký tự`), `rangeUnderflow` (`Giá trị tối thiểu là {min}`), `rangeOverflow` (`Giá trị tối đa là {max}`), `stepMismatch` |
-
-`TdFormValidation.messages` chỉ áp cho control **native** (`<input>`, `<select>`…); control td giữ thông điệp riêng
-trừ khi có `messages` theo từng lần gọi. `patternMismatch` ưu tiên `title` của control.
+Danh mục (một dòng một hook); bảng option đầy đủ (`rules`, `messages`, `summary`, `summaryTarget`, `focus`, `fieldMap`, `live`, `onValid`), mặc định và hành vi khi lỗi (fail closed) nằm ở [form-validation.md › API](../components/form-validation.md#api). Thông báo mặc định (`TdFormValidation.messages`, `TdFormValidation.labels.summaryTitle`): [Thông báo tiếng Việt và cách đổi](../components/form-validation.md#thông-báo-tiếng-việt-và-cách-đổi).
 
 ---
 

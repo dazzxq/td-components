@@ -380,7 +380,7 @@ Trusted Types (`Content-Security-Policy: require-trusted-types-for 'script'`) ch
 
 - **Kit nói chung chưa tương thích**: các element render template bằng `this.innerHTML = this.render()` (chuỗi đã escape),
   và một số utility cũng dùng `innerHTML` với markup hằng. Dưới chế độ enforce, các chỗ đó sẽ bị trình duyệt chặn.
-- **`TdHovercard` là ngoại lệ đã được test** dưới Trusted Types: spinner dựng bằng DOM API, `TrustedHTML` được nhận
+- **`TdHovercard` là ngoại lệ đã được test** dưới Trusted Types: skeleton trạng thái tải dựng bằng DOM API, `TrustedHTML` được nhận
   nguyên, chuỗi thường thất bại **an toàn** (hiện trạng thái lỗi, không có lỗi uncaught).
 - Một policy `default` "cho qua mọi chuỗi" sẽ làm kit chạy được nhưng vô hiệu hoá luôn lợi ích của Trusted Types — không
   khuyên dùng. Nếu muốn thử, dùng `Content-Security-Policy-Report-Only` để thu báo cáo trước.

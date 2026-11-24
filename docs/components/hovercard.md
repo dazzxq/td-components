@@ -279,7 +279,7 @@ const policy = trustedTypes.createPolicy('td-hovercard', {
 TdHovercard.sanitize = (html) => policy.createHTML(html);
 ```
 
-`content()` cũng có thể trả thẳng `TrustedHTML`. Spinner của trạng thái tải được dựng bằng DOM API nên không cần policy.
+`content()` cũng có thể trả thẳng `TrustedHTML`. Trạng thái tải (skeleton) được dựng bằng DOM API nên không cần policy.
 
 ## Tuỳ biến giao diện
 

@@ -582,12 +582,7 @@ Tên `anchor`, `name`, `item`, `checked`, `__proto__`, `constructor`, `prototype
 
 ### Hovercard (`TdHovercard.bindAll(root)`)
 
-| Attribute | Ý nghĩa |
-|---|---|
-| `data-td-hovercard="/url"` | tải fragment cùng origin (`text/html` hoặc JSON `{ "html": … }`) |
-| `data-td-hovercard-template="id"` | clone `<template id="id">` (không parse chuỗi — an toàn nhất) |
-| `data-td-hovercard-label="…"` | tên truy cập của card |
-| `data-td-hovercard-cache="false"` | không cache fragment của trigger này |
+Bốn attribute của trigger (`data-td-hovercard`, `-template`, `-label`, `-cache`): [Hovercard › Attribute](../components/hovercard.md#attribute-trên-trigger). Dùng `-template` khi có thể (clone `<template>`, không parse chuỗi).
 
 ```php
 <a href="/u/<?= (int) $user['id'] ?>" data-td-hovercard-template="hc-user-<?= (int) $user['id'] ?>"

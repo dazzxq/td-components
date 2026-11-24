@@ -2055,14 +2055,10 @@ echo td_otp_input('code', ['label' => 'Mã xác thực', 'helper_text' => '6 ch�
 
 ```php
 echo '<textarea id="note" name="note" aria-describedby="note-hint"></textarea>';
-echo td_hint('note', 'Không ghi số điện thoại ở đây.');                         // chữ (escape)
-echo td_hint('slug', Td::html('Xem <a href="/huong-dan/slug">hướng dẫn</a>'));  // markup CỦA template site
+echo td_hint('note', 'Không ghi số điện thoại ở đây.');
 ```
 
-`<td-hint for="{for}" id="{for}-hint">…</td-hint>` — options `id`, `class`, `attrs` (allowlist; `for` / `id` / `class` /
-`data-td-*` giữ). PHP không sửa được markup của control: **tự in** `aria-describedby="{for}-hint"` trên control (không JS);
-khi module `hint` chạy, id đã có không bị thêm trùng. `$for` rỗng / có khoảng trắng → `''` + một cảnh báo. Chuỗi luôn là
-chữ; markup chỉ qua `Td::html()` — không bao giờ bọc nội dung người dùng nhập. Xem [Hint](../components/hint.md).
+In `<td-hint for="{for}" id="{for}-hint">`. Options (`id`, `class`, `attrs`), luật `$for` rỗng, chữ so với `Td::html()` và việc tự in `aria-describedby`: [Hint › PHP](../components/hint.md#php).
 
 ## td_page_actions (0.96.0)
 

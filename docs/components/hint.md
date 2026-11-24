@@ -46,9 +46,9 @@ Cần `td.css` trên trang (xem [Cài đặt](../getting-started/installation.md
 
 ### `helper-text` trên mọi form control
 
-Có trên cả 19 form control: input-field, number-input, choice-group, media-field, media-gallery, dropdown,
+Có trên cả 21 form control: input-field, number-input, choice-group, media-field, media-gallery, dropdown,
 chip-input, tree-select, datetime-picker, datetime-range, color-picker, slider, otp-input, scan-input, check-matrix,
-dropzone, tree, checkbox, toggle.
+dropzone, tree, checkbox, toggle, icon-picker, rich-text.
 
 ```js
 const f = document.querySelector('td-dropdown');

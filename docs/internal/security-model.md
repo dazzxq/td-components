@@ -34,21 +34,7 @@ Không bao giờ đưa input của người dùng cuối qua các đường này
   không clone / sanitize). **Chuỗi bị từ chối** (cảnh báo cố định, không bao giờ thành DOM) — không có hatch HTML; dữ liệu
   người dùng vào nội dung qua `textContent` / attribute như mọi Node hook. Xem §6m.
 
-- `TdHovercard` (0.14.0): chuỗi trả về từ `content()` và mọi fragment tải từ URL được render bằng `innerHTML` — CHỈ markup của
-  dev hoặc fragment cùng origin do server đã escape, không bao giờ input thô của người dùng. Ưu tiên Node hoặc `<template>`
-  (được clone). URL phải là http(s) cùng origin với trang (khác → từ chối + warn); fetch dùng `mode:'same-origin'`,
-  `credentials:'same-origin'`; chỉ nhận JSON `{html}` hoặc `text/html`; chỉ cache kết quả thành công (LRU 50 mục, bỏ
-  `#fragment` khỏi khoá cache, body > 256 KB hoặc > 10 s → lỗi, một request một lúc, huỷ khi card đóng/đổi;
-  `TdHovercard.clearCache()`). Nếu fragment có thể chứa nội dung do người dùng tạo (profile, bio…), site PHẢI gắn
-  `TdHovercard.sanitize = (html) => DOMPurify.sanitize(html)` (hoặc Sanitizer API / policy Trusted Types); hook nhận
-  mọi chuỗi trước khi vào `innerHTML`, giá trị `TrustedHTML` được nhận nguyên.
-  Site bật Trusted Types (`require-trusted-types-for 'script'`): chuỗi thường sẽ thất bại an toàn (hiện trạng thái lỗi) —
-  hãy trả `TrustedHTML` từ hook, vd. `DOMPurify.sanitize(h, { RETURN_TRUSTED_TYPE: true })`; spinner dựng bằng DOM API.
-  Cache fragment có kèm cookie: fetch dùng `cache:'no-store'` (bỏ qua HTTP cache của trình duyệt — LRU của component là
-  lớp cache duy nhất); response `Cache-Control: no-store` không bao giờ được cache; tắt cache theo trigger bằng
-  `cache: false` / `data-td-hovercard-cache="false"`; **bắt buộc** gọi `TdHovercard.clearCache()` (đồng thời đóng card)
-  khi logout / login / đổi tenant hoặc quyền trong SPA — nếu không, user sau có thể thấy fragment của user trước. Nhãn, tên truy cập,
-  trạng thái luôn là text.
+- `TdHovercard` (0.14.0): chuỗi từ `content()` và fragment tải từ URL đi vào `innerHTML` — chỉ markup của dev hoặc fragment cùng origin do server đã escape, không bao giờ input thô của người dùng. Fragment có nội dung người dùng tạo thì site PHẢI gắn `TdHovercard.sanitize`; dưới Trusted Types chuỗi thường thất bại an toàn (trạng thái lỗi). Dữ liệu theo phiên: phải gọi `TdHovercard.clearCache()` khi logout / login / đổi tenant hoặc quyền. Giới hạn (URL cùng origin, cache, kích thước, thời gian) và cách dùng: [Hovercard › Bảo mật](../components/hovercard.md#bảo-mật).
 
 - **PHP `td_carousel($slides)`** (0.50.0, **opt-in tường minh** sau Codex review S1): chỉ slide bọc trong
   `Td::html($markup)` (`TdComponents\TdTrustedHtml`) được in **nguyên văn** bên trong `div.td-carousel__slide` — markup do

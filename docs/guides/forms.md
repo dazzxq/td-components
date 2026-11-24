@@ -279,17 +279,12 @@ import { TdFormValidation } from '@dazzxq/td-components/form-validation';
 Bảng đầy đủ tuỳ chọn (`rules`, `messages`, `summary`, `summaryTarget`, `focus`, `fieldMap`, `live`, `onValid`) và mặc
 định: [Form validation › API](../components/form-validation.md#api).
 
-Giá trị `value` mà rule nhận: control td có `getValue()` → kết quả `getValue()` (chip-input là mảng item,
-dropdown là value hoặc `null`); checkbox native → boolean; nhóm radio → value đang chọn; `<select multiple>` → mảng.
+Giá trị `value` mà rule nhận theo từng loại control: [Form validation › Luật JS](../components/form-validation.md#2-luật-js-rules).
 
 ### Thông báo tiếng Việt và ghi đè
 
-- Control td dùng `validationMessage` tiếng Việt của chính nó.
-- Control native (`<input>`…) dùng `TdFormValidation.messages` (vì thông báo native theo ngôn ngữ trình duyệt):
-  `valueMissing`, `typeMismatch`, `typeMismatchEmail`, `typeMismatchUrl`, `badInput`, `patternMismatch` (ưu tiên
-  attribute `title` của ô), `tooShort` (`{minLength}`), `tooLong` (`{maxLength}`), `rangeUnderflow` (`{min}`),
-  `rangeOverflow` (`{max}`), `stepMismatch`, `ruleError`.
-- Tiêu đề summary: `TdFormValidation.labels.summaryTitle` ("Vui lòng kiểm tra lại các trường sau:").
+- Control td dùng `validationMessage` tiếng Việt của chính nó; control native dùng `TdFormValidation.messages` (đủ khoá, placeholder và quy tắc `patternMismatch` ưu tiên `title`): [Form validation › Thông báo](../components/form-validation.md#thông-báo-tiếng-việt-và-cách-đổi).
+- Tiêu đề summary: `TdFormValidation.labels.summaryTitle`.
 
 ```js
 TdFormValidation.messages.valueMissing = 'This field is required'; // đổi cho cả site
