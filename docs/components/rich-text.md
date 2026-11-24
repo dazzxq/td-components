@@ -76,7 +76,8 @@ Form gửi `body=<p>Xin <strong>chào</strong></p>`. `required` + rỗng → for
   - Có vùng chọn (không chạm liên kết) → ô văn bản điền sẵn chữ đang chọn; giữ nguyên chữ thì chỉ gắn liên kết (giữ
     định dạng bên trong), đổi chữ thì thay vùng chọn bằng chữ mới.
   - Không chọn gì → chèn ô văn bản thành chữ có liên kết (để trống → chèn chính địa chỉ).
-  - Một lần Áp dụng = **một** bước undo. Con trỏ đứng ngay sau liên kết.
+  - Một lần Áp dụng = **một** bước undo. Con trỏ đứng ngay sau liên kết; riêng nhánh gắn liên kết lên chữ giữ
+    nguyên (không đổi chữ) thì **giữ vùng chọn** cũ thay vì đặt con trỏ.
   - Địa chỉ không hợp lệ → báo "Địa chỉ không hợp lệ" dưới ô địa chỉ, hộp không đóng.
   - Enter trong ô địa chỉ / ô văn bản = Áp dụng (không submit form bao ngoài), Esc / Huỷ = đóng không đổi gì. Mọi cách
     đóng đều trả focus + vùng chọn về ô soạn.
@@ -195,6 +196,10 @@ Ghi `value` bằng code không phát event.
   `RichTextPolicy::symfonyConfig($policy, $features, $allowHttp, $linkTarget)` (cách của 0.88.0) vẫn chạy y như cũ:
   `<a>` chỉ giữ `href`, ép `rel="nofollow noopener"` và ép `target` theo `$linkTarget` lên mọi liên kết — tức là bỏ
   lựa chọn "tab mới" / `noreferrer` của từng liên kết. Site muốn giữ lựa chọn đó phải chuyển sang `sanitize()`.
+- **Khác biệt client / server**: "cùng luật" áp cho liên kết (`href` / `rel` / `target`). Phía server (Symfony) còn khác
+  trình duyệt ở ba điểm: cắt đầu vào ở **20 000 ký tự** theo mặc định (`withMaxInputLength`, cắt im lặng, nên cỡ giới
+  hạn của trường phải tính theo số này); không bỏ `<style>` (chữ CSS còn lại là text đã escape, không có phần tử); không
+  viết lại `b` / `i` / `strike` / `del` và không bọc chữ trần trong `<p>`. Chi tiết: docblock `php/td-rich-text-policy.php`.
 
 - **Trusted Types**: site bật `require-trusted-types-for 'script'` phải cho phép HAI policy có tên:
   `trusted-types td-rich-text ProseMirrorClipboard`. `td-rich-text` bọc HTML của `value` trước khi `DOMParser` đọc

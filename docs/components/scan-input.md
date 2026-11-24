@@ -214,7 +214,7 @@ trạng thái; nút "Bỏ" có tên "Bỏ {mã}".
 <?= td_scan_input('imei[]', ['multiple' => true, 'label' => 'IMEI nhập kho', 'values' => $receipt->imeis, 'max' => 50]) ?>
 ```
 
-- **Đơn, mặc định**: ô nhập native (`div.td-scan` > nhãn + `input.td-scan__input[name]`). Không JS: Enter submit form
+- **Đơn, mặc định**: ô nhập native (`div.td-scan` > [nhãn] + `div.td-scan__box` > `input.td-scan__input[name]`). Không JS: Enter submit form
   (chấp nhận khi không có JS). `element => true`: host `<td-scan-input data-td-ssr="scan-input@1">` + cùng ô — module
   nhận **tại chỗ** (giữ chữ đang gõ + focus).
   Trước khi JS tải (0.51.1, [ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)): trong container < 480 px
@@ -246,7 +246,7 @@ Chi tiết tuỳ chọn: [PHP adapter › td_scan_input](../guides/php-adapter.m
 
 Token: `--td-scan-list-max` (chiều cao tối đa danh sách, `50vh`), `--td-scan-ready` (màu chỉ báo "Sẵn sàng quét",
 `--td-color-success`), `--td-scan-idle`, `--td-scan-font-size` (≥ 16px — iOS không phóng to khi focus),
-`--td-scan-list-bg` / `-border`, `--td-scan-valid` / `--td-scan-invalid`. Container `td-scan-input`: dưới 480px chỉ báo
+`--td-scan-list-bg` / `-border`, `--td-scan-row-sep` (hairline giữa các dòng danh sách, `--td-color-border`), `--td-scan-valid` / `--td-scan-invalid`. Container `td-scan-input`: dưới 480px chỉ báo
 xuống dưới ô, dòng danh sách xếp dọc. Cảm ứng: nút loa / "Bỏ" / "Xoá tất cả" / ô nhập ≥ 44px.
 
 ## Bảo mật
