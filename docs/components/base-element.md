@@ -95,9 +95,10 @@ new / parser tạo element
    │  constructor(): _initialized = false, _cleanups = []
    ▼
 connectedCallback() lần đầu
-   │  _initialized = true
    │  _setupProperties()  → sinh property cho từng observed attribute; gán lại property đặt trước khi nâng cấp
+   │  _initialized = true  (đặt SAU _setupProperties: replay property không kích hoạt render)
    │  _doRender():  this.innerHTML = render()  →  afterRender()  →  _applyStyles?.()
+   │     (component hydratable có markup SSR hợp lệ: nhận tại chỗ, không render)
    ▼
 attributeChangedCallback(name, old, new)
    │  chỉ khi đã khởi tạo và old !== new  →  _doRender() (render lại TOÀN BỘ)
@@ -106,7 +107,8 @@ disconnectedCallback()
    │  chạy mọi hàm dọn dẹp (listener, timer) đã đăng ký bằng listen / setTimeout / setInterval
    ▼
 connectedCallback() lần sau (element bị di chuyển / gắn lại)
-      _doRender() một lần nữa để gắn lại listener đã bị gỡ
+      component thường: _doRender() một lần nữa để gắn lại listener đã bị gỡ
+      component hydratable (input-field, toggle, checkbox…) có canRebind(): gắn lại listener tại chỗ, không render
 ```
 
 Điều cần nhớ:
@@ -118,7 +120,7 @@ connectedCallback() lần sau (element bị di chuyển / gắn lại)
 - Property gán khi element **chưa nâng cấp** (bản sao từ `<template>`, `createElement` trước `define`, node của
   `DOMParser`) không mất (0.54.1): lần connect đầu base gán lại qua **mọi setter của class** (tự dò trên prototype, không
   cần khai báo), đúng thứ tự đã gán, trước lần render đầu. Setter mới của bạn tự được phủ.
-- Di chuyển element (remove + append) gây một lần render lại sau khi connect lại.
+- Di chuyển element (remove + append): component thường render lại một lần để gắn lại listener; component `hydratable` (input-field, toggle, checkbox…) còn qua được `canRebind()` thì chỉ gắn lại listener tại chỗ, giữ node và focus.
 - `afterRender()` chạy sau **mỗi** lần render (lần đầu, mỗi lần đổi attribute, mỗi lần connect lại).
 
 ### Methods và hooks
@@ -285,7 +287,7 @@ Hoặc dựng thẳng: `btn.appendChild(tdIcon('close', { size: 's' }))`. Xem [I
 | Nhóm | Thành viên | Ghi chú |
 |---|---|---|
 | Khai báo | `static formAssociated = true` | Đã đặt sẵn; constructor gọi `attachInternals()` (lưu ở `this._internals`). |
-| Attribute cơ sở | `observedAttributes` = `['name', 'disabled', 'required']`, `booleanAttributes` = `['disabled', 'required']` | Lớp con **phải spread**: `[...super.observedAttributes, 'value', …]`. |
+| Attribute cơ sở | `observedAttributes` = `['name', 'disabled', 'required', 'helper-text']`, `booleanAttributes` = `['disabled', 'required']` | Lớp con **phải spread**: `[...super.observedAttributes, 'value', …]`. |
 | Đọc trạng thái | `form`, `validity`, `validationMessage`, `willValidate`, `labels` | Uỷ quyền cho internals. |
 | Kiểm tra | `checkValidity()`, `reportValidity()`, `setCustomValidity(msg)` | `setCustomValidity('')` chỉ xoá lỗi custom, **không** xoá cờ như `valueMissing` của bạn. |
 | Nộp giá trị | `_setFormValue(value, state?)` | `null` = không nộp. `state` (tuỳ chọn) là giá trị hiển thị khi khác giá trị nộp (ví dụ nhãn vs id). |
@@ -296,6 +298,7 @@ Hoặc dựng thẳng: `btn.appendChild(tdIcon('close', { size: 's' }))`. Xem [I
 | Reset | `formResetCallback()` → `_restoreDefaults()` (+ xoá lỗi hiển thị) | Mặc định: nếu `value` là observed attribute thì `this.value = this._defaultValue`. |
 | Giá trị mặc định | `_captureDefaults()` chụp **một lần** lúc connect: `_defaultValue` (attribute `value`), `_defaultChecked` (attribute `checked`) | |
 | Khôi phục | `formStateRestoreCallback(state, mode)` → `_restoreState(state, mode)` | Autofill / bfcache. Mặc định gán `this.value = state` nếu là chuỗi (checkbox/toggle: đặt lại `checked`). |
+| Gợi ý dưới ô | attribute `helper-text`, `setHelper(msg)`, getter `helperMessage` | Có trên mọi form control; xử lý tại chỗ, không render. Chi tiết: [hint.md](hint.md#helper-text-trên-mọi-form-control). |
 | Thông báo | `_msg(key, vars?)` | Đọc `this.constructor.messages[key]`, điền `{tên}` từ `vars` (0.16.0). Cho lớp con có object `static messages` dịch được. |
 | Tên truy cập | `_applyAccessibleName(control, hasVisibleLabel)` | Có nhãn hiển thị bên trong → không thêm gì; không thì copy `aria-label` host vào control; không nữa thì dùng id của `<label for="host-id">` làm `aria-labelledby`. |
 
@@ -304,6 +307,7 @@ Hook protected để override:
 | Hook | Mặc định | Override khi |
 |---|---|---|
 | `_focusTarget()` | `querySelector('input, textarea, select, [contenteditable="true"], button, [tabindex]')` | Control thật của bạn khác phần tử đầu tiên khớp. |
+| `_ariaTarget()` | `_focusTarget()` | Phần tử nhận `aria-invalid` / `aria-errormessage` khác control focus được (ví dụ choice-group trả phần tử `role="radiogroup"`). |
 | `_validationAnchor()` | `_focusTarget()` | Bong bóng lỗi của trình duyệt nên neo chỗ khác. |
 | `_restoreDefaults()` | xem trên | Control có trạng thái sống khác attribute (thường là có). |
 | `_restoreState(state, mode)` | xem trên | Giá trị hiển thị ≠ giá trị nộp. |
@@ -321,7 +325,7 @@ Bật bằng `static get errorContract() { return true; }` **và** thêm `'error
 | attribute `error-text` | Lỗi khai báo (server render). Giá trị attribute mới nhất thắng `setError` trước đó. |
 
 Khi có lỗi, base class thêm `<span class="td-field-error" id="{host-id}-error" data-for="{host-id}">…</span>` (style sẵn
-trong `td.css`), đặt `aria-invalid="true"` + `aria-errormessage` trên `_focusTarget()` và gộp id lỗi vào
+trong `td.css`), đặt `aria-invalid="true"` + `aria-errormessage` trên `_ariaTarget()` (mặc định = `_focusTarget()`) và gộp id lỗi vào
 `aria-describedby` (giữ nguyên id do trang tự thêm). Reset form xoá lỗi. Error contract **chỉ là hiển thị**: nó không đổi
 `validity`; muốn chặn submit thì dùng `_setValidity` / `setCustomValidity`.
 
@@ -456,7 +460,7 @@ ARIA đầy đủ.
   `connectedCallback()` hoặc constructor.
 - **Override `connectedCallback` / `disconnectedCallback` / `attributeChangedCallback` mà quên `super.…`**: không render,
   không dọn dẹp, hoặc mất đồng bộ `disabled`/`error-text` (với `TdFormElement`).
-- **Quên spread `super.observedAttributes`** trong lớp con của `TdFormElement`: `name`/`disabled`/`required` không còn
+- **Quên spread `super.observedAttributes`** trong lớp con của `TdFormElement`: `name`/`disabled`/`required`/`helper-text` không còn
   được theo dõi.
 - **Ghi chú lỗi biến mất sau khi đổi attribute**: thiếu `this._applyErrorState()` trong `afterRender()`.
 - **Style không ăn**: component của bạn không có CSS trong `td.css`; phải tự viết CSS (không Shadow DOM, CSS toàn cục).

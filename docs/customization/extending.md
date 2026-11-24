@@ -23,33 +23,23 @@ Phần dưới là quy trình thực hành và những luật bạn nên giữ �
 | `TdBaseElement` | `import { TdBaseElement } from '@dazzxq/td-components/base';` | Component hiển thị / tương tác, **không** gửi giá trị trong `<form>` |
 | `TdFormElement` | `import { TdFormElement } from '@dazzxq/td-components/form-element';` | Control có giá trị gửi qua `FormData`, `required`, reset, `<fieldset disabled>` (ElementInternals) |
 
-`TdBaseElement` cho sẵn:
-
-- Render **một lần** khi gắn vào trang: `innerHTML = render()` → `afterRender()` → `_applyStyles()` (nếu có). Khi một
-  attribute trong `observedAttributes` đổi, render lại toàn bộ.
-- Property tự sinh cho mỗi attribute được theo dõi (`max-value` → `el.maxValue`); attribute trong
-  `booleanAttributes` thành property boolean.
-- `listen(target, event, handler)`, `setTimeout()`, `setInterval()` tự gỡ khi element rời trang.
-- `emit(name, detail)`: phát `CustomEvent` có `bubbles: true, composed: true`.
-- `escapeHtml(str)` (cho text và attribute trong chuỗi HTML), `safeColor(value, fallback)` (cho màu đi vào CSS).
-
-`TdFormElement` thêm: `_setFormValue(value, state?)`, `_setValidity(flags, message, anchor)`, `checkValidity()`,
-`reportValidity()`, `setCustomValidity()`, reset tự khôi phục attribute `value` ban đầu, `_effectiveDisabled` (tính cả
-`<fieldset disabled>`), và — nếu `static get errorContract() { return true; }` — `setError()` / `clearError()` /
-attribute `error-text`.
+`TdBaseElement` lo render, property tự sinh từ attribute, dọn listener / timer và `emit` / `escapeHtml` / `safeColor`:
+xem [Vòng đời](../components/base-element.md#vòng-đời-của-tdbaseelement). `TdFormElement` thêm form-associated
+(`_setFormValue`, `_setValidity`, reset, `_effectiveDisabled`) và error contract:
+xem [Component form](../components/base-element.md#component-form-tdformelement).
 
 ### Luật nên giữ
 
-| Luật | Vì sao |
-|---|---|
-| Tên thẻ và class dùng **tiền tố của site** (`site-`, `dwp-`), không dùng `td-` | `td-` là của kit; bản sau có thể thêm component trùng tên |
-| Mọi giá trị động trong chuỗi HTML đi qua `this.escapeHtml()` | Chống XSS (render bằng `innerHTML`) |
-| Không `style="…"`, không `<style>`; giá trị per-instance dùng `_applyStyles()` + `el.style.setProperty('--x', …)` | Kit CSP-strict; CSSOM không bị CSP chặn |
-| Màu từ attribute đi qua `this.safeColor()` trước khi vào CSS | Chặn giá trị lạ lọt vào CSS |
-| CSS của component nằm trong file CSS của site, **chỉ đọc token** `--td-*` | Tự đổi theo theme, dark, fallback |
-| Trạng thái thể hiện bằng `aria-*` / `data-state` / `[hidden]`, không bật tắt class | Giống quy ước của kit, dễ style |
-| Guard khi define: `if (!customElements.get(name)) customElements.define(name, Cls)` | Module bị nạp hai lần không ném lỗi |
-| Bind event trong `afterRender()` lên **phần tử con** bằng `this.listen()` | Phần tử con được thay mỗi lần render nên listener cũ đi theo; listen lên chính host trong `afterRender()` sẽ bị cộng dồn |
+Các luật cốt lõi: tên thẻ và class dùng **tiền tố của site** (`site-`, `dwp-`) chứ không dùng `td-`; mọi giá trị động
+đi qua `escapeHtml()` / `safeColor()`; không `style="…"` / `<style>` (per-instance dùng CSSOM); guard
+`customElements.get` khi define; bind event trong `afterRender()` lên phần tử con. Bản đầy đủ kèm lý do:
+[Quy ước khi viết component cho site](../components/base-element.md#quy-ước-khi-viết-component-cho-site),
+[Dọn dẹp](../components/base-element.md#dọn-dẹp-listen-settimeout-setinterval),
+[Escape](../components/base-element.md#escape-và-an-toàn-bắt-buộc) và
+[Style](../components/base-element.md#style-css-và-giá-trị-theo-instance).
+
+Riêng phần đặc thù của trang này: CSS của component nằm trong file CSS của site, **chỉ đọc token** `--td-*` (tự đổi
+theo theme, dark, fallback); trạng thái thể hiện bằng `aria-*` / `data-state` / `[hidden]`, không bật tắt class.
 
 Các hàm `escapeHtml` / `safeColor` **chỉ** có dưới dạng method của lớp nền (file `src/utils/escape.js`,
 `css-safe.js` không nằm trong `exports` của package). Tiện ích độc lập có export: `@dazzxq/td-components/dom-utils`

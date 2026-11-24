@@ -181,8 +181,9 @@ Mọi custom element kế thừa `TdBaseElement` ([Tự viết component](../com
    thay đổi "cấu trúc" (ví dụ `type` của input-field) mới vẽ lại hết.
 3. **Gỡ khỏi trang** (`disconnectedCallback`): mọi listener gắn bằng `listen()` và timer tạo bằng `setTimeout()`/
    `setInterval()` của lớp nền được dọn tự động. Phần tử portal (menu của dropdown…) được dọn theo.
-4. **Di chuyển / gắn lại** (gỡ rồi gắn vào chỗ khác): component render lại một lần để gắn lại listener; trạng thái (giá
-   trị, lựa chọn) được giữ.
+4. **Di chuyển / gắn lại** (gỡ rồi gắn vào chỗ khác): listener được gắn lại (component thường render lại một lần; component
+   hydratable như input-field, toggle, checkbox gắn lại tại chỗ, giữ node và focus); trạng thái (giá trị, lựa chọn)
+   được giữ. Sơ đồ đầy đủ: [Vòng đời của `TdBaseElement`](../components/base-element.md#vòng-đời-của-tdbaseelement).
 
 Với site render phía server (PHP), điều này nghĩa là: in thẻ `td-*` kèm attribute trong HTML, component tự "sống dậy"
 khi module JS nạp xong. Trước lúc đó, trình duyệt hiển thị thẻ lạ (chữ trần). Với nút, ô nhập, dropdown, switch,

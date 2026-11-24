@@ -53,7 +53,7 @@ xem [Muốn lại kiểu cũ](#muốn-lại-kiểu-màu-đặc-036075).
 | Class | Tác dụng |
 |---|---|
 | `.td-badge` | Khối gốc (mặc định = `neutral`) |
-| `.td-badge--neutral` · `--accent` · `--success` · `--warning` · `--danger` · `--info` | Màu. `accent` theo `--td-accent` của site (cần `color-mix()`, không có thì dùng màu của `info`). |
+| `.td-badge--neutral` · `--accent` · `--success` · `--warning` · `--danger` · `--info` | Màu. `accent` theo `--td-accent` của site (cần `color-mix()`; không có thì dùng hex tĩnh `#cfe0fd` / `#1e3f8f`, không theo `--td-accent`). |
 | `.td-badge--outline` | Nền trong suốt, viền 1px cùng màu chữ, không bóng; chữ = mực trên trang `--td-badge-{v}-ink` (0.36.0) |
 | `.td-badge--stamp` | Con dấu: chữ in hoa đậm, giãn chữ, viền đôi, nền trong suốt, không bóng, nghiêng `--td-badge-stamp-rotate`; chữ = `--td-badge-{v}-ink` |
 | `.td-badge--glass` | (0.76.0) Opt-in kính mờ: nền = màu tint trộn 85 % alpha (`color-mix`) + `backdrop-filter: blur(12px) saturate(160%)`, mép sáng + highlight bên trong; chữ = `--td-badge-{v}-glass-fg`. **Không tác dụng khi đi cùng `--outline` / `--stamp`** (hai kiểu này thắng). Xem [Glass và fallback](#glass-và-fallback) |

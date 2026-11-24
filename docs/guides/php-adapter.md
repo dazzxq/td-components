@@ -462,12 +462,10 @@ link điều hướng, nút `loading` bị `disabled` native (không submit lầ
 chuyển sang hợp đồng JS hiện có: `aria-busy` + `aria-disabled`, vẫn focus được, click bị chặn, **không** còn
 `disabled` native — giống hệt `<td-button loading>` viết tay.
 
-**Khi nào component từ chối nhận markup (và render lại như cũ):** dấu sai (`button@2`, tên khác), cấu trúc lạ (thiếu
-spinner, thêm con, chữ thừa), hoặc **thuộc tính cấu trúc** trên host không khớp control: loại control (`<a>` ⇔ host
-có `href`), class variant / size / full-width, icon + vị trí, nhãn, `type`, `target` / `download`, hoặc host có
-`color` / `text-color` (PHP không in). Ví dụ script của site đổi `variant` trước khi module tải → nút render lại đúng
-`variant` mới. Thuộc tính **trạng thái** (`loading`, `disabled`, `name`, `value`, `aria-*`, giá trị `href`) thì được
-áp tại chỗ, không render lại. Hai trường hợp biên đã biết render lại: nhãn rỗng mà không có icon + `aria_label`
+**Khi nào component từ chối nhận markup (và render lại như cũ):** dấu sai, cấu trúc lạ hoặc thuộc tính cấu trúc trên
+host không khớp control (ví dụ script của site đổi `variant` trước khi module tải → nút render lại đúng `variant` mới);
+thuộc tính trạng thái thì áp tại chỗ. Điều kiện nhận (`canHydrate()`) và danh sách trạng thái áp tại chỗ:
+xem [Hợp đồng SSR `button@1`](../components/button.md#hợp-đồng-ssr-button1--hydrate-tại-chỗ-0250). Hai trường hợp biên đã biết render lại: nhãn rỗng mà không có icon + `aria_label`
 (JS hiện chữ mặc định "Button"), và icon không có trong registry kèm nhãn rỗng.
 
 **Hydrate chỉ tin markup do helper của kit sinh ra.** Component chỉ nhận control khi **mọi** node được giữ lại
@@ -904,8 +902,7 @@ srcset; không src dùng được → ô giữ chỗ), `eager`, `placeholder_ico
 <!-- <span class="td-badge td-badge--success"><span class="td-badge__icon" aria-hidden="true"><svg class="td-icon td-icon--s" data-icon="check" …>…</svg></span><span class="td-badge__label">Đã duyệt</span></span> -->
 ```
 
-Icon `aria-hidden` (chỉ trang trí — nghĩa nằm ở nhãn), cao `1em` theo cỡ chữ badge, màu theo chữ (`currentColor`;
-gate tương phản đo icon ≥ 3.2:1 trên nền mọi variant).
+Hành vi icon (trang trí, cỡ, màu, tương phản): xem [Badge có icon](../components/badge.md#badge-có-icon-0250).
 
 `td_alert($message, $opts)` — in host `<td-alert>` chứa sẵn markup đầy đủ, nâng cấp tại chỗ khi nạp JS; hợp đồng SSR, markup DOM và việc không JS thì không có nút đóng: xem [Alert](../components/alert.md).
 

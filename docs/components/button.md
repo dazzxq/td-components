@@ -87,7 +87,7 @@ bằng padding của nó (cỡ `sm` ≈ 14,6px; mặc định ≈ 21px) vì hộ
 
 - Phản hồi hover và nhấn chỉ là màu chữ, dùng lại token của ghost (`--td-btn-ghost-fg`, `--td-btn-ghost-hover-fg`,
   `--td-btn-ghost-hover-fg-fallback`): không có token mới, theme sáng / tối và palette generator giữ nguyên. Vòng focus bàn phím
-  như mọi nút. Disabled: vẫn trong suốt, chữ xám. Hai cỡ chữ `sm` / `md` / `lg` vẫn quyết định cỡ chữ và chiều cao.
+  như mọi nút. Disabled: vẫn trong suốt, chữ xám. Ba cỡ `sm` / `md` / `lg` vẫn quyết định cỡ chữ và chiều cao.
 - `color` / `text-color` **bị bỏ qua** với `plain` (nó sẽ thành một khối đặc không padding).
 - Chế độ forced-colors / tương phản cao: nút `plain` không có khung viền, như một liên kết (chữ + icon, vòng focus vẫn hiện).
 - **Đừng đặt `plain` trong `.td-alert__actions` hay `.td-empty-state__actions`**: ở container hẹp các hộp đó kéo nút ra 100% bề rộng và
@@ -156,9 +156,7 @@ Nếu không có `label` và cũng không có chữ, nút hiện chữ mặc đ�
 <td-button variant="secondary" icon="close" aria-label="Đóng"></td-button>
 ```
 
-`icon` nhận **tên icon trong registry** của kit. Các tên có sẵn: `close check prev next up down back plus minus more
-search calendar fullscreen download external info success error warning eye eye-off zoom-in inbox star upload link
-image sort grip`. Từ 0.18.0 nhận cả **tên alias** (giống PHP): `x` → close, `chevron-left/right/up/down` → prev/next/up/down,
+`icon` nhận **tên icon trong registry** của kit. Danh sách đầy đủ các tên có sẵn nằm ở [Icons](icons.md). Từ 0.18.0 nhận cả **tên alias** (giống PHP): `x` → close, `chevron-left/right/up/down` → prev/next/up/down,
 `ellipsis` → more, `external-link` → external, `expand` → fullscreen, `pen` → pencil. Bạn có thể đăng ký thêm icon riêng,
 xem [Icons](icons.md).
 
@@ -448,15 +446,15 @@ trang hay bị cắt `…` — nhãn hành động bị cắt có thể đổi n
 | `text-color` | string (màu CSS) | tự động đen/trắng | Màu chữ khi có `color`. Không có `color` thì bị bỏ qua. |
 | `type` | string | `button` | `button` \| `submit` \| `reset` (danh sách trắng). |
 | `aria-label` | string | — | Chuyển xuống `<button>` / `<a>` bên trong. Bắt buộc với nút chỉ có icon. |
-| `href` | string (URL) | — | Có → render `<a>` (nút dạng link). Danh sách trắng: `https:` (`http:` chỉ khi trang là http), tương đối, `#`, `mailto:`, `tel:`. 0.17.0. |
+| `href` | string (URL) | — | Có → render `<a>` (nút dạng link). Giao thức theo danh sách trắng, xem [Nút dạng link](#nút-dạng-link-href). 0.17.0. |
 | `target` | string | — | Chỉ với `href`: `_blank` \| `_self` \| `_parent` \| `_top`; `_blank` thêm `rel="noopener noreferrer"`. 0.17.0. |
 | `download` | string | — | Chỉ với `href`: chuyển xuống `<a download>`; tên file được lọc ký tự đường dẫn. 0.17.0. |
 | `name` | string | — | Chuyển xuống `<button>` bên trong (submitter thật, gửi `name=value` khi submit). Không áp cho link. 0.18.0. |
 | `value` | string | — | Đi kèm `name`, chuyển xuống `<button>` bên trong. Không áp cho link. 0.18.0. |
-| `aria-pressed` | string | — | `true` \| `false` \| `mixed` → chuyển xuống `<button>` / `<a>`. 0.19.0. |
-| `aria-expanded` | string | — | `true` \| `false` → chuyển xuống. 0.19.0. |
+| `aria-pressed` | string | — | Chuyển xuống `<button>` / `<a>`; giá trị hợp lệ: xem [ARIA trạng thái](#nút-bậttắt-nút-mở-menu-aria-trạng-thái-0190). 0.19.0. |
+| `aria-expanded` | string | — | Chuyển xuống (giá trị: xem mục ARIA trạng thái ở trên). 0.19.0. |
 | `aria-controls` | string (IDREF) | — | Chuyển xuống nguyên văn (rỗng → bỏ). 0.19.0. |
-| `aria-haspopup` | string | — | `true` \| `false` \| `menu` \| `listbox` \| `tree` \| `grid` \| `dialog` → chuyển xuống. 0.19.0. |
+| `aria-haspopup` | string | — | Chuyển xuống (giá trị: xem mục ARIA trạng thái ở trên). 0.19.0. |
 
 ## Property & method
 
@@ -518,8 +516,11 @@ thắng các lớp `td.*`. Xem thêm [Theming](../customization/theming.md) và 
 | `--td-btn-disabled-bg` / `-fg` / `-border` | `#f4f4f5` / `#a1a1aa` / `#e4e4e7` | Trạng thái disabled (xám, đặc, không bóng). |
 | `--td-btn-lift` | `0 1px 3px rgb(0 0 0 / 10%), 0 4px 10px -2px rgb(0 0 0 / 12%)` (0.21.0: rõ hơn) | **Bóng duy nhất** của nút (ghost / disabled không có). |
 | `--td-btn-ghost-fg` | `var(--td-accent)` (#2563eb; dark #4b8df8 từ 0.41.0) | Màu chữ/icon của ghost (0.17.0). |
+| `--td-btn-ghost-hover-fg` | `color-mix(in srgb, var(--td-btn-ghost-fg) 82%, #000)` | Màu chữ của ghost (và `plain`) khi hover / nhấn; trình duyệt không có `color-mix()` dùng `-fallback` bên dưới. |
 | `--td-btn-ghost-hover-fg-fallback` | `#1d4ed8` (dark `#93c5fd`) | 0.41.0: chữ ghost khi hover / nhấn trên trình duyệt **không có** `color-mix()` (trước là màu cứng, dark chỉ 2.5:1). |
 | `--td-btn-ghost-hover-bg` | `var(--td-color-hover)` (`rgb(0 0 0 / 5%)`; dark `rgb(255 255 255 / 6%)`) | Nền khi hover của ghost (0.17.0). |
+
+Token trạng thái nhấn (`--td-btn-{variant}-pressed`, `--td-btn-ghost-pressed`): xem [Cảm ứng](../guides/touch.md).
 
 **Hover (0.21.0):** mỗi variant có nền đọc token `--td-btn-{v}-hover` của nó (primary `#3f3f46`, ngữ nghĩa = bậc đậm
 hơn một nấc — 0.36.0, chữ vẫn ≥ 4.7:1, secondary `--td-btn-secondary-hover`). Nút màu tuỳ chỉnh (`color`) và alias `-tint` vẫn hover bằng
@@ -734,7 +735,7 @@ Xem [Trợ năng](../guides/accessibility.md).
 - `type` theo danh sách trắng, `icon` class cũ được lọc từng class, nên không chèn được attribute hay HTML.
 - ARIA trạng thái (0.19.0): giá trị theo danh sách trắng; `aria-controls` ghi bằng `setAttribute` (chỉ là text của
   attribute, không thành HTML).
-- `href` theo danh sách trắng giao thức (`https:`; `http:` chỉ khi trang là http; tương đối, `#`, `mailto:`, `tel:`), chuẩn hoá như trình duyệt trước
+- `href` theo danh sách trắng giao thức (xem [Nút dạng link](#nút-dạng-link-href)), chuẩn hoá như trình duyệt trước
   khi kiểm (bỏ ký tự điều khiển/khoảng trắng hai đầu, tab/xuống dòng ở giữa: `" java\tscript:"` vẫn bị chặn).
   `target` theo danh sách trắng, `_blank` luôn có `rel="noopener noreferrer"`; tên file `download` được lọc.
 
