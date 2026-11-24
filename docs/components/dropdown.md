@@ -74,7 +74,7 @@ dd.options = [
   của SVG (không `style`, hợp CSP). Chấm là trang trí (`aria-hidden`): **nhãn phải nói tên màu** ("Đỏ", "Titan đen"), vì
   tên truy cập của option và trigger chỉ là nhãn.
 - Từ 0.84.0: icon, dòng mô tả, trạng thái, chữ phụ, từ khoá tìm kiếm và nhóm có tiêu đề, xem
-  [mục 1b](#1b-dòng-giàu-thông-tin-và-nhóm-084-0).
+  [mục 1b](#1b-dòng-giàu-thông-tin-và-nhóm-0840).
 - Từ 0.95.0: ảnh nhỏ đầu dòng (`image`), xem [mục 1c](#1c-ảnh-đầu-dòng-image-0950).
 - Từ 0.97.0: mỗi option hiện bằng phông riêng (`font`), xem [mục 1d](#1d-xem-trước-phông-chữ-font-0970).
 - Không hỗ trợ: HTML trong label, chọn nhiều.
@@ -388,8 +388,8 @@ in ra; từ 0.92.0 host cũng mang `name` ngay từ server, nên form tách rờ
 ```
 
 - `td.css` tạo dáng select **đúng hộp của trigger** (chiều cao, padding, viền, bo góc, font, màu theo token
-  `--td-field-*`, rộng 100 %) và giữ **mũi tên native** (không `appearance: none`, không ảnh `data:` — hợp CSP chặt).
-  Mũi tên có thể khác chevron của trigger, hộp thì trùng: thay select → trigger không dịch pixel nào (test 3 engine).
+  `--td-field-*`, rộng 100 %) và vẽ **chevron của trigger bằng CSS gradient** (từ 0.51.1: `appearance: none`, không ảnh `data:` — hợp CSP chặt; forced colors trả mũi tên hệ thống).
+  Hộp và chevron trùng trigger: thay select → trigger không dịch pixel nào (test 3 engine).
 - **Select đang focus khi module tới** (người dùng đang chọn): component không làm gì — không gỡ select, không render,
   không gắn listener — cho tới khi select **blur**; lúc đó nâng cấp đúng **một lần** với lựa chọn tại thời điểm blur,
   focus giữ ở chỗ người dùng vừa chuyển tới. Gỡ host khỏi trang trong lúc chờ → huỷ chờ; gắn lại → xét lại từ đầu.
@@ -744,7 +744,7 @@ Cần một `<select>` **native** (không menu tự vẽ, không tìm kiếm) nh
 | `reload()` | `() => Promise<boolean>` | **0.86.0** Gọi `load` ngay (menu mở hay đóng). `true` = đã gán options; `false` = không có `load`, lỗi, hoặc bị lần nạp mới hơn thay. Không bao giờ reject. |
 | `onPick` | `(item) => void` \| `null` | **0.85.0** Callback khi chọn một option ở `mode="action"`. Chạy trước event `pick`; ném lỗi thì ghi `console.error`, event vẫn phát. Gán trước khi define vẫn nhận. |
 | `mode` / `keepOpen` / `triggerMeta` | get/set | **0.85.0** Phản chiếu `mode` (`'select'` \| `'action'`), `keep-open` (boolean), `trigger-meta` (chuỗi). Gán trước khi define vẫn nhận. |
-| `groups` | `Array<{ key, label }>` (get/set) | **0.84.0** Thứ tự và tiêu đề nhóm ([mục 1b](#1b-dòng-giàu-thông-tin-và-nhóm-084-0)). Gán lại → lọc lại tại chỗ. Gán trước khi define vẫn nhận. |
+| `groups` | `Array<{ key, label }>` (get/set) | **0.84.0** Thứ tự và tiêu đề nhóm ([mục 1b](#1b-dòng-giàu-thông-tin-và-nhóm-0840)). Gán lại → lọc lại tại chỗ. Gán trước khi define vẫn nhận. |
 | `TdDropdown.labels` | static object | Chữ giao diện, site ghi đè được (xem [dưới](#tddropdownlabels)). |
 | `searchable` | `boolean` (get/set) | Trạng thái thật của cờ. `false` → `searchable="false"`; `true` → xoá attribute. |
 | `allowClear` | `boolean` (get/set) | Tương tự cho `allow-clear`. |
@@ -905,7 +905,7 @@ Xem thêm: [Theming](../customization/theming.md), [Styling](../customization/st
 </div>
 ```
 
-Từ 0.84.0, khi option dùng trường mới (xem [mục 1b](#1b-dòng-giàu-thông-tin-và-nhóm-084-0)):
+Từ 0.84.0, khi option dùng trường mới (xem [mục 1b](#1b-dòng-giàu-thông-tin-và-nhóm-0840)):
 
 ```html
 <!-- trigger: option đã chọn có icon (tắt bằng trigger-icon="none") -->

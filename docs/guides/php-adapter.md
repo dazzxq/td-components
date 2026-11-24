@@ -710,24 +710,13 @@ native** cộng hai thứ:
 </td-dropdown>
 ```
 
-- `td.css` tạo dáng `select.td-dropdown__native` **đúng hộp của trigger**: cao `--td-field-h-md`, padding, viền
-  `--td-field-border`, bo `--td-field-radius-md`, font / màu theo token field, rộng 100 %; host mang kiểu chữ của
-  `.td-dropdown` (nhãn cùng cao). Từ **0.51.1** ([ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)) select
-  còn có **chevron của trigger** vẽ bằng CSS gradient (`appearance: none` — gradient không phải ảnh, CSP `img-src` không
-  đổi; trước đó giữ mũi tên native và WebKit vẽ nút hệ thống bo 5 px), và **chế độ mặc định (native) cũng vậy**: select
-  trần trong `<td-dropdown>` chưa define được tạo dáng y hệt — nâng cấp không xô lệch ở cả hai chế độ (gate
-  `test/engines/ssr-fouc.spec.mjs`, Chromium / Firefox / WebKit). Forced colors: mũi tên hệ thống. Cảm ứng: chữ select
-  16 px. Element mode vẫn có thêm: hoãn nâng cấp khi select đang focus.
+- Dáng của select (đúng hộp + chevron của trigger, vẽ bằng CSS, không ảnh), việc hoãn nâng cấp khi select đang focus và
+  dấu `data-td-ssr` lệch phiên bản: hợp đồng đầy đủ ở [Dropdown — mục 9](../components/dropdown.md#9-nâng-cấp-từ-select-native-ssr--không-js).
 - **`name` ở cả host và select (0.92.0)**: host `<td-dropdown name="…">` mang `name` ngay từ server (cả chế độ native),
   nên `form.querySelector('td-dropdown[name="x"]')` tìm thấy trên form tách rời / clone từ `<template>` trước khi
   nâng cấp. Sau nâng cấp DOM không đổi (JS vốn chép đúng giá trị này lên host). `attrs` không đặt / không lặp được `name`.
   Cùng quy tắc cho `td_multiselect` (element mode, `<td-chip-input>`) và `td_tree_select`.
 - **Không JS**: y như native (chọn, submit, `required` chặn submit, nhãn ngoài `<label for="{id}-select">`).
-- **Nạp module dropdown**: đường nâng cấp 0.17 như cũ (đọc option, lựa chọn sống, `name` / `required` / `disabled`, nhãn
-  ngoài chuyển sang host, gỡ select), rồi gỡ dấu `data-td-ssr`. **Select đang focus** (người dùng đang chọn đúng lúc
-  module tới): component **không đụng gì** — không gỡ select, không render — cho tới khi select blur; khi đó nâng cấp
-  **đúng một lần** với lựa chọn tại thời điểm blur, focus ở nguyên chỗ người dùng vừa chuyển tới.
-- Dấu lệch (`dropdown@2`…) hoặc không có dấu → hành vi 0.17 (nâng cấp ngay).
 - **`attrs` ở element mode**: không đặt được tên component đọc từ host (`required`, `disabled`, `name`, `value`,
   `label`, `placeholder`, `searchable`, `allow-clear`, `create-label`, `aria-label`, `aria-labelledby`, `value-key`, `label-key`,
   `max-height`, `error-text`, `helper-text`, `id`, `class` — không phân biệt hoa thường) và `data-td-*` — dùng option tương ứng.

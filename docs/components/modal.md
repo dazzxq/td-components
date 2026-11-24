@@ -340,7 +340,7 @@ TdModal.show({
 });
 ```
 
-Chỉ modal trên cùng phản ứng; khi action đang bận thì không đóng. Hộp thoại Promise (`confirm` / `alert` / `prompt`) bỏ qua option này.
+Chỉ modal trên cùng phản ứng; khi action đang bận thì không đóng. Hộp thoại Promise (`confirm` / `success` / `error` / `info`) bỏ qua option này.
 
 ### 10. Nền kính mờ (`surface: 'glass'`, 0.96.0)
 
@@ -351,7 +351,7 @@ từng modal:
 TdModal.show({ title: 'Xem nhanh', body: previewNode, surface: 'glass' }); // nền 94 % + blur 12px
 ```
 
-- Chỉ `'glass'` bật; bỏ trống / giá trị khác = đục. Hộp thoại Promise (`confirm` / `alert` / `prompt`) luôn đục.
+- Chỉ `'glass'` bật; bỏ trống / giá trị khác = đục. Hộp thoại Promise (`confirm` / `success` / `error` / `info`) luôn đục.
 - Chỉnh độ trong / độ mờ cho riêng modal bằng token `--td-modal-glass-bg` / `--td-modal-glass-blur` (mặc định = `--td-glass-bg-strong`
   / `--td-glass-blur`, cùng popup nhỏ). Đừng hạ nền dưới khoảng 85 % — chữ trên ảnh nền động sẽ khó đọc (trách nhiệm site).
 - Tự về **đục, không blur** khi: trình duyệt không có `backdrop-filter`, người dùng bật giảm trong suốt
@@ -456,7 +456,7 @@ window.addEventListener('beforeunload', (e) => {
 | `fullViewport` | `boolean` | `false` | Dialog phủ kín màn hình, không bo góc, không thành bottom sheet trên điện thoại. `width`/`height` bị bỏ qua. Body mặc định không padding và `overflow: hidden`. Từ 0.33.0 có **safe area** (tai thỏ / thanh home): header / footer **cộng thêm** `env(safe-area-inset-*)` vào padding gốc, body chỉ nhận inset hai bên (khi không đặt `bodyPadding`); xem ghi chú dưới bảng class. |
 | `closable` | `boolean` | `true` | Hiện nút X. `false` chỉ **ẩn nút X** — người dùng phải chọn một nút footer. |
 | `escapeCloses` | `boolean` | `false` | Cho phép phím Escape đóng modal (trừ khi đang có action bận). Chỉ bật cho hộp thoại mà đóng không mất dữ liệu (ví dụ bộ chọn ngày). Xem [Vì sao không đóng khi click nền / Escape](#vì-sao-không-đóng-khi-click-nền-hoặc-escape). |
-| `backdropCloses` | `boolean` | `false` | 0.78.0: bấm vào nền mờ đóng modal. Chỉ tính cú bấm **bắt đầu và kết thúc trên nền** (bôi chữ trong dialog rồi kéo ra nền không đóng), chỉ modal trên cùng, không đóng khi đang có action bận, đi qua `beforeClose` (`reason: 'backdrop'`). Không áp dụng cho hộp thoại Promise (`confirm` / `alert` / `prompt`). Cùng luật với `escapeCloses`: chỉ bật cho hộp thoại mà đóng không mất dữ liệu. |
+| `backdropCloses` | `boolean` | `false` | 0.78.0: bấm vào nền mờ đóng modal. Chỉ tính cú bấm **bắt đầu và kết thúc trên nền** (bôi chữ trong dialog rồi kéo ra nền không đóng), chỉ modal trên cùng, không đóng khi đang có action bận, đi qua `beforeClose` (`reason: 'backdrop'`). Không áp dụng cho hộp thoại Promise (`confirm` / `success` / `error` / `info`). Cùng luật với `escapeCloses`: chỉ bật cho hộp thoại mà đóng không mất dữ liệu. |
 | `showHeader` | `boolean` | `true` | `false` → ẩn header (cả nút X); `title` trở thành `aria-label` của dialog. |
 | `showFooter` | `boolean` | `true` | `false` → không render `footer`/`actions`. Footer cũng tự ẩn khi rỗng. |
 | `onClose` | `(value) => void` | `null` | Gọi **đúng một lần** cho mọi đường đóng (X, action, `close`/`closeById`/`closeAll`, Escape khi `escapeCloses`), **sau khi** focus đã được trả về. `value` = `value` của action đã bấm, còn lại là `undefined`. Lỗi bị bắt và `console.error`. |
@@ -513,6 +513,7 @@ vòng bận) — xem [3c](#3c-khoá-nút-cho-tới-khi-dữ-liệu-sẵn-sàng-s
 | `onConfirm` | `() => any` | — | Gọi khi bấm xác nhận. Đồng bộ: trả `false` hoặc ném lỗi (ghi `console.error`) → giữ mở (**đổi hành vi 0.16.0**, trước đó resolve `true` và đóng); giá trị khác → `true` và đóng. Trả Promise → nút bận; resolve `false` hoặc reject → giữ mở; giá trị khác → `true` và đóng. |
 | `onCancel` | `() => void` | — | Gọi đúng một lần khi bị huỷ (nút Hủy, X, `closeAll`). Lỗi bị nuốt. |
 | `typeToConfirm` | `string` | — | 0.44.0: phải gõ đúng chuỗi này (≤ 100 ký tự) thì nút xác nhận mới hoạt động. Có truyền mà sai → Promise reject `TypeError`, không mở hộp thoại. Xem [Xác nhận bằng cách gõ](#3b-xác-nhận-bằng-cách-gõ-typetoconfirm-0440). |
+| `themeRoot` | `Element` | — | 0.42.0: như `themeRoot` của `show()` ([bảng option `show`](#tuỳ-chọn-show)). |
 | `initialFocus` | `'cancel' \| 'confirm'` | `'cancel'` | 0.98.0: nút nhận focus ban đầu. `'confirm'` cho thao tác lặp lại, không nguy hiểm (bấm Enter là xong). Giá trị khác → `'cancel'`. Có `typeToConfirm` thì ô gõ luôn thắng. |
 
 Focus ban đầu của `confirm` nằm ở nút **Hủy** (an toàn cho thao tác nguy hiểm: nhấn Enter nhầm không xoá gì); có
@@ -535,6 +536,7 @@ const ok = await TdModal.confirm({ message: 'Chuyển đơn sang "Đang giao"?',
 | `message` | `'Thao tác đã hoàn tất'` / `'Đã xảy ra lỗi'` / `''` | Nội dung (text); 0.59.0: mảng / Node như `confirm()`. |
 | `messageHtml` | — | HTML **tin cậy**; thắng `message`. |
 | `okText` | `TdModal.labels.ok` (`'OK'`) | Nhãn nút OK. |
+| `themeRoot` | — | 0.42.0: như `themeRoot` của `show()` ([bảng option `show`](#tuỳ-chọn-show)). |
 
 ### Nhãn (i18n)
 
@@ -684,7 +686,7 @@ Mỗi modal đang mở là một phần tử gắn thẳng vào `<body>`:
 |---|---|
 | `.td-modal--{xs…5xl\|full}` | Size. |
 | `.td-modal--viewport` | `fullViewport: true`. Cao `100dvh` (không dùng `vh`). |
-| `[data-state="opening\|open\|closing"]` | Vòng đời. Modal `closing` không nhận click, dialog của nó có `inert`; phần tử bị gỡ sau ~220ms (reduced motion: sau lần mờ dần 120ms). |
+| `[data-state="opening\|open\|closing"]` | Vòng đời. Modal `closing` không nhận click, dialog của nó có `inert`; phần tử bị gỡ sau tối thiểu 240ms (dài hơn nếu `--td-modal-exit-dur` hoặc thời lượng đo được lớn hơn) (reduced motion: sau lần mờ dần 120ms). |
 | `[data-covered]` | Có modal khác chồng lên trên → dialog chuyển nền đặc. |
 | `.td-modal__header[hidden]`, `.td-modal__close[hidden]`, `.td-modal__footer[hidden]` | Ẩn theo `showHeader`, `closable`, footer rỗng. |
 | `role="alertdialog"` + `aria-describedby="{id}-message"` | Trên các hộp thoại Promise (`confirm`, `success`, `error`, `info`). |
@@ -692,8 +694,8 @@ Mỗi modal đang mở là một phần tử gắn thẳng vào `<body>`:
 | `.td-modal__text--blocks` | 0.59.0: `message` là mảng / Node — `div.td-modal__text.td-modal__text--blocks` > `p` / node của bạn (bỏ margin mặc định, cách nhau `--td-space-sm`). |
 | `.td-modal__confirm-field.td-field` > `label.td-field__label[for]` (+ `strong.td-modal__phrase`) + `input.td-field__control` + `span.td-field-error[hidden]` + `span.td-modal__confirm-status.td-sr-only[role=status]` | 0.44.0 `typeToConfirm`: ô gõ dưới nội dung (dùng lại field.css). Nút xác nhận `[aria-disabled="true"]` khi chưa khớp; ô `[aria-invalid="true"]` + `aria-errormessage` khi bấm lúc chưa khớp. |
 
-Chỉ `.td-modal__body` cuộn; header và footer luôn đứng yên. Trên màn hình < 720px (0.34.0; trước đó ≤ 640px) modal thường thành bottom sheet — `fullViewport` thì luôn phủ kín (không có cử
-chỉ kéo), trừ `fullViewport`. Khi modal mở, trang được khoá cuộn (một khoá cho cả chồng, đặt trên `<html>` và khôi phục
+Chỉ `.td-modal__body` cuộn; header và footer luôn đứng yên. Trên màn hình < 720px (0.34.0; trước đó ≤ 640px) modal thường thành bottom sheet (không có cử
+chỉ kéo); `fullViewport` thì không, vẫn phủ kín. Khi modal mở, trang được khoá cuộn (một khoá cho cả chồng, đặt trên `<html>` và khôi phục
 đúng giá trị `overflow` cũ).
 
 **Chrome gọn dưới 720px (0.36.0).** Đo ở 360 / 390px, header + footer chiếm ~70 % một hộp xác nhận một câu. Giờ dưới

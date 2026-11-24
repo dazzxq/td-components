@@ -19,6 +19,7 @@ Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đối
   - [TdMenu](#tdmenu)
   - [TdModal và TdModalStackManager](#tdmodal-và-tdmodalstackmanager)
   - [registerExternalOverlay (UI ngoài mở chồng lớp chặn)](#registerexternaloverlay-ui-ngoài-mở-chồng-lớp-chặn)
+  - [TdDrawer](#tddrawer)
   - [TdToast](#tdtoast)
   - [TdLoading và TdLoadingSpinner](#tdloading-và-tdloadingspinner)
   - [Tooltip](#tooltip)
@@ -256,56 +257,26 @@ Hàm tiện ích export kèm: `safeMenuHref(href) → string | null` (bộ lọc
 
 `import { TdModal } from '@dazzxq/td-components/modal';` · Trang: [modal.md](../components/modal.md)
 
-### Option của `TdModal.show(options) → id`
+### Hook và option
 
-| Option | Kiểu | Mặc định | Ghi chú / Lỗi thì sao |
-|---|---|---|---|
-| `title` | `string` | `'Modal'` | Text |
-| `body` | `Node \| string` | `''` | Chuỗi = **HTML tin cậy** |
-| `footer` | `HTMLElement \| HTMLElement[]` | `null` | Gắn nguyên trạng |
-| `actions` | `Array<Action>` | — | Thắng `footer`. Xem dưới |
-| `size` | `xs sm md lg xl 2xl 3xl 4xl 5xl full` | `'md'` | |
-| `width`, `height` | `string` | `null` | CSS hợp lệ, không `url()` / `var()`; sai → `console.warn`, bỏ qua |
-| `fullViewport` | `boolean` | `false` | Không thành bottom sheet |
-| `closable` | `boolean` | `true` | Hiện nút X. Modal **không bao giờ** đóng khi click nền |
-| `escapeCloses` | `boolean` | `false` | Escape đóng (trừ khi đang bận). Chỉ cho dialog không mất dữ liệu |
-| `showHeader`, `showFooter` | `boolean` | `true` | |
-| `onClose` | `(value) => void` | `null` | Gọi **một lần** trên mọi đường đóng, **sau** khi focus đã trả về. `value` = `value` của action (nếu có). Ném lỗi → `console.error` |
-| `onShow` | `(root, payload) => void` | — | Sau khi `data-state="open"` (frame thứ hai), trừ khi đã đóng trước đó. Ném lỗi → `console.warn` |
-| `onShowPayload` | bất kỳ | — | Tham số thứ hai của `onShow` |
-| `autoFocus` | `boolean` | `true` | `false` → focus chính dialog |
-| `focusTarget` | `HTMLElement` | `null` | Chỉ dùng nếu nằm trong dialog |
-| `bodyPadding` | `string \| number` | — | CSS padding hợp lệ |
-| `bodyOverflow` | `visible hidden auto scroll clip` | — | |
-| `surface` | `'solid' \| 'glass'` | `'solid'` | 0.96.0: `'glass'` = dialog kính mờ; giá trị khác = đục; dialog Promise bỏ qua |
+Danh mục (một dòng một hook); bảng option đầy đủ, mặc định và hành vi khi lỗi nằm ở [modal.md › Hook & tuỳ chọn](../components/modal.md#hook--tuỳ-chọn).
 
-**Action**: `{ label, variant?, value?, close?, disabled?, onClick? }`.
-`onClick({ id, value, button })`:
-
-| Trả về | Kết quả |
-|---|---|
-| không trả / giá trị khác `false` | Đóng (trừ khi `close: false`), `onClose(value)` |
-| `false` | Giữ dialog mở |
-| Promise | Nút đó bận (`aria-busy`), nút khác + X bị vô hiệu cho tới khi settle; resolve `false` → giữ mở; resolve khác → đóng |
-| Ném lỗi (đồng bộ) | `console.error`, **giữ mở** |
-| Promise reject | `console.warn`, hết bận, giữ mở |
-
-### Dialog Promise
-
-| Hàm | Option | Resolve |
+| Hook / option | Ở đâu | Ghi chú |
 |---|---|---|
-| `TdModal.confirm(opts)` | `title` (`labels.confirmTitle`), `message` (`labels.confirmMessage`), `messageHtml` (HTML tin cậy, thắng `message`), `confirmText`, `cancelText`, `confirmVariant` (`primary danger success warning`), `onConfirm`, `onCancel` | `true` khi xác nhận; `false` khi huỷ / X / `closeAll` |
-| `TdModal.success(opts)` / `.error(opts)` / `.info(opts)` | `title` (`labels.successTitle` / `errorTitle` / `infoTitle`), `message`, `messageHtml`, `okText` | `true` khi bấm OK, `false` khi đóng cách khác |
-
-`onConfirm()`: đồng bộ trả `false` hoặc ném lỗi (`console.error`) → giữ mở (**đổi hành vi 0.16.0**, giống `actions`);
-giá trị đồng bộ khác → resolve `true` và đóng. Trả Promise → nút xác nhận bận; settle khác `false` → `true` + đóng;
-resolve `false` hoặc reject → giữ mở (reject có `console.warn`). `onCancel()` ném lỗi bị nuốt.
+| `onClose(value)` | `show()` | Gọi **một lần** trên mọi đường đóng, sau khi focus đã trả về. Ném lỗi → `console.error`. |
+| `onShow(root, payload)` / `onShowPayload` | `show()` | Sau khi `data-state="open"`. Ném lỗi → `console.warn`. |
+| `beforeClose({ reason })` | `show()` | 0.44.0: guard bất đồng bộ của Escape / nền / X. Xem [modal.md › mục 8](../components/modal.md#8-chặn-đóng-khi-có-thay-đổi-chưa-lưu-beforeclose-0440). |
+| `actions[].onClick({ id, value, button })` | `show()` | `false` giữ mở; Promise → nút bận; ném lỗi → `console.error`, giữ mở. Xem [Action](../components/modal.md#action-nút-footer). |
+| `onConfirm()` / `onCancel()` | `TdModal.confirm()` | `false` / ném lỗi → giữ mở (đổi hành vi 0.16.0); Promise → nút bận. Xem [Tuỳ chọn `confirm()`](../components/modal.md#tuỳ-chọn-confirm). |
+| `closable`, `escapeCloses`, `backdropCloses`, `surface`, `themeRoot`, `motion`… | `show()` | Option hành vi / giao diện, không phải callback: xem [Tuỳ chọn `show()`](../components/modal.md#tuỳ-chọn-show). |
+| `typeToConfirm`, `initialFocus`, `themeRoot` | `confirm()` | Xem [Tuỳ chọn `confirm()`](../components/modal.md#tuỳ-chọn-confirm). |
+| `okText`, `themeRoot` | `success()` / `error()` / `info()` | Xem [Tuỳ chọn `success()` / `error()` / `info()`](../components/modal.md#tuỳ-chọn-success--error--info). |
 
 ### Cấu hình tĩnh
 
 | Thành viên | Mặc định | Ghi chú |
 |---|---|---|
-| `TdModal.labels` | `{ close: 'Đóng', confirm: 'Xác nhận', cancel: 'Hủy', ok: 'OK', confirmTitle: 'Xác nhận', confirmMessage: 'Bạn có chắc chắn?', successTitle: 'Thành công', errorTitle: 'Lỗi', infoTitle: 'Thông tin' }` | `close` = `aria-label` nút X (đọc khi tạo dialog); `confirm` / `cancel` / `ok` = chữ nút mặc định; `*Title` / `confirmMessage` (0.16.0) = tiêu đề / nội dung mặc định của các hộp thoại Promise. `message` mặc định của `success` / `error` không lấy từ đây |
+| `TdModal.labels` | xem [bảng nhãn](../components/modal.md#nhãn-i18n) | Nhãn nút X / xác nhận / huỷ / OK, tiêu đề + nội dung mặc định của hộp thoại Promise, chữ `typeToConfirm`. Danh sách khoá đầy đủ và mặc định chỉ ghi ở modal.md. |
 | `TdModalStackManager.BASE_Z_INDEX` | `null` | **Deprecated**. Gán số → mỗi modal nhận z-index inline `BASE + i × Z_INDEX_INCREMENT` (+ một cảnh báo). Nên dịch bộ `--td-z-*` thay vì dùng |
 | `TdModalStackManager.Z_INDEX_INCREMENT` | `100` | Chỉ dùng khi có `BASE_Z_INDEX` |
 
@@ -316,10 +287,22 @@ resolve `false` hoặc reject → giữ mở (reject có `console.warn`). `onCan
 
 | Gọi | Ghi chú / Lỗi thì sao |
 |---|---|
-| `registerExternalOverlay(matcher) → off` | `matcher` = selector \| `Element` \| `(el) => boolean`, chỉ thử trên **con trực tiếp của `<body>`**. Khi phần tử khớp đang hiện và nằm trên lớp chặn trên cùng (modal, drawer, lightbox, loading): không `inert`, không bẫy Tab, không bắt Escape, bấm nền không đóng. `off()` gỡ (gọi nhiều lần không sao; cùng một matcher đăng ký hai lần thì cần hai `off()`). Selector sai / kiểu khác → `console.error` cố định, trả hàm rỗng, không throw. Hàm ném lỗi → coi như không khớp, `console.error` cố định (không in lỗi của site) |
+| `registerExternalOverlay(matcher) → off` | `matcher` = selector \| `Element` \| `(el) => boolean`. Cho UI ngoài mở chồng lên lớp chặn mà không bị `inert` / bẫy Tab. `off()` gỡ. Selector sai hoặc hàm ném lỗi không throw. Bảng hành vi đầy đủ: [modal.md › mục 11](../components/modal.md#11-mở-ui-ngoài-chồng-lên-modal-registerexternaloverlay-0960). |
 | Attribute `data-td-external-overlay` | Trên con trực tiếp của `<body>`: luôn được tính, không cần JS |
 
 Hook áp cho **mọi** lớp chặn, không có option riêng trên từng component. Không đăng ký gì → hành vi như 0.95.0.
+
+---
+
+## TdDrawer
+
+`import '@dazzxq/td-components/drawer';` · Trang: [drawer.md](../components/drawer.md)
+
+| Hook | Ghi chú |
+|---|---|
+| `beforeClose({ reason })` | 0.44.0: guard bất đồng bộ của Escape / nền / X / `requestClose()`. Xem [drawer.md › mục 6](../components/drawer.md#6-chặn-đóng-khi-form-chưa-lưu-beforeclose-0440). |
+| `onClose(reason)` | Option của `TdDrawer.open()`: gọi sau khi đóng. Ném lỗi → `console.error`. Xem [Property & method](../components/drawer.md#property--method). |
+| `TdDrawer.labels` | `{ close, drawer }`: nhãn mặc định, ghi ở [drawer.md › Property & method](../components/drawer.md#property--method). |
 
 ---
 
@@ -381,14 +364,18 @@ trường hợp đặc biệt.
 Từ 0.16.0 **cả hai** callback đều chạy khi cùng đặt (trước đó có `onChange` thì `onSelect` bị bỏ qua). Có thể gán
 `options` / `onChange` / `onSelect` trước khi element được nâng cấp.
 
-`TdDropdown.labels` (toàn trang):
+Hook còn lại (chữ ký, thời điểm gọi, hành vi khi lỗi: [dropdown.md › Property & method](../components/dropdown.md#property--method)):
 
-| Khoá | Mặc định |
+| Property | Ghi chú |
 |---|---|
-| `search` | `Tìm kiếm` (`aria-label` ô tìm; placeholder = chữ này + `...`) |
-| `none` | `Không chọn` |
-| `noResults` | `Không tìm thấy kết quả` |
-| `required` | `Vui lòng chọn một tùy chọn` |
+| `onCreate(query)` | Dòng "Thêm mới" (0.22.0); ném lỗi → `console.error`, event `create` vẫn phát. |
+| `onPick(item)` | 0.85.0, `mode="action"`; ném lỗi → `console.error`, event `pick` vẫn phát. |
+| `renderOption(item, { query, selected })` | 0.87.0: tự vẽ nhãn dòng. |
+| `load()` | 0.86.0: nạp danh sách bất đồng bộ. |
+| `search(query, { signal })` | 0.108.0: tìm phía server. |
+| `groups` | 0.84.0: thứ tự và tiêu đề nhóm. |
+
+`TdDropdown.labels` (toàn trang): đủ khoá, chữ mặc định và chỗ dùng ghi ở [dropdown.md › TdDropdown.labels](../components/dropdown.md#tddropdownlabels).
 
 Placeholder của trigger đổi bằng attribute `placeholder`.
 
