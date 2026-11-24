@@ -217,7 +217,10 @@ table.columns = [
   nhiều nút chiếm gần hết khung, che cột "Tên"), bảng tự bỏ ghim: cột cuộn như cột thường, không đường ngăn / bóng, không
   `data-sticky-covered`. Khung rộng ra (xoay máy, kéo cửa sổ) để cột còn ≤ một nửa → ghim lại. Ngưỡng đo theo khung thật,
   không theo viewport, nên bảng nằm trong cột hẹp ở desktop cũng được xử lý. Đang ghim hay không: `.td-table` có class
-  `td-table--sticky-end` khi đang ghim.
+  `td-table--sticky-end` khi đang ghim. **Đổi ngưỡng (0.125.0):** đặt `stickyMax` trên chính cột ghim, là phần tối đa của
+  khung (số trong `(0, 1]`) mà cột được chiếm khi vẫn ghim. Ví dụ `{ key: 'ops', sticky: 'end', stickyMax: 0.35 }` bỏ ghim
+  sớm hơn, `stickyMax: 1` gần như luôn ghim (chỉ bỏ khi cột rộng hơn cả khung). Giá trị sai (không phải số, ≤ 0, > 1) → dùng
+  0.5 + một cảnh báo.
 - **Chế độ card không ghim.** Ở dạng card (`layout="cards"` hoặc tự chuyển khi chỗ đặt hẹp) cột cuối chỉ là một trường
   của card; `layout="table"` giữ ghim ở mọi khổ (trừ khi cột rộng hơn nửa khung, như trên).
 - **Không bật thì không đổi gì:** không class, không attribute, không listener mới.
@@ -987,6 +990,7 @@ Các attribute `title`, `heading-level`, `zebra`, `max-height`, `selectable`, `r
 | `render` | `(row, rowIdxInPage, ctx?) => Node \| string \| any` | — | Ô tuỳ biến (xem cách dùng số 3). Nội dung được **nối sau** nhãn card của ô. 0.57.0, bảng cây: tham số 3 `ctx = { level, parentKey, hasChildren, expanded }` (lúc vẽ dòng đó); ở bảng cây dùng `row`, đừng dựa vào `rowIdxInPage` (vị trí đổi khi mở / đóng nhánh phía trên). |
 | `hideable` | boolean | `true` (`false` cho cột `primary` và cột `actions`) | Cho phép ẩn cột (menu "Cột", `hiddenColumns`). Cần `key` duy nhất khác rỗng. Từ 0.39.0. |
 | `hidden` | boolean | `false` | Ẩn lúc đầu (và khi "Khôi phục mặc định" / `hiddenColumns = null`). Từ 0.39.0. |
+| `stickyMax` | number `(0, 1]` | `0.5` | Chỉ trên cột ghim: phần tối đa của khung cuộn mà cột được chiếm khi vẫn ghim; rộng hơn thì cột cuộn như thường. Từ 0.125.0. |
 | `sticky` | `'end'` | — | Ghim cột vào mép cuối khung cuộn ngang. Chỉ có hiệu lực trên cột **cuối cùng**; `'start'`, giá trị khác hoặc cột không cuối bị bỏ qua + một cảnh báo. Xem mục "Ghim cột cuối" trong cách dùng số 5. Từ 0.123.0. |
 
 "CSS dimension" = số kèm đơn vị tuỳ chọn trong `px`, `em`, `rem`, `%`, `vh`, `vw`, `ch`, `fr` (ví dụ `120px`, `20%`,

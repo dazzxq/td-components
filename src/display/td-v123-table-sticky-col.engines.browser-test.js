@@ -379,3 +379,28 @@ describe('td-table sticky end — unpinned when wider than half the frame (v0.12
     expect(w1).to.equal(w0);
   });
 });
+
+// v0.125.0 (plan v0.125.0-sticky-max-share): column stickyMax moves the unpin threshold
+describe('td-table sticky end — stickyMax (v0.125.0)', () => {
+  const isPinned = (el) => rootOf(el).classList.contains('td-table--sticky-end');
+  it('a 120px column in a ~360px frame (~33%): pinned by default, unpinned with stickyMax 0.3', async () => {
+    await setViewport({ width: 1440, height: 900 });
+    const a = await mk('layout="table"', { width: 360 });
+    expect(isPinned(a)).to.equal(true);
+    const b = await mk('layout="table"', { columns: COLS('end', { stickyMax: 0.3 }), width: 360 });
+    expect(pinTh(b).offsetWidth > scrollOf(b).clientWidth * 0.3).to.equal(true);
+    expect(isPinned(b)).to.equal(false);
+    expect(getComputedStyle(pinTd(b)).position).to.equal('static');
+  });
+
+  it('a 260px column in a ~360px frame (~72%): pinned with stickyMax 0.8 and 1, unpinned by default', async () => {
+    await setViewport({ width: 1440, height: 900 });
+    const d = await mk('layout="table"', { columns: COLS('end', { minWidth: '260px' }), width: 360 });
+    expect(isPinned(d)).to.equal(false);
+    for (const m of [0.8, 1]) {
+      const el = await mk('layout="table"', { columns: COLS('end', { minWidth: '260px', stickyMax: m }), width: 360 });
+      expect(isPinned(el)).to.equal(true);
+      expect(getComputedStyle(pinTd(el)).position).to.equal('sticky');
+    }
+  });
+});

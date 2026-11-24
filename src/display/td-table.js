@@ -146,7 +146,7 @@ function safeMaxHeight(value) {
  *
  * @property {Array<Object>} columns - Column definitions: `{ key, label, sortable?, width?, widthType?:
  *   'fixed'|'flexible', minWidth?, maxWidth?, align?: 'left'|'center'|'right'|'justify', ellipsis?, nowrap?,
- *   card?: 'lead'|'primary'|'secondary'|'meta'|'actions'|false, actions?, render?, sticky?: 'end' }`.
+ *   card?: 'lead'|'primary'|'secondary'|'meta'|'actions'|false, actions?, render?, sticky?: 'end', stickyMax?: number }`.
  *   `width` is applied ONLY with `widthType: 'fixed'` (width = min = max); the default `'flexible'` ignores it and
  *   uses `minWidth`/`maxWidth` (width `auto`). `table-layout: fixed` only when EVERY column is fixed (v0.34.0).
  *   `nowrap` (default true for `align: 'right'`) keeps the value on one line. `card` = role on a card (default:
@@ -162,6 +162,8 @@ function safeMaxHeight(value) {
  *   `ellipsis: true` → one line, truncated at `maxWidth` or `--td-table-ellipsis-max` (18rem), full text in `title`.
  *   `sticky: 'end'` (v0.123.0) pins the column to the inline-end edge of the horizontal scroll frame; only valid on the LAST
  *   column ('start', other values and a non-last column are ignored with one warning each). Off → markup unchanged.
+ *   `stickyMax` (v0.125.0, on the pinned column): largest share (0, 1] of the scroll frame the column may take and stay
+ *   pinned (default 0.5; above it the column scrolls normally; invalid → 0.5 + one warning).
  *   `render(row, rowIdxInPage)` — TRUSTED HATCH: return a Node (preferred, appended), a string (**trusted HTML**,
  *   developer markup only, injected with innerHTML — escape any end-user data inside it yourself; its CSP
  *   compliance is the consumer's responsibility) or anything else (text); it is appended after the cell's card label. A render column sorts by `row[key]`.
@@ -307,6 +309,7 @@ export class TdTable extends TdBaseElement {
     this._cellPadding = null;
     this._warned = new Set();
     this._stickyCi = -1; // v0.123.0: index of the pinned (sticky: 'end') column, -1 = off
+    this._stickyMax = 0.5; // v0.125.0: column stickyMax — the pinned column unpins above this share of the frame
     this._stickyW = -1; // last --td-table-sticky-end-w written on the current scroll frame (px)
     this._ro = null;
     this._refocusPagination = null;
@@ -672,6 +675,14 @@ export class TdTable extends TdBaseElement {
       }
     });
     this._stickyCi = ci;
+    // v0.125.0 (plan v0.125.0-sticky-max-share): `stickyMax` on the pinned column = largest share (0, 1] of the scroll frame it
+    // may take and stay pinned; default 0.5 (the v0.124.0 rule)
+    this._stickyMax = 0.5;
+    if (ci >= 0 && cols[ci].stickyMax !== undefined) {
+      const m = cols[ci].stickyMax;
+      if (typeof m === 'number' && Number.isFinite(m) && m > 0 && m <= 1) this._stickyMax = m;
+      else this._warnOnce('td-table: column `stickyMax` must be a number in (0, 1] — using 0.5.');
+    }
     return ci;
   }
 
@@ -1907,7 +1918,7 @@ export class TdTable extends TdBaseElement {
     // v0.124.0: a pinned column wider than half the frame (a phone: actions column) would hide the rest of the table — unpin it
     // by dropping the root modifier (every pin rule hangs on it; the cell classes stay, the column keeps its exact width)
     const cw = s.clientWidth;
-    const off = !hidden && cw > 0 && w > cw * 0.5;
+    const off = !hidden && cw > 0 && w > cw * (this._stickyMax || 0.5);
     if (off === this._root.classList.contains('td-table--sticky-end')) this._root.classList.toggle('td-table--sticky-end', !off);
     const covered = !hidden && !off && s.scrollWidth - cw - s.scrollLeft > 1;
     if (covered !== this._root.hasAttribute('data-sticky-covered')) {

@@ -301,6 +301,7 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` v0.115.0 `<td-input-field type="password" revealable>` (dsuite 15/11; dcms2 login / OTP / 2FA)
 - `done` v0.123.0 dsuite K-TABLE-1 (24/11): td-table ghim cột cuối `sticky: 'end'` (nền đặc theo dòng, bóng khi bị che, ô góc trên tiêu đề dính, focus không bị che)
 - `done` v0.124.0 (24/11): dsuite K-EMPTY-1 td-empty-state lấy bề ngang khung cha (inline-size 100% + --td-empty-state-intrinsic-w); cột ghim rộng hơn nửa khung tự bỏ ghim (owner); test Firefox v057 chờ theo thời gian thật
+- `done` v0.125.0 (24/11): td-table option cột `stickyMax` — ngưỡng tự bỏ ghim tuỳ chỉnh (owner)
 - `done` v0.122.0 afamily-prj (24/11): callback `onInput` / `onChange` trước dispatch cho slider, choice-group, input-field, toggle, checkbox
 - `done` v0.121.0 afamily-prj (23/11): `td-dropdown` `portal="local"` / `portalRoot` (menu trong shadow root)
 - `done` v0.120.0 dcms2 K1 (22/11): `focal-optional` ở chế độ focal (điểm trọng tâm tuỳ chọn, không khung crop)

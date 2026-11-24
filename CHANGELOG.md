@@ -4,6 +4,11 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.125.0
+
+### Thêm
+- `td-table` option cột `stickyMax` (trên cột `sticky: 'end'`): số trong `(0, 1]`, phần tối đa của khung cuộn mà cột ghim được chiếm khi vẫn ghim. Mặc định `0.5` (như 0.124.0), `1` = gần như luôn ghim. Giá trị sai → 0.5 + một cảnh báo.
+
 ## 0.124.0
 
 ### Sửa

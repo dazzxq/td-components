@@ -110,3 +110,31 @@ describe('td-table sticky: \'end\' (v0.123.0) markup', () => {
     assert.equal(m.el._stickyCi, 1);
   });
 });
+
+describe('td-table column stickyMax (v0.125.0)', () => {
+  let warns;
+  const origWarn = console.warn;
+  beforeEach(() => { warns = []; console.warn = (...a) => { warns.push(a.join(' ')); }; });
+  afterEach(() => { console.warn = origWarn; });
+  const maxOf = (last) => { const { el } = markup(COLS(last)); el._computeSticky(); return el._stickyMax; };
+
+  it('default 0.5; valid values (0.3, 1) are used, no warning', () => {
+    assert.equal(maxOf({ sticky: 'end' }), 0.5);
+    assert.equal(maxOf({ sticky: 'end', stickyMax: 0.3 }), 0.3);
+    assert.equal(maxOf({ sticky: 'end', stickyMax: 1 }), 1);
+    assert.deepEqual(warns, []);
+  });
+
+  for (const bad of ['a', 0, -1, 1.5, NaN, Infinity, '0.4', null]) {
+    it(`invalid ${String(bad)} → 0.5 + one warning`, () => {
+      assert.equal(maxOf({ sticky: 'end', stickyMax: bad }), 0.5);
+      assert.equal(warns.length, 1);
+      assert.match(warns[0], /stickyMax/);
+    });
+  }
+
+  it('on a column that is not pinned: ignored, no warning', () => {
+    assert.equal(maxOf({ stickyMax: 'nonsense' }), 0.5);
+    assert.deepEqual(warns, []);
+  });
+});
