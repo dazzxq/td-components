@@ -4,6 +4,9 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+### Docs
+- Soát docs lệch code toàn bộ (docs-drift, 22 lô, 25/11): mọi trang `docs/components/*.md` + theming / hooks / utilities / PHP / cài đặt / hub. Sửa chữ ký, attribute, token, mặc định, nhãn, event và hook thiếu hoặc sai; bản chép ở `hooks.md`, `php-adapter.md`, `security-model.md`, `theming.md` rút về một câu + link tới trang component (một sự thật một chỗ). Không đổi code.
+
 ## 0.126.0
 
 ### Sửa

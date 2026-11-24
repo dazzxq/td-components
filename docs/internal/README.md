@@ -1,3 +1,5 @@
+[Tài liệu](../README.md) › Nội bộ
+
 # Tài liệu nội bộ (người phát triển td-components)
 
 Tài liệu cho người **phát triển kit**, không phải người dùng kit. Người dùng đọc [hub tài liệu](../README.md).
@@ -11,6 +13,8 @@ Tài liệu cho người **phát triển kit**, không phải người dùng kit
 | [agent-workflows.md](agent-workflows.md) | Workflow đặt tên của agent (`.claude/workflows/`): `lanes` (việc song song trong worktree), `docs-drift` (docs lệch code + hub-spoke) |
 | [security-model.md](security-model.md) | Mô hình XSS theo ngữ cảnh, cam kết CSP, raw-HTML hatch (cam kết của lõi) |
 | [design/liquid-glass.md](design/liquid-glass.md) | Bộ luật **Minimal surfaces** (thay Liquid Glass từ 0.20.0, ADR 0011) — **bắt buộc cho UI mới** |
+| [design/touch.md](design/touch.md) | Chuẩn **cảm ứng** (hover gate, hình nhấn, `touch-action`, bàn phím ảo; ADR 0019) — **bắt buộc cho UI mới** |
+| [release-touch-checklist.md](release-touch-checklist.md) | Checklist iPhone thật cho bản có đụng hành vi chạm |
 | [decisions/](decisions/README.md) | ADR: các quyết định kiến trúc |
 | [plans/](plans/) | Plan từng release (đã qua Codex plan-review) |
 | [research/](research/) | Kiểm kê / nghiên cứu đầu vào cho plan (vd. kiểm kê UI media picker dcms2 + harness render) |

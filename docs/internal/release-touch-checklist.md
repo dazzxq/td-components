@@ -1,3 +1,5 @@
+[Tài liệu nội bộ](README.md) › Checklist iPhone thật
+
 # Checklist iPhone thật (bản có đụng cảm ứng)
 
 Khoảng 10 phút, chạy sau khi phát hành một bản đụng hành vi chạm ([ADR 0019](decisions/0019-touch-standard.md), plan

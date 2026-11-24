@@ -303,6 +303,7 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` v0.124.0 (24/11): dsuite K-EMPTY-1 td-empty-state lấy bề ngang khung cha (inline-size 100% + --td-empty-state-intrinsic-w); cột ghim rộng hơn nửa khung tự bỏ ghim (owner); test Firefox v057 chờ theo thời gian thật
 - `done` v0.125.0 (24/11): td-table option cột `stickyMax` — ngưỡng tự bỏ ghim tuỳ chỉnh (owner)
 - `done` v0.126.0 (25/11): thân modal / drawer `scrollbar-gutter: stable` (biến `--td-modal-body-gutter` / `--td-drawer-body-gutter`) — nội dung không nhích khi thanh cuộn cổ điển xuất hiện (dsuite)
+- `done` docs-drift toàn bộ (25/11): 22 lô, docs-only trên main (`git log --grep docs-drift`); lỗi code phát hiện, chưa sửa: alert.css / cropper.css không có dự phòng khi thiếu container query (Chrome/Edge 102–104), `--td-dtp-preview-bg` khai báo nhưng không dùng
 - `done` v0.122.0 afamily-prj (24/11): callback `onInput` / `onChange` trước dispatch cho slider, choice-group, input-field, toggle, checkbox
 - `done` v0.121.0 afamily-prj (23/11): `td-dropdown` `portal="local"` / `portalRoot` (menu trong shadow root)
 - `done` v0.120.0 dcms2 K1 (22/11): `focal-optional` ở chế độ focal (điểm trọng tâm tuỳ chọn, không khung crop)

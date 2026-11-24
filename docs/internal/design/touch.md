@@ -1,3 +1,5 @@
+[Tài liệu nội bộ](../README.md) › Chuẩn cảm ứng
+
 # Chuẩn cảm ứng — luật nội bộ (v0.36.2)
 
 > **Bắt buộc cho mọi UI mới**, cùng với [minimal surfaces](liquid-glass.md). Quyết định: [ADR 0019](../decisions/0019-touch-standard.md).

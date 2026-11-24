@@ -1,3 +1,5 @@
+[Tài liệu nội bộ](../README.md) › Decisions (ADR)
+
 # Decisions (ADR)
 
 Mỗi quyết định kiến trúc một file: Status / Date / Context / Decision / Consequences. Không sửa ADR đã Accepted;

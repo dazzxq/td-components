@@ -153,22 +153,7 @@ echo td_import_map_tag(['app/' => '/assets/app/'], $nonce);                     
 echo td_stylesheet_tag($nonce);                                                   // <link rel="stylesheet" href="…/dist/td.css">
 ```
 
-- Mọi entry `.js` của `exports` (kit trước, theo thứ tự `exports`), rồi `$extra`. `td.css`/`icons.json`/`package.json`
-  không vào import map.
-- Key trong `$extra` trùng module của kit → `InvalidArgumentException` (không vô tình ghi đè module kit).
-- `td_import_map_tag()` in JSON với `JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT |
-  JSON_UNESCAPED_SLASHES` và escape nonce.
-
-Chi tiết + markup helper: [Adapter PHP](php-adapter.md).
-
-Luật import map (đã gặp thật ở dwp):
-
-- **Một** import map mỗi trang, in trong `<head>`, **trước mọi `<script type="module">`**. Import map in sau module
-  đầu tiên bị bỏ qua hoàn toàn.
-- Giá trị là URL bắt đầu bằng `/`, `./`, `../` hoặc tuyệt đối `https://…`.
-- Dưới CSP có nonce, import map cần `nonce` (nó là script inline). Xem [CSP](csp.md#gắn-nonce-cho-link-import-map-và-script).
-- Mọi entry riêng của site (DOMPurify, module app) truyền qua `$extra` của `td_import_map_tag()` — đừng in import map
-  thứ hai. Tự encode thì dùng `json_encode(…, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP)`.
+Luật import map (một import map mỗi trang, in trước mọi module; entry riêng của site qua `$extra`; entry nào của `exports` vào map và entry nào không; cờ JSON; URL hợp lệ): [Adapter PHP › CSS và import map](php-adapter.md#css-và-import-map). Dưới CSP có nonce, import map cần `nonce`: [CSP](csp.md#gắn-nonce-cho-link-import-map-và-script).
 
 ## WordPress (dwp)
 

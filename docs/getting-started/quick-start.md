@@ -240,7 +240,7 @@ Thử lần lượt:
 
 1. Bấm **Lưu** khi form trống: trình duyệt báo lỗi ở ô bắt buộc đầu tiên.
 2. Gõ họ tên rồi rời ô (`validate-on="blur"`): lỗi dưới ô tự hiện / tự mất.
-3. Điền đủ, chọn gói, bấm **Lưu**: nút quay spinner khoảng 1 giây, sau đó toast loại `success` (viên nền xanh lá pastel, không icon) hiện ở góc trên bên phải; bấm vào toast để đóng sớm.
+3. Điền đủ, chọn gói, bấm **Lưu**: nút quay spinner khoảng 1 giây, sau đó toast loại `success` (viên nền xanh lá đặc, chữ trắng, không icon; từ 0.36.0) hiện ở góc trên bên phải; bấm vào toast để đóng sớm.
 4. Nhập `da-ton-tai@example.com` rồi Lưu: ô email báo lỗi, toast lỗi hiện ra, focus nhảy về ô email.
 5. Bấm **Xoá dữ liệu đã nhập**: modal xác nhận hiện, trang phía sau bị khoá. Thử Tab: focus chỉ chạy trong modal. Bấm
    Xoá: form về trạng thái ban đầu (toggle bật lại vì có `checked` trong HTML).

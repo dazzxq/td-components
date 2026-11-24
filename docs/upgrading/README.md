@@ -169,16 +169,7 @@ module ES trực tiếp (xem [installation.md](../getting-started/installation.m
 
 ### Đặt kit trong thư mục có số phiên bản
 
-Các file JS của kit import lẫn nhau bằng đường dẫn tương đối (ví dụ `../base/td-base-element.js`). Thêm `?v=…` vào
-file đầu tiên **không** phá cache cho các file mà nó import. Cách chắc chắn nhất là để số phiên bản nằm trong đường
-dẫn thư mục:
-
-```bash
-# Trong repo của site: lấy đúng tag và copy những gì kit publish (src, index.js, td.css, php/, package.json)
-git clone --depth 1 --branch v0.17.0 https://github.com/dazzxq/td-components.git /tmp/td
-mkdir -p public/vendor/td-components-0.17.0
-cp -R /tmp/td/src /tmp/td/index.js /tmp/td/td.css /tmp/td/php /tmp/td/package.json public/vendor/td-components-0.17.0/
-```
+Để số phiên bản nằm trong đường dẫn thư mục (`public/vendor/td-components-<bản>/`) thay vì chỉ thêm `?v=…`: lý do và cách copy đầy đủ (kể cả `dist/` và `module-graph.json`, thiếu thì `td_configure` báo lỗi ngay) ở [Cài đặt › Bước 1 và Bước 4](../getting-started/installation.md#bước-1-copy-kit-vào-thư-mục-public). Nâng cấp = copy bản mới sang thư mục mới, rồi đổi `TD_VERSION`.
 
 Giữ nguyên thư mục bản cũ (ví dụ `public/vendor/td-components-0.16.0/`) cho tới khi chắc chắn không cần rollback.
 

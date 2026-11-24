@@ -30,7 +30,7 @@ Kit **chỉ được kiểm thử trên bản engine hiện hành** (Playwright 
 | `npm run test:csp` / `test:csp:combined` | Chromium | Mọi component × mọi trạng thái dưới CSP strict: 0 vi phạm, style khớp baseline |
 | `npm run test:tokens` | Chromium, Firefox, WebKit | `td.css` dưới hai hồ sơ CSP (`'self'` và nonce-only), glass fallback, dark theme, reduced motion, forced colors |
 | `npm run test:contrast` | Chromium, Firefox, WebKit | Tương phản thật (đo pixel) của button và toast trên nền đen, trắng, caro, ảnh |
-| `npm run test:engines` | Chromium, Firefox, WebKit | Tab / Shift+Tab của `TdMenu` (hành vi phụ thuộc engine) |
+| `npm run test:engines` | Chromium, Firefox, WebKit | Mọi `*.spec.mjs` trong `test/engines` (hành vi phụ thuộc engine: Tab / Shift+Tab của `TdMenu`, a11y của calendar / cropper / tree-table, nhập IME của number-input, scan-input, type-confirm, form-dirty, ssr-fouc…) |
 
 Nghĩa là: bản mới nhất của Chrome/Edge, Firefox và Safari là mục tiêu chính. Các phiên bản cũ hơn trong bảng dưới
 đây là **suy ra từ tính năng**, không phải đã chạy thử từng bản.
@@ -127,19 +127,12 @@ Kit được thiết kế cho **Content-Security-Policy nghiêm ngặt**. Output
 chèn thẻ `<style>`; giá trị riêng từng phần tử (màu tuỳ biến, vị trí menu…) được ghi qua CSSOM
 (`el.style.setProperty`), là cách CSP cho phép.
 
-Hai hồ sơ CSP được kiểm thử tự động trên cả Chromium, Firefox và WebKit (`npm run test:tokens`):
-
-| Hồ sơ | Header | Điều kiện phía site |
-|---|---|---|
-| `'self'` | `default-src 'self'; style-src 'self'; script-src 'self'` | `td.css` và file JS phục vụ cùng origin |
-| nonce-only | `default-src 'self'; style-src 'nonce-…'; style-src-attr 'none'; script-src 'self'` | Thẻ `<link rel="stylesheet">` của `td.css` mang `nonce="…"` |
+Hai hồ sơ CSP (`'self'` và nonce-only) được kiểm thử tự động trên cả Chromium, Firefox và WebKit (`npm run test:tokens`); bảng hồ sơ và header mẫu nằm ở [CSP › Kit được test dưới CSP nào](../guides/csp.md#kit-được-test-dưới-csp-nào).
 
 Điểm cần nhớ:
 
-- **Không cần** `style-src 'unsafe-inline'`.
-- `style-src-attr 'none'` vẫn chạy: CSP này chặn attribute `style="…"` nhưng không chặn ghi CSSOM.
-- Script module là file ngoài cùng origin nên `script-src 'self'` là đủ. Nếu bạn dùng `<script type="module">` **inline**
-  hoặc `<script type="importmap">` (luôn là inline), thẻ đó cần `nonce` hoặc hash trong `script-src`.
+- **Không cần** `style-src 'unsafe-inline'`; `style-src-attr 'none'` vẫn chạy (kit ghi CSSOM, không ghi attribute `style`).
+- Import map và script module inline luôn cần `nonce` hoặc hash: [CSP › Gắn nonce](../guides/csp.md#gắn-nonce-cho-link-import-map-và-script).
 - Nội dung **bạn** đưa vào qua các "cửa HTML tin cậy" (ví dụ `body` dạng chuỗi của `TdModal.show`) cũng phải sạch CSP,
   vì kit không kiểm soát được phần đó.
 - Chế độ dev của Vite chèn CSS bằng thẻ `<style>`; muốn thử CSP thật, hãy thử trên bản build (`vite build` +

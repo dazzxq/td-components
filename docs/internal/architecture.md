@@ -1,3 +1,5 @@
+[Tài liệu nội bộ](README.md) › Architecture
+
 # Architecture
 
 Trạng thái mô tả: **v0.11.0** — mọi component token-native (`td.css` + CSSOM), không còn Tailwind (ADR 0008).

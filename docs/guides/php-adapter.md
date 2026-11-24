@@ -231,10 +231,10 @@ Luật:
   app…) đưa qua `$extra` — đừng in import map thứ hai.
 - Key trong `$extra` **trùng** specifier của kit (ví dụ `@dazzxq/td-components/button`) → `InvalidArgumentException`.
   Adapter không cho vô tình ghi đè module của kit; muốn thay hẳn thì tự dựng import map, không dùng helper.
-- Key/URL rỗng hoặc không phải chuỗi → `InvalidArgumentException`.
+- Key/URL rỗng hoặc không phải chuỗi → `InvalidArgumentException`. URL là đường dẫn bắt đầu bằng `/`, `./`, `../` hoặc tuyệt đối `https://…`.
 - JSON in với `JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES`: chuỗi
   `</script>` trong dữ liệu không đóng được thẻ. Nonce được escape.
-- `./td.css`, `./icons.json`, `./package.json` không vào import map (không phải module JS).
+- `./td.css`, `./icons.json`, `./package.json` không vào import map (không phải module JS); `./embed` (bundle đứng riêng cho userscript, trỏ vào `dist/`) cũng không.
 - WordPress: dùng mảng `td_import_map()` để `wp_register_script_module()` từng entry (WordPress tự in import map) —
   xem [WordPress & PHP](wordpress-php.md#đăng-ký-css-và-module).
 
@@ -265,7 +265,7 @@ Server phải trả `.js` (và `.mjs` nếu site dùng) với `Content-Type: tex
 Tên và thứ tự tham số trùng adapter tham chiếu của 135 (`src/Ui/markup.php`):
 
 ```php
-td_icon(string $name, string $size = 'm', string $label = ''): string
+td_icon(string $name, string $size = 'm', string $label = '', string $variant = ''): string   // $variant 'filled': 0.104.0
 td_button(string $label, array $opts = []): string
 td_link(string $label, string $href, array $opts = []): string
 td_field(string $name, string $value = '', array $opts = []): string
@@ -298,9 +298,11 @@ td_check_matrix(string $name, array $columns, array $rows, array $value = [], ar
 td_color_picker(string $name, array $o = []): string   // 0.48.0
 td_color_value(mixed $v): ?string                      // 0.48.0: chuẩn hoá màu POST → '#rrggbb' | '' | null
 td_icon_picker(string $name, array $o = []): string    // 0.94.0 (luôn element)
-td_icon_value(mixed $v): ?string                       // 0.94.0: chuẩn hoá icon POST → tên canonical | '' | null
+td_icon_value(mixed $v, array $o = []): ?string          // 0.94.0: chuẩn hoá icon POST → tên canonical | '' | null; $o['none_value'] 0.96.1
 Td::iconSearchData(): array                            // 0.94.0: nhãn + từ khoá tìm kiếm (kit + site), đọc lười
 Td::registerIconSearchData(array $defs): void          // 0.94.0: metadata tìm kiếm cho icon site
+td_avatar(?string $src, string $name = '', string $size = 'm'): string   // 0.105.0 (xem docs/components/avatar.md)
+td_dropzone(string $name, array $o = []): string        // 0.100.0 (xem docs/components/dropzone.md#php-01000)
 td_choice_group(string $name, array $options, string|int|null $value = null, array $o = []): string   // 0.49.0 (luôn element)
 td_rating(int|float|string|null $value, array $o = []): string   // 0.50.0 (luôn element, chỉ đọc)
 td_carousel(array $slides, array $o = []): string   // 0.50.0 (luôn element; slide = Td::html(markup của template) | chuỗi = chữ)
@@ -313,7 +315,7 @@ td_stylesheet_tag(?string $nonce = null): string
 
 Class `TdComponents\Td` (static): `configure` (+ option `ssr_elements`, 0.25.0), `ssrElements()`, `baseUrl`, `kitDir`,
 `importMap`, `importMapTag`, `stylesheetTag`, `modulePreloads` (0.25.0),
-`registerIcons`, `siteIcons`, `hasIcon`, `iconAliases()`, `icon($name, $size, $label, $class)` (0.26.0: `$size` nhận cả số
+`registerIcons`, `siteIcons`, `hasIcon`, `iconAliases()`, `icon($name, $size, $label, $class, $variant)` (`$variant = 'filled'` vẽ bản tô đặc như `tdIcon(name, { variant: 'filled' })`, 0.104.0; tên chưa có bản tô đặc vẽ bản nét, xem [icons › Icon tô đặc](../components/icons.md#icon-tô-đặc-01040); 0.26.0: `$size` nhận cả số
 nguyên 8–128 = px → `width` / `height`, như `tdIcon(name, { size: n })`), và các tiện ích an toàn dùng lại được
 trong template của site: `e()` (escape), `attrs()` (in attribute đã lọc), `safeUrl()`, `classTokens()`, `uid()`,
 `safeFilename()`, `safeColor()` (0.49.0: màu CSS an toàn hoặc `''`, cùng bảng ca với `safeColor` của JS), `registerActionPresets()` / `actionPreset()` (0.56.0: đăng ký / tra preset của `td_action_button`, xem [action-button](../components/action-button.md)). Hằng
@@ -831,6 +833,7 @@ native** (`checked` / `value` PHP in ra). `indeterminate` của input được g
 ```
 
 - Kích thước `s` `m` `l` (khác → `m`). Tên lạ → chuỗi rỗng (không lỗi).
+- Tham số thứ 4 `$variant` (0.104.0): `td_icon('eye', 'm', '', 'filled')` vẽ bản tô đặc (15 icon có `*-filled`); giá trị khác `'filled'` hoặc icon chưa có bản tô đặc → bản nét, không cảnh báo. Danh sách icon tô đặc: [icons › Icon tô đặc (0.104.0)](../components/icons.md#icon-tô-đặc-01040).
 - Hình lấy **đầy đủ** từ `src/icons/icons.json` — cùng markup với `tdIcon()` của JS (không phải slot rỗng
   `data-td-icon`). Vì thế icon trong markup SSR **không** bị `fillIconSlots()` ghi đè.
 - Tên cũ của kit 135 được map khi tên đó không tồn tại: `x`→`close`, `chevron-left/right/up/down`→`prev/next/up/down`,
@@ -1859,7 +1862,7 @@ host.
 - Option, luật `value` / `suggestions` / `icons` (kể cả giới hạn danh sách), `label` / `aria_label` và chữ trên ô (`trigger_text`): ghi đầy đủ ở [icon-picker › Không JS (SSR)](../components/icon-picker.md#không-js-ssr) và [Tuỳ chọn thêm (0.96.1)](../components/icon-picker.md#tuỳ-chọn-thêm-0961). Mặc định chữ trên ô là tên canonical, không đọc dữ liệu tìm kiếm; chỉ `trigger_text => 'label'` (0.96.1) mới đọc `Td::iconSearchData()`.
 - Hằng: `Td::SSR_ICON_PICKER` (`icon-picker@1`), `Td::ICON_PICKER_LABELS` (`placeholder` / `clear` / `none`, = `TdIconPicker.labels`).
 
-**`td_icon_value(mixed $v): ?string` — gọi khi nhận POST, trước khi kiểm / lưu** (client bất kỳ POST được chuỗi tuỳ ý;
+**`td_icon_value(mixed $v, array $o = []): ?string` — gọi khi nhận POST, trước khi kiểm / lưu** (client bất kỳ POST được chuỗi tuỳ ý;
 picker không phải ranh giới an toàn):
 
 ```php

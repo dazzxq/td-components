@@ -1,3 +1,5 @@
+[Tài liệu nội bộ](README.md) › Mô hình bảo mật
+
 # Security
 
 ## 1. XSS: sanitize theo ngữ cảnh

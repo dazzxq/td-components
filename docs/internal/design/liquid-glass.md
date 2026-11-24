@@ -1,3 +1,5 @@
+[Tài liệu nội bộ](../README.md) › Minimal surfaces
+
 # Minimal surfaces — thay Liquid Glass v2 (0.20.0)
 
 > **Bắt buộc cho mọi UI mới.** Thay toàn bộ bộ luật Liquid Glass v1 (0.5.0) / v2 (0.14.0) — xem

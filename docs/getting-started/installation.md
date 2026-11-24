@@ -55,7 +55,7 @@ Ghi chú:
   `git ls-remote --tags https://github.com/dazzxq/td-components.git`.
 - Package **không có dependency runtime** nào. `package.json#files` giới hạn phần nội dung được tải: `src/` (từ
   0.16.0 **không** còn file test `*.test.js` / `*.browser-test.js` và file story `*.stories.*`), `index.js`, `td.css`,
-  `php/` (adapter PHP `php/td.php`, từ 0.17.0), `compat/` (CSS tương thích cho môi trường ngoài, từ 0.96.0), `bin/` (CLI `td-theme`, từ 0.42.0, không kèm `bin/*.test.mjs`), `THIRD_PARTY_NOTICES.md`; ngoài ra npm luôn tự kèm file metadata như `package.json`, `README.md` (và `LICENSE` nếu
+  `php/` (adapter PHP `php/td.php`, từ 0.17.0), `dist/` (bản minify, từ 0.64.0) và `module-graph.json` (đồ thị import tĩnh, từ 0.64.0; xem [Bản minify `dist/`](#bản-minify-dist-0640)), `compat/` (CSS tương thích cho môi trường ngoài, từ 0.96.0), `bin/` (CLI `td-theme`, từ 0.42.0, không kèm `bin/*.test.mjs`), `THIRD_PARTY_NOTICES.md`; ngoài ra npm luôn tự kèm file metadata như `package.json`, `README.md` (và `LICENSE` nếu
   có). `package.json` khai báo `engines.node >= 20` và export cả `@dazzxq/td-components/package.json` (công cụ đọc
   phiên bản kit dùng được).
 - Nâng cấp sau này: đổi tag rồi chạy lại `npm install github:dazzxq/td-components#v<bản-mới>`.
@@ -66,15 +66,16 @@ Sau khi cài, kit nằm ở `node_modules/@dazzxq/td-components/`:
 node_modules/@dazzxq/td-components/
 ├── td.css            ← stylesheet duy nhất (đã build sẵn, không cần build lại)
 ├── compat/           ← 0.96.0: td-wp-admin.css (chỉ nạp trong wp-admin, sau td.css; xem guides/wordpress-php.md)
-├── index.js          ← barrel: re-export mọi class + hàm icon + hàm dom-utils công khai
+├── index.js          ← barrel: re-export mọi class + các hàm công khai (danh sách: components/utilities.md#import-từ-barrel)
+├── dist/             ← 0.64.0: bản minify cùng cấu trúc (index.js, src/**, td.css + .map); adapter PHP dùng mặc định từ 0.65.0
+├── module-graph.json ← 0.64.0: import tĩnh của từng module (adapter PHP in preload theo đó)
 ├── php/td.php        ← adapter PHP chính thức (import map, <link> td.css, markup SSR)
 ├── src/
-│   ├── base/         TdBaseElement, TdFormElement, td-sample
-│   ├── form/         button, checkbox, toggle, input-field, slider, dropdown, chip-input, password-meter, datetime-picker
-│   ├── feedback/     modal, modal-stack, toast, tooltip, loading, menu, hovercard, lightbox, scroll-top
-│   ├── display/      table, tabs, pagination, empty-state
+│   ├── base/ form/ feedback/ display/   mỗi component một file (danh sách: components/README.md); base/ có TdBaseElement, TdFormElement, td-sample
 │   ├── icons/        registry icon + <td-icon>
-│   ├── utils/        dom-utils, datetime, form-validation, layers, …
+│   ├── utils/        dom-utils, datetime, form-validation, breakpoints, external-overlay, thumb-loader, …
+│   ├── theme/        bộ sinh palette (subpath ./theme, lõi của CLI td-theme)
+│   ├── embed/        nguồn của bundle ./embed (guides/embed.md)
 │   └── styles/       CSS nguồn (đã gộp vào td.css, không cần nạp riêng)
 ├── THIRD_PARTY_NOTICES.md
 ├── package.json      ← npm luôn kèm (metadata, exports)
@@ -135,11 +136,9 @@ trang) và mọi file `*.css`. Module còn lại (`TdToast`, `TdModal`, `TdMenu`
 dùng. Tuy vậy import từ barrel vẫn **đăng ký mọi thẻ** (các file đăng ký luôn được giữ); nếu quan tâm dung lượng, import
 theo subpath.
 
-Barrel export thêm `TdIconElement` từ 0.16.0 (nên import barrel cũng đăng ký `<td-icon>`). Từ 0.17.0 barrel re-export
-thêm các hàm icon `tdIcon`, `registerIcons`, `hasIcon`, `listIcons`, `fillIconSlots` và các hàm của dom-utils (`slugify`,
-`formatFileSize`, `formatNumber`, `debounce`, `throttle`, `parseColorToRgb`, `relativeLuminance`, `contrastRatio`,
-`getAccessibleTextColor`) — xem [Tiện ích](../components/utilities.md#import-từ-barrel). `<td-sample>` không có trong
-barrel: import riêng `@dazzxq/td-components/sample`.
+Barrel cũng export `TdIconElement` (nên import barrel đăng ký cả `<td-icon>`) và một số hàm công khai (icon, dom-utils,
+form-validation, breakpoints…): danh sách đầy đủ ở [Tiện ích › Import từ barrel](../components/utilities.md#import-từ-barrel).
+`<td-sample>` không có trong barrel: import riêng `@dazzxq/td-components/sample`.
 
 ### Lưu ý khi dùng Vite
 
@@ -200,11 +199,7 @@ stylesheet và preload ([adapter PHP](../guides/php-adapter.md#bản-minify-và-
 - `module-graph.json` liệt kê import tĩnh của từng module; adapter PHP dùng nó để in preload (bước 3).
 - **Vite / bundler không cần `dist/`:** `exports` vẫn trỏ `src/`, và bundler tự minify khi build.
 
-**Từ 0.42.0 gói có thêm `bin/`** (CLI `td-theme` sinh palette): site copy file bằng tay theo `package.json#files` phải
-copy cả `bin/` và **bỏ** `bin/*.test.mjs` (`npm pack` đã tự loại). CLI chạy thẳng từ thư mục vendor, không cần npx /
-`node_modules`: `node <vendor>/bin/td-theme.mjs …`. CSS theme đã sinh phải **sinh lại sau khi nâng cấp kit** nếu
-`ALGORITHM_VERSION` của bộ sinh đổi (0.42.1 → `2`); nên có một gate so từng byte file theme đã commit với output của CLI
-thuộc **đúng bản kit đang ghim** (phản hồi của 135 sau khi lên 0.42.0).
+**Từ 0.42.0 gói có thêm `bin/`** (CLI `td-theme` sinh palette): site copy file bằng tay phải copy cả `bin/` và bỏ `bin/*.test.mjs`. Cách chạy CLI và việc sinh lại CSS theme sau khi nâng cấp: [WordPress & PHP](../guides/wordpress-php.md) (đoạn "Từ 0.42.0 gói có thêm `bin/`") và [Theming](../customization/theming.md#palette-tuỳ-biến-td-theme-0420).
 
 Từ 0.16.0 package không còn file test/story nên `rsync --exclude` không bắt buộc (giữ cũng không sao, và vẫn có ích nếu
 bạn copy từ một bản clone repo thay vì từ `node_modules`); copy nguyên `src/` cũng chạy được.
@@ -241,8 +236,8 @@ document.querySelector('#save').addEventListener('click', () => TdToast.success(
 
 Import map cho trình duyệt biết tên package trỏ tới URL nào. Trình duyệt **không đọc** `package.json#exports`, nên một
 dòng kiểu `"@dazzxq/td-components/": "/vendor/td-components-0.96.2/"` **không đủ**: tên `@dazzxq/td-components/button`
-sẽ bị dịch thành `/vendor/td-components-0.96.2/button` (không tồn tại). Phải liệt kê từng subpath. Map đầy đủ (đúng
-`package.json#exports` của bản đang ghim; site PHP không phải gõ tay — hàm `td_import_map()` /
+sẽ bị dịch thành `/vendor/td-components-0.96.2/button` (không tồn tại). Phải liệt kê từng subpath. Map đầy đủ mọi entry module `.js` (đúng
+`package.json#exports` của bản đang ghim; `td.css`, `icons.json`, `rich-text-policy.json`, `package.json` và `./embed` không phải module nên không vào map; site PHP không phải gõ tay — hàm `td_import_map()` /
 `td_import_map_tag()` của [adapter PHP](../guides/php-adapter.md#css-và-import-map) sinh map này từ `package.json`):
 
 ```html
@@ -258,6 +253,8 @@ sẽ bị dịch thành `/vendor/td-components-0.96.2/button` (không tồn tạ
     "@dazzxq/td-components/toggle": "/vendor/td-components-0.96.2/src/form/td-toggle.js",
     "@dazzxq/td-components/checkbox": "/vendor/td-components-0.96.2/src/form/td-checkbox.js",
     "@dazzxq/td-components/button": "/vendor/td-components-0.96.2/src/form/td-button.js",
+    "@dazzxq/td-components/action-button": "/vendor/td-components-0.96.2/src/form/td-action-button.js",
+    "@dazzxq/td-components/button-busy": "/vendor/td-components-0.96.2/src/form/button-busy.js",
     "@dazzxq/td-components/input-field": "/vendor/td-components-0.96.2/src/form/td-input-field.js",
     "@dazzxq/td-components/hint": "/vendor/td-components-0.96.2/src/form/td-hint.js",
     "@dazzxq/td-components/slider": "/vendor/td-components-0.96.2/src/form/td-slider.js",
@@ -292,8 +289,12 @@ sẽ bị dịch thành `/vendor/td-components-0.96.2/button` (không tồn tạ
     "@dazzxq/td-components/repeater": "/vendor/td-components-0.96.2/src/form/td-repeater.js",
     "@dazzxq/td-components/media-field": "/vendor/td-components-0.96.2/src/form/td-media-field.js",
     "@dazzxq/td-components/media-gallery": "/vendor/td-components-0.96.2/src/form/td-media-gallery.js",
+    "@dazzxq/td-components/cropper": "/vendor/td-components-0.96.2/src/form/td-cropper.js",
     "@dazzxq/td-components/drawer": "/vendor/td-components-0.96.2/src/feedback/td-drawer.js",
     "@dazzxq/td-components/media-picker": "/vendor/td-components-0.96.2/src/feedback/td-media-picker.js",
+    "@dazzxq/td-components/avatar": "/vendor/td-components-0.96.2/src/display/avatar.js",
+    "@dazzxq/td-components/selection-bar": "/vendor/td-components-0.96.2/src/display/td-selection-bar.js",
+    "@dazzxq/td-components/page-actions": "/vendor/td-components-0.96.2/src/display/td-page-actions.js",
     "@dazzxq/td-components/copy": "/vendor/td-components-0.96.2/src/display/td-copy.js",
     "@dazzxq/td-components/masked-value": "/vendor/td-components-0.96.2/src/display/td-masked-value.js",
     "@dazzxq/td-components/filter-chips": "/vendor/td-components-0.96.2/src/display/td-filter-chips.js",
@@ -310,6 +311,9 @@ sẽ bị dịch thành `/vendor/td-components-0.96.2/button` (không tồn tạ
     "@dazzxq/td-components/dom-utils": "/vendor/td-components-0.96.2/src/utils/dom-utils.js",
     "@dazzxq/td-components/form-validation": "/vendor/td-components-0.96.2/src/utils/form-validation.js",
     "@dazzxq/td-components/breakpoints": "/vendor/td-components-0.96.2/src/utils/breakpoints.js",
+    "@dazzxq/td-components/external-overlay": "/vendor/td-components-0.96.2/src/utils/external-overlay.js",
+    "@dazzxq/td-components/thumb-loader": "/vendor/td-components-0.96.2/src/utils/thumb-loader.js",
+    "@dazzxq/td-components/theme": "/vendor/td-components-0.96.2/src/theme/index.js",
     "@dazzxq/td-components/rich-text": "/vendor/td-components-0.96.2/src/form/td-rich-text.js"
   }
 }
@@ -362,42 +366,11 @@ vào file đầu tiên, các file bên trong vẫn có thể lấy từ cache c�
 
 ### MIME của module JS
 
-Trình duyệt chỉ chạy ES module khi server trả MIME JavaScript. Mọi file module — `.js` của kit, và `.mjs` nếu site (hoặc
-thư viện thứ ba) dùng đuôi này — phải có `Content-Type: text/javascript`. nginx/Apache hiện đại map sẵn `.js`, nhưng
-`mime.types` của **nginx cũ không có `.mjs`** → file trả `application/octet-stream`; nếu site gửi
-`X-Content-Type-Options: nosniff` thì module bị chặn hẳn (Console: `Failed to load module script … MIME type`).
-
-```nginx
-# nginx: trong http { }, ngay sau `include mime.types;`
-types { text/javascript mjs; }
-```
-
-```apache
-# Apache: .htaccess hoặc vhost
-AddType text/javascript .js .mjs
-```
-
-Với nginx, đừng đặt khối `types { text/javascript mjs; }` một mình trong `server`/`location`: ở cấp dưới nó **thay hẳn**
-bảng MIME kế thừa. Kiểm tra nhanh: `curl -sI https://site/vendor/td-components-0.96.2/src/form/td-button.js` → dòng
-`content-type` phải là `text/javascript` (hoặc `application/javascript`). Chi tiết cho WordPress/PHP:
-[WordPress & PHP](../guides/wordpress-php.md#mime-của-module-js).
+Server phải trả mọi module JS (`.js`, và `.mjs` nếu site dùng) với `Content-Type: text/javascript`; nginx cũ không map `.mjs`, kèm `X-Content-Type-Options: nosniff` thì module bị chặn. Cấu hình nginx / Apache và lệnh `curl` kiểm tra: [WordPress & PHP › MIME của module JS](../guides/wordpress-php.md#mime-của-module-js).
 
 ### CSP với nonce
 
-Nếu site dùng CSP theo nonce (`style-src 'nonce-…'`), gắn cùng một nonce cho `<link>`, import map và script inline:
-
-```php
-<?php $nonce = base64_encode(random_bytes(16)); ?>
-<?php header("Content-Security-Policy: default-src 'self'; style-src 'nonce-$nonce'; style-src-attr 'none'; script-src 'self' 'nonce-$nonce'"); ?>
-<link rel="stylesheet" href="/vendor/td-components-0.96.2/td.css" nonce="<?= $nonce ?>">
-<script type="importmap" nonce="<?= $nonce ?>"><?= json_encode(['imports' => $tdMap], JSON_UNESCAPED_SLASHES) ?></script>
-<script type="module" src="/assets/js/app.js" nonce="<?= $nonce ?>"></script>
-```
-
-- `td.css` không cần `'unsafe-inline'`; kit chỉ ghi style qua CSSOM, CSP cho phép.
-- File module ngoài cùng origin chạy với `script-src 'self'`; nonce trên thẻ `<script src>` chỉ cần nếu `script-src` của
-  bạn không có `'self'`. Import map (luôn là inline) thì **luôn** cần nonce hoặc hash.
-- Chi tiết: [Hướng dẫn CSP](../guides/csp.md).
+Site dùng CSP theo nonce thì gắn cùng một nonce cho `<link>`, import map và script inline; import map (luôn là inline) luôn cần nonce hoặc hash. Mẫu header và cách gắn: [CSP › Mẫu B](../guides/csp.md#mẫu-b-có-nonce-khuyên-dùng-khi-có-import-map--bootstrap-inline) và [Gắn nonce cho link, import map và script](../guides/csp.md#gắn-nonce-cho-link-import-map-và-script).
 
 ## 4. WordPress
 
@@ -520,9 +493,12 @@ Nguồn: `package.json#exports`.
 
 | Import | File | Cung cấp |
 |---|---|---|
-| `@dazzxq/td-components` | `index.js` | Barrel: mọi class dưới đây, kể cả `TdIconElement` (0.16.0); hàm icon `tdIcon` `registerIcons` `hasIcon` `listIcons` `fillIconSlots` và hàm dom-utils công khai (0.17.0). Không có `td-sample`, `parseChipItems`, `svgStringToDefinition`, `renderIconDefinition` |
+| `@dazzxq/td-components` | `index.js` | Barrel: mọi class dưới đây, kể cả `TdIconElement`, và các hàm công khai (danh sách: [Tiện ích › Import từ barrel](../components/utilities.md#import-từ-barrel)). Không có `td-sample`, `parseChipItems`, `svgStringToDefinition`, `renderIconDefinition` |
 | `@dazzxq/td-components/td.css` | `td.css` | Stylesheet |
+| `@dazzxq/td-components/compat/td-wp-admin.css` | `compat/td-wp-admin.css` | CSS tương thích cho wp-admin (0.96.0), nạp sau `td.css`, xem [WordPress & PHP](../guides/wordpress-php.md) |
 | `@dazzxq/td-components/button` | `src/form/td-button.js` | `<td-button>`, `TdButton` |
+| `@dazzxq/td-components/action-button` | `src/form/td-action-button.js` | `<td-action-button>`, `TdActionButton`, `canonAction` (0.36.0), xem [action-button](../components/action-button.md) |
+| `@dazzxq/td-components/button-busy` | `src/form/button-busy.js` | `setButtonBusy`, `runWithButton`, `ensureSpinner`, `syncButtonState`, `ensureGuard` (trạng thái chờ của nút), xem [button](../components/button.md) |
 | `@dazzxq/td-components/input-field` | `src/form/td-input-field.js` | `<td-input-field>`, `TdInputField` |
 | `@dazzxq/td-components/hint` | `src/form/td-hint.js` | `<td-hint>`, `TdHint` (0.54.0; dùng độc lập với `for`, hoặc làm con của một control để chèn hint có link / `<code>`) |
 | `@dazzxq/td-components/checkbox` | `src/form/td-checkbox.js` | `<td-checkbox>`, `TdCheckbox` |
@@ -541,6 +517,9 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/datetime` | `src/utils/datetime.js` | `TdDateTime` (tiện ích ngày giờ) |
 | `@dazzxq/td-components/form-validation` | `src/utils/form-validation.js` | `TdFormValidation`, `trackFormDirty` (0.44.0) |
 | `@dazzxq/td-components/breakpoints` | `src/utils/breakpoints.js` | Breakpoint kit (0.34.0, [ADR 0014](../internal/decisions/0014-breakpoints-container-queries.md)): `BREAKPOINTS`, `SHORT_MAX`, `mqBelow`, `matchesBelow`, `isCoarsePointer`, `isShort` — xem [responsive](../concepts/responsive.md) |
+| `@dazzxq/td-components/external-overlay` | `src/utils/external-overlay.js` | `registerExternalOverlay` và các hàm lớp nổi ngoài kit, xem [Tiện ích](../components/utilities.md) |
+| `@dazzxq/td-components/thumb-loader` | `src/utils/thumb-loader.js` | `createThumbLoader`, `configureThumbBudget`, `getThumbBudget`, xem [thumb-loader](../components/thumb-loader.md) |
+| `@dazzxq/td-components/theme` | `src/theme/index.js` | Bộ sinh palette (`toCss`, `toJson`, `PRESETS`…), cùng lõi với CLI `td-theme`, xem [Theming](../customization/theming.md#palette-tuỳ-biến-td-theme-0420) |
 | `@dazzxq/td-components/modal` | `src/feedback/td-modal.js` | `TdModal` (API tĩnh) |
 | `@dazzxq/td-components/modal-stack` | `src/feedback/td-modal-stack.js` | `TdModalStackManager` |
 | `@dazzxq/td-components/toast` | `src/feedback/td-toast.js` | `TdToast` (API tĩnh) |
@@ -561,10 +540,14 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/tree-select` | `src/form/td-tree-select.js` | `<td-tree-select>`, `TdTreeSelect` (nạp kèm `td-tree`) |
 | `@dazzxq/td-components/number-input` | `src/form/td-number-input.js` | `<td-number-input>`, `TdNumberInput` |
 | `@dazzxq/td-components/repeater` | `src/form/td-repeater.js` | `<td-repeater>`, `TdRepeater` |
+| `@dazzxq/td-components/cropper` | `src/form/td-cropper.js` | `<td-cropper>`, `TdCropper`, xem [cropper](../components/cropper.md) |
 | `@dazzxq/td-components/drawer` | `src/feedback/td-drawer.js` | `<td-drawer>`, `TdDrawer` |
 | `@dazzxq/td-components/media-picker` | `src/feedback/td-media-picker.js` | `<td-media-picker>`, `TdMediaPicker` (0.32.0) |
 | `@dazzxq/td-components/media-field` | `src/form/td-media-field.js` | `<td-media-field>`, `TdMediaField` (0.32.0; nạp kèm `media-picker`) |
 | `@dazzxq/td-components/media-gallery` | `src/form/td-media-gallery.js` | `<td-media-gallery>`, `TdMediaGallery` (0.43.0; nạp kèm `media-picker`) |
+| `@dazzxq/td-components/avatar` | `src/display/avatar.js` | `tdAvatar`, `avatarInitial` (0.105.0), xem [avatar](../components/avatar.md) |
+| `@dazzxq/td-components/selection-bar` | `src/display/td-selection-bar.js` | `<td-selection-bar>`, `TdSelectionBar`, xem [selection-bar](../components/selection-bar.md) |
+| `@dazzxq/td-components/page-actions` | `src/display/td-page-actions.js` | `<td-page-actions>`, `TdPageActions` (0.96.0), xem [page-actions](../components/page-actions.md) |
 | `@dazzxq/td-components/copy` | `src/display/td-copy.js` | `<td-copy>`, `TdCopy` |
 | `@dazzxq/td-components/masked-value` | `src/display/td-masked-value.js` | `<td-masked-value>`, `TdMaskedValue` (nạp kèm `td-copy`) |
 | `@dazzxq/td-components/filter-chips` | `src/display/td-filter-chips.js` | `<td-filter-chips>`, `TdFilterChips` (0.39.0) |
