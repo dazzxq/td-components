@@ -1759,13 +1759,8 @@ Khoá bước, giới hạn ký tự, luật trạng thái (một `E_USER_WARNIN
 
 `td_timeline($items, $opts)` **luôn** in phần tử [Timeline](../components/timeline.md) đầy đủ (hợp đồng `timeline@1`).
 
-- **Thời điểm**: `DateTimeInterface`, số epoch (`< 1e12` = giây), chuỗi ISO 8601 **có** `Z` / offset (1–9 chữ số lẻ giây,
-  cắt về ms — giống JS). Chuỗi không múi giờ → nhóm cuối "Không rõ thời gian" + một `E_USER_WARNING`. Không cần `intl`.
-- **`time_zone`**: tên IANA (`DateTimeZone::listIdentifiers()` hoặc `UTC`); sai → một `E_USER_WARNING` + múi giờ mặc định
-  của PHP. Markup **luôn in** `time-zone` hiệu lực → trình duyệt nhóm đúng cùng ngày.
-- **Không JS**: nhóm ngày + giờ đã tính sẵn, chi tiết mở bằng `<details>`, "Xem thêm" là link `more_href` (chỉ in khi có
-  `has_more` **và** `more_href` hợp lệ). `details: true` (tải lười) chỉ có ở JS.
-- Option khác: `order` (`asc`), `group` (`none`), `heading_level` (2–6), `empty_text`, `now` (test), `id`, `class`, `attrs`.
+Luật thời điểm (epoch, ISO, múi giờ), `time_zone`, hành vi không JS, `more_href` (chỉ URL tương đối) và bảng option: xem
+[timeline.md › PHP](../components/timeline.md#php--td_timeline).
 
 ## td_diff / td_diff_snapshots (0.46.0)
 

@@ -541,7 +541,7 @@ riêng modal / drawer có **opt-in** kính mờ từng cái (`surface: 'glass'`,
 `--td-modal-glass-blur` / `--td-drawer-glass-bg` / `--td-drawer-glass-blur`, mặc định = `--td-glass-bg-strong` / `--td-glass-blur`;
 xem [modal](../components/modal.md#10-nền-kính-mờ-surface-glass-0960), [drawer](../components/drawer.md#5a-panel-kính-mờ-surfaceglass-0960));
 tooltip đặc **màu đen** (`--td-tooltip-bg`, 0.21.0; dark 0.41.0: chip xám nổi `#3a3a3e` + viền sáng — xem [tooltip](../components/tooltip.md#tuỳ-biến-giao-diện)).
-Toast (0.21.0) là viên **đặc pastel** theo loại (`--td-toast-{type}-bg/-fg/-border`, trỏ vào [bộ pastel](#màu-pastel-0210-deprecated-0360)),
+Toast (0.21.0; màu đặc từ 0.36.0) là viên **màu đặc** theo loại (`--td-toast-{type}-bg/-fg/-border`, trỏ vào [màu đặc](#màu-ngữ-nghĩa-đặc-0360) `--td-solid-*`),
 không blur, không icon hiển thị — xem [toast](../components/toast.md).
 
 | Token | Mặc định (light) | Dark | Ý nghĩa |
@@ -599,10 +599,10 @@ Vẫn được khai báo (đặt không lỗi) nhưng **không còn tác dụng*
 | `--td-btn-secondary-glass` | `--td-btn-secondary-bg` |
 | `--td-btn-secondary-edge` | `--td-btn-secondary-border` |
 | `--td-btn-{v}-tint` (không còn khai báo; **alias một chu kỳ**) | `--td-btn-{v}-bg` |
-| `--td-toast-{success,info,warning,error}-wash` (0.20.0); `--td-toast-fg`, `-close-fg`, `-glass-bg`, `--td-toast-{type}-icon` (0.21.0) | `--td-toast-{type}-bg` / `-fg` / `-border` (toast đặc pastel, không icon) |
+| `--td-toast-{success,info,warning,error}-wash` (0.20.0); `--td-toast-fg`, `-close-fg`, `-glass-bg`, `--td-toast-{type}-icon` (0.21.0) | `--td-toast-{type}-bg` / `-fg` / `-border` (toast màu đặc, không icon) |
 
 `--td-toast-error-border` từng nằm trong danh sách deprecated của 0.20.0; từ 0.21.0 nó **có tác dụng trở lại** (viền
-toast lỗi, mặc định `--td-pastel-danger-border`).
+toast lỗi; từ 0.36.0 mặc định `--td-solid-danger-border`).
 
 ## Viền control mềm và override chuẩn WCAG nghiêm ngặt
 
@@ -1019,7 +1019,7 @@ accent sáng, nên tự chọn fill.
 - `--td-switch-on` (toggle bật) mặc định xanh lá `#16a34a`, không theo accent.
 - Nút primary mặc định **đen** (0.21.0) — chỉ theo accent khi bạn map như bước 1.
 - Nút `success` / `danger` / `info` / `warning` dùng bộ [màu đặc](#màu-ngữ-nghĩa-đặc-0360) (`--td-btn-{v}-bg`).
-- Toast dùng bộ [pastel](#màu-pastel-0210-deprecated-0360) theo loại (`--td-toast-{type}-bg/-fg/-border`), không dùng accent.
+- Toast dùng bộ [màu đặc](#màu-ngữ-nghĩa-đặc-0360) theo loại (`--td-toast-{type}-bg/-fg/-border` trỏ `--td-solid-*`, 0.36.0), không dùng accent.
 
 **Bước 4 — kiểm tra tương phản.** Kit chỉ gate giá trị mặc định. Với màu mới, kiểm tra bằng DevTools (hoặc
 `contrastRatio()` trong [dom-utils](../components/utilities.md)): chữ trắng trên `--td-accent-fill` ≥ 4.5:1 (light và dark), accent

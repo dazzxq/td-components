@@ -180,7 +180,7 @@ t.setError('Không thể bật khi đang offline');
 t.clearError();
 ```
 
-Chọn màu `color` tự kiểm tra tương phản: nền bật phải ≥ 3:1 với nền trang, và núm trắng phải nhìn rõ trên nó.
+Component **không** tự kiểm tương phản màu `color`: site tự chọn màu nền bật ≥ 3:1 với nền trang và đủ tương phản với núm trắng (mặc định `--td-switch-on` đã đạt 3.3:1).
 
 ### Màu theo trạng thái: `tone` (0.52.0)
 

@@ -39,6 +39,7 @@ Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đối
   - [td-tabs](#td-tabs)
   - [td-empty-state](#td-empty-state)
   - [td-dropzone](#td-dropzone)
+  - [td-timeline](#td-timeline)
   - [Component không có hook JS](#component-không-có-hook-js)
   - [Icon](#icon)
 - [Công thức (recipes)](#công-thức-recipes)
@@ -186,18 +187,19 @@ Hook áp cho **mọi** lớp chặn, không có option riêng trên từng compo
 
 | API / cấu hình | Chữ ký | Ghi chú |
 |---|---|---|
-| `TdToast.show(message, type = 'info', duration = 4000)` | `type` ∈ `success error warning info` (khác → info) | `message` luôn là **text**. `duration` ms; `0` = dính (đóng bằng click vào toast, nút Đóng — ẩn, hiện khi Tab tới — hoặc `handle.close()`). `message` rỗng → không hiện. Trả handle `{ close() }` (0.16.0; mọi hàm dưới cũng vậy) |
+| `TdToast.show(message, type = 'info', options = 4000)` | `type` ∈ `success error warning info` (khác → info); `options` = số ms hoặc `{ duration?, placement?, themeRoot? }` (0.36.0 / 0.42.0, chi tiết ở [toast.md](../components/toast.md#property--method)) | `message` luôn là **text**. `duration` ms; `0` = dính (đóng bằng click vào toast, nút Đóng — ẩn, hiện khi Tab tới — hoặc `handle.close()`). `message` rỗng → không hiện. Trả handle `{ close() }` (0.16.0; mọi hàm dưới cũng vậy) |
 | `handle.close()` | | (0.16.0) Đóng **yêu cầu**: còn trong hàng đợi 50 ms → bỏ; chờ lượt 80 ms → huỷ; đã hiện → đóng như nút Đóng. Gọi lại → no-op |
 | `TdToast.clear()` | | (0.16.0) Xoá hàng đợi, huỷ lượt chờ, đóng mọi toast đang hiện |
 | `TdToast.labels` | `{ close: 'Đóng', types: { success: 'Thành công:', error: 'Lỗi:', warning: 'Cảnh báo:', info: 'Thông tin:' } }` | Đọc khi tạo mỗi toast. `close` (0.16.0): `aria-label` của nút Đóng (ẩn bằng mắt, hiện khi focus bàn phím). `types` (0.21.0): tiền tố loại **chỉ cho trình đọc màn hình** (toast không còn icon); gán cả object hoặc từng khoá (`TdToast.labels.types.info = 'Info:'`), loại không khai báo → mặc định tiếng Việt, `''` = bỏ tiền tố loại đó |
-| `TdToast.success(msg, duration = 4000)` | | |
-| `TdToast.error(msg, duration = 5000)` | | Lỗi có `role="alert"` |
-| `TdToast.warning(msg, duration = 4000)` / `.info(msg, duration = 4000)` | | |
+| `TdToast.success(msg, options = 4000)` | | `options` như `show` |
+| `TdToast.error(msg, options = 5000)` | | Lỗi có `role="alert"` |
+| `TdToast.warning(msg, options = 4000)` / `.info(msg, options = 4000)` | | |
+| `TdToast.configure({ placement })` / `TdToast.PLACEMENTS` | `placement` ∈ `PLACEMENTS` (6 vị trí) hoặc `null` | (0.36.0) Vị trí toàn cục; chi tiết ở [toast.md](../components/toast.md#property--method) |
 | `TdToast.MAX_VISIBLE` | `5` | Vượt quá → toast cũ nhất bị đẩy ra (FIFO) |
 
 Không có callback đóng và không có action button.
-Vị trí / màu qua token `--td-toast-*` (0.21.0: nền pastel đặc theo loại `--td-toast-{type}-bg/-fg/-border`, không
-icon; xem [công thức 4](#4-toast-thời-lượng-riêng-toast-dính-vị-trí) và [toast.md](../components/toast.md)).
+Vị trí qua `configure({ placement })` hoặc token `--td-toast-*`; màu là màu đặc theo loại (0.36.0) qua `--td-toast-{type}-bg/-fg/-border`, không
+icon; xem [công thức 4](#4-toast-thời-lượng-riêng-toast-dính-vị-trí) và [toast.md](../components/toast.md).
 
 ---
 
@@ -416,8 +418,7 @@ hoặc `setError`. Chi tiết: [../guides/forms.md](../guides/forms.md).
 
 `TdSlider.messages` (`{min}` `{max}` `{step}`): ba thông báo `rangeUnderflow` / `rangeOverflow` / `stepMismatch`; bảng điều kiện + chuỗi mặc định ở [slider.md › Trong form](../components/slider.md#trong-form).
 
-`TdCheckbox.messages.valueMissing` = `Vui lòng chọn ô này.`; `TdToggle.messages.valueMissing` =
-`Vui lòng bật tùy chọn này.`
+`TdCheckbox.messages.valueMissing` / `TdToggle.messages.valueMissing`: chuỗi mặc định ở [checkbox.md › Trong form](../components/checkbox.md#trong-form) và [toggle.md › Trong form](../components/toggle.md#trong-form).
 
 Được đọc mỗi lần control tính lại validity (đổi giá trị / attribute); control đã render giữ thông báo cũ tới lần tính
 lại kế tiếp — nên nạp bản dịch trước khi component render.
@@ -523,10 +524,23 @@ Chữ toàn trang đổi qua `TdPagination.labels`: [pagination.md › TdPaginat
 
 ---
 
+## td-timeline
+
+`import '@dazzxq/td-components/timeline';` · Trang: [timeline.md](../components/timeline.md)
+
+| Property | Chữ ký | Chi tiết |
+|---|---|---|
+| `loadMore` | `({ signal, last }) => Promise<{ items, hasMore }>` | Nút "Xem thêm"; lỗi → event `load-more-error`: [timeline.md §6](../components/timeline.md#6-xem-thêm-danh-sách-dài) |
+| `renderDetails` | `(item, { signal }) => Node \| string \| Promise` | Tải lười phần "Chi tiết" (`details: true`), tối đa 6 lời gọi cùng lúc: [timeline.md §5](../components/timeline.md#5-nội-dung-mở-rộng) |
+
+---
+
 ## Component không có hook JS
 
-td-button, td-input-field, td-checkbox, td-toggle: tuỳ biến bằng attribute, token và event
-(`click`, `input`, `change`, `page-change`). Các control form có [hợp đồng lỗi](#hợp-đồng-lỗi-của-mọi-form-control)
+td-button: tuỳ biến bằng attribute, token và event (`click`). td-input-field, td-checkbox, td-toggle chỉ có callback
+`onInput` / `onChange` (0.122.0; input-field: cả hai, checkbox / toggle: `onChange`) gọi ngay **trước** event cùng tên —
+xem mục **Event** của [input-field.md](../components/input-field.md), [checkbox.md](../components/checkbox.md),
+[toggle.md](../components/toggle.md). Các control form có [hợp đồng lỗi](#hợp-đồng-lỗi-của-mọi-form-control)
 và object tĩnh `messages` cho thông báo validation.
 
 ## Icon
@@ -628,18 +642,13 @@ TdToast.error('Mất kết nối. Đang thử lại…', 0);           // dính:
 TdToast.MAX_VISIBLE = 3;                                   // tối đa 3 toast cùng lúc
 ```
 
-Đưa stack xuống giữa đáy màn hình (chỉ bằng token, không JS):
+Đưa stack xuống giữa đáy màn hình (0.36.0):
 
-```css
-:root {
-  --td-toast-top: auto;
-  --td-toast-bottom: 1.5rem;
-  --td-toast-inline-end: auto;
-  --td-toast-inline-start: 50%;
-  --td-toast-shift: -50%;
-  --td-toast-align: center;
-}
+```js
+TdToast.configure({ placement: 'bottom-center' });   // hoặc { placement } cho từng lần gọi
 ```
+
+6 token neo cũ (`--td-toast-top` …) vẫn chạy cho site cũ: xem [toast.md › Token vị trí cũ vẫn chạy](../components/toast.md#token-vị-trí-cũ-vẫn-chạy).
 
 Bộ đếm giờ tự tạm dừng khi chuột ở trên stack, focus ở trong, hoặc tab bị ẩn (WCAG 2.2.1), nên đừng đặt thời lượng
 quá ngắn cho thông điệp dài.

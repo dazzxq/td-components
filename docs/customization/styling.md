@@ -290,7 +290,7 @@ surfaces**: nền + viền mảnh + một shadow mềm, blur 12px nhẹ), dùng 
 - Không tự viết `backdrop-filter` / nền cho phần tử nổi: thêm class công thức, để kit lo fallback trợ năng.
 - Button luôn là màu đặc, không blur (ở đâu cũng vậy).
 - `--td-glass-wash` đã bỏ ở 0.20.0. Từ 0.21.0 toast không còn dùng công thức `.td-glass-surface`: nó tự vẽ nền
-  pastel **đặc** theo loại (`--td-toast-{type}-bg/-fg/-border`), không blur, không icon.
+  **màu đặc** theo loại (`--td-toast-{type}-bg/-fg/-border`, từ 0.36.0 trỏ `--td-solid-*`), không blur, không icon.
 - Luật đầy đủ nằm trong tài liệu nội bộ `docs/internal/design/liquid-glass.md` ("Minimal surfaces"); tóm tắt: control
   đặc, blur chỉ cho popup nhỏ, không gradient / viền sáng / glow / scale trang trí.
 

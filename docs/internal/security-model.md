@@ -404,12 +404,9 @@ kiện, `href`) đến từ app — thường từ dữ liệu người dùng nh
 - **Link** (`href` của bước, của tiêu đề, `actor.href`, `more-href`): cùng chính sách `cleanHref` (JS: http(s) cùng origin)
   / `td__filter_href` (PHP: chỉ tương đối) với `td-filter-chips` — bảng `HREF_CASES`.
 - **Hook lười `renderDetails`** trả **Node** (app dựng — trách nhiệm của app, như mọi hook trả Node) hoặc chuỗi (luôn là
-  chữ). Kết quả cũ bị bỏ theo thế hệ + `AbortSignal` (đóng chi tiết, gán `items`, gỡ phần tử, vẽ lại nhóm); tương tự
-  `loadMore`. Review SEC-01: **đổi hook** (`renderDetails` / `loadMore` gán hàm khác) cũng abort mọi yêu cầu của hook cũ,
-  xoá cache chi tiết, và mỗi kết quả chỉ được áp khi hook lúc gọi vẫn là hook hiện tại (so identity) — kết quả muộn của
-  hook cũ không bao giờ hiện. Review SEC-04: tối đa **6** `renderDetails` chưa kết thúc cùng lúc (`DETAIL_CONCURRENCY`;
-  lời gọi đã abort vẫn giữ chỗ tới khi promise kết thúc — fail closed), phần còn lại xếp hàng theo thứ tự hiển thị (bỏ khỏi hàng khi đóng trước lượt); hàng đợi bị xả + abort khi gán `items`, gỡ
-  phần tử, vẽ lại nhóm, đổi hook — nhiều mục `expanded: true` hay đổi hook không bắn ra hàng trăm request cùng lúc.
+  chữ). Kết quả cũ bị bỏ theo thế hệ + `AbortSignal`, và kết quả của hook đã bị thay (SEC-01) không bao giờ hiện; trần
+  `DETAIL_CONCURRENCY` (SEC-04) giữ chỗ fail closed nên nhiều mục `expanded: true` hay đổi hook không bắn ra hàng trăm
+  request cùng lúc. Cơ chế abort, hàng đợi và các lúc xả: [timeline.md §5](../components/timeline.md#5-nội-dung-mở-rộng).
 - **Không lộ lỗi / dữ liệu của app** (review SEC-03): `load-more-error` chỉ mang `{ kind: 'rejected' }`, không kèm lỗi gốc;
   mọi `console.warn` của hai component là chuỗi cố định (mã cảnh báo, hằng số, số đếm) — không bao giờ lặp lại giá trị /
   lỗi của caller (kể cả tên icon lạ).

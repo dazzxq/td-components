@@ -186,6 +186,7 @@ echo td_timeline($events, [
 - `time_zone` phải là tên trong `DateTimeZone::listIdentifiers()` (hoặc `UTC`); sai (offset, viết tắt, rỗng…) → một
   `E_USER_WARNING` + múi giờ mặc định của PHP. Markup **luôn in** `time-zone` = múi giờ hiệu lực ⇒ server và trình duyệt
   nhóm cùng một ngày.
+- `more_href`: chỉ nhận URL **tương đối** (PHP không biết origin; URL có scheme hoặc bắt đầu `//` bị bỏ), khác JS (`more-href` nhận cả URL tuyệt đối cùng origin).
 - Tuỳ chọn khác: `order`, `group`, `heading_level`, `empty_text`, `now` (test), `id`, `class`, `attrs`. `details: true`
   (lười) chỉ có ở JS — PHP bỏ qua.
 - **Luôn** in phần tử `<td-timeline data-td-ssr="timeline@1">` + đúng cây component; nạp
