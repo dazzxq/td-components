@@ -122,8 +122,14 @@ component **nhận markup tại chỗ** — không thay con, không nháy, khôn
 
 Host `<td-empty-state>` là **container** (`container: td-empty-state / inline-size`). Khi khung **hẹp hơn 480px** các nút
 hành động **xếp dọc, mỗi nút rộng 100%** (cả nút do `actions` tạo lẫn `<td-button>` render từ server). ≥ 480px: như trước
-(nằm cạnh nhau, căn giữa). Cần bề rộng từ cha (`display: block` — mặc định; trong flex: `flex: 1 1 auto;
-min-inline-size: 0`). Không có container query (Chrome / Edge 102–104): dự phòng theo viewport < 480px.
+(nằm cạnh nhau, căn giữa). Không có container query (Chrome / Edge 102–104): dự phòng theo viewport < 480px.
+
+**Bề ngang (0.124.0).** Host luôn `inline-size: 100%` của khung cha, kể cả khi cha căn giữa con (grid `justify-items: center`,
+flex cột `align-items: center`) — trước 0.124.0 nó co về ~0 và chữ rớt từng từ. Trong flex hàng ngang nó chia chỗ với phần tử
+khác (co được, `min-inline-size: 0`). Khung **co theo nội dung** (`width: fit-content`, `inline-block`, ô bảng / track grid
+`auto`) thấy host rộng `--td-empty-state-intrinsic-w` (mặc định `16rem`): khung đó rộng 16rem (không vượt chỗ trống). Muốn
+khung co nhỏ hơn: đặt token nhỏ hơn, `0px` = hành vi cũ. Đặt `margin-inline` lên host thì 100% + margin sẽ tràn — thêm
+`inline-size: auto` cho host đó.
 
 ## Attribute
 
@@ -156,6 +162,7 @@ Không có method công khai riêng; không phát event riêng (nghe `onClick` c
 | `--td-empty-state-bg` | `var(--td-color-surface)` | Nền khối |
 | `--td-empty-state-border` | `var(--td-color-border-strong)` | Viền nét đứt |
 | `--td-empty-state-icon` | `var(--td-color-text-subtle)` | Màu icon |
+| `--td-empty-state-intrinsic-w` | `16rem` | Bề ngang host báo cho khung co theo nội dung (0.124.0, xem [Responsive](#responsive-0340)); `0px` = hành vi cũ |
 
 Hai biến `--td-empty-state-pad` (mặc định `22px`) và `--td-empty-state-gap` (`10px`) của cỡ md khai báo trên `:root`
 (từ 0.16.0), nên `:root { --td-empty-state-pad: 32px; }` có tác dụng. Cỡ `sm` / `lg` và `compact` đặt lại chúng trên

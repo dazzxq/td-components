@@ -213,8 +213,13 @@ table.columns = [
 - **Focus không bị che.** Khung cuộn có `scroll-padding-inline-end` bằng bề rộng cột ghim; thêm một bước dự phòng bằng JS
   để ô đang focus (Tab) luôn nằm hẳn bên trái cột ghim, mọi trình duyệt. Chỉ tính cho LTR.
 - **Cùng tiêu đề dính (`max-height`).** Thứ tự chồng: ô góc (tiêu đề × cột ghim) trên tiêu đề khác, tiêu đề trên ô thân ghim.
+- **Cột quá rộng thì không ghim (0.124.0).** Khi cột ghim rộng hơn **một nửa** khung cuộn (thường gặp trên điện thoại: cột
+  nhiều nút chiếm gần hết khung, che cột "Tên"), bảng tự bỏ ghim: cột cuộn như cột thường, không đường ngăn / bóng, không
+  `data-sticky-covered`. Khung rộng ra (xoay máy, kéo cửa sổ) để cột còn ≤ một nửa → ghim lại. Ngưỡng đo theo khung thật,
+  không theo viewport, nên bảng nằm trong cột hẹp ở desktop cũng được xử lý. Đang ghim hay không: `.td-table` có class
+  `td-table--sticky-end` khi đang ghim.
 - **Chế độ card không ghim.** Ở dạng card (`layout="cards"` hoặc tự chuyển khi chỗ đặt hẹp) cột cuối chỉ là một trường
-  của card; `layout="table"` giữ ghim ở mọi khổ.
+  của card; `layout="table"` giữ ghim ở mọi khổ (trừ khi cột rộng hơn nửa khung, như trên).
 - **Không bật thì không đổi gì:** không class, không attribute, không listener mới.
 - **Giới hạn:** chỉ `'end'`, một cột; không có helper PHP (`<td-table>` dựng bằng JS từ property `columns`).
 

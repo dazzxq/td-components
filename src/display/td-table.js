@@ -1904,7 +1904,12 @@ export class TdTable extends TdBaseElement {
       this._stickyW = w;
       s.style.setProperty('--td-table-sticky-end-w', `${w}px`);
     }
-    const covered = !hidden && s.scrollWidth - s.clientWidth - s.scrollLeft > 1;
+    // v0.124.0: a pinned column wider than half the frame (a phone: actions column) would hide the rest of the table — unpin it
+    // by dropping the root modifier (every pin rule hangs on it; the cell classes stay, the column keeps its exact width)
+    const cw = s.clientWidth;
+    const off = !hidden && cw > 0 && w > cw * 0.5;
+    if (off === this._root.classList.contains('td-table--sticky-end')) this._root.classList.toggle('td-table--sticky-end', !off);
+    const covered = !hidden && !off && s.scrollWidth - cw - s.scrollLeft > 1;
     if (covered !== this._root.hasAttribute('data-sticky-covered')) {
       if (covered) this._root.setAttribute('data-sticky-covered', '');
       else this._root.removeAttribute('data-sticky-covered');
@@ -1920,7 +1925,7 @@ export class TdTable extends TdBaseElement {
     const t = e.target;
     const s = this._scroll;
     const th = this._stickyTh();
-    if (!s || !th || th.hidden || !(t instanceof Element) || t === s || !this._table.contains(t)) return;
+    if (!s || !th || th.hidden || !this._root.classList.contains('td-table--sticky-end') || !(t instanceof Element) || t === s || !this._table.contains(t)) return;
     const cell = t.closest('[data-col]');
     if (!cell || cell.getAttribute('data-col') === String(this._stickyCi)) return;
     const tr = t.getBoundingClientRect();

@@ -9,6 +9,9 @@
 		/* v0.16.0: on :root (was .td-empty-state); --sm / --lg / --compact still set them on the element */
 		--td-empty-state-pad: 22px;
 		--td-empty-state-gap: 10px;
+		/* v0.124.0 (K-EMPTY-1): width the host reports to a parent that sizes to its content (fit-content, inline-block,
+		   auto table cell / auto grid track); 0px = the pre-v0.124 behaviour (no intrinsic width) */
+		--td-empty-state-intrinsic-w: 16rem;
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
@@ -22,6 +25,12 @@
 @layer td.component {
 	td-empty-state {
 		display: block;
+		/* v0.124.0 (dsuite K-EMPTY-1): the inline-size container has no intrinsic width, so a parent that centres or sizes to
+		 * content (grid justify-items: center, flex column align-items: center, fit-content) shrank it to ~0 and the text broke
+		 * per word. 100% takes the parent's width in all of them; in a flex row it is the basis and still shrinks (min 0).
+		 * justify-self / align-self: stretch was not enough (no effect in a flex row; align-self would stretch the height). */
+		inline-size: 100%;
+		contain-intrinsic-inline-size: var(--td-empty-state-intrinsic-w); /* what a shrink-to-fit parent sees (the 100% cannot resolve there) */
 		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
 		container: td-empty-state / inline-size; /* v0.34.0 (plan QĐ 12): needs its width from the parent */
 	}

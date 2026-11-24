@@ -24,6 +24,15 @@ const IS_WEBKIT = /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|H
 const TAB = IS_WEBKIT ? 'Alt+Tab' : 'Tab';
 const SHIFT_TAB = IS_WEBKIT ? 'Alt+Shift+Tab' : 'Shift+Tab';
 const press = (key) => sendKeys({ press: key });
+/** Waits on wall-clock time (not frames): headless Firefox can run rAF far below 60 Hz, so a frame count misses timer deadlines. */
+async function untilMs(fn, ms = 2000) {
+  const end = performance.now() + ms;
+  while (performance.now() < end) {
+    if (fn()) return true;
+    await sleep(16);
+  }
+  return !!fn();
+}
 async function until(fn, max = 120) {
   for (let i = 0; i < max; i++) {
     if (fn()) return true;
@@ -586,7 +595,7 @@ describe('v0.57.0 td-table tree — lazy children (QĐ 13)', () => {
     expect(signal instanceof AbortSignal).to.equal(true);
     await sleep(120);
     expect(el.querySelector('.td-table__row--tree-status')).to.equal(null);
-    await until(() => el.querySelector('.td-table__row--tree-status'), 60);
+    expect(await untilMs(() => el.querySelector('.td-table__row--tree-status'))).to.equal(true); // v0.124.0: the 400 ms timer, in real time
     const st = el.querySelector('.td-table__row--tree-status');
     expect([st.getAttribute('role'), st.getAttribute('aria-level'), st.getAttribute('aria-setsize'), st.getAttribute('aria-posinset'), st.getAttribute('tabindex')])
       .to.deep.equal(['row', '2', '1', '1', '-1']);

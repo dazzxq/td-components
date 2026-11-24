@@ -333,3 +333,49 @@ describe('td-table sticky end — card mode', () => {
     expect(getComputedStyle(pinTd(el, 0), '::after').display).to.equal('none');
   });
 });
+
+// v0.124.0 (plan v0.124.0-empty-width-sticky-narrow QĐ2): a pinned column wider than half the scroll frame is unpinned (root
+// modifier dropped), and pinned again once it fits; the column is equally wide in both states (no flip-flop).
+describe('td-table sticky end — unpinned when wider than half the frame (v0.124.0)', () => {
+  const WIDE = () => COLS('end', { minWidth: '260px' });
+  it('390: a 260px pinned column in a ~366px frame is not pinned (no modifier, static, no covered flag, focus fallback idle)', async () => {
+    await setViewport({ width: 390, height: 800 });
+    const el = await mk('layout="table"', { columns: WIDE() });
+    const s = scrollOf(el);
+    expect(pinTh(el).offsetWidth > s.clientWidth * 0.5).to.equal(true);
+    expect(rootOf(el).classList.contains('td-table--sticky-end')).to.equal(false);
+    expect(getComputedStyle(pinTd(el)).position).to.equal('static');
+    expect(getComputedStyle(pinTh(el)).position).to.not.equal('sticky');
+    expect(rootOf(el).hasAttribute('data-sticky-covered')).to.equal(false);
+    await scrollTo(s, 100);
+    expect(rootOf(el).hasAttribute('data-sticky-covered')).to.equal(false);
+    expect(pinTd(el).classList.contains('td-table__sticky-end')).to.equal(true); // cells keep their class (no re-render)
+  });
+
+  it('a narrow pinned column at 390 stays pinned', async () => {
+    await setViewport({ width: 390, height: 800 });
+    const el = await mk('layout="table"');
+    expect(rootOf(el).classList.contains('td-table--sticky-end')).to.equal(true);
+    expect(getComputedStyle(pinTd(el)).position).to.equal('sticky');
+  });
+
+  it('widening the frame pins it again, narrowing unpins it; the column width is the same either way', async () => {
+    await setViewport({ width: 1440, height: 900 });
+    const el = await mk('layout="table"', { columns: WIDE(), width: 360 });
+    const wrap = el.parentElement;
+    expect(rootOf(el).classList.contains('td-table--sticky-end')).to.equal(false);
+    const w0 = pinTh(el).offsetWidth;
+    wrap.style.width = '1000px';
+    await frames(4);
+    expect(rootOf(el).classList.contains('td-table--sticky-end')).to.equal(true);
+    expect(getComputedStyle(pinTd(el)).position).to.equal('sticky');
+    expect(rootOf(el).hasAttribute('data-sticky-covered')).to.equal(true);
+    const w1 = pinTh(el).offsetWidth;
+    wrap.style.width = '360px';
+    await frames(4);
+    expect(rootOf(el).classList.contains('td-table--sticky-end')).to.equal(false);
+    expect(rootOf(el).hasAttribute('data-sticky-covered')).to.equal(false);
+    expect(pinTh(el).offsetWidth).to.equal(w0);
+    expect(w1).to.equal(w0);
+  });
+});

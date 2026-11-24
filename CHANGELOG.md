@@ -4,6 +4,13 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.124.0
+
+### Sửa
+- `td-empty-state` không còn co về ~0 bề ngang (chữ rớt từng từ) khi khung cha căn giữa hoặc co theo nội dung: host `inline-size: 100%` (grid `justify-items: center`, flex cột `align-items: center` → rộng bằng khung; flex hàng → chia chỗ, vẫn co được) và `contain-intrinsic-inline-size` = token mới `--td-empty-state-intrinsic-w` (`16rem`) cho khung `fit-content` / `inline-block` / ô bảng auto (`0px` = hành vi cũ). Site đặt `margin-inline` lên host: thêm `inline-size: auto` (dsuite K-EMPTY-1).
+- `td-table` cột `sticky: 'end'` rộng hơn một nửa khung cuộn (điện thoại) tự bỏ ghim, khung đủ rộng thì ghim lại; `.td-table--sticky-end` chỉ có khi đang ghim. Bề ngang cột không đổi giữa hai trạng thái.
+- Test Firefox `td-v057-tree-table` "slow load" chờ mốc 400 ms theo thời gian thật thay vì đếm frame.
+
 ## 0.123.0
 
 ### Thêm

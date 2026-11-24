@@ -295,6 +295,11 @@
 		position: sticky;
 		inset-inline-end: 0;
 		z-index: 1;
+	}
+
+	/* v0.124.0: outside the modifier, so the column is exactly as wide pinned or not (td-table.js unpins a column wider than half
+	   the frame by dropping .td-table--sticky-end — the measured width must not change with it) */
+	.td-table__sticky-end {
 		border-inline-start: 1px solid var(--_td-table-sticky-line, transparent);
 	}
 
@@ -327,7 +332,7 @@
 		--_td-table-sticky-shadow: var(--td-table-edge-shadow);
 	}
 
-	.td-table__sticky-end::after {
+	.td-table--sticky-end .td-table__sticky-end::after {
 		position: absolute;
 		inset-block: 0;
 		inset-inline-end: 100%;
@@ -337,7 +342,7 @@
 		background: linear-gradient(to left, var(--_td-table-sticky-shadow, transparent), transparent);
 	}
 
-	.td-table__sticky-end:dir(rtl)::after {
+	.td-table--sticky-end .td-table__sticky-end:dir(rtl)::after {
 		background: linear-gradient(to right, var(--_td-table-sticky-shadow, transparent), transparent);
 	}
 

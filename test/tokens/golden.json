@@ -1512,6 +1512,7 @@
     "@color-scheme": "dark"
   },
   "added": {
+    "--td-empty-state-intrinsic-w": { "light": "16rem", "dark": "16rem", "why": "v0.124.0 td-empty-state: intrinsic width reported to a shrink-to-fit parent (dsuite K-EMPTY-1; plan v0.124.0-empty-width-sticky-narrow QĐ1)" },
     "--td-table-sticky-col-bg": { "light": "rgb(255, 255, 255)", "dark": "rgb(28, 28, 30)", "why": "v0.123.0 td-table pinned last column (sticky: 'end'): opaque body-cell fill (= --td-table-bg; plan v0.123.0-table-sticky-column QĐ3)" },
     "--td-lb-stack-image-min": { "light": "40dvh", "dark": "40dvh", "why": "v0.114.0 td-lightbox sheet: 'stack': minimum image height left when the sheet is open (plan v0.114.0-lightbox-fill-sheet QĐ5)" },
     "--td-tooltip-white-space": { "light": "pre-line", "dark": "pre-line", "why": "v0.107.0 td-tooltip: line breaks in the text (plan v0.107.0-tooltip-line-breaks QĐ1)" },
