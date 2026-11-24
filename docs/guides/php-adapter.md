@@ -866,17 +866,12 @@ registerIcons(JSON.parse(document.getElementById('site-icons').textContent));
 <?= td_card('Tết 2026', [
     'href' => '/album/tet-2026',
     'image' => ['src' => $cover, 'srcset' => $srcset, 'sizes' => '240px', 'width' => 640, 'height' => 480],
-    'meta' => ['42 ảnh', ['12/02/2026', '2026-02-12']],
+    'meta' => ['42 ảnh', ['text' => '12/02/2026', 'datetime' => '2026-02-12']],
     'badges' => [['Live', ['variant' => 'danger']]],
 ]) ?>
 ```
 
-In `a.td-card` (cả card là **một** link) hoặc, khi không có `href` dùng được, cùng cây đó trên `div.td-card` (card tĩnh, không
-cảnh báo). Không JS, không custom element. `$title` là chữ. Option: `href` (`Td::safeUrl`; `mailto:` / `tel:` bị từ chối),
-`target`, `image` (chuỗi src hoặc `['src', 'srcset', 'sizes', 'alt', 'width', 'height']` — một ứng viên srcset hỏng bỏ cả
-srcset; không src dùng được → ô giữ chỗ), `eager`, `placeholder_icon`, `meta`, `badges`, `heading` (2–6), `ratio`
-(`1x1|4x3|3x2|16x9|3x4`), `surface`, `id`, `class`, `attrs` (`role` / `tabindex` / `aria-label` / `aria-labelledby` /
-`data-td-*` bị bỏ). Chi tiết: [Card](../components/card.md#php-td_card).
+In `a.td-card` hoặc `div.td-card` (card tĩnh), không JS. Bảng option đầy đủ và luật `srcset`: [Card](../components/card.md#php-td_card).
 
 ## td_badge và td_alert
 
@@ -1881,8 +1876,7 @@ markup **cuối cùng** — giống hệt `render()` của component cho cùng d
 `check-matrix@1`, [ADR 0022](../internal/decisions/0022-check-matrix-grid-form-shape.md)). `$columns`: `[['key' => 'owner',
 'label' => 'Chủ cửa hàng', 'description' => …, 'locked' => true], …]` (≤ 32); `$rows`: hàng `['key', 'label',
 'description', 'locked']` hoặc nhóm `['key', 'label', 'collapsed', 'locked', 'rows' => [...]]` (một cấp, ≤ 500 hàng, ≤ 64
-nhóm, ≤ 10 000 ô); `$value`: `['owner' => ['dashboard.view', …]]`. Khoá: `^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$` hoặc số
-nguyên ≥ 0. Cờ `locked` / `na` / `collapsed` phải là **bool** thật.
+nhóm); `$value`: `['owner' => ['dashboard.view', …]]`. Luật khoá, trần cứng và cờ bool: [trang component](../components/check-matrix.md).
 
 | Option | Kiểu | Ý nghĩa |
 |---|---|---|
@@ -1896,23 +1890,13 @@ nguyên ≥ 0. Cờ `locked` / `na` / `collapsed` phải là **bool** thật.
 | `mode` | `check` \| `override` | **0.95.0** `override` = ba trạng thái kế thừa / cấp / từ chối ([ADR 0040](../internal/decisions/0040-check-matrix-override-mode.md)). Giá trị lạ → `check` + một `E_USER_WARNING` |
 
 **`'mode' => 'override'` (0.95.0, hợp đồng `check-matrix@2`, hằng `Td::SSR_CHECK_MATRIX_OVERRIDE`):** `$value` thành
-`['cột' => ['hàng' => 'grant' | 'deny' | 'inherit']]` (đúng ba chuỗi, so khớp chặt; dạng danh sách của chế độ check → fail
-closed), ô có thêm cờ `inherited` (`true` / `false` / `null`, chỉ là gợi ý hiển thị). Host in `mode="override"` +
-`data-td-ssr="check-matrix@2"` + `data` `"v":2`; form không JS là **một `<select>` mỗi ô áp dụng được**
-(`perms[col][row]`, ba option; ô khoá: select `disabled` + hidden mang trạng thái), marker `perms[col]=''` đầu, `perms[_v]=2`
-cuối → mọi ô đều gửi, kể cả `inherit`. Server kiểm `$_POST['perms']['_v'] === '2'` (thiếu → 422), ép khoá `(string)` (PHP đổi
-`"12"` thành int), từ chối giá trị ngoài ba chuỗi. Component không nhận markup `@2` tại chỗ: khớp → đọc lựa chọn đã đổi
-trước khi JS tải rồi render lại; lệch → render từ `data`. Snippet ở
-[trang component](../components/check-matrix.md#chế-độ-kế-thừa--cấp--từ-chối-modeoverride).
+`['cột' => ['hàng' => 'grant' | 'deny' | 'inherit']]` (dạng danh sách của chế độ check → fail closed), ô có thêm cờ `inherited`
+(`true` / `false` / `null`). Hợp đồng FormData, `_v=2` và hành vi hydrate: [trang component](../components/check-matrix.md#chế-độ-kế-thừa--cấp--từ-chối-modeoverride).
 
-- **Form không JS gửi đúng FormData của component, từng byte** (test PHP parse bằng `parse_str` thật): `perms[col]=''` mỗi
-  cột → các ô đang tick (ô khoá-tick qua hidden input ngay sau checkbox `disabled`) → `perms[_v]=1`. `$_POST['perms']` có
-  ba trạng thái mỗi cột: mảng / `''` / không có key.
-- **Server bắt buộc** từ chối (422) khi thiếu `_v` (bị `max_input_vars` cắt), gỡ `_v` trước khi validate, tự cưỡng chế khoá
-  (snippet Laravel + PHP thuần ở [trang component](../components/check-matrix.md#sentinel-_v-và-max_input_vars-bắt-buộc-đọc)).
-- **Fail closed:** dữ liệu sai (khoá trùng / sai, quá trần, `value` lạ, cờ không phải bool…) hoặc `name` rỗng / kết thúc
-  `[]` → in trạng thái lỗi **không một input nào** + một `E_USER_WARNING` chỉ nêu loại lỗi (không in giá trị). Server không
-  thấy key → giữ nguyên quyền, không bao giờ "xoá hết".
+- Form không JS gửi đúng FormData của component; server bắt buộc kiểm sentinel `_v` (thiếu → 422): xem
+  [FormData](../components/check-matrix.md#formdata-hợp-đồng-công-khai) và [sentinel `_v`](../components/check-matrix.md#sentinel-_v-và-max_input_vars-bắt-buộc-đọc).
+- Dữ liệu sai hoặc `name` rỗng / kết thúc `[]` → fail closed (không một input nào + `E_USER_WARNING`):
+  [Một đường validate](../components/check-matrix.md#một-đường-validate--sai-là-fail-closed).
 - Attribute `data` (JSON chuẩn hoá) là nguồn của cổng hydrate và của reset; ~30–40 KB cho 200 × 12.
 
 ## td_color_picker và td_color_value (0.48.0)
@@ -2107,15 +2091,10 @@ cũng vậy, kể cả `null` / `false` / `''`) là **ép chế độ element** 
   thập phân thường; `null` / khác → "Chưa có đánh giá". Options: `max` (1–10; sai → 5 + `E_USER_WARNING`), `precision`,
   `count`, `show_value`, `size`, `id`, `class`, `attrs` (cho phép thêm `itemprop` — tên thuộc tính microdata — trên host). Kit
   **không** in `AggregateRating` / microdata — việc của site, chỉ từ đánh giá thật.
-- **`td_carousel($slides, $o)`** in [Carousel](../components/carousel.md) (hợp đồng `carousel@1`): mỗi slide bọc trong
-  `div.td-carousel__slide` ("n / total"), thanh điều khiển `data-td-js-only` (ẩn nhưng **giữ chỗ** tới khi module tải),
-  `data-td-pages` / `data-td-rows-*` = số trang **dự đoán** `max(1, ceil(n / per_view))`. **Mỗi slide: `Td::html($markup)`
-  (markup do template của site sinh, in nguyên văn — opt-in tường minh, [security-model §2](../internal/security-model.md);
-  không bao giờ bọc input người dùng) hoặc chuỗi thường (in như chữ, đã escape)**; khác → bỏ + `E_USER_WARNING`; thiếu `label` → "Băng chuyền" +
-  `E_USER_WARNING`. Options: `label`, `per_view` (1–6), `dots`, `step`, `id`, `class`, `attrs`.
-- **Nhãn tĩnh toàn site (cả hai):** không có option `labels`. PHP in chữ mặc định tiếng Việt; site đổi `TdRating.labels` /
-  `TdCarousel.labels` trong JS thì lúc nâng cấp rating được render lại bằng chữ JS, carousel chỉ ghi lại nhãn **khung**
-  (slide không bị chạm) — không bao giờ trộn hai bộ. Cần nhãn theo từng phần tử (site đa ngôn ngữ) → bản sau.
+- **`td_carousel($slides, $o)`** in [Carousel](../components/carousel.md#php--td_carousel) (hợp đồng `carousel@1`). Mỗi slide là
+  `Td::html($markup)` hoặc chuỗi thường; công thức số trang dự đoán, options và luật cảnh báo ở trang component.
+- **Nhãn tĩnh toàn site (cả hai):** không có option `labels`; chi tiết ở [Rating](../components/rating.md) và
+  [Carousel](../components/carousel.md#php--td_carousel).
 
 <a id="gợi-ý-helper_text-054"></a>
 

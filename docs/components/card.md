@@ -139,7 +139,7 @@ Kích thước theo **ô chứa**, không theo viewport (card không có `@media
 | `image` | chuỗi `src` hoặc `['src', 'srcset', 'sizes', 'alt', 'width', 'height']`. `src` và mọi URL `srcset` qua bộ lọc URL ảnh (https / http / tương đối); **một ứng viên `srcset` hỏng → bỏ cả `srcset`**; `width` / `height` số nguyên 1–10000; `alt` mặc định `''` |
 | `eager` | `true` → bỏ `loading="lazy"` (ảnh đầu màn hình) |
 | `placeholder_icon` | tên icon registry (mặc định `image`) |
-| `meta` | chuỗi hoặc danh sách `string` / `['text', 'datetime']` (`datetime` ISO 8601 rút gọn → `<time>`) |
+| `meta` | chuỗi hoặc danh sách `string` / `['text' => …, 'datetime' => …]` (`datetime` ISO 8601 rút gọn, chỉ đọc từ khoá `datetime` → `<time>`; mảng vị trí `['12/02/2026', '2026-02-12']` bỏ `datetime`, in `<span>`) |
 | `badges` | danh sách `string` / `[text, td_badge options]` |
 | `heading` | 2–6 → tiêu đề là `<hN>` |
 | `ratio` | `1x1` · `4x3` · `3x2` · `16x9` · `3x4` |
