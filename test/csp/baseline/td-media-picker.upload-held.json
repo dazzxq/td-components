@@ -97,7 +97,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__held": {
-      "width": "462px",
+      "width": "447px",
       "height": "151px",
       "min-height": "auto",
       "max-height": "none",
@@ -265,7 +265,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__held-list": {
-      "width": "462px",
+      "width": "447px",
       "height": "66px",
       "min-height": "auto",
       "max-height": "none",
@@ -349,7 +349,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__held-item": {
-      "width": "462px",
+      "width": "447px",
       "height": "33px",
       "min-height": "auto",
       "max-height": "none",
@@ -433,7 +433,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__held-name": {
-      "width": "341.375px",
+      "width": "326.375px",
       "height": "21px",
       "min-height": "auto",
       "max-height": "none",

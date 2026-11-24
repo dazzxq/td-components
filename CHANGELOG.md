@@ -4,6 +4,11 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+## 0.126.0
+
+### Sửa
+- `.td-modal__body` và `.td-drawer__body` giữ chỗ thanh cuộn cổ điển (`scrollbar-gutter: stable`): nội dung không còn nhích ~15px khi thân dài ra và bắt đầu cuộn (Windows, macOS "luôn hiện thanh cuộn"; dsuite). Thanh cuộn overlay không đổi. Thân không cuộn không chừa rãnh: modal `fullViewport`, `bodyOverflow` `visible` / `hidden` / `clip`, lịch sheet của datetime-picker / datetime-range (giữ ô ngày ≥ 44px), bước cắt ảnh, thân media-picker. Tắt: `--td-modal-body-gutter: auto` / `--td-drawer-body-gutter: auto`.
+
 ## 0.125.0
 
 ### Thêm

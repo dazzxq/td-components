@@ -211,6 +211,8 @@
 		min-height: 0;
 		padding: var(--td-drawer-pad-y) var(--td-drawer-pad-x);
 		overflow: auto;
+		/* v0.126.0 (dsuite): a classic scrollbar appearing when the body grows no longer shifts the content by its width */
+		scrollbar-gutter: var(--td-drawer-body-gutter, stable);
 		overscroll-behavior: contain;
 		overflow-wrap: break-word;
 	}

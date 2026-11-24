@@ -316,6 +316,7 @@ một `await`, như mẫu "cách cũ" ở [mục 6](#6-chặn-đóng-khi-form-ch
 | `--td-drawer-w-xl` | `48rem` | Độ rộng `size="xl"` |
 | `--td-drawer-pad-x` | `var(--td-space-lg)` | Đệm ngang của header, body, footer |
 | `--td-drawer-pad-y` | `var(--td-space-md)` | Đệm dọc của body |
+| `--td-drawer-body-gutter` | (không đặt → `stable`) | 0.126.0: `scrollbar-gutter` của `.td-drawer__body`. Mặc định chừa rãnh thanh cuộn cổ điển (Windows, macOS "luôn hiện") để nội dung không nhích khi thân bắt đầu cuộn; thanh cuộn overlay không chiếm chỗ. `auto` = hành vi cũ. |
 | `--td-drawer-enter-dur` | `280ms` | Thời gian trượt vào (và scrim hiện) |
 | `--td-drawer-exit-dur` | `200ms` | Thời gian trượt ra |
 | `--td-drawer-ease` | `cubic-bezier(0.32, 0.72, 0, 1)` | Đường cong trượt vào |

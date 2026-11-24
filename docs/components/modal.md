@@ -600,6 +600,12 @@ chung trừ khi bạn muốn áp cho mọi modal:
 | `--td-modal-body-pad` | `bodyPadding` |
 | `--td-modal-body-overflow` | `bodyOverflow` |
 
+**Chừa chỗ thanh cuộn trong thân (0.126.0)** — `.td-modal__body` có `scrollbar-gutter: var(--td-modal-body-gutter, stable)`:
+với thanh cuộn cổ điển (Windows, macOS "luôn hiện thanh cuộn"), thân chừa sẵn rãnh thanh cuộn nên nội dung không nhích
+sang trái khi thân dài ra và bắt đầu cuộn. Thanh cuộn overlay (macOS mặc định, điện thoại) không chiếm chỗ → không đổi gì.
+Thân không cuộn thì không chừa rãnh (không có dải trống): modal `fullViewport`, `bodyOverflow` là `visible` / `hidden` / `clip` (kit tự đặt biến = `auto` trên dialog), và các thân không cuộn của kit (lịch dạng sheet của datetime-picker / datetime-range, bước cắt ảnh, media-picker). Về hành vi cũ: `:root { --td-modal-body-gutter: auto; }`
+(hoặc đặt trên một `.td-modal` cụ thể).
+
 ```css
 /* Modal rộng hơn một chút cho toàn site, sheet ít bo hơn */
 :root {

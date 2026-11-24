@@ -1105,7 +1105,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__tabs": {
-      "width": "462px",
+      "width": "447px",
       "height": "36px",
       "min-height": "auto",
       "max-height": "none",
@@ -1189,7 +1189,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__desc": {
-      "width": "462px",
+      "width": "447px",
       "height": "21px",
       "min-height": "auto",
       "max-height": "none",
@@ -1273,7 +1273,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__url-row": {
-      "width": "462px",
+      "width": "447px",
       "height": "62px",
       "min-height": "auto",
       "max-height": "none",
@@ -1357,7 +1357,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__url": {
-      "width": "462px",
+      "width": "447px",
       "height": "62px",
       "min-height": "0px",
       "max-height": "none",
@@ -1441,7 +1441,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__url .td-field__control": {
-      "width": "462px",
+      "width": "447px",
       "height": "40px",
       "min-height": "auto",
       "max-height": "none",
@@ -1525,7 +1525,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__url .td-field-error": {
-      "width": "454px",
+      "width": "439px",
       "height": "18px",
       "min-height": "auto",
       "max-height": "none",
@@ -1777,7 +1777,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__url .td-field": {
-      "width": "462px",
+      "width": "447px",
       "height": "62px",
       "min-height": "0px",
       "max-height": "none",

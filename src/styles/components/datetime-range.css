@@ -652,6 +652,7 @@
 	/* sheet (< 720): the calendar fills the width; the side padding shrinks just enough for seven ≥ 44 px cells on a 320 px phone */
 	@media (max-width: 719.98px) {
 		.td-modal__body:has(> .td-dtr-panel) {
+			scrollbar-gutter: auto; /* v0.126.0: the 7-cell width math needs the full width */
 			padding-inline: clamp(4px, calc((100vw - 7 * var(--td-touch-min) - 2px) / 2), var(--td-modal-pad-x));
 		}
 	}

@@ -457,6 +457,7 @@
 	}
 
 	.td-crop-dialog__body {
+		scrollbar-gutter: auto; /* v0.126.0: does not scroll — no empty strip */
 		display: flex;
 		flex-direction: column;
 		min-height: 0;

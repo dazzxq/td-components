@@ -1189,7 +1189,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__fields": {
-      "width": "462px",
+      "width": "447px",
       "height": "87px",
       "min-height": "auto",
       "max-height": "none",
@@ -1273,7 +1273,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload .td-media-picker__field": {
-      "width": "462px",
+      "width": "447px",
       "height": "87px",
       "min-height": "auto",
       "max-height": "none",
@@ -1357,7 +1357,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__tabs": {
-      "width": "462px",
+      "width": "447px",
       "height": "36px",
       "min-height": "auto",
       "max-height": "none",
@@ -1441,7 +1441,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__panel": {
-      "width": "462px",
+      "width": "447px",
       "height": "404.797px",
       "min-height": "auto",
       "max-height": "none",
@@ -1525,7 +1525,7 @@
       "--_td-toast-seq": ""
     },
     ".td-media-picker-upload__dropzone": {
-      "width": "462px",
+      "width": "447px",
       "height": "404.797px",
       "min-height": "auto",
       "max-height": "none",
@@ -1609,7 +1609,7 @@
       "--_td-toast-seq": ""
     },
     ".td-dropzone--stacked": {
-      "width": "462px",
+      "width": "447px",
       "height": "404.797px",
       "min-height": "0px",
       "max-height": "none",
@@ -1693,7 +1693,7 @@
       "--_td-toast-seq": ""
     },
     ".td-dropzone__zone": {
-      "width": "462px",
+      "width": "447px",
       "height": "348.797px",
       "min-height": "auto",
       "max-height": "none",
@@ -2281,7 +2281,7 @@
       "--_td-toast-seq": ""
     },
     ".td-dropzone__item": {
-      "width": "462px",
+      "width": "447px",
       "height": "48px",
       "min-height": "auto",
       "max-height": "none",
@@ -2338,7 +2338,7 @@
       "outline-width": "3px",
       "outline-color": "rgb(28, 28, 30)",
       "outline-offset": "0px",
-      "grid-template-columns": "398px 32px",
+      "grid-template-columns": "383px 32px",
       "column-gap": "12px",
       "row-gap": "4px",
       "touch-action": "auto",
@@ -2365,7 +2365,7 @@
       "--_td-toast-seq": ""
     },
     ".td-dropzone__progress": {
-      "width": "398px",
+      "width": "383px",
       "height": "4px",
       "min-height": "auto",
       "max-height": "none",

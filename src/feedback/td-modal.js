@@ -1108,7 +1108,11 @@ export class TdModal {
     }
     if (options.bodyOverflow !== undefined) {
       const o = String(options.bodyOverflow);
-      if (OVERFLOWS.includes(o)) dialog.style.setProperty('--td-modal-body-overflow', o);
+      if (OVERFLOWS.includes(o)) {
+        dialog.style.setProperty('--td-modal-body-overflow', o);
+        // v0.126.0: a body that does not scroll keeps no scrollbar gutter (no empty strip)
+        if (o !== 'auto' && o !== 'scroll') dialog.style.setProperty('--td-modal-body-gutter', 'auto');
+      }
       else console.warn(`TdModal: ignored invalid bodyOverflow "${o}"`);
     }
   }

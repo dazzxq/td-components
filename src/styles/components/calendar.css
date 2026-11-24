@@ -131,6 +131,7 @@
 
 	/* the sheet's side padding shrinks just enough for seven ≥ 44 px cells on a 320 px phone (M0: 4 px at 320, 24 px from 360) */
 	.td-modal__body:has(> .td-dtp-pop--sheet) {
+		scrollbar-gutter: auto; /* v0.126.0: the 7-cell width math needs the full width */
 		padding-inline: clamp(4px, calc((100vw - 7 * var(--td-touch-min) - 2px) / 2), var(--td-modal-pad-x));
 	}
 

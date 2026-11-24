@@ -82,6 +82,7 @@
 	}
 
 	.td-media-picker .td-media-picker__body {
+		scrollbar-gutter: auto; /* v0.126.0: does not scroll — no empty strip */
 		position: relative;
 		display: flex;
 		flex-direction: column;

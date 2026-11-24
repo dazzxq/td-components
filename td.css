@@ -6716,6 +6716,8 @@
 		min-height: 0;
 		padding: var(--td-modal-body-pad, var(--td-modal-pad-y) var(--td-modal-pad-x));
 		overflow: var(--td-modal-body-overflow, auto);
+		/* v0.126.0 (dsuite): a classic scrollbar appearing when the body grows no longer shifts the content by its width */
+		scrollbar-gutter: var(--td-modal-body-gutter, stable);
 		overscroll-behavior: contain;
 		color: inherit;
 		overflow-wrap: break-word;
@@ -6834,6 +6836,7 @@
 		flex-direction: column;
 		padding: var(--td-modal-body-pad, 0 env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px));
 		overflow: var(--td-modal-body-overflow, hidden);
+		scrollbar-gutter: var(--td-modal-body-gutter, auto); /* v0.126.0: the full-screen body does not scroll — no empty strip */
 	}
 
 	/* Phones: bottom sheet (no drag gesture — D24). */
@@ -9724,6 +9727,7 @@
 
 	/* the sheet's side padding shrinks just enough for seven ≥ 44 px cells on a 320 px phone (M0: 4 px at 320, 24 px from 360) */
 	.td-modal__body:has(> .td-dtp-pop--sheet) {
+		scrollbar-gutter: auto; /* v0.126.0: the 7-cell width math needs the full width */
 		padding-inline: clamp(4px, calc((100vw - 7 * var(--td-touch-min) - 2px) / 2), var(--td-modal-pad-x));
 	}
 
@@ -14671,6 +14675,8 @@
 		min-height: 0;
 		padding: var(--td-drawer-pad-y) var(--td-drawer-pad-x);
 		overflow: auto;
+		/* v0.126.0 (dsuite): a classic scrollbar appearing when the body grows no longer shifts the content by its width */
+		scrollbar-gutter: var(--td-drawer-body-gutter, stable);
 		overscroll-behavior: contain;
 		overflow-wrap: break-word;
 	}
@@ -16797,6 +16803,7 @@
 	}
 
 	.td-media-picker .td-media-picker__body {
+		scrollbar-gutter: auto; /* v0.126.0: does not scroll — no empty strip */
 		position: relative;
 		display: flex;
 		flex-direction: column;
@@ -20222,6 +20229,7 @@
 	}
 
 	.td-crop-dialog__body {
+		scrollbar-gutter: auto; /* v0.126.0: does not scroll — no empty strip */
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
@@ -21679,6 +21687,7 @@
 	/* sheet (< 720): the calendar fills the width; the side padding shrinks just enough for seven ≥ 44 px cells on a 320 px phone */
 	@media (max-width: 719.98px) {
 		.td-modal__body:has(> .td-dtr-panel) {
+			scrollbar-gutter: auto; /* v0.126.0: the 7-cell width math needs the full width */
 			padding-inline: clamp(4px, calc((100vw - 7 * var(--td-touch-min) - 2px) / 2), var(--td-modal-pad-x));
 		}
 	}
