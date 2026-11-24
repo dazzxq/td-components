@@ -85,74 +85,22 @@ event đầy đủ ở mục **Event** của từng trang component.
 API: `TdLightbox.open(items, options) → handle | null`, `TdLightbox.bind(root = document, options) → unbind`,
 `TdLightbox.close()`, `TdLightbox.isOpen`.
 
-`ctx` dùng chung cho `panel`, `download`, `downloads`, nút toolbar:
-`{ index, count, item, token, handle, itemEl, groupEl }` (`itemEl` = phần tử nguồn khi mở bằng `bind()`, `groupEl` =
-phần tử nhóm `[data-td-lightbox-group]` hoặc `options.groupEl`; cả hai `null` khi không có).
+Danh mục hook (một dòng mỗi hook; chữ ký, kiểu trả về, khi nào gọi, lỗi thì sao và mặc định ở [lightbox.md › Hook & tuỳ chọn](../components/lightbox.md#hook--tuỳ-chọn)):
 
-### Option của `open()` (và của `bind()`, áp cho mọi gallery nó mở)
-
-| Option | Chữ ký / kiểu | Trả về | Khi nào gọi | Lỗi thì sao |
-|---|---|---|---|---|
-| `index` | `number` | — | Lúc mở: ảnh bắt đầu (kẹp vào khoảng hợp lệ, mặc định 0) | — |
-| `download` | `(item, ctx) => string` | URL tải, hoặc `''` để ẩn nút | Mỗi lần đổi slide | Ném lỗi → coi như `''` (ẩn nút). URL trả về còn phải qua `isAllowedUrl` |
-| `downloads` | `(item, ctx) => Array<{ label, url, filename? }>` | Các biến thể tải | Mỗi lần đổi slide (0.17.0). Có cả `download` → `downloads` thắng | Ném lỗi / không phải mảng → rỗng. Từng `url` lọc qua `isAllowedUrl(url, item)` **trước**, rồi: 0 → ẩn nút; 1 → link tải thường; ≥ 2 → nút mở `TdMenu` các `<a download>` (`filename` đã lọc, thiếu → `download` không tên). Menu đóng khi đổi ảnh / đóng lightbox |
-| `video` | `(item, mount, { signal }) => player \| null \| Promise<player \| null>` với `player = { destroy() }` | Đối tượng player có `destroy()` | Slide `type: 'video'` | Ném / reject → `console.error`, hiện `poster` như ảnh. Trả `null` hoặc thiếu `destroy` → cũng về poster. `signal` bị abort khi đổi slide / đóng |
-| `panel` | `true` \| `false` \| `(ctx) => Element \| null` | Element hiển thị ở panel thông tin | Mỗi lần đổi slide và khi `handle.refreshPanel()` | Ném lỗi hoặc trả chuỗi → không có panel. `true` = hiện `caption` làm text |
-| `toolbar` | `Array<ToolbarSpec>` | — | Lúc mở (thay toàn bộ nút thêm của lần mở trước) | Spec thiếu `id` / `onClick` bị bỏ qua. Trùng `id` trong cùng danh sách: cái đầu thắng |
-| `isAllowedUrl` | `(url, item) => boolean` | `true` = cho phép | Với `src`, `poster` của mọi item lúc mở, và URL tải | Ném lỗi → URL bị từ chối. Mặc định: `defaultIsAllowedUrl` (https; http chỉ khi trang là http) |
-| `isForeignLayerOpen` | `() => boolean` | `true` = có lớp của site đang nằm trên lightbox | Mỗi phím bấm | Ném lỗi → `false`. Mặc định: có lớp td cao hơn hoặc có modal đang mở |
-| `closeOnBackdrop` | `boolean` | — | Click nền | Mặc định `true`; `false` = click nền không đóng |
-| `history` | `true` \| `{ push(token), back(), onPop(cb) => unsubscribe }` | `push` / `back` có thể trả Promise | Mở (push), đóng (back), nút Back của trình duyệt (onPop) | `push` ném / reject → lần mở này chạy không có history. `back` ném → bỏ qua. `true` = adapter có sẵn dùng `history.pushState` |
-| `labels` | object, xem dưới | — | Lúc mở | Khoá không phải chuỗi bị bỏ qua (dùng mặc định) |
-| `groupEl` | `Element` | — | Lúc mở: đưa vào `ctx.groupEl` và detail của event | Không phải Element → `null` |
-
-`labels` của lightbox (theo từng lần `open` / `bind`, không có object tĩnh):
-
-| Khoá | Mặc định |
-|---|---|
-| `dialog` | `Trình xem ảnh` |
-| `prev` | `Ảnh trước` |
-| `next` | `Ảnh sau` |
-| `close` | `Đóng` |
-| `back` | `Quay lại` |
-| `fullscreen` | `Toàn màn hình` |
-| `download` | `Tải xuống` |
-| `info` | `Thông tin ảnh` |
-| `counter` | `(i, n) => \`${i} / ${n}\`` (hàm; `i` bắt đầu từ 1) |
-
-### Option chỉ có ở `bind()`
-
-| Option | Kiểu | Ý nghĩa | Lỗi thì sao |
-|---|---|---|---|
-| `attrPrefix` | `string` (mặc định `'td'`) | Đọc `data-{prefix}-lightbox-*`, ví dụ `'dwp'` cho markup dwp. Phải khớp `^[a-z][a-z0-9]*(-[a-z0-9]+)*$` | Sai định dạng → `console.warn`, dùng `'td'` |
-| `filter` | `(el, event) => boolean` | Trả `false` để để yên click đó (không mở lightbox) | Ném lỗi → `console.warn`, click bị bỏ qua (coi như `false`) |
-
-### ToolbarSpec (option `toolbar` và `handle.addToolbarButton`)
-
-| Trường | Kiểu | Ghi chú |
+| Hook / option | Mô tả ngắn | Chi tiết |
 |---|---|---|
-| `id` | `string` (bắt buộc) | Khoá duy nhất |
-| `onClick` | `(ctx, button) => void` (bắt buộc) | Ném lỗi → `console.error`, lightbox vẫn chạy |
-| `label` | `string` | `aria-label` + `title`; thiếu thì dùng `id` |
-| `icon` | `string` | Tên icon trong registry (core hoặc `registerIcons()`) |
-| `iconNode` | `SVGElement` | SVG tin cậy do site dựng (được clone). Không bao giờ nhận chuỗi markup |
-| `visible` | `(ctx) => boolean` | Gọi mỗi lần đổi slide; `false` → ẩn nút. Ném lỗi → ẩn |
+| `download` / `downloads` | URL tải một hay nhiều biến thể, gọi mỗi lần đổi slide | [Hook download](../components/lightbox.md#hook-download), [Hook downloads](../components/lightbox.md#hook-downloads-nhiều-biến-thể) |
+| `video` | Dựng player cho slide `type: 'video'` | [Hook video](../components/lightbox.md#hook-video) |
+| `panel` | `true` / `false` / `(ctx) => Element` cho panel thông tin | [Panel thông tin](../components/lightbox.md#5-panel-thông-tin) |
+| `toolbar` | Nút toolbar riêng (`ToolbarSpec`) | [Spec nút toolbar](../components/lightbox.md#spec-nút-toolbar) |
+| `isAllowedUrl` | Chính sách URL cho `src`, `poster`, URL tải | [Hook isAllowedUrl](../components/lightbox.md#hook-isallowedurl-chính-sách-url) |
+| `isForeignLayerOpen` | Nhường bàn phím khi có lớp của site nằm trên lightbox | [Hook isForeignLayerOpen](../components/lightbox.md#hook-isforeignlayeropen-nhường-bàn-phím) |
+| `history` | Adapter lịch sử trình duyệt (nút Back) | [Hook history](../components/lightbox.md#hook-history) |
+| `labels` | Nhãn theo từng lần `open` / `bind` (không có object tĩnh) | [Nhãn](../components/lightbox.md#nhãn-labels) |
+| `ctx`, handle | Ngữ cảnh truyền cho hook; handle trả về từ `open()` | [ctx](../components/lightbox.md#ctx), [Handle](../components/lightbox.md#handle) |
+| `attrPrefix`, `filter` | Chỉ có ở `bind()` | [Đọc markup của dwp](../components/lightbox.md#4-đọc-markup-của-dwp--attrprefix-và-filter-0150) |
 
-Không có `icon` lẫn `iconNode` → nút hiện chữ `label`. Nút thêm luôn đứng trước nút Đóng.
-
-### Handle trả về từ `open()`
-
-| Thành viên | Ghi chú |
-|---|---|
-| `token`, `isOpen`, `index`, `count` | Chỉ đọc; sau khi đóng: `isOpen` false, `index` -1, `count` 0 |
-| `next()`, `prev()`, `goTo(i)`, `close()` | Không làm gì nếu handle đã "chết" (lightbox đóng hoặc bị mở lại) |
-| `setPanel(false \| true \| renderer)` | Đổi chế độ panel khi đang mở |
-| `refreshPanel()` | Gọi lại renderer panel (dữ liệu của bạn đổi) |
-| `addToolbarButton(spec) → remove()` | Thêm nút khi đang mở; trùng `id` thì thay thế |
-| `removeToolbarButton(id)` | Gỡ nút theo id |
-
-Event (trên `document`, không bubble qua cây vì dispatch thẳng lên `document`): `td-lightbox-open`,
-`td-lightbox-change`, `td-lightbox-close`, `detail = { index, count, token, item, itemEl, groupEl }`.
+Event `td-lightbox-open` / `-change` / `-close`: [Event](../components/lightbox.md#event).
 
 ---
 
@@ -311,8 +259,8 @@ icon; xem [công thức 4](#4-toast-thời-lượng-riêng-toast-dính-vị-trí
 
 | API | Chữ ký | Ghi chú |
 |---|---|---|
-| `TdLoading.show(messageOrOptions)` | `string` hoặc `{ message?, maxDuration? }` | `message` mặc định `TdLoading.labels.loading` (`'Đang tải...'`, cấu hình được từ 0.16.0). Truyền thẳng chuỗi `''` = không chữ; trong dạng object, `message` rỗng → dùng mặc định. `maxDuration` mặc định `30000` ms: quá hạn tự ẩn + `console.warn`; `false` / `0` tắt |
-| `TdLoading.wrap(asyncFn, messageOrOptions)` | `() => Promise<T>`; tham số 2 như `show()` (object từ 0.16.0) | Trả về kết quả của `asyncFn` (reject lan ra ngoài). Đếm tham chiếu: nhiều `wrap` song song giữ overlay tới khi cái cuối settle |
+| `TdLoading.show(messageOrOptions)` | `string` hoặc `{ message?, maxDuration?, themeRoot? }` | Chữ ký, mặc định và luật `themeRoot`: [loading.md › Property & method](../components/loading.md#tdloading) |
+| `TdLoading.wrap(asyncFn, messageOrOptions)` | `() => Promise<T>`; tham số 2 như `show()` | Đếm tham chiếu, reject lan ra ngoài: [loading.md](../components/loading.md#tdloading) |
 | `TdLoading.hide()` | | Kết thúc mọi `wrap` đang chờ |
 | `TdLoadingSpinner.create({ size, color, trackColor, className, label })` | `size`: `sm md lg` | `color` / `trackColor` qua `safeColor` rồi CSSOM. `label` có → `role="status"`; không → trang trí (`aria-hidden`) |
 
@@ -449,9 +397,7 @@ chung với repeater `sortable`): `handle` `Sắp xếp {name}` · `item` `Mục
 | `el.reveal` | `({ element, signal }) => Promise<string \| null>` | Lấy giá trị thật (app lo quyền / 2FA / audit). Chuỗi → hiện; `null` → im lặng; reject → `reveal-error { kind: 'rejected' }`. Chỉ nhận hàm; gán trước khi define vẫn được nhận. |
 | `TdMaskedValue.reveal` | như trên (static) | Dùng khi phần tử không có property — trang PHP gán một lần, đọc `element.dataset.id`. |
 
-Event không bao giờ mang giá trị: `revealed { duration }`, `remasked { reason }`, `reveal-error { kind }`.
-`TdMaskedValue.labels`: `value` `giá trị` · `show` `Hiện {label}` · `copy` `Copy {label}` · `loading` `Đang tải {label}…` ·
-`revealed` `Đã hiện {label}. Tự che lại sau {s} giây.` · `remasked` `Đã che {label}.` · `error` `Không hiện được {label}.`
+Event không bao giờ mang giá trị (`revealed`, `remasked`, `reveal-error`): bảng event ở [masked-value.md › Event](../components/masked-value.md#event); `TdMaskedValue.labels` (7 nhãn) và mặc định: [Property & method](../components/masked-value.md#property--method).
 
 ---
 

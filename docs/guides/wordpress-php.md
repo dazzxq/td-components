@@ -540,20 +540,7 @@ Các attribute dưới đây là **API công khai** — server render sẵn, JS 
 
 ### Lightbox (`TdLightbox.bind(root, { attrPrefix })`, mặc định prefix `td`)
 
-| Attribute | Đặt ở | Ý nghĩa |
-|---|---|---|
-| `data-td-lightbox` | trigger đơn | mở một ảnh; giá trị là URL (hoặc để trống / `true` / `1` để lấy URL từ chỗ khác) |
-| `data-td-lightbox-group` | container | gom các item thành một gallery |
-| `data-td-lightbox-item` | từng item trong group | |
-| `data-td-lightbox-src` | trigger / item | URL ảnh lớn (ưu tiên cao nhất) |
-| `data-td-lightbox-type="video"` | trigger / item | item là video |
-| `data-td-lightbox-poster` | trigger / item | ảnh poster của video |
-| `data-td-lightbox-provider` | trigger / item | mặc định `html5`; giá trị khác do hook `video` xử lý |
-| `data-td-lightbox-caption` | trigger / item | chú thích (text) |
-
-Thứ tự tìm `src`: `-src` → giá trị của `data-td-lightbox` → `href` của `<a>` gần nhất nếu trỏ tới file ảnh
-(`.jpg .jpeg .png .webp .gif .avif .svg`) → `currentSrc`/`src` của `<img>`. Caption: `-caption` → `<figcaption>` của
-`<figure>` gần nhất → `alt` của ảnh. `attrPrefix: 'dwp'` đổi mọi tên thành `data-dwp-lightbox-*`.
+Bảng attribute `data-td-lightbox*` (kể cả `-width` / `-height`), thứ tự tìm `src` và `caption` ghi đầy đủ ở [lightbox.md › Markup + `bind()`](../components/lightbox.md#3-markup--bind). Server chỉ cần render sẵn các attribute đó; `attrPrefix: 'dwp'` đổi mọi tên thành `data-dwp-lightbox-*`.
 
 ```html
 <div data-td-lightbox-group>

@@ -307,7 +307,7 @@ ghi đè. Cách làm chuẩn: một module `i18n-<ngôn ngữ>.js` nạp **một
 
 | Object | Import | Khoá | Phạm vi / lúc được đọc |
 |---|---|---|---|
-| `options.labels` (theo từng lần gọi) | `@dazzxq/td-components/lightbox` | `dialog prev next close back fullscreen download info` (chuỗi), `counter(i, n)` (hàm) | Mỗi `TdLightbox.open()` / `bind()` — không có object tĩnh |
+| `options.labels` (theo từng lần gọi) | `@dazzxq/td-components/lightbox` | `dialog prev next close back fullscreen download info more loadError retry pressedOn busy` (chuỗi), `counter(i, n)` và `thumb(n)` (hàm); mặc định và chỗ dùng: [lightbox.md › Nhãn](../components/lightbox.md#nhãn-labels) | Mỗi `TdLightbox.open()` / `bind()` — không có object tĩnh |
 | `TdHovercard.labels` | `@dazzxq/td-components/hovercard` | `loading error dialog` | Mỗi lần mở thẻ |
 | `TdMenu.labels` | `@dazzxq/td-components/menu` | `trigger` | Khi tạo `TdMenu.button()` |
 | `TdModal.labels` | `@dazzxq/td-components/modal` | `close confirm cancel ok confirmTitle confirmMessage successTitle errorTitle infoTitle` (5 khoá cuối từ 0.16.0) | Khi tạo dialog |
@@ -378,7 +378,9 @@ import { TdFormValidation } from '@dazzxq/td-components/form-validation';
 export const lightboxLabels = {
   dialog: 'Image viewer', prev: 'Previous image', next: 'Next image', close: 'Close', back: 'Back',
   fullscreen: 'Full screen', download: 'Download', info: 'Image details',
+  more: 'More', loadError: 'Could not load the image', retry: 'Retry', pressedOn: 'On', busy: 'Working…',
   counter: (i, n) => `${i} of ${n}`,
+  thumb: (n) => `Image ${n}`,
 };                                                   // dùng: TdLightbox.bind(document, { labels: lightboxLabels })
 
 Object.assign(TdHovercard.labels, { loading: 'Loading…', error: 'Could not load content.', dialog: 'More info' });

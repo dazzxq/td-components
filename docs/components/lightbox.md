@@ -196,8 +196,8 @@ TdLightbox.open(items, {
 - `panel: true` dựng `<p class="td-lightbox__panel-caption">` từ `caption` (text).
 - Bố cục: màn hình **≥ 1024px** → hai cột (ảnh | panel rộng `--td-lb-panel-w`), zoom bị cắt theo cột ảnh; **< 1024px** →
   **bottom sheet** đóng sẵn, chỉ lộ tay nắm (nút `.td-lightbox__grab`, `aria-expanded`, tên = `labels.info`). Chạm tay
-  nắm, vuốt lên trên panel (> 32px) hoặc vuốt lên trên ảnh (> 60px) để mở; vuốt xuống (> 32px) khi panel đang ở đầu
-  để đóng. Sheet luôn đóng khi mở lightbox và khi panel chuyển sang "không có". Sheet nằm **trên** thanh ‹ đếm › của
+  nắm rồi kéo lên (> 32px), hoặc vuốt lên trên ảnh (> 60px) để mở; kéo xuống từ tay nắm (> 32px) khi panel đang ở đầu
+  để đóng (vuốt trong nội dung panel chỉ cuộn). Sheet luôn đóng khi mở lightbox và khi panel chuyển sang "không có". Sheet nằm **trên** thanh ‹ đếm › của
   điện thoại (0.53.2): mở ra thì che thanh đó; đóng lại thì chỉ tay nắm ló dưới thanh, thanh vẫn bấm được.
 - Khi có panel: dải caption dưới ảnh bị ẩn (tránh lặp), nút **Quay lại** (góc trên trái, `labels.back`) hiện ra và
   đóng lightbox. Panel cuộn về đầu mỗi slide.
@@ -817,6 +817,8 @@ Lightbox **luôn tối** (nền là ảnh, không theo theme sáng/tối của s
 | `--td-lb-nav-bottom` | `56px` | Khoảng chừa dưới dải bấm (chú thích); có filmstrip: `8px` |
 | `--td-lb-disc` | `48px` | Đường kính đĩa mũi tên |
 | `--td-lb-disc-bg` / `--td-lb-disc-bg-hover` | `var(--td-glass-clear-bg)` (88 %) / `rgb(44 44 48 / 92%)` | Nền đĩa / khi rê chuột |
+| `--td-lb-disc-bg-pressed` | `rgb(64 64 70 / 94%)` | Nền đĩa khi nhấn (0.36.2) |
+| `--td-lb-btn-pressed` | `rgb(255 255 255 / 24%)` | Nền nút thanh công cụ khi nhấn (hover là 14 %; 0.36.2) |
 | `--td-lb-disc-border` | `rgb(255 255 255 / 40%)` | Viền đĩa (≥ 3:1 trên ảnh đen — contrast gate) |
 | `--td-lb-thumb-size` | `56px` (cảm ứng: `44px`) | Cạnh thumbnail filmstrip |
 | `--td-lb-thumb-gap` | `6px` | Khoảng cách thumbnail |
@@ -826,6 +828,8 @@ Lightbox **luôn tối** (nền là ảnh, không theo theme sáng/tối của s
 | `--td-lb-filmstrip-h` | `thumb-size + 2 × pad` | Chiều cao hàng filmstrip (cộng safe-area đáy) |
 | `--td-lb-filmstrip-bg` | `transparent` | Nền dải |
 | `--td-lb-slide-dist` / `--td-lb-slide-dur` | `24px` / `160ms` | Hiệu ứng trượt khi chuyển ảnh |
+| `--td-lb-spring` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Đường cong khi khung ảnh bật về sau vuốt ngang không đủ ngưỡng (0.36.2) |
+| `--td-lb-swipe-x` | (JS ghi qua CSSOM) | 0.36.2, khoảng khung ảnh đi theo ngón khi vuốt ngang — không tự đặt |
 
 ```css
 /* site.css (ngoài @layer → thắng td.tokens). Ghi trên .td-lightbox như trước 0.16.0 vẫn chạy. */
@@ -911,7 +915,7 @@ overlay: ảnh `zoom-in` / `zoom-out` khi đang zoom (chuột), nền `zoom-out`
 ```
 
 Trạng thái luôn là attribute do JS đặt, không phải class: `data-state="open"`, `data-panel`, `data-zoomed`,
-`data-dragging`, `data-closing-down`, `data-nav`, `data-filmstrip` trên overlay; `data-sheet="open"` trên panel;
+`data-dragging`, `data-swiping` (`drag` / `out` / `back` / `reset`: khung ảnh đang theo ngón, trượt đi, bật về, về 0 không hiệu ứng; 0.36.2), `data-closing-down`, `data-nav`, `data-filmstrip` trên overlay; `data-sheet="open"` trên panel;
 `data-loading` trên ảnh; `data-slide` trên stage; `aria-current` trên thumbnail; `hidden` cho ẩn/hiện. Prev/next/bộ đếm
 ẩn khi gallery chỉ có 1 item; nút fullscreen ẩn khi trình duyệt không hỗ trợ. **0.24.0:** prev / next là cùng hai phần
 tử, được JS **di chuyển** giữa `.td-lightbox__nav`, toolbar và (0.36.0) `.td-lightbox__rail`; bộ đếm di chuyển giữa
@@ -950,7 +954,7 @@ tử, được JS **di chuyển** giữa `.td-lightbox__nav`, toolbar và (0.36.
 | Chạm / bút trong dải hai bên | Không kích hoạt dải — đi vào vuốt / pinch / double-tap như trên ảnh |
 | Kéo (touch/pen) khi đang zoom | Pan (kẹp trong khung) |
 | Rê chuột khi đang zoom | Pan theo vị trí chuột |
-| Vuốt ngang > 50px | Slide trước / sau |
+| Vuốt ngang (zoom = 1) | Slide trước / sau: thả qua **1/4** bề rộng vùng ảnh hoặc vuốt nhanh (bảng ở mục Cảm ứng) |
 | Vuốt xuống > 90px | Đóng (ảnh trượt theo tay trong lúc kéo) |
 | Vuốt lên > 60px (có panel, sheet đang đóng) | Mở bottom sheet |
 

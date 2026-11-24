@@ -235,23 +235,7 @@ Chuẩn hoá trước khi kiểm tra: `TdMenu` bỏ ký tự điều khiển và
 ### Lightbox: thu hẹp về allowlist host của bạn
 
 Mặc định lightbox **chấp nhận mọi ảnh HTTPS khác origin**. Nếu `src` có thể đến từ dữ liệu người dùng (link trong bài
-viết, markup do người dùng soạn), hãy giới hạn về CDN của bạn:
-
-```js
-import { TdLightbox } from '@dazzxq/td-components/lightbox';
-
-const MEDIA_HOSTS = new Set([location.host, 'cdn.aetv.vn']);
-const isAllowedUrl = (url) => {
-  try {
-    const u = new URL(url, location.href);
-    return u.protocol === 'https:' && MEDIA_HOSTS.has(u.host);
-  } catch {
-    return false;
-  }
-};
-
-TdLightbox.bind(document, { isAllowedUrl });
-```
+viết, markup do người dùng soạn), hãy giới hạn về CDN của bạn bằng hook `isAllowedUrl`, ghép với `defaultIsAllowedUrl` (ví dụ allowlist origin đầy đủ ở [Lightbox › Hook isAllowedUrl](../components/lightbox.md#hook-isallowedurl-chính-sách-url)).
 
 Cùng danh sách host nên có trong `img-src` / `media-src` của CSP (xem [CSP](csp.md#nguồn-ảnh-video-và-fetch)).
 

@@ -121,9 +121,7 @@ $masked = mb_substr($phone, 0, 2) . str_repeat('x', max(0, mb_strlen($phone) - 5
 echo td_masked_value($masked, ['label' => 'SĐT khách', 'attrs' => ['data-id' => (string) $customer->id]]);
 ```
 
-`td_masked_value()` **chỉ** in chuỗi che — chữ ký không có tham số giá trị thật nên helper không thể làm lộ. Không bao giờ
-in giá trị thật vào HTML (kể cả `hidden` / `data-*`): nó lộ qua mã nguồn trang, cache, bfcache, extension, log và vô
-hiệu audit. Chi tiết: [Adapter PHP › td_masked_value](../guides/php-adapter.md#td_masked_value-0310).
+`td_masked_value()` **chỉ** in chuỗi che — chữ ký không có tham số giá trị thật nên helper không thể làm lộ; không bao giờ in giá trị thật vào HTML (kể cả `hidden` / `data-*`). Lý do và chi tiết: [Adapter PHP › td_masked_value](../guides/php-adapter.md#td_masked_value-0310).
 
 ### 7. Không JS
 

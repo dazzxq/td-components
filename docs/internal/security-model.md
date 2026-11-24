@@ -93,20 +93,8 @@ style với baseline, animation của spinner thực sự chạy. Danh mục con
 Hợp đồng (plan [v0.31.0](plans/v0.31.0-sortable-masked.md) quyết định 15–21; trang người dùng
 [masked-value.md](../components/masked-value.md#bảo-mật)):
 
-- **Kit không bao giờ thấy giá trị thật ngoài kết quả `reveal()`.** Chuỗi che do server tính; kit không có hàm che (che
-  phía trình duyệt = giá trị thật đã ở trình duyệt). PHP `td_masked_value(string $masked, array $o)` không có tham số giá
-  trị thật → helper không thể in nó vào HTML (mã nguồn trang, cache, bfcache, extension, log).
-- Khi đang hiện, giá trị nằm trong **một** text node (`.td-masked__text`) và **một** field private. **Không bao giờ** vào
-  attribute, `aria-*`, `title` / `data-tooltip`, live region (thông báo trung tính, không đọc PII), `detail` của event,
-  `console` (kể cả cảnh báo — không log phần tử, vì DOM sống có thể đang chứa giá trị).
-- Che lại (hết giờ, bấm lại, `visibilitychange` hidden, `pagehide`, `mask()`, đổi `masked`, `disabled`, disconnect) = ghi
-  lại chuỗi che vào text node, xoá field, **gỡ hẳn** `<td-copy>` con (kèm ô copy tay của nó), xoá timer / listener trang.
-- Lỗi của hook: `reveal-error` mang `detail` **do kit sinh** (`{ kind: 'rejected' | 'invalid' }`); đối tượng lỗi của app
-  không được chuyển tiếp, không được đọc ngoài `name` (để nhận `AbortError`, bọc try), không được log.
-- Kết quả về muộn bị bỏ: `AbortController` (signal truyền cho hook) + bộ đếm thế hệ (đúng cả khi app phớt lờ `signal`).
-  Khoá in-flight: một lần bấm = một lời gọi (mỗi lời gọi là một lần audit ở app).
-- **Không bảo đảm:** xoá bộ nhớ JS (chuỗi bất biến, GC), clipboard sau khi copy, ảnh chụp / quay màn hình, extension đọc
-  DOM trong lúc đang hiện. Quyền / 2FA / audit là việc của endpoint.
+- **Kit không bao giờ thấy giá trị thật ngoài kết quả `reveal()`.** Chuỗi che do server tính; kit không có hàm che, và PHP `td_masked_value()` không có tham số giá trị thật (lý do: [php-adapter › td_masked_value](../guides/php-adapter.md#td_masked_value-0310)).
+- Giá trị đang hiện chỉ nằm trong một text node và một field private; che lại ghi đè text, xoá field, gỡ `<td-copy>`. Danh sách nơi giá trị không bao giờ xuất hiện, hợp đồng lỗi `reveal-error` (detail do kit sinh), khoá in-flight, `signal` + bộ đếm thế hệ, và những gì kit **không** bảo đảm: [masked-value.md](../components/masked-value.md#1-hợp-đồng-reveal) và [Bảo mật](../components/masked-value.md#bảo-mật).
 - Test: `src/display/td-v031-masked-value.engines.browser-test.js` (lỗi có `message` / field chứa giá trị → không lọt vào
   DOM / attribute / live region / event JSON + key đệ quy / console stub), `test/php/td-ssr-masked-value.test.js` (chữ ký
   bằng reflection).

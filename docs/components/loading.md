@@ -119,9 +119,9 @@ Spinner chỉ là CSS, nên PHP có thể in thẳng markup:
 | Chữ ký | Mô tả |
 |---|---|
 | `TdLoading.show(message?)` | `message` là chuỗi: hiển thị **nguyên văn** (`''` → không có chữ). Thiếu → `TdLoading.labels.loading`. |
-| `TdLoading.show({ message?, maxDuration? })` | `message` rỗng / thiếu → `TdLoading.labels.loading`. `maxDuration`: mili-giây trước khi tự ẩn, mặc định `30000`; `false` hoặc `0` → không tự ẩn. |
+| `TdLoading.show({ message?, maxDuration?, themeRoot? })` | `message` rỗng / thiếu → `TdLoading.labels.loading`. `maxDuration`: mili-giây trước khi tự ẩn, mặc định `30000`; `false` hoặc `0` → không tự ẩn. `themeRoot` (0.42.0, `Element`; giá trị khác bị bỏ qua): overlay theo theme của phần tử đó — chỉ đọc **lúc overlay mở**, nên `show()` khi overlay đang hiện giữ theme cũ. |
 | `TdLoading.hide()` | Ẩn overlay ngay, **và** huỷ mọi bộ đếm `wrap()` đang chờ (các `wrap()` đó xong sau này sẽ không đụng tới overlay nữa). Gọi khi overlay không hiện → không làm gì. |
-| `TdLoading.wrap(asyncFn, messageOrOptions?)` | `Promise<T>` — chạy `asyncFn()` dưới overlay; resolve / reject đúng như `asyncFn`. Overlay tắt khi `wrap()` cuối cùng xong. Tham số thứ hai giống `show()`: chuỗi hoặc `{ message, maxDuration }` (object từ 0.16.0). |
+| `TdLoading.wrap(asyncFn, messageOrOptions?)` | `Promise<T>` — chạy `asyncFn()` dưới overlay; resolve / reject đúng như `asyncFn`. Overlay tắt khi `wrap()` cuối cùng xong. Tham số thứ hai giống `show()`: chuỗi hoặc `{ message, maxDuration, themeRoot }` (object từ 0.16.0; `wrap()` chuyển nguyên tham số cho `show()`). |
 | `TdLoading.labels` | (0.16.0) `{ loading: 'Đang tải...' }` — chữ mặc định khi không truyền `message`. |
 | `TdLoading.init()` | Tạo phần tử overlay (tự gọi trong `show()`). |
 | `TdLoading.element` | Phần tử `#td-loading` hoặc `null`. Chỉ đọc. |
@@ -291,20 +291,7 @@ khung ảnh. Không có JS, không có custom element — chỉ cần `td.css`. 
 el.style.setProperty('--td-skeleton-lines', String(n));
 ```
 
-Token (khai báo trên `:root`, bảng đầy đủ ở [Theming](../customization/theming.md#skeleton)):
-
-| Token | Mặc định | Tác dụng |
-|---|---|---|
-| `--td-skeleton-bg` | `var(--td-color-skeleton)` | Màu khối (dark tự đổi theo `--td-color-skeleton`) |
-| `--td-skeleton-shine` | `var(--td-color-sheen)` | Vệt sáng lướt qua |
-| `--td-skeleton-radius` | `var(--td-radius-sm)` | Bo góc khối / từng dòng chữ |
-| `--td-skeleton-dur` | `1.3s` | Chu kỳ một lần lướt |
-| `--td-skeleton-h` | `1rem` | Chiều cao `.td-skeleton` trơn |
-| `--td-skeleton-line` | `0.875rem` | Chiều cao một dòng của `--text` |
-| `--td-skeleton-gap` | `0.5rem` | Khoảng cách giữa các dòng |
-| `--td-skeleton-size` | `2.5rem` | Đường kính `--circle` |
-| `--td-skeleton-ratio` | `16 / 9` | Tỉ lệ khung `--rect` |
-| `--td-skeleton-lines` | `1` (`--lines-2` / `--lines-3` đặt `2` / `3`) | Số dòng của `--text`; đặt **trên phần tử** (không có tác dụng ở `:root`, vì `.td-skeleton` đặt lại giá trị này) |
+Token `--td-skeleton-*` (khai báo trên `:root`; mặc định và tác dụng từng token: bảng đầy đủ ở [Theming › Skeleton](../customization/theming.md#skeleton)). Riêng `--td-skeleton-lines` đặt **trên phần tử** (không có tác dụng ở `:root`, vì `.td-skeleton` đặt lại giá trị này).
 
 Hàng đang tải của [td-table](table.md) dùng chung bộ token này (`--td-table-skeleton` / `--td-table-sheen` mặc định trỏ
 vào `--td-skeleton-bg` / `--td-skeleton-shine`, bo góc và chu kỳ cũng theo `--td-skeleton-*`), nên đổi một chỗ là bảng và
