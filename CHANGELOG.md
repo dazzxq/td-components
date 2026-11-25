@@ -4,6 +4,9 @@ All notable changes to **td-components** are documented here.
 
 ## Unreleased
 
+### Gỡ
+- Token `--td-dtp-preview-bg` (datetime-picker): khai báo nhưng không quy tắc nào dùng, đặt giá trị cũng không có tác dụng. Đã xoá khỏi `datetime-picker.css` và golden; site đang đặt token này không cần sửa gì.
+
 ### Docs
 - Soát docs lệch code toàn bộ (docs-drift, 22 lô, 25/11): mọi trang `docs/components/*.md` + theming / hooks / utilities / PHP / cài đặt / hub. Sửa chữ ký, attribute, token, mặc định, nhãn, event và hook thiếu hoặc sai; bản chép ở `hooks.md`, `php-adapter.md`, `security-model.md`, `theming.md` rút về một câu + link tới trang component (một sự thật một chỗ). Không đổi code.
 
