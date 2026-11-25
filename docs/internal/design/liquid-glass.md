@@ -50,10 +50,7 @@ Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm** (+
 | Shadow `--td-glass-shadow-lg` | `0 4px 12px /8%, 0 20px 48px /18%` | 32 % / 56 % (0.41.0; trước 16 / 36) |
 | Viền bề mặt nổi `--td-glass-border` | `rgb(0 0 0 / 7%)` | `rgb(255 255 255 / 14%)` (0.41.0: trên nền tối viền sáng mảnh là thứ tách lớp, bóng gần như không thấy) |
 | Shadow `--td-btn-lift` | `0 1px 3px /10%, 0 4px 10px -2px /12%` | 20 % / 24 % |
-| Nhấn (0.36.2, [touch.md](touch.md)) chung / option / ghost | `rgb(0 0 0 / 12%)` (`--td-color-pressed`, `--td-option-pressed-bg`, `--td-btn-ghost-pressed`) | `rgb(255 255 255 / 14%)` |
-| Nhấn nút primary / secondary | `#52525b` / `#d4d4d8` (gray-300) | `#a1a1aa` / `#45454b` |
-| Nhấn nút success / danger / info / warning | `#14532d` / `#991b1b` / `#1e40af` / `#cc6d05` (chữ tối 4.86) | như light |
-| Nhấn nút thao tác standard / warning (nền · icon) / danger | `--td-color-pressed` / `#fef3c7` · `#92400e` / `#fdd5d5` | — / `rgb(245 158 11 / 26%)` / `rgb(220 38 38 / 30%)` |
+| Nhấn (0.36.2) | Bảng token nhấn đầy đủ (light / dark, nút, option, ghost, thao tác): [touch.md › Token nhấn](touch.md#token-nhấn) | |
 | Focus ô nhập (viền / quầng) | `color-mix(accent 85%, #fff)` / `0 0 0 3px` accent 12 % | cùng công thức / quầng 22 % |
 
 Đặc (`--td-solid-{v}-bg/-fg/-hover/-border`, 0.36.0) dùng chung cho nút ngữ nghĩa và badge (toast: token riêng cùng

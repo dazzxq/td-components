@@ -6,15 +6,20 @@ Trạng thái mô tả: **v0.11.0** — mọi component token-native (`td.css` +
 
 ## Cấu trúc
 
+Cây dưới đây **rút gọn** (mỗi nhóm chỉ nêu vài file tiêu biểu); danh sách component đầy đủ: [docs/components/README.md](../components/README.md).
+
 ```
 index.js                 re-export mọi thứ (import '@dazzxq/td-components')
-src/base/                TdBaseElement, TdFormElement, sample/
-src/form/                button, checkbox, toggle, input-field, slider, dropdown, datetime-picker
-src/feedback/            modal, modal-stack, toast, tooltip, loading   (API imperative, không phải tag)
-src/display/             table, tabs, pagination, empty-state
+src/base/                TdBaseElement, TdFormElement, TdCheckableElement, define.js, sample/
+src/form/                button, checkbox, toggle, input-field, slider, dropdown, datetime-picker, tree-select, … (nhiều hơn)
+src/feedback/            modal, modal-stack, toast, tooltip, loading, … (API imperative, không phải tag; còn nhiều hơn)
+src/display/             table, tabs, pagination, empty-state, tree, carousel, … (nhiều hơn)
 src/utils/               escape, css-safe, datetime, dom-utils, layers, inert-lock, scroll-lock, floating
 src/styles/              tokens + component CSS → build td.css (manifest.json)
 src/icons/               icon registry (Lucide)
+src/theme/               bộ sinh palette `td-theme` (CLI + `./theme`)
+src/embed/               bản nhúng (mount / registry)
+src/vendor/              engine vendor hoá (rich text)
 test/csp/                CSP parity gate (Playwright)
 ```
 
@@ -355,16 +360,4 @@ component legacy; peer Tailwind bỏ ở 0.11.0).
 
 ### Site tuỳ biến thế nào
 
-```css
-/* CSS của site — KHÔNG đặt trong @layer → luôn thắng td.tokens */
-:root {
-  --td-accent: #b3261e;
-  --td-glass-bg-strong: oklch(98% 0.01 80 / 0.94);
-  --td-color-surface-raised: #f7f3ea; /* 0.41.0: ô nhập + modal / nền đặc khi fallback (--td-glass-solid theo nó) */
-}
-:root[data-td-theme="dark"] { --td-color-surface-raised: #1a1714; }   /* tinh chỉnh dark riêng */
-.sidebar { --td-glass-bg: rgb(0 0 0 / 40%); }                /* theme theo vùng: chạy được */
-```
-
-Không bao giờ ghi đè `--_td-*`. Bỏ blur thủ công (Safari/iOS chưa có `prefers-reduced-transparency`):
-`<html data-td-glass="off">`. Gate kiểm chứng: `npm run test:tokens` (Chromium/Firefox/WebKit × CSP `'self'` và nonce-only).
+Site ghi đè token bằng CSS **không layer** (luôn thắng `td.tokens`), kể cả theo vùng (`[data-td-theme]`); bỏ blur bằng `<html data-td-glass="off">`. Ví dụ và luật đầy đủ: [theming.md](../customization/theming.md#ghi-đè-ở-đâu-css-không-layer-vs-layer) và [tắt kính](../customization/theming.md#tắt-kính-data-td-glassoff). Không bao giờ ghi đè `--_td-*`. Gate kiểm chứng: `npm run test:tokens` (Chromium/Firefox/WebKit × CSP `'self'` và nonce-only).

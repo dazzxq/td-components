@@ -219,17 +219,19 @@ chung** (`src/utils/layers.js`, nội bộ, không export).
 
 Mỗi loại lớp nổi có một tầng, trùng với token `z-index` trong `td.css`:
 
-| Tầng | Token | Giá trị | Ai dùng | Loại |
-|---|---|---|---|---|
-| dropdown | `--td-z-dropdown` | 100 | Dự phòng — không component nào dùng (menu dropdown dùng tầng popover) | |
-| sticky | `--td-z-sticky` | 200 | `<td-scroll-top>`, `<td-selection-bar>` (cố định trên màn hình, không vào registry lớp nổi); bảng token đầy đủ: [Tuỳ biến giao diện](../customization/theming.md#z-index) | |
-| overlay | `--td-z-overlay` | 300 | Dự phòng — không component nào dùng | |
-| lightbox | `--td-z-lightbox` | 350 | `TdLightbox` | chặn (blocking) |
-| modal | `--td-z-modal` | 400 | `TdModal` (mọi dialog) | chặn |
-| popover | `--td-z-popover` | 450 | menu của `td-dropdown`, gợi ý `td-chip-input`, popup `td-tree-select` / `td-color-picker` / `td-icon-picker`, popover lịch, `TdMenu`, `TdHovercard` | nổi (floating) |
-| loading | `--td-z-loading` | 480 | `TdLoading` (overlay toàn trang) | chặn |
-| toast | `--td-z-toast` | 500 | `TdToast` | nổi, không nhận bàn phím |
-| tooltip | `--td-z-tooltip` | 510 | tooltip | nổi |
+| Tầng | Token | Loại |
+|---|---|---|
+| dropdown | `--td-z-dropdown` | dự phòng |
+| sticky | `--td-z-sticky` | cố định trên màn hình, không vào registry lớp nổi |
+| overlay | `--td-z-overlay` | dự phòng |
+| lightbox | `--td-z-lightbox` | chặn (blocking) |
+| modal | `--td-z-modal` | chặn |
+| popover | `--td-z-popover` | nổi (floating) |
+| loading | `--td-z-loading` | chặn |
+| toast | `--td-z-toast` | nổi, không nhận bàn phím |
+| tooltip | `--td-z-tooltip` | nổi |
+
+Giá trị từng token và component nào ở tầng nào: [Tuỳ biến giao diện › Z-index](../customization/theming.md#z-index).
 
 Nhờ vậy menu dropdown mở **bên trên** modal, loading phủ **bên trên** modal, toast luôn nhìn thấy.
 

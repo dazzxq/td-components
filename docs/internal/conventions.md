@@ -8,7 +8,7 @@
 - Tag `td-<tên>`, class `Td<Tên>`. Subpath export trùng tên component (`./toggle` → `td-toggle`).
 - Đăng ký có kiểm tra trùng: `if (!customElements.get('td-x')) customElements.define('td-x', TdX)`.
 - Không side effect nặng lúc import. Việc cần DOM (adopt sheet, tạo container) làm lazy ở lần connect/show đầu.
-  (Ngoại lệ đã biết: `td-tooltip` tự khởi tạo singleton; `td-toast` có top-level `await`, đang sửa ở B7.)
+  (Ngoại lệ đã biết: `td-tooltip` tự khởi tạo singleton.)
 - Scalar qua **attribute** (kebab-case), dữ liệu mảng/object/callback qua **JS property**. Event là `CustomEvent`
   qua `this.emit()`, tên kebab-case (`tab-change`, `page-change`) hoặc tên native (`change`, `input`, `click`).
 - Class CSS custom có tiền tố `td-`. Từ v0.5: BEM `td-x__el--mod`, state qua `aria-*` / `data-state` ([ADR 0008](decisions/0008-drop-tailwind-token-css.md)).
@@ -40,17 +40,7 @@
 
 ## Escaping theo ngữ cảnh
 
-| Ngữ cảnh | Dùng |
-|---|---|
-| Text HTML | `escapeHtml()` |
-| Attribute HTML (có ngoặc kép) | `escapeHtml()` |
-| Giá trị màu CSS | `safeColor()` / `safeHexColor()` |
-| Kích thước CSS | `safeCssDimension()` |
-| Class name (size/variant/type) | whitelist |
-| Số | `Number()` / `clampNumber()`, không dùng chuỗi thô |
-| Style per-instance | CSSOM (`applyStyles`, `setProperty`), không bao giờ `style="…"` |
-
-Chi tiết và danh sách raw-HTML hatch: [security.md](security-model.md).
+Mỗi ngữ cảnh (text / attribute HTML, màu / kích thước CSS, class name, số) có một helper riêng; style per-instance chỉ qua CSSOM, không bao giờ `style="…"`. Bảng ngữ cảnh → helper đầy đủ và danh sách raw-HTML hatch: [security-model.md](security-model.md).
 
 ## Test
 
@@ -58,15 +48,15 @@ Chi tiết và danh sách raw-HTML hatch: [security.md](security-model.md).
 |---|---|---|
 | `npm run test:node` | Node + DOM shim tối giản, logic thuần | `src/**/*.test.js` |
 | `npm run test:browser` | Chromium thật qua `@web/test-runner` (form association, XSS, CSP fallback) | `src/**/*.browser-test.js` |
-| `npm run test:csp` | Playwright + header CSP strict: 0 violation + parity computed style với baseline (70 state) + animation liveness | `test/csp/` |
+| `npm run test:csp` | Playwright + header CSP strict: 0 violation + parity computed style với baseline (`test/csp/baseline/`) + animation liveness | `test/csp/` |
 | `npm run test:touch` | Playwright: Chromium 390×844 hasTouch + CDP touch, WebKit iPhone 13 smoke (ADR 0019) | `test/touch/` |
-| `npm test` | cả ba | |
+| `npm test` | chuỗi đủ cổng: `check:*` tĩnh, node, browser, các gate csp / tokens / golden / contrast / theme / engines / responsive / touch / a11y (danh sách chính xác: script `test` ở `package.json`) | |
 
 - Đổi visual có chủ đích → chạy lại `npm run capture:baseline` và commit baseline mới kèm lý do.
 - Fixture Tailwind cho CSP gate (profile `legacy+td` = host Tailwind + td.css): `npm run build:csp-fixture` (CLI Tailwind pin version, devDependency).
 - **CI (GitHub-hosted, repo public = miễn phí, v0.62.1):** `.github/workflows/test.yml` chia thành job song song — `static`,
-  `browser` × 3 (root config / nhóm `engines` / các nhóm còn lại), `csp` × 2 profile, `engines` (spec) + `test:ci:misc`,
-  `responsive` × 3 engine, `theme` (contrast / page-contrast × 3 engine), `visual`, `php80`; wall time ≈ job dài nhất. Script shard ở `package.json` (`test:ci:*`); thêm gate mới vào `npm test` thì thêm cả vào một shard.
+  `browser` (ma trận shard `default` / `engines` × 3 engine / `groups` / `dist`), `csp` (`test:csp`, `test:csp:combined`, `test:csp:dist`), `engines` (spec) + `test:ci:misc`,
+  `responsive` (chromium, và webkit + firefox), `theme` (contrast / page-contrast × 3 engine), `visual`, `php80`, `php84-symfony`; wall time ≈ job dài nhất. Script shard ở `package.json` (`test:ci:*`); thêm gate mới vào `npm test` thì thêm cả vào một shard.
   Chạy CI trên nhánh bất kỳ đã push (không chiếm trình duyệt của máy dev): `gh workflow run test.yml --ref <nhánh>`.
 - Storybook: `npm run storybook` (dev), `npm run build-storybook` (build tĩnh). Storybook 10 + Vite 8; addon duy nhất là `@storybook/addon-a11y` (controls / actions / viewport có sẵn trong core).
 
@@ -74,8 +64,8 @@ Chi tiết và danh sách raw-HTML hatch: [security.md](security-model.md).
 
 1. Cập nhật [roadmap.md](roadmap.md) (đánh `done`) và `CHANGELOG.md` (mục `## x.y.z`: Fixed / Changed / Added / Breaking).
 2. Bump `version` trong `package.json` (+ `package-lock.json`).
-3. `npm run build` (0.64.0, [ADR 0034](decisions/0034-minified-dist.md)): sinh lại `td.css`, rồi `dist/` + `module-graph.json`;
-   commit cả ba (gate `check:dist` trong CI so từng byte). Nâng esbuild là **một thay đổi riêng** (sinh lại gần như cả
+3. `npm run build` (0.64.0, [ADR 0034](decisions/0034-minified-dist.md)): sinh lại `td.css`, icon, engine + policy rich-text, `dist/` + `module-graph.json`, bản embed (xem script `build` ở `package.json`);
+   commit mọi đầu ra (các gate `check:*` — `check:css` / `check:icons` / `check:rich-text-*` / `check:dist` / `check:embed` — so từng byte). Nâng esbuild là **một thay đổi riêng** (sinh lại gần như cả
    `dist/`), kiểm đủ gate, không gộp với tính năng.
 4. `npm test` xanh.
 5. Review theo quy trình Codex (impl-review, + security-review nếu đụng input/CSP) trước commit.

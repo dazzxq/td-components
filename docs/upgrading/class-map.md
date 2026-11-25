@@ -244,7 +244,7 @@ Nhãn phía trên dùng chung `label.td-field__label`; lỗi dùng `span.td-fiel
 | td ≤ 0.9 | `.td-dtp-wheel` (danh sách cuộn) | `.td-dtp-wheel__list[role=listbox]` (+ `.td-dtp-wheel__sep` dấu `:`) | `aria-activedescendant` | 0.10.0 |
 | td ≤ 0.9 | `.td-dtp-wheel-option` | `.td-dtp-wheel__option[role=option]` | `[aria-selected="true"]` | 0.10.0 |
 | td ≤ 0.9 | `.selected` (JS bật/tắt) | bỏ | `[aria-selected="true"]` | 0.10.0 |
-| td ≤ 0.9 | nút footer Tailwind | `button.td-btn.td-btn--{secondary\|primary}` (qua `actions` của TdModal) | — | 0.10.0 |
+| td ≤ 0.9 | nút footer Tailwind | `button.td-btn.td-btn--{secondary\|primary}[data-action="today\|now\|confirm"]`: popover = hàng `div.td-dtp-pop__actions`; sheet = `footer` của TdModal (node tự dựng, 0.61.0) | — | 0.10.0 |
 
 Dải chọn của bánh xe dùng token `--td-dtp-band-border` (đổi tông ở 0.14.4).
 

@@ -76,9 +76,8 @@ dáng như trigger), JS nhận **tại chỗ** không nháy ([PHP adapter § td_
 <?= td_date('ngay_giao', $order['ship_date'], ['label' => 'Ngày giao', 'min' => date('Y-m-d'), 'required' => true]) ?>
 ```
 
-**0.60.0:** không có `min` / `max` thì **mọi ngày có thật đều hợp lệ** (năm 1–9999) — ngày sinh, dữ liệu cũ in thẳng,
-không cần đặt `min` nữa. (0.56–0.59: giá trị server ngoài năm 2000–2099 bị bỏ kèm một cảnh báo PHP.) Muốn giới hạn thì đặt
-`min` / `max` tường minh. Không JS, ô native gửi định dạng của trình duyệt: `yyyy-mm-dd` (mode date — trùng iso) /
+**0.60.0:** không có `min` / `max` thì mọi ngày có thật đều hợp lệ — ngày sinh, dữ liệu cũ in thẳng, không cần đặt `min`
+nữa (luật và lưu ý đổi hành vi ở [mục 4](#4-giới-hạn-min--max)). Muốn giới hạn thì đặt `min` / `max` tường minh. Không JS, ô native gửi định dạng của trình duyệt: `yyyy-mm-dd` (mode date — trùng iso) /
 `yyyy-mm-ddThh:mm` (mode datetime).
 
 In tay (không dùng helper): attribute `value` nhận định dạng display, hoặc ISO của mode (từ 0.18.0: `2026-06-15T10:30` ở
@@ -265,7 +264,7 @@ không phải đổi markup hay handler.
 
 - Chọn **tháng** hay **năm** trong lưới của mode `date` / `datetime` chỉ là điều hướng: không `change`, không đóng. Chọn
   tháng → về lưới ngày; chọn năm → về nơi đã mở lưới năm (lưới ngày hoặc lưới tháng).
-- **Esc** luôn đóng cả lịch và bỏ nháp (focus về ô). Bấm lại ô khi lịch đang mở: đóng, bỏ nháp, không `change`.
+- **Esc** và bấm lại ô khi lịch đang mở đều đóng + bỏ nháp, không `change`: xem [Bàn phím & trợ năng](#bàn-phím--trợ-năng).
 - **Nút xoá (`clearable`) vẫn bấm được khi popover đang mở**: bỏ nháp, xoá giá trị đã ghi, **đúng một** `change`
   `{ value: '', dbValue: '' }`, đóng, focus về ô. Giá trị rỗng thì nút ẩn (`Esc` để huỷ). Ở bottom sheet nút xoá không bấm được
   (sheet là modal).
@@ -341,7 +340,7 @@ hành vi, test của site).
 - **`Escape`** (lịch đóng): trả chữ về giá trị đã chốt, không chốt, không event.
 - **Lịch**: nút lịch, `ArrowDown` / `Alt+ArrowDown` trên ô → chốt rồi mở, lịch mở đúng tháng / năm vừa gõ, ngày được chọn
   (chữ không đọc được → mở như giá trị hỏng: hôm nay / `open-at`). Chọn trên lịch ghi như 0.62 (một `change`), ô hiện giá trị
-  mới, **focus về ô gõ** (không về nút). Bấm vào ô gõ khi popover đang mở → đóng, bỏ nháp, không `change`. Popover neo vào
+  mới, **focus về ô gõ** (không về nút). Bấm vào ô gõ khi popover đang mở đóng lịch như ở [Bàn phím & trợ năng](#bàn-phím--trợ-năng). Popover neo vào
   cả hộp (ô + nút).
 - **Sự kiện**: `input` / `change` gốc của ô gõ **không lọt ra** host — công khai chỉ có `change` (CustomEvent có `detail`) của
   element, như 0.62. Listener `change` của site không bao giờ nhận event thiếu `detail`.
@@ -613,7 +612,7 @@ Lịch (0.60.0). `{p}` = `{host}-dtp{n}`, `n` tăng mỗi lần mở. Cây này 
     <p class="td-dtp-pop__error" id="{p}-error" role="alert" hidden></p>   <!-- chỉ datetime -->
   </div>
   <div class="td-dtp-pop__actions">                                    <!-- popover: hàng nút ngoài vùng cuộn; sheet (0.61.0): CÙNG các nút `data-action` ở chân TdModal -->
-    <button type="button" class="td-btn td-btn--secondary td-btn--sm" data-action="today|now">…</button>   <!-- date/month/year: Hôm nay · Tháng này · Năm nay; datetime: Bây giờ -->
+    <button type="button" class="td-btn td-btn--secondary td-btn--sm" data-action="today|now">…</button>   <!-- date/month/year: một nút `today` (Hôm nay · Tháng này · Năm nay); datetime: `today` "Hôm nay" (màn ngày) + `now` "Bây giờ" (màn giờ) -->
     <button type="button" class="td-btn td-btn--primary td-btn--sm" data-action="confirm">Chọn</button>    <!-- chỉ datetime, chỉ hiện ở màn giờ -->
   </div>
 </div>
@@ -631,7 +630,7 @@ Lịch (0.60.0). `{p}` = `{host}-dtp{n}`, `n` tăng mỗi lần mở. Cây này 
 | `.td-dtp-pop__error` | `[hidden]` khi không có lỗi |
 | `.td-dtp-wheel__option` | `aria-selected="true"` |
 
-Class `.td-dtp-panel*` (hộp thoại ba ô số) **đã gỡ hẳn** (0.61.0; `<td-datetime-range>` cũng dùng lịch). Selector ổn định cho test: `.td-dtp-pop[data-step]`, `[data-action="today|now|confirm|back"]` (popover VÀ chân sheet), `.td-cal [data-date]`.
+Class `.td-dtp-panel*` (hộp thoại ba ô số) **đã gỡ hẳn** (0.61.0; `<td-datetime-range>` cũng dùng lịch). Selector ổn định cho test: bảng ở [mục 10](#10-lịch-0600).
 
 JS không ghi style nào; bánh xe cuộn bằng `scrollTo`, dùng CSS scroll-snap.
 
@@ -699,7 +698,7 @@ Trợ năng:
   hoặc `picker.value` (chuỗi thô) để phân biệt.
 - **Test cũ bấm một ngày rồi bấm "Chọn" ngay ở mode `datetime`** (0.61.0): bấm ngày giờ chuyển sang màn giờ — thêm một thao tác (chờ `[data-step="time"]`, rồi `[data-action="confirm"]`); chọn giờ qua bánh xe (ArrowUp / ArrowDown), không còn ô số.
 - **Test cũ gõ vào `[data-part="day|month|year"]`, bấm "Chọn" ở mode `date`, hoặc khẳng định `.td-dtp-panel` biến mất** (0.60.0):
-  ba ô số và nút đó không còn — dùng selector ở [mục 10](#10-lịch-0600). Khẳng định "không có `.td-dtp-panel`" nay **luôn đúng**.
+  ba ô số và nút đó không còn — dùng selector ở [mục 10](#10-lịch-0600). (Xem lưu ý `.td-dtp-panel` ở mục 10.)
 - **Ngày sinh / dữ liệu cũ** (0.60.0): không cần `min` nữa — không có bound thì năm 1–9999 đều hợp lệ (trước 0.60.0 năm
   ngoài 2000–2099 bị từ chối). Hộp thoại vẫn mở tại hôm nay; muốn mở ở một ngày khác thì đặt `open-at` (0.19.0).
 - **Xoá giá trị từ dữ liệu server rỗng**: `setDBValue(row.date ?? '')` xoá picker khi DB trả rỗng / `null` (0.19.0);

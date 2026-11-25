@@ -82,6 +82,8 @@ trạng thái ở mọi compound và coi luật có tổ tiên là phủ control
 | `.td-number__step` | `manipulation` | nút − / + của `td-number-input stepper` (v0.49.0): bấm liên tục là thao tác chính — không phóng to khi chạm nhanh hai lần trên iOS |
 | `.td-dtp-wheel__list` | `pan-y` | bánh xe giờ / phút (v0.61.0): vuốt dọc cuộn bánh xe (quán tính + CSS scroll-snap), không pan ngang, `overscroll-behavior: contain` (không dây chuyền ra trang), không phóng to khi chạm đúp |
 | `.td-cal__nav, .td-cal__title` | `manipulation` | nút ‹ › và nút tháng / năm của lịch `td-datetime-picker` (v0.60.0): đổi tháng liên tục là thao tác chính — không phóng to khi chạm nhanh hai lần trên iOS. Ô ngày / tháng / năm không đặt `touch-action` (cuộn trang bình thường) |
+| `.td-field__reveal` | `manipulation` | nút hiện / ẩn mật khẩu của `td-input-field` (v0.115.0): bấm lặp lại — không phóng to khi chạm nhanh hai lần trên iOS |
+| `.td-dropdown__retry` | `manipulation` | nút "Thử lại" của `td-dropdown` (v0.86.0): mục tiêu chạm — không phóng to khi chạm nhanh hai lần trên iOS |
 | `.td-check-matrix__tri` | `manipulation` | nút ba trạng thái của `td-check-matrix mode=override` (v0.95.0): chạm nhanh liên tục để xoay vòng — không phóng to khi chạm nhanh hai lần trên iOS |
 
 **Không có dòng cho `td-carousel` (v0.50.0, ADR 0024)** — có chủ đích: viewport của carousel giữ `touch-action: auto`
@@ -93,12 +95,12 @@ Lane touch: vuốt ngang cuộn dải, vuốt dọc cuộn trang, chạm "tiếp
 
 ## Ngưỡng và cử chỉ
 
-- `DRAG_SLOP` chuột 4 / bút 8 / chạm 10 px; `axisLock` đường chéo 45° → `y` (cuộn trang thắng).
+- `DRAG_SLOP` (số ở luật 8); `axisLock` đường chéo 45° → `y` (cuộn trang thắng).
 - Lightbox: `MOVE_SLOP 8` (khoá trục), vuốt chốt > 25 % bề rộng cột nhìn thấy (`viewRect()`) hoặc flick > 0.3 px/ms
   (mẫu 100 ms cuối) qua slop và cùng chiều; dây chun lực cản 0.35, trần 20 % bề rộng; trượt ra `--td-lb-dur-fast`, lò xo
   `--td-lb-dur` + `--td-lb-spring`; hẹn giờ cố định = thời lượng + 50 ms. Bắt đầu trong 24 px mép = của trình duyệt.
 - Cropper `TAP_PX 4`; **ngoại lệ**: cropper kiểu `pan` (0.73.0) không có ngưỡng kéo, vì stage không có hành động chạm (công cụ trọng tâm tắt) nên không cần phân biệt chạm / kéo — ảnh theo ngón từ px đầu. Nếu sau này `pan` có thao tác chạm thì phải đọc `dragSlop(e.pointerType)`. Sortable / repeater / media-grid `dragSlop()`.
-- `press.js` gỡ `data-td-pressed` khi ngón di quá `dragSlop()` (6 px giữ, 12 px gỡ với touch).
+- `press.js` gỡ `data-td-pressed` khi ngón di quá `dragSlop(e.pointerType)` (ngưỡng ở luật 8).
 
 ## Bàn phím ảo
 

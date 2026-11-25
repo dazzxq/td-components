@@ -173,7 +173,7 @@ Giá trị mặc định lấy từ `src/styles/tokens.css` (light). Cột "Dark
 | `--td-w-text` | `640px` | Độ rộng cột chữ (dành cho site; component không dùng) |
 | `--td-w-wide` | `960px` | Khung rộng (dành cho site) |
 | `--td-w-wider` | `1280px` | Khung rất rộng (dành cho site) |
-| `--td-gutter` | `16px` | Lề hai bên (dành cho site) |
+| `--td-gutter` | `16px` | Lề hai bên: site dùng cho bố cục; toast (lề + bề rộng tối đa) và loading (bề rộng tối đa) cũng đọc token này |
 | `--td-gap` | `24px` | Khoảng cách khối (dành cho site) |
 
 ### Chữ
@@ -395,7 +395,7 @@ Button là **màu đặc** (0.20.0): nền `--td-btn-{variant}-bg` + **một** s
 sheen / viền sáng / glow / co khi nhấn. 0.21.0: **primary đen** (dark: đảo sáng). 0.36.0: success / danger / warning /
 info **màu đặc** (trỏ vào [bộ màu đặc](#màu-ngữ-nghĩa-đặc-0360); warning chữ tối; 0.21–0.35 là pastel). Hover = nền đặc đọc
 `--td-btn-{v}-hover`; nút có thuộc tính `color` và alias `-tint` pha 8 % đen bằng `color-mix()` (trình duyệt không có
-`color-mix()` giữ nguyên nền). **Đổi `-bg` thì đặt kèm `-hover`** (kit không suy hover từ `-bg` của site). Ghost và
+`color-mix()` giữ nguyên nền). **Đổi `-bg` thì đặt kèm `-hover` và `-pressed`** (kit không suy hover / pressed từ `-bg` của site). Ghost và
 disabled không có shadow.
 
 | Token | Mặc định | Dark |
@@ -404,21 +404,25 @@ disabled không có shadow.
 | `--td-btn-primary-bg` | `#18181b` | `#f4f4f5` |
 | `--td-btn-primary-fg` | `#fff` | `#18181b` |
 | `--td-btn-primary-hover` | `#3f3f46` | `#d4d4d8` |
+| `--td-btn-primary-pressed` | `#52525b` | `#a1a1aa` |
 | `--td-btn-primary-border` | `transparent` | |
 | `--td-btn-secondary-bg` | `var(--td-color-fill)` | `#2c2c30` |
 | `--td-btn-secondary-fg` | `var(--td-color-text)` | `#f5f5f7` |
 | `--td-btn-secondary-border` | `rgb(0 0 0 / 12%)` | `rgb(255 255 255 / 12%)` |
 | `--td-btn-secondary-hover` | `var(--td-gray-200)` | `#3a3a3e` |
+| `--td-btn-secondary-pressed` | `var(--td-gray-300)` | `#45454b` |
 | `--td-btn-{success,danger,info,warning}-bg` | `var(--td-solid-{v}-bg)` (0.36.0) | như light |
 | `--td-btn-{success,danger,info,warning}-fg` | `var(--td-solid-{v}-fg)` | như light |
 | `--td-btn-{success,danger,info,warning}-border` | `var(--td-solid-{v}-border)` | như light |
 | `--td-btn-{success,danger,info,warning}-hover` | `var(--td-solid-{v}-hover)` (đậm hơn một bậc) | như light |
+| `--td-btn-success-pressed` / `-danger-` / `-warning-` / `-info-` | `#14532d` / `#991b1b` / `#cc6d05` / `#1e40af` (0.36.2: một bậc sau hover; chữ vẫn ≥ 4.7:1) | như light |
 | `--td-btn-disabled-bg` | `#f4f4f5` | `#202024` |
 | `--td-btn-disabled-fg` | `#a1a1aa` | `#6b6b73` |
 | `--td-btn-disabled-border` | `#e4e4e7` | `rgb(255 255 255 / 6%)` |
 | `--td-btn-lift` | `0 1px 3px rgb(0 0 0 / 10%), 0 4px 10px -2px rgb(0 0 0 / 12%)` (0.21.0) | `0 1px 3px rgb(0 0 0 / 20%), 0 4px 10px -2px rgb(0 0 0 / 24%)` |
 | `--td-btn-ghost-fg` | `var(--td-accent)` (#2563eb) | theo `--td-accent` dark (#4b8df8) |
 | `--td-btn-ghost-hover-bg` | `var(--td-color-hover)` (`rgb(0 0 0 / 5%)`) | theo `--td-color-hover` dark (`rgb(255 255 255 / 6%)`) |
+| `--td-btn-ghost-pressed` | `var(--td-color-pressed)` (0.36.2) | theo `--td-color-pressed` dark |
 
 Ghi chú:
 
@@ -460,6 +464,7 @@ cuối; danh sách chọn nhiều giữ ô tick chung ở đầu (ADR 0017). Hà
 | `--td-option-hover-bg` | `var(--td-color-hover)` | Nền khi rê chuột |
 | `--td-option-active-bg` | `var(--td-color-hover-strong)` | Nền hàng active (bàn phím) |
 | `--td-option-selected-bg` | `var(--td-color-hover-strong)` | Nền hàng đã chọn |
+| `--td-option-pressed-bg` | `var(--td-color-pressed)` (0.36.2) | Nền hàng khi đang nhấn (cảm ứng `:active` / `[data-td-pressed]`) |
 | `--td-option-active-bar` | `var(--td-accent)` | Màu vạch nhấn của hàng active |
 | `--td-option-active-bar-w` | `3px` | Độ dày vạch nhấn |
 
@@ -896,7 +901,7 @@ mv td-theme.css "public/assets/td-theme.$h.css" && echo "td-theme.$h.css"
 <link rel="stylesheet" href="/assets/site.css">
 ```
 
-Header của file ghi phiên bản thuật toán + hợp đồng (`palette algorithm 5, THEME_TOKENS v1`) và seed đã chuẩn hoá về
+Header của file ghi phiên bản thuật toán (hiện 5; từng bậc đổi gì: [breaking-changes](../upgrading/breaking-changes.md) — thuật toán 4 ở § 0.52.0, 5 ở § 0.76.0) + hợp đồng (`palette algorithm 5, THEME_TOKENS v1`) và seed đã chuẩn hoá về
 hex. **Sinh lại khi nâng `td-components`** (so header với `npx td-theme --version`); không sửa tay file sinh.
 Thuật toán 2 (0.42.1) chỉ thêm một dòng `--td-form-summary-pressed-bg` (= `--td-color-pressed` của palette), mọi giá trị
 khác như thuật toán 1; file thuật toán 1 vẫn chạy đúng (thiếu token → mặc định `var(--td-color-pressed)` của kit).
@@ -1101,13 +1106,13 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | td-choice-group | `--td-choice-*` (ô, màu chọn, swatch) và `--td-choice-seg-*` (segmented); bảng đủ + mặc định ở trang component | `:root` (màu: `:root, [data-td-theme]`) | [choice-group.md](../components/choice-group.md) |
 | td-repeater | `--td-repeater-gap` (khoảng cách trong dòng + đệm dòng, `var(--td-space-sm)`), `--td-repeater-btn-size` (`2rem`, ≥ 44px trên cảm ứng), `--td-repeater-btn-fg` / `-fg-hover` / `-bg-hover` / `-disabled-fg`, `--td-repeater-divider` (0.30.0) | `:root` | [repeater.md](../components/repeater.md) |
 | td-media-field | `--td-media-field-*`: bề rộng host / khung, cạnh ô vuông, bo góc khung, nút X / cắt, vòng icon khung rỗng (bảng đủ ở trang component) | `:root` (hoặc trên từng host) | [media-field.md](../components/media-field.md) |
-| td-cropper | `--td-cropper-h` (chiều cao vùng cắt inline, `min(60vh, 32rem)`), `--td-cropper-dim` (vùng mờ ngoài khung, `rgb(0 0 0 / 55%)`), `--td-cropper-line` (viền trong của khung, trắng), `--td-cropper-line-contrast` (viền ngoài, đen 60 % — khung thấy được trên ảnh trắng lẫn đen), `--td-cropper-handle` (nền tay nắm), `--td-cropper-focus` / `--td-cropper-focus-halo` (vòng focus hai tông trên ảnh: trắng + quầng đen 75 %) (0.35.0), `--td-cropper-pan-inset` (khoảng đệm tối thiểu từ mép vùng cắt tới khung cố định của `mode="pan"`, `24px`) (0.73.0). Mặc định qua gate `test:contrast` ≥ 3:1 trên ảnh trắng / đen / vùng mờ; ghi đè thì site tự kiểm. `--_tdc-*` (vị trí do JS đặt) là private | `:root` (hoặc trên từng `td-cropper`) | [cropper.md](../components/cropper.md) |
-| td-scan-input | `--td-scan-list-max` (chiều cao tối đa danh sách mã ở chế độ `multiple`, cuộn bên trong, `50vh`), `--td-scan-ready` (màu chỉ báo "Sẵn sàng quét" khi ô focus, `--td-color-success`), `--td-scan-idle` (chỉ báo khi không focus, chữ phụ), `--td-scan-font-size` (cỡ chữ ô nhập, ≥ 16px để iOS không phóng to), `--td-scan-list-bg` / `--td-scan-list-border` / `--td-scan-row-sep` (nền đặc + hairline danh sách), `--td-scan-valid` / `--td-scan-invalid` (trạng thái dòng) (0.38.0). Chữ chỉ báo / dòng lỗi / "Đã quét: n" qua gate `test:contrast` ≥ 4.7 | `:root` (hoặc trên từng `td-scan-input`) | [scan-input.md](../components/scan-input.md) |
-| td-check-matrix | `--td-check-matrix-cell-size` (chiều cao ô, `2.25rem`, `2.75rem` trên con trỏ thô), `--td-check-matrix-label-w` (cột nhãn sticky, `clamp(10rem, 28cqi, 18rem)`), `--td-check-matrix-col-w` (cột dữ liệu, `5.5rem`), `--td-check-matrix-max-height` (khung cuộn, `70vh`; attribute `max-height` ghi đè qua CSSOM), `--td-check-matrix-head-bg` / `-group-bg` (header + cột sticky / hàng nhóm, nền đặc, `var(--td-color-surface-muted)`), `--td-check-matrix-row-active` (hàng + header cột đang focus, `var(--td-color-hover)`), `--td-check-matrix-changed` (tam giác "đã đổi", `var(--td-accent)`), `--td-check-matrix-note-mark` (chấm ghi chú, `var(--td-color-text-muted)`) (0.47.0). Mọi màu suy ra từ token theme; chữ ≥ 4.7, dấu hình ≥ 3, mark khoá (60 %) ≥ 2.2 qua `test:contrast` 0.95.0 `mode="override"`: `--td-check-matrix-grant-bg` (nền ✓ cấp quyền), `--td-check-matrix-deny-bg` / `-deny-fg` (nền + dấu ✕ từ chối), `--td-check-matrix-inherit-mark` (dấu kế thừa, ≥ 3:1 trên surface), `--td-check-matrix-inherit-edge` (viền ô kế thừa, `var(--td-control-border-strong)`, ≥ 3:1) | `:root` (màu: `:root, [data-td-theme]`) | [check-matrix.md](../components/check-matrix.md) |
-| td-datetime-range | `--td-dtr-preset-h` (chiều cao chip preset, 44px trên cảm ứng), `--td-dtr-preset-bg` / `-fg` / `-border` / `-hover-bg`, `--td-dtr-preset-on-bg` / `-on-fg` / `-on-pressed` (preset đang khớp, mặc định màu nút primary), `--td-dtr-switch-bg` / `--td-dtr-tab-on-bg` / `--td-dtr-tab-fg` / `--td-dtr-tab-note` (công tắc "Từ \| Đến", mọi bề rộng) (0.40.0). Trigger dùng `--td-field-*`, bánh xe `--td-dtp-*`. Chữ preset / công tắc / dòng lỗi qua gate `test:contrast` ≥ 4.7 | `:root` (hoặc trên từng `td-datetime-range`) | [datetime-range.md](../components/datetime-range.md) |
-| td-color-picker | `--td-color-picker-width` (độ rộng popup, `17.5rem`), `--td-color-picker-area-height` (vùng 2 chiều, `10rem`; 7rem khi màn hình thấp), `--td-color-picker-swatch` (ô màu trong ô nhập, `1.5rem`) — `:root`; màu: `--td-color-swatch-border` (viền ô màu / preset, `var(--td-control-border-strong)`, ≥ 3:1 với nền ô) và `--td-color-checker` (ô cờ "chưa có màu", `var(--td-color-border)`) — dẫn từ hợp đồng theme, theo vùng (0.48.0). Ô nhập dùng `--td-field-*`, popup `--td-glass-*`. Chữ / icon / mép ô màu qua gate `test:contrast` | `:root` (hoặc trên từng `td-color-picker`) | [color-picker.md](../components/color-picker.md) |
-| td-media-picker | viền trạng thái card (0.33.0): `--td-media-picker-card-viewing` (đang xem, mặc định `var(--td-accent)`), `--td-media-picker-card-hover` (mặc định `var(--td-media-picker-card-viewing)`), `--td-media-picker-card-checked` (đã chọn, mặc định `var(--td-color-success)`; thắng đang xem). Cả ba mặc định qua gate `test:contrast` ≥ 3:1 trên surface; ghi đè thì site tự kiểm. Vỏ dùng `--td-modal-*`, lưới dùng `--td-media-grid-*` | `:root` | [media-picker.md](../components/media-picker.md) |
-| td-media-grid | `--td-media-grid-*` — cũ: `-cols`, `-gap`, `-radius`, `-tick-*`. Mới (0.33.0): `--td-media-grid-fit` (`object-fit` của ảnh trong ô, `cover` / `contain`), `--td-media-grid-ratio` (tỉ lệ khung ô, mặc định `auto` = cao theo ảnh), `--td-media-grid-selected-ring` (vòng inset của ô đã chọn), `--td-media-grid-selected-scale` (mặc định **`1`**, trước 0.88), `--td-media-grid-tick-inline` (góc tick: `start` \| `end`); với `layout="justified"`: `--td-media-grid-row-ratio` / `-md` / `-sm` (Σ tỉ lệ đích mỗi dòng theo bề rộng **lưới** — 0.34.0: ≥ 1024px `5.5`, 720–1023px `4`, < 720px `2.5`), `--td-media-grid-fallback-ar` (tỉ lệ tạm khi chưa biết kích thước ảnh, `1.5`). Ảnh trong ô do grid đặt kích thước bằng CSSOM inline `!important`: đổi bằng token, **không** đặt CSS lên `img` | `:root` (hoặc trên từng `td-media-grid`) | [media-grid.md](../components/media-grid.md) |
+| td-cropper | `--td-cropper-*` (chiều cao vùng cắt, vùng mờ, viền khung hai tông, tay nắm, vòng focus, `pan-inset`); `--_tdc-*` (vị trí do JS đặt) là private | `:root` (hoặc trên từng `td-cropper`) | [cropper.md](../components/cropper.md) |
+| td-scan-input | `--td-scan-*` (danh sách mã, chỉ báo sẵn sàng / nghỉ, cỡ chữ ô nhập, nền + hairline danh sách, trạng thái dòng) | `:root` (hoặc trên từng `td-scan-input`) | [scan-input.md](../components/scan-input.md) |
+| td-check-matrix | `--td-check-matrix-*` (hình học ô / cột, khung cuộn, nền header / nhóm, hàng active, dấu "đã đổi" / ghi chú; mode override: cấp / từ chối / kế thừa) | `:root` (màu: `:root, [data-td-theme]`) | [check-matrix.md](../components/check-matrix.md) |
+| td-datetime-range | `--td-dtr-*` (chip preset, công tắc "Từ \| Đến"); trigger dùng `--td-field-*`, bánh xe `--td-dtp-*` | `:root` (hoặc trên từng `td-datetime-range`) | [datetime-range.md](../components/datetime-range.md) |
+| td-color-picker | `--td-color-picker-*` (độ rộng popup, vùng 2 chiều, ô màu) + `--td-color-swatch-border` / `--td-color-checker` (màu, dẫn từ hợp đồng theme, theo vùng); ô nhập dùng `--td-field-*`, popup `--td-glass-*` | `:root` (hoặc trên từng `td-color-picker`) | [color-picker.md](../components/color-picker.md) |
+| td-media-picker | `--td-media-picker-card-*` (viền trạng thái card: đang xem / hover / đã chọn); vỏ dùng `--td-modal-*`, lưới dùng `--td-media-grid-*` | `:root` | [media-picker.md](../components/media-picker.md) |
+| td-media-grid | `--td-media-grid-*` (cột, khoảng cách, bo góc, tick, `fit` / `ratio`, vòng + scale ô đã chọn, tỉ lệ dòng của `layout="justified"`); ảnh trong ô do grid đặt kích thước bằng CSSOM: đổi bằng token, **không** đặt CSS lên `img` | `:root` (hoặc trên từng `td-media-grid`) | [media-grid.md](../components/media-grid.md) |
 | td-selection-bar (0.95.0) | `--td-selection-bar-*` (bề mặt đặc, khoảng cách, `-position`, `-z`, nút nguy hiểm) và `--td-selection-bar-glass-*` (kiểu `surface="glass"`); bảng đủ + mặc định ở trang component | `:root` (màu: `:root, [data-td-theme]`) | [selection-bar.md](../components/selection-bar.md) |
 | td-page-actions (0.96.0) | `--td-page-actions-gap` (khoảng giữa các nút, `--td-space-xs`), `--td-page-actions-justify` (căn hàng nút, `flex-end`) | `:root` | [page-actions.md](../components/page-actions.md) |
 | td-card (0.95.0, thuần CSS) | `--td-card-*` (bề mặt, media, tiêu đề, meta, lưới `-grid-*`); bảng đủ + mặc định ở trang component | `:root` (màu: `:root, [data-td-theme]`) | [card.md](../components/card.md) |
@@ -1121,8 +1126,8 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | TdHovercard | `--td-hovercard-*` | `:root` | [hovercard.md](../components/hovercard.md) |
 | TdLightbox | `--td-lb-*` | `:root` (có `@media (pointer: coarse)` và safe-area); `--td-lb-bar-h` dẫn xuất, tính trên `.td-lightbox` | [lightbox.md](../components/lightbox.md) |
 | td-table | `--td-table-*` (0.57.0: + `--td-table-tree-indent` / `-toggle-size` / `-card-indent` / `-card-levels` / `-guide` của bảng cây) | `:root` (riêng `--td-table-cell-px` bị modifier `.td-table__cell--px-*` đặt lại; `--td-table-tree-guide` đi theo theme scope) | [table.md](../components/table.md) |
-| td-filter-chips | `--td-filter-chip-*` — `-bg`, `-fg`, `-label-fg`, `-border`, `-radius`, `-h` (`28px`), `-gap`, `-max` (bề rộng tối đa của giá trị, `16rem`), `-remove-fg` (icon ×, ≥ 4.7:1 trên nền chip), `-remove-hover` (0.39.0). Mặc định qua gate `test:contrast`; ghi đè thì site tự kiểm | `:root` | [filter-chips.md](../components/filter-chips.md) |
-| td-steps | Hình học `--td-steps-marker` (`28px`), `--td-steps-line` (`2px`), `--td-steps-gap`; màu `--td-steps-{done,current,upcoming,error}-{bg,fg,border}`, `--td-steps-connector`, `--td-steps-connector-done` (0.45.0) — mặc định là `var()` của hợp đồng theme (accent, surface, viền control, cặp lỗi của alert): dark / palette sinh / theme theo vùng không cần thêm gì | hình học `:root`; màu `:root, [data-td-theme]` | [steps.md](../components/steps.md) |
+| td-filter-chips | `--td-filter-chip-*` (màu, bo góc, chiều cao, khoảng cách, bề rộng tối đa, nút ×) | `:root` | [filter-chips.md](../components/filter-chips.md) |
+| td-steps | `--td-steps-*` (hình học marker / đường nối; màu theo trạng thái done / current / upcoming / error, mặc định là `var()` của hợp đồng theme nên dark / palette sinh / vùng không cần thêm gì) | hình học `:root`; màu `:root, [data-td-theme]` | [steps.md](../components/steps.md) |
 | td-timeline | Hình học `--td-timeline-marker` (`28px`), `--td-timeline-line` (`2px`), `--td-timeline-gap`; màu `--td-timeline-marker-{bg,fg,border}`, `--td-timeline-connector`, `--td-timeline-day-fg` (0.45.0); tông dùng `--td-alert-{v}-{bg,border,icon}` | hình học `:root`; màu `:root, [data-td-theme]` | [timeline.md](../components/timeline.md) |
 | td-diff | `--td-diff-*` (nền ô "Sau" / "Trước" phụ thuộc sáng / tối, chữ, viền, `-label-w`, `-json-max-h`, `-font-mono`); palette `td-theme` tự tính nền cho site; bảng đủ + mặc định ở trang component | `:root` (màu: `:root, [data-td-theme]`) | [diff.md](../components/diff.md) |
 | td-rating (0.50.0) | `--td-rating-*` — `-fill` (`--td-solid-warning-bg`), `-stroke` (`--td-color-warning`, viền sao tô ≥ 3.2), `-empty` (`--td-color-border-strong`, trang trí), `-value-fg`, `-count-fg`, `-size`, `-gap` | màu: `:root, [data-td-theme]` (alias token hợp đồng — palette `td-theme` tự đúng); hình học: `:root` | [rating.md](../components/rating.md#token-css) |
