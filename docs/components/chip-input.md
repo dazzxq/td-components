@@ -1,4 +1,3 @@
-| `create-empty-label` | string | — | 0.127.0 (chế độ thường): dòng hành động ghim đáy khi danh sách mở mà ô còn rỗng (vd `show-on-focus`) → event `create` `{ query: '' }`, không chip, không `change`. Không hiện khi đầy / `selection-only`. Property `createEmptyLabel`. ([mục 6](#6-tạo-mục-mới-allow-create-create)) |
 [Tài liệu](../README.md) › [Components](README.md) › Chip input
 
 # Chip input — `<td-chip-input>`
@@ -414,6 +413,7 @@ nguyên số dòng như cũ. Chế độ native (`div.td-multiselect`) không n�
 | `label-key` | string | `label` | Key chữ hiển thị. |
 | `max-length` | number | `200` | Độ dài tối đa chữ gõ / mục tạo mới (`maxlength` của ô). |
 | `create-label` | string | — | 0.87.0 (cùng `selection-only`): dòng "tạo mới" ghim đáy danh sách → event `create` `{ query }` ([mục 11](#11-chọn-nhiều-từ-danh-sách--multi-select-0280)). 0.117.0: cũng dùng được cùng `allow-create` (dòng hành động sau dòng `Thêm`, mọi `{text}` thay bằng chữ gõ; [mục 6](#6-tạo-mục-mới-allow-create-create)). |
+| `create-empty-label` | string | — | 0.127.0 (chế độ thường): dòng hành động ghim đáy khi danh sách mở mà ô còn rỗng (vd `show-on-focus`) → event `create` `{ query: '' }`, không chip, không `change`. Không hiện khi đầy / `selection-only`. Property `createEmptyLabel`. ([mục 6](#6-tạo-mục-mới-allow-create-create)) |
 | `selection-only` | boolean | `false` | 0.28.0: chỉ chọn từ `options` / `search()`, mục lật chọn, ô tick trên mỗi mục (0.36.0: ô tick chung) (mục 11). Tự bật khi nâng cấp `<select multiple>`. |
 | `select-all` | boolean | `false` | 0.28.0 (cùng `selection-only`): dòng "Chọn tất cả (N)" đầu danh sách. |
 | `close-on-select` | boolean | `false` | 0.28.0 (cùng `selection-only`): đóng popup (và xoá chữ lọc) sau mỗi lần chọn. |
@@ -454,7 +454,7 @@ Các attribute còn lại có property phản chiếu tự động (`maxItems`, 
 | Event | detail | Khi nào | bubbles? |
 |---|---|---|---|
 | `change` | `{ value, items, added? , removed? }` — `value` và `items` đều là mảng mục hiện tại; `added` là mục vừa thêm **hoặc** `removed` là mục vừa xoá. 0.28.0 dòng chọn-tất-cả: `{ value, items, addedItems }` hoặc `{ value, items, removedItems }` (mảng) | Người dùng thêm (chọn / tạo) hoặc xoá một chip (`selection-only`: mỗi lần lật chọn một mục). API code (`setValue`, `addItem`, …) và reset **không** phát. Sự kiện `change` gốc của ô `<input>` bên trong bị chặn, không lọt ra ngoài. | có |
-| `create` | `{ query }` | 0.87.0: kích hoạt dòng `create-label` (`selection-only`; 0.117.0: cả `allow-create`, không thêm chip / không gọi hook `create`). `query` là chữ đã gõ (đã làm sạch, `''` nếu rỗng). Không kèm `change`. | có |
+| `create` | `{ query }` | 0.87.0: kích hoạt dòng `create-label` (`selection-only`; 0.117.0: cả `allow-create`, không thêm chip / không gọi hook `create`). `query` là chữ đã gõ (đã làm sạch, `''` nếu rỗng). Không kèm `change`. 0.127.0: dòng `create-empty-label` (ô rỗng) cũng phát event này với `{ query: '' }`. | có |
 | `search-error` | `{ query, error }` | Hàm `search` ném lỗi / reject (trừ `AbortError`, trừ phản hồi đã cũ). | có |
 
 ## Hook & tuỳ chọn
