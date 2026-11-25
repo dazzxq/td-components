@@ -10,7 +10,7 @@ const MAX_VISIBLE = 8;
 const LOADING_MS = 400; // "Đang tìm…" only for slow responses (no flash on fast ones)
 const RESULTS_MS = 500; // "{n} gợi ý" is announced once typing settles
 /** Instance properties a page may set before the element upgrades (re-applied through the class setters). */
-const UPGRADE_PROPS = ['value', 'options', 'search', 'create', 'renderOption', 'renderChip', 'messages', 'createLabel'];
+const UPGRADE_PROPS = ['value', 'options', 'search', 'create', 'renderOption', 'renderChip', 'messages', 'createLabel', 'createEmptyLabel'];
 
 /** `{key}` placeholders → values (function replacer: `$` in data is never special). */
 const format = (tpl, vars = {}) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
@@ -62,7 +62,7 @@ export function parseChipItems(str) {
  *         <span class="td-chip-input__option-label">{label | renderOption(item, { query })}</span>
  *         [<span class="td-chip-input__option-desc">{item.description}</span>]</div>
  *       [<div class="td-chip-input__option td-chip-input__option--create" role="option" id="{host}-opt-create">Thêm “{text}”</div>]
- *       [<div class="td-chip-input__option td-chip-input__option--create td-chip-input__option--external" role="option" id="{host}-opt-external">…</div>]  (v0.117.0: allow-create + create-label)
+ *       [<div class="td-chip-input__option td-chip-input__option--create td-chip-input__option--external" role="option" id="{host}-opt-external">…</div>]  (v0.117.0: allow-create + create-label); v0.127.0: same row for create-empty-label on an empty query
  *     </div>
  *     <p class="td-chip-input__empty" [data-kind="none|loading|error"]>…</p>
  *   </div>
@@ -121,6 +121,9 @@ export function parseChipItems(str) {
  * @attr {boolean} show-on-focus - Show suggestions (empty-query search) when focus enters
  * @attr {string} value-key - Item value key (default "value")
  * @attr {string} label-key - Item label key (default "label")
+ * @attr {string} create-empty-label - v0.127.0 (normal mode): a pinned action row at the bottom of the list while nothing is typed
+ *   (e.g. with `show-on-focus`). Picking it emits `create` `{ query: '' }` (no chip, no `change`) and closes the popup.
+ *   Typed text → the row is gone. Not shown when full; ignored with `selection-only`
  * @attr {number} max-length - Max typed/created text length (default 200)
  * @attr {boolean} selection-only - v0.28.0: pick only from options / results (multi-select, rows toggle, ✓ shown)
  * @attr {boolean} select-all - v0.28.0 (with selection-only): "select all shown" first row
@@ -147,7 +150,7 @@ export class TdChipInput extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'label', 'placeholder', 'value', 'max-items', 'min-chars', 'search-delay',
       'allow-create', 'show-on-focus', 'value-key', 'label-key', 'max-length', 'error-text', 'aria-label',
-      'selection-only', 'select-all', 'close-on-select', 'create-label'];
+      'selection-only', 'select-all', 'close-on-select', 'create-label', 'create-empty-label'];
   }
 
   static get booleanAttributes() {
@@ -383,6 +386,13 @@ export class TdChipInput extends TdFormElement {
   get create() { return this._create; }
   set create(fn) { this._create = typeof fn === 'function' ? fn : null; }
 
+  /** v0.127.0: mirrors `create-empty-label` ('' = no pinned action row on an empty query) */
+  get createEmptyLabel() { return this.getAttribute('create-empty-label') || ''; }
+  set createEmptyLabel(v) {
+    if (v == null || v === false || String(v) === '') this.removeAttribute('create-empty-label');
+    else this.setAttribute('create-empty-label', String(v));
+  }
+
   /** v0.87.0: mirrors `create-label` ('' = no create row) */
   get createLabel() { return this.getAttribute('create-label') || ''; }
   set createLabel(v) {
@@ -433,6 +443,9 @@ export class TdChipInput extends TdFormElement {
   _extRowLabel() {
     return !this._selOnly() && this.hasAttribute('allow-create') ? this.getAttribute('create-label') || '' : '';
   }
+  /** @private v0.127.0: normal mode: the pinned action row's label for an empty query ('' = no row) */
+  _actRowLabel() { return this._selOnly() ? '' : this.getAttribute('create-empty-label') || ''; }
+
   /** @private the RENDERED listbox is the multi-select one (rows in `_rowEls`, highlight = data-active) */
   _rendSel() { return this._list()?.getAttribute('aria-multiselectable') === 'true'; }
 
@@ -655,7 +668,14 @@ export class TdChipInput extends TdFormElement {
       case 'allow-create':
         this._warnCreate(); // read when used (as before)
         // v0.117.0: shown normal-mode create rows (Thêm / external) were built for the old value → drop them
-        if (!this._selOnly() && this._nav.some((e) => e && ('ext' in e || 'create' in e))) {
+        if (!this._selOnly() && this._nav.some((e) => e && ('ext' in e || 'create' in e || 'act' in e))) {
+          this._navQuery = null;
+          this.close();
+        }
+        return;
+      case 'create-empty-label':
+        // v0.127.0: a shown action row carries the old label → close; rebuilt on the next open
+        if (this._nav.some((e) => e && 'act' in e)) {
           this._navQuery = null;
           this.close();
         }
@@ -1296,8 +1316,8 @@ export class TdChipInput extends TdFormElement {
 
   /** @private v0.117.0: remove both normal-mode create rows from the shown list (a new remote query is pending) */
   _dropCreateRows() {
-    if (this._selOnly() || !this._nav.some((e) => e && ('ext' in e || 'create' in e))) return;
-    this._nav = this._nav.filter((e) => !('ext' in e || 'create' in e));
+    if (this._selOnly() || !this._nav.some((e) => e && ('ext' in e || 'create' in e || 'act' in e))) return;
+    this._nav = this._nav.filter((e) => !('ext' in e || 'create' in e || 'act' in e));
     this._renderOptions(this._navQuery || '');
     this._activeIndex = -1;
     this._syncActive(false);
@@ -1447,6 +1467,8 @@ export class TdChipInput extends TdFormElement {
         if (this._extRowLabel()) nav.push({ ext: text });
       }
     }
+    // v0.127.0: empty query → the pinned action row (an event only; never a value)
+    if (!text && this._actRowLabel()) nav.push({ act: true });
     this._nav = nav;
     this._navQuery = q;
     this._renderOptions(q);
@@ -1499,7 +1521,7 @@ export class TdChipInput extends TdFormElement {
       return;
     }
     list.removeAttribute('aria-multiselectable');
-    list.toggleAttribute('data-create-row', this._nav.some((e) => e && 'ext' in e));
+    list.toggleAttribute('data-create-row', this._nav.some((e) => e && ('ext' in e || 'act' in e)));
     const nodes = this._nav.map((entry, i) => {
       const el = document.createElement('div');
       el.setAttribute('role', 'option');
@@ -1521,8 +1543,9 @@ export class TdChipInput extends TdFormElement {
           d.textContent = String(desc);
           el.appendChild(d);
         }
-      } else if ('ext' in entry) {
+      } else if ('ext' in entry || 'act' in entry) {
         // v0.117.0: the external action row (the 0.87.0 create-row markup; text through textContent, never HTML)
+        // v0.127.0: the empty-query action row ('act') shares it (the two never coexist: ext needs text)
         el.className = 'td-chip-input__option td-chip-input__option--create td-chip-input__option--external';
         el.id = `${this.id}-opt-external`;
         const icon = document.createElement('span');
@@ -1531,7 +1554,7 @@ export class TdChipInput extends TdFormElement {
         icon.setAttribute('aria-hidden', 'true');
         const label = document.createElement('span');
         label.className = 'td-chip-input__option-label';
-        label.append(icon, document.createTextNode(format(this._extRowLabel(), { text: entry.ext })));
+        label.append(icon, document.createTextNode('act' in entry ? this._actRowLabel() : format(this._extRowLabel(), { text: entry.ext })));
         el.append(label);
       } else {
         el.className = 'td-chip-input__option td-chip-input__option--create';
@@ -1716,7 +1739,11 @@ export class TdChipInput extends TdFormElement {
       return;
     }
     if (entry.item) this._addUser(entry.item);
-    else if ('ext' in entry) {
+    else if ('act' in entry) {
+      // v0.127.0: the empty-query action row: still valid only while nothing is typed
+      const input = this._input();
+      if (this._actRowLabel() && !this._isDisabled() && !this._isFull() && !cleanText(input ? input.value : '', this._maxLength())) this._createAction();
+    } else if ('ext' in entry) {
       // v0.117.0: the event only, no chip, no hook, no change
       if (this._createRowValid(entry.ext)) this._createAction();
     } else if ('create' in entry) {

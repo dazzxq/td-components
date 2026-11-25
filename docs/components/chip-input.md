@@ -1,3 +1,4 @@
+| `create-empty-label` | string | — | 0.127.0 (chế độ thường): dòng hành động ghim đáy khi danh sách mở mà ô còn rỗng (vd `show-on-focus`) → event `create` `{ query: '' }`, không chip, không `change`. Không hiện khi đầy / `selection-only`. Property `createEmptyLabel`. ([mục 6](#6-tạo-mục-mới-allow-create-create)) |
 [Tài liệu](../README.md) › [Components](README.md) › Chip input
 
 # Chip input — `<td-chip-input>`
@@ -195,6 +196,29 @@ penNames.addEventListener('create', async (e) => {
 - Bấm / Enter trên dòng này: popup đóng, chữ gõ bị xoá, focus ở lại ô, phát **một** event `create` `{ query }`. **Không**
   thêm chip, **không** gọi hook `create(text)`, **không** phát `change`; app tạo bản ghi rồi gọi `addItem`.
 
+**Dòng hành động khi chưa gõ (`create-empty-label`, 0.127.0).** Muốn một lối "tạo mới" cố định ngay khi mở danh sách mà
+chưa gõ gì (thay cho nút rời bên cạnh ô), đặt `create-empty-label` cùng `show-on-focus` (chế độ thường, không cần
+`allow-create`):
+
+```html
+<td-chip-input name="but_danh[]" label="Bút danh" show-on-focus create-empty-label="Tạo bút danh mới"></td-chip-input>
+```
+
+```js
+penNames.addEventListener('create', (e) => {
+  if (e.detail.query === '') openPenNameForm(); // chưa gõ gì → host tự mở form
+});
+```
+
+- Khi danh sách mở với ô rỗng, cuối danh sách có một dòng ghim đáy (cùng kiểu dòng `create-label` ở trên: icon `+`,
+  `--td-dropdown-create-fg`). Nhãn đặt bằng text, không bao giờ là HTML. Có cả khi không có gợi ý nào (popup chỉ còn dòng
+  này, không có "Không có kết quả").
+- Bấm / Enter trên dòng này: popup đóng, phát **một** event `create` `{ query: '' }`. **Không** thêm chip, **không** phát
+  `change`. Gõ chữ → dòng biến mất, dòng `Thêm “{text}”` / dòng `create-label` như cũ.
+- Không hiện khi đã đầy `max-items`, disabled, đang tải / lỗi tìm. Bị bỏ qua ở `selection-only` (ở đó `create-label` đã có dòng
+  khi ô rỗng). Đổi / gỡ attribute khi popup đang mở → popup đóng.
+- Cỡ ảnh đại diện trong từng dòng gợi ý: kit **không** có token cho cỡ này; dùng `renderOption` và CSS của host.
+
 ### 7. Giới hạn số mục (`max-items`)
 
 ```html
@@ -246,7 +270,7 @@ Các thao tác này **không** phát `change` và **không** thông báo cho tr�
 
 ### 10. Gán property trước khi component được định nghĩa
 
-Có thể gán `options`, `search`, `create`, `renderOption`, `renderChip`, `messages`, `value`, `createLabel` lên phần tử **trước** khi
+Có thể gán `options`, `search`, `create`, `renderOption`, `renderChip`, `messages`, `value`, `createLabel`, `createEmptyLabel` lên phần tử **trước** khi
 import module (ví dụ script không phải module chạy trước). Khi phần tử nâng cấp, các giá trị này được áp lại qua setter.
 
 ### 11. Chọn nhiều từ danh sách — multi-select (0.28.0)
@@ -423,7 +447,7 @@ focus.
 | `focus()` | | Focus ô nhập. |
 
 Các attribute còn lại có property phản chiếu tự động (`maxItems`, `minChars`, `searchDelay`, `allowCreate`,
-`showOnFocus`, `valueKey`, `labelKey`, `maxLength`, `placeholder`, `label`, `name`, `disabled`, `required`, `errorText`, `selectionOnly`, `selectAll`, `closeOnSelect`) và `createLabel` (chuỗi; `''` = gỡ attribute `create-label`).
+`showOnFocus`, `valueKey`, `labelKey`, `maxLength`, `placeholder`, `label`, `name`, `disabled`, `required`, `errorText`, `selectionOnly`, `selectAll`, `closeOnSelect`), `createLabel` (chuỗi; `''` = gỡ attribute `create-label`) và `createEmptyLabel` (chuỗi; `''` = gỡ attribute `create-empty-label`).
 
 ## Event
 

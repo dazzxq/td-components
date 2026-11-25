@@ -304,6 +304,7 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` v0.125.0 (24/11): td-table option cột `stickyMax` — ngưỡng tự bỏ ghim tuỳ chỉnh (owner)
 - `done` v0.126.0 (25/11): thân modal / drawer `scrollbar-gutter: stable` (biến `--td-modal-body-gutter` / `--td-drawer-body-gutter`) — nội dung không nhích khi thanh cuộn cổ điển xuất hiện (dsuite)
 - `done` docs-drift toàn bộ (25/11): 22 lô, docs-only trên main (`git log --grep docs-drift`); lỗi code phát hiện: `--td-dtp-preview-bg` khai báo nhưng không dùng → đã xoá; alert.css / cropper.css "thiếu dự phòng container query" là báo nhầm (build-css sinh `@supports not (container-type)` trong td.css)
+- `done` v0.127.0 (25/11): td-chip-input `create-empty-label` — dòng hành động ghim cuối khi chưa gõ, event `create` `{query:''}`; bỏ base giả `https://localhost/` khỏi `safeMenuHref` (validator eMagazine dcms2); plan [v0.127.0](plans/v0.127.0-chip-input-empty-action.md)
 - `done` v0.122.0 afamily-prj (24/11): callback `onInput` / `onChange` trước dispatch cho slider, choice-group, input-field, toggle, checkbox
 - `done` v0.121.0 afamily-prj (23/11): `td-dropdown` `portal="local"` / `portalRoot` (menu trong shadow root)
 - `done` v0.120.0 dcms2 K1 (22/11): `focal-optional` ở chế độ focal (điểm trọng tâm tuỳ chọn, không khung crop)

@@ -295,6 +295,15 @@ const CASES = [
     },
   },
   {
+    // v0.127.0: createEmptyLabel (chip-input normal mode), assigned before the upgrade
+    tag: 'td-chip-input', attrs: { 'aria-label': 'Bút danh' },
+    props: () => ({ createEmptyLabel: 'Tạo bút danh mới' }),
+    check(el) {
+      expect(el.getAttribute('create-empty-label')).to.equal('Tạo bút danh mới');
+      expect(Object.prototype.hasOwnProperty.call(el, 'createEmptyLabel')).to.equal(false);
+    },
+  },
+  {
     tag: 'td-chip-input', attrs: { label: 'Thẻ' },
     props: () => ({ options: [{ value: 'php', label: 'PHP' }], value: [{ value: 'php', label: 'PHP' }], search: fn(), create: fn(),
       renderOption: fn(), renderChip: fn(), messages: { empty: 'Trống' } }),

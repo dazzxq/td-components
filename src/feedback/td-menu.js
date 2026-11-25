@@ -147,7 +147,13 @@ export function safeMenuHref(href, page = typeof location !== 'undefined' ? loca
   const norm = href.replace(/^[\u0000- ]+|[\u0000- ]+$/g, '').replace(/[\t\n\r]/g, '');
   if (!norm) return null;
   let url;
-  try { url = new URL(norm, page ? page.href : 'https://localhost/'); } catch { return null; }
+  try {
+    url = new URL(norm, page ? page.href : undefined);
+  } catch {
+    // No page (SSR / tests): a relative reference cannot be parsed without a base. It inherits the page's protocol,
+    // which with no page is the https-only default → accepted as before. A string WITH a scheme that fails to parse is bad.
+    return /^[a-z][a-z0-9+.-]*:/i.test(norm) ? null : norm;
+  }
   // Judge the RESOLVED protocol (relative URLs inherit the page's): https always; http only when the page itself is
   // http (no cleartext downgrade from an HTTPS page — same fail-closed policy as td-lightbox defaultIsAllowedUrl).
   if (url.protocol === 'https:') return norm;

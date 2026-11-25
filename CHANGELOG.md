@@ -2,7 +2,13 @@
 
 All notable changes to **td-components** are documented here.
 
-## Unreleased
+## 0.127.0
+
+### Thêm
+- `td-chip-input` attribute `create-empty-label` (property `createEmptyLabel`): chế độ thường (không `selection-only`), khi danh sách mở với ô chưa gõ gì (vd `show-on-focus`) thì có một dòng hành động ghim cuối danh sách (vd "Tạo bút danh mới"; dcms2). Chọn dòng → event `create` `{ query: '' }`, đóng danh sách, không thêm chip, không `change`; host tự mở form. Hiện cả khi không có gợi ý nào; ẩn khi đủ `max-items`, khi đang tải / lỗi và khi đã gõ chữ (lúc đó dòng "Thêm …" / dòng `create-label` như cũ). Không cần `allow-create`. Không đặt attribute → không đổi gì.
+
+### Sửa
+- Code JS không còn URL tuyệt đối giả `https://localhost/` (base dự phòng của `safeMenuHref` trong td-menu khi không có `location`, lọt vào bundle như piece lightbox): công cụ kiểm tra gói eMagazine của dcms2 không còn báo "địa chỉ mạng ngoài". Hành vi lọc link menu không đổi.
 
 ### Gỡ
 - Token `--td-dtp-preview-bg` (datetime-picker): khai báo nhưng không quy tắc nào dùng, đặt giá trị cũng không có tác dụng. Đã xoá khỏi `datetime-picker.css` và golden; site đang đặt token này không cần sửa gì.
